@@ -7,6 +7,8 @@ set(CMAKE_BUILD_TYPE RELEASE CACHE STRING "Select build type.")
 
 set(CATCH_INCL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/catch2/include)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
 enable_testing()
 
 add_subdirectory(coupler)

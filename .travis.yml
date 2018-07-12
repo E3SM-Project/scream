@@ -11,10 +11,13 @@ addons:
     - ubuntu-toolchain-r-test
     packages:
     - g++-6
+    - clang-3.9
     - lcov
 
-git:
-  submodules: false
+compiler:
+- g++-6
+# Note that when using clang for C++, gfortran will still be used for compilation
+- clang++
 
 branches:
   only:
@@ -23,6 +26,9 @@ branches:
 cache:
   directories:
   - kokkos
+
+git:
+  submodules: false
 
 before_script:
 - if [[ ! -d ${PWD}/kokkos/.git ]]; then rm -rf ${PWD}/kokkos; git clone http://github.com/kokkos/kokkos; fi
@@ -36,7 +42,11 @@ before_script:
 - if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then ln -s $(which g++-6) g++; export PATH="${PWD}:${PATH}"; fi
 
 script:
-- cmake -D CMAKE_BUILD_TYPE=Debug -D CMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage" -D KOKKOS_DIR=${PWD}/kokkos/install components/scream
+# In case we build the C++ with clang, we can't use address sanitizer in the fortran due to different libraries
+- fflags="-Wall"
+- if [[ "${CXX}" == "g++" ]]; then fflags="${fflags} -fsanitize=address"; fi
+# Note that these flags are gcc and clang specific
+- cmake -D CMAKE_CXX_COMPILER=${CXX} -D CMAKE_Fortran_COMPILER="gfortran" -D CMAKE_BUILD_TYPE=Debug -D CMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage -fsanitize=address -Wall" -D CMAKE_Fortran_FLAGS=${fflags} -D KOKKOS_DIR=${PWD}/kokkos/install components/scream
 - make -j 2
 - make test
 
