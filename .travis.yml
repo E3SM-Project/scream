@@ -36,6 +36,10 @@ before_script:
 - if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then ln -s $(which g++-6) g++; export PATH="${PWD}:${PATH}"; fi
 
 script:
+- cd ./components/scream
+- sh ./scripts/format-enforcer.sh
+- cd ../..
+# Build and test
 - cmake -D CMAKE_BUILD_TYPE=Debug -D CMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage" -D KOKKOS_DIR=${PWD}/kokkos/install components/scream
 - make -j 2
 - make test
