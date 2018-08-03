@@ -37,7 +37,7 @@ before_script:
 
 script:
 - cd ./components/scream
-- sh ./scripts/format-enforcer.sh
+- sh ./scripts/format-enforcer.sh --commit
 - cd ../..
 # Build and test
 - cmake -D CMAKE_BUILD_TYPE=Debug -D CMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage" -D KOKKOS_DIR=${PWD}/kokkos/install components/scream
