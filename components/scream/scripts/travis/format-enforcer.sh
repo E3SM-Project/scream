@@ -16,7 +16,8 @@ if [ "$?" -eq 0 ]; then
     done
 
     git commit -m "${commit_msg}"
-    git push -u origin ${TRAVIS_BRANCH}
+    git remote add origin-oauth https://${TRAVIS_GITHUB_TOKEN}@github.com/E3SM-Project/scream.git
+    git push -u origin-oauth ${TRAVIS_BRANCH}
 
     git checkout ${git_hash}
 fi

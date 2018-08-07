@@ -1,10 +1,8 @@
 language: cpp
 sudo: false
 dist: trusty
-
 os:
 - linux
-
 addons:
   apt:
     sources:
@@ -12,44 +10,45 @@ addons:
     packages:
     - g++-6
     - lcov
-
 git:
   submodules: false
-
 branches:
   only:
   - master
-
 cache:
   directories:
   - kokkos
-
 before_script:
-- if [[ ! -d ${PWD}/kokkos/.git ]]; then rm -rf ${PWD}/kokkos; git clone http://github.com/kokkos/kokkos; fi
+- if [[ ! -d ${PWD}/kokkos/.git ]]; then rm -rf ${PWD}/kokkos; git clone http://github.com/kokkos/kokkos;
+  fi
 - cd kokkos
 - git reset --hard HEAD
 - git pull
 - mkdir -p install
-- cmake -D CMAKE_INSTALL_PREFIX=${PWD}/install -D CMAKE_BUILD_TYPE=Debug -D KOKKOS_ENABLE_DEBUG=ON -D KOKKOS_ENABLE_AGGRESSIVE_VECTORIZATION=OFF -D KOKKOS_ENABLE_OPENMP=OFF -D KOKKOS_ENABLE_PROFILING=OFF -D KOKKOS_ENABLE_SERIAL=ON -D KOKKOS_ENABLE_DEPRECATED_CODE=OFF ./
+- cmake -D CMAKE_INSTALL_PREFIX=${PWD}/install -D CMAKE_BUILD_TYPE=Debug -D KOKKOS_ENABLE_DEBUG=ON
+  -D KOKKOS_ENABLE_AGGRESSIVE_VECTORIZATION=OFF -D KOKKOS_ENABLE_OPENMP=OFF -D KOKKOS_ENABLE_PROFILING=OFF
+  -D KOKKOS_ENABLE_SERIAL=ON -D KOKKOS_ENABLE_DEPRECATED_CODE=OFF ./
 - make -j 2 install
 - cd ..
-- if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then ln -s $(which g++-6) g++; export PATH="${PWD}:${PATH}"; fi
-
+- if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then ln -s $(which g++-6) g++; export PATH="${PWD}:${PATH}";
+  fi
 script:
 - cd ./components/scream
 - sh ./scripts/travis/format-enforcer.sh --commit
 - cd ../..
-# Build and test
-- cmake -D CMAKE_BUILD_TYPE=Debug -D CMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage" -D KOKKOS_DIR=${PWD}/kokkos/install components/scream
+- cmake -D CMAKE_BUILD_TYPE=Debug -D CMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage"
+  -D KOKKOS_DIR=${PWD}/kokkos/install components/scream
 - make -j 2
 - make test
-
 after_success:
-# Source: https://github.com/codecov/example-cpp11-cmake
 - cd ${TRAVIS_BUILD_DIR}
 - lcov --directory . --capture --output-file coverage.info
 - lcov --remove coverage.info '/usr/*' --output-file coverage.info
 - lcov --remove coverage.info 'extern/*' --output-file coverage.info
 - lcov --remove coverage.info 'kokkos/*' --output-file coverage.info
 - lcov --list coverage.info
-- bash <(curl -s https://codecov.io/bash) || echo "Codecov did not collect coverage reports"
+- bash <(curl -s https://codecov.io/bash) || echo "Codecov did not collect coverage
+  reports"
+env:
+  global:
+    secure: A2kvjNkMSgBHi6g8J+b7SXvfKirmUejmDuHtR/qENyHUHzsHo75HyLTZy/2aDGcYVLkOBUqxykYMpRuHk3uBEK3r8JF9C4yq0K72b2zchq+3cs49ST8lcD8gOVIY0yyjmff4MK37+Mj5NPiq6ef5hjnKhfdTc4j1rvWdb2RzBsUG7jbi5xCUpzIXbZx+/IwR8R6xX+CbK0DiE3Kw8zYeXY+rs9kdg9Y+avqKRBggYi5r3dokKtkUvBVvmahXfhsmMp0luOHWy93i+zS1STWi38UcM6v+Nw3bRIgCUYGvqD0pM7Kztzru22+wMaLLn4i6uvQwQqEvD3RwuLqq4zmCsQ2QA+2B+Tvz8QUggh79RMtBPrK/h2SuGSeEFFVdGtr+XvyCEIRa1Q6nPtwK8fSeP7imEBQ4oKrVrL96wCqInGl7UjfTCNv4GYgb+YNCaSsqAtSYcVISF5ChWHL8u/TC9Yf7uAF+GqXGpi9JGZCFNf6OBLt/M2HP8ZMk2DkiYwEhT9O0ubbObplK/UWOvz9UpqrCNkynWbsUsTctWIZ8BB9L6EL7+JwRNemROHf9XRIGCH8kK+N6pAlAI4Wx1BlDy6kRJiAl3z6hON3pIeVnhg3yXmOSse9Wosv6p9coMUXQRIl5RO8FzSQ25PrFvfaKCBrtnTLeu+eJeRUbNkNqfo0=
