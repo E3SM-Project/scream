@@ -17,7 +17,8 @@ if [ "$?" -eq 0 ]; then
 
     git commit -m "${commit_msg}"
     git remote add origin-oauth https://${TRAVIS_GITHUB_TOKEN}@github.com/E3SM-Project/scream.git
-    git push -u origin-oauth ${TRAVIS_BRANCH}
+    echo WHILE THIS PR IS IN PROGRESS, WE ARE NOT PUSHING COMMITS TO MASTER. UNCOMMENT WHEN READY.
+    #git push -u origin-oauth ${TRAVIS_BRANCH}
 
     git checkout ${git_hash}
 fi

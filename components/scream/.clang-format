@@ -1,13 +1,13 @@
 ---
 BasedOnStyle:      Google
 IndentWidth:       2
-SpaceBeforeParens: Never
+SpaceBeforeParens: ControlStatements
 UseTab:            Never
 TabWidth:          2
 ColumnLimit:       80
 ---
 Language:                    Cpp
-PointerAlignment:            Right
+PointerAlignment:            Left
 DerivePointerAlignment:      false
 AlignConsecutiveAssignments: true
 AlignOperands:               true
