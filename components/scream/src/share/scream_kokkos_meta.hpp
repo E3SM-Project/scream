@@ -10,6 +10,8 @@ namespace ko {
 // app-specific array types here; rather, include only those things that one
 // could imagine could go into Kokkos itself.
 
+// Turn a View's MemoryTraits (traits::memory_traits) into the equivalent
+// unsigned int mask.
 template <typename View>
 struct MemoryTraitsMask {
   enum : unsigned int {
