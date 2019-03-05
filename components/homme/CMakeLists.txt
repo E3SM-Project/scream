@@ -305,10 +305,14 @@ IF (NOT (CPRNC_DIR))
   ADD_SUBDIRECTORY(utils/cime/tools/cprnc)
 ENDIF ()
 
-IF (${HOMME_USE_KOKKOS})
-  # Add unit tests for C++ code
-  ADD_SUBDIRECTORY(test/unit_tests)
-ENDIF ()
+OPTION(HOMMEXX_LIBS_ONLY "Whether hommexx should build as a library only" OFF)
+
+IF (NOT HOMMEXX_LIBS_ONLY) 
+  IF (${HOMME_USE_KOKKOS})
+    # Add unit tests for C++ code
+    ADD_SUBDIRECTORY(test/unit_tests)
+  ENDIF ()
+ENDIF()
 
 SET(EXEC_LIST ""  CACHE INTERNAL "List of configured executables")
 IF(${BUILD_HOMME_SWEQX})
@@ -344,7 +348,9 @@ IF(${BUILD_HOMME_PRIM})
   ADD_SUBDIRECTORY(src/prim)
 ENDIF()
 
-ADD_SUBDIRECTORY(test_execs)
+IF (NOT HOMMEXX_LIBS_ONLY)
+  ADD_SUBDIRECTORY(test_execs)
+ENDIF()
 
 # Create a "make clean-all" target to delete CMake cache and the cprnc build
 ADD_CUSTOM_TARGET(clean-all

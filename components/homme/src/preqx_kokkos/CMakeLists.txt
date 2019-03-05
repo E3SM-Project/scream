@@ -220,10 +220,118 @@ ENDMACRO(PREQX_KOKKOS_SETUP)
 
 PREQX_KOKKOS_SETUP()
 
-############################################################################
-# createTestExec(exec_name exec_type NP NC PLEV USE_PIO USE_ENERGY QSIZE_D)
-############################################################################
-# Need to set this, so createTestExec will call link_to_kokkos
-SET (USE_KOKKOS_KERNELS ON)
-createTestExec(preqx_kokkos preqx_kokkos ${PREQX_NP} ${PREQX_NC} ${PREQX_PLEV} ${PREQX_USE_PIO}  ${PREQX_USE_ENERGY} ${QSIZE_D})
-UNSET (USE_KOKKOS_KERNELS)
+
+IF (HOMMEXX_LIBS_ONLY)
+  # Create a library rather than an executable
+  INCLUDE (Kokkos)
+  IF (NOT HOMMEXX_LIBRARY_NP_VALS)
+    SET (HOMMEXX_LIBRARY_NP_VALS 4)
+  ENDIF()
+  IF (NOT HOMMEXX_LIBRARY_PLEV_VALS)
+    SET (HOMMEXX_LIBRARY_PLEV_VALS 26 72)
+  ENDIF()
+  IF (NOT HOMMEXX_LIBRARY_QSIZE_D_VALS)
+    SET (HOMMEXX_LIBRARY_QSIZE_D_VALS 4 40)
+  ENDIF()
+
+  SET(PREQX_HEADERS
+    ${SRC_SHARE_DIR}/cxx/CaarFunctor.hpp
+    ${SRC_SHARE_DIR}/cxx/CamForcing.hpp
+    ${SRC_SHARE_DIR}/cxx/Context.hpp
+    ${SRC_SHARE_DIR}/cxx/Derivative.hpp
+    ${SRC_SHARE_DIR}/cxx/Diagnostics.hpp
+    ${SRC_SHARE_DIR}/cxx/Elements.hpp
+    ${SRC_SHARE_DIR}/cxx/ErrorDefs.hpp
+    ${SRC_SHARE_DIR}/cxx/EulerStepFunctor.hpp
+    ${SRC_SHARE_DIR}/cxx/ExecSpaceDefs.hpp
+    ${SRC_SHARE_DIR}/cxx/Hommexx_Session.hpp
+    ${SRC_SHARE_DIR}/cxx/HybridVCoord.hpp
+    ${SRC_SHARE_DIR}/cxx/HyperviscosityFunctor.hpp
+    ${SRC_SHARE_DIR}/cxx/HyperviscosityFunctorImpl.hpp
+    ${SRC_SHARE_DIR}/cxx/Tracers.hpp
+    ${SRC_SHARE_DIR}/cxx/VerticalRemapManager.hpp
+    ${SRC_SHARE_DIR}/cxx/mpi/BoundaryExchange.hpp
+    ${SRC_SHARE_DIR}/cxx/mpi/BuffersManager.hpp
+    ${SRC_SHARE_DIR}/cxx/mpi/Comm.hpp
+    ${SRC_SHARE_DIR}/cxx/mpi/Connectivity.hpp
+    ${SRC_SHARE_DIR}/cxx/mpi/MpiContext.hpp
+  )
+
+  ADD_DEFINITIONS(-DHAVE_CONFIG_H)
+
+  SET (INCLUDE_DIRS_BASE
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${PIO_INCLUDE_DIRS}
+    ${UTILS_TIMING_DIR}
+    ${UTILS_TIMING_SRC_DIR}
+    ${PREQX_SHARE_DIR}
+    ${SRC_SHARE_DIR}/cxx
+    ${CMAKE_BINARY_DIR}/src/share/cxx
+  )
+
+  FOREACH (NP ${HOMMEXX_LIBRARY_NP_VALS})
+    FOREACH (NLEV ${HOMMEXX_LIBRARY_PLEV_VALS})
+      FOREACH (QSIZE ${HOMMEXX_LIBRARY_QSIZE_D_VALS})
+        # The root name for this library
+        SET (libRootName "preqx_kokkos_np${NP}_nlev${NLEV}_qsize${QSIZE}")
+
+        # CMake variables needed for the config.h file
+        SET(NUM_POINTS ${NP})
+        SET(NUM_PLEV ${NLEV})
+        SET(NUM_CELLS 4) # unused, but needs to be defined
+        SET(PIO)
+        SET(PIO_INTERP TRUE)
+        SET(ENERGY_DIAGNOSTICS)
+        SET(QSIZE_D ${QSIZE})
+
+        # This is needed to compile the test executables with the correct options
+        SET(THIS_CONFIG_IN ${HOMME_SOURCE_DIR}/src/preqx_kokkos/config.h.cmake.in)
+        SET(THIS_CONFIG_HC ${CMAKE_CURRENT_BINARY_DIR}/${libRootName}/config.h.c)
+        SET(THIS_CONFIG_H ${CMAKE_CURRENT_BINARY_DIR}/${libRootName}/config.h)
+
+        # First configure the file (which formats the file as C)
+        HommeConfigFile (${THIS_CONFIG_IN} ${THIS_CONFIG_HC} ${THIS_CONFIG_H} )
+
+        SET (INCLUDE_DIRS_CXX
+          ${INCLUDE_DIRS_BASE}
+          ${CMAKE_CURRENT_BINARY_DIR}/${libRootName}
+          ${KOKKOS_INCLUDE_DIR}
+        )
+        SET (INCLUDE_DIRS_F90
+          ${INCLUDE_DIRS_BASE}
+          ${CMAKE_CURRENT_BINARY_DIR}/${libRootName}
+          ${CMAKE_CURRENT_BINARY_DIR}/${libRootName}_modules
+        )
+
+        # C++ library
+        ADD_LIBRARY (${libRootName}_cxx ${PREQX_DEPS_CXX})
+        SET_TARGET_PROPERTIES(${libRootName}_cxx PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${libRootName})
+        SET_TARGET_PROPERTIES(${libRootName}_cxx PROPERTIES INCLUDE_DIRECTORIES "${INCLUDE_DIRS_CXX}")
+        SET_TARGET_PROPERTIES(${libRootName}_cxx PROPERTIES COMPILE_DEFINITIONS HAVE_CONFIG_H)
+        IF ("${PERF_PROF_UPPER}" STREQUAL "VTUNE")
+          TARGET_LINK_LIBRARIES(${libRootName}_cxx ittnotify)
+        ENDIF ()
+        TARGET_LINK_LIBRARIES(${libRootName}_cxx ${KOKKOS_TPL_LIBRARIES} ${KOKKOS_LIBRARIES} -L${KOKKOS_LIBRARY_DIR})
+
+        # F90 library
+        ADD_LIBRARY (${libRootName}_f90 ${PREQX_DEPS_F90})
+        SET_TARGET_PROPERTIES(${libRootName}_f90 PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${libRootName})
+        SET_TARGET_PROPERTIES(${libRootName}_f90 PROPERTIES INCLUDE_DIRECTORIES "${INCLUDE_DIRS_F90}")
+        SET_TARGET_PROPERTIES(${libRootName}_f90 PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${libRootName}_modules)
+        SET_TARGET_PROPERTIES(${libRootName}_f90 PROPERTIES COMPILE_DEFINITIONS HAVE_CONFIG_H)
+        TARGET_LINK_LIBRARIES(${libRootName}_f90 ${libRootName}_cxx pio timing ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+
+        install (TARGETS ${libRootName}_f90 DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${libRootName})
+        install (FILES ${PREQX_HEADERS} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/${libRootName})
+      ENDFOREACH() 
+    ENDFOREACH() 
+  ENDFOREACH() 
+ELSE()
+  ############################################################################
+  # createTestExec(exec_name exec_type NP NC PLEV USE_PIO USE_ENERGY QSIZE_D)
+  ############################################################################
+  # Need to set this, so createTestExec will call link_to_kokkos
+  SET (USE_KOKKOS_KERNELS ON)
+  createTestExec(preqx_kokkos preqx_kokkos ${PREQX_NP} ${PREQX_NC} ${PREQX_PLEV} ${PREQX_USE_PIO}  ${PREQX_USE_ENERGY} ${QSIZE_D})
+  UNSET (USE_KOKKOS_KERNELS)
+ENDIF ()
