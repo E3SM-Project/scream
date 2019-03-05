@@ -236,20 +236,34 @@ IF (HOMMEXX_LIBS_ONLY)
 
   SET(PREQX_HEADERS
     ${SRC_SHARE_DIR}/cxx/CaarFunctor.hpp
+    ${SRC_SHARE_DIR}/cxx/CaarFunctorImpl.hpp
     ${SRC_SHARE_DIR}/cxx/CamForcing.hpp
+    ${SRC_SHARE_DIR}/cxx/Config.hpp
     ${SRC_SHARE_DIR}/cxx/Context.hpp
     ${SRC_SHARE_DIR}/cxx/Derivative.hpp
     ${SRC_SHARE_DIR}/cxx/Diagnostics.hpp
+    ${SRC_SHARE_DIR}/cxx/Dimensions.hpp
     ${SRC_SHARE_DIR}/cxx/Elements.hpp
     ${SRC_SHARE_DIR}/cxx/ErrorDefs.hpp
     ${SRC_SHARE_DIR}/cxx/EulerStepFunctor.hpp
+    ${SRC_SHARE_DIR}/cxx/EulerStepFunctorImpl.hpp
     ${SRC_SHARE_DIR}/cxx/ExecSpaceDefs.hpp
+    ${SRC_SHARE_DIR}/cxx/HommexxEnums.hpp
     ${SRC_SHARE_DIR}/cxx/Hommexx_Session.hpp
     ${SRC_SHARE_DIR}/cxx/HybridVCoord.hpp
     ${SRC_SHARE_DIR}/cxx/HyperviscosityFunctor.hpp
     ${SRC_SHARE_DIR}/cxx/HyperviscosityFunctorImpl.hpp
+    ${SRC_SHARE_DIR}/cxx/KernelVariables.hpp
+    ${SRC_SHARE_DIR}/cxx/PhysicalConstants.hpp
+    ${SRC_SHARE_DIR}/cxx/PpmRemap.hpp
+    ${SRC_SHARE_DIR}/cxx/RemapFunctor.hpp
+    ${SRC_SHARE_DIR}/cxx/SimulationParams.hpp
+    ${SRC_SHARE_DIR}/cxx/SphereOperators.hpp
+    ${SRC_SHARE_DIR}/cxx/TimeLevel.hpp
     ${SRC_SHARE_DIR}/cxx/Tracers.hpp
+    ${SRC_SHARE_DIR}/cxx/Types.hpp
     ${SRC_SHARE_DIR}/cxx/VerticalRemapManager.hpp
+    ${SRC_SHARE_DIR}/cxx/profiling.hpp
     ${SRC_SHARE_DIR}/cxx/mpi/BoundaryExchange.hpp
     ${SRC_SHARE_DIR}/cxx/mpi/BuffersManager.hpp
     ${SRC_SHARE_DIR}/cxx/mpi/Comm.hpp
