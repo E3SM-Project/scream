@@ -1,13 +1,18 @@
-set(SCREAM_DYNAMICS_SOURCES
-  atmosphere_dynamics.cpp
-)
+MACRO(GatherDynamicsSources)
+  SET (DYNAMICS_DIR ${SCREAM_SRC_DIR}/dynamics)
 
-set(SCREAM_DYNAMICS_HEADERS
-  atmosphere_dynamics.hpp
-)
+  set(SCREAM_DYNAMICS_SOURCES
+    ${DYNAMICS_DIR}/atmosphere_dynamics.cpp
+  )
 
-link_directories(${SCREAM_LIBRARY_DIRS} ${SCREAM_TPL_LIBRARY_DIRS})
+  set(SCREAM_DYNAMICS_HEADERS
+    ${DYNAMICS_DIR}/atmosphere_dynamics.hpp
+  )
 
-add_library(scream_dynamics ${SCREAM_DYNAMICS_SOURCES})
-target_include_directories(scream_dynamics PUBLIC ${SCREAM_SRC_DIR})
-target_link_libraries(scream_dynamics scream_share ${SCREAM_TPL_LIBRARIES})
+ENDMACRO(GatherDynamicsSources)
+
+# link_directories(${SCREAM_LIBRARY_DIRS} ${SCREAM_TPL_LIBRARY_DIRS})
+
+# add_library(scream_dynamics ${SCREAM_DYNAMICS_SOURCES})
+# target_include_directories(scream_dynamics PUBLIC ${SCREAM_SRC_DIR})
+# target_link_libraries(scream_dynamics scream_share ${SCREAM_TPL_LIBRARIES})

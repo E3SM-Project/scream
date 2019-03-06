@@ -8,5 +8,3 @@ set(SHOC_HEADERS
 )
 
 add_library(shoc ${SHOC_SRCS})
-
-add_subdirectory(tests)

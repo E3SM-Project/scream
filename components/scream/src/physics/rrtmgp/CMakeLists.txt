@@ -8,5 +8,3 @@ set(RRTMGP_HEADERS
 )
 
 add_library(rrtmgp ${RRTMGP_SRCS})
-
-add_subdirectory(tests)

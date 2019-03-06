@@ -40,5 +40,3 @@ set_target_properties(scream_share PROPERTIES
   Fortran_MODULE_DIRECTORY ${SCREAM_F90_MODULES})
 # link_directories(${SCREAM_TPL_LIBRARY_DIRS})
 # target_link_libraries(scream_share PUBLIC ${SCREAM_TPL_LIBRARIES})
-
-add_subdirectory(tests)
