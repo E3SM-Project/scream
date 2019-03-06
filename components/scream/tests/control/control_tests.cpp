@@ -1,5 +1,5 @@
 #include <catch2/catch.hpp>
-#include <control/atmosphere_driver.hpp>
+#include "control/atmosphere_driver.hpp"
 
 namespace {
 

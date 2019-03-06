@@ -1,10 +1,9 @@
 #ifndef SCREAM_SURFACE_COUPLING_HPP
 #define SCREAM_SURFACE_COUPLING_HPP
 
-#include <share/atmosphere_process.hpp>
-#include <share/parameter_list.hpp>
-
-#include <share/field/field_repository.hpp>
+#include "share/atmosphere_process.hpp"
+#include "share/parameter_list.hpp"
+#include "share/field/field_repository.hpp"
 
 namespace scream {
 

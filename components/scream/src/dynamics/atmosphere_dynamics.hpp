@@ -1,8 +1,8 @@
 #ifndef SCREAM_ATMOSPHERE_DYNAMICS_HPP
 #define SCREAM_ATMOSPHERE_DYNAMICS_HPP
 
-#include <share/atmosphere_process.hpp>
-#include <share/parameter_list.hpp>
+#include "share/atmosphere_process.hpp"
+#include "share/parameter_list.hpp"
 
 #include <string>
 

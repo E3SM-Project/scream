@@ -1,7 +1,7 @@
 #include "atmosphere_process_group.hpp"
 #include "atmosphere_process_factory.hpp"
 
-#include <share/util/string_utils.hpp>
+#include "share/util/string_utils.hpp"
 
 namespace scream {
 
