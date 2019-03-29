@@ -304,7 +304,7 @@ contains
   !==========================================================================================!
 
   SUBROUTINE p3_main(qc,nc,qr,nr,th_old,th,qv_old,qv,dt,qitot,qirim,nitot,birim,ssat,   &
-       pres,dzq,it,prt_liq,prt_sol,its,ite,kts,kte,diag_ze,diag_effc,     &
+       pres,dzq,npccn,naai,it,prt_liq,prt_sol,its,ite,kts,kte,diag_ze,diag_effc,     &
        diag_effi,diag_vmi,diag_di,diag_rhoi,log_predictNc, &
        pdel,exner,cmeiout,prain,nevapr,prer_evap,rflx,sflx,rcldm,lcldm,icldm,p3_tend_out)
 
@@ -343,6 +343,8 @@ contains
     real(rtype), intent(inout), dimension(its:ite,kts:kte)      :: qv_old     ! beginning of time step value of qv    kg kg-1
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: pres       ! pressure                         Pa
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: dzq        ! vertical grid spacing            m
+    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: npccn      ! IN ccn activated number tendency kg-1 s-1
+    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: naai       ! IN actived ice nuclei concentration  1/kg
     real(rtype), intent(in)                                     :: dt         ! model time step                  s
 
     real(rtype), intent(out),   dimension(its:ite)              :: prt_liq    ! precipitation rate, liquid       m s-1
@@ -1260,21 +1262,31 @@ contains
           ! allow ice nucleation if < -15 C and > 5% ice supersaturation
           ! use CELL-AVERAGE values, freezing of vapor
 
-          if (t(i,k).lt.icenuct .and. supi(i,k).ge.0.05) then
+         if(.not. log_predictNc) then 
+            if ( t(i,k).lt.icenuct .and. supi(i,k).ge.0.05) then
 
-             !        dum = exp(-0.639+0.1296*100.*supi(i,k))*1000.*inv_rho(i,k)  !Meyers et al. (1992)
-             dum = 0.005*exp(0.304*(zerodegc-t(i,k)))*1000.*inv_rho(i,k)   !Cooper (1986)
-             dum = min(dum,100.e3*inv_rho(i,k))
-             N_nuc = max(0.,(dum-nitot(i,k))*odt)
+               !        dum = exp(-0.639+0.1296*100.*supi(i,k))*1000.*inv_rho(i,k)  !Meyers et al. (1992)
+               dum = 0.005*exp(0.304*(zerodegc-t(i,k)))*1000.*inv_rho(i,k)   !Cooper (1986)
+               dum = min(dum,100.e3*inv_rho(i,k))
+               N_nuc = max(0.,(dum-nitot(i,k))*odt)
 
-             if (N_nuc.ge.1.e-20) then
-                Q_nuc = max(0.,(dum-nitot(i,k))*mi0*odt)
-                qinuc = Q_nuc
-                ninuc = N_nuc
-             endif
+               if (N_nuc.ge.1.e-20) then
+                  Q_nuc = max(0.,(dum-nitot(i,k))*mi0*odt)
+                  qinuc = Q_nuc
+                  ninuc = N_nuc
+               endif
 
-          endif
+            endif
+         endif 
 
+
+         if(log_predictNc) then 
+         !desposition/condencation nucleation predicted by aerosol scheme 
+            if  ( t(i,k) .lt. 258.15 .and. supi(i,k).ge.0.05) then
+               ninuc = max(0., (naai(i,k) - nitot(i,k))*odt)
+               qinuc = ninuc * mi0
+            endif
+         endif 
 
           !.................................................................
           ! droplet activation
@@ -1283,47 +1295,48 @@ contains
           ! note that this is also applied at the first time step
           ! this is not applied at the first time step, since saturation adjustment is applied at the first step
 
-          if (.not.(log_predictNc).and.sup(i,k).gt.1.e-6.and.it.gt.1) then
-             dum   = nccnst*inv_rho(i,k)*cons7-qc_incld(i,k)
-             dum   = max(0.,dum)
-             dumqvs = qv_sat(t(i,k),pres(i,k),0)
-             dqsdt = xxlv(i,k)*dumqvs/(rv*t(i,k)*t(i,k))
-             ab    = 1. + dqsdt*xxlv(i,k)*inv_cp
-             dum   = min(dum,(qv(i,k)-dumqvs)/ab)  ! limit overdepletion of supersaturation
-             qcnuc = dum*odt
-          endif
-
           if (log_predictNc) then
 
-             ! for predicted Nc, calculate activation explicitly from supersaturation
-             ! note that this is also applied at the first time step
-             ! note that this is also applied at the first time step
+            ! for predicted Nc, calculate activation explicitly from supersaturation
+            ! note that this is also applied at the first time step
+            ! note that this is also applied at the first time step
 
-             if (sup(i,k).gt.1.e-6) then
-                dum1  = 1./bact**0.5
-                sigvl = 0.0761 - 1.55e-4*(t(i,k)-zerodegc)
-                aact  = 2.*mw/(rhow*rr*t(i,k))*sigvl
-                sm1   = 2.*dum1*(aact*thrd*inv_rm1)**1.5
-                sm2   = 2.*dum1*(aact*thrd*inv_rm2)**1.5
-                uu1   = 2.*log(sm1/sup(i,k))/(4.242*log(sig1))
-                uu2   = 2.*log(sm2/sup(i,k))/(4.242*log(sig2))
-                dum1  = nanew1*0.5*(1.-erf(uu1)) ! activated number in kg-1 mode 1
-                dum2  = nanew2*0.5*(1.-erf(uu2)) ! activated number in kg-1 mode 2
-                ! make sure this value is not greater than total number of aerosol
-                dum2  = min((nanew1+nanew2),dum1+dum2)
-                dum2  = (dum2-nc_incld(i,k))*odt
-                dum2  = max(0.,dum2)
-                ncnuc = dum2
-                ! don't include mass increase from droplet activation during first time step
-                ! since this is already accounted for by saturation adjustment below
-                if (it.eq.1) then
-                   qcnuc = 0.
-                else
-                   qcnuc = ncnuc*cons7
-                endif
-             endif
+            if (sup(i,k).gt.1.e-6) then
+               ! code removed below by K. Pressel 2/19 to allow for activation of droplets 
+               ! by the aerosol scheme 
+               !dum1  = 1./bact**0.5
+               !sigvl = 0.0761 - 1.55e-4*(t(i,k)-zerodegc)
+               !aact  = 2.*mw/(rhow*rr*t(i,k))*sigvl
+               !sm1   = 2.*dum1*(aact*thrd*inv_rm1)**1.5
+               !sm2   = 2.*dum1*(aact*thrd*inv_rm2)**1.5
+               !uu1   = 2.*log(sm1/sup(i,k))/(4.242*log(sig1))
+               !uu2   = 2.*log(sm2/sup(i,k))/(4.242*log(sig2))
+               !dum1  = nanew1*0.5*(1.-erf(uu1)) ! activated number in kg-1 mode 1
+               !dum2  = nanew2*0.5*(1.-erf(uu2)) ! activated number in kg-1 mode 2
+               !! make sure this value is not greater than total number of aerosol
+               !dum2  = min((nanew1+nanew2),dum1+dum2)
+               !dum2  = (dum2-nc(i,k))*odt
+               !dum2  = max(0.,dum2)
+               !ncnuc = dum2
+               ! don't include mass increase from droplet activation during first time step
+               ! since this is already accounted for by saturation adjustment below
+               ncnuc = npccn(i,k)
+               if (it.eq.1) then
+                  qcnuc = 0.
+               else
+                  qcnuc = ncnuc*cons7
+               endif
+            endif
 
-          endif
+         else if (sup(i,k).gt.1.e-6.and.it.gt.1) then
+            dum   = nccnst*inv_rho(i,k)*cons7-qc(i,k)
+            dum   = max(0.,dum)
+            dumqvs = qv_sat(t(i,k),pres(i,k),0)
+            dqsdt = xxlv(i,k)*dumqvs/(rv*t(i,k)*t(i,k))
+            ab    = 1. + dqsdt*xxlv(i,k)*inv_cp
+            dum   = min(dum,(qv(i,k)-dumqvs)/ab)  ! limit overdepletion of supersaturation
+            qcnuc = dum*odt
+         endif
 
           !................................................................
           ! saturation adjustment to get initial cloud water

@@ -1242,8 +1242,10 @@ end subroutine micro_p3_readnl
 
     ! HANDLE AEROSOL ACTIVATION
     !==============
-    !saving this for later... use prescribed Nd for now.
-    log_predictNc = .false.
+    ! TODO: Make log_predictNc a namelist option currently default values is set to .true.
+    ! which means that droplet and ice particle activation is predicted by the aerosol 
+    ! scheme. 
+    log_predictNc = .true.
 
     ! GET "OLD" VALUES
     !==============
@@ -1364,6 +1366,8 @@ end subroutine micro_p3_readnl
          ssat(its:ite,kts:kte),       & ! INOUT  supersaturation (i.e., qv-qvs)   kg kg-1
          pres(its:ite,kts:kte),       & ! IN     pressure at cell midpoints       Pa
          dzq(its:ite,kts:kte),        & ! IN     vertical grid spacing            m
+         npccn(its:ite,kts:kte),      & ! IN ccn activation number tendency kg-1 s-1
+         naai(its:ite,kts:kte),       & ! IN activated ice nuclei concentration kg-1
          it,                          & ! IN     time step counter NOTE: starts at 1 for first time step
          prt_liq(its:ite),            & ! OUT    surface liquid precip rate       m s-1
          prt_sol(its:ite),            & ! OUT    surface frozen precip rate       m s-1
