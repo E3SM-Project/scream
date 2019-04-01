@@ -1242,7 +1242,7 @@ end subroutine micro_p3_readnl
 
     ! HANDLE AEROSOL ACTIVATION
     !==============
-    ! TODO: Make log_predictNc a namelist option currently default values is set to .true.
+    ! TODO: Make log_predictNc a namelist option currently default value is set to .true.
     ! which means that droplet and ice particle activation is predicted by the aerosol 
     ! scheme. 
     log_predictNc = .true.
