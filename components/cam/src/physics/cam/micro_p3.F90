@@ -1291,14 +1291,11 @@ contains
           !.................................................................
           ! droplet activation
 
-          ! for specified Nc, make sure droplets are present if conditions are supersaturated
-          ! note that this is also applied at the first time step
-          ! this is not applied at the first time step, since saturation adjustment is applied at the first step
+
 
           if (log_predictNc) then
 
-            ! for predicted Nc, calculate activation explicitly from supersaturation
-            ! note that this is also applied at the first time step
+            ! for predicted Nc, use activation predicted by aerosol scheme
             ! note that this is also applied at the first time step
 
             if (sup(i,k).gt.1.e-6) then
@@ -1324,11 +1321,14 @@ contains
                if (it.eq.1) then
                   qcnuc = 0.
                else
+                  !TODO Limit qcnuc so that conditions never become sub-saturated 
                   qcnuc = ncnuc*cons7
                endif
             endif
 
          else if (sup(i,k).gt.1.e-6.and.it.gt.1) then
+           ! for specified Nc, make sure droplets are present if conditions are supersaturated
+           ! this is not applied at the first time step, since saturation adjustment is applied at the first step
             dum   = nccnst*inv_rho(i,k)*cons7-qc(i,k)
             dum   = max(0.,dum)
             dumqvs = qv_sat(t(i,k),pres(i,k),0)
