@@ -1281,7 +1281,7 @@ contains
 
 
          if(log_predictNc) then 
-         !desposition/condencation nucleation predicted by aerosol scheme 
+         ! Ice nucleation predicted by aerosol scheme 
             if  ( t(i,k) .lt. 258.15 .and. supi(i,k).ge.0.05) then
                ninuc = max(0., (naai(i,k) - nitot(i,k))*odt)
                qinuc = ninuc * mi0
