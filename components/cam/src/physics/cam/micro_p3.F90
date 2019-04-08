@@ -1256,48 +1256,35 @@ contains
 
 444       continue
 
-
           !................................................................
           ! deposition/condensation-freezing nucleation
           ! allow ice nucleation if < -15 C and > 5% ice supersaturation
           ! use CELL-AVERAGE values, freezing of vapor
 
-         if(.not. log_predictNc) then 
-            if ( t(i,k).lt.icenuct .and. supi(i,k).ge.0.05) then
-
-               !        dum = exp(-0.639+0.1296*100.*supi(i,k))*1000.*inv_rho(i,k)  !Meyers et al. (1992)
+         if ( t(i,k).lt.icenuct .and. supi(i,k).ge.0.05) then
+            if(.not. log_predictNc) then 
+               ! dum = exp(-0.639+0.1296*100.*supi(i,k))*1000.*inv_rho(i,k)  !Meyers et al. (1992)
                dum = 0.005*exp(0.304*(zerodegc-t(i,k)))*1000.*inv_rho(i,k)   !Cooper (1986)
                dum = min(dum,100.e3*inv_rho(i,k))
                N_nuc = max(0.,(dum-nitot(i,k))*odt)
-
                if (N_nuc.ge.1.e-20) then
                   Q_nuc = max(0.,(dum-nitot(i,k))*mi0*odt)
                   qinuc = Q_nuc
                   ninuc = N_nuc
                endif
-
-            endif
-         endif 
-
-
-         if(log_predictNc) then 
-         ! Ice nucleation predicted by aerosol scheme 
-            if  ( t(i,k) .lt. 258.15 .and. supi(i,k).ge.0.05) then
+            else 
+            ! Ice nucleation predicted by aerosol scheme 
                ninuc = max(0., (naai(i,k) - nitot(i,k))*odt)
                qinuc = ninuc * mi0
-            endif
+            endif 
          endif 
 
           !.................................................................
           ! droplet activation
 
-
-
           if (log_predictNc) then
-
             ! for predicted Nc, use activation predicted by aerosol scheme
             ! note that this is also applied at the first time step
-
             if (sup(i,k).gt.1.e-6) then
                ! code removed below by K. Pressel 2/19 to allow for activation of droplets 
                ! by the aerosol scheme 
@@ -1325,7 +1312,6 @@ contains
                   qcnuc = ncnuc*cons7
                endif
             endif
-
          else if (sup(i,k).gt.1.e-6.and.it.gt.1) then
            ! for specified Nc, make sure droplets are present if conditions are supersaturated
            ! this is not applied at the first time step, since saturation adjustment is applied at the first step
