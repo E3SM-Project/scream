@@ -12,6 +12,8 @@ set(P3_SRCS
   micro_p3_iso_c.f90
   ${SCREAM_BASE_DIR}/../cam/src/physics/cam/micro_p3.F90
   ${SCREAM_BASE_DIR}/../cam/src/physics/cam/micro_p3_utils.F90
+  atmosphere_microphysics.cpp
+  scream_p3_interface.F90
 )
 
 list(APPEND P3_SRCS ${share_sources})
@@ -29,6 +31,8 @@ set(P3_HEADERS
   p3_functions_table3_impl.hpp
   p3_functions.hpp
   p3_functions_find_impl.hpp
+  atmosphere_microphysics.hpp
+  scream_p3_interface.hpp
 )
 
 # link_directories(${SCREAM_TPL_LIBRARY_DIRS} ${SCREAM_LIBRARY_DIRS})
