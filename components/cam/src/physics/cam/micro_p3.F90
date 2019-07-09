@@ -330,7 +330,7 @@ contains
        pres,dzq,npccn,naai,it,prt_liq,prt_sol,its,ite,kts,kte,diag_ze,diag_effc,     &
        diag_effi,diag_vmi,diag_di,diag_rhoi,log_predictNc, &
        pdel,exner,cmeiout,prain,nevapr,prer_evap,rflx,sflx,rcldm,lcldm,icldm,  &
-       pratot,prctot,p3_tend_out,mu_c,lamc,stand_alone)
+       pratot,prctot,p3_tend_out,mu_c,lamc)
 
     !----------------------------------------------------------------------------------------!
     !                                                                                        !
@@ -408,7 +408,6 @@ contains
     ! included in the port to C++, or can be changed if desired.
     real(rtype), intent(out),   dimension(its:ite,kts:kte,49)   :: p3_tend_out ! micro physics tendencies
 
-    logical, optional, intent(in) :: stand_alone
     !----- Local variables and parameters:  -------------------------------------------------!
 
     real(rtype), dimension(its:ite,kts:kte) :: mu_r  ! shape parameter of rain
@@ -535,8 +534,6 @@ contains
     !-----------------------------------------------------------------------------------!
     !  End of variables/parameters declarations
     !-----------------------------------------------------------------------------------!
-
-    if (present(stand_alone).and.stand_alone) return
 
     ! direction of vertical leveling:
     !PMC got rid of 'model' option so we could just replace ktop with kts everywhere...
