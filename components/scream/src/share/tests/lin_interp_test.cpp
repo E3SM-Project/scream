@@ -179,7 +179,7 @@ TEST_CASE("lin_interp", "soak") {
       Kokkos::deep_copy(y2kvm, y2kv);
       for (int i = 0; i < ncol; ++i) {
         for (int j = 0; j < km2; ++j) {
-          scream::util::catch2_req_pk_sensitive<Pack::n>(y2_f90[i][j], y2kvm(i, j / Pack::n)[j % Pack::n]);
+          scream::util::catch2_req_pk_sensitive<Pack::n>(y2_f90[i][j] + 1, y2kvm(i, j / Pack::n)[j % Pack::n]);
         }
       }
     }
