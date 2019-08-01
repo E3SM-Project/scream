@@ -283,14 +283,15 @@ TEST_CASE("remap", "") {
     std::vector<int> vector_3d_phys_dims = {num_local_columns, 2, HOMMEXX_NUM_PHYSICAL_LEV};
 
     // Create identifiers
-    FieldIdentifier scalar_2d_dyn_fid  ("scalar_2d_dynamics", FieldLayout(scalar_2d_dyn_tags,  scalar_2d_dyn_dims), dyn_grid->name());
-    FieldIdentifier scalar_2d_phys_fid ("scalar_2d_physics",  FieldLayout(scalar_2d_phys_tags, scalar_2d_phys_dims), phys_grid->name());
-    FieldIdentifier vector_2d_dyn_fid  ("vector_2d_dynamics", FieldLayout(vector_2d_dyn_tags,  vector_2d_dyn_dims), dyn_grid->name());
-    FieldIdentifier vector_2d_phys_fid ("vector_2d_physics",  FieldLayout(vector_2d_phys_tags, vector_2d_phys_dims), phys_grid->name());
-    FieldIdentifier scalar_3d_dyn_fid  ("scalar_3d_dynamics", FieldLayout(scalar_3d_dyn_tags,  scalar_3d_dyn_dims), dyn_grid->name());
-    FieldIdentifier scalar_3d_phys_fid ("scalar_3d_physics",  FieldLayout(scalar_3d_phys_tags, scalar_3d_phys_dims), phys_grid->name());
-    FieldIdentifier vector_3d_dyn_fid  ("vector_3d_dynamics", FieldLayout(vector_3d_dyn_tags,  vector_3d_dyn_dims), dyn_grid->name());
-    FieldIdentifier vector_3d_phys_fid ("vector_3d_physics",  FieldLayout(vector_3d_phys_tags, vector_3d_phys_dims), phys_grid->name());
+    const auto units = units::m;  // Placeholder units
+    FieldIdentifier scalar_2d_dyn_fid  ("scalar_2d_dynamics", FieldLayout(scalar_2d_dyn_tags,  scalar_2d_dyn_dims), units, dyn_grid->name());
+    FieldIdentifier scalar_2d_phys_fid ("scalar_2d_physics",  FieldLayout(scalar_2d_phys_tags, scalar_2d_phys_dims),units,  phys_grid->name());
+    FieldIdentifier vector_2d_dyn_fid  ("vector_2d_dynamics", FieldLayout(vector_2d_dyn_tags,  vector_2d_dyn_dims), units, dyn_grid->name());
+    FieldIdentifier vector_2d_phys_fid ("vector_2d_physics",  FieldLayout(vector_2d_phys_tags, vector_2d_phys_dims),units,  phys_grid->name());
+    FieldIdentifier scalar_3d_dyn_fid  ("scalar_3d_dynamics", FieldLayout(scalar_3d_dyn_tags,  scalar_3d_dyn_dims), units, dyn_grid->name());
+    FieldIdentifier scalar_3d_phys_fid ("scalar_3d_physics",  FieldLayout(scalar_3d_phys_tags, scalar_3d_phys_dims),units,  phys_grid->name());
+    FieldIdentifier vector_3d_dyn_fid  ("vector_3d_dynamics", FieldLayout(vector_3d_dyn_tags,  vector_3d_dyn_dims), units, dyn_grid->name());
+    FieldIdentifier vector_3d_phys_fid ("vector_3d_physics",  FieldLayout(vector_3d_phys_tags, vector_3d_phys_dims),units,  phys_grid->name());
 
     // Create fields
     Field<Real,Device> scalar_2d_field_in (scalar_2d_phys_fid);
@@ -324,7 +325,7 @@ TEST_CASE("remap", "") {
 
     // Build the remapper, and register the fields
     std::unique_ptr<Remapper> remapper(new Remapper(phys_grid,dyn_grid));
-    remapper->set_num_fields(4);  // scalar and vector, 2d and 3d.
+    remapper->registration_begins();
     remapper->register_field(scalar_2d_field_in, scalar_2d_field_out);
     remapper->register_field(vector_2d_field_in, vector_2d_field_out);
     remapper->register_field(scalar_3d_field_in, scalar_3d_field_out);
@@ -436,14 +437,15 @@ TEST_CASE("remap", "") {
     std::vector<int> vector_3d_phys_dims = {num_local_columns, 2, HOMMEXX_NUM_PHYSICAL_LEV};
 
     // Create identifiers
-    FieldIdentifier scalar_2d_dyn_fid  ("scalar_2d_dynamics", FieldLayout(scalar_2d_dyn_tags,  scalar_2d_dyn_dims),  dyn_grid->name());
-    FieldIdentifier scalar_2d_phys_fid ("scalar_2d_physics",  FieldLayout(scalar_2d_phys_tags, scalar_2d_phys_dims), phys_grid->name());
-    FieldIdentifier vector_2d_dyn_fid  ("vector_2d_dynamics", FieldLayout(vector_2d_dyn_tags,  vector_2d_dyn_dims),  dyn_grid->name());
-    FieldIdentifier vector_2d_phys_fid ("vector_2d_physics",  FieldLayout(vector_2d_phys_tags, vector_2d_phys_dims), phys_grid->name());
-    FieldIdentifier scalar_3d_dyn_fid  ("scalar_3d_dynamics", FieldLayout(scalar_3d_dyn_tags,  scalar_3d_dyn_dims),  dyn_grid->name());
-    FieldIdentifier scalar_3d_phys_fid ("scalar_3d_physics",  FieldLayout(scalar_3d_phys_tags, scalar_3d_phys_dims), phys_grid->name());
-    FieldIdentifier vector_3d_dyn_fid  ("vector_3d_dynamics", FieldLayout(vector_3d_dyn_tags,  vector_3d_dyn_dims),  dyn_grid->name());
-    FieldIdentifier vector_3d_phys_fid ("vector_3d_physics",  FieldLayout(vector_3d_phys_tags, vector_3d_phys_dims), phys_grid->name());
+    const auto units = units::m;  // Placeholder units
+    FieldIdentifier scalar_2d_dyn_fid  ("scalar_2d_dynamics", FieldLayout(scalar_2d_dyn_tags,  scalar_2d_dyn_dims),  units, dyn_grid->name());
+    FieldIdentifier scalar_2d_phys_fid ("scalar_2d_physics",  FieldLayout(scalar_2d_phys_tags, scalar_2d_phys_dims), units, phys_grid->name());
+    FieldIdentifier vector_2d_dyn_fid  ("vector_2d_dynamics", FieldLayout(vector_2d_dyn_tags,  vector_2d_dyn_dims),  units, dyn_grid->name());
+    FieldIdentifier vector_2d_phys_fid ("vector_2d_physics",  FieldLayout(vector_2d_phys_tags, vector_2d_phys_dims), units, phys_grid->name());
+    FieldIdentifier scalar_3d_dyn_fid  ("scalar_3d_dynamics", FieldLayout(scalar_3d_dyn_tags,  scalar_3d_dyn_dims),  units, dyn_grid->name());
+    FieldIdentifier scalar_3d_phys_fid ("scalar_3d_physics",  FieldLayout(scalar_3d_phys_tags, scalar_3d_phys_dims), units, phys_grid->name());
+    FieldIdentifier vector_3d_dyn_fid  ("vector_3d_dynamics", FieldLayout(vector_3d_dyn_tags,  vector_3d_dyn_dims),  units, dyn_grid->name());
+    FieldIdentifier vector_3d_phys_fid ("vector_3d_physics",  FieldLayout(vector_3d_phys_tags, vector_3d_phys_dims), units, phys_grid->name());
 
     // Create fields
     Field<Real,Device> scalar_2d_field_in (scalar_2d_dyn_fid);
@@ -477,7 +479,7 @@ TEST_CASE("remap", "") {
 
     // Build the remapper, and register the fields
     std::unique_ptr<Remapper> remapper(new Remapper(phys_grid,dyn_grid));
-    remapper->set_num_fields(4);  // scalar and vector, 2d and 3d.
+    remapper->registration_begins();
     remapper->register_field(scalar_2d_field_out, scalar_2d_field_in);
     remapper->register_field(vector_2d_field_out, vector_2d_field_in);
     remapper->register_field(scalar_3d_field_out, scalar_3d_field_in);

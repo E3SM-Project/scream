@@ -8,9 +8,13 @@ namespace scream {
 
 namespace control {
 
-void AtmosphereDriver::initialize (const Comm& atm_comm, const ParameterList& params) {
+void AtmosphereDriver::initialize (const Comm& atm_comm,
+                                   const ParameterList& params,
+                                   const util::TimeStamp& t0)
+{
   m_atm_comm = atm_comm;
   m_atm_params = params;
+  m_current_ts = t0;
 
   // Create the group of processes. This will recursively create the processes
   // tree, storing also the information regarding parallel execution (if needed).
@@ -22,11 +26,13 @@ void AtmosphereDriver::initialize (const Comm& atm_comm, const ParameterList& pa
   const std::string& gm_type = gm_params.get<std::string>("Type");
   m_grids_manager = GridsManagerFactory::instance().create(gm_type,m_atm_comm,gm_params);
 
-  // Tell the grid manager to build all the grids required by the atm processes
+  // Tell the grid manager to build all the grids required
+  // by the atm processes, as well as the reference grid
   m_grids_manager->build_grids(m_atm_process_group->get_required_grids());
 
-  // Initialize the processes
-  m_atm_process_group->set_grid(m_grids_manager);
+  // Set the grids in the processes. Do this by passing the grids manager.
+  // Each process will grab what they need
+  m_atm_process_group->set_grids(m_grids_manager);
 
   // By now, the processes should have fully built the ids of their
   // required/computed fields. Let them register them in the repo
@@ -36,6 +42,11 @@ void AtmosphereDriver::initialize (const Comm& atm_comm, const ParameterList& pa
 
   // TODO: this is a good place where we can insert a DAG analysis, to make sure all
   //       processes have their dependency met.
+
+  // Note: remappers can be setup anytime after the field repo has allocated
+  //       the fields. We put it here, but there's no dependency with the
+  //       other atm process setup stages
+  m_atm_process_group->setup_remappers(m_device_field_repo);
 
   // Set all the fields in the processes needing them (before, they only had ids)
   // Input fields will be handed to the processes as const
@@ -50,20 +61,74 @@ void AtmosphereDriver::initialize (const Comm& atm_comm, const ParameterList& pa
   }
 
   // Initialize the processes
-  m_atm_process_group->initialize();
+  m_atm_process_group->initialize(t0);
+
+  // Set time steamp t0 to all fields
+  for (auto& field_map_it : m_device_field_repo) {
+    for (auto& f_it : field_map_it.second) {
+      f_it.second.get_header().get_tracking().update_time_stamp(t0);
+    }
+  }
+
+#ifdef SCREAM_DEBUG
+  create_bkp_device_field_repo();
+  m_atm_process_group->set_field_repos(m_device_field_repo,m_bkp_device_field_repo);
+#endif
 }
 
-void AtmosphereDriver::run ( /* inputs ? */ ) {
+void AtmosphereDriver::run (const double dt) {
+  // Make sure the end of the time step is after the current start_time
+  scream_require_msg (dt>0, "Error! Input time step must be positive.\n");
+
   // The class AtmosphereProcessGroup will take care of dispatching arguments to
   // the individual processes, which will be called in the correct order.
-  m_atm_process_group->run( /* inputs ? */ );
+  m_atm_process_group->run(dt);
+
+  // Update current time stamps
+  m_current_ts += dt;
 }
 
 void AtmosphereDriver::finalize ( /* inputs? */ ) {
   m_atm_process_group->finalize( /* inputs ? */ );
 
   m_device_field_repo.clean_up();
+#ifdef SCREAM_DEBUG
+  m_bkp_device_field_repo.clean_up();
+#endif
 }
+
+#ifdef SCREAM_DEBUG
+void AtmosphereDriver::create_bkp_device_field_repo () {
+  m_bkp_device_field_repo.registration_begins();
+  for (const auto& it : m_device_field_repo) {
+    for (const auto& id_field : it.second) {
+      const auto& id = id_field.first;
+      const auto& f = id_field.second;
+      const auto& groups = f.get_header().get_tracking().get_groups_names();
+      // Unfortunately, set<string> and set<CaseInsensitiveString>
+      // are unrelated types for the compiler
+      std::set<std::string> grps;
+      for (const auto& group : groups) {
+        grps.insert(group);
+      }
+      m_bkp_device_field_repo.register_field(id,grps);
+    }
+  }
+  m_bkp_device_field_repo.registration_ends();
+
+  // Deep copy the fields
+  for (const auto& it : m_device_field_repo) {
+    for (const auto& id_field : it.second) {
+      const auto& id = id_field.first;
+      const auto& f  = id_field.second;
+      auto src = f.get_view();
+      auto tgt = m_bkp_device_field_repo.get_field(id).get_view();
+
+      Kokkos::deep_copy(tgt,src);
+    }
+  }
+}
+#endif
 
 }  // namespace control
 }  // namespace scream

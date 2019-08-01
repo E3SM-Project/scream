@@ -19,6 +19,7 @@ namespace scream
 namespace util
 {
 
+// Specialize ScalarProperties on Homme's Scalar type
 template<>
 struct ScalarProperties<Homme::Scalar> {
   using scalar_type = Homme::Real;
@@ -34,11 +35,20 @@ HommeDynamics::HommeDynamics (const Comm& comm,const ParameterList& /* params */
 
   // Make Homme throw rather than abort. In Homme, abort causes finalization of Kokkos,
   // which is bad, since scream still has outstanding views.
-  Homme::Session::m_throw_instead_of_abort = true;
+  ::Homme::Session::m_throw_instead_of_abort = true;
 }
 
-void HommeDynamics::set_grid(const std::shared_ptr<const GridsManager> grids_manager)
+void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_manager)
 {
+  using namespace units;
+
+  // The units of mixing ratio Q are technically non-dimensional.
+  // Nevertheless, for output reasons, we like to see 'kg/kg'.
+  auto Q = kg/kg;
+  auto Qdp = Q * Pa;
+  Q.set_string("kg/kg");
+  Qdp.set_string("kg/kg Pa");
+
   constexpr int NGP  = HOMMEXX_NP;
   constexpr int QSZ  = HOMMEXX_QSIZE_D;
   constexpr int NVL  = HOMMEXX_NUM_PHYSICAL_LEV;
@@ -76,20 +86,26 @@ void HommeDynamics::set_grid(const std::shared_ptr<const GridsManager> grids_man
   FieldLayout t_forcing_layout  { {EL,   GP,GP,VL}, {ne,    NGP,NGP,NVL} };
 
   // Set requirements
-  m_required_fields.emplace("phis", scalar2d_layout,   "Dynamics");
-  m_required_fields.emplace("FQ",   q_forcing_layout,  "Dynamics");
-  m_required_fields.emplace("FM",   m_forcing_layout,  "Dynamics");
-  m_required_fields.emplace("FT",   t_forcing_layout,  "Dynamics");
+  const int ftype = get_homme_param_value<int>("ftype");
+  scream_require_msg(ftype==0 || ftype==2 || ftype==4,
+                     "Error! The scream interface to homme *assumes* ftype to be 2 or 4.\n"
+                     "       Found " + std::to_string(ftype) + " instead.\n");
+  m_required_fields.emplace("phis", scalar2d_layout,  pow(m,2)/pow(s,2),"Dynamics");
+  m_required_fields.emplace("FQ",   q_forcing_layout, Q,                "Dynamics");
+  m_required_fields.emplace("FM",   m_forcing_layout, m/pow(s,2),       "Dynamics");
+  m_required_fields.emplace("FT",   t_forcing_layout, K/s,              "Dynamics");
 
   // Set computed fields
-  m_computed_fields.emplace("v",  vector_state_3d_mid_layout,"Dynamics");
-  m_computed_fields.emplace("t",  scalar_state_3d_mid_layout,"Dynamics");
-  m_computed_fields.emplace("dp", scalar_state_3d_mid_layout,"Dynamics");
-  m_computed_fields.emplace("qdp",tracers_state_layout,"Dynamics");
+  m_computed_fields.emplace("v",  vector_state_3d_mid_layout,m/s,"Dynamics");
+  m_computed_fields.emplace("t",  scalar_state_3d_mid_layout,K,  "Dynamics");
+  m_computed_fields.emplace("dp", scalar_state_3d_mid_layout,Pa, "Dynamics");
+  m_computed_fields.emplace("qdp",tracers_state_layout,      Qdp,"Dynamics");
 }
 
-void HommeDynamics::initialize ()
+void HommeDynamics::initialize (const util::TimeStamp& t0)
 {
+  m_current_ts = t0;
+
   // We need to set the pointers in the C++ views to the ones contained in the scream
   // Fields *before* they ever get copied/filled. In particular, we need to make sure
   // that the Elements and Tracers structures contain scream Field's views before:
@@ -192,10 +208,17 @@ void HommeDynamics::register_fields (FieldRepository<Real, device_type>& field_r
   }
 }
 
-void HommeDynamics::run (/* what inputs? */)
+void HommeDynamics::run (const double dt)
 {
   try {
-    run_homme_f90 ();
+    run_homme_f90 (dt);
+
+    m_current_ts += dt;
+
+    // Update all fields time stamp
+    for (auto& it : m_dyn_fields_out) {
+      it.second.get_header().get_tracking().update_time_stamp(m_current_ts);
+    }
   } catch (std::exception& e) {
     error::runtime_abort(e.what());
   } catch (...) {
@@ -216,6 +239,10 @@ void HommeDynamics::set_required_field_impl (const Field<const Real, device_type
   // no need to store a scream field here; we could simply set the view ptr
   // in the Homme's view, and be done with it.
   m_dyn_fields_in.emplace(f.get_header().get_identifier().name(),f);
+
+
+  // Add myself as customer to the field
+  f.get_header_ptr()->get_tracking().add_customer(weak_from_this());
 }
 
 void HommeDynamics::set_computed_field_impl (const Field<      Real, device_type>& f) {
@@ -224,6 +251,9 @@ void HommeDynamics::set_computed_field_impl (const Field<      Real, device_type
   // no need to store a scream field here; we could simply set the view ptr
   // in the Homme's view, and be done with it.
   m_dyn_fields_out.emplace(f.get_header().get_identifier().name(),f);
+
+  // Add myself as provider for the field
+  f.get_header_ptr()->get_tracking().add_provider(weak_from_this());
 }
 
 } // namespace scream
