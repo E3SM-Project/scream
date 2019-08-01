@@ -69,10 +69,12 @@ contains
     call init_parallel(f_comm)
     call initmp_from_par(par)
 
-    if(par%masterproc) print *,"Primitive Equation Init1..."
+    if(par%masterproc) print *,"ASD Primitive Equation Init1..."
     call t_initf('input.nl',LogPrint=par%masterproc, &
                  Mpicom=par%comm, MasterTask=par%masterproc)
     call t_startf('Total')
+
+    if(par%masterproc) print *,"Entering prim_init1"
 
     call prim_init1(elem,par,dom_mt,tl)
 
@@ -90,6 +92,8 @@ contains
     is_half_inited = .true.
 
     if (infilenames(1)/='') call pio_read_phis(elem,hybrid%par)
+
+    if(par%masterproc) print *,"Entering prim_create_c_data_structures"
 
     call prim_create_c_data_structures (tl, hvcoord)
   end subroutine init_homme1_f90
@@ -112,6 +116,8 @@ contains
     ! Local(s)
     !
     integer :: ierr
+
+    if(par%masterproc) print *,"Entering init_homme2_f90"
 
     if (.not. is_half_inited) then
       call abortmp ("Error! init_homme1_f90 was not called yet.\n")
@@ -187,7 +193,7 @@ contains
   end function was_init_homme2_called_f90
 
   subroutine run_homme_f90 () bind(c)
-    use control_mod,     only: restartfreq
+    use control_mod,     only: restartfreq, rsplit
     use dimensions_mod,  only: nelemd
     use prim_driver_mod, only: prim_run_subcycle
     use time_mod,        only: dt=>tstep
@@ -204,6 +210,8 @@ contains
     if (.not. is_inited) then
       call abortmp ("Error! Homme was not initialized yet (or was already finalized).\n")
     endif
+
+    if(par%masterproc) print *, 'nstep: ', tl%nstep/rsplit
 
     call prim_run_subcycle(elem,hybrid,nets,nete,dt,.false.,tl,hvcoord,1)
 
