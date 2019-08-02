@@ -1,6 +1,8 @@
 #ifndef SCREAM_ATMOSPHERE_DRIVER_HPP
 #define SCREAM_ATMOSPHERE_DRIVER_HPP
 
+#include "control/io/scream_io_manager.hpp"
+
 #include "share/scream_types.hpp"
 #include "share/field/field_repository.hpp"
 #include "share/mpi/scream_comm.hpp"
@@ -66,23 +68,25 @@ protected:
 
   void create_bkp_device_field_repo ();
 
-  FieldRepository<Real,device_type>           m_device_field_repo;
+  FieldRepository<Real,device_type>             m_device_field_repo;
 #ifdef SCREAM_DEBUG
-  FieldRepository<Real,device_type>           m_bkp_device_field_repo;
+  FieldRepository<Real,device_type>             m_bkp_device_field_repo;
 #endif
 
-  std::shared_ptr<AtmosphereProcessGroup>     m_atm_process_group;
+  std::shared_ptr<AtmosphereProcessGroup>       m_atm_process_group;
 
-  std::shared_ptr<GridsManager>               m_grids_manager;
+  std::shared_ptr<GridsManager>                 m_grids_manager;
 
-  ParameterList                               m_atm_params;
+  ParameterList                                 m_atm_params;
+
+  std::shared_ptr<IOManager<Real,device_type>>  m_atm_io_manager;
 
   // This are the time stamps of the start and end of the time step.
-  util::TimeStamp                             m_old_ts;
-  util::TimeStamp                             m_current_ts;
+  util::TimeStamp                               m_old_ts;
+  util::TimeStamp                               m_current_ts;
 
   // This is the comm containing all (and only) the processes assigned to the atmosphere
-  Comm   m_atm_comm;
+  Comm                                          m_atm_comm;
 };
 
 }  // namespace control

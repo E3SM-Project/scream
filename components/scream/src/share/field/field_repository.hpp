@@ -79,6 +79,7 @@ public:
   // Query for a particular field or group of fields
   bool has_field (const identifier_type& identifier) const;
   const field_type& get_field (const identifier_type& identifier) const;
+  const alias_map_type& get_field_aliases (const std::string& name) const;
   const groups_map_type& get_field_groups () const { return m_field_groups; }
 
   // Iterators, to allow range for loops over the repo.
@@ -87,6 +88,10 @@ public:
 
   typename repo_type::iterator begin() { return m_fields.begin(); }
   typename repo_type::iterator end()   { return m_fields.end(); }
+
+  std::string get_restart_group_name () const { return "Restart"; }
+  std::string get_input_group_name   () const { return "Input";   }
+  std::string get_output_group_name  () const { return "Output";  }
 
 protected:
 
@@ -116,6 +121,10 @@ FieldRepository<ScalarType,Device>::FieldRepository ()
   //       This means that the repo should know the name of the state variables,
   //       as well as the names of the old state variables (probably "blah old").
   //       This may require passing a parameter list or a list of strings to the constructor.
+
+  // "Touch" these keys so that they get created, since we know they are used for I/O.
+  m_field_groups["Restart"];
+  m_field_groups["Output"];
 }
 
 template<typename ScalarType, typename Device>
@@ -215,6 +224,16 @@ FieldRepository<ScalarType,Device>::get_field (const identifier_type& id) const 
   auto it = map->second.find(id);
   scream_require_msg(it!=map->second.end(), "Error! Field not found.\n");
   return it->second;
+}
+
+template<typename ScalarType, typename Device>
+const typename FieldRepository<ScalarType,Device>::alias_map_type&
+FieldRepository<ScalarType,Device>::get_field_aliases (const std::string& name) const {
+  scream_require_msg(m_repo_state==RepoState::Closed,"Error! You are not allowed to grab fields from the repo until after the registration phase is completed.\n");
+
+  const auto& aliases = m_fields.find(name);
+  scream_require_msg(aliases!=m_fields.end(), "Error! Field not found.\n");
+  return aliases->second;
 }
 
 template<typename ScalarType, typename Device>

@@ -74,11 +74,33 @@ void AtmosphereDriver::initialize (const Comm& atm_comm,
   create_bkp_device_field_repo();
   m_atm_process_group->set_field_repos(m_device_field_repo,m_bkp_device_field_repo);
 #endif
+
+  // Create and setup the IOManager
+  const auto& io_pl = m_atm_params.sublist("I/O");
+  const util::CaseInsensitiveString& io_type = io_pl.get<std::string>("Type");
+  if (io_type!="None") {
+    m_atm_io_manager = IOFactory<Real,device_type>::instance().create(io_type,m_atm_comm,io_pl);
+
+    m_atm_io_manager->registration_begins();
+    m_atm_io_manager->register_fields(m_device_field_repo);
+    m_atm_io_manager->registration_ends();
+
+    if (m_atm_io_manager->has_restart_data()) {
+      m_atm_io_manager->read_restart_fields(t0);
+    }
+  }
 }
 
 void AtmosphereDriver::run (const double dt) {
   // Make sure the end of the time step is after the current start_time
   scream_require_msg (dt>0, "Error! Input time step must be positive.\n");
+
+  // If we have additional input files to read, do it
+  if (static_cast<bool>(m_atm_io_manager)) {
+    // TODO: allow for interpolation of inputs.
+    const bool must_match = true;
+    m_atm_io_manager->read_input_fields(m_current_ts,must_match);
+  }
 
   // The class AtmosphereProcessGroup will take care of dispatching arguments to
   // the individual processes, which will be called in the correct order.
@@ -86,6 +108,16 @@ void AtmosphereDriver::run (const double dt) {
 
   // Update current time stamps
   m_current_ts += dt;
+
+  // Check if it's time for an output step
+  if (static_cast<bool>(m_atm_io_manager) && m_atm_io_manager->get_next_output_step(m_current_ts)<=m_current_ts) {
+    m_atm_io_manager->write_output_fields(m_current_ts);
+  }
+
+  // Check if it's time for writing restart files
+  if (static_cast<bool>(m_atm_io_manager) && m_atm_io_manager->get_next_restart_step(m_current_ts)<=m_current_ts) {
+    m_atm_io_manager->write_restart_fields(m_current_ts);
+  }
 }
 
 void AtmosphereDriver::finalize ( /* inputs? */ ) {
@@ -95,6 +127,8 @@ void AtmosphereDriver::finalize ( /* inputs? */ ) {
 #ifdef SCREAM_DEBUG
   m_bkp_device_field_repo.clean_up();
 #endif
+
+  m_atm_io_manager = nullptr;
 }
 
 #ifdef SCREAM_DEBUG
