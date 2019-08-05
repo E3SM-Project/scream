@@ -529,16 +529,11 @@ contains
     real(rtype)    :: f1pr03   ! ice collection within a category     See lines  809 -  928  nagg 
     real(rtype)    :: f1pr04   ! collection of cloud water by ice     See lines  929 - 1009  nrwat
     real(rtype)    :: f1pr05   ! melting                              See lines 1212 - 1279  vdep
-    real(rtype)    :: f1pr06   ! effective radius                     See lines 1281 - 1356  eff
     real(rtype)    :: f1pr07   ! collection of rain number by ice     See lines 1010 - 1209  nrrain
     real(rtype)    :: f1pr08   ! collection of rain mass by ice       See lines 1010 - 1209  qrrain
     real(rtype)    :: f1pr09   ! minimum ice number (lambda limiter)  See lines  704 -  705  nlarge
     real(rtype)    :: f1pr10   ! maximum ice number (lambda limiter)  See lines  704 -  705  nsmall
-    real(rtype)    :: f1pr13   ! reflectivity                         See lines  731 -  808  refl
     real(rtype)    :: f1pr14   ! melting (ventilation term)           See lines 1212 - 1279  vdep1
-    real(rtype)    :: f1pr15   ! mass-weighted mean diameter          See lines 1212 - 1279  dmm 
-    real(rtype)    :: f1pr16   ! mass-weighted mean particle density  See lines 1212 - 1279  rhomm
-
 
     !--These will be added as namelist parameters in the future
     logical, parameter :: debug_ON     = .false.  !.true. to switch on debugging checks/traps throughout code
@@ -1592,125 +1587,121 @@ contains
 
        enddo k_loop_fz
 
+
+       call consistency_checks(kts, kte,  & 
+       exner(i,:), rho(i,:), inv_rho(i,:), rhofaci(i,:), xxlv(i,:), xxls(i,:), lcldm(i,:), rcldm(i,:), dnu, & 
+       th(i,:), qv(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), qitot(i,:), nitot(i,:), qirim(i,:), birim(i,:), mu_c(i,:), mu_r(i,:), nu(i,:), &
+       diag_effc(i,:), lamc(i,:), lamr(i,:), ze_rain(i,:), ze_ice(i,:), diag_vmi(i,:), diag_effi(i,:), diag_di(i,:), diag_rhoi(i,:), diag_ze(i,:) ) 
+
+
        !  if (debug_ON) call check_values(qv,T,i,it,debug_ABORT,700)
 
-       !...................................................
-       ! final checks to ensure consistency of mass/number
-       ! and compute diagnostic fields for output
+      !  !...................................................
+      !  ! final checks to ensure consistency of mass/number
+      !  ! and compute diagnostic fields for output
 
-       k_loop_final_diagnostics:  do k = kbot,ktop,kdir
+      !  k_loop_final_diagnostics:  do k = kbot,ktop,kdir
 
-          ! cloud:
-          if (qc(i,k).ge.qsmall) then
-             call get_cloud_dsd2(qc(i,k),nc(i,k),mu_c(i,k),rho(i,k),nu(i,k),dnu,lamc(i,k),  &
-                  lammin,lammax,tmp1,tmp2,lcldm(i,k))
-             diag_effc(i,k) = 0.5_rtype*(mu_c(i,k)+3._rtype)/lamc(i,k)
-          else
-             qv(i,k) = qv(i,k)+qc(i,k)
-             th(i,k) = th(i,k)-exner(i,k)*qc(i,k)*xxlv(i,k)*inv_cp
-             qc(i,k) = 0._rtype
-             nc(i,k) = 0._rtype
-          endif
+      !     ! cloud:
+      !     if (qc(i,k).ge.qsmall) then
+      !        call get_cloud_dsd2(qc(i,k),nc(i,k),mu_c(i,k),rho(i,k),nu(i,k),dnu,lamc(i,k),  &
+      !             lammin,lammax,tmp1,tmp2,lcldm(i,k))
+      !        diag_effc(i,k) = 0.5_rtype*(mu_c(i,k)+3._rtype)/lamc(i,k)
+      !     else
+      !        qv(i,k) = qv(i,k)+qc(i,k)
+      !        th(i,k) = th(i,k)-exner(i,k)*qc(i,k)*xxlv(i,k)*inv_cp
+      !        qc(i,k) = 0._rtype
+      !        nc(i,k) = 0._rtype
+      !     endif
 
-          ! rain:
-          if (qr(i,k).ge.qsmall) then
+      !     ! rain:
+      !     if (qr(i,k).ge.qsmall) then
 
-             call get_rain_dsd2(qr(i,k),nr(i,k),mu_r(i,k),lamr(i,k),   &
-                  !                        cdistr(i,k),logn0r(i,k))
-                  tmp1,tmp2,rcldm(i,k))
+      !        call get_rain_dsd2(qr(i,k),nr(i,k),mu_r(i,k),lamr(i,k),   &
+      !             !                        cdistr(i,k),logn0r(i,k))
+      !             tmp1,tmp2,rcldm(i,k))
 
-             ze_rain(i,k) = nr(i,k)*(mu_r(i,k)+6._rtype)*(mu_r(i,k)+5._rtype)*(mu_r(i,k)+4._rtype)*           &
-                  (mu_r(i,k)+3._rtype)*(mu_r(i,k)+2._rtype)*(mu_r(i,k)+1._rtype)/lamr(i,k)**6
-             ze_rain(i,k) = max(ze_rain(i,k),1.e-22_rtype)
-          else
-             qv(i,k) = qv(i,k)+qr(i,k)
-             th(i,k) = th(i,k)-exner(i,k)*qr(i,k)*xxlv(i,k)*inv_cp
-             qr(i,k) = 0._rtype
-             nr(i,k) = 0._rtype
-          endif
+      !        ze_rain(i,k) = nr(i,k)*(mu_r(i,k)+6._rtype)*(mu_r(i,k)+5._rtype)*(mu_r(i,k)+4._rtype)*           &
+      !             (mu_r(i,k)+3._rtype)*(mu_r(i,k)+2._rtype)*(mu_r(i,k)+1._rtype)/lamr(i,k)**6
+      !        ze_rain(i,k) = max(ze_rain(i,k),1.e-22_rtype)
+      !     else
+      !        qv(i,k) = qv(i,k)+qr(i,k)
+      !        th(i,k) = th(i,k)-exner(i,k)*qr(i,k)*xxlv(i,k)*inv_cp
+      !        qr(i,k) = 0._rtype
+      !        nr(i,k) = 0._rtype
+      !     endif
 
-          ! ice:
+      !     ! ice:
 
-          call impose_max_total_Ni(nitot(i,k),max_total_Ni,inv_rho(i,k))
+      !     call impose_max_total_Ni(nitot(i,k),max_total_Ni,inv_rho(i,k))
 
-          qi_not_small:  if (qitot(i,k).ge.qsmall) then
+      !     qi_not_small:  if (qitot(i,k).ge.qsmall) then
 
-             !impose lower limits to prevent taking log of # < 0
-             nitot(i,k) = max(nitot(i,k),nsmall)
-             nr(i,k)         = max(nr(i,k),nsmall)
+      !        !impose lower limits to prevent taking log of # < 0
+      !        nitot(i,k) = max(nitot(i,k),nsmall)
+      !        nr(i,k)         = max(nr(i,k),nsmall)
 
-             call calc_bulkRhoRime(qitot(i,k),qirim(i,k),birim(i,k),rhop)
+      !        call calc_bulkRhoRime(qitot(i,k),qirim(i,k),birim(i,k),rhop)
 
-             ! if (.not. tripleMoment_on) zitot(i,k) = diag_mom6(qitot(i,k),nitot(i,k),rho(i,k))
-             call find_lookupTable_indices_1a(dumi,dumjj,dumii,dumzz,dum1,dum4,          &
-                  dum5,dum6,isize,rimsize,densize,     &
-                  qitot(i,k),nitot(i,k),           &
-                  qirim(i,k),rhop)
-             !qirim(i,k),zitot(i,k),rhop)
+      !        ! if (.not. tripleMoment_on) zitot(i,k) = diag_mom6(qitot(i,k),nitot(i,k),rho(i,k))
+      !        call find_lookupTable_indices_1a(dumi,dumjj,dumii,dumzz,dum1,dum4,          &
+      !             dum5,dum6,isize,rimsize,densize,     &
+      !             qitot(i,k),nitot(i,k),           &
+      !             qirim(i,k),rhop)
+      !        !qirim(i,k),zitot(i,k),rhop)
 
-             call access_lookup_table(dumjj,dumii,dumi, 2,dum1,dum4,dum5,f1pr02)
-             call access_lookup_table(dumjj,dumii,dumi, 6,dum1,dum4,dum5,f1pr06)
-             call access_lookup_table(dumjj,dumii,dumi, 7,dum1,dum4,dum5,f1pr09)
-             call access_lookup_table(dumjj,dumii,dumi, 8,dum1,dum4,dum5,f1pr10)
-             call access_lookup_table(dumjj,dumii,dumi, 9,dum1,dum4,dum5,f1pr13)
-             call access_lookup_table(dumjj,dumii,dumi,11,dum1,dum4,dum5,f1pr15)
-             call access_lookup_table(dumjj,dumii,dumi,12,dum1,dum4,dum5,f1pr16)
+      !        call access_lookup_table(dumjj,dumii,dumi, 2,dum1,dum4,dum5,f1pr02)
+      !        call access_lookup_table(dumjj,dumii,dumi, 6,dum1,dum4,dum5,f1pr06)
+      !        call access_lookup_table(dumjj,dumii,dumi, 7,dum1,dum4,dum5,f1pr09)
+      !        call access_lookup_table(dumjj,dumii,dumi, 8,dum1,dum4,dum5,f1pr10)
+      !        call access_lookup_table(dumjj,dumii,dumi, 9,dum1,dum4,dum5,f1pr13)
+      !        call access_lookup_table(dumjj,dumii,dumi,11,dum1,dum4,dum5,f1pr15)
+      !        call access_lookup_table(dumjj,dumii,dumi,12,dum1,dum4,dum5,f1pr16)
 
-             ! impose mean ice size bounds (i.e. apply lambda limiters)
-             ! note that the Nmax and Nmin are normalized and thus need to be multiplied by existing N
-             nitot(i,k) = min(nitot(i,k),f1pr09*nitot(i,k))
-             nitot(i,k) = max(nitot(i,k),f1pr10*nitot(i,k))
+      !        ! impose mean ice size bounds (i.e. apply lambda limiters)
+      !        ! note that the Nmax and Nmin are normalized and thus need to be multiplied by existing N
+      !        nitot(i,k) = min(nitot(i,k),f1pr09*nitot(i,k))
+      !        nitot(i,k) = max(nitot(i,k),f1pr10*nitot(i,k))
 
-             !--this should already be done in s/r 'calc_bulkRhoRime'
-             if (qirim(i,k).lt.qsmall) then
-                qirim(i,k) = 0._rtype
-                birim(i,k) = 0._rtype
-             endif
-             !==
+      !        !--this should already be done in s/r 'calc_bulkRhoRime'
+      !        if (qirim(i,k).lt.qsmall) then
+      !           qirim(i,k) = 0._rtype
+      !           birim(i,k) = 0._rtype
+      !        endif
+      !        !==
 
-             ! note that reflectivity from lookup table is normalized, so we need to multiply by N
-             diag_vmi(i,k)   = f1pr02*rhofaci(i,k)
-             diag_effi(i,k)  = f1pr06 ! units are in m
-             diag_di(i,k)    = f1pr15
-             diag_rhoi(i,k)  = f1pr16
-             ! note factor of air density below is to convert from m^6/kg to m^6/m^3
-             ze_ice(i,k) = ze_ice(i,k) + 0.1892_rtype*f1pr13*nitot(i,k)*rho(i,k)   ! sum contribution from each ice category (note: 0.1892 = 0.176/0.93)
-             ze_ice(i,k) = max(ze_ice(i,k),1.e-22_rtype)
+      !        ! note that reflectivity from lookup table is normalized, so we need to multiply by N
+      !        diag_vmi(i,k)   = f1pr02*rhofaci(i,k)
+      !        diag_effi(i,k)  = f1pr06 ! units are in m
+      !        diag_di(i,k)    = f1pr15
+      !        diag_rhoi(i,k)  = f1pr16
+      !        ! note factor of air density below is to convert from m^6/kg to m^6/m^3
+      !        ze_ice(i,k) = ze_ice(i,k) + 0.1892_rtype*f1pr13*nitot(i,k)*rho(i,k)   ! sum contribution from each ice category (note: 0.1892 = 0.176/0.93)
+      !        ze_ice(i,k) = max(ze_ice(i,k),1.e-22_rtype)
 
-          else
+      !     else
 
-             qv(i,k) = qv(i,k) + qitot(i,k)
-             th(i,k) = th(i,k) - exner(i,k)*qitot(i,k)*xxls(i,k)*inv_cp
-             qitot(i,k) = 0._rtype
-             nitot(i,k) = 0._rtype
-             qirim(i,k) = 0._rtype
-             birim(i,k) = 0._rtype
-             diag_di(i,k) = 0._rtype
+      !        qv(i,k) = qv(i,k) + qitot(i,k)
+      !        th(i,k) = th(i,k) - exner(i,k)*qitot(i,k)*xxls(i,k)*inv_cp
+      !        qitot(i,k) = 0._rtype
+      !        nitot(i,k) = 0._rtype
+      !        qirim(i,k) = 0._rtype
+      !        birim(i,k) = 0._rtype
+      !        diag_di(i,k) = 0._rtype
 
-          endif qi_not_small
+      !     endif qi_not_small
 
-          ! sum ze components and convert to dBZ
-          diag_ze(i,k) = 10._rtype*log10((ze_rain(i,k) + ze_ice(i,k))*1.e18_rtype)
+      !     ! sum ze components and convert to dBZ
+      !     diag_ze(i,k) = 10._rtype*log10((ze_rain(i,k) + ze_ice(i,k))*1.e18_rtype)
 
-          ! if qr is very small then set Nr to 0 (needs to be done here after call
-          ! to ice lookup table because a minimum Nr of nsmall will be set otherwise even if qr=0)
-          if (qr(i,k).lt.qsmall) then
-             nr(i,k) = 0._rtype
-          endif
+      !     ! if qr is very small then set Nr to 0 (needs to be done here after call
+      !     ! to ice lookup table because a minimum Nr of nsmall will be set otherwise even if qr=0)
+      !     if (qr(i,k).lt.qsmall) then
+      !        nr(i,k) = 0._rtype
+      !     endif
 
-       enddo k_loop_final_diagnostics
+      !  enddo k_loop_final_diagnostics
 
-       !   if (debug_ON) call check_values(qv,Ti,it,debug_ABORT,800)
-
-       !..............................................
-       ! merge ice categories with similar properties
-
-       !   note:  this should be relocated to above, such that the diagnostic
-       !          ice properties are computed after merging
-
-       !PMC nCat deleted nCat>1 stuff
-
-       !.....................................................
 
 333    continue
 
@@ -2106,7 +2097,7 @@ contains
     real(rtype),     intent(out)           :: mu_c,nu,lamc,cdist,cdist1
 
     !local variables
-    real(rtype)                            :: lammin,lammax
+    real(rtype), intent(out)               :: lammin,lammax
     integer                         :: dumi
 
     !--------------------------------------------------------------------------
@@ -3692,5 +3683,175 @@ mu,dv,sc,dqsdt,dqsidt,ab,abi,kap,eii)
 
 end subroutine get_time_space_phys_variables
 
+
+subroutine consistency_checks(kts, kte,  & 
+   exner, rho, inv_rho, rhofaci, xxlv, xxls, lcldm, rcldm, dnu, & 
+   th, qv, qc, nc, qr, nr, qitot, nitot, qirim, birim, mu_c, mu_r, nu, &
+   diag_effc, lamc, lamr, ze_rain, ze_ice, diag_vmi, diag_effi, diag_di, diag_rhoi, diag_ze ) 
+
+   !...................................................
+   ! final checks to ensure consistency of mass/number
+   ! and compute diagnostic fields for output
+
+   implicit none 
+   integer, intent(in) :: kts, kte
+
+
+   real(rtype), intent(in), dimension(kts:kte) :: exner
+   real(rtype), intent(in), dimension(kts:kte) :: rho  
+   real(rtype), intent(in), dimension(kts:kte) :: inv_rho
+   real(rtype), intent(in), dimension(kts:kte) :: rhofaci
+   real(rtype), intent(in), dimension(kts:kte) :: xxlv
+   real(rtype), intent(in), dimension(kts:kte) :: xxls 
+   real(rtype), intent(in), dimension(kts:kte) :: lcldm 
+   real(rtype), intent(in), dimension(kts:kte) :: rcldm
+   real(rtype), intent(in), dimension(kts:kte) :: dnu 
+
+
+   real(rtype), intent(inout), dimension(kts:kte) :: th 
+   real(rtype), intent(inout), dimension(kts:kts) :: qv
+   real(rtype), intent(inout), dimension(kts:kte) :: qc
+   real(rtype), intent(inout), dimension(kts:kte) :: nc
+   real(rtype), intent(inout), dimension(kts:kte) :: qr 
+   real(rtype), intent(inout), dimension(kts:kte) :: nr 
+   real(rtype), intent(inout), dimension(kts:kte) :: qitot 
+   real(rtype), intent(inout), dimension(kts:kte) :: nitot 
+   real(rtype), intent(inout), dimension(kts:kte) :: qirim 
+   real(rtype), intent(inout), dimension(kts:kte) :: birim 
+
+   real(rtype), intent(inout), dimension(kts:kte) :: mu_c
+   real(rtype), intent(inout), dimension(kts:kte) :: mu_r 
+
+   real(rtype), intent(inout), dimension(kts:kte) :: nu 
+
+   real(rtype), intent(out), dimension(kts:kte) :: diag_effc 
+   real(rtype), intent(out), dimension(kts:kte) :: lamc 
+   real(rtype), intent(out), dimension(kts:kte) :: lamr 
+   real(rtype), intent(out), dimension(kts:kte) :: ze_rain 
+   real(rtype), intent(out), dimension(kts:kte) :: ze_ice 
+   real(rtype), intent(out), dimension(kts:kte) :: diag_vmi
+   real(rtype), intent(out), dimension(kts:kte) :: diag_effi 
+   real(rtype), intent(out), dimension(kts:kte) :: diag_di 
+   real(rtype), intent(out), dimension(kts:kte) :: diag_rhoi 
+   real(rtype), intent(out), dimension(kts:kte) :: diag_ze 
+
+   integer k, ktop, kbot, kdir 
+   integer dumi, dumjj, dumii, dumzz  
+   real(rtype) :: tmp1, tmp2, lammin, lammax, rhop, dum1, dum4, dum5, dum6 
+
+   real(rtype)    :: f1pr02   ! mass-weighted fallspeed              See lines  731 -  808  ums
+   real(rtype)    :: f1pr06   ! effective radius                     See lines 1281 - 1356  eff
+   real(rtype)    :: f1pr09   ! minimum ice number (lambda limiter)  See lines  704 -  705  nlarge
+   real(rtype)    :: f1pr10   ! maximum ice number (lambda limiter)  See lines  704 -  705  nsmall
+   real(rtype)    :: f1pr13   ! reflectivity                         See lines  731 -  808  refl
+   real(rtype)    :: f1pr15   ! mass-weighted mean diameter          See lines 1212 - 1279  dmm 
+   real(rtype)    :: f1pr16   ! mass-weighted mean particle density  See lines 1212 - 1279  rhomm
+
+   ktop = kts
+   kbot = kte
+   kdir = -1 
+
+   k_loop_final_diagnostics:  do k = kbot,ktop,kdir
+
+
+      ! cloud:
+      if (qc(k).ge.qsmall) then
+         call get_cloud_dsd2(qc(k),nc(k),mu_c(k),rho(k),nu(k),dnu,lamc(k),  &
+            lammin,lammax,tmp1,tmp2,lcldm(k))
+         diag_effc(k) = 0.5_rtype*(mu_c(k)+3._rtype)/lamc(k)
+      else
+         qv(k) = qv(k)+qc(k)
+         th(k) = th(k)-exner(k)*qc(k)*xxlv(k)*inv_cp
+         qc(k) = 0._rtype
+         nc(k) = 0._rtype
+      endif
+
+      ! rain:
+      if (qr(k).ge.qsmall) then
+
+         call get_rain_dsd2(qr(k),nr(k),mu_r(k),lamr(k),   &
+              tmp1,tmp2,rcldm(k))
+
+         ze_rain(k) = nr(k)*(mu_r(k)+6._rtype)*(mu_r(k)+5._rtype)*(mu_r(k)+4._rtype)*           &
+              (mu_r(k)+3._rtype)*(mu_r(k)+2._rtype)*(mu_r(k)+1._rtype)/lamr(k)**6
+         ze_rain(k) = max(ze_rain(k),1.e-22_rtype)
+      else
+         qv(k) = qv(k)+qr(k)
+         th(k) = th(k)-exner(k)*qr(k)*xxlv(k)*inv_cp 
+         qr(k) = 0._rtype
+         nr(k) = 0._rtype
+      endif
+
+      ! ice:
+      call impose_max_total_Ni(nitot(k),max_total_Ni,inv_rho(k))
+      qi_not_small:  if (qitot(k).ge.qsmall) then
+
+         !impose lower limits to prevent taking log of # < 0
+         nitot(k) = max(nitot(k),nsmall)
+         nr(k)         = max(nr(k),nsmall) 
+
+
+         call calc_bulkRhoRime(qitot(k),qirim(k),birim(k),rhop)
+
+         call find_lookupTable_indices_1a(dumi,dumjj,dumii,dumzz,dum1,dum4,          &
+         dum5,dum6,isize,rimsize,densize,     &
+         qitot(k),nitot(k),           &
+         qirim(k),rhop)
+
+         call access_lookup_table(dumjj,dumii,dumi, 2,dum1,dum4,dum5,f1pr02)
+         call access_lookup_table(dumjj,dumii,dumi, 6,dum1,dum4,dum5,f1pr06)
+         call access_lookup_table(dumjj,dumii,dumi, 7,dum1,dum4,dum5,f1pr09)
+         call access_lookup_table(dumjj,dumii,dumi, 8,dum1,dum4,dum5,f1pr10)
+         call access_lookup_table(dumjj,dumii,dumi, 9,dum1,dum4,dum5,f1pr13)
+         call access_lookup_table(dumjj,dumii,dumi,11,dum1,dum4,dum5,f1pr15)
+         call access_lookup_table(dumjj,dumii,dumi,12,dum1,dum4,dum5,f1pr16)
+
+
+         ! impose mean ice size bounds (i.e. apply lambda limiters)
+         ! note that the Nmax and Nmin are normalized and thus need to be multiplied by existing N
+         nitot(k) = min(nitot(k),f1pr09*nitot(k))
+         nitot(k) = max(nitot(k),f1pr10*nitot(k))
+
+         !--this should already be done in s/r 'calc_bulkRhoRime'
+         if (qirim(k).lt.qsmall) then
+            qirim(k) = 0._rtype
+            birim(k) = 0._rtype
+         endif
+         !==
+
+         ! note that reflectivity from lookup table is normalized, so we need to multiply by N
+         diag_vmi(k)   = f1pr02*rhofaci(k)
+         diag_effi(k)  = f1pr06 ! units are in m
+         diag_di(k)    = f1pr15
+         diag_rhoi(k)  = f1pr16
+
+         ! note factor of air density below is to convert from m^6/kg to m^6/m^3
+         ze_ice(k) = ze_ice(k) + 0.1892_rtype*f1pr13*nitot(k)*rho(k)   ! sum contribution from each ice category (note: 0.1892 = 0.176/0.93)
+         ze_ice(k) = max(ze_ice(k),1.e-22_rtype)
+
+      else 
+
+         qv(k) = qv(k) + qitot(k)
+         th(k) = th(k) - exner(k)*qitot(k)*xxls(k)*inv_cp
+         qitot(k) = 0._rtype
+         nitot(k) = 0._rtype
+         qirim(k) = 0._rtype
+         birim(k) = 0._rtype
+         diag_di(k) = 0._rtype
+
+      endif qi_not_small
+
+      ! sum ze components and convert to dBZ
+      diag_ze(k) = 10._rtype*log10((ze_rain(k) + ze_ice(k))*1.e18_rtype)
+
+      ! if qr is very small then set Nr to 0 (needs to be done here after call
+      ! to ice lookup table because a minimum Nr of nsmall will be set otherwise even if qr=0)
+      if (qr(k).lt.qsmall) then
+         nr(k) = 0._rtype
+      endif
+
+   enddo k_loop_final_diagnostics
+
+end subroutine consistency_checks 
 
 end module micro_p3
