@@ -61,6 +61,79 @@ Functions<S,D>::qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice)
   return C::ep_2 * e_pres / pack::max(p_atm-e_pres, 1.e-3);
 }
 
+template<typename S, typename D> 
+KOKKOS_FUNCTION
+void Functions<S,D>
+::cloud_water_conservation(const Spack& qc, const Spack& qcnuc,const Scalar dt, 
+   Spack& qcaut, Spack& qcacc, Spack &qccol, Spack& qcheti, Spack& qcshd, Spack& qiberg, Spack& qisub, Spack& qidep)
+{
+  Spack sinks = (qcaut+qcacc+qccol+qcheti+qcshd+qiberg)*dt; // Sinks of cloud water
+  Spack sources = qc + (qcnuc)*dt; // Source of cloud water 
+  Spack ratio;  
+
+  Smask enforce_conservation  = sources > sinks && sinks >= 1e-20;  // determine if  conservation corrction is necessary 
+  Smask nothing_todo = !enforce_conservation; 
+
+  if (enforce_conservation.any()){
+    ratio.set(enforce_conservation, sources/sinks);
+    qcaut.set(enforce_conservation, qcaut*ratio); 
+    qcacc.set(enforce_conservation, qcacc*ratio);
+    qccol.set(enforce_conservation, qccol*ratio); 
+    qcheti.set(enforce_conservation, qcheti*ratio); 
+    qcheti.set(enforce_conservation, qcshd*ratio); 
+    qiberg.set(enforce_conservation, qiberg*ratio); 
+  }
+
+  if(nothing_todo.any()){
+    ratio.set(nothing_todo, 1.0);
+  }
+  
+  enforce_conservation = sources > 1e-20; 
+  if (enforce_conservation.any()){
+    qidep.set(enforce_conservation, qidep*(1.0-ratio));
+    qisub.set(enforce_conservation, qisub*(1.0-ratio));
+  }
+}
+
+template<typename S, typename D> 
+KOKKOS_FUNCTION
+void Functions<S,D>
+::rain_water_conservation(const Spack& qr, const Spack& qcaut, const Spack& qcacc, const Spack& qimlt, const Spack& qcshd, const Scalar dt,
+   Spack& qrevp, Spack& qrcol, Spack& qrheti)
+{
+  Spack sinks   = (qrevp+qrcol+qrheti)*dt; // Sinks of rain water 
+  Spack sources = qr + (qcaut+qcacc+qimlt+qcshd)*dt; // Sources of rain water 
+  Spack ratio; 
+  
+  Smask enforce_conservation  = sources > sinks && sinks >= 1e-20;  // determine if  conservation corrction is necessary 
+
+  if (enforce_conservation.any()){
+    sources.set(enforce_conservation, sources/sinks);
+    qrevp.set(enforce_conservation, qrevp*ratio); 
+    qrcol.set(enforce_conservation, qrcol*ratio);
+    qrheti.set(enforce_conservation, qrheti*ratio); 
+  }
+}
+
+template<typename S, typename D> 
+KOKKOS_FUNCTION 
+void Functions<S,D>
+::ice_water_conservation(const Spack& qitot,const Spack& qidep,const Spack& qinuc,const Spack& qiberg, const Spack &qrcol,const Spack &qccol,const Spack& qrheti,const Spack& qcheti,const Scalar dt, 
+   Spack& qisub, Spack& qimlt)  
+{
+  Spack sinks = (qisub+qimlt)*dt; // Sinks of ice water 
+  Spack sources = qitot + (qidep+qinuc+qrcol+qccol+qrheti+qcheti+qiberg)*dt; // Sources of ice water 
+  Spack ratio; 
+
+  Smask enforce_conservation  = sources > sinks && sinks >= 1e-20;  // determine if  conservation corrction is necessary 
+
+  if(enforce_conservation.any()){
+    sources.set(enforce_conservation, sources/sinks);
+    qisub.set(enforce_conservation, qisub*ratio); 
+    qimlt.set(enforce_conservation, qimlt*ratio); 
+  }
+}
+
 
 } // namespace p3
 } // namespace scream

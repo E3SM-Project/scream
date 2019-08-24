@@ -565,7 +565,7 @@ struct TestP3Func
   {
     int nerr = 0;
     TeamPolicy policy(util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, 1));
-    Kokkos::parallel_reduce("TestTableIce::run", policy, KOKKOS_LAMBDA(const MemberType& team, int& errors) {
+    Kokkos::parallel_reduce("SaturationTests", policy, KOKKOS_LAMBDA(const MemberType& team, int& errors) {
   
       errors = 0; 
 
@@ -590,6 +590,8 @@ struct TestP3Func
 
 };
 };
+
+
 
 TEST_CASE("p3_find", "[p3_functions]")
 {
@@ -629,5 +631,7 @@ TEST_CASE("p3_functions", "[p3_functions]")
 {
   UnitWrap::UnitTest<scream::DefaultDevice>::TestP3Func::run();
 }
+
+
 
 } // namespace
