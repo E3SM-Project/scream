@@ -649,6 +649,8 @@ struct TestP3WaterConservationFuncs
     Spack qrheti(0.0);
 
     Spack ratio(qr/(qrevp * dt)); 
+    
+    //Call function being tested 
     Functions::rain_water_conservation(qr, qcaut, qcacc, qimlt, qcshd, dt, qrevp, qrcol, qrheti);
 
     //Here we check cases where source > sinks and sinks > 1e-20
@@ -668,7 +670,36 @@ struct TestP3WaterConservationFuncs
 
   KOKKOS_FUNCTION static void ice_water_conservation_tests(int& errors){
 
+    Spack qitot(1e-5); 
+    Spack qidep(0.0); 
+    Spack qinuc(0.0); 
+    Spack qrcol(0.0); 
+    Spack qccol(0.0); 
+    Spack qrheti(0.0); 
+    Spack qcheti(0.0); 
+    Spack qiberg(0.0); 
+    Scalar dt = 1.1; 
+    Spack qisub(1e-4); 
+    Spack qimlt(0.0); 
 
+    Spack ratio(qitot/(qisub * dt));
+
+    //Call function being tested 
+    Functions::ice_water_conservation(qitot, qidep, qinuc, qrcol, qccol, qrheti, qcheti, qiberg, dt, qisub, qimlt);
+  
+    //Here we check cases where source > sinks and sinks > 1e-20 
+    if((abs(qidep)>0).any()){errors++;}
+    if((abs(qinuc)>0).any()){errors++;}
+    if((abs(qrcol)>0).any()){errors++;}
+    if((abs(qccol)>0).any()){errors++;}
+    if((abs(qrheti)>0).any()){errors++;}
+    if((abs(qcheti)>0).any()){errors++;}
+    if((abs(qiberg)>0).any()){errors++;}
+    if((abs(qisub - 1e-4 * ratio)>0).any()){errors++;}
+    if((abs(qimlt)>0).any()){errors++;}
+
+    //Now test that conservation has actually been enforced 
+    if((abs(qisub * dt - qitot)>0.0).any()){errors++;}
   }
 
   static void run()
