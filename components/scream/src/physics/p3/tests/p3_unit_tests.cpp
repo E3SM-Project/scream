@@ -588,8 +588,93 @@ struct TestP3Func
   }
 };
 
+struct TestP3WaterConservationFuncs
+{
+
+  KOKKOS_FUNCTION static void cloud_water_conservation_tests(int& errors){
+
+    Spack qc(1e-5);
+    Spack qcnuc(0.0); 
+    Scalar dt = 1.1; 
+    Spack qcaut(1e-4); 
+    Spack qcacc(0.0); 
+    Spack qccol(0.0); 
+    Spack qcheti(0.0); 
+    Spack qcshd(0.0); 
+    Spack qiberg(0.0); 
+    Spack qisub(1.0); 
+    Spack qidep(1.0); 
+
+    Spack ratio(qc/(qcaut * dt));   
+    Functions::cloud_water_conservation(qc, qcnuc, dt, 
+    qcaut,qcacc, qccol, qcheti, qcshd, qiberg, qisub, qidep);
+
+
+    //Here we check the case where sources > sinks 
+    if((abs(qcaut - 1e-4*ratio)>0).any()){errors++;}
+    if((abs(qcacc - 0.0) > 0).any()){errors++;}
+    if((abs(qccol - 0.0) > 0).any()){errors++;}
+    if((abs(qcheti - 0.0) > 0).any()){errors++;}    
+    if((abs(qcshd - 0.0) > 0).any()){errors++;}
+    if((abs(qiberg - 0.0) > 0).any()){errors++;}
+    if((abs(qisub - (1.0 - ratio))> 0).any()){errors++;}
+    if((abs(qidep - (1.0 - ratio))> 0).any()){errors++;}
+
+    // Now actually check conservation. We are basically checking here that 
+    // qcaut, the only non-zero source, is corrected so that within a dt 
+    // it does not overshoot qc.  
+    if((abs(qcaut*dt - qc) > 0).any()){errors++;}
+
+    
+    // Check the case where sources > sinks with sinks = 0 
+    qcaut = 0.0; 
+    Functions::cloud_water_conservation(qc, qcnuc, dt, 
+    qcaut,qcacc, qccol, qcheti, qcshd, qiberg, qisub, qidep);
+
+
+    std::cout << qisub[1] << "\n"; 
+    if((qisub != 0.0).any()){errors++;}
+    if((qidep != 0.0).any()){errors++;}
+
+  }
+
+  KOKKOS_FUNCTION static void rain_water_conservation_tests(int& errors){
+
+
+  }
+
+
+  KOKKOS_FUNCTION static void ice_water_conservation_tests(int& errors){
+
+
+  }
+
+  static void run()
+  {
+    int nerr = 0; 
+
+    TeamPolicy policy(util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, 1));
+    Kokkos::parallel_reduce("ConservationTests", policy, KOKKOS_LAMBDA(const MemberType& tem, int& errors){
+      
+      
+      errors = 0;
+
+      cloud_water_conservation_tests(errors);
+
+      rain_water_conservation_tests(errors); 
+
+      ice_water_conservation_tests(errors); 
+
+    }, nerr); 
+
+    Kokkos::fence(); 
+
+    REQUIRE(nerr==0); 
+  }
 };
 };
+};
+
 
 
 
@@ -632,6 +717,9 @@ TEST_CASE("p3_functions", "[p3_functions]")
   UnitWrap::UnitTest<scream::DefaultDevice>::TestP3Func::run();
 }
 
+TEST_CASE("p3_water_conservation_functions", "p3_water_conservation_functions"){
+  UnitWrap::UnitTest<scream::DefaultDevice>::TestP3WaterConservationFuncs::run(); 
+}
 
 
 } // namespace

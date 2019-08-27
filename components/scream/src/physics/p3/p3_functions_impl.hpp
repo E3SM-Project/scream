@@ -71,7 +71,7 @@ void Functions<S,D>
   Spack sources = qc + (qcnuc)*dt; // Source of cloud water 
   Spack ratio;  
 
-  Smask enforce_conservation  = sources > sinks && sinks >= 1e-20;  // determine if  conservation corrction is necessary 
+  Smask enforce_conservation  = sinks > sources && sinks >= 1e-20;  // determine if  conservation corrction is necessary 
   Smask nothing_todo = !enforce_conservation; 
 
   if (enforce_conservation.any()){
@@ -105,7 +105,7 @@ void Functions<S,D>
   Spack sources = qr + (qcaut+qcacc+qimlt+qcshd)*dt; // Sources of rain water 
   Spack ratio; 
   
-  Smask enforce_conservation  = sources > sinks && sinks >= 1e-20;  // determine if  conservation corrction is necessary 
+  Smask enforce_conservation  = sinks > sources && sinks >= 1e-20;  // determine if  conservation corrction is necessary 
 
   if (enforce_conservation.any()){
     sources.set(enforce_conservation, sources/sinks);
@@ -125,7 +125,7 @@ void Functions<S,D>
   Spack sources = qitot + (qidep+qinuc+qrcol+qccol+qrheti+qcheti+qiberg)*dt; // Sources of ice water 
   Spack ratio; 
 
-  Smask enforce_conservation  = sources > sinks && sinks >= 1e-20;  // determine if  conservation corrction is necessary 
+  Smask enforce_conservation  = sinks > sources && sinks >= 1e-20;  // determine if  conservation corrction is necessary 
 
   if(enforce_conservation.any()){
     sources.set(enforce_conservation, sources/sinks);
