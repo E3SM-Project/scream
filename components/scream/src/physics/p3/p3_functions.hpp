@@ -236,6 +236,14 @@ struct Functions
   static Spack qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice);
 
   KOKKOS_FUNCTION 
+  static void back_to_cell_average(const Spack&, const Spack& lcldm,const Spack& rcldm, const Spack& icldm,    
+   Spack& qcacc, Spack& qrevp, Spack& qcaut, Spack& ncacc, Spack& ncslf, Spack& ncautc, Spack& nrslf, 
+   Spack& nrevp, Spack& ncautr, Spack& qcnuc,Spack& ncnuc, Spack& qisub, Spack& nrshdr, Spack& qcheti, 
+   Spack& qrcol, Spack& qcshd, Spack& qimlt, Spack& qccol, Spack& qrheti, Spack& nimlt, Spack& nccol,
+   Spack& ncshdc, Spack& ncheti, Spack& nrcol, Spack& nislf, Spack& qidep, Spack& nrheti, Spack& nisub,
+   Spack& qinuc, Spack& ninuc, Spack& qiberg); 
+
+  KOKKOS_FUNCTION 
   static void cloud_water_conservation(const Spack& qc, const Spack& qcnuc,const Scalar dt, 
    Spack& qcaut, Spack& qcacc, Spack &qccol, Spack& qcheti, Spack& qcshd, Spack& qiberg, Spack& qisub, Spack& qidep); 
 
