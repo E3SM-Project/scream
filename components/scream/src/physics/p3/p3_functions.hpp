@@ -235,6 +235,12 @@ struct Functions
   KOKKOS_INLINE_FUNCTION
   static Spack qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice);
 
+  // Calculates and returns the bulk rime density from the prognostic ice variables
+  // and adjusts qirim and birim appropriately.
+  KOKKOS_FUNCTION
+  static void calc_bulkRhoRime(const Spack& qi_tot, Spack& qi_rim, Spack& bi_rim, Spack& rho_rime);
+
+
   KOKKOS_FUNCTION 
   static void back_to_cell_average(const Spack& lcldm,const Spack& rcldm, const Spack& icldm,    
    Spack& qcacc, Spack& qrevp, Spack& qcaut, Spack& ncacc, Spack& ncslf, Spack& ncautc, Spack& nrslf, 
@@ -243,6 +249,7 @@ struct Functions
    Spack& ncshdc, Spack& ncheti, Spack& nrcol, Spack& nislf, Spack& qidep, Spack& nrheti, Spack& nisub,
    Spack& qinuc, Spack& ninuc, Spack& qiberg); 
 
+  
   KOKKOS_FUNCTION 
   static void cloud_water_conservation(const Spack& qc, const Spack& qcnuc,const Scalar dt, 
    Spack& qcaut, Spack& qcacc, Spack &qccol, Spack& qcheti, Spack& qcshd, Spack& qiberg, Spack& qisub, Spack& qidep); 

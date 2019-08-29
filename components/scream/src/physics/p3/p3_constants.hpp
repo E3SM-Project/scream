@@ -38,6 +38,9 @@ struct Constants
   static constexpr Scalar CONS1       = PIOV6*RHOW;
   static constexpr Scalar QSMALL      = 1.e-14;
   static constexpr Scalar NSMALL      = 1.e-16;
+  static constexpr Scalar rho_rimeMin     =  50.0;
+  static constexpr Scalar rho_rimeMax     = 900.0;
+  static constexpr Scalar inv_rho_rimeMax =   1.0/rho_rimeMax;
   static constexpr Scalar P0          = 100000.0;        // reference pressure, Pa
   static constexpr Scalar RD          = 287.15;          // gas constant for dry air, J/kg/K
   static constexpr Scalar RHOSUR      = P0/(RD*Tmelt);
@@ -46,11 +49,21 @@ struct Constants
   static constexpr Scalar Tol         = util::is_single_precision<Real>::value ? 2e-5 : 1e-14;
 };
 
+
 template <typename Scalar>
 constexpr Scalar Constants<Scalar>::NSMALL;
 
 template <typename Scalar>
 constexpr Scalar Constants<Scalar>::QSMALL;
+
+template <typename Scalar>
+constexpr Scalar Constants<Scalar>::rho_rimeMin;
+
+template <typename Scalar>
+constexpr Scalar Constants<Scalar>::rho_rimeMax;
+
+template <typename Scalar>
+constexpr Scalar Constants<Scalar>::inv_rho_rimeMax; 
 
 template <typename Scalar>
 constexpr Scalar Constants<Scalar>::Tmelt;

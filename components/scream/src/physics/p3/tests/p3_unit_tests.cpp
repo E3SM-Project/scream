@@ -642,6 +642,71 @@ struct TestP3CellAverages
 
 };
 
+
+struct TestP3calc_bulkRhoRime
+{
+
+  KOKKOS_FUNCTION static void calc_bulkRhoRime(int& errors){
+
+
+    // First we test when bi_rim is small and qi_rim is small 
+    Spack qi_tot(0.0); 
+    Spack qi_rim(0.0); 
+    Spack bi_rim(0.0); 
+    Spack rho_rime(0.0);
+
+    Functions::calc_bulkRhoRime(qi_tot, qi_rim, bi_rim, rho_rime); 
+    if((qi_rim !=0.0).any()){errors++;}
+    if((bi_rim != 0.0).any()){errors++;}
+    if((rho_rime != 0.0).any()){errors++;}
+
+
+    qi_rim = 0.99 * C::QSMALL; 
+    // Call the function to be tested 
+    Functions::calc_bulkRhoRime(qi_tot, qi_rim, bi_rim, rho_rime); 
+    if((qi_rim != 0.0).any()){errors++;}
+
+
+    bi_rim = 2.0 * 1e-15; 
+    rho_rime = 0.99 * C::rho_rimeMin;
+    // Call the function to be tested 
+    Functions::calc_bulkRhoRime(qi_tot, qi_rim, bi_rim, rho_rime);    
+    if((rho_rime != C::rho_rimeMin).any()){errors++;}
+    if((bi_rim != 0.0).any()){errors++;}
+
+    
+    
+    bi_rim = 2.0 * 1e-15; 
+    qi_tot = 2.0 * C::QSMALL; 
+    qi_rim = 2.1 * C::QSMALL; 
+    rho_rime = 0.99 * C::rho_rimeMin;
+    
+    auto test_value =2.0*C::QSMALL/ C::rho_rimeMin;
+    // Call the function to be tested 
+    Functions::calc_bulkRhoRime(qi_tot, qi_rim, bi_rim, rho_rime); 
+    if((qi_rim != qi_tot).any()){errors++;}
+    if((bi_rim != test_value).any()){errors++;}
+
+
+  }
+
+  static void run(){
+    int nerr = 0; 
+
+    TeamPolicy policy(util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, 1));
+    Kokkos::parallel_reduce("calc_bulkRhoRime", policy, KOKKOS_LAMBDA(const MemberType& tem, int& errors){
+
+      errors = 0; 
+
+      calc_bulkRhoRime(errors); 
+
+    }, nerr); 
+
+    Kokkos::fence(); 
+    REQUIRE(nerr == 0); 
+  } 
+}; 
+
 struct TestP3WaterConservationFuncs
 {
 
@@ -823,6 +888,14 @@ TEST_CASE("p3_functions", "[p3_functions]")
 
 TEST_CASE("p3_back_to_cell_average_test", "[p3_back_to_cell_average_test]"){
   UnitWrap::UnitTest<scream::DefaultDevice>::TestP3CellAverages::run(); 
+}
+
+TEST_CASE("p3_calc_bulkRhoRime", "[p3_calc_bulkRhoRime]"){
+  UnitWrap::UnitTest<scream::DefaultDevice>::TestP3calc_bulkRhoRime::run(); 
+}
+
+TEST_CASE("p3_conservation_test", "[p3_conservation_test]"){
+  UnitWrap::UnitTest<scream::DefaultDevice>::TestP3WaterConservationFuncs::run(); 
 }
 
 } // namespace

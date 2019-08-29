@@ -64,6 +64,52 @@ Functions<S,D>::qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice)
 template<typename S, typename D> 
 KOKKOS_FUNCTION
 void Functions<S,D>
+::calc_bulkRhoRime(const Spack& qi_tot, Spack& qi_rim, Spack& bi_rim, Spack& rho_rime){
+
+auto rim_exists = bi_rim > 1e-15; 
+auto rim_doesnot_exist = !rim_exists; 
+if (rim_exists.any()){
+  bi_rim.set(rim_exists, qi_rim/bi_rim); 
+  // impose limits on rho_rime;  adjust bi_rim if needed
+  auto small_rho_rime = rho_rime < C::rho_rimeMin;  
+  auto not_small_rho_rime = !small_rho_rime; 
+  if(small_rho_rime.any()){
+    rho_rime.set(small_rho_rime, C::rho_rimeMin);
+    bi_rim.set(small_rho_rime, qi_rim/rho_rime);
+  }
+
+  if(not_small_rho_rime.any()){
+    rho_rime.set(not_small_rho_rime, C::rho_rimeMax);
+    bi_rim.set(not_small_rho_rime, qi_rim/rho_rime);
+  }
+}
+
+if(rim_doesnot_exist.any()){
+  qi_rim.set(rim_doesnot_exist, 0.0); 
+  bi_rim.set(rim_doesnot_exist, 0.0);
+  rho_rime.set(rim_doesnot_exist, 0.0); 
+}
+
+// set upper constraint qi_rim <= qi_tot
+auto upper_limit_qi_rim = qi_rim > qi_tot && rho_rime > 0.0; 
+if(upper_limit_qi_rim.any()){
+ qi_rim.set(upper_limit_qi_rim, qi_tot); 
+ bi_rim.set(upper_limit_qi_rim, qi_rim/rho_rime);  
+}
+
+//impose consistency 
+auto enforce_consistency = qi_rim < C::QSMALL; 
+if(enforce_consistency.any()){
+  qi_rim.set(enforce_consistency, 0.0);
+  bi_rim.set(enforce_consistency, 0.0); 
+}
+
+}
+
+
+template<typename S, typename D> 
+KOKKOS_FUNCTION
+void Functions<S,D>
 ::cloud_water_conservation(const Spack& qc, const Spack& qcnuc,const Scalar dt, 
    Spack& qcaut, Spack& qcacc, Spack &qccol, Spack& qcheti, Spack& qcshd, Spack& qiberg, Spack& qisub, Spack& qidep)
 {
