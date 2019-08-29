@@ -235,6 +235,25 @@ struct Functions
   KOKKOS_INLINE_FUNCTION
   static Spack qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice);
 
+  KOKKOS_FUNCTION 
+  static void back_to_cell_average(const Spack& lcldm,const Spack& rcldm, const Spack& icldm,    
+   Spack& qcacc, Spack& qrevp, Spack& qcaut, Spack& ncacc, Spack& ncslf, Spack& ncautc, Spack& nrslf, 
+   Spack& nrevp, Spack& ncautr, Spack& qcnuc,Spack& ncnuc, Spack& qisub, Spack& nrshdr, Spack& qcheti, 
+   Spack& qrcol, Spack& qcshd, Spack& qimlt, Spack& qccol, Spack& qrheti, Spack& nimlt, Spack& nccol,
+   Spack& ncshdc, Spack& ncheti, Spack& nrcol, Spack& nislf, Spack& qidep, Spack& nrheti, Spack& nisub,
+   Spack& qinuc, Spack& ninuc, Spack& qiberg); 
+
+  KOKKOS_FUNCTION 
+  static void cloud_water_conservation(const Spack& qc, const Spack& qcnuc,const Scalar dt, 
+   Spack& qcaut, Spack& qcacc, Spack &qccol, Spack& qcheti, Spack& qcshd, Spack& qiberg, Spack& qisub, Spack& qidep); 
+
+  KOKKOS_FUNCTION 
+  static void rain_water_conservation(const Spack& qr, const Spack& qcaut, const Spack& qcacc, const Spack& qimlt, const Spack& qcshd, const Scalar dt,
+   Spack& qrevp, Spack& qrcol, Spack& qrheti);
+
+  KOKKOS_FUNCTION 
+  static void ice_water_conservation(const Spack& qitot,const Spack& qidep,const Spack& qinuc,const Spack& qiberg, const Spack &qrcol,const Spack &qccol,const Spack& qrheti,const Spack& qcheti,const Scalar dt, 
+   Spack& qisub, Spack& qimlt) ;
 };
 
 template <typename ScalarT, typename DeviceT>

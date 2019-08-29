@@ -534,6 +534,252 @@ struct TestP3Func
   }
 };
 
+struct TestP3CellAverages
+{
+  KOKKOS_FUNCTION static void back_to_cell_average_test(int& errors){
+    
+
+    //Set the liquid, rain, and ice fractions
+    Scalar lcldm_test = 0.1; 
+    Scalar rcldm_test = 0.2; 
+    Scalar icldm_test = 0.3; 
+
+    Scalar ir_cldm_test = 0.2;
+    Scalar il_cldm_test = 0.1; 
+    Scalar lr_cldm_test = 0.1; 
+
+    Spack lcldm(lcldm_test);
+    Spack rcldm(rcldm_test); 
+    Spack icldm(icldm_test);    
+
+    // Set all of the source terms to 1
+    Spack qcacc(1.0); 
+    Spack qrevp(1.0); 
+    Spack qcaut(1.0); 
+    Spack ncacc(1.0);
+    Spack ncslf(1.0);
+    Spack ncautc(1.0); 
+    Spack nrslf(1.0); 
+    Spack nrevp(1.0); 
+    Spack ncautr(1.0); 
+    Spack qcnuc(1.0);
+    Spack ncnuc(1.0); 
+    Spack qisub(1.0); 
+    Spack nrshdr(1.0); 
+    Spack qcheti(1.0); 
+    Spack qrcol(1.0);
+    Spack qcshd(1.0); 
+    Spack qimlt(1.0); 
+    Spack qccol(1.0);
+    Spack qrheti(1.0); 
+    Spack nimlt(1.0);
+    Spack nccol(1.0);
+    Spack ncshdc(1.0); 
+    Spack ncheti(1.0); 
+    Spack nrcol(1.0);
+    Spack nislf(1.0); 
+    Spack qidep(1.0); 
+    Spack nrheti(1.0); 
+    Spack nisub(1.0);
+    Spack qinuc(1.0); 
+    Spack ninuc(1.0);
+    Spack qiberg(1.0);
+
+    //Call function to be tested. 
+    Functions::back_to_cell_average(lcldm, rcldm, icldm,  qcacc, qrevp, qcaut, ncacc, ncslf, ncautc, nrslf, 
+    nrevp, ncautr, qcnuc, ncnuc, qisub, nrshdr, qcheti, qrcol, qcshd, qimlt, qccol, qrheti, nimlt, nccol,
+    ncshdc, ncheti, nrcol, nislf, qidep, nrheti, nisub, qinuc, ninuc, qiberg);
+
+    if((qcacc != lr_cldm_test).any()){errors++;}
+    if((qrevp != rcldm_test).any()){errors++;}
+    if((qcaut != lcldm_test).any()){errors++;}
+    if((ncacc != lr_cldm_test).any()){errors++;}
+    if((ncslf != lcldm_test).any()){errors++;}
+    if((ncautc != lcldm_test).any()){errors++;}
+    if((nrslf != rcldm_test).any()){errors++;}
+    if((nrevp != rcldm_test).any()){errors++;}
+    if((ncautr != lr_cldm_test).any()){errors++;}
+    if((qcnuc != lcldm_test).any()){errors++;}
+    if((ncnuc != lcldm_test).any()){errors++;}
+    if((qisub != icldm_test).any()){errors++;}
+    if((nrshdr != il_cldm_test).any()){errors++;}
+    if((qcheti != il_cldm_test).any()){errors++;}
+    if((qrcol != ir_cldm_test).any()){errors++;}
+    if((qcshd != il_cldm_test).any()){errors++;}
+    if((qimlt != icldm_test).any()){errors++;}
+    if((qccol != il_cldm_test).any()){errors++;}
+    if((qrheti != rcldm_test).any()){errors++;}
+    if((nimlt != icldm_test).any()){errors++;}
+    if((nccol != il_cldm_test).any()){errors++;}
+    if((ncshdc != il_cldm_test).any()){errors++;}
+    if((ncheti != lcldm_test).any()){errors++;}
+    if((nrcol != ir_cldm_test).any()){errors++;}
+    if((nislf != icldm_test).any()){errors++;}
+    if((qidep != icldm_test).any()){errors++;}
+    if((nrheti != rcldm_test).any()){errors++;}
+    if((nisub != icldm_test).any()){errors++;}
+    if((qinuc != 1.0).any()){errors++;}
+    if((ninuc != 1.0).any()){errors++;}
+    if((qiberg != il_cldm_test).any()){errors++;}
+    
+  }
+
+  static void run(){
+    int nerr = 0; 
+
+    TeamPolicy policy(util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, 1));
+    Kokkos::parallel_reduce("CellAverages", policy, KOKKOS_LAMBDA(const MemberType& tem, int& errors){
+
+      errors = 0; 
+
+      back_to_cell_average_test(errors); 
+
+    }, nerr); 
+
+    Kokkos::fence(); 
+    REQUIRE(nerr == 0); 
+  } 
+
+};
+
+struct TestP3WaterConservationFuncs
+{
+
+  KOKKOS_FUNCTION static void cloud_water_conservation_tests(int& errors){
+
+    Spack qc(1e-5);
+    Spack qcnuc(0.0); 
+    Scalar dt = 1.1; 
+    Spack qcaut(1e-4); 
+    Spack qcacc(0.0); 
+    Spack qccol(0.0); 
+    Spack qcheti(0.0); 
+    Spack qcshd(0.0); 
+    Spack qiberg(0.0); 
+    Spack qisub(1.0); 
+    Spack qidep(1.0); 
+
+    Spack ratio(qc/(qcaut * dt));   
+    Functions::cloud_water_conservation(qc, qcnuc, dt, 
+    qcaut,qcacc, qccol, qcheti, qcshd, qiberg, qisub, qidep);
+
+
+    //Here we check the case where sources > sinks 
+    if((abs(qcaut - 1e-4*ratio)>0).any()){errors++;}
+    if((abs(qcacc) > 0).any()){errors++;}
+    if((abs(qccol) > 0).any()){errors++;}
+    if((abs(qcheti) > 0).any()){errors++;}    
+    if((abs(qcshd) > 0).any()){errors++;}
+    if((abs(qiberg) > 0).any()){errors++;}
+    if((abs(qisub - (1.0 - ratio))> 0).any()){errors++;}
+    if((abs(qidep - (1.0 - ratio))> 0).any()){errors++;}
+
+    // Now actually check conservation. We are basically checking here that 
+    // qcaut, the only non-zero source, is corrected so that within a dt 
+    // it does not overshoot qc.  
+    if((abs(qcaut*dt - qc) > 0.0).any()){errors++;}
+
+    // Check the case where sources > sinks with sinks = 0 
+    qcaut = 0.0; 
+    Functions::cloud_water_conservation(qc, qcnuc, dt, 
+    qcaut,qcacc, qccol, qcheti, qcshd, qiberg, qisub, qidep);
+
+    //In this case qidep and qisub should be set to zero
+    if((qisub != 0.0).any()){errors++;}
+    if((qidep != 0.0).any()){errors++;}
+
+  }
+
+  KOKKOS_FUNCTION static void rain_water_conservation_tests(int& errors){
+
+    Spack qr(1e-5); 
+    Spack qcaut(0.0); 
+    Spack qcacc(0.0); 
+    Spack qimlt(0.0); 
+    Spack qcshd(0.0); 
+    Scalar dt = 1.1; 
+    Spack qrevp(1e-4); 
+    Spack qrcol(0.0); 
+    Spack qrheti(0.0);
+
+    Spack ratio(qr/(qrevp * dt)); 
+    
+    //Call function being tested 
+    Functions::rain_water_conservation(qr, qcaut, qcacc, qimlt, qcshd, dt, qrevp, qrcol, qrheti);
+
+    //Here we check cases where source > sinks and sinks > 1e-20
+    if((abs(qcaut)>0).any()){errors++;}
+    if((abs(qcacc)>0).any()){errors++;}
+    if((abs(qimlt)>0).any()){errors++;}
+    if((abs(qcshd)>0).any()){errors++;}
+    if((abs(qrevp - 1e-4*ratio)>0).any()){errors++;}
+    if((abs(qrcol)>0).any()){errors++;}
+    if((abs(qrheti)>0).any()){errors++;}
+
+    //Now test that conservation has actually been enforced 
+    if((abs(qrevp * dt - qr)> 0.0).any()){errors++;}
+
+  }
+
+
+  KOKKOS_FUNCTION static void ice_water_conservation_tests(int& errors){
+
+    Spack qitot(1e-5); 
+    Spack qidep(0.0); 
+    Spack qinuc(0.0); 
+    Spack qrcol(0.0); 
+    Spack qccol(0.0); 
+    Spack qrheti(0.0); 
+    Spack qcheti(0.0); 
+    Spack qiberg(0.0); 
+    Scalar dt = 1.1; 
+    Spack qisub(1e-4); 
+    Spack qimlt(0.0); 
+
+    Spack ratio(qitot/(qisub * dt));
+
+    //Call function being tested 
+    Functions::ice_water_conservation(qitot, qidep, qinuc, qrcol, qccol, qrheti, qcheti, qiberg, dt, qisub, qimlt);
+  
+    //Here we check cases where source > sinks and sinks > 1e-20 
+    if((abs(qidep)>0).any()){errors++;}
+    if((abs(qinuc)>0).any()){errors++;}
+    if((abs(qrcol)>0).any()){errors++;}
+    if((abs(qccol)>0).any()){errors++;}
+    if((abs(qrheti)>0).any()){errors++;}
+    if((abs(qcheti)>0).any()){errors++;}
+    if((abs(qiberg)>0).any()){errors++;}
+    if((abs(qisub - 1e-4 * ratio)>0).any()){errors++;}
+    if((abs(qimlt)>0).any()){errors++;}
+
+    //Now test that conservation has actually been enforced 
+    if((abs(qisub * dt - qitot)>0.0).any()){errors++;}
+  }
+
+  static void run()
+  {
+    int nerr = 0; 
+
+    TeamPolicy policy(util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, 1));
+    Kokkos::parallel_reduce("ConservationTests", policy, KOKKOS_LAMBDA(const MemberType& tem, int& errors){
+      
+      
+      errors = 0;
+
+      cloud_water_conservation_tests(errors);
+
+      rain_water_conservation_tests(errors); 
+
+      ice_water_conservation_tests(errors); 
+
+    }, nerr); 
+
+    Kokkos::fence(); 
+
+    REQUIRE(nerr==0); 
+  }
+
+};
 };
 };
 
@@ -573,6 +819,10 @@ TEST_CASE("p3_ice_tables", "[p3_functions]")
 TEST_CASE("p3_functions", "[p3_functions]")
 {
   UnitWrap::UnitTest<scream::DefaultDevice>::TestP3Func::run();
+}
+
+TEST_CASE("p3_back_to_cell_average_test", "[p3_back_to_cell_average_test]"){
+  UnitWrap::UnitTest<scream::DefaultDevice>::TestP3CellAverages::run(); 
 }
 
 } // namespace
