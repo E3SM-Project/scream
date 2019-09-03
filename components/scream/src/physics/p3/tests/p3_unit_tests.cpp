@@ -707,6 +707,48 @@ struct TestP3calc_bulkRhoRime
   } 
 }; 
 
+struct TestP3_impoase_max_total_Ni{
+
+  KOKKOS_FUNCTION static void impose_max_total_Ni_tests(int& errors){
+    Spack nitot_local(100.0); 
+    Spack inv_rho_local(1.0); 
+
+    Functions::impose_max_total_Ni(nitot_local, inv_rho_local); 
+
+    auto test_value = C::max_total_Ni * 1.0 / 100.0; 
+    test_value = 100.0 * std::min(test_value, 1.0);  
+
+    if((nitot_local != test_value).any()){errors++;}
+
+    // Check case where nitot_imposed_max < 100.0 
+    nitot_local = 1000.0; 
+    Functions::impose_max_total_Ni(nitot_local, inv_rho_local); 
+
+
+    test_value = C::max_total_Ni * 1.0/1000.0; 
+    test_value = 1000.0 * std::min(test_value,1.0); 
+    if((nitot_local != test_value).any()){errors++;}
+
+  }
+
+  static void run(){
+    int nerr = 0; 
+
+    TeamPolicy policy(util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, 1));
+    Kokkos::parallel_reduce("ConservationTests", policy, KOKKOS_LAMBDA(const MemberType& tem, int& errors){
+      
+      errors = 0;
+
+      impose_max_total_Ni_tests(errors); 
+
+    }, nerr); 
+    
+    Kokkos::fence(); 
+    REQUIRE(nerr==0);
+
+  }
+};
+
 struct TestP3WaterConservationFuncs
 {
 
@@ -892,6 +934,10 @@ TEST_CASE("p3_back_to_cell_average_test", "[p3_back_to_cell_average_test]"){
 
 TEST_CASE("p3_calc_bulkRhoRime", "[p3_calc_bulkRhoRime]"){
   UnitWrap::UnitTest<scream::DefaultDevice>::TestP3calc_bulkRhoRime::run(); 
+}
+
+TEST_CASE("p3_impose_max_totalNi", "[p3_impose_max_total_Ni]"){
+  UnitWrap::UnitTest<scream::DefaultDevice>::TestP3_impoase_max_total_Ni::run(); 
 }
 
 TEST_CASE("p3_conservation_test", "[p3_conservation_test]"){

@@ -41,6 +41,7 @@ struct Constants
   static constexpr Scalar rho_rimeMin     =  50.0;
   static constexpr Scalar rho_rimeMax     = 900.0;
   static constexpr Scalar inv_rho_rimeMax =   1.0/rho_rimeMax;
+  static constexpr Scalar max_total_Ni = 500.+3.0; 
   static constexpr Scalar P0          = 100000.0;        // reference pressure, Pa
   static constexpr Scalar RD          = 287.15;          // gas constant for dry air, J/kg/K
   static constexpr Scalar RHOSUR      = P0/(RD*Tmelt);

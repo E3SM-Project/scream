@@ -240,6 +240,12 @@ struct Functions
   KOKKOS_FUNCTION
   static void calc_bulkRhoRime(const Spack& qi_tot, Spack& qi_rim, Spack& bi_rim, Spack& rho_rime);
 
+  // Impose maximum total ice number concentration (total of all ice categories).
+  // If the sum of all nitot(:) exceeds maximum allowable, each category to preserve
+  // ratio of number between categories.
+  KOKKOS_FUNCTION
+  static void impose_max_total_Ni(Spack& nitot_local, Spack& inv_rho_local); 
+
 
   KOKKOS_FUNCTION 
   static void back_to_cell_average(const Spack& lcldm,const Spack& rcldm, const Spack& icldm,    

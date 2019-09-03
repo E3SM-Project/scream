@@ -106,6 +106,18 @@ if(enforce_consistency.any()){
 
 }
 
+template<typename S, typename D> 
+KOKKOS_FUNCTION
+void Functions<S,D>
+::impose_max_total_Ni(Spack& nitot_local, Spack& inv_rho_local){
+
+  auto impose_maximum = nitot_local >= 1e-20; 
+  if(impose_maximum.any()){
+    auto nitot_imposed_max = C::max_total_Ni * inv_rho_local/nitot_local; 
+    nitot_local.set(impose_maximum, nitot_local * min(nitot_imposed_max, 1.0)); 
+  }
+
+}
 
 template<typename S, typename D> 
 KOKKOS_FUNCTION
