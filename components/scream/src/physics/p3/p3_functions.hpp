@@ -247,6 +247,10 @@ struct Functions
   static void impose_max_total_Ni(Spack& nitot_local, Spack& inv_rho_local); 
 
 
+  KOKKOS_FUNCTION
+  static void cloud_water_autoconversion(const Spack& rho, const Spack& qc_incld,
+    const Spack& nc_incld, Spack& qcaut, Spack& ncautc, Spack& ncautr); 
+
   KOKKOS_FUNCTION 
   static void back_to_cell_average(const Spack& lcldm,const Spack& rcldm, const Spack& icldm,    
    Spack& qcacc, Spack& qrevp, Spack& qcaut, Spack& ncacc, Spack& ncslf, Spack& ncautc, Spack& nrslf, 

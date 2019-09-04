@@ -122,6 +122,23 @@ void Functions<S,D>
 template<typename S, typename D> 
 KOKKOS_FUNCTION
 void Functions<S,D>
+// Khroutdinov and Kogan (2000). The Fortran version supports other options by setting iparam. 
+// Here in the C++ code we are using iparam=3 option. 
+::cloud_water_autoconversion(const Spack& rho, const Spack& qc_incld,
+    const Spack& nc_incld, Spack& qcaut, 
+    Spack& ncautc, Spack& ncautr)
+{
+  auto qc_not_small = qc_incld >= 1e-8; 
+  if(qc_not_small.any()){
+    qcaut.set(qc_not_small, 1350.0*pow(qc_incld,2.47)*pow(nc_incld*1.e-6*rho,-1.79)); 
+    ncautr.set(qc_not_small, qcaut * C::CONS3);
+    ncautc.set(qc_not_small, qcaut*nc_incld/qc_incld);  
+  }
+}
+
+template<typename S, typename D> 
+KOKKOS_FUNCTION
+void Functions<S,D>
 ::cloud_water_conservation(const Spack& qc, const Spack& qcnuc,const Scalar dt, 
    Spack& qcaut, Spack& qcacc, Spack &qccol, Spack& qcheti, Spack& qcshd, Spack& qiberg, Spack& qisub, Spack& qidep)
 {

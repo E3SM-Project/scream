@@ -707,7 +707,7 @@ struct TestP3calc_bulkRhoRime
   } 
 }; 
 
-struct TestP3_impoase_max_total_Ni{
+struct TestP3_impose_max_total_Ni{
 
   KOKKOS_FUNCTION static void impose_max_total_Ni_tests(int& errors){
     Spack nitot_local(100.0); 
@@ -747,6 +747,61 @@ struct TestP3_impoase_max_total_Ni{
     REQUIRE(nerr==0);
 
   }
+};
+
+struct TestP3CloudWaterAutoConversion
+{
+  KOKKOS_FUNCTION static void cloud_water_autoconversion_tests(int& errors){
+
+    Spack rho(1.0); 
+    Spack qc_incld(1e-5); 
+    Spack nc_incld(200.0); 
+    Spack qcaut(0.0); 
+    Spack ncautc(0.0); 
+    Spack ncautr(0.0); 
+
+
+    Scalar qcaut_testvalue = 1350.0 * pow(1e-5,2.47)*pow(200*1e-6,-1.79); 
+
+    //Call function being tested 
+    Functions::cloud_water_autoconversion(rho, qc_incld, nc_incld, qcaut, ncautc, ncautr);
+
+    if((qcaut != qcaut_testvalue).any()){errors++;}
+    if((ncautr != qcaut_testvalue*C::CONS3).any()){errors++;}
+    if((ncautc != qcaut_testvalue*200.0/1e-5).any()){errors++;}
+
+    // Make sure that nothing happens when qc is very small 
+    qc_incld = 1e-9; 
+    qcaut = 0.0; 
+    ncautc = 0.0; 
+    ncautr = 0.0; 
+
+    // Call function being tested 
+    Functions::cloud_water_autoconversion(rho, qc_incld, nc_incld, qcaut, ncautc, ncautr);
+    if((qcaut != 0.0).any()){errors++;}
+    if((ncautr != 0.0).any()){errors++;}
+    if((ncautc != 0.0).any()){errors++;}
+
+  }
+
+  static void run()
+  {
+    int nerr = 0; 
+
+    TeamPolicy policy(util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, 1));
+    Kokkos::parallel_reduce("CLoudWaterAutoconversion", policy, KOKKOS_LAMBDA(const MemberType& tem, int& errors){
+
+      errors = 0;
+
+      cloud_water_autoconversion_tests(errors);
+
+    }, nerr); 
+
+    Kokkos::fence(); 
+
+    REQUIRE(nerr==0); 
+  }
+
 };
 
 struct TestP3WaterConservationFuncs
@@ -937,7 +992,11 @@ TEST_CASE("p3_calc_bulkRhoRime", "[p3_calc_bulkRhoRime]"){
 }
 
 TEST_CASE("p3_impose_max_totalNi", "[p3_impose_max_total_Ni]"){
-  UnitWrap::UnitTest<scream::DefaultDevice>::TestP3_impoase_max_total_Ni::run(); 
+  UnitWrap::UnitTest<scream::DefaultDevice>::TestP3_impose_max_total_Ni::run(); 
+}
+
+TEST_CASE("p3_cloud_water_autoconversion", "[p3_cloud_water_conservation]"){
+  UnitWrap::UnitTest<scream::DefaultDevice>::TestP3CloudWaterAutoConversion::run(); 
 }
 
 TEST_CASE("p3_conservation_test", "[p3_conservation_test]"){
