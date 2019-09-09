@@ -3,6 +3,22 @@
 #endif
 
 module simple_io_mod
+!=====================================================================!
+! Fortran/C++ interface for handling simple input and output.
+! 
+! Developed in order to allow us to load input files and write output
+! to be used for convergence and baseline testing.
+!
+! The plan is to DELETE this interface when the more sophisticated
+! PIO2 interface is adopted by SCREAM.
+!
+! TODO: Replace this I/O interface with PIO2
+!
+! Author: Aaron S. Donahue
+! email: donahue5@llnl.gov
+! data: Septemper 9, 2019
+!=====================================================================!
+
   use netcdf
   use iso_c_binding
   implicit none
@@ -24,6 +40,8 @@ module simple_io_mod
 
 contains
 
+!======================================================================
+! TODO: Delete this, it is only for testing purposes at the moment.
   subroutine hello_world_f90(myint,myreal,mychar_c,len_planet,planets_c)  bind(c)
     integer(kind=c_int), value, intent(in) :: myint
     real(kind=c_real), value, intent(in) :: myreal
@@ -51,23 +69,26 @@ contains
   end subroutine hello_world_f90
 !======================================================================
   subroutine simple_in_init(filename_in) bind(c)
-    ! Simple routine to open a netcdf file for reading input.
-    type(c_ptr), intent(in) :: filename_in
-    
-    character(len=256) :: filename
+  ! Purpose: Open a netcdf file to be used for input to C++.
+  ! Recieves a c-string filename which is converted to a fortran string
+  ! and passed to the netcdf file open subroutine.
 
-    call convert_c_string(filename_in,filename)
-    call check( nf90_open(filename, nf90_nowrite, ncid_in), "Open input file" )
-    isopen_in = .true.
+    type(c_ptr), intent(in) :: filename_in ! INPUT: Name of input file.
+    
+    character(len=256)       :: filename   ! Local Fortran variable to store filename in proper fortran string format.
+
+    call convert_c_string(filename_in,filename) ! Convert c-string to fortran-string
+    call check( nf90_open(filename, nf90_nowrite, ncid_in), "Open input file" ) ! Open netCDF file for input
+    isopen_in = .true. ! Register that an input file has been opened.
 
     return
   end subroutine simple_in_init
 !======================================================================
   subroutine simple_in_finalize() bind(c)
-    ! Simple routine to close a netcdf file from which input has been read.
+  ! Purpose: Close a netcdf file  used for input.
 
-    call check( nf90_close(ncid_in), "Close input file" )
-    isopen_in = .false.
+    call check( nf90_close(ncid_in), "Close input file" ) ! Close the input netcdf file
+    isopen_in = .false. ! Register that the input file is now closed.
 
     return
   end subroutine simple_in_finalize
@@ -96,13 +117,17 @@ contains
   end subroutine simple_io_get_field_size
 !======================================================================
   subroutine simple_out_init1(filename_in,ndims,dimnames_in,dimrng) bind(c)
-    ! Simple routine to open (and replace if needed) a netcdf output file.
-    ! Register all the potential dimensions
+  ! Purpose: To open (and replace if needed) a netCDF file to be used for model
+  ! output.
+  ! Receives a c-string filename which is used to create the new file.
+  ! ndims is the total number of potential dimensions we anticpate needing for the output file 
+  ! dimnames_in is a C++ str::array that contains the names for each dimension (len=ndims)
+  ! dimrng is a C++ integer vector with the len of each dimension.
   
-    type(c_ptr), intent(in) :: filename_in
-    integer(kind=c_int), value, intent(in)  :: ndims  ! Number of potential dimensions
-    type(c_ptr), intent(in) :: dimnames_in(ndims)  ! Name for each dimension
-    integer(kind=c_int), target, intent(in)  :: dimrng(ndims) ! Max range for each dimension
+    type(c_ptr), intent(in) :: filename_in                    ! Name of netCDF output file
+    integer(kind=c_int), value, intent(in)  :: ndims          ! Number of potential dimensions
+    type(c_ptr), intent(in) :: dimnames_in(ndims)             ! Name for each dimension
+    integer(kind=c_int), target, intent(in)  :: dimrng(ndims) ! Max range for each dimension, 0 for unlimited
   
     character(len=256) :: dimnames(ndims)
     character(len=256) :: filename
