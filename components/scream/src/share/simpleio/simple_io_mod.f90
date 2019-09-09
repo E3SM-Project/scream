@@ -129,71 +129,90 @@ contains
     type(c_ptr), intent(in) :: dimnames_in(ndims)             ! Name for each dimension
     integer(kind=c_int), target, intent(in)  :: dimrng(ndims) ! Max range for each dimension, 0 for unlimited
   
-    character(len=256) :: dimnames(ndims)
-    character(len=256) :: filename
+    character(len=256) :: dimnames(ndims) ! Local string array of dimension names in fortran format
+    character(len=256) :: filename        ! Local string of output filename in fortran format
   
-    integer(kind=c_int) :: dimids(ndims) ! The id for each dimension
+    integer(kind=c_int) :: dimids(ndims)  ! The netcdf id for each dimension
     
-    integer(kind=c_int) :: i
-  
+    integer(kind=c_int) :: ii
+ 
+    ! Convert C++ strings to fortran format 
     call convert_c_string(filename_in,filename)
     call convert_c_strarray(ndims,dimnames_in,dimnames)
   
+    ! Open the netCDF output file (replace if needed)
     call check( nf90_create(trim(filename), nf90_clobber, ncid_out), 'init1' )
-    isopen_out = .true.
+    isopen_out = .true.  ! Register that an output file is open
   
-    do i = 1,ndims
-      call check( nf90_def_dim(ncid_out, trim(dimnames(i)), dimrng(i), dimids(i)),'add dimensions' )
+    ! Add each dimension to the netCDF output.
+    do ii = 1,ndims
+      call check( nf90_def_dim(ncid_out, trim(dimnames(ii)), dimrng(ii), dimids(ii)),'add dimensions' )
     end do
   
     return
   end subroutine simple_out_init1
 !======================================================================
   subroutine simple_out_init2() bind(c)
+  ! Purpose: To finish the registration of output variables.
   
-    allocate(start(max_ndims))
+    allocate(start(max_ndims))  ! TODO: Come up with a better way to do this. Possible return the max_ndims as an output
   
+    ! Finish the definition phase of the netCDF output file
     call check( nf90_enddef(ncid_out), 'init2' )
     isopen_out = .false.
   
   end subroutine simple_out_init2
 !======================================================================
   subroutine simple_out_finalize() bind(c)
+  ! Purpose: To close the netCDF output file.
   
     call check( nf90_close(ncid_out), 'finalize' )
   
   end subroutine simple_out_finalize
 !======================================================================
   subroutine simple_out_regfield(field_name_in,field_type,ndim,field_dim_in,units_in) bind(c)
+  ! Purpose: To register an output field with the netCDF output file.
+  ! Receives a C++ string, field_name_in, which will be the field label.
+  ! Needs a field_type designation which is an integer id for variable type
+  ! (such as real, int, char)
+  ! ndim is an integer specifying the dimensionality of the field.
+  ! field_dim_in is a str::array of dimensions for the field (which should match
+  ! one of the dimensions declared in the first init phase.
+  ! units_in is an optional C++ string that will declare the units for the
+  ! field.
   
-    type(c_ptr),         intent(in)           :: field_name_in
-    integer(kind=c_int), value, intent(in)    :: field_type
-    integer(kind=c_int), value, intent(in)    :: ndim
-    type(c_ptr),         intent(in)           :: field_dim_in(ndim)
-    type(c_ptr),         intent(in), optional :: units_in
+    type(c_ptr),         intent(in)           :: field_name_in       ! The field name
+    integer(kind=c_int), value, intent(in)    :: field_type          ! The variable type (i.e. real, int, char)
+    integer(kind=c_int), value, intent(in)    :: ndim                ! The dimensionality of the field (i.e. 1, 2, 3)
+    type(c_ptr),         intent(in)           :: field_dim_in(ndim)  ! The dimensions of the field
+    type(c_ptr),         intent(in), optional :: units_in            ! The units for the field (optional)
   
-    character(len=256) :: field_name
-    character(len=256) :: field_dim(ndim)
-    character(len=256) :: units
+    character(len=256) :: field_name      ! Fortran string for field name
+    character(len=256) :: field_dim(ndim) ! Fortran string array for dimension names
+    character(len=256) :: units           ! Fortran sting for units
   
-    integer(kind=c_int) :: varid
-    integer(kind=c_int) :: dimids(ndim)
-    character(kind=c_char,len=100) :: check_case
-    integer(kind=c_int) :: i
+    integer(kind=c_int) :: varid          ! Local int to store the variable id from netCDF output
+    integer(kind=c_int) :: dimids(ndim)   ! Local array to store dimension ids
+    character(kind=c_char,len=100) :: check_case ! Error message 
+    integer(kind=c_int) :: ii
   
+    ! Make sure file is still open for variable registration
     if (.not.isopen_out) then
       print *, 'netCDF definition is closed, cannot register new field', field_name
       stop
     end if
   
+    ! Convert C++ strings to fortran format
     call convert_c_string(field_name_in,field_name)
     call convert_c_strarray(ndim,field_dim_in,field_dim)
     if (present(units_in)) call convert_c_string(units_in,units)
   
-    do i = 1,ndim
-      call check( nf90_inq_dimid(ncid_out,trim(field_dim(i)),dimids(i)), 'Reg: get dim ids' )
+    ! Get dimension ID's for dimensions related to field
+    do ii = 1,ndim
+      call check( nf90_inq_dimid(ncid_out,trim(field_dim(ii)),dimids(ii)), 'Reg: get dim ids' )
     end do
   
+    ! Register the variable and units if applicable.
     check_case = 'Add variable '//trim(field_name)
     call check( nf90_def_var(ncid_out,trim(field_name), field_type, dimids, varid), check_case )
     check_case = 'Add variable '//trim(field_name)//', units'
@@ -203,6 +222,7 @@ contains
       call check( nf90_put_att(ncid_out, varid, "units", "unspecified"), check_case )
     end if 
   
+    ! Update the max number of dimensions for output file.
     max_ndims = max(max_ndims,ndim)
   
     return  
@@ -432,6 +452,7 @@ contains
    end subroutine io_writefield_3d_real
 !======================================================================
   subroutine convert_c_string(c_string_ptr,f_string)
+  ! Purpose: To convert a c_string pointer to the proper fortran string format.
     type(c_ptr), intent(in) :: c_string_ptr
     character(len=256), intent(out) :: f_string
     character(len=256), pointer :: temp_string
@@ -445,6 +466,8 @@ contains
   end subroutine convert_c_string
 !======================================================================
   subroutine convert_c_strarray(c_len,c_string_ptr,f_array)
+  ! Purpose: To convert an array of c_string pointers to an array of fortran
+  ! formatted strings.
     integer(kind=c_int), value, intent(in) :: c_len
     type(c_ptr), intent(in) :: c_string_ptr(c_len)
     character(len=256), dimension(c_len), intent(out) :: f_array
@@ -459,6 +482,8 @@ contains
   end subroutine convert_c_strarray
 !======================================================================
   subroutine check(status, head)
+  ! Purpose: Wrapper for standard netCDF commands with more detailed error
+  ! messaging.
     integer(kind=c_int), intent ( in) :: status
     character(kind=c_char,len=*), intent(in) :: head
 
