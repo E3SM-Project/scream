@@ -7,39 +7,24 @@ using scream::Real;
 using scream::Int;
 extern "C" {
 
-  void hello_world_f90(Int myint, Real myreal, char** mychar,Int len_planet, std::string (&planets)[len_planet]);
+
   void simple_out_init1(char** filename,Int ndims,std::string (&dimnames)[ndims],Int* dimrng);
+  void simple_out_regfield(char** field_name,Int field_type,Int ndim,std::string (&field_dim)[ndim],char** units);
   void simple_out_init2();
   void simple_out_finalize();
-  void simple_out_regfield(char** field_name,Int field_type,Int ndim,std::string (&field_dim)[ndim],char** units);
-  void io_writefield_1d_real(char** field_name, Int time_dim, Int data_dim,  Real field_data[data_dim]);
-  void io_writefield_2d_real(char** field_name, Int time_dim, Int* data_dim, Real field_data[data_dim[0]][data_dim[1]]);
-  void io_writefield_3d_real(char** field_name, Int time_dim, Int* data_dim, Real field_data[data_dim[0]][data_dim[1]][data_dim[2]]);
+
   void simple_in_init(char** field_name);
   void simple_in_finalize();
-  void simple_io_get_field_size(char** field_name, Int ndims, Int* ldims);
+
+  void simple_io_get_field_size(char** field_name, Int ncid, Int ndims,  Int* ldims, Int* nspatial_dims);
+
   void io_readfield_real(char** field_name, Int time_dim[2], Int data_dim,  Real field_data[data_dim]);
-  void io_readfield_1d_real(char** field_name, Int time_dim, Int data_dim,  Real field_data[data_dim]);
-  //void io_readfield_2d_real(char** field_name, Int time_dim, Int* data_dim, Real field_data[data_dim[0]][data_dim[1]]);
-  void io_readfield_2d_real(char** field_name, Int time_dim, Int* data_dim, Real** field_data);
-  void io_readfield_3d_real(char** field_name, Int time_dim, Int* data_dim, Real*** field_data);
- // void io_readfield_3d_real(char** field_name, Int time_dim, Int* data_dim, Real field_data[data_dim[0]][data_dim[1]][data_dim[2]]);
+  void io_writefield_real(char** field_name, Int time_dim[2], Int data_dim,  Real field_data[data_dim]);
 
 } // extern C
 
 namespace scream {
 namespace simpleio {
-  typedef std::vector<double> dbl_vector;
-  typedef std::vector<dbl_vector> dbl_2dmatrix;
-  typedef std::vector<dbl_2dmatrix> dbl_3dmatrix;
-/* ----------------------------------------------------------------- */
-int hello_world(int myint, double myreal, char** mychar,int len_planet, 
-    std::string (&planets)[len_planet]) 
-{
-  
-  hello_world_f90(myint, myreal,mychar,len_planet,planets);
-  return 0;
-}
 /* ----------------------------------------------------------------- */
 int init_output1(char** filename, int ndims, std::string (&dimnames)[ndims],
     int* dimrng)
@@ -49,116 +34,72 @@ int init_output1(char** filename, int ndims, std::string (&dimnames)[ndims],
   return 0;
 }
 /* ----------------------------------------------------------------- */
-/* Overload read field function to handle different array sizes     */
-/* ----------------------------------------------------------------- */
-//int readfield(char** field_name, int time_dim, dbl_vector& res)
-//{
-//
-//  int ndims = 1;
-//  int len[1];
-//  simple_io_get_field_size(field_name,ndims,len);
-//
-//  double *field_data = NULL;
-//  field_data = new double[len[0]];
-//  io_readfield_1d_real(field_name,time_dim,len[0],field_data);
-//
-//  for (int i=0; i<len[0]; i++) {
-//    res.push_back( field_data[i] );
-//  }
-//  return 0;
-//}
-/* ----------------------------------------------------------------- */
-int readfield(char** field_name, int time_dim, dbl_3dmatrix& res)
+int writefield(char** field_name, int time_dim, int dlen, double field_data[])
 {
 
-  int ndims = 4;
-  int len[]={1,1,1,1};
+  int ndims = 10;
+  int nspatial_dims=0;
+  int len[ndims];
   int time_in[] = {1,1};
-  simple_io_get_field_size(field_name,ndims,len);
-  if (len[ndims-1]>1) {
-    time_in[0] = ndims;
-    time_in[1] = time_dim;
-  }
-  int flen = 1;
-  for (const auto& e:len) {
-    flen *=e;
-  }
-  double field_data[flen];
-
-  io_readfield_real(field_name,time_in,flen,field_data);
-
-  int ind = 0;
-  for (int i=0; i<len[2]; i++) {
-    dbl_2dmatrix mat;
-    for (int j=0; j<len[1]; j++) {
-      dbl_vector row;
-      for (int k=0; k<len[0]; k++) {
-        row.push_back( field_data[ind] );
-        ind +=1;
-      }
-      mat.push_back(row);
+  simple_io_get_field_size(field_name,1,ndims,len,&nspatial_dims);
+  for (int ii=0;ii<nspatial_dims;ii++) {
+    if (len[ii]==-999) {
+      time_in[0] = ii+1; // Convert to location for Fortran
+      time_in[1] = time_dim;
+      nspatial_dims = nspatial_dims-1;
+      break;
     }
-    res.push_back( mat );
   }
+
+  int flen = 1;
+  for (int i=0;i<nspatial_dims;i++) {
+    flen *=len[i];
+  }
+//  scream::scream_require_msg(flen=dlen,
+//                     "Error! Inconsistency in field lengths when loading data. \n"
+//                     "Check field info for: " + field_name + "\n");
+  
+  io_writefield_real(field_name,time_in,flen,field_data);
 
   return 0;
 }
 /* ----------------------------------------------------------------- */
-int readfield(char** field_name, int time_dim, dbl_2dmatrix& res)
+int readfield(char** field_name, int time_dim, int dlen, double res[])
 {
 
-  int ndims = 3;
-  int len[]={1,1,1};
+  int ndims = 10;
+  int nspatial_dims=0;
+  int len[ndims];
   int time_in[] = {1,1};
-  simple_io_get_field_size(field_name,ndims,len);
-  if (len[ndims-1]>1) {
-    time_in[0] = ndims;
-    time_in[1] = time_dim;
-  }
-  int flen = 1;
-  for (const auto& e:len) {
-    flen *=e;
-  }
-  double field_data[flen];
-
-  io_readfield_real(field_name,time_in,flen,field_data);
-
-  int ind = 0;
-  for (int j=0; j<len[1]; j++) {
-    dbl_vector row;
-    for (int k=0; k<len[0]; k++) {
-      row.push_back( field_data[ind] );
-      ind +=1;
+  simple_io_get_field_size(field_name,0,ndims,len,&nspatial_dims);
+  for (int ii=0;ii<nspatial_dims;ii++) {
+    if (len[ii]==-999) {
+      time_in[0] = ii+1; // Convert to location for Fortran
+      time_in[1] = time_dim;
+      nspatial_dims = nspatial_dims-1;
+      break;
     }
-    res.push_back(row);
   }
 
-  return 0;
-}
-/* ----------------------------------------------------------------- */
-int readfield(char** field_name, int time_dim, dbl_vector& res)
-{
-
-  int ndims = 2;
-  int len[]={1,1};
-  int time_in[] = {1,1};
-  simple_io_get_field_size(field_name,ndims,len);
-  if (len[ndims-1]>1) {
-    time_in[0] = ndims;
-    time_in[1] = time_dim;
-  }
   int flen = 1;
-  for (const auto& e:len) {
-    flen *=e;
+  for (int i=0;i<nspatial_dims;i++) {
+    flen *=len[i];
   }
+//  scream::scream_require_msg(flen==dlen,
+//                     "Error! Inconsistency in field lengths when loading data. \n"
+//                     "Check field info for: " + field_name + "\n");
+  
   double field_data[flen];
 
   io_readfield_real(field_name,time_in,flen,field_data);
 
-  int ind = 0;
-  for (int k=0; k<len[0]; k++) {
-    res.push_back( field_data[ind] );
-    ind +=1;
+  // unwrap fortran field data to match C++ format
+  int src_ind = 0;
+  int tgt_ind = 0;
+  for (int i=0; i<flen; i++) {
+    src_ind = i;
+    res[tgt_ind] = field_data[src_ind];
+    tgt_ind +=1;
   }
 
   return 0;
@@ -195,30 +136,6 @@ int finalize_input()
 int regfield(char** field_name,int field_type,int ndim,std::string (&field_dim)[ndim],char** units)
 {
   simple_out_regfield(field_name,field_type,ndim,field_dim,units);
-
-  return 0;
-}
-/* ----------------------------------------------------------------- */
-/* Overload write field function to handle different array sizes     */
-/* ----------------------------------------------------------------- */
-int writefield(char** field_name, int time_dim, int data_dim, double* field_data)
-{
-
- io_writefield_1d_real(field_name,time_dim,data_dim,field_data); 
-
-  return 0;
-}
-/* ----------------------------------------------------------------- */
-int writefield(char** field_name, int time_dim, int* data_dim, double field_data[data_dim[0]][data_dim[1]])
-{
-  io_writefield_2d_real(field_name,time_dim,data_dim,field_data); 
-
-  return 0;
-}
-/* ----------------------------------------------------------------- */
-int writefield(char** field_name, int time_dim, int* data_dim, double field_data[data_dim[0]][data_dim[1]][data_dim[2]])
-{
-  io_writefield_3d_real(field_name,time_dim,data_dim,field_data); 
 
   return 0;
 }

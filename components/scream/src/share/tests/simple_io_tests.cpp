@@ -10,20 +10,6 @@ namespace {
 
 TEST_CASE("simple_out_mod", "test_simple_out") {
 
-  SECTION("Hello World") {
-/* TODO: Delete
- * Simple hello_world to test input/output and c-binding
- */
-  int myint = 1;
-  double myreal = 3.14;
-  char* mychar = "Aaron";
-  std::string planets[] = {"Mercury", "Venus", "Earth", "Mars", "Saturn", "Jupiter", "Neptune", "Uranus"};
-  const int len_planet = sizeof(planets)/sizeof(planets[0]);
-
-  // Simple Hello World - TODO delete
-  int nerr = scream::simpleio::hello_world(myint, myreal, &mychar,len_planet,planets);
-  REQUIRE (nerr==0);
-  } // Hello world
   SECTION("Test Output") {
 /* ====================================================================
  * Create sample output for simple_io test 
@@ -116,17 +102,17 @@ TEST_CASE("simple_out_mod", "test_simple_out") {
  wrt1 = scream::simpleio::writefield(&fieldname,timelev,dimrng[0],lons);
  wrt = std::max(wrt,wrt1);
  fieldname = "pressure";
- wrt1 = scream::simpleio::writefield(&fieldname,timelev,dim3d,pres);
+ wrt1 = scream::simpleio::writefield(&fieldname,timelev,*dim3d,**pres);
  wrt = std::max(wrt,wrt1);
  fieldname = "temperature";
- wrt1 = scream::simpleio::writefield(&fieldname,timelev,dim3d,temp);
+ wrt1 = scream::simpleio::writefield(&fieldname,timelev,*dim3d,**temp);
  wrt = std::max(wrt,wrt1);
  timelev++;
  fieldname = "pressure";
- wrt1 = scream::simpleio::writefield(&fieldname,timelev,dim3d,pres);
+ wrt1 = scream::simpleio::writefield(&fieldname,timelev,*dim3d,**pres);
  wrt = std::max(wrt,wrt1);
  fieldname = "temperature";
- wrt1 = scream::simpleio::writefield(&fieldname,timelev,dim3d,temp);
+ wrt1 = scream::simpleio::writefield(&fieldname,timelev,*dim3d,**temp);
  wrt = std::max(wrt,wrt1);
 
  REQUIRE(wrt==0);
@@ -144,9 +130,6 @@ TEST_CASE("simple_out_mod", "test_simple_out") {
   SECTION("Test Input") {
 
   // Open the test file
-  typedef std::vector<double> dbl_vector;
-  typedef std::vector<dbl_vector> dbl_2dmatrix;
-  typedef std::vector<dbl_2dmatrix> dbl_3dmatrix;
   char* filename = "pres_temp_4D.nc";
   char* fieldname;
   int rd;
@@ -156,24 +139,21 @@ TEST_CASE("simple_out_mod", "test_simple_out") {
   int time_dim = 1;
 
   fieldname  = "latitude";
-  dbl_vector lat;
-  rd = scream::simpleio::readfield(&fieldname,time_dim,lat);
+  double lat[6];
+  rd = scream::simpleio::readfield(&fieldname,time_dim,6,lat);
+  std::cout << "LAT READ\n";
   for (double n : lat){
     std::cout << n << "\n";
   }
 
   fieldname = "pressure";
-  dbl_3dmatrix pres;
-  rd = scream::simpleio::readfield(&fieldname,time_dim,pres);
-  for (dbl_2dmatrix n1 : pres){
-    for (dbl_vector n2 : n1) {
-      for (double n3 : n2) {
-        std::cout << n3 << " ";
-      }
-      std::cout << "\n";
-    }
-    std::cout << "\n";
+  double pres[144];
+  rd = scream::simpleio::readfield(&fieldname,time_dim,144,pres);
+  std::cout << "PRES READ\n";
+  for (double n3 : pres) {
+    std::cout << n3 << " ";
   }
+  std::cout << "\n";
 
   rd = scream::simpleio::finalize_input();
   REQUIRE(rd==0);

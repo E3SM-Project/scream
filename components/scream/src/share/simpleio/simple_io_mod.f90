@@ -39,34 +39,6 @@ module simple_io_mod
   integer(kind=c_int), allocatable :: start(:)
 
 contains
-
-!======================================================================
-! TODO: Delete this, it is only for testing purposes at the moment.
-  subroutine hello_world_f90(myint,myreal,mychar_c,len_planet,planets_c)  bind(c)
-    integer(kind=c_int), value, intent(in) :: myint
-    real(kind=c_real), value, intent(in) :: myreal
-    type(c_ptr), intent(in) :: mychar_c
-    integer(kind=c_int), value, intent(in) :: len_planet
-    type(c_ptr), intent(in) :: planets_c(len_planet)
-    character(kind=c_char, len=128) :: string
-    
-    integer :: len, lenp, i
-    character(len=256) :: mychar
-    character(len=256) :: planets
-    character(len=256), dimension(len_planet) :: myplanets
-
-    call convert_c_string(mychar_c,mychar)
-    call convert_c_strarray(len_planet,planets_c,myplanets)
-
-    string = "Hello World"
-    print *, ""
-    print *, trim(string), myint, myreal, trim(mychar)
-    do i = 1,len_planet
-      print *, 'Hello ', trim(myplanets(i))
-    end do
-    print *, ""
-
-  end subroutine hello_world_f90
 !======================================================================
   subroutine simple_in_init(filename_in) bind(c)
   ! Purpose: Open a netcdf file to be used for input to C++.
@@ -93,24 +65,34 @@ contains
     return
   end subroutine simple_in_finalize
 !======================================================================
-  subroutine simple_io_get_field_size(fieldname_in,ndims,ldims) bind(c)
+  subroutine simple_io_get_field_size(fieldname_in,ncid,ndims,ldims,ndim_local) bind(c)
 
     type(c_ptr), intent(in)          :: fieldname_in
+    integer(kind=c_int), value, intent(in)  :: ncid
     integer(kind=c_int), value, intent(in)  :: ndims
     integer(kind=c_int), intent(out) :: ldims(ndims)
+    integer(kind=c_int), intent(out) :: ndim_local
 
-    character(len=256) :: fieldname
-    integer :: varid, ndim_local, dimids(ndims)
+    character(len=256) :: fieldname, dimname
+    integer :: varid, dimids(ndims),ncid_loc
     integer :: n
   
     call convert_c_string(fieldname_in,fieldname)
+    if (ncid.eq.0) then
+      ncid_loc = ncid_in
+    else
+      ncid_loc = ncid_out
+    end if
     
-    call check( nf90_inq_varid(ncid_in, fieldname, varid), "get VAR Id" )
-    call check( nf90_inquire_variable(ncid_in, varid, dimids=dimids, ndims=ndim_local), "get VAR-Dim Ids" )
+    call check( nf90_inq_varid(ncid_loc, fieldname, varid), "get VAR Id" )
+    call check( nf90_inquire_variable(ncid_loc, varid, dimids=dimids, ndims=ndim_local), "get VAR-Dim Ids" )
 
-    ldims(:) = 1
+    ldims(:) = 0
     do n = 1,ndim_local
-      call check( nf90_inquire_dimension(ncid_in, dimids(n), len=ldims(n)), "get Var-Dim Len's" )
+      call check( nf90_inquire_dimension(ncid_loc, dimids(n), len=ldims(n), name=dimname), "get Var-Dim Len's" )
+      if (trim(dimname)=='Time'.or.trim(dimname)=='time') then
+        ldims(n) = -999
+      end if
     end do
     
     return
@@ -229,34 +211,55 @@ contains
   end subroutine simple_out_regfield
 !======================================================================
    subroutine io_readfield_real(field_name_in, time_dim, flen, field_data) bind(c)
-   
-   type(c_ptr), intent(in)      :: field_name_in
-   integer(kind=c_int), intent(in) :: time_dim(2)
-   integer(kind=c_int), value, intent(in) :: flen
-   real(kind=c_real),intent(out) :: field_data(flen)
+   ! Purpose: To read an input field from the input netCDF file and put it into
+   ! the proper C++ format.
+   ! Note that in order to grab a field from netCDF we need a local fortran
+   ! array of at least the right dimension.  Since we can not declare a local
+   ! array with arbitrary dimensionality, we assume a max dimension size of 6
+   ! here.  At which point we only allocate for the total number of dimensions
+   ! in the field.  Given that this is a simple interface that will be replaced
+   ! it didn't make sense to spend too much time coming up with a more
+   ! sophisticated way to handle this issue.
+ 
+   type(c_ptr), intent(in)                :: field_name_in  ! Field name in C++ format
+   integer(kind=c_int), intent(in)        :: time_dim(2)    ! Time dimension information which will be used for fields with a time dimension
+   integer(kind=c_int), value, intent(in) :: flen           ! Full length of field in 1-D, i.e. flen=prod(field_dim_rng)
+   real(kind=c_real),intent(out)          :: field_data(flen) ! 1-D vector to store field information
 
    real(kind=c_real), allocatable :: local_data(:,:,:,:,:,:)
-   character(len=256)  :: field_name
-   integer             :: ndims, varid
-   integer             :: dimids(6), dimlens(6), start(6)
-   integer(kind=c_int) :: i, dimprod
+   character(len=256)  :: field_name   ! Field name in fortran format
+   integer             :: ndims, ndims_spatial,  varid ! Variable id and number of dimensions for variable
+   integer             :: dimids(6), dimlens(6), start(6) ! Storage of dimension ids, lengths and starting point for read.  Note that start is needed to deal with variables that have a time dimension
+   integer(kind=c_int) :: dimprod ! Check to make sure that field_data is long enough to fit all data.
+   character(len=256)  :: dimname
+   integer(kind=c_int) :: ii
 
+   ! Convert field name to fortran string
    call convert_c_string(field_name_in,field_name)
 
-   call check( nf90_inq_varid(ncid_out, trim(field_name), varid), 'Get variable ID' )
+   ! Retrieve the variable and dimension ids for this field
+   call check( nf90_inq_varid(ncid_in, trim(field_name), varid), 'Get variable ID' )
    call check( nf90_inquire_variable(ncid_in,varid,ndims = ndims,dimids=dimids), 'Get variable DIMS' )
    
+   ! Gather the max range for each dimension.
    dimprod = 1 ! Check that flen and dim lens match
    dimlens(:) = 0
-   do i = 1,ndims
-     call check( nf90_inquire_dimension(ncid_in, dimids(i), len=dimlens(i)),  'Get dim lens' ) 
-     dimprod = dimprod*dimlens(i)
+   ndims_spatial = ndims
+   do ii = 1,ndims
+     call check( nf90_inquire_dimension(ncid_in, dimids(ii), len=dimlens(ii),name=dimname),  'Get dim lens' ) 
+      if (trim(dimname).ne.'Time'.and.trim(dimname).ne.'time') then
+        dimprod = dimprod*dimlens(ii)
+       else
+        ndims_spatial = ndims_spatial-1
+      end if
    end do
+   ndims = ndims_spatial
    if (dimprod.ne.flen) then
      print *, 'Field len = ', flen, ' and total dimension len = ',dimprod, ' does not match, exiting...'
      stop
    end if
 
+   ! Allocate local data array to retrieve variable data
    select case (ndims)
      case (1)
        allocate(local_data(dimlens(1),1,1,1,1,1))
@@ -274,182 +277,104 @@ contains
        print *, "READFIELD: ndims > 6 not supported"
        stop
    end select
+
+   ! Determine the starting position for all dimensions (important for time dimension)
    start(:) = 1
    start(time_dim(1)) = time_dim(2)
+   ! Retrieve variable data from file and store in local data array.
    call check( nf90_get_var(ncid_in,varid, local_data, start=start), 'Get variable info')
+   ! Reshape local_data array into a 1D vector to be passed out to C++
    field_data = reshape(local_data, (/ flen /))
+
+   deallocate(local_data)
 
    return
    end subroutine io_readfield_real
-   !******************************************************************
-   ! 1D
-   subroutine io_readfield_1d_real(field_name_in,time_dim,dims,field_data) bind(c)
-
-   type(c_ptr), intent(in)      :: field_name_in
-   integer(kind=c_int), value, intent(in) :: time_dim
-   integer(kind=c_int), value, intent(in) :: dims
-   real(kind=c_real),intent(out) :: field_data(dims)
-
-   character(len=256)  :: field_name
-   integer(kind=c_int) :: ndims
-   integer(kind=c_int) :: varid
-   integer(kind=c_int) :: this_dim
-
-   call convert_c_string(field_name_in,field_name)
-   this_dim = 1 
-
-   call check( nf90_inq_varid(ncid_out, trim(field_name), varid), 'Get variable ID' )
-   call check( nf90_inquire_variable(ncid_out,varid,ndims = ndims), 'Get variable DIMS' )
-   if (ndims.gt.this_dim) then ! Then there is a time dimension, handle appropriately.
-     start(:) = 1
-     start(ndims) = time_dim
-     call check( nf90_get_var(ncid_in, varid, field_data, start = start), 'Read field' )
-   else
-     call check( nf90_get_var(ncid_in, varid, field_data), 'Read Field' )
-   end if ! ndim > N
-
-   end subroutine io_readfield_1d_real
-   !******************************************************************
-   ! 2D
-   subroutine io_readfield_2d_real(field_name_in,time_dim,dims,field_data) bind(c)
-
-   type(c_ptr), intent(in)      :: field_name_in
-   integer(kind=c_int), value, intent(in) :: time_dim
-   integer(kind=c_int), intent(in) :: dims(2)
-   real(kind=c_real),intent(out) :: field_data(dims(1),dims(2))
-
-   character(len=256)  :: field_name
-   integer(kind=c_int) :: ndims
-   integer(kind=c_int) :: varid
-   integer(kind=c_int) :: this_dim
-
-   call convert_c_string(field_name_in,field_name)
-   this_dim = 2 
-
-   call check( nf90_inq_varid(ncid_out, trim(field_name), varid), 'Get variable ID' )
-   call check( nf90_inquire_variable(ncid_out,varid,ndims = ndims), 'Get variable DIMS' )
-   if (ndims.gt.this_dim) then ! Then there is a time dimension, handle appropriately.
-     start(:) = 1
-     start(ndims) = time_dim
-     call check( nf90_get_var(ncid_in, varid, field_data, start = start), 'Read field' )
-   else
-     call check( nf90_get_var(ncid_in, varid, field_data), 'Read Field' )
-   end if ! ndim > N
-
-   end subroutine io_readfield_2d_real
-   !******************************************************************
-   ! 3D
-   subroutine io_readfield_3d_real(field_name_in,time_dim,dims,field_data) bind(c)
-
-   type(c_ptr), intent(in)      :: field_name_in
-   integer(kind=c_int), value, intent(in) :: time_dim
-   integer(kind=c_int), intent(in) :: dims(3)
-   real(kind=c_real),intent(out) :: field_data(dims(1),dims(2),dims(3))
-
-   character(len=256)  :: field_name
-   integer(kind=c_int) :: ndims
-   integer(kind=c_int) :: varid
-   integer(kind=c_int) :: this_dim
-
-   call convert_c_string(field_name_in,field_name)
-   this_dim = 3 
-
-   call check( nf90_inq_varid(ncid_out, trim(field_name), varid), 'Get variable ID' )
-   call check( nf90_inquire_variable(ncid_out,varid,ndims = ndims), 'Get variable DIMS' )
-   if (ndims.gt.this_dim) then ! Then there is a time dimension, handle appropriately.
-     start(:) = 1
-     start(ndims) = time_dim
-     call check( nf90_get_var(ncid_in, varid, field_data, start = start), 'Read field' )
-   else
-     call check( nf90_get_var(ncid_in, varid, field_data), 'Read Field' )
-   end if ! ndim > N
-
-   end subroutine io_readfield_3d_real
 !======================================================================
-   !******************************************************************
-   ! 1D
-   subroutine io_writefield_1d_real(field_name_in,time_dim,dims,field_data) bind(c)
+   subroutine io_writefield_real(field_name_in, time_dim, flen, field_data) bind(c)
+   ! Purpose: To write an output field to the output netCDF file and put it into
+   ! the proper C++ format.
+   ! Note that in order to grab a field from netCDF we need a local fortran
+   ! array of at least the right dimension.  Since we can not declare a local
+   ! array with arbitrary dimensionality, we assume a max dimension size of 6
+   ! here.  At which point we only allocate for the total number of dimensions
+   ! in the field.  Given that this is a simple interface that will be replaced
+   ! it didn't make sense to spend too much time coming up with a more
+   ! sophisticated way to handle this issue.
+ 
+   type(c_ptr), intent(in)                :: field_name_in  ! Field name in C++ format
+   integer(kind=c_int), intent(in)        :: time_dim(2)    ! Time dimension information which will be used for fields with a time dimension
+   integer(kind=c_int), value, intent(in) :: flen           ! Full length of field in 1-D, i.e. flen=prod(field_dim_rng)
+   real(kind=c_real),intent(in)           :: field_data(flen) ! 1-D vector to store field information
 
-   type(c_ptr), intent(in)      :: field_name_in
-   integer(kind=c_int), value, intent(in) :: time_dim
-   integer(kind=c_int), value, intent(in) :: dims
-   real(kind=c_real),intent(in) :: field_data(dims)
+   real(kind=c_real), allocatable :: local_data(:,:,:,:,:,:)
+   character(len=256)  :: field_name   ! Field name in fortran format
+   integer             :: ndims, ndims_spatial, varid ! Variable id and number of dimensions for variable
+   integer             :: dimids(6), dimlens(6), start(6) ! Storage of dimension ids, lengths and starting point for read.  Note that start is needed to deal with variables that have a time dimension
+   integer(kind=c_int) :: dimprod ! Check to make sure that field_data is long enough to fit all data.
+   character(len=256)  :: dimname
+   integer(kind=c_int) :: ii
 
-   character(len=256)  :: field_name
-   integer(kind=c_int) :: ndims
-   integer(kind=c_int) :: varid
-   integer(kind=c_int) :: this_dim
-
+   ! Convert field name to fortran string
    call convert_c_string(field_name_in,field_name)
-   this_dim = 1 
 
+   ! Retrieve the variable and dimension ids for this field
    call check( nf90_inq_varid(ncid_out, trim(field_name), varid), 'Get variable ID' )
-   call check( nf90_inquire_variable(ncid_out,varid,ndims = ndims), 'Get variable DIMS' )
-   if (ndims.gt.this_dim) then ! Then there is a time dimension, handle appropriately.
-     start(:) = 1
-     start(ndims) = time_dim
-     call check( nf90_put_var(ncid_out, varid, field_data, start = start), 'Write field' )
-   else
-     call check( nf90_put_var(ncid_out, varid, field_data), 'Write Field' )
-   end if ! ndim > N
+   call check( nf90_inquire_variable(ncid_out,varid,ndims = ndims,dimids=dimids), 'Get variable DIMS' )
+   
+   ! Gather the max range for each dimension.
+   dimprod = 1 ! Check that flen and dim lens match
+   dimlens(:) = 0
+   ndims_spatial = ndims
+   do ii = 1,ndims
+     call check( nf90_inquire_dimension(ncid_out, dimids(ii), len=dimlens(ii), name=dimname),  'Get dim lens' ) 
+     if (trim(dimname).ne.'Time'.and.trim(dimname).ne.'time') then
+       dimprod = dimprod*dimlens(ii)
+       else
+        ndims_spatial = ndims_spatial-1
+     end if
+   end do
+   ndims = ndims_spatial
+   if (dimprod.ne.flen) then
+     print *, 'Field len = ', flen, ' and total dimension len = ',dimprod, ' does not match, exiting...'
+     stop
+   end if
 
-   end subroutine io_writefield_1d_real
-   !******************************************************************
-   ! 2D
-   subroutine io_writefield_2d_real(field_name_in,time_dim,dims,field_data) bind(c)
+   ! Allocate local data array to retrieve variable data
+   select case (ndims)
+     case (1)
+       allocate(local_data(dimlens(1),1,1,1,1,1))
+       local_data(:,1,1,1,1,1) = field_data
+     case (2)
+       allocate(local_data(dimlens(1),dimlens(2),1,1,1,1))
+       local_data(:,:,1,1,1,1) = reshape(field_data, dimlens(:2))
+     case (3)
+       allocate(local_data(dimlens(1),dimlens(2),dimlens(3),1,1,1))
+       local_data(:,:,:,1,1,1) = reshape(field_data, dimlens(:3))
+     case (4)
+       allocate(local_data(dimlens(1),dimlens(2),dimlens(3),dimlens(4),1,1))
+       local_data(:,:,:,:,1,1) = reshape(field_data, dimlens(:4))
+     case (5)
+       allocate(local_data(dimlens(1),dimlens(2),dimlens(3),dimlens(4),dimlens(5),1))
+       local_data(:,:,:,:,:,1) = reshape(field_data, dimlens(:5))
+     case (6)
+       allocate(local_data(dimlens(1),dimlens(2),dimlens(3),dimlens(4),dimlens(5),dimlens(6)))
+       local_data(:,:,:,:,:,:) = reshape(field_data, dimlens(:6))
+     case default
+       print *, "WRITEFIELD: ndims > 6 not supported"
+       stop
+   end select
 
-   type(c_ptr), intent(in)         :: field_name_in
-   integer(kind=c_int), value, intent(in) :: time_dim
-   integer(kind=c_int), intent(in) :: dims(2)
-   real(kind=c_real),intent(in)    :: field_data(dims(1),dims(2))
+   ! Determine the starting position for all dimensions (important for time dimension)
+   start(:) = 1
+   start(time_dim(1)) = time_dim(2)
+   ! Retrieve variable data from file and store in local data array.
+   call check( nf90_put_var(ncid_out, varid, local_data, start = start), 'Write field' )
 
-   character(len=256)  :: field_name
-   integer(kind=c_int) :: ndims
-   integer(kind=c_int) :: varid
-   integer(kind=c_int) :: this_dim
+   deallocate(local_data)
 
-   call convert_c_string(field_name_in,field_name)
-   this_dim = 2
-
-   call check( nf90_inq_varid(ncid_out, trim(field_name), varid), 'Get variable ID' )
-   call check( nf90_inquire_variable(ncid_out,varid,ndims = ndims), 'Get variable DIMS' )
-   if (ndims.gt.this_dim) then ! Then there is a time dimension, handle appropriately.
-     start(:) = 1
-     start(ndims) = time_dim
-     call check( nf90_put_var(ncid_out, varid, field_data, start = start), 'Write field' )
-   else
-     call check( nf90_put_var(ncid_out, varid, field_data), 'Write Field' )
-   end if ! ndim > N
-
-   end subroutine io_writefield_2d_real
-   !******************************************************************
-   ! 3D
-   subroutine io_writefield_3d_real(field_name_in,time_dim,dims,field_data) bind(c)
-
-   type(c_ptr), intent(in)         :: field_name_in
-   integer(kind=c_int), value, intent(in) :: time_dim
-   integer(kind=c_int), intent(in) :: dims(3)
-   real(kind=c_real),intent(in)    :: field_data(dims(1),dims(2),dims(3))
-
-   character(len=256)  :: field_name
-   integer(kind=c_int) :: ndims
-   integer(kind=c_int) :: varid
-   integer(kind=c_int) :: this_dim
-
-   call convert_c_string(field_name_in,field_name)
-   this_dim = 3
-
-   call check( nf90_inq_varid(ncid_out, trim(field_name), varid), 'Get variable ID' )
-   call check( nf90_inquire_variable(ncid_out,varid,ndims = ndims), 'Get variable DIMS' )
-   if (ndims.gt.this_dim) then ! Then there is a time dimension, handle appropriately.
-     start(:) = 1
-     start(ndims) = time_dim
-     call check( nf90_put_var(ncid_out, varid, field_data, start = start), 'Write field' )
-   else
-     call check( nf90_put_var(ncid_out, varid, field_data), 'Write Field' )
-   end if ! ndim > N
-
-   end subroutine io_writefield_3d_real
+   return
+   end subroutine io_writefield_real
 !======================================================================
   subroutine convert_c_string(c_string_ptr,f_string)
   ! Purpose: To convert a c_string pointer to the proper fortran string format.
