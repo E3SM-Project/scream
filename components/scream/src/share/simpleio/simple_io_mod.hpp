@@ -26,9 +26,9 @@ int init_input(char** filename);
 int finalize_input();
 int regfield(char** field_name,int field_type,int ndim,std::string (&field_dim)[ndim],char** units);
 // Overload write functions to accomodate types TODO: ADD an int version
-int writefield(char** field_name, int tim_dim, int dlen, double res[]);
+int writefield(char** field_name, int tim_dim, int dlen[], double res[]);
 // Overload read functions to accomodate types TODO: ADD an int version
-int readfield(char** field_name, int tim_dim, int dlen, double res[]);
+int readfield(char** field_name, int tim_dim, int dlen[], double res[]);
 
 } // namespace simpleio
 } // namespace scream

@@ -17,20 +17,18 @@ TEST_CASE("simple_out_mod", "test_simple_out") {
   // Create sample output:
   double lats[6]={0,0,0,0,0,0};
   double lons[12];
-  double pres[2][6][12], temp[2][6][12];
+  double pres[12][6][2], temp[12][6][2];
   for (int n=0; n<6; n++) {
     lats[n] = 25.0 + (n) * 5.0;
   }
   for (int n=0; n<12; n++) {
     lons[n] = -125.0 + (n) * 5.0;
   }
-  int n = 0;
   for (int k=0; k<2;k++) {
     for (int i=0; i<6; i++) {
       for (int j=0; j<12; j++) {
-        pres[k][i][j] = 900.0 + float(n);
-        temp[k][i][j] = 9.0   + float(n);
-        n = n+1;
+        pres[j][i][k] = j*100.+i*10.+k;
+        temp[j][i][k] = j+i+k;
       }
     }
   }
@@ -96,23 +94,23 @@ TEST_CASE("simple_out_mod", "test_simple_out") {
  int wrt=0, wrt1;
  int timelev = 1;
  fieldname = "latitude";
- wrt1 = scream::simpleio::writefield(&fieldname,timelev,dimrng[1],lats);
+ wrt1 = scream::simpleio::writefield(&fieldname,timelev,&dimrng[1],lats);
  wrt = std::max(wrt,wrt1);
  fieldname = "longitude";
- wrt1 = scream::simpleio::writefield(&fieldname,timelev,dimrng[0],lons);
+ wrt1 = scream::simpleio::writefield(&fieldname,timelev,&dimrng[0],lons);
  wrt = std::max(wrt,wrt1);
  fieldname = "pressure";
- wrt1 = scream::simpleio::writefield(&fieldname,timelev,*dim3d,**pres);
+ wrt1 = scream::simpleio::writefield(&fieldname,timelev,dim3d,**pres);
  wrt = std::max(wrt,wrt1);
  fieldname = "temperature";
- wrt1 = scream::simpleio::writefield(&fieldname,timelev,*dim3d,**temp);
+ wrt1 = scream::simpleio::writefield(&fieldname,timelev,dim3d,**temp);
  wrt = std::max(wrt,wrt1);
  timelev++;
  fieldname = "pressure";
- wrt1 = scream::simpleio::writefield(&fieldname,timelev,*dim3d,**pres);
+ wrt1 = scream::simpleio::writefield(&fieldname,timelev,dim3d,**pres);
  wrt = std::max(wrt,wrt1);
  fieldname = "temperature";
- wrt1 = scream::simpleio::writefield(&fieldname,timelev,*dim3d,**temp);
+ wrt1 = scream::simpleio::writefield(&fieldname,timelev,dim3d,**temp);
  wrt = std::max(wrt,wrt1);
 
  REQUIRE(wrt==0);
@@ -137,21 +135,32 @@ TEST_CASE("simple_out_mod", "test_simple_out") {
   rd = scream::simpleio::init_input(&filename);
 
   int time_dim = 1;
+  int dlen[3];
 
   fieldname  = "latitude";
   double lat[6];
-  rd = scream::simpleio::readfield(&fieldname,time_dim,6,lat);
+  dlen[0] = 6;
+  rd = scream::simpleio::readfield(&fieldname,time_dim,dlen,lat);
   std::cout << "LAT READ\n";
   for (double n : lat){
     std::cout << n << "\n";
   }
 
   fieldname = "pressure";
-  double pres[144];
-  rd = scream::simpleio::readfield(&fieldname,time_dim,144,pres);
+  double pres[12][6][2];
+  dlen[0] = 12;
+  dlen[1] = 6;
+  dlen[2] = 2;
+  rd = scream::simpleio::readfield(&fieldname,time_dim,dlen,**pres);
   std::cout << "PRES READ\n";
-  for (double n3 : pres) {
-    std::cout << n3 << " ";
+  for (int k=0;k<2;k++) {
+    for (int j=0;j<6;j++) {
+      for (int i=0;i<12;i++) {
+        std::cout << pres[i][j][k] << "\t";
+      }
+      std::cout << "\n";
+    }
+    std::cout << "\n";
   }
   std::cout << "\n";
 
