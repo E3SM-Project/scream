@@ -141,12 +141,18 @@ int writefield(char** field_name, int time_dim, int dlen[], double field_data[])
   }
 
   int flen = 1;
+  int dlen_prod = 1;
+  int len_chk = 0;
   for (int i=0;i<nspatial_dims;i++) {
     flen *=len[i];
+    dlen_prod *= dlen[i];
+    len_chk += len[i];
+    len_chk -= dlen[i];
   }
-//  scream::scream_require_msg(flen=dlen,
-//                     "Error! Inconsistency in field lengths when loading data. \n"
-//                     "Check field info for: " + field_name + "\n");
+  scream_require_msg(flen==dlen_prod,
+                     "I/O Error! Inconsistency in field lengths for writefield, CHK1. \n");
+  scream_require_msg(len_chk==0,
+                     "I/O Error! Inconsistency in field lengths for writefield, CHK2. \n");
 
   // unwrap c++ field data to match fortran format
   // we assume that dlen and len have the same dimensions but possibly in a different order
@@ -199,16 +205,18 @@ int readfield(char** field_name, int time_dim, int dlen[], double res[])
   }
 
   int flen = 1;
-  int len_chk[2] = {1,0};
+  int dlen_prod = 1;
+  int len_chk = 0;
   for (int i=0;i<nspatial_dims;i++) {
     flen *=len[i];
-    len_chk[0] *= dlen[i];
-    len_chk[1] += len[i];  // len_chk[0] should equal flen if dlen and len have the same set of dimensions
-    len_chk[1] -= dlen[i]; // len_chk[1] should equal zero if dlen and len have the same set of dimensions
+    dlen_prod *= dlen[i];
+    len_chk += len[i]; 
+    len_chk -= dlen[i];
   }
-//  scream::scream_require_msg(flen==dlen,
-//                     "Error! Inconsistency in field lengths when loading data. \n"
-//                     "Check field info for: " + field_name + "\n");
+  scream_require_msg(flen==dlen_prod,
+                     "I/O Error! Inconsistency in field lengths for readfield, CHK1. \n");
+  scream_require_msg(len_chk==0,
+                     "I/O Error! Inconsistency in field lengths for readfield, CHK2. \n");
   
   double field_data[flen];
 
