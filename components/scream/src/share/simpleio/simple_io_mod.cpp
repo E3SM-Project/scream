@@ -2,6 +2,7 @@
 
 #include "share/scream_assert.hpp"
 #include "share/util/scream_utils.hpp"
+#include <netcdf.h>
 
 using scream::Real;
 using scream::Int;
@@ -114,13 +115,118 @@ int indice_convert_fortran_to_c(const int f_ind, const int ndims, const int fdim
   return c_ind;
 }
 /* ----------------------------------------------------------------- */
+void convert_string_to_char(std::string str_in,char str_out[str_in.size()+1]) {
+
+  str_in.copy(str_out,str_in.size()+1);
+  str_out[str_in.size()] = '\0';
+
+}
+/* ----------------------------------------------------------------- */
+int init_output1_c(std::string filename, int ndims, std::string (&dimnames)[ndims],
+    int* dimrng)
+{
+
+  int nc_err, ncid;
+  int dimids[ndims];
+
+  char filename_in[filename.size()+1];
+  convert_string_to_char(filename,filename_in);
+  nc_err = nc_create(filename_in, NC_CLOBBER, &ncid);
+  scream_require_msg(nc_err==0,"NC Create Error! \n");
+
+  char dimname_in[256];
+  for (int i=0;i<ndims;i++) {
+    convert_string_to_char(dimnames[i],dimname_in);
+    nc_err = nc_def_dim(ncid,dimname_in, dimrng[i], &dimids[i]);
+    scream_require_msg(nc_err==0,"NC Define Dim Error! \n");
+  }
+
+  return ncid;
+
+}
+/* ----------------------------------------------------------------- */
+void init_output2_c(int ncid)
+{
+
+  int nc_err = nc_enddef(ncid);
+  scream_require_msg(nc_err==0,"NC Error! Finish NC metadata \n");
+
+}
 /* ----------------------------------------------------------------- */
 int init_output1(char** filename, int ndims, std::string (&dimnames)[ndims],
     int* dimrng)
 {
+
   simple_out_init1(filename,ndims,dimnames,dimrng);
 
   return 0;
+}
+/* ----------------------------------------------------------------- */
+void regfield_c(int ncid,std::string field_name,int field_type,int ndim,std::string (&field_dim)[ndim],std::string units)
+{
+
+  char field_in[field_name.size()+1];
+  char dimname[256];
+  char units_in[256];
+  int dimids[ndim];
+  int varid;
+  int nc_err;
+
+  // Extract dimension id dependent on the dimension names
+  for (int ii=0;ii<ndim;ii++) {
+    convert_string_to_char(field_dim[ii],dimname);
+    nc_err = nc_inq_dimid(ncid,dimname,&dimids[ii]);
+    scream_require_msg(nc_err==0,"NC Get dimid Error! \n");
+  }
+ 
+  // Register the field 
+  convert_string_to_char(field_name,field_in);
+  nc_err = nc_def_var(ncid,field_in,field_type,ndim,dimids,&varid);
+  scream_require_msg(nc_err==0,"NC Var Create Error! \n");
+
+  // Add the units attribute
+  convert_string_to_char(units,units_in);
+  nc_err = nc_put_att(ncid,varid,"units",NC_CHAR,units.size()+1,units_in);
+  scream_require_msg(nc_err==0,"NC Var Units Error! \n");
+}
+/* ----------------------------------------------------------------- */
+void writefield_c(int ncid,std::string field_name, double &data, int time_dim)
+{
+
+  char fieldname[256];
+  int varid;
+  int nc_err;
+  int ndims;
+
+  convert_string_to_char(field_name,fieldname);
+
+  nc_err = nc_inq_varid(ncid,fieldname,&varid);
+  scream_require_msg(nc_err==0,"NC Var Inq ID Error! \n");
+  nc_err = nc_inq_varndims(ncid,varid,&ndims);
+  size_t start[ndims];
+  size_t count[ndims];
+  int dimids[ndims];
+  nc_err = nc_inq_vardimid(ncid,varid,dimids);
+  for (int ii=0;ii<ndims;ii++) {
+    nc_err = nc_inq_dimlen(ncid,dimids[ii],&count[ii]);
+    start[ii] = 0;
+  }
+  if (time_dim >= 0) {
+    count[0] = 1;
+    start[0] = time_dim;
+  }
+  
+  nc_err = nc_put_vara(ncid,varid, start, count, &data);
+  scream_require_msg(nc_err==0,"NC Write Data Error! \n");
+
+}
+/* ----------------------------------------------------------------- */
+void finalize_output_c(int ncid)
+{
+
+  int nc_err = nc_close(ncid);
+  scream_require_msg(nc_err==0,"NC Error! Close NC file \n");
+
 }
 /* ----------------------------------------------------------------- */
 int writefield(char** field_name, int time_dim, int dlen[], double field_data[])
@@ -285,6 +391,39 @@ int regfield(char** field_name,int field_type,int ndim,std::string (&field_dim)[
   simple_out_regfield(field_name,field_type,ndim,field_dim,units);
 
   return 0;
+}
+/* ----------------------------------------------------------------- */
+int  simple_cpp_netcdf() {
+
+  static const int NDIMS = 2;
+  static const int NX = 6;
+  static const int NY = 12;
+
+  std::cout << "netcdf c is running!\n";
+
+  int ncid, retval;
+  retval = nc_create("simple_xy.nc", NC_CLOBBER, &ncid);
+
+  int xDim, yDim;
+  retval = nc_def_dim(ncid,"x", NX, &xDim);
+  retval = nc_def_dim(ncid,"y", NY, &yDim);
+
+  int data;
+  int dimids[2] = {xDim, yDim};
+  retval = nc_def_var(ncid,"data", NC_INT, 2, dimids, &data);
+
+  retval = nc_enddef(ncid);
+
+  int dataOut[NX][NY];
+  for(int i = 0; i < NX; i++)
+      for(int j = 0; j < NY; j++)
+         dataOut[i][j] = i * NY + j;
+
+  retval = nc_put_var_int(ncid,data,&dataOut[0][0]);
+  retval = nc_close(ncid);
+
+  return retval;
+
 }
 
 } // namespace simpleio

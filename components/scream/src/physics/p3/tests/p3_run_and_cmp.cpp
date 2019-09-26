@@ -8,12 +8,15 @@
 #include "physics/p3/p3_functions_f90.hpp"
 #include "physics/p3/p3_ic_cases.hpp"
 
+#include "share/simpleio/simple_io_mod.hpp"
+
 #include <vector>
 
 namespace {
 using namespace scream;
 using namespace scream::util;
 using namespace scream::p3;
+using namespace scream::simpleio;
 
 template <typename Scalar>
 static Int compare (const std::string& label, const Scalar* a,
@@ -76,6 +79,17 @@ struct Baseline {
       // Save the fields to the baseline file.
       write(fid, d);
     }
+    // Add simple io stuff
+    const int ndims = 3;
+    std::string dimnames[] = {"time","column","level"};
+    std::string nc_filename = "";
+    nc_filename.append(filename.c_str());
+    nc_filename.append(".nc");
+    int dimrng[] = {0,ic_ncol,72};
+    int ncid = init_output1_c(nc_filename, ndims, dimnames, dimrng);
+    init_output2_c(ncid);
+    finalize_output_c(ncid);
+    
     return nerr;
   }
 
