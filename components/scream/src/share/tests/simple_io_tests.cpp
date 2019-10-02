@@ -97,56 +97,47 @@ TEST_CASE("simple_out_mod", "test_simple_out") {
 /* ====================================================================
  * Finished with test, close netCDF file
  * ==================================================================== */
-  scream::simpleio::finalize_output_c(ncid);
+  scream::simpleio::finalize_io_c(ncid);
   REQUIRE(cerr==0);
 
   delete [] myfields;
   }
 
-// * ==================================================================== */
-//  SECTION("Test Input") {
+ /* ==================================================================== */
+  SECTION("Test Input") {
+
+  // Open the test file
+  std::string filename = "pres_temp_4D.nc";
+  int ncid_in;
+
+  ncid_in = scream::simpleio::init_input_c(filename);
+  std::string fieldname;
+
+  fieldname  = "latitude";
+  double lat[6];
+  scream::simpleio::readfield_c(ncid_in,fieldname,lat[0],-1);
+  std::cout << "LAT READ\n";
+  for (double n : lat){
+    std::cout << n << "\n";
+  }
 //
-//  // Open the test file
-//  char* filename = "pres_temp_4D.nc";
-//  char* fieldname;
-//  int rd;
-//
-//  rd = scream::simpleio::init_input(&filename);
-//
-//  int time_dim = 1;
-//  int dlen[3];
-//
-//  fieldname  = "latitude";
-//  double lat[6];
-//  dlen[0] = 6;
-//  rd = scream::simpleio::readfield(&fieldname,time_dim,dlen,lat);
-//  std::cout << "LAT READ\n";
-//  for (double n : lat){
-//    std::cout << n << "\n";
-//  }
-//
-//  fieldname = "pressure";
-//  double pres[12][6][2];
-//  dlen[0] = 12;
-//  dlen[1] = 6;
-//  dlen[2] = 2;
-//  rd = scream::simpleio::readfield(&fieldname,time_dim,dlen,**pres);
-//  std::cout << "PRES READ\n";
-//  for (int k=0;k<2;k++) {
-//    for (int j=0;j<6;j++) {
-//      for (int i=0;i<12;i++) {
-//        std::cout << pres[i][j][k] << "\t";
-//      }
-//      std::cout << "\n";
-//    }
-//    std::cout << "\n";
-//  }
-//  std::cout << "\n";
-//
-//  rd = scream::simpleio::finalize_input();
-//  REQUIRE(rd==0);
-//
-//  } // Test Input
+  fieldname = "pressure";
+  double pres[12][6][2];
+  scream::simpleio::readfield_c(ncid_in,fieldname,pres[0][0][0],0);
+  std::cout << "PRES READ\n";
+  for (int k=0;k<2;k++) {
+    for (int j=0;j<6;j++) {
+      for (int i=0;i<12;i++) {
+        std::cout << pres[i][j][k] << "\t";
+      }
+      std::cout << "\n";
+    }
+    std::cout << "\n";
+  }
+  std::cout << "\n";
+
+  scream::simpleio::finalize_io_c(ncid_in);
+  } // Test Input
 
 } // TEST_CASE
 } // empty namespace

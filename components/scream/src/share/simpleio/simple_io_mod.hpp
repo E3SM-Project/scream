@@ -28,13 +28,16 @@ typedef std::vector<double> dbl_vector;
 typedef std::vector<dbl_vector> dbl_2dmatrix;
 typedef std::vector<dbl_2dmatrix> dbl_3dmatrix;
 
+int init_output1_c(std::string filename, int ndims, std::string (&dimnames)[ndims], int* dimrng);
 void init_output2_c(int ncid);
-void finalize_output_c(int ncid);
 void regfield_c(int ncid,std::string field_name,int field_type,int ndim,std::string (&field_dim)[ndim],std::string units);
 void writefield_c(int ncid,std::string field_name, double &data, int time_dim);
+void readfield_c(int ncid,std::string field_name, double &data, int time_dim);
+int init_input_c(std::string filename);
+
+void finalize_io_c(int ncid);
 
 int init_output1(char** filename, int ndims, std::string (&dimnames)[ndims], int* dimrng);
-int init_output1_c(std::string filename, int ndims, std::string (&dimnames)[ndims], int* dimrng);
 int init_output2();
 int finalize_output();
 int init_input(char** filename);

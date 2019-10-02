@@ -122,6 +122,19 @@ void convert_string_to_char(std::string str_in,char str_out[str_in.size()+1]) {
 
 }
 /* ----------------------------------------------------------------- */
+int init_input_c(std::string filename) {
+
+
+  int nc_err, ncid;
+  char filename_in[filename.size()+1];
+
+  convert_string_to_char(filename,filename_in);
+  nc_err = nc_open(filename_in, NC_NOWRITE, &ncid);
+  scream_require_msg(nc_err==0,"NC Create Error! \n");
+
+  return ncid;
+}
+/* ----------------------------------------------------------------- */
 int init_output1_c(std::string filename, int ndims, std::string (&dimnames)[ndims],
     int* dimrng)
 {
@@ -190,9 +203,8 @@ void regfield_c(int ncid,std::string field_name,int field_type,int ndim,std::str
   scream_require_msg(nc_err==0,"NC Var Units Error! \n");
 }
 /* ----------------------------------------------------------------- */
-void writefield_c(int ncid,std::string field_name, double &data, int time_dim)
+void field_io_c(int ncid,std::string field_name, double &data, int time_dim, const std::string flag)
 {
-
   char fieldname[256];
   int varid;
   int nc_err;
@@ -215,13 +227,30 @@ void writefield_c(int ncid,std::string field_name, double &data, int time_dim)
     count[0] = 1;
     start[0] = time_dim;
   }
-  
-  nc_err = nc_put_vara(ncid,varid, start, count, &data);
-  scream_require_msg(nc_err==0,"NC Write Data Error! \n");
+
+  if (flag=="read") {
+    nc_err = nc_get_vara(ncid,varid, start, count, &data);
+    scream_require_msg(nc_err==0,"NC Write Data Error! \n");
+  } else if (flag=="write") {  
+    nc_err = nc_put_vara(ncid,varid, start, count, &data);
+    scream_require_msg(nc_err==0,"NC Write Data Error! \n");
+  } else {
+    scream_require_msg(0==1,"Error in IO, incorrect flag: " << flag);
+  }
 
 }
 /* ----------------------------------------------------------------- */
-void finalize_output_c(int ncid)
+void writefield_c(int ncid,std::string field_name, double &data, int time_dim)
+{
+  field_io_c(ncid, field_name, data, time_dim, "write");
+}
+/* ----------------------------------------------------------------- */
+void readfield_c(int ncid,std::string field_name, double &data, int time_dim)
+{
+  field_io_c(ncid, field_name, data, time_dim, "read");
+}
+/* ----------------------------------------------------------------- */
+void finalize_io_c(int ncid)
 {
 
   int nc_err = nc_close(ncid);
