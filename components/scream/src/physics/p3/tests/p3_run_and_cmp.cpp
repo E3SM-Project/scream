@@ -8,12 +8,15 @@
 #include "physics/p3/p3_functions_f90.hpp"
 #include "physics/p3/p3_ic_cases.hpp"
 
+#include "share/simpleio/simple_io_mod.hpp"
+
 #include <vector>
 
 namespace {
 using namespace scream;
 using namespace scream::util;
 using namespace scream::p3;
+using namespace scream::simpleio;
 
 template <typename Scalar>
 static Int compare (const std::string& label, const Scalar* a,
@@ -58,14 +61,17 @@ Int compare (const std::string& label, const double& tol,
 
 struct Baseline {
   Baseline () {
-    for (const bool log_predictNc : {true, false})
-      for (const int it : {1, 2})
-        params_.push_back({ic::Factory::mixed, 1800, it, log_predictNc});
+    std::string setname = "";
+    Int myit = 0;
+    for (const bool log_predictNc : {true, false}) {
+      for (const int it : {1, 2}) {
+        params_.push_back({ic::Factory::mixed, 1800, it, log_predictNc, setname + std::to_string(myit)});
+        myit+=1;
+      }
+    }
   }
 
   Int generate_baseline (const std::string& filename, bool use_fortran) {
-    auto fid = FILEPtr(fopen(filename.c_str(), "w"));
-    scream_require_msg( fid, "generate_baseline can't write " << filename);
     Int nerr = 0;
     for (auto ps : params_) {
       // Run reference p3 on this set of parameters.
@@ -73,21 +79,25 @@ struct Baseline {
       set_params(ps, *d);
       p3_init(use_fortran);
       p3_main(*d);
-      // Save the fields to the baseline file.
-      write(fid, d);
+      // Add simple io stuff
+      std::string mode("baseline_");
+      int ncid = open_nc_file(filename,mode + ps.setname,"write");
+      reg_fields_nc(ncid,d);
+      write_fields_nc(ncid,d);
     }
+    
     return nerr;
   }
 
   Int run_and_cmp (const std::string& filename, const double& tol, bool use_fortran) {
-    auto fid = FILEPtr(fopen(filename.c_str(), "r"));
-    scream_require_msg( fid, "generate_baseline can't read " << filename);
     Int nerr = 0, ne;
     for (auto ps : params_) {
       // Read the reference impl's data from the baseline file.
       const auto d_ref = ic::Factory::create(ps.ic, ic_ncol);
       set_params(ps, *d_ref);
-      read(fid, d_ref);
+      std::string mode("baseline_");
+      auto ncid_in = open_nc_file(filename,mode + ps.setname,"read");
+      read_fields_nc(ncid_in,d_ref);
       // Now run a sequence of other impls. This includes the reference
       // implementation b/c it's likely we'll want to change it as we go.
       {
@@ -98,6 +108,11 @@ struct Baseline {
         ne = compare("ref", tol, d_ref, d);
         if (ne) std::cout << "Ref impl failed.\n";
         nerr += ne;
+        // Write output to netCDF to be used with cprnc
+        std::string mode("test_");
+        auto ncid = open_nc_file(filename,mode + ps.setname,"write");
+        reg_fields_nc(ncid,d);
+        write_fields_nc(ncid,d);
       }
     }
     return nerr;
@@ -111,6 +126,7 @@ private:
     Real dt;
     Int it;
     bool log_predictNc;
+    std::string setname;
   };
 
   static void set_params (const ParamSet& ps, FortranData& d) {
@@ -121,6 +137,65 @@ private:
 
   std::vector<ParamSet> params_;
 
+  /*----------------------------------------------------------------------*/
+  // Simple io routines:
+  int  open_nc_file(const std::string filename, const std::string runtype, const std::string mode) {
+      const int ndims = 4;
+      std::string dimnames[] = {"column","level","ilevel","fields"};
+      std::string nc_filename = "";
+      nc_filename.append(filename.c_str());
+      nc_filename.append("_");
+      nc_filename.append(runtype);
+      nc_filename.append(".nc");
+      int dimrng[] = {ic_ncol,72,73,49};
+      int ncid = -999;
+      if (mode == "write") {
+        ncid = init_output1(nc_filename, ndims, dimnames, dimrng);
+      } else if (mode == "read") {
+        ncid = init_input(nc_filename);
+      }
+      scream_require_msg( ncid != -999, "Error opening netcdf file " << nc_filename);
+      return ncid;
+  }
+  static void reg_fields_nc (const Int ncid, const FortranData::Ptr& d) {
+    FortranDataIterator fdi(d);
+    std::string dimnames[] = {"column","level","ilevel","fields"};
+    std::string units="unitless";
+    for (Int i = 0, n = fdi.nfield(); i < n; ++i) {
+      const auto& f = fdi.getfield(i);
+      if ( (f.extent[1]==72) && (f.extent[2]>1) ) {
+        dimnames[1] = "level";
+        dimnames[2] = "fields";
+        regfield(ncid,f.name,NC_REAL,3,dimnames,units);
+      } else if (f.extent[1]==72) {
+        dimnames[1] = "level";
+        regfield(ncid,f.name,NC_REAL,2,dimnames,units);
+      } else if (f.extent[1]==73) {
+        dimnames[1] = "ilevel";
+        regfield(ncid,f.name,NC_REAL,2,dimnames,units);
+      } else {
+        regfield(ncid,f.name,NC_REAL,1,dimnames,units);
+      }
+    }
+    init_output2(ncid);
+  }
+  static void write_fields_nc (const Int ncid, const FortranData::Ptr& d) {
+    FortranDataIterator fdi(d);
+    for (Int i = 0, n = fdi.nfield(); i < n; ++i) {
+      const auto& f = fdi.getfield(i);
+      writefield(ncid,f.name,*f.data,-1);
+    }
+    finalize_io(ncid);
+  }
+  static void read_fields_nc (const Int ncid, const FortranData::Ptr& d) {
+    FortranDataIterator fdi(d);
+    for (Int i = 0, n = fdi.nfield(); i < n; ++i) {
+      const auto& f = fdi.getfield(i);
+      readfield(ncid,f.name,*f.data,-1);
+    }
+    finalize_io(ncid);
+  }
+  /*----------------------------------------------------------------------*/
   static void write (const FILEPtr& fid, const FortranData::Ptr& d) {
     FortranDataIterator fdi(d);
     for (Int i = 0, n = fdi.nfield(); i < n; ++i) {

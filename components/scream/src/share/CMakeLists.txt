@@ -15,6 +15,7 @@ set(SHARE_SRC
   util/time_stamp.cpp
   util/scream_tridiag_bfb.cpp
   util/scream_tridiag_bfb_mod.F90
+  simpleio/simple_io_mod.cpp
 )
 
 # So far this is pointless, since we are not installing the library
@@ -51,6 +52,7 @@ set(SHARE_HEADERS
   util/scream_lin_interp.hpp
   util/time_stamp.hpp
   scream_workspace.hpp
+  simpleio/simple_io_mod.hpp
 )
 
 add_library(scream_share ${SHARE_SRC})
