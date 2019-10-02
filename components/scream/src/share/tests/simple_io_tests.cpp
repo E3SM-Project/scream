@@ -8,16 +8,12 @@
 
 namespace {
 
-TEST_CASE("simple_out_mod", "test_simple_out") {
+TEST_CASE("simple_io_mod", "test_simple_io") {
 
-  SECTION("netcdf_c") {
+  SECTION("Test Output") {
 /* ====================================================================
  * Create sample output for simple_io test 
- * ==================================================================== */
-
-  int cerr = scream::simpleio::simple_cpp_netcdf();
-
-/* ====================================================================
+ *
  * Open netCDF output file and add all meta-data, including
  * All dimensions for any output field
  * Register all output fields
@@ -26,7 +22,7 @@ TEST_CASE("simple_out_mod", "test_simple_out") {
   std::string dimnames[] = {"time","longitude","latitude","level"};
   const int ndims = sizeof(dimnames)/sizeof(dimnames[0]);
   int dimrng[] = {0,12,6,2};
-  int ncid = scream::simpleio::init_output1_c(filename, ndims, dimnames, dimrng);
+  int ncid = scream::simpleio::init_output1(filename, ndims, dimnames, dimrng);
 
   // Construct an array of fields
   scream::simpleio::nc_field *myfields = new scream::simpleio::nc_field[4];
@@ -56,9 +52,9 @@ TEST_CASE("simple_out_mod", "test_simple_out") {
   for (int ii=0;ii<4;ii++) {myfields[3].dimensions[ii] = dimnames[ii];} 
   /* Register Fields */
   for ( int ii=0;ii<4;ii++ ) {
-    scream::simpleio::regfield_c(ncid,myfields[ii].fieldname,myfields[ii].ftype,myfields[ii].ndims,myfields[ii].dimensions,myfields[ii].units);
+    scream::simpleio::regfield(ncid,myfields[ii].fieldname,myfields[ii].ftype,myfields[ii].ndims,myfields[ii].dimensions,myfields[ii].units);
   }
-  scream::simpleio::init_output2_c(ncid);
+  scream::simpleio::init_output2(ncid);
 
   // Now write some data
 /* ====================================================================
@@ -86,20 +82,18 @@ TEST_CASE("simple_out_mod", "test_simple_out") {
 /* ====================================================================
  * Write sample output to netCDF output file.
  * ==================================================================== */
-  scream::simpleio::writefield_c(ncid,myfields[0].fieldname,lats[0],-1);
-  scream::simpleio::writefield_c(ncid,myfields[1].fieldname,lons[0],-1);
-  scream::simpleio::writefield_c(ncid,myfields[2].fieldname,pres[0][0][0],0);
-  scream::simpleio::writefield_c(ncid,myfields[3].fieldname,temp[0][0][0],0);
-  scream::simpleio::writefield_c(ncid,myfields[2].fieldname,pres[0][0][0],1);
-  scream::simpleio::writefield_c(ncid,myfields[3].fieldname,temp[0][0][0],1);
+  scream::simpleio::writefield(ncid,myfields[0].fieldname,lats[0],-1);
+  scream::simpleio::writefield(ncid,myfields[1].fieldname,lons[0],-1);
+  scream::simpleio::writefield(ncid,myfields[2].fieldname,pres[0][0][0],0);
+  scream::simpleio::writefield(ncid,myfields[3].fieldname,temp[0][0][0],0);
+  scream::simpleio::writefield(ncid,myfields[2].fieldname,pres[0][0][0],1);
+  scream::simpleio::writefield(ncid,myfields[3].fieldname,temp[0][0][0],1);
 
 
 /* ====================================================================
  * Finished with test, close netCDF file
  * ==================================================================== */
-  scream::simpleio::finalize_io_c(ncid);
-  REQUIRE(cerr==0);
-
+  scream::simpleio::finalize_io(ncid);
   delete [] myfields;
   }
 
@@ -110,12 +104,12 @@ TEST_CASE("simple_out_mod", "test_simple_out") {
   std::string filename = "pres_temp_4D.nc";
   int ncid_in;
 
-  ncid_in = scream::simpleio::init_input_c(filename);
+  ncid_in = scream::simpleio::init_input(filename);
   std::string fieldname;
 
   fieldname  = "latitude";
   double lat[6];
-  scream::simpleio::readfield_c(ncid_in,fieldname,lat[0],-1);
+  scream::simpleio::readfield(ncid_in,fieldname,lat[0],-1);
   std::cout << "LAT READ\n";
   for (double n : lat){
     std::cout << n << "\n";
@@ -123,7 +117,7 @@ TEST_CASE("simple_out_mod", "test_simple_out") {
 //
   fieldname = "pressure";
   double pres[12][6][2];
-  scream::simpleio::readfield_c(ncid_in,fieldname,pres[0][0][0],0);
+  scream::simpleio::readfield(ncid_in,fieldname,pres[0][0][0],0);
   std::cout << "PRES READ\n";
   for (int k=0;k<2;k++) {
     for (int j=0;j<6;j++) {
@@ -136,7 +130,7 @@ TEST_CASE("simple_out_mod", "test_simple_out") {
   }
   std::cout << "\n";
 
-  scream::simpleio::finalize_io_c(ncid_in);
+  scream::simpleio::finalize_io(ncid_in);
   } // Test Input
 
 } // TEST_CASE

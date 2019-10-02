@@ -150,9 +150,9 @@ private:
       int dimrng[] = {ic_ncol,72,73,49};
       int ncid = -999;
       if (mode == "write") {
-        ncid = init_output1_c(nc_filename, ndims, dimnames, dimrng);
+        ncid = init_output1(nc_filename, ndims, dimnames, dimrng);
       } else if (mode == "read") {
-        ncid = init_input_c(nc_filename);
+        ncid = init_input(nc_filename);
       }
       scream_require_msg( ncid != -999, "Error opening netcdf file " << nc_filename);
       return ncid;
@@ -166,34 +166,34 @@ private:
       if ( (f.extent[1]==72) && (f.extent[2]>1) ) {
         dimnames[1] = "level";
         dimnames[2] = "fields";
-        regfield_c(ncid,f.name,NC_REAL,3,dimnames,units);
+        regfield(ncid,f.name,NC_REAL,3,dimnames,units);
       } else if (f.extent[1]==72) {
         dimnames[1] = "level";
-        regfield_c(ncid,f.name,NC_REAL,2,dimnames,units);
+        regfield(ncid,f.name,NC_REAL,2,dimnames,units);
       } else if (f.extent[1]==73) {
         dimnames[1] = "ilevel";
-        regfield_c(ncid,f.name,NC_REAL,2,dimnames,units);
+        regfield(ncid,f.name,NC_REAL,2,dimnames,units);
       } else {
-        regfield_c(ncid,f.name,NC_REAL,1,dimnames,units);
+        regfield(ncid,f.name,NC_REAL,1,dimnames,units);
       }
     }
-    init_output2_c(ncid);
+    init_output2(ncid);
   }
   static void write_fields_nc (const Int ncid, const FortranData::Ptr& d) {
     FortranDataIterator fdi(d);
     for (Int i = 0, n = fdi.nfield(); i < n; ++i) {
       const auto& f = fdi.getfield(i);
-      writefield_c(ncid,f.name,*f.data,-1);
+      writefield(ncid,f.name,*f.data,-1);
     }
-    finalize_io_c(ncid);
+    finalize_io(ncid);
   }
   static void read_fields_nc (const Int ncid, const FortranData::Ptr& d) {
     FortranDataIterator fdi(d);
     for (Int i = 0, n = fdi.nfield(); i < n; ++i) {
       const auto& f = fdi.getfield(i);
-      readfield_c(ncid,f.name,*f.data,-1);
+      readfield(ncid,f.name,*f.data,-1);
     }
-    finalize_io_c(ncid);
+    finalize_io(ncid);
   }
   /*----------------------------------------------------------------------*/
   static void write (const FILEPtr& fid, const FortranData::Ptr& d) {
