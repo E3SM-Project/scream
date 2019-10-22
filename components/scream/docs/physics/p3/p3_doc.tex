@@ -6,19 +6,31 @@ Describe scheme in general (copy/paste Hassan's existing doc)
 \subsection{Autoconversion}
 %================================
 
-Say what autoconversion does
+Autoconversion is the process in which cloud dropelts collide and coalesce to form rain drops. 
 
 \subsubsection{Theory}
 
-Put explanation of continuous equations here.
+The current implementation of P3 has three options for paramaterizing autoconversion are those described 
+in Seifert and Beheng (2001), Beheng (2004), and Khroutdinov and Kogan (2000). The default is 
+Khroutdinov and Kogan (2000) which calculates the rain mass tendency as: 
+
+\frac{\partial q_{c}}{\partial t} = cq_{c}^{a}N_{c}^{b}
+
+Where a,b, and c are fitting parameters. A best fit based on the data from the ACE-1 field 
+campaign and an explicit microphysics model results in a = 2.47, b = - 1.79, and c = 1350.
+
+The rain number tendency is calculated based on the assumption that newly formed rain drops 
+have a diameter of 25 um and can thus be calculated as:
+
+\frac{\partial N_{c}}{\partial t} = \frac{\frac{\partial N_{c}}{\partial t}}{\frac{4pi\rho _{w}}{3\rho _{a}}r_{o}^3}
 
 \subsubsection{Numerical Methods}
 
-Describe the numerical methods used to discretize the equations here.
+The above tendencies are calculated discretely by setting the differential dt equal to the model physics timestep.
 
 \subsubsection{Computational Implementation}
 
-Describe the strategies used (if any) to ensure good computational performance.
+None.
 
 \subsubsection{Verification}
 

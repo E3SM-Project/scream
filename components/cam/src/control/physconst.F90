@@ -80,6 +80,7 @@ module physconst
    real(r8), public           :: rga          = 1._r8/shr_const_g                 ! reciprocal of gravit
    real(r8), public           :: ra           = 1._r8/shr_const_rearth            ! reciprocal of earth radius
    real(r8), public           :: omega        = shr_const_omega                   ! earth rot ~ rad/sec
+   ! real(r8), public           :: omega        = 0
    real(r8), public           :: rh2o         = shr_const_rwv                     ! Water vapor gas constant ~ J/K/kg
    real(r8), public           :: rair         = shr_const_rdair   ! Dry air gas constant     ~ J/K/kg
    real(r8), public           :: epsilo       = shr_const_mwwv/shr_const_mwdair   ! ratio of h2o to dry air molecular weights 
@@ -219,7 +220,11 @@ contains
          end if
          rga         = 1._r8/gravit 
          ra          = 1._r8/rearth
-         omega       = 2.0_R8*pi/sday
+         if (sday==0) then
+            omega    = 0
+         else
+            omega    = 2.0_R8*pi/sday
+         end if
          cpvir       = cpwv/cpair - 1._r8
          epsilo      = mwh2o/mwdry      
          
