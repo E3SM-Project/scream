@@ -655,7 +655,9 @@
     </desc>
     <values>
       <value>26.85</value>
-  
+    </values>
+  </entry> 
+ 
   <entry id="sst_constant_value" per_stream_entry="true">
     <type>real(30)</type>
     <category>docn</category>
@@ -666,7 +668,6 @@
     </desc>
     <values>
       <value>-1.0</value>
->>>>>>> e3sm/whannah/atm/add-global-RCE-compset
     </values>
   </entry>
 
