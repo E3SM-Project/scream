@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.3)
 cmake_policy(SET CMP0057 NEW)
 
 project(SCREAM CXX Fortran)
+enable_language(C)
 set (CMAKE_CXX_STANDARD 11)
 
 # Print the sha of the last commit (useful to double check which version was tested on CDash)
@@ -19,6 +20,9 @@ SET (SCREAM_DATA_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
 # Add the ./cmake folder to cmake path
 SET (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+# NetCDF
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../cime//src/externals/pio2/cmake")
+FIND_PACKAGE(NetCDF COMPONENTS C)
 
 # Shortcut function, to print a variable
 function (print_var var)

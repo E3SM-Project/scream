@@ -228,6 +228,11 @@ if (${openmp_str_pos} GREATER -1)
     message(FATAL_ERROR "Unable to find OpenMP")
   endif()
 endif()
+##############################################################################
+# NetCDF
+##############################################################################
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${NetCDF_C_INCLUDE_DIRS} -L${NetCDF_C_LIBRARIES} -lnetcdf")
+
 
 ##############################################################################
 # Intel Phi (MIC) specific flags - only supporting the Intel compiler

@@ -292,8 +292,8 @@ SET (CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/utils/cime/src/externals/pio
 #
 #set search paths for PIO's findNetCDF
 # HOMME machine files set NETCDF_DIR, PNETCDF_DIR which we copy
-# to variables used by PIO.  Newer machine files sould direclty set
-# necessyar PIO variables:
+# to variables used by PIO.  Newer machine files sould directly set
+# neccessary PIO variables:
 #
 ADD_DEFINITIONS(-D_NO_MPI_RSEND)
 
