@@ -22,7 +22,6 @@ SET (SCREAM_DATA_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/data)
 SET (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 # NetCDF
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../cime//src/externals/pio2/cmake")
-FIND_PACKAGE(NetCDF COMPONENTS C)
 
 # Shortcut function, to print a variable
 function (print_var var)

@@ -231,7 +231,9 @@ endif()
 ##############################################################################
 # NetCDF
 ##############################################################################
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${NetCDF_C_INCLUDE_DIRS} -L${NetCDF_C_LIBRARIES} -lnetcdf")
+FIND_PACKAGE(NetCDF COMPONENTS C)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${NetCDF_C_INCLUDE_DIRS} -lnetcdf")
+set(CMAKE_CXX_LINKER_FLAGS "${CMAKE_CXX_LINKER_FLAGS} -L${NetCDF_C_LIBRARIES}")
 
 
 ##############################################################################
