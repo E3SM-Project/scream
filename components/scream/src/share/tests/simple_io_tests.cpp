@@ -19,9 +19,13 @@ TEST_CASE("simple_io_mod", "test_simple_io") {
  * Register all output fields
  * ==================================================================== */
   std::string filename = "pres_temp_4D.nc";
-  std::string dimnames[] = {"time","longitude","latitude","level"};
-  const int ndims = sizeof(dimnames)/sizeof(dimnames[0]);
+  std::string dimnames_list[] = {"time","longitude","latitude","level"};
+  std::vector<std::string> dimnames;
+  const int ndims = sizeof(dimnames_list)/sizeof(dimnames_list[0]);
   int dimrng[] = {0,12,6,2};
+  // Build dimnames vector of strings
+  for (int i=0;i<ndims;i++) { dimnames.push_back(dimnames_list[i]); }
+
   int ncid = scream::simpleio::init_output1(filename, ndims, dimnames, dimrng);
 
   // Construct an array of fields
@@ -31,25 +35,25 @@ TEST_CASE("simple_io_mod", "test_simple_io") {
   myfields[0].ftype = scream::simpleio::NC_REAL;
   myfields[0].units = std::string("Degrees North");
   myfields[0].ndims = 1;
-  myfields[0].dimensions[0] = {dimnames[2]}; 
+  myfields[0].dimensions.push_back(dimnames.at(2)); 
   /* Longitude */
   myfields[1].fieldname = "longitude";
   myfields[1].ftype = scream::simpleio::NC_REAL;
   myfields[1].units = "Degrees East";
   myfields[1].ndims = 1;
-  myfields[1].dimensions[0] = {dimnames[1]}; 
+  myfields[1].dimensions.push_back(dimnames.at(1)); 
   /* Pressure */
   myfields[2].fieldname = "pressure";
   myfields[2].ftype = scream::simpleio::NC_REAL;
   myfields[2].units = "hPa";
   myfields[2].ndims = 4;
-  for (int ii=0;ii<4;ii++) {myfields[2].dimensions[ii] = dimnames[ii];} 
+  for (int ii=0;ii<4;ii++) {myfields[2].dimensions.push_back(dimnames.at(ii));} 
   /* Temperature */
   myfields[3].fieldname = "temperature";
   myfields[3].ftype = scream::simpleio::NC_REAL;
   myfields[3].units = "K";
   myfields[3].ndims = 4;
-  for (int ii=0;ii<4;ii++) {myfields[3].dimensions[ii] = dimnames[ii];} 
+  for (int ii=0;ii<4;ii++) {myfields[3].dimensions.push_back(dimnames.at(ii));} 
   /* Register Fields */
   for ( int ii=0;ii<4;ii++ ) {
     scream::simpleio::regfield(ncid,myfields[ii].fieldname,myfields[ii].ftype,myfields[ii].ndims,myfields[ii].dimensions,myfields[ii].units);
@@ -61,9 +65,9 @@ TEST_CASE("simple_io_mod", "test_simple_io") {
  * Create sample output for simple_io test 
  * ==================================================================== */
   // Create sample output:
-  double lats[6]={0,0,0,0,0,0};
-  double lons[12];
-  double pres[12][6][2], temp[12][6][2];
+  scream::Real lats[6]={0,0,0,0,0,0};
+  scream::Real lons[12];
+  scream::Real pres[12][6][2], temp[12][6][2];
   for (int n=0; n<6; n++) {
     lats[n] = 25.0 + (n) * 5.0;
   }
@@ -108,15 +112,15 @@ TEST_CASE("simple_io_mod", "test_simple_io") {
   std::string fieldname;
 
   fieldname  = "latitude";
-  double lat[6];
+  scream::Real lat[6];
   scream::simpleio::readfield(ncid_in,fieldname,lat[0],-1);
   std::cout << "LAT READ\n";
-  for (double n : lat){
+  for (scream::Real n : lat){
     std::cout << n << "\n";
   }
 //
   fieldname = "pressure";
-  double pres[12][6][2];
+  scream::Real pres[12][6][2];
   scream::simpleio::readfield(ncid_in,fieldname,pres[0][0][0],0);
   std::cout << "PRES READ\n";
   for (int k=0;k<2;k++) {

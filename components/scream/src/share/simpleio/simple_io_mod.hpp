@@ -11,7 +11,7 @@ namespace simpleio {
 #ifdef SCREAM_DOUBLE_PRECISION
 const int NC_REAL = NC_DOUBLE;
 #else
-  int NC_REAL = NC_FLOAT;
+const int NC_REAL = NC_FLOAT;
 #endif
 
 // TODO overload functions so that nc_field is one of the only inputs needed.
@@ -20,15 +20,17 @@ struct nc_field {
   int ftype;              // Data type for field
   std::string units;      // Field Units
   int ndims;              // Dimensionality of field
-  std::string dimensions[10]; // List of dimension names  //TODO: find a better way to do this.  Currently we assume that no field will have more than 10 dimensions.
+  std::vector<std::string> dimensions; // List of dimension names  
 };
 
 // Set of netcdf wrappers
-int init_output1(std::string filename, int ndims, std::string (&dimnames)[ndims], int* dimrng);
+using scream::Real;
+using scream::Int;
+int init_output1(std::string filename, int ndims, std::vector<std::string> &dimnames, int* dimrng);
 void init_output2(int ncid);
-void regfield(int ncid,std::string field_name,int field_type,int ndim,std::string (&field_dim)[ndim],std::string units);
-void writefield(int ncid,std::string field_name, double &data, int time_dim);
-void readfield(int ncid,std::string field_name, double &data, int time_dim);
+void regfield(int ncid,std::string field_name,int field_type,int ndim,std::vector<std::string> &field_dim,std::string units);
+void writefield(int ncid,std::string field_name, Real &data, int time_dim);
+void readfield(int ncid,std::string field_name, Real &data, int time_dim);
 int init_input(std::string filename);
 
 void finalize_io(int ncid);

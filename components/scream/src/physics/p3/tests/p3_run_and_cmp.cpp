@@ -140,8 +140,9 @@ private:
   /*----------------------------------------------------------------------*/
   // Simple io routines:
   int  open_nc_file(const std::string filename, const std::string runtype, const std::string mode) {
-      const int ndims = 4;
-      std::string dimnames[] = {"column","level","ilevel","fields"};
+      std::string dimnames_list[] = {"column","level","ilevel","fields"};
+      const int ndims = sizeof(dimnames_list)/sizeof(dimnames_list[0]);
+      std::vector<std::string> dimnames;
       std::string nc_filename = "";
       nc_filename.append(filename.c_str());
       nc_filename.append("_");
@@ -149,6 +150,7 @@ private:
       nc_filename.append(".nc");
       int dimrng[] = {ic_ncol,72,73,49};
       int ncid = -999;
+      for (int i=0;i<ndims;i++) {dimnames.push_back(dimnames_list[i]);}
       if (mode == "write") {
         ncid = init_output1(nc_filename, ndims, dimnames, dimrng);
       } else if (mode == "read") {
@@ -159,19 +161,22 @@ private:
   }
   static void reg_fields_nc (const Int ncid, const FortranData::Ptr& d) {
     FortranDataIterator fdi(d);
-    std::string dimnames[] = {"column","level","ilevel","fields"};
+    std::string dimnames_list[] = {"column","level","ilevel","fields"};
+    const int ndims = sizeof(dimnames_list)/sizeof(dimnames_list[0]);
+    std::vector<std::string> dimnames;
     std::string units="unitless";
+    for (int i=0;i<ndims;i++) {dimnames.push_back(dimnames_list[i]);}
     for (Int i = 0, n = fdi.nfield(); i < n; ++i) {
       const auto& f = fdi.getfield(i);
       if ( (f.extent[1]==72) && (f.extent[2]>1) ) {
-        dimnames[1] = "level";
-        dimnames[2] = "fields";
+        dimnames.at(1) = "level";
+        dimnames.at(2) = "fields";
         regfield(ncid,f.name,NC_REAL,3,dimnames,units);
       } else if (f.extent[1]==72) {
-        dimnames[1] = "level";
+        dimnames.at(1) = "level";
         regfield(ncid,f.name,NC_REAL,2,dimnames,units);
       } else if (f.extent[1]==73) {
-        dimnames[1] = "ilevel";
+        dimnames.at(1) = "ilevel";
         regfield(ncid,f.name,NC_REAL,2,dimnames,units);
       } else {
         regfield(ncid,f.name,NC_REAL,1,dimnames,units);

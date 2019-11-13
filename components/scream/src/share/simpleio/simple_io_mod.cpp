@@ -11,7 +11,7 @@ namespace scream {
 namespace simpleio {
 
 /* ----------------------------------------------------------------- */
-void convert_string_to_char(std::string str_in,char str_out[str_in.size()+1]) {
+void convert_string_to_char(std::string str_in,char* str_out) {
 
   str_in.copy(str_out,str_in.size()+1);
   str_out[str_in.size()] = '\0';
@@ -31,7 +31,7 @@ int init_input(std::string filename) {
   return ncid;
 }
 /* ----------------------------------------------------------------- */
-int init_output1(std::string filename, int ndims, std::string (&dimnames)[ndims],
+int init_output1(std::string filename, int ndims, std::vector<std::string> &dimnames,
     int* dimrng)
 {
 
@@ -45,7 +45,7 @@ int init_output1(std::string filename, int ndims, std::string (&dimnames)[ndims]
 
   char dimname_in[256];
   for (int i=0;i<ndims;i++) {
-    convert_string_to_char(dimnames[i],dimname_in);
+    convert_string_to_char(dimnames.at(i),dimname_in);
     nc_err = nc_def_dim(ncid,dimname_in, dimrng[i], &dimids[i]);
     scream_require_msg(nc_err==0,"NC Define Dim Error! \n");
   }
@@ -62,7 +62,7 @@ void init_output2(int ncid)
 
 }
 /* ----------------------------------------------------------------- */
-void regfield(int ncid,std::string field_name,int field_type,int ndim,std::string (&field_dim)[ndim],std::string units)
+void regfield(int ncid,std::string field_name,int field_type,int ndim,std::vector<std::string> &field_dim,std::string units)
 {
 
   char field_in[field_name.size()+1];
@@ -74,7 +74,7 @@ void regfield(int ncid,std::string field_name,int field_type,int ndim,std::strin
 
   // Extract dimension id dependent on the dimension names
   for (int ii=0;ii<ndim;ii++) {
-    convert_string_to_char(field_dim[ii],dimname);
+    convert_string_to_char(field_dim.at(ii),dimname);
     nc_err = nc_inq_dimid(ncid,dimname,&dimids[ii]);
     scream_require_msg(nc_err==0,"NC Get dimid Error! \n");
   }
@@ -90,7 +90,7 @@ void regfield(int ncid,std::string field_name,int field_type,int ndim,std::strin
   scream_require_msg(nc_err==0,"NC Var Units Error! \n");
 }
 /* ----------------------------------------------------------------- */
-void field_io(int ncid,std::string field_name, double &data, int time_dim, const std::string flag)
+void field_io(int ncid,std::string field_name, scream::Real &data, int time_dim, const std::string flag)
 {
   char fieldname[256];
   int varid;
@@ -127,12 +127,12 @@ void field_io(int ncid,std::string field_name, double &data, int time_dim, const
 
 }
 /* ----------------------------------------------------------------- */
-void writefield(int ncid,std::string field_name, double &data, int time_dim)
+void writefield(int ncid,std::string field_name, scream::Real &data, int time_dim)
 {
   field_io(ncid, field_name, data, time_dim, "write");
 }
 /* ----------------------------------------------------------------- */
-void readfield(int ncid,std::string field_name, double &data, int time_dim)
+void readfield(int ncid,std::string field_name, scream::Real &data, int time_dim)
 {
   field_io(ncid, field_name, data, time_dim, "read");
 }
