@@ -357,7 +357,12 @@
 
   <compset>
     <alias>RCE_SCREAM</alias>
-    <lname>2000_CAM5%RCE_SLND_SICE_DOCN%AQPCONST_SROF_SGLC_SWAV</lname>
+    <lname>2000_CAM5%RCESCREAM_SLND_SICE_DOCN%AQPCONST_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>RCE_SCREAM_CLUBB</alias>
+    <lname>2000_CAM5%RCESCREAMCLUBB_SLND_SICE_DOCN%AQPCONST_SROF_SGLC_SWAV</lname>
   </compset>
 
 

@@ -10,12 +10,12 @@
 
 ### BASIC INFO ABOUT RUN
 set my_npes        = 144
-set job_name       = small_planet_RCE_SCREAM_3km_run
-#set compset        = FC5AV1C-L
+set job_name       = small_planet_RCE_SCREAM_CLUBB_quartz
+#set compset        = F-EAMv1-RCEMIP
 set compset        = RCE_SCREAM
-set resolution     = ne4_ne4
+set resolution     = ne30_ne30
 set machine        = quartz
-set walltime       = 03:00:00
+set walltime       = 00:03:00
 setenv project       cbronze
 
 ### SOURCE CODE OPTIONS
@@ -38,7 +38,7 @@ set seconds_before_delete_run_dir    = -1
 
 ### SUBMIT OPTIONS
 set submit_run       = true
-set debug_queue      = false
+set debug_queue      = true
 
 ### PROCESSOR CONFIGURATION
 set processor_config = customlc
@@ -56,19 +56,19 @@ set short_term_archive_root_dir = default
 
 ### LENGTH OF SIMULATION, RESTARTS, AND ARCHIVING
 set stop_units                  = ndays
-set stop_num                    = 100 
-set restart_units               = $stop_units
-set restart_num                 = $stop_num
+set stop_num                    = 4 
+set restart_units               = ndays
+set restart_num                 = 4
 set num_resubmits               = 0
 set do_short_term_archiving     = false
 
 ### SIMULATION OPTIONS
-set atm_output_freq             = 240
+set atm_output_freq             = 90
 set records_per_atm_output_file = 1000
 set start_date                  = default
 
 ### TIMESTEP Options
-@ dtime = 15 
+@ dtime = 30 
 @ ncpl = 86400 / $dtime
 
 ### COUPLER HISTORY FILES
@@ -841,6 +841,7 @@ else
   e3sm_newline
   $xmlchange_exe --id CAM_CONFIG_OPTS --append --val='-cosp'
 endif
+#$xmlchange_exe --id CAM_CONFIG_OPTS --val "-clubb_sgs -microphys p3 -chem none -nlev 72 -rad rrtmgp"
 
 #===========================
 # SET THE PARTITION OF NODES
@@ -954,8 +955,8 @@ cat <<EOF >> user_nl_cam
  hypervis_subcycle              =  2
  hypervis_subcycle_q            =  1
  hypervis_subcycle_tom          = 32
- rearth = 23712.00                ! reduced planet radius rearth = a/500.0
- rsplit = 3
+ rearth = 203712.00                ! reduced planet radius rearth = a/500.0
+ rsplit = 8       !my defau is 3
  qsplit = 1
  se_ftype               = 4
  se_limiter_option              =  8
@@ -966,8 +967,13 @@ cat <<EOF >> user_nl_cam
  vthreads               =  1
  convproc_do_aer = .false.
  deep_scheme = 'off'
- do_clubb_sgs           =  .false.
- fincl1 = 'TMQ:I','CLOUD:I','PRECS:I','U:I','V:I','OMEGA:I','Q:I','T:I'
+ NHTFRQ = 240, 240
+ do_clubb_sgs = .true.
+ do_shoc_sgs = .false.
+ macrop_scheme = 'CLUBB_SGS'
+ shallow_scheme = 'CLUBB_SGS'
+ eddy_scheme = 'CLUBB_SGS'
+ fincl2 = 'TMQ:I','CLOUD:I','PRECL:I','U:I','V:I','OMEGA:I','Q:I','T:I','CLDLIQ:I','CLDICE:I','CLDRIM','QRL:I','QRS:I','AQRAIN:I','vap_cld_exchange:I','vap_ice_exchange:I'
 EOF
 
 cat <<EOF >> user_nl_clm

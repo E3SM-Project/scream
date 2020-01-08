@@ -9,13 +9,13 @@
 ###===================================================================
 
 ### BASIC INFO ABOUT RUN
-set my_npes        = 144
-set job_name       = small_planet_RCE_SCREAM_3km_run
-#set compset        = FC5AV1C-L
-set compset        = RCE_SCREAM
-set resolution     = ne4_ne4
-set machine        = quartz
-set walltime       = 03:00:00
+set my_npes        = 360
+set job_name       = small_planet_RCE_SCREAM_with_CLUBB_3km_run_syrah_with_restarts
+set compset        = F-EAMv1-RCEMIP
+#set compset        = RCE_SCREAM
+set resolution     = ne30_ne30
+set machine        = syrah
+set walltime       = 16:00:00
 setenv project       cbronze
 
 ### SOURCE CODE OPTIONS
@@ -56,19 +56,19 @@ set short_term_archive_root_dir = default
 
 ### LENGTH OF SIMULATION, RESTARTS, AND ARCHIVING
 set stop_units                  = ndays
-set stop_num                    = 100 
-set restart_units               = $stop_units
-set restart_num                 = $stop_num
-set num_resubmits               = 0
+set stop_num                    = 4 
+set restart_units               = ndays
+set restart_num                 = 4
+set num_resubmits               = 15
 set do_short_term_archiving     = false
 
 ### SIMULATION OPTIONS
-set atm_output_freq             = 240
+set atm_output_freq             = 90
 set records_per_atm_output_file = 1000
 set start_date                  = default
 
 ### TIMESTEP Options
-@ dtime = 15 
+@ dtime = 40 
 @ ncpl = 86400 / $dtime
 
 ### COUPLER HISTORY FILES
@@ -954,8 +954,8 @@ cat <<EOF >> user_nl_cam
  hypervis_subcycle              =  2
  hypervis_subcycle_q            =  1
  hypervis_subcycle_tom          = 32
- rearth = 23712.00                ! reduced planet radius rearth = a/500.0
- rsplit = 3
+ rearth = 203712.00                ! reduced planet radius rearth = a/500.0
+ rsplit = 8       !my defau is 3
  qsplit = 1
  se_ftype               = 4
  se_limiter_option              =  8
@@ -967,7 +967,8 @@ cat <<EOF >> user_nl_cam
  convproc_do_aer = .false.
  deep_scheme = 'off'
  do_clubb_sgs           =  .false.
- fincl1 = 'TMQ:I','CLOUD:I','PRECS:I','U:I','V:I','OMEGA:I','Q:I','T:I'
+ NHTFRQ = 240, 240
+ fincl2 = 'TMQ:I','CLOUD:I','PRECL:I','U:I','V:I','OMEGA:I','Q:I','T:I','CLDLIQ:I','CLDICE:I','CLDRIM','QRL:I','QRS:I','AQRAIN','vap_cld_exchange','vvap_ice_exchange'
 EOF
 
 cat <<EOF >> user_nl_clm

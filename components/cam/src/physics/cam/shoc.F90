@@ -1411,7 +1411,10 @@ subroutine shoc_assumed_pdf(&
 	
       qn1=0._r8
       C1=0._r8
-      
+     
+      ! set std_s1 to zero for shoc-binary scheme
+      !std_s1 = 0._r8
+ 
       if (std_s1 .ne. 0.0_r8) then
         C1=0.5_r8*(1._r8+erf(s1/(sqrt2*std_s1)))
 	IF (C1 .ne. C1) C1 = 0._r8
@@ -1445,7 +1448,10 @@ subroutine shoc_assumed_pdf(&
 
         qn2=0._r8
         C2=0._r8
-	
+ 	
+        ! set std_s2 to zero for shoc-binary scheme
+        !std_s2 = 0._r8
+
         if (std_s2 .ne. 0._r8) then
           C2=0.5_r8*(1.+erf(s2/(sqrt2*std_s2)))
 	  if (C2 .ne. C2) C2 = 0._r8
@@ -1557,7 +1563,7 @@ subroutine shoc_tke(&
   real(r8) :: brunt_int(shcol)
   integer i,j,k,kc,kb	 
   
-  lambda_low=0.001_r8
+  lambda_low=0.04_r8
   lambda_high=0.04_r8
   lambda_slope=0.65_r8
   brunt_low=0.02

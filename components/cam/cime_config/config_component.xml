@@ -121,8 +121,9 @@
       <!-- Aquaplanet -->
       <value compset="_CAM5%AQUA"   >-phys cam5 -nlev 72 -clubb_sgs -microphys mg2 -aquaplanet -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -bc_dep_to_snow_updates </value>
       <!-- Radiative-Convective Equilibrium (RCE) -->
-      <value compset="_CAM5%RCE"    >-phys cam5  -rad rrtmgp -nlev 72 -clubb_sgs -microphys mg2 -aquaplanet -rce -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -bc_dep_to_snow_updates </value>
+      <value compset="_CAM5%RCE"    >-phys cam5  -rad rrtmgp -nlev 72 -clubb_sgs -microphys p3 -aquaplanet -rce -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -bc_dep_to_snow_updates </value>
       <value compset="_CAM5%RCESCREAM"    >-phys cam5 -shoc_sgs -rad rrtmgp -nlev 72 -microphys p3 -aquaplanet -rce -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -bc_dep_to_snow_updates </value>
+      <value compset="_CAM5%RCESCREAMCLUBB"    >-phys cam5 -rad rrtmgp -nlev 72 -clubb_sgs -microphys mg2 -aquaplanet -rce -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -bc_dep_to_snow_updates </value>
       <value compset="_CLM45%[^_]*BC"     >-bc_dep_to_snow_updates</value>
       <value compset="_SCREAM%AV1C-L">-phys cam5 -shoc_sgs -microphys mg2 -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -nlev 72 -rad rrtmgp</value>
     </values>
@@ -260,6 +261,7 @@
       <!-- Radiative-Convective Equilibrium (RCE) -->
       <value compset="_CAM5%RCE"      >RCEMIP_EAMv1</value>
       <value compset="_CAM5%RCESCREAM"      >RCE_SCREAM</value>
+      <value compset="_CAM5%RCESCREAMCLUBB"      >RCE_SCREAM_CLUBB</value>
     </values>
     <group>run_component_cam</group>
     <file>env_run.xml</file>
