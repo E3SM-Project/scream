@@ -207,7 +207,7 @@ interface
     use iso_c_binding
     
     ! arguments:
-    real(kind=c_real), value, intent(in) :: rho, t, rhofaci, f1pr04
+    real(kind=c_real), intent(in) :: rho, t, rhofaci, f1pr04
     real(kind=c_real), intent(in) :: qitot_incld, qc_incld, nitot_incld, nc_incld
     real(kind=c_real), intent(out) :: qccol, nccol, qcshd, ncshdc
   end subroutine ice_cldliq_collection_f
