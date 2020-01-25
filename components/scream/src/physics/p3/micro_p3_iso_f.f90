@@ -207,8 +207,8 @@ interface
     use iso_c_binding
     
     ! arguments:
-    real(kind=c_real), intent(in) :: rho, t, rhofaci, f1pr04
-    real(kind=c_real), intent(in) :: qitot_incld, qc_incld, nitot_incld, nc_incld
+    real(kind=c_real), value, intent(in) :: rho, t, rhofaci, f1pr04
+    real(kind=c_real), value, intent(in) :: qitot_incld, qc_incld, nitot_incld, nc_incld
     real(kind=c_real), intent(out) :: qccol, nccol, qcshd, ncshdc
   end subroutine ice_cldliq_collection_f
 
@@ -217,8 +217,8 @@ interface
     use iso_c_binding
 
     ! arguments:
-    real(kind=c_real), intent(in) :: rho, t, rhofaci, logn0r, f1pr07, f1pr08
-    real(kind=c_real), intent(in) :: qitot_incld, nitot_incld, qr_incld
+    real(kind=c_real), value, intent(in) :: rho, t, rhofaci, logn0r, f1pr07, f1pr08
+    real(kind=c_real), value, intent(in) :: qitot_incld, nitot_incld, qr_incld
     real(kind=c_real), intent(out) :: qrcol, nrcol
   end subroutine ice_rain_collection_f
 
@@ -226,7 +226,7 @@ interface
     use iso_c_binding
 
     ! arguments:
-    real(kind=c_real), intent(in) :: rho, rhofaci, f1pr03, eii, qirim_incld, qitot_incld, nitot_incld
+    real(kind=c_real), value, intent(in) :: rho, rhofaci, f1pr03, eii, qirim_incld, qitot_incld, nitot_incld
     real(kind=c_real), intent(out) :: nislf
   end subroutine ice_self_collection_f 
   !
