@@ -431,8 +431,46 @@ contains
     real(kind=c_real), value, intent(in) :: qr_incld, rcldm, rhofacr
     real(kind=c_real), intent(inout) :: nr, nr_incld
     real(kind=c_real), intent(out) :: mu_r, lamr, V_qr, V_nr
-
     call compute_rain_fall_velocity(qr_incld, rcldm, rhofacr, nr, nr_incld, mu_r, lamr, V_qr, V_nr)
   end subroutine compute_rain_fall_velocity_c
+
+  subroutine ice_cldliq_collection_c(rho, temp, rhofaci, f1pr04, qitot_incld, qc_incld, nitot_incld, &
+                                     nc_incld, qccol, nccol, qcshd, ncshdc) bind(C)
+    use micro_p3, only: ice_cldliq_collection
+
+    ! arguments:
+    real(kind=c_real), value, intent(in) :: rho, temp, rhofaci, f1pr04
+    real(kind=c_real), value, intent(in) :: qitot_incld, qc_incld, nitot_incld, nc_incld
+    real(kind=c_real), intent(out) :: qccol, nccol, qcshd, ncshdc
+  
+    call ice_cldliq_collection(rho, temp, rhofaci, f1pr04, qitot_incld, qc_incld, nitot_incld, &
+                               nc_incld, qccol, nccol, qcshd, ncshdc)
+  end subroutine ice_cldliq_collection_c
+
+  subroutine ice_rain_collection_c(rho, temp, rhofaci, logn0r, f1pr07, f1pr08, &
+                                   qitot_incld, nitot_incld, qr_incld, qrcol, nrcol) bind(C)
+    use micro_p3, only: ice_rain_collection
+
+    ! arguments:
+    real(kind=c_real), value, intent(in) :: rho, temp, rhofaci, logn0r, f1pr07, f1pr08
+    real(kind=c_real), value, intent(in) :: qitot_incld, nitot_incld, qr_incld
+    real(kind=c_real), intent(out) :: qrcol, nrcol
+
+    call ice_rain_collection(rho, temp, rhofaci, logn0r, f1pr07, f1pr08,  &
+                             qitot_incld, nitot_incld, qr_incld, qrcol, nrcol) 
+  end subroutine ice_rain_collection_c
+
+  subroutine ice_self_collection_c(rho, rhofaci, f1pr03, eii, qirim_incld, &
+                                   qitot_incld, nitot_incld, nislf) bind(C)
+    use micro_p3, only: ice_self_collection
+
+    ! arguments:
+    real(kind=c_real), value, intent(in) :: rho, rhofaci, f1pr03, eii, qirim_incld
+    real(kind=c_real), value, intent(in) :: qitot_incld, nitot_incld
+    real(kind=c_real), intent(out) :: nislf
+
+    call ice_self_collection(rho, rhofaci, f1pr03, eii, qirim_incld, &
+                             qitot_incld, nitot_incld, nislf)
+  end subroutine ice_self_collection_c
 
 end module micro_p3_iso_c
