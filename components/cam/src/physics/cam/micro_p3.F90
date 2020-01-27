@@ -2061,6 +2061,9 @@ contains
    ! for T < 273.15, assume collected cloud water is instantly frozen
    ! note 'f1pr' values are normalized, so we need to multiply by N
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use micro_p3_iso_f, only: ice_cldliq_collection_f
+#endif
 
    implicit none
 
@@ -2078,6 +2081,14 @@ contains
    real(rtype), intent(out) :: nccol
    real(rtype), intent(out) :: qcshd
    real(rtype), intent(out) :: ncshdc
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    if (use_cxx) then
+       call ice_cldliq_collection_f(rho, t, rhofaci, f1pr04, qitot_incld, qc_incld, nitot_incld, &
+                                    nc_incld, qccol, nccol, qcshd, ncshdc)
+       return
+    endif
+#endif
 
    if (qitot_incld .ge.qsmall .and. qc_incld .ge.qsmall) then
       if  (t .le.zerodegc) then
@@ -2115,6 +2126,10 @@ contains
 
    ! note 'f1pr' values are normalized, so we need to multiply by N
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use micro_p3_iso_f, only: ice_rain_collection_f
+#endif
+
    implicit none
 
    real(rtype), intent(in) :: rho
@@ -2129,6 +2144,14 @@ contains
 
    real(rtype), intent(out) :: qrcol
    real(rtype), intent(out) :: nrcol
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    if (use_cxx) then
+       call ice_rain_collection_f(rho, t, rhofaci, logn0r, f1pr07, f1pr08, &
+                                  qitot_incld, nitot_incld, qr_incld, qrcol,nrcol)
+       return
+    endif
+#endif
 
    if (qitot_incld.ge.qsmall .and. qr_incld.ge.qsmall) then
       if (t.le.zerodegc) then
@@ -2164,6 +2187,10 @@ contains
    ! in the lookup table calculations
    ! note 'f1pr' values are normalized, so we need to multiply by N
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use micro_p3_iso_f, only: ice_self_collection_f
+#endif
+
    implicit none
 
    real(rtype), intent(in) :: rho
@@ -2177,6 +2204,14 @@ contains
    real(rtype), intent(out) :: nislf
 
    real(rtype) :: tmp1, Eii_fact
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    if (use_cxx) then
+       call ice_self_collection_f(rho, rhofaci, f1pr03, eii, qirim_incld, &
+                                  qitot_incld, nitot_incld, nislf)
+       return
+    endif
+#endif
 
    if (qitot_incld.ge.qsmall) then
       ! Determine additional collection efficiency factor to be applied to ice-ice collection.

@@ -35,7 +35,6 @@ void Functions<S,D>
    ncshdc.set(qitot_incld_gt_small && qc_incld_gt_small && !t_is_negative,
               qcshd*sp(1.923e+6));
 
-   return;
 }
 
 
@@ -52,7 +51,7 @@ void Functions<S,D>
    auto t_is_negative = temp <= C::Tmelt;
    auto qitot_incld_gt_small = qitot_incld > C::QSMALL;
    auto qr_incld_gt_small = qr_incld > C::QSMALL;
-   const Scalar ten = 10.0;
+   constexpr Scalar ten = 10.0;
    constexpr auto eri = C::eri;
  
    // note: f1pr08 and logn0r are already calculated as log_10
@@ -72,7 +71,6 @@ void Functions<S,D>
    // for now neglect shedding of ice collecting rain above freezing, since snow is
    // not expected to shed in these conditions (though more hevaily rimed ice would be
    // expected to lead to shedding)
-   return;
 }
 
 
@@ -119,7 +117,6 @@ void Functions<S,D>
       nislf.set(qitot_incld_gt_small,
                 f1pr03*rho*eii*Eii_fact*rhofaci*nitot_incld);
    }
-   return;
 }
 
 
