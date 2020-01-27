@@ -9,10 +9,10 @@
 ###===================================================================
 
 ### BASIC INFO ABOUT RUN
-set my_npes        = 120
-set job_name       = small_planet_RCE_SCREAM_CLUBB
+set my_npes        = 252
+set job_name       = small_planet_RCE_SCREAM_3km_run_syrah_lets_fix_this_2
 set compset        = F-EAMv1-RCEMIP
-#set compset        = RCE_SCREAM_CLUBB
+#set compset        = RCE_SCREAM
 set resolution     = ne30_ne30
 set machine        = syrah
 set walltime       = 00:03:00
@@ -56,9 +56,9 @@ set short_term_archive_root_dir = default
 
 ### LENGTH OF SIMULATION, RESTARTS, AND ARCHIVING
 set stop_units                  = ndays
-set stop_num                    = 4 
+set stop_num                    = 3 
 set restart_units               = ndays
-set restart_num                 = 4
+set restart_num                 = 3
 set num_resubmits               = 0
 set do_short_term_archiving     = false
 
@@ -68,7 +68,7 @@ set records_per_atm_output_file = 1000
 set start_date                  = default
 
 ### TIMESTEP Options
-@ dtime = 30 
+@ dtime = 40 
 @ ncpl = 86400 / $dtime
 
 ### COUPLER HISTORY FILES
@@ -841,7 +841,6 @@ else
   e3sm_newline
   $xmlchange_exe --id CAM_CONFIG_OPTS --append --val='-cosp'
 endif
-#$xmlchange_exe --id CAM_CONFIG_OPTS --val "-clubb_sgs -microphys p3 -chem none -nlev 72 -rad rrtmgp"
 
 #===========================
 # SET THE PARTITION OF NODES
@@ -968,7 +967,12 @@ cat <<EOF >> user_nl_cam
  convproc_do_aer = .false.
  deep_scheme = 'off'
  NHTFRQ = 240, 240
- fincl2 = 'TMQ:I','CLOUD:I','PRECL:I','U:I','V:I','OMEGA:I','Q:I','T:I','CLDLIQ:I','CLDICE:I','CLDRIM','QRL:I','QRS:I','AQRAIN:I','vap_cld_exchange:I','vap_ice_exchange:I'
+ do_clubb_sgs = .true.
+ do_shoc_sgs = .false.
+ macrop_scheme = 'CLUBB_SGS'
+ shallow_scheme = 'CLUBB_SGS'
+ eddy_scheme = 'CLUBB_SGS'
+ fincl2 = 'TMQ:I','CLOUD:I','PRECL:I','U:I','V:I','OMEGA:I','Q:I','T:I','CLDICE:I','CLDRIM:I','QRL:I','QRS:I','AQRAIN:I','vap_cld_exchange:I','vap_ice_exchange:I','liq_ice_exchange:I','vap_liq_exchange:I','P3_mtend_CLDICE:I','P3_mtend_CLDRAIN:I','P3_mtend_CLDLIQ:I','P3_mtend_NUMICE:I','P3_mtend_NUMRAIN:I','P3_sed_CLDICE:I','P3_sed_CLDRAIN:I','P3_qrevp:I','P3_qcacc:I','P3_qcaut:I','P3_qimlt:I'
 EOF
 
 cat <<EOF >> user_nl_clm

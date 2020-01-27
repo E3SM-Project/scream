@@ -10,7 +10,7 @@
 
 ### BASIC INFO ABOUT RUN
 set my_npes        = 360
-set job_name       = small_planet_RCE_SCREAM_3km_run_quartz_with_restarts
+set job_name       = small_planet_RCE_SCREAM_3km_run_syrah_with_more_diags
 #set compset        = FC5AV1C-L
 set compset        = RCE_SCREAM
 set resolution     = ne30_ne30
