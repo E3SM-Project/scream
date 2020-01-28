@@ -366,6 +366,34 @@ struct Functions
     const Smask& qr_gt_small, const view_2d_table& vn_table, const view_2d_table& vm_table,
     const Spack& qr_incld, const Spack& rcldm, const Spack& rhofacr, Spack& nr,
     Spack& nr_incld, Spack& mu_r, Spack& lamr, Spack& V_qr, Spack& V_nr);
+
+  // TODO - comments
+  KOKKOS_FUNCTION
+  static void ice_cldliq_collection(const Spack& rho, const Spack& temp,
+                                    const Spack& rhofaci, const Spack& f1pr04,
+                                    const Spack& qitot_incld, const Spack& qc_incld,
+                                    const Spack& nitot_incld, const Spack& nc_incld,
+                                    Spack& qccol, Spack& nccol, Spack& qcshd, Spack& ncshdc);
+
+  // TODO - comments
+  KOKKOS_FUNCTION
+  static void ice_rain_collection(const Spack& rho, const Spack& temp,
+                                  const Spack& rhofaci, const Spack& logn0r,
+                                  const Spack& f1pr07, const Spack& f1pr08,
+                                  const Spack& qitot_incld, const Spack& nitot_incld,
+                                  const Spack& qr_incld,
+                                  Spack& qrcol, Spack& nrcol); 
+
+
+  // TODO - comments
+  KOKKOS_FUNCTION
+  static void ice_self_collection(const Spack& rho, const Spack& rhofaci,
+                                  const Spack& f1pr03, const Spack& eii,
+                                  const Spack& qirim_incld, const Spack& qitot_incld,
+                                  const Spack& nitot_incld, Spack& nislf); 
+
+
+
 };
 
 template <typename ScalarT, typename DeviceT>
@@ -393,6 +421,7 @@ void init_tables_from_f90_c(Real* vn_table_data, Real* vm_table_data, Real* mu_t
 # include "p3_functions_cloud_sed_impl.hpp"
 # include "p3_functions_ice_sed_impl.hpp"
 # include "p3_functions_rain_sed_impl.hpp"
+# include "p3_function_ice_collection_impl.hpp"
 #endif
 
 #endif
