@@ -15,9 +15,13 @@ void Functions<S,D>
                         const Spack& nitot_incld, const Spack& nc_incld, 
                         Spack& qccol, Spack& nccol, Spack& qcshd, Spack& ncshdc)
 {
-   constexpr auto t_is_negative = temp < C::Tmelt;
-   constexpr auto qitot_incld_gt_small = qitot_incld > C::QSMALL;
-   constexpr auto qc_incld_gt_small = qc_incld > C::QSMALL;
+   constexpr Scalar qsmall = C::QSMALL;
+   constexpr Scalar tmelt = C::Tmelt;
+
+   const auto t_is_negative = temp < tmelt;
+   const auto qitot_incld_gt_small = qitot_incld > qsmall;
+   const auto qc_incld_gt_small = qc_incld > qsmall;
+
    constexpr auto eci = C::eci;
  
    qccol.set(qitot_incld_gt_small && qc_incld_gt_small && t_is_negative, 
@@ -48,9 +52,13 @@ void Functions<S,D>
                       const Spack& qr_incld, 
                       Spack& qrcol, Spack& nrcol)
 {
-   constexpr auto t_is_negative = temp <= C::Tmelt;
-   constexpr auto qitot_incld_gt_small = qitot_incld > C::QSMALL;
-   constexpr auto qr_incld_gt_small = qr_incld > C::QSMALL;
+   constexpr Scalar qsmall = C::QSMALL;
+   constexpr Scalar tmelt = C::Tmelt;
+
+   const auto t_is_negative = temp <= tmelt;
+   const auto qitot_incld_gt_small = qitot_incld > qsmall;
+   const auto qr_incld_gt_small = qr_incld > qsmall;
+
    constexpr Scalar ten = 10.0;
    constexpr auto eri = C::eri;
  
@@ -82,8 +90,12 @@ void Functions<S,D>
                       const Spack& qirim_incld, const Spack& qitot_incld, 
                       const Spack& nitot_incld, Spack& nislf)
 {
-   constexpr auto qirim_incld_positive = qirim_incld > C::ZERO;
-   constexpr auto qitot_incld_gt_small = qitot_incld > C::QSMALL;
+   constexpr Scalar qsmall = C::QSMALL;
+   constexpr Scalar zero = C::ZERO;
+
+   const auto qirim_incld_positive = qirim_incld > zero;
+   const auto qitot_incld_gt_small = qitot_incld > qsmall;
+
    Spack tmp1{0.0};
    Spack Eii_fact{0.0};
    Smask tmp1_lt_six{0};
