@@ -9,13 +9,13 @@
 ###===================================================================
 
 ### BASIC INFO ABOUT RUN
-set my_npes        = 64
-set job_name       = small_planet_RCE_3km_run_scream_code_syrah_ne30_new_merged_branch_p3
+set my_npes        = 1080
+set job_name       = small_planet_RCE_3km_run_scream_code_syrah_ne30_run_constant_drop_number_p3_clubb
 #set compset        = FC5AV1C-L
 set compset        = F-EAMv1-RCEMIP
 set resolution     = ne30_ne30
 set machine        = syrah
-set walltime       = 00:08:00
+set walltime       = 16:00:00
 setenv project       cbronze
 
 ### SOURCE CODE OPTIONS
@@ -38,7 +38,7 @@ set seconds_before_delete_run_dir    = -1
 
 ### SUBMIT OPTIONS
 set submit_run       = true
-set debug_queue      = true
+set debug_queue      = false
 
 ### PROCESSOR CONFIGURATION
 set processor_config = customlc
@@ -49,22 +49,22 @@ set restart_files_dir = none
 
 ### DIRECTORIES
 set code_root_dir               = /g/g12/beydoun1/scream_rce
-set e3sm_simulations_dir        = /p/lustre1/beydoun1
+set e3sm_simulations_dir        = /p/lustre2/beydoun1
 set case_build_dir              = default
 set case_run_dir                = default
 set short_term_archive_root_dir = default
 
 ### LENGTH OF SIMULATION, RESTARTS, AND ARCHIVING
 set stop_units                  = ndays
-set stop_num                    = 100 
+set stop_num                    = 15 
 set restart_units               = $stop_units
 set restart_num                 = $stop_num
-set num_resubmits               = 0
+set num_resubmits               = 5
 set do_short_term_archiving     = false
 
 ### SIMULATION OPTIONS
-set atm_output_freq             = 480
-set records_per_atm_output_file = 40
+set atm_output_freq             = 120
+set records_per_atm_output_file = 60
 set start_date                  = default
 
 ### TIMESTEP Options
@@ -965,8 +965,11 @@ cat <<EOF >> user_nl_cam
  vthreads               =  1
  convproc_do_aer = .false.
  deep_scheme = 'off'
+ use_gw_convect  = .false.
+ use_gw_front    = .false.
+ use_gw_oro      = .false.
  micro_aerosolactivation = .false.
- fincl2 = 'TMQ:I','CLOUD:I','PRECL:I','U:I','V:I','OMEGA:I','Q:I','T:I','CLDLIQ:I','CLDICE:I','CLDRIM','QRL:I','QRS:I','AQRAIN:I','vap_cld_exchange:I','vap_ice_exchange:I','liq_ice_exchange:I','vap_liq_exchange','P3_mtend_CLDICE:I','P3_mtend_CLDRAIN:I','P3_mtend_CLDLIQ:I','P3_mtend_NUMICE:I','P3_mtend_NUMRAIN:I','P3_sed_CLDICE','P3_sed_CLDRAIN','P3_qrevp','P3_qcacc','P3_qcaut','P3_qimlt'
+ fincl2 = 'TMQ:I','CLOUD:I','PRECL:I','U:I','V:I','OMEGA:I','Q:I','T:I','CLDLIQ:I','CLDICE:I','CLDRIM','QRL:I','QRS:I','AQRAIN:I','vap_cld_exchange:I','vap_ice_exchange:I','liq_ice_exchange:I','vap_liq_exchange:I','P3_mtend_CLDICE:I','P3_mtend_CLDRAIN:I','P3_mtend_CLDLIQ:I','P3_mtend_NUMICE:I','P3_mtend_NUMRAIN:I','P3_sed_CLDICE:I','P3_sed_CLDRAIN:I','P3_qrevp:I','P3_qcacc:I','P3_qcaut:I','P3_qimlt:I'
 EOF
 
 cat <<EOF >> user_nl_clm

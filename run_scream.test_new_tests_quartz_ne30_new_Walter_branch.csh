@@ -9,13 +9,13 @@
 ###===================================================================
 
 ### BASIC INFO ABOUT RUN
-set my_npes        = 288
+set my_npes        = 720
 set job_name       = small_planet_RCE_3km_run_scream_code_quartz_ne30_new_merged_branch_p3
 #set compset        = FC5AV1C-L
 set compset        = F-EAMv1-RCEMIP
 set resolution     = ne30_ne30
 set machine        = quartz
-set walltime       = 00:10:00
+set walltime       = 00:03:00
 setenv project       cbronze
 
 ### SOURCE CODE OPTIONS
@@ -27,7 +27,7 @@ set tag_name       = default
 set case_name = ${machine}.${tag_name}.${job_name}.${resolution}
 
 ### BUILD OPTIONS
-set debug_compile  = true
+set debug_compile  = false
 set old_executable = false
 
 ### AUTOMATIC DELETION OPTIONS
@@ -38,7 +38,7 @@ set seconds_before_delete_run_dir    = -1
 
 ### SUBMIT OPTIONS
 set submit_run       = true
-set debug_queue      = true
+set debug_queue      = false
 
 ### PROCESSOR CONFIGURATION
 set processor_config = customlc
@@ -68,7 +68,7 @@ set records_per_atm_output_file = 40
 set start_date                  = default
 
 ### TIMESTEP Options
-@ dtime = 15 
+@ dtime = 45 
 @ ncpl = 86400 / $dtime
 
 ### COUPLER HISTORY FILES
@@ -955,7 +955,7 @@ cat <<EOF >> user_nl_cam
  hypervis_subcycle_q            =  1
  hypervis_subcycle_tom          = 32
  rearth = 203712.00                ! reduced planet radius rearth = a/500.0
- rsplit = 3
+ rsplit = 8
  qsplit = 1
  se_ftype               = 4
  se_limiter_option              =  8
@@ -965,7 +965,7 @@ cat <<EOF >> user_nl_cam
  vthreads               =  1
  convproc_do_aer = .false.
  deep_scheme = 'off'
- fincl1 = 'TMQ:I','CLOUD:I','U:I','V:I','OMEGA:I','Q:I','T:I'
+ fincl2 = 'TMQ:I','CLOUD:I','PRECL:I','U:I','V:I','OMEGA:I','Q:I','T:I','CLDLIQ:I','CLDICE:I','CLDRIM','QRL:I','QRS:I','AQRAIN:I','vap_cld_exchange:I','vap_ice_exchange:I','liq_ice_exchange:I','vap_liq_exchange','P3_mtend_CLDICE:I','P3_mtend_CLDRAIN:I','P3_mtend_CLDLIQ:I','P3_mtend_NUMICE:I','P3_mtend_NUMRAIN:I','P3_sed_CLDICE','P3_sed_CLDRAIN','P3_qrevp','P3_qcacc','P3_qcaut','P3_qimlt'
 EOF
 
 cat <<EOF >> user_nl_clm
