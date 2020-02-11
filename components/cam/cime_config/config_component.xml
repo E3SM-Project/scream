@@ -32,6 +32,7 @@
          <default_value>preqx</default_value>
 	 <values>
 	   <value compset="_CAM5%SCREAM-HR">theta-l</value>
+           <value compset="_CAM5%RCE">theta-l</value>
 	 </values>
          <group>build_component_cam</group>
          <file>env_build.xml</file>
@@ -124,7 +125,7 @@
 
       <value compset="_CLM45%[^_]*BC"     >-bc_dep_to_snow_updates</value>
       <!-- Radiative-Convective Equilibrium (RCE) -->
-      <value compset="_CAM5%RCE"    >-phys cam5  -rad rrtmgp -nlev 72 -clubb_sgs -microphys p3 -aquaplanet -rce -chem none </value>
+      <value compset="_CAM5%RCE"    >-phys cam5  -rad rrtmgp -nlev 72 -shoc_sgs -microphys p3 -aquaplanet -rce -chem none </value>
 
 
     </values>

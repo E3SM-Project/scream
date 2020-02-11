@@ -10,7 +10,7 @@
 
 ### BASIC INFO ABOUT RUN
 set my_npes        = 1080
-set job_name       = small_planet_RCE_3km_run_scream_code_syrah_ne30_run_constant_drop_number_p3_clubb_2
+set job_name       = small_planet_RCE_3km_run_scream_code_syrah_ne30_run_constant_drop_number_p3_shoc
 #set compset        = FC5AV1C-L
 set compset        = F-EAMv1-RCEMIP
 set resolution     = ne30_ne30
@@ -56,10 +56,10 @@ set short_term_archive_root_dir = default
 
 ### LENGTH OF SIMULATION, RESTARTS, AND ARCHIVING
 set stop_units                  = ndays
-set stop_num                    = 15 
+set stop_num                    = 20 
 set restart_units               = $stop_units
 set restart_num                 = $stop_num
-set num_resubmits               = 5
+set num_resubmits               = 4
 set do_short_term_archiving     = false
 
 ### SIMULATION OPTIONS

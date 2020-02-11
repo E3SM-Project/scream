@@ -736,7 +736,11 @@ end function shoc_implements_cnst
    else
      call grid_size(state1, host_dx_in, host_dy_in)
    endif
- 
+
+   !for now, hardcode host_dx_in and host_dy_in to be 3 km for RCE case
+   host_dx_in(:) = 3300._r8
+   host_dy_in(:) = 3300._r8
+    
    minqn = 0._r8
    newfice(:,:) = 0._r8
    where(state1%q(:ncol,:pver,ixcldice) .gt. minqn) &

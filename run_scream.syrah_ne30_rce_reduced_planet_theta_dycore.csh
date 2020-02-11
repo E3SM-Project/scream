@@ -10,7 +10,7 @@
 
 ### BASIC INFO ABOUT RUN
 set my_npes        = 1080
-set job_name       = small_planet_RCE_3km_run_scream_code_syrah_ne30_run_constant_drop_number_p3_clubb_2
+set job_name       = small_planet_RCE_3km_run_scream_code_syrah_ne30_run_constant_drop_number_p3_clubb_theta_dycore_4
 #set compset        = FC5AV1C-L
 set compset        = F-EAMv1-RCEMIP
 set resolution     = ne30_ne30
@@ -56,10 +56,10 @@ set short_term_archive_root_dir = default
 
 ### LENGTH OF SIMULATION, RESTARTS, AND ARCHIVING
 set stop_units                  = ndays
-set stop_num                    = 15 
+set stop_num                    = 12 
 set restart_units               = $stop_units
 set restart_num                 = $stop_num
-set num_resubmits               = 5
+set num_resubmits               = 4
 set do_short_term_archiving     = false
 
 ### SIMULATION OPTIONS
@@ -68,7 +68,7 @@ set records_per_atm_output_file = 200
 set start_date                  = default
 
 ### TIMESTEP Options
-@ dtime = 45 
+@ dtime = 120
 @ ncpl = 86400 / $dtime
 
 ### COUPLER HISTORY FILES
@@ -842,6 +842,8 @@ else
   $xmlchange_exe --id CAM_CONFIG_OPTS --append --val='-cosp'
 endif
 
+#./xmlchange CAM_TARGET=theta-l
+
 #===========================
 # SET THE PARTITION OF NODES
 #===========================
@@ -944,6 +946,8 @@ cat <<EOF >> user_nl_cam
  rrtmgp_coefficients_file_sw = '/p/lustre1/beydoun1/rrtmgp_coefficients_sw_c181004.nc'
  rrtmgp_coefficients_file_lw = '/p/lustre1/beydoun1/rrtmgp_coefficients_lw_c181004.nc'
  ncdata = '/p/lustre1/beydoun1/cami_ne30np4_L72_RCEMIP.nc'
+ transport_alg         = 0
+ semi_lagrange_cdr_alg = 20
  nu                = 2.5e10                     ! reduced planet hyperviscosity hv/500^3
  nu_p              = 2.5e10
  nu_div = 2.5e10
@@ -951,18 +955,27 @@ cat <<EOF >> user_nl_cam
  nu_top = 2.5e5
  hypervis_order    = 2                         ! 2 = hyperviscosity
  hypervis_scaling               =  0
- hypervis_subcycle              =  2
+ hypervis_subcycle              =  4
  hypervis_subcycle_q            =  1
- hypervis_subcycle_tom          = 32
+ hypervis_subcycle_tom          =  4
  rearth = 203712.00                ! reduced planet radius rearth = a/500.0
- rsplit = 8
+ rsplit = 1
  qsplit = 1
  se_ftype               = 4
- se_limiter_option              =  8
- se_nsplit              =   4
+ se_limiter_option              =  9
+ se_nsplit              =   90
  se_partmethod          =  4
  vert_remap_q_alg               =  1
+ semi_lagrange_nearest_point_lev = 100
+ theta_hydrostatic_mode=.false.
+ tstep_type = 10
+ theta_advect_form=1
+ vert_remap_q_alg               =  1
  vthreads               =  1
+ cubed_sphere_map = 0
+ se_tstep = -1
+ dt_remap_factor = -1
+ dt_tracer_factor = -1
  convproc_do_aer = .false.
  deep_scheme = 'off'
  use_gw_convect  = .false.

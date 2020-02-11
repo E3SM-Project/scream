@@ -1816,10 +1816,12 @@ subroutine shoc_length(&
       
       if (brunt(i,k) .ge. 0) brunt2(i,k) = brunt(i,k)
       
+      !change to shoc_mix made on Feb 3, 2020
+      !shoc_mix(i,k)=min(maxlen,(2.8284_r8*sqrt(1._r8/((1._r8/(tscale*tkes*vonk*zt_grid(i,k))) &
+      !  +(1._r8/(tscale*tkes*l_inf(i)))+0.01_r8*(brunt2(i,k)/tke(i,k)))))/0.3_r8)     
+      shoc_mix(i,k)=min(maxlen,(2.8284_r8*sqrt(1._r8/((1._r8/(tscale*tkes*vonk*zt_grid(i,k)))&
+        +(1._r8/(tscale*tkes*l_inf(i)))+0.01_r8*(brunt2(i,k)/tke(i,k)))))/1.0_r8)
 
-      shoc_mix(i,k)=min(maxlen,(2.8284_r8*sqrt(1._r8/((1._r8/(tscale*tkes*vonk*zt_grid(i,k))) &
-        +(1._r8/(tscale*tkes*l_inf(i)))+0.01_r8*(brunt2(i,k)/tke(i,k)))))/0.3_r8)     
-      
     enddo  ! end i loop (column loop)
   enddo ! end k loop (vertical loop)
   
@@ -1867,9 +1869,14 @@ subroutine shoc_length(&
 	    mmax=maxlen
 	    if (zt_grid(i,ku) .gt. maxlen) mmax=maxlen
 	    
+            !Feb 3, 2020
+            !shoc_mix(i,kl:ku)=min(mmax,sqrt(1._r8/(((conv_var)/ &
+            !  (depth*sqrt(tke(i,kl:ku))))**2+0.01_r8* &
+            !  (brunt2(i,kl:ku)/tke(i,kl:ku))))/0.3_r8)	
             shoc_mix(i,kl:ku)=min(mmax,sqrt(1._r8/(((conv_var)/ &
               (depth*sqrt(tke(i,kl:ku))))**2+0.01_r8* &
-              (brunt2(i,kl:ku)/tke(i,kl:ku))))/0.3_r8)	
+              (brunt2(i,kl:ku)/tke(i,kl:ku))))/1.0_r8)  
+
 	      
 	  endif
 	    

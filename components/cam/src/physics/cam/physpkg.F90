@@ -25,7 +25,7 @@ module physpkg
   use phys_grid,        only: get_ncols_p, print_cost_p, update_cost_p
   use phys_gmean,       only: gmean_mass
   use ppgrid,           only: begchunk, endchunk, pcols, pver, pverp, psubcols
-  use constituents,     only: pcnst, cnst_name, cnst_get_ind
+  use constituents,     only: pcnst, cnst_name, cnst_get_ind, cnst_longname
   use camsrfexch,       only: cam_out_t, cam_in_t
 
   use cam_control_mod,  only: ideal_phys, adiabatic
@@ -2571,9 +2571,11 @@ end if
                 call check_energy_chng(state, tend, "clubb_tend", nstep, ztodt, &
                      cam_in%cflx(:,1)/cld_macmic_num_steps, flx_cnd/cld_macmic_num_steps, &
                      det_ice/cld_macmic_num_steps, flx_heat/cld_macmic_num_steps)
-		     
-	
- 
+		
+                !Store SHOC tendencies - Hassan added
+                do m = 1,pcnst
+                   call outfld(trim(cnst_name(m))//'shoc_tend',ptend%q(:,:,m),pcols,lchnk)
+                end do
           endif
 
           call t_stopf('macrop_tend')

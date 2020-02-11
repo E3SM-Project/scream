@@ -619,7 +619,12 @@ subroutine diag_init()
    call addfld ('QPERT&IC',horiz_only,    'I','kg/kg','Perturbation specific humidity (eddies in PBL)'  )
    call addfld ('TBOT&IC',horiz_only,    'I','K','Lowest model level temperature'                  )
 
-
+   !Hassan added
+   do m = 1,pcnst 
+       call addfld(trim(cnst_name(m))//'shoc_tend',(/'lev'/),'I','kg/kg/s',cnst_name(m)//'shoc_tend')  
+       !call add_default(trim(cnst_name(m))//'shoc_tend',0,'I')
+   end do
+    
    ! Initial file - Optional fields
 
    if (inithist_all) then
@@ -636,6 +641,9 @@ subroutine diag_init()
       call add_default ('KVH&IC     ',0, 'I')
       call add_default ('KVM&IC     ',0, 'I')
       call add_default ('TBOT&IC    ',0, 'I')
+      do m = 1,pcnst
+         call add_default(trim(cnst_name(m))//'shoc_tend',0,'I')
+      end do
    end if
 
    ! CAM export state 
@@ -1493,6 +1501,7 @@ subroutine diag_conv(state, ztodt, pbuf)
    call outfld('PRECCav ', precc, pcols, lchnk )
 
 #if ( defined E3SM_SCM_REPLAY )
+                   !call addfld(trim(cnst_name(m))//'shoc_tend',(/'lev'/),'A','kg/kg',cnst_longname(m)//'shoc_tend',gridname=grid_name)	
    call outfld('Prec   ' , prect, pcols, lchnk )
 #endif
 
