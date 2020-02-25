@@ -171,7 +171,10 @@ subroutine shoc_main ( &
      w_sec, thl_sec, qw_sec, qwthl_sec,&  ! Output (diagnostic)
      wthl_sec, wqw_sec, wtke_sec,&        ! Output (diagnostic)
      uw_sec, vw_sec, w3,&                 ! Output (diagnostic)    
-     wqls_sec, brunt)                     ! Output (diagnostic)
+     wqls_sec, brunt,&                    ! Output (diagnostic)
+     w1_1,w1_2,w2_1,w2_2,&                ! Output (diagnostic)
+     thl1_1,thl1_2,thl2_1,thl2_2,&        ! Output (diagnostic)
+     qw1_1,qw1_2,qw2_1,qw2_2)             ! Output (diagnostic)
 
   implicit none
   
@@ -282,7 +285,25 @@ subroutine shoc_main ( &
   ! brunt vaisala frequency [s-1] 
   real(r8) :: brunt(shcol,nlev) 
   ! return to isotropic timescale [s]
-  real(r8) :: isotropy(shcol,nlev) 
+  real(r8) :: isotropy(shcol,nlev)
+  ! Mean w of first and second Gaussian [m/s]
+  real(r8) :: w1_1(shcol,nlev)
+  real(r8) :: w1_2(shcol,nlev)
+  ! St dev of w of first and second Gaussian [m/s]
+  real(r8) :: w2_1(shcol,nlev)
+  real(r8) :: w2_2(shcol,nlev)
+  ! Mean temperature of first and second Gaussian [m/s]
+  real(r8) :: thl1_1(shcol,nlev)
+  real(r8) :: thl1_2(shcol,nlev)
+  ! St dev of temperature of first and second Gaussian [m/s]
+  real(r8) :: thl2_1(shcol,nlev)
+  real(r8) :: thl2_2(shcol,nlev)
+  ! Mean moisture of first and second Gaussian [m/s]
+  real(r8) :: qw1_1(shcol,nlev)
+  real(r8) :: qw1_2(shcol,nlev)
+  ! St dev of moisture of first and second Gaussian [m/s]
+  real(r8) :: qw2_1(shcol,nlev)
+  real(r8) :: qw2_2(shcol,nlev)
 
   !============================================================================
 ! LOCAL VARIABLES
@@ -416,7 +437,10 @@ subroutine shoc_main ( &
 	   wqw_sec,qwthl_sec,w3,pres,&          ! Input
 	   zt_grid,zi_grid,&                    ! Input
 	   shoc_cldfrac,shoc_ql,&               ! Output
-           wqls_sec,wthv_sec)                   ! Output
+           wqls_sec,wthv_sec,&                  ! Output
+           w1_1,w1_2,w2_1,w2_2,&                ! Output
+           thl1_1,thl1_2,thl2_1,thl2_2,&        ! Output
+           qw1_1,qw1_2,qw2_1,qw2_2)             ! Output
 
     ! Check TKE to make sure values lie within acceptable 
     !  bounds after vertical advection, etc.
@@ -1216,7 +1240,13 @@ subroutine shoc_assumed_pdf(&
 	     wqw_sec,qwthl_sec,w3,pres, &       ! Input
 	     zt_grid,zi_grid,&                  ! Input
 	     shoc_cldfrac,shoc_ql,&             ! Output
-             wqls,wthv_sec)                     ! Output
+             wqls,wthv_sec,&                    ! Output
+             w1_1_out,w1_2_out,&                ! Output
+             w2_1_out,w2_2_out,&                ! Output
+             thl1_1_out,thl1_2_out,&            ! Output
+             thl2_1_out,thl2_2_out,&            ! Output
+             qw1_1_out,qw1_2_out,&              ! Output
+             qw2_1_out,qw2_2_out)               ! Output
 
   ! Purpose of this subroutine is calculate the 
   !  double Gaussian PDF of SHOC, which is the centerpiece
@@ -1272,6 +1302,24 @@ subroutine shoc_assumed_pdf(&
   real(r8), intent(out) :: wthv_sec(shcol,nlev) 
   ! SGS liquid water flux [kg/kg m/s]
   real(r8), intent(out) :: wqls(shcol,nlev)
+  ! Mean w of first and second Gaussian [m/s]
+  real(r8), intent(out) :: w1_1_out(shcol,nlev)
+  real(r8), intent(out) :: w1_2_out(shcol,nlev)
+  ! St dev of w of first and second Gaussian [m/s]
+  real(r8), intent(out) :: w2_1_out(shcol,nlev)
+  real(r8), intent(out) :: w2_2_out(shcol,nlev)
+  ! Mean temperature of first and second Gaussian [m/s]
+  real(r8), intent(out) :: thl1_1_out(shcol,nlev)
+  real(r8), intent(out) :: thl1_2_out(shcol,nlev)
+  ! St dev of temperature of first and second Gaussian [m/s]
+  real(r8), intent(out) :: thl2_1_out(shcol,nlev)
+  real(r8), intent(out) :: thl2_2_out(shcol,nlev)
+  ! Mean moisture of first and second Gaussian [m/s]
+  real(r8), intent(out) :: qw1_1_out(shcol,nlev)
+  real(r8), intent(out) :: qw1_2_out(shcol,nlev)
+  ! St dev of moisture of first and second Gaussian [m/s]
+  real(r8), intent(out) :: qw2_1_out(shcol,nlev)
+  real(r8), intent(out) :: qw2_2_out(shcol,nlev)
 
 ! LOCAL VARIABLES
   integer i,j,k,dothis,nmicro_fields
@@ -1600,7 +1648,20 @@ subroutine shoc_assumed_pdf(&
       wqls(i,k)=a*((w1_1-w_first)*ql1)+(1._r8-a)*((w1_2-w_first)*ql2)
       ! Compute the SGS buoyancy flux
       wthv_sec(i,k)=wthlsec+((1._r8-epsterm)/epsterm)*basetemp*wqwsec &
-        +((lcond/cp)*(basepres/pval)**(rgas/cp)-(1._r8/epsterm)*basetemp)*wqls(i,k)
+           +((lcond/cp)*(basepres/pval)**(rgas/cp)-(1._r8/epsterm)*basetemp)*wqls(i,k)
+      ! Save mean and st dev for subgrid pdf of w,T,q
+      w1_1_out(i,k)=w1_1
+      w1_2_out(i,k)=w1_2
+      w2_1_out(i,k)=w2_1
+      w2_2_out(i,k)=w2_2
+      thl1_1_out(i,k)=thl1_1
+      thl1_2_out(i,k)=thl1_2
+      thl2_1_out(i,k)=thl2_1
+      thl2_2_out(i,k)=thl2_2
+      qw1_1_out(i,k)=qw1_1
+      qw1_2_out(i,k)=qw1_2
+      qw2_1_out(i,k)=qw2_1
+      qw2_2_out(i,k)=qw2_2
      	
     enddo  ! end i loop here
   enddo	  ! end k loop here

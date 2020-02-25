@@ -366,6 +366,18 @@ end function shoc_implements_cnst
     call addfld('ISOTROPY',(/'lev'/),'A', 's', 'timescale')
     call addfld('CONCLD',(/'lev'/),  'A',        'fraction', 'Convective cloud cover')
     call addfld('BRUNT',(/'lev'/), 'A', 's-1', 'Brunt frequency')
+    call addfld('SHOC_W11',(/'lev'/), 'A', 'm/s', 'Mean w of first Gaussian')
+    call addfld('SHOC_W12',(/'lev'/), 'A', 'm/s', 'Mean w of second Gaussian')
+    call addfld('SHOC_W11',(/'lev'/), 'A', 'm/s', 'St dev of w of first Gaussian')
+    call addfld('SHOC_W12',(/'lev'/), 'A', 'm/s', 'St dev of w of second Gaussian')
+    call addfld('SHOC_THL11',(/'lev'/), 'A', 'K', 'Mean temperature of first Gaussian')
+    call addfld('SHOC_THL12',(/'lev'/), 'A', 'K', 'Mean temperature of second Gaussian')
+    call addfld('SHOC_THL11',(/'lev'/), 'A', 'K', 'St dev of temperature of first Gaussian')
+    call addfld('SHOC_THL12',(/'lev'/), 'A', 'K', 'St dev of temperature of second Gaussian')
+    call addfld('SHOC_QW11',(/'lev'/), 'A', 'kg/kg', 'Mean moisture of first Gaussian')
+    call addfld('SHOC_QW12',(/'lev'/), 'A', 'kg/kg', 'Mean moisture of second Gaussian')
+    call addfld('SHOC_QW11',(/'lev'/), 'A', 'kg/kg', 'St dev of moisture of first Gaussian')
+    call addfld('SHOC_QW12',(/'lev'/), 'A', 'kg/kg', 'St dev of moisture of second Gaussian')
 
     call add_default('SHOC_TKE', 1, ' ')
     call add_default('WTHV_SEC', 1, ' ')
@@ -386,6 +398,18 @@ end function shoc_implements_cnst
     call add_default('ISOTROPY',1,' ')
     call add_default('CONCLD',1,' ')
     call add_default('BRUNT',1,' ')
+    call add_default('SHOC_W11',1,' ')
+    call add_default('SHOC_W12',1,' ')
+    call add_default('SHOC_W21',1,' ')
+    call add_default('SHOC_W22',1,' ')
+    call add_default('SHOC_THL11',1,' ')
+    call add_default('SHOC_THL12',1,' ')
+    call add_default('SHOC_THL21',1,' ')
+    call add_default('SHOC_THL22',1,' ')
+    call add_default('SHOC_QW11',1,' ')
+    call add_default('SHOC_QW12',1,' ')
+    call add_default('SHOC_QW21',1,' ')
+    call add_default('SHOC_QW22',1,' ')
     ! ---------------------------------------------------------------!
     ! Initialize SHOC                                                !
     ! ---------------------------------------------------------------!
@@ -792,7 +816,10 @@ end function shoc_implements_cnst
         w_sec_out(:ncol,:), thl_sec_out(:ncol,:), qw_sec_out(:ncol,:), qwthl_sec_out(:ncol,:), & ! Output (diagnostic)   
         wthl_sec_out(:ncol,:), wqw_sec_out(:ncol,:), wtke_sec_out(:ncol,:), & ! Output (diagnostic)
         uw_sec_out(:ncol,:), vw_sec_out(:ncol,:), w3_out(:ncol,:), & ! Output (diagnostic)
-        wqls_out(:ncol,:),brunt_out(:ncol,:)) ! Output (diagnostic)
+        wqls_out(:ncol,:),brunt_out(:ncol,:), & ! Output (diagnostic)
+        w1_1_out(:ncol,:),w1_2_out(:ncol,:),w2_1_out(:ncol,:),w2_2_out(:ncol,:), & ! Output (diagnostic)
+        thl1_1_out(:ncol,:),thl1_2_out(:ncol,:),thl2_1_out(:ncol,:),thl2_2_out(:ncol,:), & ! Output (diagnostic)
+        qw1_1_out(:ncol,:),qw1_2_out(:ncol,:),qw2_1_out(:ncol,:),qw2_2_out(:ncol,:)) ! Output (diagnostic)
    
    ! Transfer back to pbuf variables
    
@@ -1052,6 +1079,18 @@ end function shoc_implements_cnst
     call outfld('ISOTROPY',isotropy_out, pcols,lchnk)
     call outfld('CONCLD',concld,pcols,lchnk)
     call outfld('BRUNT',brunt_out,pcols,lchnk)
+    call outfld('SHOC_W11',w1_1_out,pcols,lchnk)
+    call outfld('SHOC_W12',w1_2_out,pcols,lchnk)
+    call outfld('SHOC_W21',w2_1_out,pcols,lchnk)
+    call outfld('SHOC_W22',w2_2_out,pcols,lchnk)
+    call outfld('SHOC_THL11',thl1_1_out,pcols,lchnk)
+    call outfld('SHOC_THL12',thl1_2_out,pcols,lchnk)
+    call outfld('SHOC_THL21',thl2_1_out,pcols,lchnk)
+    call outfld('SHOC_THL22',thl2_2_out,pcols,lchnk)
+    call outfld('SHOC_QW11',qw1_1_out,pcols,lchnk)
+    call outfld('SHOC_QW12',qw1_2_out,pcols,lchnk)
+    call outfld('SHOC_QW21',qw2_1_out,pcols,lchnk)
+    call outfld('SHOC_QW22',qw2_2_out,pcols,lchnk)
 
 #endif    
     return         
