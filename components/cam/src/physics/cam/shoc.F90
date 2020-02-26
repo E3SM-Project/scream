@@ -172,9 +172,12 @@ subroutine shoc_main ( &
      wthl_sec, wqw_sec, wtke_sec,&        ! Output (diagnostic)
      uw_sec, vw_sec, w3,&                 ! Output (diagnostic)    
      wqls_sec, brunt,&                    ! Output (diagnostic)
-     w1_1,w1_2,w2_1,w2_2,&                ! Output (diagnostic)
-     thl1_1,thl1_2,thl2_1,thl2_2,&        ! Output (diagnostic)
-     qw1_1,qw1_2,qw2_1,qw2_2)             ! Output (diagnostic)
+     w1_1_out, w1_2_out,&                 ! Output (diagnostic)
+     w2_1_out, w2_2_out,&                 ! Output (diagnostic)
+     thl1_1_out, thl1_2_out,&             ! Output (diagnostic)
+     thl2_1_out, thl2_2_out,&             ! Output (diagnostic)
+     qw1_1_out, qw1_2_out,&               ! Output (diagnostic)
+     qw2_1_out, qw2_2_out)                ! Output (diagnostic)
 
   implicit none
   
@@ -287,23 +290,23 @@ subroutine shoc_main ( &
   ! return to isotropic timescale [s]
   real(r8) :: isotropy(shcol,nlev)
   ! Mean w of first and second Gaussian [m/s]
-  real(r8) :: w1_1(shcol,nlev)
-  real(r8) :: w1_2(shcol,nlev)
+  real(r8), intent(out) :: w1_1_out(shcol,nlev)
+  real(r8), intent(out) :: w1_2_out(shcol,nlev)
   ! St dev of w of first and second Gaussian [m/s]
-  real(r8) :: w2_1(shcol,nlev)
-  real(r8) :: w2_2(shcol,nlev)
+  real(r8), intent(out) :: w2_1_out(shcol,nlev)
+  real(r8), intent(out) :: w2_2_out(shcol,nlev)
   ! Mean temperature of first and second Gaussian [m/s]
-  real(r8) :: thl1_1(shcol,nlev)
-  real(r8) :: thl1_2(shcol,nlev)
+  real(r8), intent(out) :: thl1_1_out(shcol,nlev)
+  real(r8), intent(out) :: thl1_2_out(shcol,nlev)
   ! St dev of temperature of first and second Gaussian [m/s]
-  real(r8) :: thl2_1(shcol,nlev)
-  real(r8) :: thl2_2(shcol,nlev)
+  real(r8), intent(out) :: thl2_1_out(shcol,nlev)
+  real(r8), intent(out) :: thl2_2_out(shcol,nlev)
   ! Mean moisture of first and second Gaussian [m/s]
-  real(r8) :: qw1_1(shcol,nlev)
-  real(r8) :: qw1_2(shcol,nlev)
+  real(r8), intent(out) :: qw1_1_out(shcol,nlev)
+  real(r8), intent(out) :: qw1_2_out(shcol,nlev)
   ! St dev of moisture of first and second Gaussian [m/s]
-  real(r8) :: qw2_1(shcol,nlev)
-  real(r8) :: qw2_2(shcol,nlev)
+  real(r8), intent(out) :: qw2_1_out(shcol,nlev)
+  real(r8), intent(out) :: qw2_2_out(shcol,nlev)
 
   !============================================================================
 ! LOCAL VARIABLES
@@ -438,9 +441,12 @@ subroutine shoc_main ( &
 	   zt_grid,zi_grid,&                    ! Input
 	   shoc_cldfrac,shoc_ql,&               ! Output
            wqls_sec,wthv_sec,&                  ! Output
-           w1_1,w1_2,w2_1,w2_2,&                ! Output
-           thl1_1,thl1_2,thl2_1,thl2_2,&        ! Output
-           qw1_1,qw1_2,qw2_1,qw2_2)             ! Output
+           w1_1_out,w1_2_out,&                  ! Output
+           w2_1_out,w2_2_out,&                  ! Output
+           thl1_1_out,thl1_2_out,&              ! Output
+           thl2_1_out,thl2_2_out,&              ! Output
+           qw1_1_out,qw1_2_out,&                ! Output
+           qw2_1_out,qw2_2_out)                 ! Output
 
     ! Check TKE to make sure values lie within acceptable 
     !  bounds after vertical advection, etc.
@@ -1369,7 +1375,22 @@ subroutine shoc_assumed_pdf(&
   
   ! Initialize cloud variables to zero  
   shoc_cldfrac(:,:)=0._r8
-  shoc_ql(:,1)=0._r8 
+  shoc_ql(:,1)=0._r8
+
+  ! Initialize pdf values to zero
+  w1_1_out(:,:)=0._r8
+  w1_2_out(:,:)=0._r8
+  w2_1_out(:,:)=0._r8
+  w2_2_out(:,:)=0._r8
+  thl1_1_out(:,:)=0._r8
+  thl1_2_out(:,:)=0._r8
+  thl2_1_out(:,:)=0._r8
+  thl2_2_out(:,:)=0._r8
+  qw1_1_out(:,:)=0._r8
+  qw1_2_out(:,:)=0._r8
+  qw2_1_out(:,:)=0._r8
+  qw2_2_out(:,:)=0._r8
+
 
   ! Interpolate many variables from interface grid to themo grid
   call linear_interp(zi_grid,zt_grid,w3,w3_zt,nlevi,nlev,shcol,largeneg)  
