@@ -78,6 +78,9 @@ struct UnitWrap {
     struct TestIceCollection;
     struct TestP3UpdatePrognosticLiq;
     struct TestP3FunctionsImposeMaxTotalNi;
+    struct TestIceNucleation;
+    struct TestIceCldliqWetGrowth;
+    struct TestIceRelaxationTimescale;
   };
 
 };

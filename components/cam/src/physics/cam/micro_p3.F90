@@ -2304,6 +2304,10 @@ f1pr05,f1pr14,xxlv,xlf,dv,kap,mu,sc,    &
 qv,qc_incld,qitot_incld,nitot_incld,qr_incld,    &
            log_wetgrowth,qrcol,qccol,qwgrth,nrshdr,qcshd)
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use micro_p3_iso_f, only: ice_cldliq_wet_growth_f, cxx_cbrt, cxx_pow
+#endif
+
    implicit none
 
    real(rtype), intent(in) :: rho
@@ -2333,18 +2337,30 @@ qv,qc_incld,qitot_incld,nitot_incld,qr_incld,    &
 
    real(rtype) :: qsat0, dum, dum1
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    if (use_cxx) then
+       call ice_cldliq_wet_growth_f(rho,t,pres,rhofaci, &
+                                  f1pr05,f1pr14,xxlv,xlf,dv,kap,mu,sc, &
+                                  qv,qc_incld,qitot_incld,nitot_incld,qr_incld, &
+                                  log_wetgrowth,qrcol,qccol,qwgrth,nrshdr,qcshd)
+       return
+    endif
+#endif
 
    if (qitot_incld.ge.qsmall .and. qc_incld+qr_incld.ge.1.e-6_rtype .and. t.lt.zerodegc) then
       qsat0  = 0.622_rtype*e0/(pres-e0)
 
-      qwgrth = ((f1pr05 + f1pr14*sc**thrd*(rhofaci*rho/mu)**0.5_rtype)*       &
+      qwgrth = ((f1pr05 + f1pr14*bfb_cbrt(sc)*bfb_pow((rhofaci*rho/mu),0.5_rtype))*       &
       2._rtype*pi*(rho*xxlv*dv*(qsat0-qv)-(t-zerodegc)*           &
       kap)/(xlf+cpw*(t-zerodegc)))*nitot_incld
 
       qwgrth = max(qwgrth,0._rtype)
+
       dum    = max(0._rtype,(qccol+qrcol)-qwgrth)
+
       if (dum.ge.1.e-10_rtype) then
          nrshdr = nrshdr + dum*1.923e+6_rtype   ! 1/5.2e-7, 5.2e-7 is the mass of a 1 mm raindrop
+
          if ((qccol+qrcol).ge.1.e-10_rtype) then
             dum1  = 1._rtype/(qccol+qrcol)
             qcshd = qcshd + dum*qccol*dum1
@@ -2367,6 +2383,10 @@ subroutine calc_ice_relaxation_timescale(rho,t,rhofaci,     &
 f1pr05,f1pr14,dv,mu,sc,qitot_incld,nitot_incld,    &
 epsi,epsi_tot)
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use micro_p3_iso_f, only: ice_relaxation_timescale_f, cxx_cbrt
+#endif
+
    !-----------------------------
    ! calcualte total inverse ice relaxation timescale combined for all ice categories
    ! note 'f1pr' values are normalized, so we need to multiply by N
@@ -2388,10 +2408,18 @@ epsi,epsi_tot)
    real(rtype), intent(out) :: epsi
    real(rtype), intent(inout) :: epsi_tot
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    if (use_cxx) then
+      call ice_relaxation_timescale_f(rho,t,rhofaci,     &
+                                      f1pr05,f1pr14,dv,mu,sc,qitot_incld,nitot_incld, &
+                                      epsi,epsi_tot)
+       return
+    endif
+#endif
 
 
    if (qitot_incld.ge.qsmall .and. t.lt.zerodegc) then
-      epsi = ((f1pr05+f1pr14*sc**thrd*(rhofaci*rho/mu)**0.5_rtype)*2._rtype*pi* &
+      epsi = ((f1pr05+f1pr14*bfb_cbrt(sc)*(rhofaci*rho/mu)**0.5_rtype)*2._rtype*pi* &
       rho*dv)*nitot_incld
       epsi_tot   = epsi_tot + epsi
    else
@@ -2627,7 +2655,9 @@ subroutine ice_nucleation(t,inv_rho,nitot,naai,supi,odt,log_predictNc,    &
    ! deposition/condensation-freezing nucleation
    ! allow ice nucleation if < -15 C and > 5% ice supersaturation
    ! use CELL-AVERAGE values, freezing of vapor
-
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use micro_p3_iso_f, only: ice_nucleation_f, cxx_exp
+#endif
    implicit none
 
    real(rtype), intent(in) :: t
@@ -2643,10 +2673,20 @@ subroutine ice_nucleation(t,inv_rho,nitot,naai,supi,odt,log_predictNc,    &
 
 
    real(rtype) :: dum, N_nuc, Q_nuc
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    if (use_cxx) then
+       call ice_nucleation_f(t,inv_rho,nitot,naai,supi,odt,log_predictNc,    &
+                             qinuc,ninuc)
+       return
+    endif
+#endif
+
    if ( t .lt.icenuct .and. supi.ge.0.05_rtype) then
       if(.not. log_predictNc) then
-!         ! dum = exp(-0.639+0.1296*100.*supi(i,k))*1000.*inv_rho(i,k)  !Meyers et al. (1992)
-         dum = 0.005_rtype*exp(0.304_rtype*(zerodegc-t))*1000._rtype*inv_rho   !Cooper (1986)
+         ! dum = exp(-0.639+0.1296*100.*supi(i,k))*1000.*inv_rho(i,k)  !Meyers et al. (1992)
+         dum = 0.005_rtype*bfb_exp(0.304_rtype*(zerodegc-t))*1000._rtype*inv_rho   !Cooper (1986)
+
          dum = min(dum,100.e3_rtype*inv_rho)
          N_nuc = max(0._rtype,(dum-nitot)*odt)
          if (N_nuc.ge.1.e-20_rtype) then

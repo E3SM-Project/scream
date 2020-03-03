@@ -620,4 +620,52 @@ subroutine  update_prognostic_ice_c(qcheti,qccol,qcshd,nccol,ncheti,ncshdc,qrcol
 
   end subroutine update_prognostic_liquid_c
 
+
+  subroutine ice_nucleation_c(temp, inv_rho, nitot, naai, supi, odt, &
+                              log_predictNc, qinuc, ninuc) bind(C)
+    use micro_p3, only: ice_nucleation
+
+    ! arguments
+    real(kind=c_real), value, intent(in) :: temp, inv_rho, nitot, naai, supi, odt
+    logical(c_bool), value, intent(in) :: log_predictNc
+
+    real(kind=c_real), intent(out) :: qinuc, ninuc
+
+    call ice_nucleation(temp, inv_rho, nitot, naai, supi, odt, &
+                        log_predictNc, qinuc, ninuc)
+ end subroutine ice_nucleation_c
+
+ subroutine ice_relaxation_timescale_c(rho, temp, rhofaci, f1pr05, f1pr14,   &
+                                       dv, mu, sc, qitot_incld, nitot_incld, &
+                                       epsi, epsi_tot) bind(C)
+   use micro_p3, only: calc_ice_relaxation_timescale
+
+   ! arguments
+   real(kind=c_real), value, intent(in) :: rho, temp, rhofaci, f1pr05, f1pr14, &
+                                           dv, mu, sc, qitot_incld, nitot_incld
+   real(kind=c_real), intent(out) :: epsi, epsi_tot
+
+   call calc_ice_relaxation_timescale(rho, temp, rhofaci, f1pr05, f1pr14,   &
+                                      dv, mu, sc, qitot_incld, nitot_incld, &
+                                      epsi, epsi_tot)
+ end subroutine ice_relaxation_timescale_c
+
+ subroutine ice_cldliq_wet_growth_c(rho, temp, pres, rhofaci, f1pr05, &
+                                    f1pr14, xxlv, xlf, dv, kap, mu, sc, qv, qc_incld,  &
+                                    qitot_incld, nitot_incld, qr_incld, &
+                                    log_wetgrowth, qrcol, qccol, qwgrth, nrshdr, qcshd) bind(C)
+   use micro_p3, only: ice_cldliq_wet_growth
+
+   ! argmens
+   real(kind=c_real), value, intent(in) :: rho, temp ,pres, rhofaci, f1pr05, f1pr14, xxlv, xlf, dv, &
+                                           kap, mu, sc, qv, qc_incld, qitot_incld, nitot_incld,qr_incld
+   logical(kind=c_bool), intent(inout) :: log_wetgrowth
+   real(kind=c_real), intent(inout) :: qrcol, qccol, qwgrth, nrshdr, qcshd
+
+   call ice_cldliq_wet_growth(rho, temp, pres, rhofaci, f1pr05, &
+                              f1pr14, xxlv, xlf, dv, kap, mu, sc, qv, qc_incld, &
+                              qitot_incld, nitot_incld, qr_incld, &
+                              log_wetgrowth, qrcol, qccol, qwgrth, nrshdr, qcshd)
+ end subroutine ice_cldliq_wet_growth_c
+
 end module micro_p3_iso_c

@@ -734,8 +734,63 @@ extern "C" {
 
 void ice_self_collection_f(Real rho, Real rhofaci, Real f1pr03, Real eii,
                            Real qirim_incld, Real qitot_incld, Real nitot_incld, Real* nislf);
-
 }
+
+struct IceNucleationData
+{
+  // Inputs
+  Real temp, inv_rho, nitot, naai, supi, odt;
+
+  bool log_predictNc;
+
+  // Outputs
+  Real qinuc, ninuc;
+};
+void ice_nucleation(IceNucleationData& d);
+
+extern "C" {
+void ice_nucleation_f(Real temp, Real inv_rho, Real nitot, Real naai,
+                      Real supi, Real odt, bool log_predictNc,
+                      Real* qinuc, Real* ninuc);
+}
+
+struct IceRelaxationData
+{
+  // Inputs
+  Real rho, temp, rhofaci, f1pr05, f1pr14, dv, mu, sc, qitot_incld, nitot_incld;
+
+  // in/outs
+  Real epsi, epsi_tot;
+};
+void ice_relaxation_timescale(IceRelaxationData& d);
+
+extern "C" {
+ void ice_relaxation_timescale_f(Real rho, Real temp, Real rhofaci, Real f1pr05, Real f1pr14,
+                                 Real dv, Real mu, Real sc, Real qitot_incld, Real nitot_incld,
+                                 Real* epsi, Real* epsi_tot);
+}
+
+struct IceWetGrowthData
+{
+  // Inputs
+  Real rho, temp, pres, rhofaci, f1pr05, f1pr14, xxlv, xlf, dv, kap, mu, sc, qv, qc_incld;
+  Real qitot_incld, nitot_incld, qr_incld;
+
+  bool log_wetgrowth;
+
+  // In/Outs
+  Real qrcol, qccol, qwgrth, nrshdr, qcshd;
+};
+void ice_cldliq_wet_growth(IceWetGrowthData& d);
+
+extern "C" {
+ void ice_cldliq_wet_growth_f(Real rho, Real temp, Real pres, Real rhofaci, Real f1pr05,
+                              Real f1pr14, Real xxlv, Real xlf, Real dv,
+                              Real kap, Real mu, Real sc, Real qv, Real qc_incld,
+                              Real qitot_incld, Real nitot_incld, Real qr_incld, bool* log_wetgrowth,
+                              Real* qrcol, Real* qccol, Real* qwgrth, Real* nrshdr, Real* qcshd);
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // BFB math stuff

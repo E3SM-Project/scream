@@ -475,6 +475,27 @@ struct Functions
     const bool log_predictNc, const Spack& inv_rho, const Spack& exner, const Spack& xxlv,
     const Scalar dt, Spack& th, Spack& qv, Spack& qc, Spack& nc, Spack& qr, Spack& nr);
 
+  // ice cldliq wet growth
+  KOKKOS_FUNCTION
+  static void ice_cldliq_wet_growth(const Spack& rho, const Spack& temp, const Spack& pres, const Spack& rhofaci, const Spack& f1pr05,
+                                    const Spack& f1pr14, const Spack& xxlv, const Spack& xlf, const Spack& dv,
+                                    const Spack& kap, const Spack& mu, const Spack& sc, const Spack& qv, const Spack& qc_incld,
+                                    const Spack& qitot_incld, const Spack& nitot_incld, const Spack& qr_incld,
+                                    Smask& log_wetgrowth, Spack& qrcol, Spack& qccol, Spack& qwgrth, Spack& nrshdr, Spack& qcshd);
+  // ice nucleation
+  KOKKOS_FUNCTION
+  static void ice_nucleation(const Spack& temp, const Spack& inv_rho,
+                             const Spack& nitot, const Spack& naai,
+                             const Spack& supi, const Spack& odt,
+                             const Smask& log_predictNc,
+                             Spack& qinuc, Spack& ninuc);
+
+  // ice relaxation timescale
+  KOKKOS_FUNCTION
+  static void ice_relaxation_timescale(const Spack& rho, const Spack& temp, const Spack& rhofaci, const Spack& f1pr05,
+                                       const Spack& f1pr14, const Spack& dv, const Spack& mu, const Spack& sc,
+                                       const Spack& qitot_incld, const Spack& nitot_incld,
+                                       Spack& epsi, Spack& epsi_tot);
 
 };
 
@@ -511,6 +532,9 @@ void init_tables_from_f90_c(Real* vn_table_data, Real* vm_table_data, Real* mu_t
 # include "p3_functions_rain_imm_freezing_impl.hpp"
 # include "p3_functions_update_prognostics_impl.hpp"
 # include "p3_functions_ice_collection_impl.hpp"
+# include "p3_functions_ice_cldliq_wet_growth_impl.hpp"
+# include "p3_functions_ice_nucleation_impl.hpp"
+# include "p3_functions_ice_relaxation_timescale_impl.hpp"
 #endif
 
 #endif
