@@ -40,12 +40,12 @@
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
 #  define bfb_pow(base, exp) cxx_pow(base, exp)
+#  define bfb_sqrt(base) cxx_sqrt(base)
 #  define bfb_cbrt(base) cxx_cbrt(base)
 #  define bfb_gamma(val) cxx_gamma(val)
 #  define bfb_log(val) cxx_log(val)
 #  define bfb_log10(val) cxx_log10(val)
 #  define bfb_exp(val) cxx_exp(val)
-#  define bfb_sqrt(val) bfb_pow(val,0.5_rtype)
 #else
 #  define bfb_pow(base, exp) (base)**exp
 #  define bfb_cbrt(base) (base)**thrd
@@ -2262,7 +2262,7 @@ f1pr05,f1pr14,xxlv,xlf,dv,sc,mu,kap,qv,qitot_incld,nitot_incld,    &
    ! include RH dependence
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: cxx_pow, cxx_cbrt
+    use micro_p3_iso_f, only: cxx_cbrt, cxx_sqrt
 #endif
   
    implicit none
