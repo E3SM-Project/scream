@@ -30,10 +30,13 @@
 ! 1) Need to change the dz coordinate system in sedimentation to be consistent             !
 ! with E3SM's pressure based coordinate system, i.e. dp.                                   !
 ! 2) Move all physical constants into a micro_p3_util module and match them to             !
-! universal constants in E3SM for consistentcy.                                            !
+! universal constants in E3SM for consistency.                                            !
 ! 3) Need to include extra in/out values which correspond with microphysics PBUF           !
 ! variables and outputs expected in E3SM.                                                  !
 !__________________________________________________________________________________________!
+
+#define bfb_square(val) ((val)*(val))
+#define bfb_cube(val) ((val)*(val)*(val))
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
 #  define bfb_pow(base, exp) cxx_pow(base, exp)
@@ -42,6 +45,7 @@
 #  define bfb_log(val) cxx_log(val)
 #  define bfb_log10(val) cxx_log10(val)
 #  define bfb_exp(val) cxx_exp(val)
+#  define bfb_sqrt(val) bfb_pow(val,0.5_rtype)
 #else
 #  define bfb_pow(base, exp) (base)**exp
 #  define bfb_cbrt(base) (base)**thrd
@@ -49,11 +53,8 @@
 #  define bfb_log(val) log(val)
 #  define bfb_log10(val) log10(val)
 #  define bfb_exp(val) exp(val)
+#  define bfb_sqrt(val) sqrt(val)
 #endif
-
-#define bfb_square(val) ((val)*(val))
-#define bfb_cube(val) ((val)*(val)*(val))
-#define bfb_sqrt(val) bfb_pow(val,0.5_rtype)
 
 module micro_p3
 
@@ -2260,6 +2261,10 @@ f1pr05,f1pr14,xxlv,xlf,dv,sc,mu,kap,qv,qitot_incld,nitot_incld,    &
    ! currently enhanced melting from collision is neglected
    ! include RH dependence
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use micro_p3_iso_f, only: cxx_pow, cxx_cbrt
+#endif
+  
    implicit none
 
    real(rtype), intent(in) :: rho
@@ -2286,7 +2291,7 @@ f1pr05,f1pr14,xxlv,xlf,dv,sc,mu,kap,qv,qitot_incld,nitot_incld,    &
    if (qitot_incld .ge.qsmall .and. t.gt.zerodegc) then
       qsat0 = 0.622_rtype*e0/(pres-e0)
 
-      qimlt = ((f1pr05+f1pr14*bfb_cbrt(sc)*bfb_sqrt(rhofaci*rho/mu)*((t-   &
+      qimlt = ((f1pr05+f1pr14*bfb_cbrt(sc)*bfb_sqrt(rhofaci*rho/mu))*((t-   &
       zerodegc)*kap-rho*xxlv*dv*(qsat0-qv))*2._rtype*pi/xlf)*nitot_incld
 
       qimlt = max(qimlt,0._rtype)
