@@ -2408,7 +2408,8 @@ epsi,epsi_tot)
 
 
    if (qitot_incld.ge.qsmall .and. t.lt.zerodegc) then
-      epsi = ((f1pr05+f1pr14*bfb_cbrt(sc)*bfb_sqrt(rhofaci*rho/mu))*2._rtype*pi* &
+      epsi = ((f1pr05+f1pr14*sc**thrd*(rhofaci*rho/mu)**0.5_rtype)*2._rtype*pi* &
+!      epsi = ((f1pr05+f1pr14*bfb_cbrt(sc)*bfb_sqrt(rhofaci*rho/mu))*2._rtype*pi* &
       rho*dv)*nitot_incld
       epsi_tot   = epsi_tot + epsi
    else
