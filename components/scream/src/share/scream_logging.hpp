@@ -2,10 +2,13 @@
 #ifndef SCREAM_LOGGING_HPP
 #define SCREAM_LOGGING_HPP
 
+#include <assert.h>
+#include <iostream>
+#include <sstream>
+#include <ctime>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
-#include <vector>
 #include <stdexcept>
 #include "scream_config.h"
 
@@ -18,20 +21,6 @@ namespace util {
 struct Error : public std::runtime_error {
   explicit Error(const std::string &s) : std::runtime_error(s) {}
 };
-}  // namespace util
-}  // namespace scream
-
-#include <assert.h>
-#include <iostream>
-#include <sstream>
-#include <ctime>
-
-namespace scream {
-namespace util   {
-
-inline void InitLogging(const char*) {
-  // DO NOTHING
-}
 
 class LogCheckError {
  public:
