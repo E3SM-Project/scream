@@ -22,6 +22,7 @@ set(SHARE_HEADERS
   atmosphere_process.hpp
   atmosphere_process_group.hpp
   scream_assert.hpp
+  scream_logging.hpp
   field/field.hpp
   field/field_alloc_prop.hpp
   field/field_identifier.hpp
