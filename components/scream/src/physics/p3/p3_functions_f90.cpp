@@ -1790,7 +1790,7 @@ void ice_relaxation_timescale_f(Real rho_, Real temp_, Real rhofaci_, Real f1pr0
                                   epsi, epsi_tot);
 
     t_d(0) = epsi[0];
-    t_d(0) = epsi_tot[0];
+    t_d(1) = epsi_tot[0];
   });
 
   Kokkos::deep_copy(t_h, t_d);
