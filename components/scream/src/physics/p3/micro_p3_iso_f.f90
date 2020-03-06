@@ -358,7 +358,8 @@ subroutine  update_prognostic_ice_f(qcheti,qccol,qcshd,nccol,ncheti,ncshdc,qrcol
     ! arguments
     real(kind=c_real), value, intent(in) :: rho, temp, rhofaci, f1pr05, f1pr14, &
                                             dv, mu, sc, qitot_incld, nitot_incld
-    real(kind=c_real), intent(out) :: epsi, epsi_tot
+    real(kind=c_real), intent(out) :: epsi
+    real(kind=c_real), intent(inout) :: epsi_tot
   end subroutine ice_relaxation_timescale_f
 
   !
