@@ -2376,7 +2376,7 @@ epsi,epsi_tot)
    ! note 'f1pr' values are normalized, so we need to multiply by N
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: cxx_cbrt, cxx_sqrt
+    use micro_p3_iso_f, only: ice_relaxation_timescale_f, cxx_cbrt, cxx_sqrt
 #endif
    implicit none
 
@@ -2395,6 +2395,14 @@ epsi,epsi_tot)
    real(rtype), intent(out) :: epsi
    real(rtype), intent(inout) :: epsi_tot
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    if (use_cxx) then
+      call ice_relaxation_timescale_f(rho,t,rhofaci,     &
+                                      f1pr05,f1pr14,dv,mu,sc,qitot_incld,nitot_incld, &
+                                      epsi,epsi_tot)
+       return
+    endif
+#endif
 
 
    if (qitot_incld.ge.qsmall .and. t.lt.zerodegc) then
