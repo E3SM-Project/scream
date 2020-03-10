@@ -62,14 +62,6 @@ struct UnitWrap::UnitTest<D>::TestIceCldliqWetGrowth {
 
     // Get data from fortran
     for (Int i = 0; i < Spack::n; ++i) {
-//      std::cout << std::setprecision(20) << std::endl;
-//      std::cout << "rho= " << self[i].rho << " i= " << i << std::endl;
-//      std::cout << "temp= " << self[i].temp << " i= " << i << std::endl;
-//      std::cout << "pres= " << self[i].pres << " i= " << i << std::endl;
-//      std::cout << "rhofaci= " << self[i].rhofaci << " i= " << i << std::endl;
-//      std::cout << "f1pr05= " << self[i].f1pr05 << " i= " << i << std::endl;
-//      std::cout << "f1pr14= " << self[i].f1pr14 << " i= " << i << std::endl;
-//      std::cout << "qitot_incld= " << self[i].qitot_incld << " i=" << i << std::endl;
       ice_cldliq_wet_growth(self[i]);
      }
 
@@ -108,14 +100,6 @@ struct UnitWrap::UnitTest<D>::TestIceCldliqWetGrowth {
         nrshdr[s]      = self_device(s).nrshdr;
         qcshd[s]       = self_device(s).qcshd;
         log_wetgrowth.set(s, self_device(s).log_wetgrowth);
-
-//      std::cout << "drho= " << rho[s] << " s=" << s << std::endl;
-//      std::cout << "dtemp= " << temp[s] << " s=" << s << std::endl;
-//      std::cout << "dpres= " << pres[s] << " s= " << s << std::endl;
-//      std::cout << "drhofaci= " << rhofaci[s] << " s=" << s << std::endl;
-//      std::cout << "df1pr05= " << f1pr05[s] << " s" << s << std::endl;
-//      std::cout << "df1pr14= " << f1pr14[s] << " s=" << s << std::endl;
-//      std::cout << "qitot_incld= " << qitot_incld[s] << " s=" << s << std::endl;
       }
 
       Functions::ice_cldliq_wet_growth(rho, temp, pres, rhofaci, f1pr05, f1pr14, xxlv, xlf, dv, kap, mu, sc, 

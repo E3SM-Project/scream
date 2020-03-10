@@ -18,7 +18,7 @@ void Functions<S,D>
 {
    constexpr Scalar qsmall = C::QSMALL;
    constexpr Scalar tmelt  = C::Tmelt;
-   constexpr Scalar twopi  = C::Pi*2.0;
+   constexpr Scalar twopi  = C::Pi*sp(2.0);
    constexpr Scalar half   = C::HALF;
    constexpr Scalar zero   = C::ZERO;
    constexpr Scalar one    = C::ONE;

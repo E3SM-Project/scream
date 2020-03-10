@@ -833,6 +833,7 @@ struct IceWetGrowthData
   Real rho, temp, pres, rhofaci, f1pr05, f1pr14, xxlv, xlf, dv, kap, mu, sc, qv, qc_incld;
   Real qitot_incld, nitot_incld, qr_incld;
 
+  // In/Outs
   bool log_wetgrowth;
 
   // In/Outs
