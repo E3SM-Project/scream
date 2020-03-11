@@ -115,6 +115,7 @@ subroutine stepon_init(dyn_in, dyn_out )
   call addfld ('FU',  (/ 'lev' /), 'A', 'm/s2', 'Zonal wind forcing term',     gridname='GLL')
   call addfld ('FV',  (/ 'lev' /), 'A', 'm/s2', 'Meridional wind forcing term',gridname='GLL')
   call register_vector_field('FU', 'FV')
+  call addfld ('DYN_FT',  (/ 'lev' /), 'A', 'K/s', 'Temperature forcing term', gridname='GLL')
   call addfld ('VOR', (/ 'lev' /), 'A', '1/s',  'Relative Vorticity (2D)',     gridname='GLL')
   call addfld ('DIV', (/ 'lev' /), 'A', '1/s',  'Divergence (2D)',             gridname='GLL')
 
@@ -450,6 +451,11 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
          end do
          call outfld('FU',ftmp(:,:,1),npsq,ie)
          call outfld('FV',ftmp(:,:,2),npsq,ie)
+      end do
+   endif
+   if (hist_fld_active('DYN_FT')) then
+      do ie=1,nelemd
+         call outfld('DYN_FT',dyn_in%elem(ie)%derived%FT(:,:,:),npsq,ie)
       end do
    endif
    endif
