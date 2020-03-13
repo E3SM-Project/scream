@@ -7,6 +7,9 @@
 #include "p3_f90.hpp"
 
 #include <random>
+#include <iostream>
+#include <chrono>
+#include <ctime>
 
 using scream::Real;
 using scream::Int;
@@ -148,6 +151,9 @@ void ice_relaxation_timescale_c(Real rho, Real temp, Real rhofaci, Real f1pr05, 
 void ice_nucleation_c(Real temp, Real inv_rho, Real nitot, Real naai,
                       Real supi, Real odt, bool log_predictNc,
                       Real* qinuc, Real* ninuc);
+
+void check_values_c(Real* qv, Real* temp, Int kts, Int kte, Int timestepcount,
+                    Int force_abort, Int source_ind, Real* col_loc);
 
 }
 
@@ -397,6 +403,46 @@ void ice_nucleation(IceNucleationData& d)
                    d.supi, d.odt, d.log_predictNc,&d.qinuc, &d.ninuc);
 }
 
+
+CheckValuesData::CheckValuesData(
+  Int kts_, Int kte_, Int timestepcount_, Int source_ind_, bool force_abort_,
+  const std::array< std::pair<Real, Real>, NUM_ARRAYS >& ranges) :
+  kts(kts_), kte(kte_), timestepcount(timestepcount_), source_ind(source_ind_), force_abort(force_abort_),
+  m_nk((kte_-kts_)+1),
+  m_data(NUM_ARRAYS*m_nk+3, 1.0)
+{
+  std::array<Real**, NUM_ARRAYS> ptrs = {&qv, &temp};
+  gen_random_data(ranges, ptrs, m_data.data(), m_nk);
+  
+  Real* data_begin = m_data.data();
+  Int offset = m_nk*NUM_ARRAYS;
+  col_loc = data_begin + offset;
+}                   
+
+
+CheckValuesData::CheckValuesData(const CheckValuesData& rhs) :
+  kts(rhs.kts), kte(rhs.kte), timestepcount(rhs.timestepcount), source_ind(rhs.source_ind),
+  force_abort(rhs.force_abort),
+  m_nk(rhs.m_nk),
+  m_data(rhs.m_data)
+{
+  Int offset = 0;
+  Real* data_begin = m_data.data();
+
+  Real** ptrs[NUM_ARRAYS+1] = {&qv, &temp, &col_loc};
+
+  for (size_t i = 0; i < NUM_ARRAYS+1; ++i) {
+    *ptrs[i] = data_begin + offset;
+    offset += m_nk;
+  }
+}
+
+void check_values(CheckValuesData& d)
+{
+  p3_init(true);
+  check_values_c(d.qv, d.temp, d.kts, d.kte, d.timestepcount,
+                 d.force_abort, d.source_ind, d.col_loc);
+}
 
   void  update_prognostic_ice(P3UpdatePrognosticIceData& d){
     p3_init(true);
@@ -2270,6 +2316,88 @@ void ice_water_conservation_f(Real qitot_, Real qidep_, Real qinuc_, Real qiberg
     *qimlt_ = qimlt[0];
 
 }
+
+void check_values_f(Real* qv, Real* temp, Int kstart, Int kend,
+                    Int timestepcount, bool force_abort, Int source_ind, Real* col_loc)
+{
+  using P3F        = Functions<Real, DefaultDevice>;
+  using Spack      = typename P3F::Spack;
+  using Smask      = typename P3F::Smask;
+  using uview_1d   = typename P3F::uview_1d<Spack>;
+  using view_1d    = typename P3F::view_1d<Spack>;
+  using sview_1d   = typename P3F::view_1d<Smask>;
+  using usview_1d  = typename P3F::view_1d<Smask>;
+  using KT         = typename P3F::KT;
+  using ExeSpace   = typename KT::ExeSpace;
+  using MemberType = typename P3F::MemberType;
+
+  scream_require_msg(kend > kstart,
+                    "ktop must be larger than kstart, kstart, kend " << kend << kstart);
+  // bool
+  bool trap{false};
+  bool badvalue_found{false};
+
+  // zero based
+  kstart -= 1;
+  kend -= 1;
+ 
+  Int nk = kend - kstart + 1;
+
+  sview_1d qv_out_bounds_d("qv_d", nk);
+  const auto qv_out_bounds_h = Kokkos::create_mirror_view(qv_out_bounds_d);
+
+  sview_1d t_out_bounds_d("tv_d", nk);
+  const auto t_out_bounds_h = Kokkos::create_mirror_view(t_out_bounds_d);
+
+  // Set up input views
+  Kokkos::Array<view_1d, 2> t_d;
+  pack::host_to_device({qv, temp}, nk, t_d);
+
+  view_1d qv_d{t_d[0]},
+          temp_d{t_d[1]};
+
+  auto policy = util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, nk);
+  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+
+    view_1d qv_d{t_d[0]},
+            temp_d{t_d[1]};
+
+    P3F::check_values(qv_d, temp_d, kstart, kend, team, qv_out_bounds_d, t_out_bounds_d);
+
+  });
+
+  Kokkos::deep_copy(qv_out_bounds_h, qv_out_bounds_d);
+  Kokkos::deep_copy(t_out_bounds_h, t_out_bounds_d);
+
+  auto now = std::chrono::system_clock::now();
+  std::time_t now_t = std::chrono::system_clock::to_time_t(now);
+
+  for (auto k = kstart; k <= kend; ++k) {
+     if (t_out_bounds_h(k).any()) {
+         trap = true;
+         std::cout << "[" << std::ctime(&now_t) << "]"
+                   << " WARNING IN P3_MAIN: src gcol, lon, lat, lvl, tstep, T: " << source_ind 
+                   << ", " << static_cast<int>(col_loc[0]) << ", " << col_loc[1] << ", " << col_loc[2] << "," 
+                   << k+1 << ", " << timestepcount << ", " << temp[k] << "\n";
+     }
+
+     if (qv_out_bounds_h(k).any()) {
+        badvalue_found = true;
+        std::cout << "[" << std::ctime(&now_t) << "]"
+                  << " WARNING IN P3_MAIN: src gcol, lon, lat, lvl, tstep, Qv: " << source_ind 
+                  <<", " << static_cast<int>(col_loc[0]) << ", " << col_loc[1] << ", " << col_loc[2] << ", " 
+                  << k+1 << ", " << timestepcount << ", " << qv[k] << "\n";
+     }
+    badvalue_found = false;
+  }
+
+  if (trap && force_abort) {
+    std::cout << "[" << std::ctime(&now_t) << "]"
+               << " DEBUG TRAP IN P3_MAIN, s/r CHECK_VALUES -- source: " << source_ind << "\n";
+    scream_require( source_ind == 100 );
+  }
+}
+
 
 } // namespace p3
 } // namespace scream

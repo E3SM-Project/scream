@@ -520,6 +520,10 @@ struct Functions
                              const Smask& log_predictNc,
                              Spack& qinuc, Spack& ninuc);
 
+  KOKKOS_FUNCTION
+  static void check_values(const view_1d<Spack>& qv, const view_1d<Spack>& temp,
+                           const Int& kstart, const Int& kend,const MemberType& team,
+                           view_1d<Smask> qv_out_bounds, view_1d<Smask> t_out_bounds);
 };
 
 template <typename ScalarT, typename DeviceT>
@@ -560,7 +564,7 @@ void init_tables_from_f90_c(Real* vn_table_data, Real* vm_table_data, Real* mu_t
 # include "p3_functions_ice_collection_impl.hpp"
 # include "p3_functions_ice_relaxation_timescale_impl.hpp"
 # include "p3_functions_ice_nucleation_impl.hpp"
-
+# include "p3_functions_check_values_impl.hpp"
 #endif
 
 #endif
