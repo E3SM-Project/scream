@@ -725,4 +725,15 @@ subroutine  update_prognostic_ice_c(qcheti,qccol,qcshd,nccol,ncheti,ncshdc,qrcol
                         log_predictNc, qinuc, ninuc)
  end subroutine ice_nucleation_c
 
+ subroutine ice_melting_c(rho,t,pres,rhofaci,f1pr05,f1pr14,xxlv,xlf,dv,sc,mu,kap,qv,qitot_incld,nitot_incld,qimlt,nimlt) bind(C)
+    use micro_p3, only: ice_melting
+
+    ! arguments:
+    real(kind=c_real), value, intent(in) :: rho,t,pres,rhofaci,f1pr05,f1pr14,xxlv,xlf,dv,sc,mu,kap,qv,qitot_incld,nitot_incld
+    real(kind=c_real), intent(out) :: qimlt,nimlt
+
+    call ice_melting(rho,t,pres,rhofaci,f1pr05,f1pr14,xxlv,xlf,dv,sc,mu,kap,qv,qitot_incld,nitot_incld,qimlt,nimlt)
+    
+  end subroutine ice_melting_c
+
 end module micro_p3_iso_c
