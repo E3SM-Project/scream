@@ -1909,6 +1909,7 @@ void rain_self_collection_f(Real rho_, Real qr_incld_, Real nr_incld_, Real* nrs
 
   Kokkos::deep_copy(t_h, t_d);
   *nrslf_ = t_h(0);
+}
 
   void ice_melting_f(Real rho_,Real t_,Real pres_,Real rhofaci_,Real f1pr05_,Real f1pr14_,Real xxlv_,Real xlf_,Real dv_,Real sc_,Real mu_,Real kap_,Real qv_,Real qitot_incld_,Real nitot_incld_,Real* qimlt_,Real* nimlt_){
   using P3F = Functions<Real, DefaultDevice>;
