@@ -159,7 +159,7 @@ contains
 
   subroutine micro_p3_utils_init_c(Cpair, Rair, RH2O, RhoH2O, &
                  MWH2O, MWdry, gravit, LatVap, LatIce,        &
-                 CpLiq, Tmelt, Pi, iulog_in, proc) bind(C)
+                 CpLiq, Tmelt, Pi, iulog_in, masterproc) bind(C)
 
     use micro_p3_utils, only: micro_p3_utils_init
     real(kind=c_real), value, intent(in) :: Cpair
