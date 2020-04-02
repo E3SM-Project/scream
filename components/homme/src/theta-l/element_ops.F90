@@ -68,7 +68,7 @@ module element_ops
   type(elem_state_t), dimension(:), allocatable :: state0 ! storage for save_initial_state routine
 
   public get_field, get_field_i, get_state
-  public get_temperature, get_phi, get_R_star, get_hydro_pressure
+  public get_temperature, get_pottemp, get_phi, get_R_star, get_hydro_pressure
   public set_thermostate, set_state, set_state_i, set_elem_state
   public set_forcing_rayleigh_friction, set_theta_ref
   public copy_state, tests_finalize
@@ -93,7 +93,7 @@ recursive subroutine get_field(elem,name,field,hvcoord,nt,ntQ)
 
   select case(name)
     case ('temperature','T'); call get_temperature(elem,field,hvcoord,nt)
-    case ('pottemp','Th');    call get_pottemp(elem,field,hvcoord,nt,ntQ)
+    case ('pottemp','Th');    call get_pottemp(elem,field,hvcoord,nt)
     case ('phi','geo');       call get_phi(elem,field,phi_i,hvcoord,nt)
     case ('dpnh_dp');         call get_dpnh_dp(elem,field,hvcoord,nt)
     case ('pnh');             call get_nonhydro_pressure(elem,field,tmp ,hvcoord,nt)
@@ -165,7 +165,7 @@ recursive subroutine get_field(elem,name,field,hvcoord,nt,ntQ)
 
 
   !_____________________________________________________________________
-  subroutine get_pottemp(elem,pottemp,hvcoord,nt,ntQ)
+  subroutine get_pottemp(elem,pottemp,hvcoord,nt)
   !
   implicit none
     
@@ -173,7 +173,6 @@ recursive subroutine get_field(elem,name,field,hvcoord,nt,ntQ)
   real (kind=real_kind), intent(out)  :: pottemp(np,np,nlev)
   type (hvcoord_t),     intent(in)    :: hvcoord                      ! hybrid vertical coordinate struct
   integer, intent(in) :: nt
-  integer, intent(in) :: ntQ
   
   !   local
   real (kind=real_kind) :: dp(np,np,nlev)
