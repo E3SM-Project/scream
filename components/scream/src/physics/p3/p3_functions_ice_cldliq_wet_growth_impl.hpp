@@ -32,7 +32,7 @@ void Functions<S,D>
    const auto any_if_col = any_if && qccol_qrcol_ge_small;
 
    const Spack zerodeg{tmelt};
-   const Spack e0 = polysvp1(zerodeg, zero);
+   //const Spack e0 = polysvp1(zerodeg, zero); //PMC del622
    Spack qsat0{0.};
    Spack dum{0.};
    Spack dum1{0.};
