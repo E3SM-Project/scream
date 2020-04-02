@@ -24,7 +24,8 @@ void Functions<S,D>
   const auto Pi = C::Pi;
   const auto QSMALL = C::QSMALL;
   const auto Tmelt = C::Tmelt;
-  
+  const Spack zerodeg{Tmelt};
+
   //Find cells above freezing AND which have ice
   const auto has_melt_qi = (qitot_incld >= QSMALL ) && (t > Tmelt);
 
@@ -34,9 +35,11 @@ void Functions<S,D>
     //    Note that qsat0 should be with respect to liquid. Confirmed F90 code did this.
 
     //const auto qsat0 = qv_sat(Spack(Tmelt), pres, false); //last false means NOT saturation w/ respect to ice.
-    const auto e0 = polysvp1(Spack(Tmelt), 0);
-    const auto qsat0 = 0.622 *e0/(pres-e0);
-
+    //const auto e0 = polysvp1(Spack(Tmelt), 0);
+    //const auto qsat0 = 0.622 *e0/(pres-e0);
+    //PMC del622
+    auto qsat0 = qv_sat(zerodeg,pres,0);
+    
     qimlt.set(has_melt_qi, ( (f1pr05+f1pr14*pack::cbrt(sc)*pack::sqrt(rhofaci*rho/mu))
 			     *((t-Tmelt)*kap-rho*xxlv*dv*(qsat0-qv))
 			     *sp(2.0)* Pi /xlf)*nitot_incld );

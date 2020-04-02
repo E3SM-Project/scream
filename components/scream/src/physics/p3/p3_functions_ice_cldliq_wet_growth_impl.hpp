@@ -38,8 +38,10 @@ void Functions<S,D>
    Spack dum1{0.};
 
    if (any_if.any()) {
-      qsat0 = sp(0.622)*e0/(pres-e0);
-  
+      //qsat0 = sp(0.622)*e0/(pres-e0);
+      //PMC del622
+      qsat0=qv_sat(zerodeg,pres,0);
+     
       qwgrth.set(any_if,
                 ((f1pr05+f1pr14*pack::cbrt(sc)*sqrt(rhofaci*rho/mu))*
                 twopi*(rho*xxlv*dv*(qsat0-qv)-(temp-tmelt)*kap)/

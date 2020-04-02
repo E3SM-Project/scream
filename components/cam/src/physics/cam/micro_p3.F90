@@ -82,7 +82,7 @@ module micro_p3
 
   ! protected items should be treated as private for everyone except tests
 
-  real(rtype),protected :: e0
+  !real(rtype),protected :: e0 !PMC del622
 
   real(rtype), protected, dimension(densize,rimsize,isize,tabsize) :: itab   !ice lookup table values
 
@@ -152,8 +152,8 @@ contains
     !------------------------------------------------------------------------------------------!
 
     ! saturation pressure at T = 0 C
-    e0    = polysvp1(zerodegc,0)
-
+    !e0    = polysvp1(zerodegc,0)
+    !PMC del622
 
     !------------------------------------------------------------------------------------------!
     ! read in ice microphysics table
@@ -2296,7 +2296,8 @@ f1pr05,f1pr14,xxlv,xlf,dv,sc,mu,kap,qv,qitot_incld,nitot_incld,    &
 #endif
    
    if (qitot_incld .ge.qsmall .and. t.gt.zerodegc) then
-      qsat0 = 0.622_rtype*e0/(pres-e0)
+      !qsat0 = 0.622_rtype*e0/(pres-e0) !PMC del622
+      qsat0 = qv_sat(zerodegc,pres,0)
       
       qimlt = ((f1pr05+f1pr14*bfb_cbrt(sc)*bfb_sqrt(rhofaci*rho/mu))*((t-   &
       zerodegc)*kap-rho*xxlv*dv*(qsat0-qv))*2._rtype*pi/xlf)*nitot_incld
@@ -2360,8 +2361,10 @@ qv,qc_incld,qitot_incld,nitot_incld,qr_incld,    &
 #endif
 
    if (qitot_incld.ge.qsmall .and. qc_incld+qr_incld.ge.1.e-6_rtype .and. t.lt.zerodegc) then
-      qsat0  = 0.622_rtype*e0/(pres-e0)
+      !qsat0  = 0.622_rtype*e0/(pres-e0) !PMC del622
+      qsat0 = qv_sat(zerodegc,pres,0)
 
+      
       qwgrth = ((f1pr05 + f1pr14*bfb_cbrt(sc)*bfb_sqrt(rhofaci*rho/mu))*       &
       2._rtype*pi*(rho*xxlv*dv*(qsat0-qv)-(t-zerodegc)*           &
       kap)/(xlf+cpw*(t-zerodegc)))*nitot_incld
