@@ -32,14 +32,11 @@ void Functions<S,D>
    const auto any_if_col = any_if && qccol_qrcol_ge_small;
 
    const Spack zerodeg{tmelt};
-   //const Spack e0 = polysvp1(zerodeg, zero); //PMC del622
    Spack qsat0{0.};
    Spack dum{0.};
    Spack dum1{0.};
 
    if (any_if.any()) {
-      //qsat0 = sp(0.622)*e0/(pres-e0);
-      //PMC del622
       qsat0=qv_sat(zerodeg,pres,0);
      
       qwgrth.set(any_if,
