@@ -148,6 +148,8 @@ subroutine stepon_init(dyn_in, dyn_out )
   call addfld('DYN_V'    ,(/ 'lev' /), 'A', 'm/s',  'Meridional Velocity',    gridname='GLL')
   call addfld('DYN_OMEGA',(/ 'lev' /), 'A', 'Pa/s', 'Vertical Velocity',      gridname='GLL' )
   call addfld('DYN_PS'   ,horiz_only,  'A', 'Pa',   'Surface pressure',       gridname='GLL')
+  call addfld('DYN_POTTEMP' ,(/ 'lev' /), 'A', 'K', 'Potential temperature (dyn grid)', gridname='GLL')
+  call addfld('DYN_PHI'  ,(/ 'lev' /), 'A', 'm2/s2', 'Geopotential (dyn grid)', gridname='GLL')
 
 end subroutine stepon_init
 
@@ -226,13 +228,15 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
    use hycoef,          only: hyai, hybi
    use cam_history,     only: outfld, hist_fld_active
    use prim_driver_base,only: applyCAMforcing_tracers
-   use element_ops,     only: get_temperature
+   use element_ops,     only: get_temperature, get_pottemp, get_phi
 
    type(physics_state), intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend),  intent(inout) :: phys_tend(begchunk:endchunk)
    type (dyn_import_t), intent(inout) :: dyn_in  ! Dynamics import container
    type (dyn_export_t), intent(inout) :: dyn_out ! Dynamics export container
    real(r8) :: temperature(np,np,nlev)   ! Temperature from dynamics
+   real(r8) :: pottemp(np,np,nlev)   ! Potential Temperature from dynamics
+   real(r8) :: phi(np,np,nlev)   ! Geopotential from dynamics
    integer :: kptr, ie, ic, m, i, j, k, tl_f, tl_fQdp, velcomp
    real(r8) :: rec2dt
    real(r8) :: dp(np,np,nlev),fq,fq0,qn0, ftmp(npsq,nlev,2)
@@ -461,6 +465,10 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
       call outfld('DYN_U'     ,dyn_in%elem(ie)%state%V(:,:,1,:,tl_f)  ,npsq,ie)
       call outfld('DYN_V'     ,dyn_in%elem(ie)%state%V(:,:,2,:,tl_f)  ,npsq,ie)
       call outfld('DYN_PS'    ,dyn_in%elem(ie)%state%ps_v(:,:,tl_f)   ,npsq,ie)
+      call get_pottemp(dyn_in%elem(ie),pottemp,hvcoord,tl_f,0)
+      call outfld('DYN_POTTEMP'     ,pottemp                          ,npsq,ie)
+      call get_phi(dyn_in%elem(ie),phi,hvcoord,tl_f,0)
+      call outfld('DYN_PHI'   ,phi                                    ,npsq,ie)
 #ifdef MODEL_THETA_L
       ! omega_p is just omega when using the theta dycore
       call outfld('DYN_OMEGA',dyn_in%elem(ie)%derived%omega_p(:,:,:)  ,npsq,ie)
