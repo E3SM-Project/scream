@@ -151,6 +151,7 @@ subroutine stepon_init(dyn_in, dyn_out )
   call addfld('DYN_POTTEMP' ,(/ 'lev' /), 'A', 'K', 'Potential temperature (dyn grid)', gridname='GLL')
   call addfld('DYN_PHI'  ,(/ 'lev' /), 'A', 'm2/s2', 'Geopotential (dyn grid)', gridname='GLL')
   call addfld('DYN_PHI_I'  ,(/ 'ilev' /), 'A', 'm2/s2', 'Interface Geopotential (dyn grid)', gridname='GLL')
+  call addfld('DYN_P_I'  ,(/ 'ilev' /), 'A', 'Pa', 'Interface Pressure (dyn grid)', gridname='GLL')
 
 end subroutine stepon_init
 
@@ -229,7 +230,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
    use hycoef,          only: hyai, hybi
    use cam_history,     only: outfld, hist_fld_active
    use prim_driver_base,only: applyCAMforcing_tracers
-   use element_ops,     only: get_temperature, get_pottemp, get_phi
+   use element_ops,     only: get_temperature, get_pottemp, get_phi, get_hydro_pressure
 
    type(physics_state), intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend),  intent(inout) :: phys_tend(begchunk:endchunk)
@@ -472,9 +473,16 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
       call get_phi(dyn_in%elem(ie),phi,phi_i,hvcoord,tl_f)
       call outfld('DYN_PHI'   ,phi                                    ,npsq,ie)
       call outfld('DYN_PHI_I' ,phi_i                                  ,npsq,ie)
+
 #ifdef MODEL_THETA_L
       ! omega_p is just omega when using the theta dycore
       call outfld('DYN_OMEGA',dyn_in%elem(ie)%derived%omega_p(:,:,:)  ,npsq,ie)
+      ! Multiply omega_p by pressure to get omega for output
+      p_i(:,:,1) = hvcoord%hyai(1)*hvcoord%ps0
+      do k = 1,nlev
+         p_i(:,:,k+1) = p_i(:,:,k) + dyn_in%elem(ie)%state%dp3d(:,:,k,tl_f)
+      enddo
+      call outfld('DYN_P_I' ,p_i                                      ,npsq,ie)
 #else
       ! Multiply omega_p by pressure to get omega for output
       p_i(:,:,1) = hvcoord%hyai(1)*hvcoord%ps0
