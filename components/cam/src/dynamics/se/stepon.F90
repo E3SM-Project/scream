@@ -119,6 +119,7 @@ subroutine stepon_init(dyn_in, dyn_out )
   call addfld ('DIV', (/ 'lev' /), 'A', '1/s',  'Divergence (2D)',             gridname='GLL')
 
   call addfld ('ETADOT', (/ 'ilev' /), 'A', '1/s', 'Vertical (eta) velocity', gridname='physgrid')
+  call addfld ('DYN_ETADOT', (/ 'ilev' /), 'A', '1/s', 'Vertical (eta) velocity', gridname='GLL')
 
   if (fv_nphys > 0) then
     grid_name = 'GLL'
@@ -473,6 +474,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
       call get_phi(dyn_in%elem(ie),phi,phi_i,hvcoord,tl_f)
       call outfld('DYN_PHI'   ,phi                                    ,npsq,ie)
       call outfld('DYN_PHI_I' ,phi_i                                  ,npsq,ie)
+      call outfld('DYN_ETADOT',dyn_in%elem(ie)%derived%eta_dot_dpdn(:,:,:) ,npsq,ie)
 
 #ifdef MODEL_THETA_L
       ! omega_p is just omega when using the theta dycore
