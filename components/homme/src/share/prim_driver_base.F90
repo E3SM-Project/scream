@@ -1126,7 +1126,27 @@ contains
     else
       ! This time stepping routine permits the vertical remap time
       ! step to be shorter than the tracer transport time step.
+
+      ! Record the potential temperature before running prim_step_flexible
+      do ie = nets,nete
+         tmp_vtheta_dp = dyn_in%elem(ie)%state%vtheta_p(:,:,:,tl%nstep)
+         tmp_dp3d = dyn_in%elem(ie)%state%dp3d(:,:,:,tl%nstep)
+         call get_R_star(tmp_Rstar,dyn_in%elem(ie)%state%Q(:,:,:,1))
+         tmp_pottemp(ie,:,:,:) = tmp_Rgas*tmp_vtheta_dp/Rstar*tmp_dp3d
+      enddo
       call prim_step_flexible(hybrid, elem, nets, nete, dt, tl, hvcoord, compute_diagnostics)
+      ! Record the potential temperature after running prim_step_flexible
+      do ie = nets,nete
+         fnl_vtheta_dp = dyn_in%elem(ie)%state%vtheta_p(:,:,:,tl%nstep)
+         fnl_dp3d = dyn_in%elem(ie)%state%dp3d(:,:,:,tl%nstep)
+         call get_R_star(tmp_Rstar,dyn_in%elem(ie)%state%Q(:,:,:,1))
+         fnl_pottemp(ie,:,:,:) = fnl_Rgas*fnl_vtheta_dp/Rstar*fnl_dp3d
+         ! compute delta_pottemp as teh difference between after and before prim_step_flexible
+         delta_pottemp(ie,:,:,:) = fl_pottemp(ie,:,:,:) - tmp_pottemp(ie,:,:,:)
+      enddo
+      ! Add the difference to obtain tendency
+      !   Need to carry around the difference across subcycles
+      
     end if ! independent_time_steps
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

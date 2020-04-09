@@ -153,6 +153,7 @@ subroutine stepon_init(dyn_in, dyn_out )
   call addfld('DYN_PHI'  ,(/ 'lev' /), 'A', 'm2/s2', 'Geopotential (dyn grid)', gridname='GLL')
   call addfld('DYN_PHI_I'  ,(/ 'ilev' /), 'A', 'm2/s2', 'Interface Geopotential (dyn grid)', gridname='GLL')
   call addfld('DYN_P_I'  ,(/ 'ilev' /), 'A', 'Pa', 'Interface Pressure (dyn grid)', gridname='GLL')
+  call addfld('DYN_D_THETA',(/ 'lev' /), 'A', 'K', 'Potential temperature change (dyn_grid)',      gridname='GLL' )
 
 end subroutine stepon_init
 
