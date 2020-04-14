@@ -389,7 +389,7 @@ subroutine shoc_main ( &
        dz_zi,dz_zt,pres,&                   ! Input
        u_wind,v_wind,brunt,&                ! Input
        uw_sfc,vw_sfc,conv_vel,&             ! Input
-       zt_grid,zi_grid,&                    ! Input
+       zt_grid,zi_grid,pblh,&               ! Input
        tke,tk,tkh,&                         ! Input/Output
        isotropy)                            ! Output
 
@@ -1655,7 +1655,7 @@ subroutine shoc_tke(&
          dz_zi,dz_zt,pres,&          ! Input
          u_wind,v_wind,brunt,&       ! Input
          uw_sfc,vw_sfc,conv_vel,&    ! Input
-         zt_grid,zi_grid,&           ! Input
+         zt_grid,zi_grid,pblh,&      ! Input
          tke,tk,tkh, &               ! Input/Output
          isotropy)                   ! Output
 
@@ -1699,6 +1699,8 @@ subroutine shoc_tke(&
   real(rtype), intent(in) :: zt_grid(shcol,nlev)
   ! heights on interface grid [m]
   real(rtype), intent(in) :: zi_grid(shcol,nlevi)
+  ! PBLH height
+  real(rtype), intent(in) :: pblh(shcol)
 
 ! INPUT/OUTPUT VARIABLES
   ! turbulent kinetic energy [m2/s2]
@@ -1778,6 +1780,9 @@ subroutine shoc_tke(&
   !  thus zero out here
   shear_prod(:,1) = 0._rtype
   shear_prod(:,nlevi) = 0._rtype
+  
+  sterm(:,1) = 0._rtype
+  sterm(:,nlevi) = 0._rtype
 
   ! Interpolate shear production from interface to thermo grid
   call linear_interp(zi_grid,zt_grid,shear_prod,shear_prod_zt,nlevi,nlev,shcol,largeneg)
@@ -1821,7 +1826,8 @@ subroutine shoc_tke(&
       ! Compute the return to isotropic timescale
       isotropy(i,k)=min(maxiso,tscale1/(1._rtype+lambda*buoy_sgs_save*tscale1**2))
 
-      if (conv_vel(i) .eq. 0._rtype) then 
+!      if (conv_vel(i) .eq. 0._rtype) then 
+      if ((conv_vel(i) .eq. 0._rtype) .and. (zt_grid(i,k) .lt. pblh(i))) then
         tkh(i,k)=(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
         tk(i,k)=tkh(i,k)
       else
@@ -1997,7 +2003,7 @@ subroutine shoc_length(&
     if (conv_vel(i) .gt. 0._rtype) then
       tscale(i)=pblh(i)/conv_vel(i)
     else
-      tscale(i)=100._rtype
+      tscale(i)=10._rtype
     endif
   enddo
 
