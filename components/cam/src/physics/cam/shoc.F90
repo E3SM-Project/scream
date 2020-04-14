@@ -1781,7 +1781,7 @@ subroutine shoc_tke(&
 
   ! Interpolate shear production from interface to thermo grid
   call linear_interp(zi_grid,zt_grid,shear_prod,shear_prod_zt,nlevi,nlev,shcol,largeneg)
-  call linear_interp(zi_grid,zt_grid,sterm,sterm_zt,nlevi,nlev,shcol,largeneg)
+  call linear_interp(zi_grid,zt_grid,sterm,sterm_zt,nlevi,nlev,shcol,0._rtype)
 
   do k=1,nlev
     do i=1,shcol
