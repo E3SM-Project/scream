@@ -326,6 +326,8 @@ subroutine shoc_main ( &
   real(rtype) :: obklen(shcol)
   ! Kinematic surface buoyancy flux [m^2/s^3]
   real(rtype) :: kbfs(shcol)
+  ! Convective velocity scale [s]
+  real(rtype) :: conv_vel(shcol)
 
   ! Variables related to energy conservation
   real(rtype) :: se_b(shcol),ke_b(shcol),&
@@ -379,7 +381,7 @@ subroutine shoc_main ( &
        host_dx,host_dy,pblh,&               ! Input
        zt_grid,zi_grid,dz_zt,dz_zi,&        ! Input
        thetal,wthv_sec,thv,&                ! Input
-       brunt,shoc_mix)                      ! Output
+       conv_vel,brunt,shoc_mix)             ! Output
 
     ! Advance the SGS TKE equation
     call shoc_tke(&
@@ -387,7 +389,7 @@ subroutine shoc_main ( &
        wthv_sec,shoc_mix,&                  ! Input
        dz_zi,dz_zt,pres,&                   ! Input
        u_wind,v_wind,brunt,&                ! Input
-       uw_sfc,vw_sfc,&                      ! Input
+       uw_sfc,vw_sfc,conv_vel,&             ! Input
        zt_grid,zi_grid,&                    ! Input
        tke,tk,tkh,&                         ! Input/Output
        isotropy)                            ! Output
@@ -1653,7 +1655,7 @@ subroutine shoc_tke(&
          wthv_sec,shoc_mix,&         ! Input
          dz_zi,dz_zt,pres,&          ! Input
          u_wind,v_wind,brunt,&       ! Input
-         uw_sfc,vw_sfc,&             ! Input
+         uw_sfc,vw_sfc,conv_vel,&    ! Input
          zt_grid,zi_grid,&           ! Input
          tke,tk,tkh, &               ! Input/Output
          isotropy)                   ! Output
@@ -1684,6 +1686,8 @@ subroutine shoc_tke(&
   real(rtype), intent(in) :: uw_sfc(shcol)
   ! Meridional momentum flux at sfc [m2/s2]
   real(rtype), intent(in) :: vw_sfc(shcol)
+  ! Convective velocity scale [s]
+  real(rtype), intent(in) :: conv_vel(shcol)
   ! thickness on interface grid [m]
   real(rtype), intent(in) :: dz_zi(shcol,nlevi)
   ! thickness on thermodynamic grid [m]
@@ -1711,6 +1715,7 @@ subroutine shoc_tke(&
 
 ! LOCAL VARIABLES
   real(rtype) :: shear_prod(shcol,nlevi)
+  real(rtype) :: sterm(shcol,nlevi), sterm_zt(shcol,nlev)
   real(rtype) :: shear_prod_zt(shcol,nlev), tk_zi(shcol,nlevi)
   real(rtype) :: grd,betdz,Ck,Ckh,Ckm,Ce,Ces,Ce1,Ce2,smix,Cee,Cs
   real(rtype) :: buoy_sgs,ratio,a_prod_sh,a_prod_bu,a_diss
@@ -1763,7 +1768,8 @@ subroutine shoc_tke(&
       ! calculate vertical gradient of u&v wind
       u_grad=grid_dz*(u_wind(i,kt)-u_wind(i,k))
       v_grad=grid_dz*(v_wind(i,kt)-v_wind(i,k))
-      shear_prod(i,k)=tk_in*(u_grad**2+v_grad**2)
+      sterm(i,k)=u_grad**2+v_grad**2
+      shear_prod(i,k)=tk_in*sterm(i,k)
     enddo
   enddo
 
@@ -1776,6 +1782,7 @@ subroutine shoc_tke(&
 
   ! Interpolate shear production from interface to thermo grid
   call linear_interp(zi_grid,zt_grid,shear_prod,shear_prod_zt,nlevi,nlev,shcol,largeneg)
+  call linear_interp(zi_grid,zt_grid,sterm,sterm_zt,nlevi,nlev,shcol,largeneg)
 
   do k=1,nlev
     do i=1,shcol
@@ -1815,9 +1822,14 @@ subroutine shoc_tke(&
       ! Compute the return to isotropic timescale
       isotropy(i,k)=min(maxiso,tscale1/(1._rtype+lambda*buoy_sgs_save*tscale1**2))
 
+      if (conv_vel(i) .eq. 0._rtype) then 
+        tkh(i,k)=(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
+        tk(i,k)=tkh(i,k)
+      else
       ! Define the eddy coefficients for heat and momentum
-      tkh(i,k)=Ckh*isotropy(i,k)*tke(i,k)
-      tk(i,k)=Ckm*isotropy(i,k)*tke(i,k)
+        tkh(i,k)=Ckh*isotropy(i,k)*tke(i,k)
+        tk(i,k)=Ckm*isotropy(i,k)*tke(i,k)
+      endif
 
       tke(i,k) = max(mintke,tke(i,k))
 
@@ -1865,7 +1877,7 @@ subroutine shoc_length(&
          host_dx,host_dy,pblh,&        ! Input
          zt_grid,zi_grid,dz_zt,dz_zi,& ! Input
          thetal,wthv_sec,thv,&         ! Input
-         brunt,shoc_mix)               ! Output
+         conv_vel,brunt,shoc_mix)      ! Output
 
   ! Purpose of this subroutine is to compute the SHOC
   !  mixing length scale, which is used to compute the
@@ -1909,6 +1921,8 @@ subroutine shoc_length(&
   real(rtype), intent(out) :: brunt(shcol,nlev)
   ! SHOC mixing length [m]
   real(rtype), intent(out) :: shoc_mix(shcol,nlev)
+  ! Convective velocity scale [s]
+  real(rtype), intent(out) :: conv_vel(shcol)
 
 ! LOCAL VARIABLES
   integer i, j, k, kk, kt
@@ -1919,7 +1933,7 @@ subroutine shoc_length(&
   real(rtype) :: thv_up, thv_dn, thedz, thefac, thecoef, thegam, norm
   real(rtype) :: stabterm, conv_var, tkes, mmax
   logical lf, indexr
-  real(rtype) :: conv_vel(shcol), tscale(shcol)
+  real(rtype) :: tscale(shcol)
   real(rtype) :: thv_zi(shcol,nlevi)
 
   real(rtype) :: numer(shcol)
