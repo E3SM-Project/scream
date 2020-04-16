@@ -357,6 +357,11 @@
     <lname>2000_CAM5%SCREAM-HR-DYAMOND1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
 
+  <compset>
+    <alias>FSCREAM-HR-INTAERO</alias>
+    <lname>2000_CAM5%SCREAM-HR-INTAERO_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset> 
+
   <!-- *********************************** -->
   <!-- Radiative-Convective Equilibrium (RCE) -->
   <!-- *********************************** -->
