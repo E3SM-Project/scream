@@ -389,7 +389,7 @@ subroutine shoc_main ( &
        wthv_sec,shoc_mix,&                  ! Input
        dz_zi,dz_zt,pres,&                   ! Input
        u_wind,v_wind,brunt,&                ! Input
-       uw_sfc,vw_sfc,conv_vel,&             ! Input
+       obklen,conv_vel,&                    ! Input
        zt_grid,zi_grid,pblh,&               ! Input
        tke,tk,tkh,&                         ! Input/Output
        isotropy)                            ! Output
@@ -1655,7 +1655,7 @@ subroutine shoc_tke(&
          wthv_sec,shoc_mix,&         ! Input
          dz_zi,dz_zt,pres,&          ! Input
          u_wind,v_wind,brunt,&       ! Input
-         uw_sfc,vw_sfc,conv_vel,&    ! Input
+         obklen,conv_vel,&           ! Input
          zt_grid,zi_grid,pblh,&      ! Input
          tke,tk,tkh, &               ! Input/Output
          isotropy)                   ! Output
@@ -1682,10 +1682,8 @@ subroutine shoc_tke(&
   real(rtype), intent(in) :: u_wind(shcol,nlev)
   ! Zonal wind [m/s]
   real(rtype), intent(in) :: v_wind(shcol,nlev)
-  ! Zonal momentum flux at sfc [m2/s2]
-  real(rtype), intent(in) :: uw_sfc(shcol)
-  ! Meridional momentum flux at sfc [m2/s2]
-  real(rtype), intent(in) :: vw_sfc(shcol)
+  ! Obukov length
+  real(rtype), intent(in) :: obklen(shcol)
   ! Convective velocity scale [s]
   real(rtype), intent(in) :: conv_vel(shcol)
   ! thickness on interface grid [m]
@@ -1725,7 +1723,7 @@ subroutine shoc_tke(&
   real(rtype) :: qsatt,dqsat,tk_in, u_grad, v_grad
   real(rtype) :: tscale1,lambda,buoy_sgs_save,grid_dzw,grw1,grid_dz
   real(rtype) :: lambda_low,lambda_high,lambda_slope, brunt_low
-  real(rtype) :: brunt_int(shcol)
+  real(rtype) :: brunt_int(shcol), z_over_L
   integer i,j,k,kc,kb,kt
 
   lambda_low=0.001_rtype
@@ -1827,8 +1825,11 @@ subroutine shoc_tke(&
       ! Compute the return to isotropic timescale
       isotropy(i,k)=min(maxiso,tscale1/(1._rtype+lambda*buoy_sgs_save*tscale1**2))
 
-!      if (conv_vel(i) .eq. 0._rtype) then 
-      if ((conv_vel(i) .eq. 0._rtype) .and. (zt_grid(i,k) .lt. pblh(i))) then
+      z_over_L = zt_grid(i,nlev)/obklen(i)
+
+!      if (k .eq. nlev) write(*,*) 'OBKLEN ', zt_grid(i,nlev), obklen(i), zt_grid(i,nlev)/obklen(i)
+!      if ((obklen(i) .gt. 0._rtype) .and. (zt_grid(i,k) .lt. pblh(i))) then
+      if (z_over_L .gt. 100._rtype .and. (zt_grid(i,k) .lt. pblh(i)+500._rtype)) then
         tkh(i,k)=(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
         tk(i,k)=tkh(i,k)
       else
@@ -2004,7 +2005,7 @@ subroutine shoc_length(&
     if (conv_vel(i) .gt. 0._rtype) then
       tscale(i)=pblh(i)/conv_vel(i)
     else
-      tscale(i)=10._rtype
+      tscale(i)=100._rtype
     endif
   enddo
 
