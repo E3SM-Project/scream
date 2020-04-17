@@ -1723,12 +1723,16 @@ subroutine shoc_tke(&
   real(rtype) :: tscale1,lambda,buoy_sgs_save,grid_dzw,grw1,grid_dz
   real(rtype) :: lambda_low,lambda_high,lambda_slope, brunt_low
   real(rtype) :: brunt_int(shcol), z_over_L
+  real(rtype) :: crit_val, pbl_trans
   integer i,j,k,kc,kb,kt
 
   lambda_low=0.001_rtype
   lambda_high=0.04_rtype
   lambda_slope=0.65_rtype
   brunt_low=0.02_rtype
+
+  crit_val = 100.0_rtype ! value indicating stable layer
+  pbl_trans = 500.0_rtype ! depth to allow transition
 
   ! Turbulent coefficients
   Cs=0.15_rtype
@@ -1826,9 +1830,10 @@ subroutine shoc_tke(&
 
       z_over_L = zt_grid(i,nlev)/obklen(i)
 
-!      if (k .eq. nlev) write(*,*) 'OBKLEN ', zt_grid(i,nlev), obklen(i), zt_grid(i,nlev)/obklen(i)
-!      if ((obklen(i) .gt. 0._rtype) .and. (zt_grid(i,k) .lt. pblh(i))) then
-      if (z_over_L .gt. 100._rtype .and. (zt_grid(i,k) .lt. pblh(i)+500._rtype)) then
+      ! If surface layer is very stable, based on Monin-Obukhov length
+      !  use modified coefficients of tkh and tk to encourage mixing
+      !  within the PBL
+      if (z_over_L .gt. crit_val .and. (zt_grid(i,k) .lt. pblh(i)+pbl_trans)) then
         tkh(i,k)=(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
         tk(i,k)=tkh(i,k)
       else
