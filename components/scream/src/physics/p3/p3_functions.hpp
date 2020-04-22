@@ -382,7 +382,7 @@ struct Functions
   static Spack qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice);
 
   KOKKOS_FUNCTION
-  static Spack qvsat_exact(const Spack& t_atm, const Spack& p_atm, const bool ice);
+  static Spack qvsat_clausius(const Spack& t_atm, const Spack& p_atm, const bool ice);
 
   KOKKOS_FUNCTION
   static void cloud_water_conservation(const Spack& qc, const Spack& qcnuc,const Scalar dt,

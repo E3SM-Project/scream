@@ -7,7 +7,7 @@ namespace scream {
 namespace p3 {
 
 /*
- * Implementation of p3 functions. Clients should NOT #include
+ * Implementation of p3 saturation functions. Clients should NOT #include
  * this file, #include p3_functions.hpp instead.
  */
 template <typename S, typename D>
@@ -66,16 +66,21 @@ Functions<S,D>::qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice)
 template <typename S, typename D>
 KOKKOS_FUNCTION
 typename Functions<S,D>::Spack
-Functions<S,D>::qvsat_exact(const Spack& t_atm, const Spack& p_atm, const bool ice)
+Functions<S,D>::qvsat_clausius(const Spack& t_atm, const Spack& p_atm, const bool ice)
 {
   // Compute saturation mixing ratio qs analytically. 
   // Derivation: Clausius Clapeyron says dqs/dT = L*qs/(Rv*T**2.).
   // Taking the integral between some T0 and a particular T yields:
-  // qs(T) = qs(T0)*exp{-L/Rv*(1/T - 1/T0)}.
+  // qs(T) = qs(T0)*exp{-L/Rv*(1/T - 1/T0)} (ignoring small variation in L with T).
   // Note that pressure dependency comes from qs(T0), which can
   // be computed by using an experimentally-determined value for saturation 
   // vapor pressure (es_T0) at 273.15 K and converting to qs using
-  // the exact formula qs(p) = es_T0/(pres - es_T0).
+  // the formula qs(p) = ep_2 * es_T0/(pres - es_T0) which only relies on
+  // the assumption that vapor and air obey the ideal gas law.
+  //
+  // NOTE: This formula is *not* as precise as the empirical formulae above because
+  // it assumes L is constant and that things behave like an ideal gas. It 
+  // is just used as a check in tests/p3_saturation_unit_tests.cpp
 
   const auto tmelt = C::Tmelt;
   const auto RV = C::RV;
@@ -99,10 +104,7 @@ Functions<S,D>::qvsat_exact(const Spack& t_atm, const Spack& p_atm, const bool i
   Spack qs_T0 = ep_2 * es_T0 / pack::max(p_atm-es_T0, sp(1.e-3));
   return qs_T0*pack::exp( -L/RV*(1/t_atm - 1/tmelt) );
 
-} // end qvsat_exact
-
-
-
+} // end qvsat_clausius
 
 } // namespace p3
 } // namespace scream

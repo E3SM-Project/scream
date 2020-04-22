@@ -26,6 +26,11 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
 
   KOKKOS_FUNCTION  static void saturation_tests(const Scalar& temperature, const Scalar& pressure, const Scalar& correct_sat_ice_p,
     const Scalar& correct_sat_liq_p, const Scalar&  correct_mix_ice_r, const Scalar& correct_mix_liq_r, int& errors ){
+ 
+    /* This function checks that polysvp1 and qv_sat are operating correctly relative to Clausius-Clapeyron formulae and
+       against offline values taken from the paper used to derive our implementation. It operates for a given temperature
+       and pressure and is called multiple times for different atmospheric conditions by the 'run' method.
+    */
 
     //Convert Scalar inputs to Spacks because that's what polysvp1 and qv_sat expect as inputs.
     //--------------------------------------
@@ -38,8 +43,8 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
     Spack sat_liq_p = Functions::polysvp1(temps, false);
     Spack mix_ice_r = Functions::qv_sat(temps, pres, true);
     Spack mix_liq_r = Functions::qv_sat(temps, pres, false);
-    Spack qsi_exact=Functions::qvsat_exact(temps, pres, true);
-    Spack qsl_exact=Functions::qvsat_exact(temps, pres, false);
+    Spack qsi_clausius=Functions::qvsat_clausius(temps, pres, true);
+    Spack qsl_clausius=Functions::qvsat_clausius(temps, pres, false);
 
     //Set error tolerances
     //--------------------------------------
@@ -50,12 +55,13 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
 					     
     Scalar tol = (util::is_single_precision<Scalar>::value ) ? C::Tol*2 : C::Tol;
 
-    //For comparison against analytic saturation mixing ratio formula, note that error in the Flatau et al
-    //approximation is <1e-3 hPa (=0.1 Pa) *if I'm reading their Fig 2a correctly*. qs=0.622 es/(p-es)
-    //\approx 0.622*es/p since p>>es (causes 4% error at 303K and 1e5 Pa). Thus dqs/des = 0.622/p =>
-    //qs errors due to numerical method should be 0.622/1e5*1e-3 ~ 1e-8 at 1e5 Pa.
+    //Under the assumption of an ideal gas and latent heat of vaporization/fusion which doesn't depend on T, 
+    //saturation mixing ratio can be computed analytically. The Flatau implementation is probably superior because
+    //it avoids these assumptions, so comparing against the analytic (_clausius) version can only be crudely made.
+    //Thus I set the tolerance below empirically to make our tests pass. This is therefore a weak test which 
+    //we may eventually want to remove.
 
-    const Scalar sym_tol_q = 1e-4; //PMC hack: wasn't passing at 1e-8 so setting to very lax value for now.
+    const Scalar sym_tol_q = 1e-4; 
 
     //Set constant values
     //--------------------------------------
@@ -106,11 +112,11 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
     
     // Test vapor pressure against exact symbolic implementation
     // ---------------------------------------------------------
-    if ( std::abs(mix_ice_r[0] - qsi_exact[0] ) > Cond_ice_r*sym_tol_q ) {
-      printf("Diff btwn analytic qsi=%e and computed=%e is %e, bigger than tol=%e\n",qsi_exact[0],mix_ice_r[0],qsi_exact[0]-mix_ice_r[0],Cond_ice_r*sym_tol_q);
+    if ( std::abs(mix_ice_r[0] - qsi_clausius[0] ) > Cond_ice_r*sym_tol_q ) {
+      printf("Diff btwn analytic qsi=%e and computed=%e is %e, bigger than tol=%e\n",qsi_clausius[0],mix_ice_r[0],qsi_clausius[0]-mix_ice_r[0],Cond_ice_r*sym_tol_q);
       errors++;}
-    if ( std::abs(mix_liq_r[0] - qsl_exact[0] ) > Cond_liq_r*sym_tol_q ) {
-      printf("Diff btwn analytic qsl=%e and computed=%e is %e, bigger than tol=%e\n",qsl_exact[0],mix_liq_r[0],qsl_exact[0]-mix_liq_r[0],Cond_liq_r*sym_tol_q);
+    if ( std::abs(mix_liq_r[0] - qsl_clausius[0] ) > Cond_liq_r*sym_tol_q ) {
+      printf("Diff btwn analytic qsl=%e and computed=%e is %e, bigger than tol=%e\n",qsl_clausius[0],mix_liq_r[0],qsl_clausius[0]-mix_liq_r[0],Cond_liq_r*sym_tol_q);
       errors++;}
 
     //Test mixing-ratios against Wexler approx: 
@@ -128,14 +134,13 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
   static void run()
   {
     /*Originally written by Kyle Pressel, updated by Peter Caldwell on 4/5/20. 
-     *This code tests polysvp1 and qv_sat at 0 degrees C, at a very cold T, and at a very hot T
-     *to make sure our impl gets the same answer as Flatau et al 1992:
+     *This code tests polysvp1 and qv_sat at 0 degrees C, at a very cold T, and at a very hot T, as well as
+     *at 500 mb to make sure our impl gets the same answer as Flatau et al 1992:
      *(https://journals.ametsoc.org/doi/abs/10.1175/1520-0450%281992%29031%3C1507%3APFTSVP%3E2.0.CO%3B2
      *For 0 degrees C, polysvp values can be read directly from Flatau. For other cases, I independently 
      *coded up the Flatau scheme in python and used it to derive the expected values. My python code is
      *in https://github.com/E3SM-Project/scream-docs.git analysis-scripts/test_qv_sat.py
      */
-
     
     int nerr = 0;
     TeamPolicy policy(util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, 1));
