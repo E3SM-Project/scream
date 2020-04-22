@@ -2,7 +2,6 @@
 #define P3_FUNCTIONS_DROPLET_ACTIVATION_IMPL_HPP
 
 #include "p3_functions.hpp" // for ETI only but harmless for GPU
-//#include "p3_functions_saturation_impl.hpp"
 #include <iomanip>      // std::setprecision
 
 
