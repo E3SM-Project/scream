@@ -613,7 +613,7 @@ void init_tables_from_f90_c(Real* vn_table_data, Real* vm_table_data,
 // If a GPU build, make all code available to the translation unit; otherwise,
 // ETI is used.
 #ifdef KOKKOS_ENABLE_CUDA
-# include "p3_functions_math_impl.hpp"
+# include "p3_functions_saturation_impl.hpp"
 # include "p3_functions_table3_impl.hpp"
 # include "p3_functions_table_ice_impl.hpp"
 # include "p3_functions_back_to_cell_average_impl.hpp"

@@ -2,7 +2,7 @@
 #define P3_FUNCTIONS_ICE_CLDLIQ_WET_GROWTH_IMPL_HPP
 
 #include "p3_functions.hpp" // for ETI only but harmless for GPU
-#include "p3_functions_math_impl.hpp"
+//#include "p3_functions_saturation_impl.hpp"
 
 namespace scream {
 namespace p3 {
