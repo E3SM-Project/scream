@@ -1854,7 +1854,7 @@ contains
          aer_props=aer_optics_lw, &
          t_lev=tint(1:ncol,1:nlev_rad+1), &
          n_gauss_angles=1 & ! Set to 3 for consistency with RRTMG
-      ))
+      ), stop_on_error = .false.)
       call t_stopf('rad_calculations_lw')
 
       ! Calculate heating rates
