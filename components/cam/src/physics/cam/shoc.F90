@@ -27,7 +27,7 @@ public  :: shoc_init, shoc_main
 
 logical :: use_cxx = .true.
 
-real(rtype), parameter, public :: largeneg = -99999999.99_rtype
+real(rtype), parameter, public :: largeneg = -huge(1._rtype)
 
 !=========================================================
 ! Physical constants used in SHOC
@@ -36,14 +36,15 @@ real(rtype), parameter, public :: largeneg = -99999999.99_rtype
 ! These are set in initialization and should be set to
 !  to the values used in whatever host model SHOC is
 !  implemented in
-real(rtype) :: ggr   ! gravity [m/s^2]
-real(rtype) :: rgas  ! dry air gas constant [J/kg.K]
-real(rtype) :: rv    ! water vapor gas constant [J/kg.K]
-real(rtype) :: cp    ! specific heat of dry air [J/kg.K]
-real(rtype) :: lcond ! latent heat of vaporization [J/kg]
-real(rtype) :: lice  ! latent heat of fusion [J/kg]
-real(rtype) :: eps   ! rh2o/rair - 1 [-]
-real(rtype) :: vk    ! von karmann constant [-]
+real(rtype) :: ggr     ! gravity [m/s^2]
+real(rtype) :: inv_ggr ! inverse of gravity [s^2/m]
+real(rtype) :: rgas    ! dry air gas constant [J/kg.K]
+real(rtype) :: rv      ! water vapor gas constant [J/kg.K]
+real(rtype) :: cp      ! specific heat of dry air [J/kg.K]
+real(rtype) :: lcond   ! latent heat of vaporization [J/kg]
+real(rtype) :: lice    ! latent heat of fusion [J/kg]
+real(rtype) :: eps     ! rh2o/rair - 1 [-]
+real(rtype) :: vk      ! von karmann constant [-]
 
 !=========================================================
 ! Private module parameters
@@ -84,6 +85,7 @@ logical, parameter :: do_implicit = .true.
 
 ! Reference temperature [K]
 real(rtype), parameter :: basetemp = 300._rtype
+real(rtype), parameter :: inv_basetemp = 1._rtype/basetemp
 ! Reference pressure [Pa]
 real(rtype), parameter :: basepres = 100000._rtype
 ! Minimum surface friction velocity
@@ -144,14 +146,15 @@ subroutine shoc_init( &
 
   integer :: k
 
-  ggr = gravit   ! [m/s2]
-  rgas = rair    ! [J/kg.K]
-  rv = rh2o      ! [J/kg.K]
-  cp = cpair     ! [J/kg.K]
-  eps = zvir     ! [-]
-  lcond = latvap ! [J/kg]
-  lice = latice  ! [J/kg]
-  vk = karman    ! [-]
+  ggr = gravit          ! [m/s2]
+  inv_ggr = 1._rtype/ggr ! [s2/m]
+  rgas = rair           ! [J/kg.K]
+  rv = rh2o             ! [J/kg.K]
+  cp = cpair            ! [J/kg.K]
+  eps = zvir            ! [-]
+  lcond = latvap        ! [J/kg]
+  lice = latice         ! [J/kg]
+  vk = karman           ! [-]
 
    ! Limit pbl height to regions below 400 mb
    ! npbl = max number of levels (from bottom) in pbl
@@ -547,17 +550,16 @@ subroutine shoc_grid( &
   do k=1,nlev
     do i=1,shcol
       ! define thickness of the thermodynamic gridpoints
-      dz_zt(i,k) = zi_grid(i,k) - zi_grid(i,k+1)
-
+      dz_zt(i,k) = compute_thickness(zi_grid(i,k),zi_grid(i,k+1))
       ! define thickness of the interface grid points
       if (k .eq. 1) then
         dz_zi(i,k) = 0._rtype ! never used
       else
-        dz_zi(i,k) = zt_grid(i,k-1) - zt_grid(i,k)
+        dz_zi(i,k) = compute_thickness(zt_grid(i,k-1), zt_grid(i,k))
       endif
 
       ! Define the air density on the thermo grid
-      rho_zt(i,k) = (1._rtype/ggr)*(pdel(i,k)/dz_zt(i,k))
+      rho_zt(i,k) = inv_ggr*(pdel(i,k)/dz_zt(i,k))
 
     enddo ! end i loop (column loop)
   enddo ! end k loop (vertical loop)
@@ -568,6 +570,16 @@ subroutine shoc_grid( &
   return
 
 end subroutine shoc_grid
+
+pure function compute_thickness(z1, z2) result (dz)
+  ! inputs
+  real(rtype), intent(in) :: z1, z2
+
+  ! return value (intent-out)
+  real(rtype) :: dz
+
+  dz = z2 - z1
+end function compute_thickness
 
 !==============================================================
 ! Update T, q, tracers, tke, u, and v based on SGS mixing
@@ -974,7 +986,7 @@ subroutine diag_second_shoc_moments(&
     ! Parameterize thermodyanmics variances via Andre et al. 1978
     ustar2 = sqrt(uw_sfc(i) * uw_sfc(i) + vw_sfc(i) * vw_sfc(i))
     if (wthl_sfc(i) > 0._rtype) then
-      wstar = (1._rtype/basetemp * ggr * wthl_sfc(i) * z_const)**(1._rtype/3._rtype)
+      wstar = (inv_basetemp * ggr * wthl_sfc(i) * z_const)**(1._rtype/3._rtype)
     else
       wstar = 0._rtype
     endif
@@ -1327,7 +1339,7 @@ subroutine shoc_assumed_pdf(&
   real(rtype) cqt1,cthl1,cqt2,cthl2
   real(rtype) qn1,qn2,qi1,qi2,omn1,omn2, omn
   real(rtype) lstarn, test
-  real(rtype) m, bigm, basetemp2
+  real(rtype) m, bigm
   real(rtype) beta1, beta2, qs1, qs2
   real(rtype) esval1_1, esval2_1, esval1_2, esval2_2, om1, om2
   real(rtype) lstarn1, lstarn2, sqrtw2, sqrtthl, sqrtqt
@@ -1781,7 +1793,7 @@ subroutine shoc_tke(&
 
       smix=shoc_mix(i,k)
       ! Compute buoyant production term
-      a_prod_bu=(ggr/basetemp)*wthv_sec(i,k)
+      a_prod_bu=ggr*inv_basetemp*wthv_sec(i,k)
 
       tke(i,k)=max(0._rtype,tke(i,k))
 

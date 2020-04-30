@@ -25,7 +25,7 @@ module shoc_intr
   use perf_mod,      only: t_startf, t_stopf
   use spmd_utils,    only: masterproc
   use cam_logfile,   only: iulog 
-  use shoc,          only: linear_interp, largeneg 
+  use shoc,          only: linear_interp
   use spmd_utils,    only: masterproc
  
   implicit none	
