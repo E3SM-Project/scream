@@ -549,8 +549,10 @@ subroutine shoc_grid( &
 
   do k=1,nlev
     do i=1,shcol
+
       ! define thickness of the thermodynamic gridpoints
       dz_zt(i,k) = compute_thickness(zi_grid(i,k),zi_grid(i,k+1))
+
       ! define thickness of the interface grid points
       if (k .eq. 1) then
         dz_zi(i,k) = 0._rtype ! never used
@@ -578,7 +580,7 @@ pure function compute_thickness(z1, z2) result (dz)
   ! return value (intent-out)
   real(rtype) :: dz
 
-  dz = z2 - z1
+  dz = z1 - z2
 end function compute_thickness
 
 !==============================================================
