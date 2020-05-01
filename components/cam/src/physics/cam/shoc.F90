@@ -576,7 +576,7 @@ end subroutine shoc_grid
 
 subroutine compute_thickness (zint1, zint2, zmid1, zmid2, dzmid, dzint)
   !intent in
-  real(rtype), intent(in)  :: zint1,zint2,zmid1,zmid2
+  real(rtype), intent(in)  :: zint1, zint2, zmid1, zmid2
 
   !intent outs
   real(rtype), intent(out) :: dzint, dzmid
