@@ -146,15 +146,15 @@ subroutine shoc_init( &
 
   integer :: k
 
-  ggr = gravit          ! [m/s2]
+  ggr     = gravit       ! [m/s2]
   inv_ggr = 1._rtype/ggr ! [s2/m]
-  rgas = rair           ! [J/kg.K]
-  rv = rh2o             ! [J/kg.K]
-  cp = cpair            ! [J/kg.K]
-  eps = zvir            ! [-]
-  lcond = latvap        ! [J/kg]
-  lice = latice         ! [J/kg]
-  vk = karman           ! [-]
+  rgas    = rair         ! [J/kg.K]
+  rv      = rh2o         ! [J/kg.K]
+  cp      = cpair        ! [J/kg.K]
+  eps     = zvir         ! [-]
+  lcond   = latvap       ! [J/kg]
+  lice    = latice       ! [J/kg]
+  vk      = karman       ! [-]
 
    ! Limit pbl height to regions below 400 mb
    ! npbl = max number of levels (from bottom) in pbl
@@ -547,21 +547,22 @@ subroutine shoc_grid( &
   ! local variables
   integer :: i, k
 
-  do k=1,nlev
+  k = 1
+  do i = 1, shcol
+     ! define thickness of the thermodynamic and interface grid points
+     call compute_thickness (zi_grid(i,k), zi_grid(i,k+1),0._rtype,0._rtype,dz_zt(i,k),dz_zi(i,k) )
+
+     ! Define the air density on the thermo grid
+     rho_zt(i,k) = air_density(pdel(i,k),dz_zt(i,k))
+  enddo ! end i loop (column loop) 
+
+  do k=2,nlev
     do i=1,shcol
+       ! define thickness of the thermodynamic and interface grid points
+       call compute_thickness (zi_grid(i,k), zi_grid(i,k+1), zt_grid(i,k-1), zt_grid(i,k), dz_zt(i,k), dz_zi(i,k))
 
-      ! define thickness of the thermodynamic gridpoints
-      dz_zt(i,k) = compute_thickness(zi_grid(i,k),zi_grid(i,k+1))
-
-      ! define thickness of the interface grid points
-      if (k .eq. 1) then
-        dz_zi(i,k) = 0._rtype ! never used
-      else
-        dz_zi(i,k) = compute_thickness(zt_grid(i,k-1), zt_grid(i,k))
-      endif
-
-      ! Define the air density on the thermo grid
-      rho_zt(i,k) = inv_ggr*(pdel(i,k)/dz_zt(i,k))
+       ! Define the air density on the thermo grid
+       rho_zt(i,k) = air_density(pdel(i,k),dz_zt(i,k))
 
     enddo ! end i loop (column loop)
   enddo ! end k loop (vertical loop)
@@ -573,15 +574,31 @@ subroutine shoc_grid( &
 
 end subroutine shoc_grid
 
-pure function compute_thickness(z1, z2) result (dz)
-  ! inputs
-  real(rtype), intent(in) :: z1, z2
+subroutine compute_thickness (zint1, zint2, zmid1, zmid2, dzmid, dzint)
+  !intent in
+  real(rtype), intent(in)  :: zint1,zint2,zmid1,zmid2
 
-  ! return value (intent-out)
-  real(rtype) :: dz
+  !intent outs
+  real(rtype), intent(out) :: dzint, dzmid
 
-  dz = z1 - z2
-end function compute_thickness
+  dzmid = zint1 - zint2
+  dzint = zmid1 - zmid2
+
+  return
+end subroutine compute_thickness
+
+pure function air_density(pdel, dz) result (rho)
+  !intent ins
+  real(rtype), intent(in) :: pdel, dz
+
+  !func. return value
+  real(rtype) :: rho
+
+  rho = inv_ggr*pdel/dz
+
+  return
+
+end function air_density
 
 !==============================================================
 ! Update T, q, tracers, tke, u, and v based on SGS mixing
