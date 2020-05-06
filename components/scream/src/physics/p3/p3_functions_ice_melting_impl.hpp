@@ -1,5 +1,5 @@
 #ifndef P3_FUNCTIONS_ICE_MELTING_IMPL_HPP
-//#define P3_FUNCTIONS_ICE_MELTING_IMPL_HPP
+#define P3_FUNCTIONS_ICE_MELTING_IMPL_HPP
 
 #include "p3_functions.hpp" // for ETI only but harmless for GPU
 
