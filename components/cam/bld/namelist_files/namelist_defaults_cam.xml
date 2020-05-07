@@ -1018,6 +1018,11 @@
 <micro_subgrid_cloud     > .true.  </micro_subgrid_cloud>
 <micro_tend_output       > .true.  </micro_tend_output>
 
+<p3_prc_relvar_AutoCon    	microphys="p3">  3.19       </p3_prc_relvar_AutoCon>
+<p3_prc_relvar_CldImmFrz  	microphys="p3">  2.0        </p3_prc_relvar_CldImmFrz>
+<p3_prc_relvar_Acc1    		microphys="p3">  1.5        </p3_prc_relvar_Acc1>
+<p3_prc_relvar_Acc2    		microphys="p3">  1.15       </p3_prc_relvar_Acc2>
+
 <rrtmg_temp_fix                      > .false.      </rrtmg_temp_fix>
 
 <micro_mg_precip_frac_method                  >  max_overlap </micro_mg_precip_frac_method>
