@@ -1726,7 +1726,7 @@ subroutine shoc_tke(&
   brunt_low=0.02_rtype
 
   crit_val = 100.0_rtype ! value indicating stable layer
-  pbl_trans = 500.0_rtype ! depth to allow transition
+  pbl_trans = 200.0_rtype ! depth to allow transition
 
   ! Turbulent coefficients
   Cs=0.15_rtype
@@ -1750,9 +1750,6 @@ subroutine shoc_tke(&
     enddo
   enddo
 
-  ! Interpolate tk onto interface grid
-  call linear_interp(zt_grid,zi_grid,tk,tk_zi,nlev,nlevi,shcol,0._rtype)
-
   ! Compute shear production term, which is on interface levels
   ! This follows the methods of Bretheron and Park (2010)
   do k=2,nlev
@@ -1766,7 +1763,6 @@ subroutine shoc_tke(&
       u_grad=grid_dz*(u_wind(i,kt)-u_wind(i,k))
       v_grad=grid_dz*(v_wind(i,kt)-v_wind(i,k))
       sterm(i,k)=u_grad**2+v_grad**2
-      shear_prod(i,k)=tk_in*sterm(i,k)
     enddo
   enddo
 
@@ -1774,14 +1770,11 @@ subroutine shoc_tke(&
   ! Note that the lower bound for shear production has already
   !  been taken into account for the TKE boundary condition,
   !  thus zero out here
-  shear_prod(:,1) = 0._rtype
-  shear_prod(:,nlevi) = 0._rtype
   
   sterm(:,1) = 0._rtype
   sterm(:,nlevi) = 0._rtype
 
-  ! Interpolate shear production from interface to thermo grid
-  call linear_interp(zi_grid,zt_grid,shear_prod,shear_prod_zt,nlevi,nlev,shcol,largeneg)
+  ! Interpolate shear term from interface to thermo grid
   call linear_interp(zi_grid,zt_grid,sterm,sterm_zt,nlevi,nlev,shcol,0._rtype)
 
   do k=1,nlev
@@ -1794,7 +1787,7 @@ subroutine shoc_tke(&
       tke(i,k)=max(0._rtype,tke(i,k))
 
       ! Shear production term
-      a_prod_sh=shear_prod_zt(i,k)
+      a_prod_sh=tk(i,k)*sterm_zt(i,k)
 
       ! Dissipation term
       a_diss=Cee/shoc_mix(i,k)*tke(i,k)**1.5
