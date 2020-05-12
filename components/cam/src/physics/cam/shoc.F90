@@ -1710,7 +1710,8 @@ subroutine shoc_tke(&
   real(rtype) :: shear_prod(shcol,nlevi)
   real(rtype) :: sterm(shcol,nlevi), sterm_zt(shcol,nlev)
   real(rtype) :: shear_prod_zt(shcol,nlev), tk_zi(shcol,nlevi)
-  real(rtype) :: grd,betdz,Ck,Ckh,Ckm,Ce,Ces,Ce1,Ce2,smix,Cee,Cs
+  real(rtype) :: grd,betdz,Ck,Ckh,Ckm,Ce
+  real(rtype) :: Ckh_s,Ckm_s,Ces,Ce1,Ce2,smix,Cee,Cs
   real(rtype) :: buoy_sgs,ratio,a_prod_sh,a_prod_bu,a_diss
   real(rtype) :: lstarn, lstarp, bbb, omn, omp, ustar
   real(rtype) :: qsatt,dqsat,tk_in, u_grad, v_grad
@@ -1725,14 +1726,20 @@ subroutine shoc_tke(&
   lambda_slope=0.65_rtype
   brunt_low=0.02_rtype
 
-  crit_val = 100.0_rtype ! value indicating stable layer
-  pbl_trans = 200.0_rtype ! depth to allow transition
+  ! Critical value of dimensionless Monin-Obukhov length
+  crit_val = 100.0_rtype 
+  ! Transition depth [m] to above PBL top
+  pbl_trans = 200.0_rtype 
 
   ! Turbulent coefficients
   Cs=0.15_rtype
   Ck=0.1_rtype
+  ! eddy coefficients for tkh and tk
   Ckh=0.1_rtype
   Ckm=0.1_rtype
+  ! eddy coefficients for stable PBL tkh and tk
+  Ckh_s=1.0_rtype 
+  Ckm_s=1.0_rtype 
   Ce=Ck**3/Cs**4
 
   Ce1=Ce/0.7_rtype*0.19_rtype
@@ -1815,16 +1822,20 @@ subroutine shoc_tke(&
       ! Compute the return to isotropic timescale
       isotropy(i,k)=min(maxiso,tscale1/(1._rtype+lambda*buoy_sgs_save*tscale1**2))
 
+      ! Dimensionless Okukhov length considering only 
+      !  the lowest model grid layer height
       z_over_L = zt_grid(i,nlev)/obklen(i)
 
-      ! If surface layer is very stable, based on Monin-Obukhov length
-      !  use modified coefficients of tkh and tk to encourage mixing
-      !  within the PBL
       if (z_over_L .gt. crit_val .and. (zt_grid(i,k) .lt. pblh(i)+pbl_trans)) then
-        tkh(i,k)=(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
-        tk(i,k)=tkh(i,k)
+        ! If surface layer is very stable, based on near surface 
+        !  dimensionless Monin-Obukov use modified coefficients of 
+        !  tkh and tk that are primarily based on shear production 
+        !  and SHOC length scale, to promote mixing within the PBL
+        !  and to a height slighty above.
+        tkh(i,k)=Ckh_s*(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
+        tk(i,k)=Ckm_s*(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
       else
-      ! Define the eddy coefficients for heat and momentum
+        ! Define the eddy coefficients for heat and momentum
         tkh(i,k)=Ckh*isotropy(i,k)*tke(i,k)
         tk(i,k)=Ckm*isotropy(i,k)*tke(i,k)
       endif
