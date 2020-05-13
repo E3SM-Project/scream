@@ -48,7 +48,7 @@ module shoc_intr
 	     cmeliq_idx, &       ! cmeliq_idx index in physics buffer
 	     icwmrdp_idx, &      ! In cloud mixing ratio for deep convection
              sh_frac_idx, &      ! shallow convection cloud fraction
-             qc_relvar_idx, &       ! relative cloud water variance
+             relvar_idx, &       ! relative cloud water variance
 	     kvh_idx, &          ! SHOC eddy diffusivity on thermo levels
              kvm_idx, &          ! SHOC eddy diffusivity on mom levels
              pblh_idx, &         ! PBL pbuf
@@ -303,7 +303,7 @@ end function shoc_implements_cnst
     dp_frac_idx = pbuf_get_index('DP_FRAC')     ! Deep convection cloud fraction
     icwmrdp_idx = pbuf_get_index('ICWMRDP')     ! In-cloud deep convective mixing ratio
     sh_frac_idx = pbuf_get_index('SH_FRAC')     ! Shallow convection cloud fraction
-    qc_relvar_idx  = pbuf_get_index('QC_RELVAR')      ! Relative cloud water variance
+    relvar_idx      = pbuf_get_index('RELVAR')      ! Relative cloud water variance
     accre_enhan_idx = pbuf_get_index('ACCRE_ENHAN') ! accretion enhancement for MG
     prer_evap_idx   = pbuf_get_index('PRER_EVAP')
     qrl_idx         = pbuf_get_index('QRL')
@@ -367,7 +367,7 @@ end function shoc_implements_cnst
     call addfld('ISOTROPY',(/'lev'/),'A', 's', 'timescale')
     call addfld('CONCLD',(/'lev'/),  'A',        'fraction', 'Convective cloud cover')
     call addfld('BRUNT',(/'lev'/), 'A', 's-1', 'Brunt frequency')
-    call addfld('QC_RELVAR',(/'lev'/), 'A', 'kg/kg', 'SHOC cloud liquid relative variance')
+    call addfld('RELVAR',(/'lev'/), 'A', 'kg/kg', 'SHOC cloud liquid relative variance')
 
     call add_default('SHOC_TKE', 1, ' ')
     call add_default('WTHV_SEC', 1, ' ')
@@ -388,7 +388,7 @@ end function shoc_implements_cnst
     call add_default('ISOTROPY',1,' ')
     call add_default('CONCLD',1,' ')
     call add_default('BRUNT',1,' ')
-    call add_default('QC_RELVAR',1,' ')
+    call add_default('RELVAR',1,' ')
 
     ! ---------------------------------------------------------------!
     ! Initialize SHOC                                                !
@@ -586,7 +586,7 @@ end function shoc_implements_cnst
 
    real(r8), pointer, dimension(:,:) :: prer_evap 
    real(r8), pointer, dimension(:,:) :: accre_enhan
-   real(r8), pointer, dimension(:,:) :: qc_relvar
+   real(r8), pointer, dimension(:,:) :: relvar
    
    logical :: lqice(pcnst)
    real(r8) :: relvarmax
@@ -636,7 +636,7 @@ end function shoc_implements_cnst
    call pbuf_get_field(pbuf, prer_evap_idx, prer_evap)
    call pbuf_get_field(pbuf, accre_enhan_idx, accre_enhan)
    call pbuf_get_field(pbuf, cmeliq_idx,  cmeliq)
-   call pbuf_get_field(pbuf, qc_relvar_idx,  qc_relvar)
+   call pbuf_get_field(pbuf, relvar_idx,  relvar)
    call pbuf_get_field(pbuf, dp_frac_idx, deepcu)
    call pbuf_get_field(pbuf, sh_frac_idx, shalcu)
    call pbuf_get_field(pbuf, kvm_idx,     khzm)
@@ -928,15 +928,15 @@ end function shoc_implements_cnst
     call physics_ptend_sum(ptend_loc,ptend_all,ncol)
     call physics_update(state1,ptend_loc,hdtime)
    
-    ! For purposes of this implementaiton, just set relvar and accre_enhan to 1
-    qc_relvar(:,:) = 1.0_r8
+    ! For purposes of this implementation, just set relvar and accre_enhan to 1
+    relvar(:,:) = 1.0_r8
     accre_enhan(:,:) = 1._r8  
    
 ! +++ JShpund: add relative cloud liquid variance (a vectorized version based on CLUBB)
 !     TODO: double check the hardcoded values ('relvarmax', '0.001_r8')
     relvarmax = 10.0_r8
     where (rcm(:ncol,:pver) /= 0.0 .and. rcm2(:ncol,:pver) /= 0.0) &
-           qc_relvar(:ncol,:pver) = min(relvarmax,max(0.001_r8,rcm(:ncol,:pver)**2.0/rcm2(:ncol,:pver)))
+           relvar(:ncol,:pver) = min(relvarmax,max(0.001_r8,rcm(:ncol,:pver)**2.0/rcm2(:ncol,:pver)))
 
     ! --------------------------------------------------------------------------------- ! 
     !  Diagnose some quantities that are computed in macrop_tend here.                  !
@@ -1074,7 +1074,7 @@ end function shoc_implements_cnst
     call outfld('ISOTROPY',isotropy_out, pcols,lchnk)
     call outfld('CONCLD',concld,pcols,lchnk)
     call outfld('BRUNT',brunt_out,pcols,lchnk)
-    call outfld('QC_RELVAR',qc_relvar,pcols,lchnk)
+    call outfld('RELVAR',relvar,pcols,lchnk)
 
 #endif    
     return         

@@ -187,7 +187,7 @@ subroutine shoc_main ( &
      w_sec, thl_sec, qw_sec, qwthl_sec,&  ! Output (diagnostic)
      wthl_sec, wqw_sec, wtke_sec,&        ! Output (diagnostic)
      uw_sec, vw_sec, w3,&                 ! Output (diagnostic)
-     wqls_sec, brunt, shoc_ql2)                     ! Output (diagnostic)
+     wqls_sec, brunt, shoc_ql2)           ! Output (diagnostic)
 
   implicit none
 
@@ -270,7 +270,7 @@ subroutine shoc_main ( &
   real(rtype), intent(out) :: shoc_cldfrac(shcol,nlev)
   ! planetary boundary layer depth [m]
   real(rtype), intent(out) :: pblh(shcol)
-  ! cloud liquid mixing ratio variance [kg/kg]
+  ! cloud liquid mixing ratio variance [kg^2/kg^2]
   real(rtype), intent(out) :: shoc_ql2(shcol, nlev)
 
   ! also output variables, but part of the SHOC diagnostics

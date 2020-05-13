@@ -2175,26 +2175,20 @@ Default: TRUE
 
 <!-- micro_p3 -->
 <entry id="p3_QcAutoCon_Expon" type="real" category="microphysics"
-group="phys_ctl_nl" valid_values="" >
-Tunable SHOC-SGS relvar exponent in autoconversion 
+	group="phys_ctl_nl" valid_values="" >
+Exponent of power function fit used by P3 qc in autoconversion 
 Default: 2.47_rtype
 </entry>
 
 <entry id="p3_CldImmFrz_Expon" type="real" category="microphysics"
-group="phys_ctl_nl" valid_values="" >
-Tunable SHOC-SGS relvar exponent in immersion freezing 
+	group="phys_ctl_nl" valid_values="" >
+Exponent of power function fit used by P3 qc in cloud-liquid immersion freezing 
 Default: 2.0_rtype
 </entry>
 
-<entry id="p3_QcAccret_Fact" type="real" category="microphysics"
-group="phys_ctl_nl" valid_values="" >
-Tunable SHOC-SGS relvar coefficient in accresion 
-Default: 1.5_rtype
-</entry>
-
 <entry id="p3_QcAccret_Expon" type="real" category="microphysics"
-group="phys_ctl_nl" valid_values="" >
-Tunable SHOC-SGS relvar exponent in accresion 
+	group="phys_ctl_nl" valid_values="" >
+Exponent of power function fit used by P3 qc in accretion 
 Default: 1.15_rtype
 </entry>
 

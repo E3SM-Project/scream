@@ -54,7 +54,7 @@ module micro_p3
        rainfrze, icenuct, homogfrze, iulog=>iulog_e3sm, &
        masterproc=>masterproc_e3sm, calculate_incloud_mixingratios, mu_r_constant, &
        lookup_table_1a_dum1_c, use_cxx, &
-       p3_QcAutoCon_Expon, p3_CldImmFrz_Expon, p3_QcAccret_Fact, p3_QcAccret_Expon
+       p3_QcAutoCon_Expon, p3_CldImmFrz_Expon, p3_QcAccret_Expon
 
   ! Bit-for-bit math functions.
 #ifdef SCREAM_CONFIG_IS_CMAKE
@@ -86,10 +86,6 @@ module micro_p3
      real(rtype), dimension(:), pointer :: p
   end type realptr
 
-  interface rising_factorial
-    module procedure rising_factorial_rtype
-  end interface rising_factorial
-
   interface var_coef
     module procedure var_coef_rtype
   end interface var_coef
@@ -97,24 +93,16 @@ module micro_p3
 contains
 
   !==================================================================================================!
- pure function rising_factorial_rtype(x, n) result(res)
-
-   real(rtype), intent(in) :: x, n
-   real(rtype) :: res
-
-   res = gamma(x+n)/gamma(x)
-
-  end function rising_factorial_rtype
-
-  elemental function var_coef_rtype(relvar, a) result(res)
+  elemental function var_coef_rtype(relvar, expon) result(res)
 
   ! Finds a coefficient for process rates based on the relative variance
   ! of cloud water.
   real(rtype), intent(in) :: relvar
-  real(rtype), intent(in) :: a
-  real(rtype) :: res
+  real(rtype), intent(in) :: expon
+  real(rtype) :: res,res_tmp
 
-  res = rising_factorial(relvar, a) / relvar**a
+  res_tmp = gamma(relvar+expon)/gamma(relvar)
+  res = res_tmp/relvar**expon
 
   end function var_coef_rtype
   ! ============================================ !
@@ -2693,7 +2681,6 @@ subroutine cldliq_immersion_freezing(t,lamc,mu_c,cdist1,qc_incld,qc_relvar,    &
       ! for future: calculate gamma(mu_c+4) in one place since its used multiple times  !AaronDonahue, TODO
       dum1 = bfb_exp(aimm*(zerodegc-t))
       dum2 = bfb_cube(1._rtype/lamc)
-! +++ JShpund: add sug-grid cloud water variance
       sbgrd_var_coef = var_coef(qc_relvar, p3_CldImmFrz_Expon)
       Q_nuc = sbgrd_var_coef*cons6*cdist1*bfb_gamma(7._rtype+mu_c)*dum1*bfb_square(dum2)
       N_nuc = sbgrd_var_coef*cons5*cdist1*bfb_gamma(mu_c+4._rtype)*dum1*dum2
@@ -2958,8 +2945,7 @@ if (qr_incld.ge.qsmall .and. qc_incld.ge.qsmall) then
            1.e+6_rtype*inv_rho
    elseif (iparam.eq.3) then
       !Khroutdinov and Kogan (2000)
-! +++ JShpund: add sug-grid cloud water variance
-      sbgrd_var_coef = p3_QcAccret_Fact * var_coef(qc_relvar, p3_QcAccret_Expon)
+      sbgrd_var_coef = var_coef(qc_relvar, p3_QcAccret_Expon)
       qcacc = sbgrd_var_coef*67._rtype*bfb_pow(qc_incld*qr_incld,p3_QcAccret_Expon)
       ncacc = qcacc*nc_incld/qc_incld
    endif
@@ -3059,10 +3045,8 @@ subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,qc_relvar,    &
    qc_not_small: if (qc_incld.ge.1.e-8_rtype) then
 
       !Khroutdinov and Kogan (2000)
-      dum   = qc_incld
-! +++ JShpund: add sug-grid cloud water variance following CMDV-P3
       sbgrd_var_coef = var_coef(qc_relvar, p3_QcAutoCon_Expon)
-      qcaut = sbgrd_var_coef*1350._rtype*bfb_pow(dum,p3_QcAutoCon_Expon)*bfb_pow(nc_incld*1.e-6_rtype*rho,-1.79_rtype)
+      qcaut = sbgrd_var_coef*1350._rtype*bfb_pow(qc_incld,p3_QcAutoCon_Expon)*bfb_pow(nc_incld*1.e-6_rtype*rho,-1.79_rtype)
       ! note: ncautr is change in Nr; ncautc is change in Ncs
       ncautr = qcaut*cons3
       ncautc = qcaut*nc_incld/qc_incld
