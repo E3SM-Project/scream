@@ -53,7 +53,8 @@ module micro_p3
        get_latent_heat, zerodegc, pi=>pi_e3sm, dnu, &
        rainfrze, icenuct, homogfrze, iulog=>iulog_e3sm, &
        masterproc=>masterproc_e3sm, calculate_incloud_mixingratios, mu_r_constant, &
-       lookup_table_1a_dum1_c, use_cxx
+       lookup_table_1a_dum1_c, use_cxx, &
+       p3_QcAutoCon_Expon, p3_CldImmFrz_Expon, p3_QcAccret_Fact, p3_QcAccret_Expon
 
   ! Bit-for-bit math functions.
 #ifdef SCREAM_CONFIG_IS_CMAKE
@@ -85,10 +86,38 @@ module micro_p3
      real(rtype), dimension(:), pointer :: p
   end type realptr
 
+  interface rising_factorial
+    module procedure rising_factorial_rtype
+  end interface rising_factorial
+
+  interface var_coef
+    module procedure var_coef_rtype
+  end interface var_coef
+
 contains
 
   !==================================================================================================!
+ pure function rising_factorial_rtype(x, n) result(res)
 
+   real(rtype), intent(in) :: x, n
+   real(rtype) :: res
+
+   res = gamma(x+n)/gamma(x)
+
+  end function rising_factorial_rtype
+
+  elemental function var_coef_rtype(relvar, a) result(res)
+
+  ! Finds a coefficient for process rates based on the relative variance
+  ! of cloud water.
+  real(rtype), intent(in) :: relvar
+  real(rtype), intent(in) :: a
+  real(rtype) :: res
+
+  res = rising_factorial(relvar, a) / relvar**a
+
+  end function var_coef_rtype
+  ! ============================================ !
   SUBROUTINE p3_init(lookup_file_dir,version_p3)
     !------------------------------------------------------------------------------------------!
     ! This subroutine initializes all physical constants and parameters needed by the P3       !
@@ -483,7 +512,7 @@ contains
        diag_effi,diag_vmi,diag_di,diag_rhoi,log_predictNc, &
        pdel,exner,cmeiout,prain,nevapr,prer_evap,rflx,sflx,rcldm,lcldm,icldm,  &
        pratot,prctot,p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-       vap_ice_exchange,vap_cld_exchange,col_location)
+       vap_ice_exchange,vap_cld_exchange,col_location,qc_relvar)
 
     !----------------------------------------------------------------------------------------!
     !                                                                                        !
@@ -562,6 +591,7 @@ contains
     ! included in the port to C++, or can be changed if desired.
     real(rtype), intent(out),   dimension(its:ite,kts:kte,49)   :: p3_tend_out ! micro physics tendencies
     real(rtype), intent(in),    dimension(its:ite,3)            :: col_location
+    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: qc_relvar
     !----- Local variables and parameters:  -------------------------------------------------!
 
     real(rtype), dimension(its:ite,kts:kte) :: mu_r  ! shape parameter of rain
@@ -928,7 +958,7 @@ contains
           !............................................................
           ! contact and immersion freezing droplets
           call cldliq_immersion_freezing(t(i,k),&
-          lamc(i,k),mu_c(i,k),cdist1(i,k),qc_incld(i,k),&
+          lamc(i,k),mu_c(i,k),cdist1(i,k),qc_incld(i,k),qc_relvar(i,k),&
                qcheti,ncheti)
 
           !............................................................
@@ -978,7 +1008,7 @@ contains
           !................
           ! cloud water autoconversion
           ! NOTE: cloud_water_autoconversion must be called before droplet_self_collection
-          call cloud_water_autoconversion(rho(i,k),qc_incld(i,k),nc_incld(i,k),&
+          call cloud_water_autoconversion(rho(i,k),qc_incld(i,k),nc_incld(i,k),qc_relvar(i,k),&
             qcaut,ncautc,ncautr)
 
           !............................
@@ -989,7 +1019,7 @@ contains
           !............................
           ! accretion of cloud by rain
           call cloud_rain_accretion(rho(i,k),inv_rho(i,k),&
-            qc_incld(i,k),nc_incld(i,k), qr_incld(i,k),&
+            qc_incld(i,k),nc_incld(i,k), qr_incld(i,k),qc_relvar(i,k),&
             qcacc, ncacc)
 
           !.....................................
@@ -2630,7 +2660,7 @@ f1pr02,acn,lamc, mu_c,qc_incld,qccol,    &
 
 end subroutine calc_rime_density
 
-subroutine cldliq_immersion_freezing(t,lamc,mu_c,cdist1,qc_incld,    &
+subroutine cldliq_immersion_freezing(t,lamc,mu_c,cdist1,qc_incld,qc_relvar,    &
            qcheti,ncheti)
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
@@ -2646,11 +2676,12 @@ subroutine cldliq_immersion_freezing(t,lamc,mu_c,cdist1,qc_incld,    &
    real(rtype), intent(in) :: mu_c
    real(rtype), intent(in) :: cdist1
    real(rtype), intent(in) :: qc_incld
+   real(rtype), intent(in) :: qc_relvar
 
    real(rtype), intent(out) :: qcheti
    real(rtype), intent(out) :: ncheti
 
-   real(rtype) :: dum1, dum2, Q_nuc, N_nuc
+   real(rtype) :: dum1, dum2, Q_nuc, N_nuc, sbgrd_var_coef
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
@@ -2662,8 +2693,10 @@ subroutine cldliq_immersion_freezing(t,lamc,mu_c,cdist1,qc_incld,    &
       ! for future: calculate gamma(mu_c+4) in one place since its used multiple times  !AaronDonahue, TODO
       dum1 = bfb_exp(aimm*(zerodegc-t))
       dum2 = bfb_cube(1._rtype/lamc)
-      Q_nuc = cons6*cdist1*bfb_gamma(7._rtype+mu_c)*dum1*bfb_square(dum2)
-      N_nuc = cons5*cdist1*bfb_gamma(mu_c+4._rtype)*dum1*dum2
+! +++ JShpund: add sug-grid cloud water variance
+      sbgrd_var_coef = var_coef(qc_relvar, p3_CldImmFrz_Expon)
+      Q_nuc = sbgrd_var_coef*cons6*cdist1*bfb_gamma(7._rtype+mu_c)*dum1*bfb_square(dum2)
+      N_nuc = sbgrd_var_coef*cons5*cdist1*bfb_gamma(mu_c+4._rtype)*dum1*dum2
       qcheti = Q_nuc
       ncheti = N_nuc
    endif
@@ -2878,7 +2911,7 @@ subroutine droplet_self_collection(rho,inv_rho,qc_incld,mu_c,nu,ncautc,    &
 
 end subroutine droplet_self_collection
 
-subroutine cloud_rain_accretion(rho,inv_rho,qc_incld,nc_incld,qr_incld,    &
+subroutine cloud_rain_accretion(rho,inv_rho,qc_incld,nc_incld,qr_incld,qc_relvar,    &
    qcacc,ncacc)
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
@@ -2895,11 +2928,12 @@ real(rtype), intent(in) :: inv_rho
 real(rtype), intent(in) :: qc_incld
 real(rtype), intent(in) :: nc_incld
 real(rtype), intent(in) :: qr_incld
+real(rtype), intent(in) :: qc_relvar
 
 real(rtype), intent(out) :: qcacc
 real(rtype), intent(out) :: ncacc
 
-real(rtype) :: dum, dum1
+real(rtype) :: dum, dum1, sbgrd_var_coef
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
@@ -2924,7 +2958,9 @@ if (qr_incld.ge.qsmall .and. qc_incld.ge.qsmall) then
            1.e+6_rtype*inv_rho
    elseif (iparam.eq.3) then
       !Khroutdinov and Kogan (2000)
-      qcacc = 67._rtype*bfb_pow(qc_incld*qr_incld,1.15_rtype)
+! +++ JShpund: add sug-grid cloud water variance
+      sbgrd_var_coef = p3_QcAccret_Fact * var_coef(qc_relvar, p3_QcAccret_Expon)
+      qcacc = sbgrd_var_coef*67._rtype*bfb_pow(qc_incld*qr_incld,p3_QcAccret_Expon)
       ncacc = qcacc*nc_incld/qc_incld
    endif
 
@@ -2992,7 +3028,7 @@ subroutine rain_self_collection(rho,qr_incld,nr_incld,    &
 end subroutine rain_self_collection
 
 
-subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,    &
+subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,qc_relvar,    &
    qcaut,ncautc,ncautr)
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
@@ -3004,12 +3040,13 @@ subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,    &
    real(rtype), intent(in) :: rho
    real(rtype), intent(in) :: qc_incld
    real(rtype), intent(in) :: nc_incld
+   real(rtype), intent(in) :: qc_relvar
 
    real(rtype), intent(out) :: qcaut
    real(rtype), intent(out) :: ncautc
    real(rtype), intent(out) :: ncautr
 
-   real(rtype) :: dum
+   real(rtype) :: dum, sbgrd_var_coef
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
@@ -3023,7 +3060,9 @@ subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,    &
 
       !Khroutdinov and Kogan (2000)
       dum   = qc_incld
-      qcaut = 1350._rtype*bfb_pow(dum,2.47_rtype)*bfb_pow(nc_incld*1.e-6_rtype*rho,-1.79_rtype)
+! +++ JShpund: add sug-grid cloud water variance following CMDV-P3
+      sbgrd_var_coef = var_coef(qc_relvar, p3_QcAutoCon_Expon)
+      qcaut = sbgrd_var_coef*1350._rtype*bfb_pow(dum,p3_QcAutoCon_Expon)*bfb_pow(nc_incld*1.e-6_rtype*rho,-1.79_rtype)
       ! note: ncautr is change in Nr; ncautc is change in Ncs
       ncautr = qcaut*cons3
       ncautc = qcaut*nc_incld/qc_incld

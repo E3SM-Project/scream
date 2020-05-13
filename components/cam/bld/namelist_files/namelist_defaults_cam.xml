@@ -1017,6 +1017,10 @@
 <micro_aerosolactivation > .true.  </micro_aerosolactivation>
 <micro_subgrid_cloud     > .true.  </micro_subgrid_cloud>
 <micro_tend_output       > .true.  </micro_tend_output>
+<p3_QcAutoCon_Expon    	microphys="p3">  2.47       </p3_QcAutoCon_Expon>
+<p3_CldImmFrz_Expon  	microphys="p3">  2.0        </p3_CldImmFrz_Expon>
+<p3_QcAccret_Fact    	microphys="p3">  1.5    	</p3_QcAccret_Fact>
+<p3_QcAccret_Expon    	microphys="p3">  1.15       </p3_QcAccret_Expon>
 
 <rrtmg_temp_fix                      > .false.      </rrtmg_temp_fix>
 
