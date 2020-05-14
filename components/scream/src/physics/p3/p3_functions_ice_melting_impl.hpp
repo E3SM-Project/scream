@@ -2,6 +2,7 @@
 #define P3_FUNCTIONS_ICE_MELTING_IMPL_HPP
 
 #include "p3_functions.hpp" // for ETI only but harmless for GPU
+#include "physics_functions.hpp" // also for ETI not on GPUs
 
 namespace scream {
 namespace p3 {
@@ -30,7 +31,7 @@ void Functions<S,D>
 
   if (has_melt_qi.any()){
 
-    //PMC qv_sat from math_impl.hpp seems to match hardcoded formula from F90 I'm swapping in C++ ver.
+    //PMC qv_sat from physics_saturation_impl.hpp seems to match hardcoded formula from F90 I'm swapping in C++ ver.
     //    Note that qsat0 should be with respect to liquid. Confirmed F90 code did this.
 
     //const auto qsat0 = qv_sat(Spack(Tmelt), pres, false); //last false means NOT saturation w/ respect to ice.
