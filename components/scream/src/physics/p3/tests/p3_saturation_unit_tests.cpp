@@ -8,6 +8,7 @@
 #include "physics/p3/p3_functions_f90.hpp"
 #include "share/util/scream_kokkos_utils.hpp"
 #include "physics/common/physics_functions.hpp"
+#include "physics/common/physics_saturation_impl.hpp"
 
 #include "p3_unit_tests_common.hpp"
 

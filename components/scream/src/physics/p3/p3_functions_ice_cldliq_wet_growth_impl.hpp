@@ -3,6 +3,7 @@
 
 #include "p3_functions.hpp" // for ETI only but harmless for GPU
 #include "physics_functions.hpp" // also for ETI not on GPU
+#include "physics_saturation_impl.hpp"
 
 namespace scream {
 namespace p3 {
