@@ -2678,7 +2678,7 @@ subroutine cldliq_immersion_freezing(t,lamc,mu_c,cdist1,qc_incld,qc_relvar,    &
       dum1 = bfb_exp(aimm*(zerodegc-t))
       dum2 = bfb_cube(1._rtype/lamc)
       sbgrd_var_coef = var_coef(qc_relvar, 2._rtype)
-      Q_nuc = sbgrd_var_coef*cons6*cdist1*bfb_gamma(7._rtype+mu_c)*dum1*bfb_pow(dum2,2._rtype)
+      Q_nuc = sbgrd_var_coef*cons6*cdist1*bfb_gamma(7._rtype+mu_c)*dum1*bfb_square(dum2)
       N_nuc = cons5*cdist1*bfb_gamma(mu_c+4._rtype)*dum1*dum2
       qcheti = Q_nuc
       ncheti = N_nuc
