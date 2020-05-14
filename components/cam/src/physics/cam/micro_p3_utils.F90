@@ -26,7 +26,7 @@ module micro_p3_utils
        thrd,sxth,piov3,piov6,rho_rimeMin,     &
        rho_rimeMax,inv_rho_rimeMax,max_total_Ni,dbrk,nmltratio,clbfact_sub,  &
        clbfact_dep, &
-       p3_QcAutoCon_Expon, p3_CldImmFrz_Expon, p3_QcAccret_Expon
+       p3_QcAutoCon_Expon, p3_QcAccret_Expon
 
     real(rtype),dimension(16), public :: dnu
 

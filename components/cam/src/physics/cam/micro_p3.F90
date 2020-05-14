@@ -54,7 +54,7 @@ module micro_p3
        rainfrze, icenuct, homogfrze, iulog=>iulog_e3sm, &
        masterproc=>masterproc_e3sm, calculate_incloud_mixingratios, mu_r_constant, &
        lookup_table_1a_dum1_c, use_cxx, &
-       p3_QcAutoCon_Expon, p3_CldImmFrz_Expon, p3_QcAccret_Expon
+       p3_QcAutoCon_Expon, p3_QcAccret_Expon
 
   ! Bit-for-bit math functions.
 #ifdef SCREAM_CONFIG_IS_CMAKE
@@ -86,14 +86,10 @@ module micro_p3
      real(rtype), dimension(:), pointer :: p
   end type realptr
 
-  interface var_coef
-    module procedure var_coef_rtype
-  end interface var_coef
-
 contains
 
   !==================================================================================================!
-  elemental function var_coef_rtype(relvar, expon) result(res)
+  elemental function var_coef(relvar, expon) result(res)
 
   ! Finds a coefficient for process rates based on the relative variance
   ! of cloud water.
@@ -101,10 +97,10 @@ contains
   real(rtype), intent(in) :: expon
   real(rtype) :: res,res_tmp
 
-  res_tmp = gamma(relvar+expon)/gamma(relvar)
-  res = res_tmp/relvar**expon
+  res_tmp = bfb_gamma(relvar+expon)/bfb_gamma(relvar)
+  res = res_tmp/bfb_pow(relvar,expon)
 
-  end function var_coef_rtype
+  end function var_coef
   ! ============================================ !
   SUBROUTINE p3_init(lookup_file_dir,version_p3)
     !------------------------------------------------------------------------------------------!
@@ -2681,9 +2677,9 @@ subroutine cldliq_immersion_freezing(t,lamc,mu_c,cdist1,qc_incld,qc_relvar,    &
       ! for future: calculate gamma(mu_c+4) in one place since its used multiple times  !AaronDonahue, TODO
       dum1 = bfb_exp(aimm*(zerodegc-t))
       dum2 = bfb_cube(1._rtype/lamc)
-      sbgrd_var_coef = var_coef(qc_relvar, p3_CldImmFrz_Expon)
-      Q_nuc = sbgrd_var_coef*cons6*cdist1*bfb_gamma(7._rtype+mu_c)*dum1*bfb_square(dum2)
-      N_nuc = sbgrd_var_coef*cons5*cdist1*bfb_gamma(mu_c+4._rtype)*dum1*dum2
+      sbgrd_var_coef = var_coef(qc_relvar, 2._rtype)
+      Q_nuc = sbgrd_var_coef*cons6*cdist1*bfb_gamma(7._rtype+mu_c)*dum1*bfb_pow(dum2,2._rtype)
+      N_nuc = cons5*cdist1*bfb_gamma(mu_c+4._rtype)*dum1*dum2
       qcheti = Q_nuc
       ncheti = N_nuc
    endif
@@ -3047,7 +3043,7 @@ subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,qc_relvar,    &
       !Khroutdinov and Kogan (2000)
       sbgrd_var_coef = var_coef(qc_relvar, p3_QcAutoCon_Expon)
       qcaut = sbgrd_var_coef*1350._rtype*bfb_pow(qc_incld,p3_QcAutoCon_Expon)*bfb_pow(nc_incld*1.e-6_rtype*rho,-1.79_rtype)
-      ! note: ncautr is change in Nr; ncautc is change in Ncs
+      ! note: ncautr is change in Nr; ncautc is change in Nc
       ncautr = qcaut*cons3
       ncautc = qcaut*nc_incld/qc_incld
 

@@ -35,7 +35,7 @@ module micro_p3_interface
   use cam_logfile,    only: iulog
   use time_manager,   only: is_first_step
   use perf_mod,       only: t_startf, t_stopf
-  use micro_p3_utils, only: p3_QcAutoCon_Expon, p3_CldImmFrz_Expon, p3_QcAccret_Expon
+  use micro_p3_utils, only: p3_QcAutoCon_Expon, p3_QcAccret_Expon
        
   implicit none
   save
@@ -133,7 +133,7 @@ subroutine micro_p3_readnl(nlfile)
 
   namelist /micro_nl/ &
        micro_p3_tableversion, micro_p3_lookup_dir, micro_aerosolactivation, micro_subgrid_cloud, &
-       micro_tend_output, p3_QcAutoCon_Expon, p3_CldImmFrz_Expon, p3_QcAccret_Expon
+       micro_tend_output, p3_QcAutoCon_Expon, p3_QcAccret_Expon
 
   !-----------------------------------------------------------------------------
 
@@ -157,7 +157,6 @@ subroutine micro_p3_readnl(nlfile)
      write(iulog,'(A30,1x,L)')    'micro_subgrid_cloud: ',     micro_subgrid_cloud
      write(iulog,'(A30,1x,L)')    'micro_tend_output: ',       micro_tend_output
      write(iulog,'(A30,1x,8e12.4)') 'p3_QcAutoCon_Expon',        p3_QcAutoCon_Expon
-     write(iulog,'(A30,1x,8e12.4)') 'p3_CldImmFrz_Expon',        p3_CldImmFrz_Expon
      write(iulog,'(A30,1x,8e12.4)') 'p3_QcAccret_Expon',         p3_QcAccret_Expon
 
   end if
@@ -170,7 +169,6 @@ subroutine micro_p3_readnl(nlfile)
   call mpibcast(micro_subgrid_cloud,     1,                          mpilog,  0, mpicom)
   call mpibcast(micro_tend_output,       1,                          mpilog,  0, mpicom)
   call mpibcast(p3_QcAutoCon_Expon,      1,                          mpir8,   0, mpicom)
-  call mpibcast(p3_CldImmFrz_Expon,      1,                          mpir8,   0, mpicom)
   call mpibcast(p3_QcAccret_Expon,       1,                          mpir8,   0, mpicom)
 
 #endif
@@ -269,8 +267,6 @@ end subroutine micro_p3_readnl
    call pbuf_add_field('CV_REFFLIQ', 'physpkg',dtype_r8,(/pcols,pver/), cv_reffliq_idx)
    call pbuf_add_field('CV_REFFICE', 'physpkg',dtype_r8,(/pcols,pver/), cv_reffice_idx)
  
-   !! module clubb_intr (AaronDonahue: I think these are for MG only.  Should
-   !  we remove?  If so, then we will have to make changes to CLUBB interface.
    call pbuf_add_field('RELVAR',     'global',dtype_r8,(/pcols,pver/),   relvar_idx)
    call pbuf_add_field('ACCRE_ENHAN','global',dtype_r8,(/pcols,pver/), accre_enhan_idx)
 
