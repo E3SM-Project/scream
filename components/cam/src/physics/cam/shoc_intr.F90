@@ -318,6 +318,7 @@ end function shoc_implements_cnst
       call pbuf_set_field(pbuf2d, fice_idx, 0.0_r8)
       call pbuf_set_field(pbuf2d, tke_idx, tke_tol)
       call pbuf_set_field(pbuf2d, alst_idx, 0.0_r8)
+      call pbuf_set_field(pbuf2d, aist_idx, 0.0_r8)
       
       call pbuf_set_field(pbuf2d, vmag_gust_idx,    1.0_r8)
       
