@@ -1734,10 +1734,10 @@ subroutine shoc_tke(&
   ! Turbulent coefficients
   Cs=0.15_rtype
   Ck=0.1_rtype
-  ! eddy coefficients for tkh and tk
+  ! eddy coefficients for diffusivities 
   Ckh=0.1_rtype
   Ckm=0.1_rtype
-  ! eddy coefficients for stable PBL tkh and tk
+  ! eddy coefficients for stable PBL diffusivities
   Ckh_s=1.0_rtype 
   Ckm_s=1.0_rtype 
   Ce=Ck**3/Cs**4
@@ -1776,8 +1776,7 @@ subroutine shoc_tke(&
   ! Set lower and upper boundary for shear production
   ! Note that the lower bound for shear production has already
   !  been taken into account for the TKE boundary condition,
-  !  thus zero out here
-  
+  !  thus zero out here 
   sterm(:,1) = 0._rtype
   sterm(:,nlevi) = 0._rtype
 
@@ -1793,7 +1792,8 @@ subroutine shoc_tke(&
 
       tke(i,k)=max(0._rtype,tke(i,k))
 
-      ! Shear production term
+      ! Shear production term, use diffusivity from
+      !  previous timestep 
       a_prod_sh=tk(i,k)*sterm_zt(i,k)
 
       ! Dissipation term
@@ -1823,7 +1823,7 @@ subroutine shoc_tke(&
       isotropy(i,k)=min(maxiso,tscale1/(1._rtype+lambda*buoy_sgs_save*tscale1**2))
 
       ! Dimensionless Okukhov length considering only 
-      !  the lowest model grid layer height
+      !  the lowest model grid layer height to scale
       z_over_L = zt_grid(i,nlev)/obklen(i)
 
       if (z_over_L .gt. crit_val .and. (zt_grid(i,k) .lt. pblh(i)+pbl_trans)) then
