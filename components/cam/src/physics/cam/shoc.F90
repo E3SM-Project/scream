@@ -1776,7 +1776,7 @@ subroutine shoc_tke(&
   ! Set lower and upper boundary for shear production
   ! Note that the lower bound for shear production has already
   !  been taken into account for the TKE boundary condition,
-  !  thus zero out here 
+  !  thus zero out here
   sterm(:,1) = 0._rtype
   sterm(:,nlevi) = 0._rtype
 
