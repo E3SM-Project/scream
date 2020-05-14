@@ -20,14 +20,11 @@ function(CreateUnitTest target_name target_srcs scream_libs)
   link_directories(${SCREAM_TPL_LIBRARY_DIRS})
 
   # Create the executable
-  set (SRC_MAIN ${SCREAM_SRC_DIR}/share/util/scream_catch_main.cpp)
-  if (CreateUnitTest_EXCLUDE_MAIN_CPP)
-    set (SRC_MAIN)
-  endif ()
-  add_executable (${target_name} ${target_srcs} ${SRC_MAIN})
+  add_executable (${target_name} ${target_srcs})
 
   set (TEST_INCLUDE_DIRS
        ${SCREAM_INCLUDE_DIRS}
+       ${SCREAM_TPL_INCLUDE_DIRS}
        ${CATCH_INCLUDE_DIR}
        ${CMAKE_CURRENT_SOURCE_DIR}
        ${CMAKE_CURRENT_BINARY_DIR}
@@ -36,7 +33,11 @@ function(CreateUnitTest target_name target_srcs scream_libs)
   )
 
   # Set all target properties
+  if (NOT CreateUnitTest_EXCLUDE_MAIN_CPP)
+    target_link_libraries(${target_name} scream_catch_main)
+  endif()
   target_link_libraries(${target_name} ${scream_libs} ${SCREAM_TPL_LIBRARIES})
+
   target_include_directories(${target_name} PUBLIC ${TEST_INCLUDE_DIRS})
   set_target_properties(${target_name} PROPERTIES LINK_FLAGS "${SCREAM_LINK_FLAGS}")
   set_target_properties(${target_name} PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${target_name}_modules)

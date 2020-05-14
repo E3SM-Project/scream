@@ -71,3 +71,12 @@ set_target_properties(scream_share PROPERTIES
 if (NOT SCREAM_LIB_ONLY)
   add_subdirectory(tests)
 endif()
+
+##########################
+##### Testing Driver #####
+##########################
+
+add_library (scream_catch_main util/scream_catch_main.cpp)
+target_include_directories(scream_catch_main
+     PUBLIC ${SCREAM_INCLUDE_DIRS} ${CATCH_INCLUDE_DIR})
+target_include_directories(scream_catch_main SYSTEM PUBLIC ${SCREAM_TPL_INCLUDE_DIRS})
