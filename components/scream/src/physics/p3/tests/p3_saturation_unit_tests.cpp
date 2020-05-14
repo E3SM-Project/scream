@@ -28,6 +28,9 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
   KOKKOS_FUNCTION  static void saturation_tests(const Scalar& temperature, const Scalar& pressure, const Scalar& correct_sat_ice_p,
     const Scalar& correct_sat_liq_p, const Scalar&  correct_mix_ice_r, const Scalar& correct_mix_liq_r, int& errors ){
 
+    //Allow usage of saturation functions
+    using physics = scream::physics::Functions<Scalar, Device>;
+    
     //Convert Scalar inputs to Spacks because that's what polysvp1 and qv_sat expect as inputs.
     //--------------------------------------
     const Spack temps(temperature);
@@ -35,10 +38,10 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
 
     //Get values from polysvp1 and qv_sat to test against "correct" values
     //--------------------------------------
-    Spack sat_ice_p = Functions::polysvp1(temps, true);
-    Spack sat_liq_p = Functions::polysvp1(temps, false);
-    Spack mix_ice_r = Functions::qv_sat(temps, pres, true);
-    Spack mix_liq_r = Functions::qv_sat(temps, pres, false);
+    Spack sat_ice_p = physics::polysvp1(temps, true);
+    Spack sat_liq_p = physics::polysvp1(temps, false);
+    Spack mix_ice_r = physics::qv_sat(temps, pres, true);
+    Spack mix_liq_r = physics::qv_sat(temps, pres, false);
 
     //Set error tolerances
     //--------------------------------------

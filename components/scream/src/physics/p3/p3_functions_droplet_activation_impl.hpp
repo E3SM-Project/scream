@@ -17,6 +17,9 @@ void Functions<S,D>
                       const bool& log_predictNc, const Scalar& odt,
                       Spack& qcnuc, Spack& ncnuc)
 {
+
+  using physics = scream::physics::Functions<Scalar, Device>;
+
   constexpr Scalar cons7  = C::CONS7;
   constexpr Scalar nccnst = C::NCCNST;
   constexpr Scalar rv     = C::RH2O;
@@ -39,7 +42,7 @@ void Functions<S,D>
 
   dum    = nccnst*inv_rho*cons7-qc;
   dum    = max(0, dum);
-  dumqvs = qv_sat(temp, pres, false);
+  dumqvs = physics::qv_sat(temp, pres, false);
   dqsdt  = xxlv*dumqvs/(rv*temp*temp);
   ab     = 1 + dqsdt*xxlv*inv_cp;
   dum    = min(dum,(qv-dumqvs)/ab);  // limit overdepletion of supersaturation

@@ -16,6 +16,9 @@ void Functions<S,D>
                         const Spack& qitot_incld, const Spack& nitot_incld, const Spack& qr_incld,
                         Smask& log_wetgrowth, Spack& qrcol, Spack& qccol, Spack& qwgrth, Spack& nrshdr, Spack& qcshd)
 {
+
+   using physics = scream::physics::Functions<Scalar, Device>;
+
    constexpr Scalar qsmall = C::QSMALL;
    constexpr Scalar tmelt  = C::Tmelt;
    constexpr Scalar twopi  = C::Pi*2;
@@ -32,7 +35,7 @@ void Functions<S,D>
    const auto any_if_col = any_if && qccol_qrcol_ge_small;
 
    const Spack zerodeg{tmelt};
-   const Spack e0 = polysvp1(zerodeg, zero);
+   const Spack e0 = physics::polysvp1(zerodeg, zero);
    Spack qsat0{0.};
    Spack dum{0.};
    Spack dum1{0.};
