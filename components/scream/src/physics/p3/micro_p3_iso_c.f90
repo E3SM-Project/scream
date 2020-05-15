@@ -104,7 +104,7 @@ contains
        diag_effi,diag_vmi,diag_di,diag_rhoi,log_predictNc, &
        pdel,exner,cmeiout,prain,nevapr,prer_evap,rflx,sflx,rcldm,lcldm,icldm, &
        pratot,prctot,p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-       vap_ice_exchange, vap_cld_exchange) bind(C)
+       vap_ice_exchange, vap_cld_exchange,qc_relvar) bind(C)
     use micro_p3, only : p3_main
 
     real(kind=c_real), intent(inout), dimension(its:ite,kts:kte) :: qc, nc, qr, nr, qv, th
@@ -134,6 +134,7 @@ contains
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: vap_liq_exchange
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: vap_ice_exchange
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: vap_cld_exchange
+    real(kind=c_real), intent(in),    dimension(its:ite,kts:kte)      :: qc_relvar
 
     real(kind=c_real), dimension(its:ite,3) :: col_location
     integer :: i
@@ -146,7 +147,7 @@ contains
          diag_effi,diag_vmi,diag_di,diag_rhoi,log_predictNc, &
          pdel,exner,cmeiout,prain,nevapr,prer_evap,rflx,sflx,rcldm,lcldm,icldm, &
          pratot,prctot,p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-         vap_ice_exchange, vap_cld_exchange,col_location)
+         vap_ice_exchange, vap_cld_exchange,col_location,qc_relvar)
   end subroutine p3_main_c
 
   subroutine p3_use_cxx_c(arg_use_cxx) bind(C)
@@ -343,13 +344,13 @@ end subroutine prevent_ice_overdepletion_c
       call calc_rime_density(t, rhofaci, f1pr02, acn, lamc, mu_c, qc_incld, qccol, vtrmi1, rhorime_c)
   end subroutine calc_rime_density_c
 
-  subroutine cldliq_immersion_freezing_c(t,lamc,mu_c,cdist1,qc_incld,qcheti,ncheti) bind(C)
+  subroutine cldliq_immersion_freezing_c(t,lamc,mu_c,cdist1,qc_incld,qc_relvar,qcheti,ncheti) bind(C)
 
       use micro_p3, only: cldliq_immersion_freezing
-      real(kind=c_real), value, intent(in) :: t, lamc, mu_c, cdist1, qc_incld
+      real(kind=c_real), value, intent(in) :: t, lamc, mu_c, cdist1, qc_incld,qc_relvar
       real(kind=c_real), intent(out) :: qcheti, ncheti
 
-      call cldliq_immersion_freezing(t, lamc, mu_c, cdist1, qc_incld, qcheti, ncheti)
+      call cldliq_immersion_freezing(t, lamc, mu_c, cdist1, qc_incld, qc_relvar, qcheti, ncheti)
   end subroutine cldliq_immersion_freezing_c
 
   subroutine rain_immersion_freezing_c(t,lamr,mu_r,cdistr,qr_incld,qrheti,nrheti) bind(C)
@@ -370,22 +371,22 @@ end subroutine prevent_ice_overdepletion_c
       call droplet_self_collection(rho, inv_rho, qc_incld, mu_c, nu, ncautc, ncslf)
   end subroutine droplet_self_collection_c
 
-  subroutine cloud_rain_accretion_c(rho,inv_rho,qc_incld,nc_incld,qr_incld,qcacc,ncacc) bind(C)
+  subroutine cloud_rain_accretion_c(rho,inv_rho,qc_incld,nc_incld,qr_incld,qc_relvar,qcacc,ncacc) bind(C)
 
       use micro_p3, only: cloud_rain_accretion
-      real(kind=c_real), value, intent(in) :: rho, inv_rho, qc_incld, nc_incld, qr_incld
+      real(kind=c_real), value, intent(in) :: rho, inv_rho, qc_incld, nc_incld, qr_incld,qc_relvar
       real(kind=c_real), intent(out) :: qcacc, ncacc
 
-      call cloud_rain_accretion(rho, inv_rho, qc_incld, nc_incld, qr_incld, qcacc, ncacc)
+      call cloud_rain_accretion(rho, inv_rho, qc_incld, nc_incld, qr_incld, qc_relvar, qcacc, ncacc)
   end subroutine cloud_rain_accretion_c
 
-  subroutine cloud_water_autoconversion_c(rho,qc_incld,nc_incld,qcaut,ncautc,ncautr) bind(C)
+  subroutine cloud_water_autoconversion_c(rho,qc_incld,nc_incld,qc_relvar,qcaut,ncautc,ncautr) bind(C)
 
       use micro_p3, only: cloud_water_autoconversion
-      real(kind=c_real), value, intent(in) :: rho, qc_incld, nc_incld
+      real(kind=c_real), value, intent(in) :: rho, qc_incld, nc_incld,qc_relvar
       real(kind=c_real), intent(inout) :: qcaut, ncautc, ncautr
 
-      call cloud_water_autoconversion(rho, qc_incld, nc_incld, qcaut, ncautc, ncautr)
+      call cloud_water_autoconversion(rho, qc_incld, nc_incld, qc_relvar, qcaut, ncautc, ncautr)
   end subroutine cloud_water_autoconversion_c
 
   subroutine impose_max_total_ni_c(nitot_local, max_total_Ni, inv_rho_local) bind(C)

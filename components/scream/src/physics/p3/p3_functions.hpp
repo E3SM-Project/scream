@@ -574,6 +574,9 @@ struct Functions
                                  Spack& qcnuc, Spack& ncnuc);
 
   KOKKOS_FUNCTION
+  static Spack subgrid_variance_scaling(const Spack& relvar, const Scalar& expon);
+  
+  KOKKOS_FUNCTION
   static void ice_cldliq_wet_growth(const Spack& rho, const Spack& temp, const Spack& pres, const Spack& rhofaci, const Spack& f1pr05,
                                     const Spack& f1pr14, const Spack& xxlv, const Spack& xlf, const Spack& dv,
                                     const Spack& kap, const Spack& mu, const Spack& sc, const Spack& qv, const Spack& qc_incld,
@@ -953,6 +956,7 @@ void init_tables_from_f90_c(Real* vn_table_data, Real* vm_table_data,
 # include "p3_functions_get_latent_heat_impl.hpp"
 # include "p3_functions_check_values_impl.hpp"
 # include "p3_functions_incloud_mixingratios_impl.hpp"
+# include "p3_functions_subgrid_variance_scaling_impl.hpp"
 # include "p3_functions_main_impl.hpp"
 #endif
 
