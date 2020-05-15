@@ -89,7 +89,7 @@ module micro_p3
 contains
 
   !==================================================================================================!
-  elemental function var_coef(relvar, expon) result(res)
+  function var_coef(relvar, expon) result(res)
 
   ! Finds a coefficient for process rates based on the relative variance
   ! of cloud water.

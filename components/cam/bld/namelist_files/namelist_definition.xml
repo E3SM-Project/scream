@@ -2175,13 +2175,13 @@ Default: TRUE
 
 <!-- micro_p3 -->
 <entry id="p3_QcAutoCon_Expon" type="real" category="microphysics"
-	group="phys_ctl_nl" valid_values="" >
+	group="micro_nl" valid_values="" >
 Exponent of power function fit used by P3 qc in autoconversion 
 Default: 2.47_rtype
 </entry>
 
 <entry id="p3_QcAccret_Expon" type="real" category="microphysics"
-	group="phys_ctl_nl" valid_values="" >
+	group="micro_nl" valid_values="" >
 Exponent of power function fit used by P3 qc in accretion 
 Default: 1.15_rtype
 </entry>
