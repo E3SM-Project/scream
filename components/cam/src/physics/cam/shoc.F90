@@ -1810,11 +1810,11 @@ subroutine shoc_tke(&
       z_over_L = zt_grid(i,nlev)/obklen(i)
 
       if (z_over_L .gt. zL_crit_val .and. (zt_grid(i,k) .lt. pblh(i)+pbl_trans)) then
-        ! If surface layer is very stable, based on near surface 
+        ! If surface layer is moderately to very stable, based on near surface 
         !  dimensionless Monin-Obukov use modified coefficients of 
         !  tkh and tk that are primarily based on shear production 
         !  and SHOC length scale, to promote mixing within the PBL
-        !  and to a height slighty above.
+        !  and to a height slighty above to ensure smooth transition.
         tkh(i,k)=Ckh_s*(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
         tk(i,k)=Ckm_s*(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
       else
