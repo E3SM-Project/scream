@@ -50,7 +50,6 @@ bool generating_plot_scripts() {
 }
 
 TEST_CASE("shoc_ic_f", "shoc") {
-
   int nerr = scream::shoc::test_shoc_ic(true, generating_plot_scripts());
   REQUIRE(nerr == 0);
 }
