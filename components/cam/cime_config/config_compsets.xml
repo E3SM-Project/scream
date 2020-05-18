@@ -359,22 +359,22 @@
   
   <compset>
     <alias>FSCREAM-LR</alias>
-    <lname>2000_CAM5%SCREAM-LR_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+    <lname>2010_CAM5%SCREAM-LR_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset> 
   
   <compset>
     <alias>FSCREAM-HR</alias>
-    <lname>2000_CAM5%SCREAM-HR_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+    <lname>2010_CAM5%SCREAM-HR_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset> 
 
   <compset>
     <alias>FSCREAM-LR-DYAMOND1</alias>
-    <lname>2000_CAM5%SCREAM-LR-DYAMOND1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+    <lname>2010_CAM5%SCREAM-LR-DYAMOND1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
 
   <compset>
     <alias>FSCREAM-HR-DYAMOND1</alias>
-    <lname>2000_CAM5%SCREAM-HR-DYAMOND1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+    <lname>2010_CAM5%SCREAM-HR-DYAMOND1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
 
   <!-- *********************************** -->
