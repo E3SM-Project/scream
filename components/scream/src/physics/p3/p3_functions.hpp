@@ -709,6 +709,7 @@ struct Functions
     const uview_1d<const Spack>& inv_icldm,
     const uview_1d<const Spack>& inv_rcldm,
     const uview_1d<const Spack>& onaai,
+    const uview_1d<const Spack>& oqc_relvar,
     const uview_1d<const Spack>& oicldm,
     const uview_1d<const Spack>& olcldm,
     const uview_1d<const Spack>& orcldm,

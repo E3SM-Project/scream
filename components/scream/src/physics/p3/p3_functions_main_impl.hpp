@@ -269,6 +269,7 @@ void Functions<S,D>
   const uview_1d<const Spack>& inv_icldm,
   const uview_1d<const Spack>& inv_rcldm,
   const uview_1d<const Spack>& onaai,
+  const uview_1d<const Spack>& oqc_relvar,
   const uview_1d<const Spack>& oicldm,
   const uview_1d<const Spack>& olcldm,
   const uview_1d<const Spack>& orcldm,
@@ -1099,6 +1100,7 @@ void Functions<S,D>
     const auto odzq              = util::subview(dzq, i);
     const auto onpccn            = util::subview(npccn, i);
     const auto onaai             = util::subview(naai, i);
+    const auto oqc_relvar        = util::subview(qc_relvar, i);
     const auto opdel             = util::subview(pdel, i);
     const auto oexner            = util::subview(exner, i);
     const auto oicldm            = util::subview(icldm, i);
@@ -1170,7 +1172,7 @@ void Functions<S,D>
     p3_main_main_loop(
       team, nk_pack, log_predictNc, dt, odt,
       dnu, itab, itabcol, revap_table,
-      opres, opdel, odzq, onpccn, oexner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, onaai, oicldm, olcldm, orcldm,
+      opres, opdel, odzq, onpccn, oexner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, onaai, oqc_relvar, oicldm, olcldm, orcldm,
       t, rho, inv_rho, qvs, qvi, sup, supi, rhofacr, rhofaci, acn, oqv, oth, oqc, onc, oqr, onr, oqitot, onitot, oqirim, obirim, oxxlv, oxxls, oxlf, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld, nr_incld, nitot_incld, birim_incld, omu_c, nu, olamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, ocmeiout, oprain, onevapr, oprer_evap, ovap_cld_exchange, ovap_liq_exchange, ovap_ice_exchange, oliq_ice_exchange, opratot, oprctot,
       log_hydrometeorsPresent);
 
