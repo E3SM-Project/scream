@@ -120,6 +120,9 @@
       <value compset="_CAM5%SCREAM-HR">-phys cam5 -shoc_sgs -microphys p3 -chem none -nlev 128 -rad rrtmgp</value>
       <value compset="_CAM5%SCREAM-LR-INTAERO">-phys cam5 -shoc_sgs -microphys p3 -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero  -nlev 72 -rad rrtmgp</value>
 
+      <!-- SCREAM-related configurations -->
+      <value compset="_CAM5%CMIP6-SHOC">-phys cam5 -shoc_sgs -microphys mg2 -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -nlev 72</value>
+
       <!-- Aquaplanet -->
       <value compset="_CAM5%AQUA"   >-phys cam5 -nlev 72 -clubb_sgs -microphys mg2 -aquaplanet -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -bc_dep_to_snow_updates </value>
 
@@ -260,6 +263,8 @@
       <value compset="2000_CAM5.*SCREAM-LR" >2000_scream_lr_av1c-04p2</value>
       <value compset="2000_CAM5.*SCREAM-HR" >2000_scream_hr_av1c-04p2</value>
       <value compset="2000_CAM5.*SCREAM-LR-INTAERO" >2000_scream_lr_intaero_av1c-04p2</value>
+      <!-- Modified SCREAM-like compsets -->
+      <value compset="2010S_CAM5.*CMIP6-SHOC"  >2010S_cam5_CMIP6_shoc</value>
       <!-- Aqua planet -->
       <value compset="_CAM5%AQUA"     >aquaplanet_EAMv1</value>
       <!-- Radiative-Convective Equilibrium (RCE) -->
