@@ -16,7 +16,8 @@ KOKKOS_FUNCTION
 void Functions<S,D>
 ::cloud_rain_accretion(const Spack& rho, const Spack& inv_rho,
                        const Spack& qc_incld, const Spack& nc_incld,
-                       const Spack& qr_incld, Spack& qcacc, Spack& ncacc)
+                       const Spack& qr_incld, const Spack& qc_relvar,
+		       Spack& qcacc, Spack& ncacc)
 {
   constexpr Scalar qsmall = C::QSMALL;
 

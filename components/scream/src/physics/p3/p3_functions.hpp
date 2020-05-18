@@ -418,7 +418,7 @@ struct Functions
   // Computes contact and immersion freezing droplets
   KOKKOS_FUNCTION
   static void cldliq_immersion_freezing(const Spack& t, const Spack& lamc,
-    const Spack& mu_c, const Spack& cdist1, const Spack& qc_incld,
+    const Spack& mu_c, const Spack& cdist1, const Spack& qc_incld, const Spack& qc_relvar,
     Spack& qcheti, Spack& ncheti);
 
   // Computes the immersion freezing of rain
@@ -436,12 +436,13 @@ struct Functions
   // Computes the accretion of clouds by rain
   KOKKOS_FUNCTION
   static void cloud_rain_accretion(const Spack& rho, const Spack& inv_rho,
-    const Spack& qc_incld, const Spack& nc_incld, const Spack& qr_incld,
+    const Spack& qc_incld, const Spack& nc_incld, const Spack& qr_incld, const Spack& qc_relvar,
     Spack& qcacc, Spack& ncacc);
 
   // Computes cloud water autoconversion process rate
   KOKKOS_FUNCTION
-  static void cloud_water_autoconversion(const Spack& rho,  const Spack& qc_incld, const Spack& nc_incld,
+  static void cloud_water_autoconversion(const Spack& rho,  const Spack& qc_incld,
+    const Spack& nc_incld, const Spack& qc_relvar,
     Spack& qcaut, Spack& ncautc, Spack& ncautr);
 
   // Computes rain self collection process rate

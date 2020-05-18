@@ -16,7 +16,8 @@ KOKKOS_FUNCTION
 void Functions<S,D>
 ::cldliq_immersion_freezing(const Spack& t, const Spack& lamc,
                             const Spack& mu_c, const Spack& cdist1,
-                            const Spack& qc_incld, Spack& qcheti, Spack& ncheti)
+                            const Spack& qc_incld, const Spack& qc_relvar,
+			    Spack& qcheti, Spack& ncheti)
 {
   constexpr Scalar qsmall = C::QSMALL;
   constexpr Scalar AIMM = C::AIMM;

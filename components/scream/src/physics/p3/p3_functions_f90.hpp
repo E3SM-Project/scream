@@ -287,7 +287,7 @@ extern "C"{
 struct CldliqImmersionFreezingData
 {
   // inputs
-  Real t, lamc, mu_c, cdist1, qc_incld;
+  Real t, lamc, mu_c, cdist1, qc_incld, qc_relvar;
 
   // output
   Real qcheti, ncheti;
@@ -340,7 +340,7 @@ extern "C"{
 struct CloudRainAccretionData
 {
   // inputs
-  Real rho, inv_rho, qc_incld, nc_incld, qr_incld;
+  Real rho, inv_rho, qc_incld, nc_incld, qr_incld, qc_relvar;
 
   // output
   Real qcacc, ncacc;
@@ -361,6 +361,7 @@ struct CloudWaterAutoconversionData
   Real rho;
   Real qc_incld;
   Real nc_incld;
+  Real qc_relvar;
 
   // output
   Real qcaut;

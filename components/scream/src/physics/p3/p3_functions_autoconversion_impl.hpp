@@ -10,7 +10,7 @@ template<typename S, typename D>
 KOKKOS_FUNCTION
 void Functions<S,D>
 ::cloud_water_autoconversion(const Spack& rho, const Spack& qc_incld, const Spack& nc_incld,
-    Spack& qcaut, Spack& ncautc, Spack& ncautr)
+			     const Spack& qc_relvar, Spack& qcaut, Spack& ncautc, Spack& ncautr)
 {
     // Khroutdinov and Kogan (2000)
     const auto qc_not_small = qc_incld >=  1e-8;

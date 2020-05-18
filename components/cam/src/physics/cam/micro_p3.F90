@@ -2669,7 +2669,7 @@ subroutine cldliq_immersion_freezing(t,lamc,mu_c,cdist1,qc_incld,qc_relvar,    &
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
-      call cldliq_immersion_freezing_f(t,lamc,mu_c,cdist1,qc_incld,qcheti,ncheti)
+      call cldliq_immersion_freezing_f(t,lamc,mu_c,cdist1,qc_incld,qc_relvar,qcheti,ncheti)
       return
    endif
 #endif
@@ -2921,7 +2921,7 @@ real(rtype) :: dum, dum1, sbgrd_var_coef
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
       call  cloud_rain_accretion_f(rho,inv_rho,qc_incld,nc_incld,qr_incld, &
-         qcacc, ncacc)
+         qc_relvar, qcacc, ncacc)
       return
    endif
 #endif
@@ -3033,7 +3033,7 @@ subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,qc_relvar,    &
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
       call cloud_water_autoconversion_f(rho,qc_incld,nc_incld,    &
-         qcaut,ncautc,ncautr)
+         qc_relvar,qcaut,ncautc,ncautr)
       return
    endif
 #endif
