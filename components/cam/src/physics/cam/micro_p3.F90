@@ -492,11 +492,11 @@ contains
   !==========================================================================================!
 
   SUBROUTINE p3_main(qc,nc,qr,nr,th,qv,dt,qitot,qirim,nitot,birim,   &
-       pres,dzq,npccn,naai,it,prt_liq,prt_sol,its,ite,kts,kte,diag_ze,diag_effc,     &
+       pres,dzq,npccn,naai,qc_relvar,it,prt_liq,prt_sol,its,ite,kts,kte,diag_ze,diag_effc,     &
        diag_effi,diag_vmi,diag_di,diag_rhoi,log_predictNc, &
        pdel,exner,cmeiout,prain,nevapr,prer_evap,rflx,sflx,rcldm,lcldm,icldm,  &
        pratot,prctot,p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-       vap_ice_exchange,vap_cld_exchange,col_location,qc_relvar)
+       vap_ice_exchange,vap_cld_exchange,col_location)
 
     !----------------------------------------------------------------------------------------!
     !                                                                                        !

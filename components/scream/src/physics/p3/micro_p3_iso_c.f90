@@ -100,17 +100,18 @@ contains
   end subroutine p3_init_c
 
   subroutine p3_main_c(qc,nc,qr,nr,th,qv,dt,qitot,qirim,nitot,birim,   &
-       pres,dzq,npccn,naai,it,prt_liq,prt_sol,its,ite,kts,kte,diag_ze,diag_effc,     &
+       pres,dzq,npccn,naai,qc_relvar,it,prt_liq,prt_sol,its,ite,kts,kte,diag_ze,diag_effc,     &
        diag_effi,diag_vmi,diag_di,diag_rhoi,log_predictNc, &
        pdel,exner,cmeiout,prain,nevapr,prer_evap,rflx,sflx,rcldm,lcldm,icldm, &
        pratot,prctot,p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-       vap_ice_exchange, vap_cld_exchange,qc_relvar) bind(C)
+       vap_ice_exchange, vap_cld_exchange) bind(C)
     use micro_p3, only : p3_main
 
     real(kind=c_real), intent(inout), dimension(its:ite,kts:kte) :: qc, nc, qr, nr, qv, th
     real(kind=c_real), intent(inout), dimension(its:ite,kts:kte) :: qitot, qirim, nitot, birim
     real(kind=c_real), intent(in), dimension(its:ite,kts:kte) :: pres, dzq
     real(kind=c_real), intent(in), dimension(its:ite,kts:kte) :: npccn,naai
+    real(kind=c_real), intent(in), dimension(its:ite,kts:kte) :: qc_relvar
     real(kind=c_real), value, intent(in) :: dt
     real(kind=c_real), intent(out), dimension(its:ite) :: prt_liq, prt_sol
     real(kind=c_real), intent(out), dimension(its:ite,kts:kte) :: diag_ze, diag_effc
@@ -134,7 +135,6 @@ contains
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: vap_liq_exchange
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: vap_ice_exchange
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: vap_cld_exchange
-    real(kind=c_real), intent(in),    dimension(its:ite,kts:kte)      :: qc_relvar
 
     real(kind=c_real), dimension(its:ite,3) :: col_location
     integer :: i
@@ -143,11 +143,11 @@ contains
     end do
 
     call p3_main(qc,nc,qr,nr,th,qv,dt,qitot,qirim,nitot,birim,   &
-         pres,dzq,npccn,naai,it,prt_liq,prt_sol,its,ite,kts,kte,diag_ze,diag_effc,     &
+         pres,dzq,npccn,naai,qc_relvar,it,prt_liq,prt_sol,its,ite,kts,kte,diag_ze,diag_effc,     &
          diag_effi,diag_vmi,diag_di,diag_rhoi,log_predictNc, &
          pdel,exner,cmeiout,prain,nevapr,prer_evap,rflx,sflx,rcldm,lcldm,icldm, &
          pratot,prctot,p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-         vap_ice_exchange, vap_cld_exchange,col_location,qc_relvar)
+         vap_ice_exchange, vap_cld_exchange,col_location)
   end subroutine p3_main_c
 
   subroutine p3_use_cxx_c(arg_use_cxx) bind(C)
