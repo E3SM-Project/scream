@@ -88,30 +88,6 @@ module micro_p3
 
 contains
 
-  !==================================================================================================!
-  function subgrid_variance_scaling(relvar, expon) result(res)
-  ! Finds a coefficient for process rates based on the inverse relative variance
-  ! of cloud water.
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: cloud_water_autoconversion_f
-#endif
-    
-  real(rtype), intent(in) :: relvar
-  real(rtype), intent(in) :: expon
-  real(rtype) :: res,res_tmp
-  
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      res=subgrid_variance_scaling_f(relvar,expon)
-      return
-   endif
-#endif
-  
-  res_tmp = bfb_gamma(relvar+expon)/bfb_gamma(relvar)
-  res = res_tmp/bfb_pow(relvar,expon)
-
-  end function subgrid_variance_scaling
-  ! ============================================ !
   SUBROUTINE p3_init(lookup_file_dir,version_p3)
     !------------------------------------------------------------------------------------------!
     ! This subroutine initializes all physical constants and parameters needed by the P3       !
@@ -2314,6 +2290,7 @@ contains
 
 end subroutine ice_self_collection
 
+!PMC note - indentation pattern changes here.
 
 subroutine ice_melting(rho,t,pres,rhofaci,    &
 f1pr05,f1pr14,xxlv,xlf,dv,sc,mu,kap,qv,qitot_incld,nitot_incld,    &
@@ -2653,6 +2630,30 @@ f1pr02,acn,lamc, mu_c,qc_incld,qccol,    &
    return
 
 end subroutine calc_rime_density
+
+function subgrid_variance_scaling(relvar, expon) result(res)
+  ! Finds a coefficient for process rates based on the inverse relative variance
+  ! of cloud water.
+  
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   use micro_p3_iso_f, only: subgrid_variance_scaling_f
+#endif
+    
+  real(rtype), intent(in) :: relvar
+  real(rtype), intent(in) :: expon
+  real(rtype) :: res,res_tmp
+  
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   if (use_cxx) then
+      res = subgrid_variance_scaling_f(relvar,expon)
+      return
+   endif
+#endif
+  
+  res_tmp = bfb_gamma(relvar+expon)/bfb_gamma(relvar)
+  res = res_tmp/bfb_pow(relvar,expon)
+
+end function subgrid_variance_scaling
 
 subroutine cldliq_immersion_freezing(t,lamc,mu_c,cdist1,qc_incld,qc_relvar,    &
            qcheti,ncheti)
