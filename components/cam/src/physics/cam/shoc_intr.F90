@@ -132,9 +132,9 @@ module shoc_intr
     call cnst_add('SHOC_TKE',0._r8,0._r8,0._r8,ixtke,longname='turbulent kinetic energy',cam_outfld=.false.)
   
     ! Fields that are not prognostic should be added to PBUF
-    call pbuf_add_field('WTHV', 'global', dtype_r8, (/pcols,pverp,dyn_time_lvls/), wthv_idx)
-    call pbuf_add_field('TKH', 'global', dtype_r8, (/pcols,pverp,dyn_time_lvls/), tkh_idx) 
-    call pbuf_add_field('TK', 'global', dtype_r8, (/pcols,pverp,dyn_time_lvls/), tk_idx) 
+    call pbuf_add_field('WTHV', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), wthv_idx)
+    call pbuf_add_field('TKH', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), tkh_idx) 
+    call pbuf_add_field('TK', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), tk_idx) 
 
     call pbuf_add_field('pblh',       'global', dtype_r8, (/pcols/), pblh_idx)
     call pbuf_add_field('tke',        'global', dtype_r8, (/pcols, pverp/), tke_idx)
@@ -316,6 +316,9 @@ end function shoc_implements_cnst
       call pbuf_set_field(pbuf2d, tkh_idx, 0.0_r8) 
       call pbuf_set_field(pbuf2d, tk_idx, 0.0_r8) 
       call pbuf_set_field(pbuf2d, fice_idx, 0.0_r8)
+      call pbuf_set_field(pbuf2d, tke_idx, tke_tol)
+      call pbuf_set_field(pbuf2d, alst_idx, 0.0_r8)
+      call pbuf_set_field(pbuf2d, aist_idx, 0.0_r8)
       
       call pbuf_set_field(pbuf2d, vmag_gust_idx,    1.0_r8)
       
@@ -524,7 +527,7 @@ end function shoc_implements_cnst
    real(r8) :: host_temp(pcols,pver)
    real(r8) :: host_dx_in(pcols), host_dy_in(pcols)  
    real(r8) :: shoc_mix_out(pcols,pver), tk_in(pcols,pver), tkh_in(pcols,pver)
-   real(r8) :: isotropy_out(pcols,pver)
+   real(r8) :: isotropy_out(pcols,pver), tke_zt(pcols,pver)
    real(r8) :: w_sec_out(pcols,pver), thl_sec_out(pcols,pverp)
    real(r8) :: qw_sec_out(pcols,pverp), qwthl_sec_out(pcols,pverp)
    real(r8) :: wthl_sec_out(pcols,pverp), wqw_sec_out(pcols,pverp)
@@ -558,7 +561,7 @@ end function shoc_implements_cnst
    ! Pointers        !
    ! --------------- !
   
-   real(r8), pointer, dimension(:,:) :: tke  ! turbulent kinetic energy 
+   real(r8), pointer, dimension(:,:) :: tke_zi  ! turbulent kinetic energy, interface
    real(r8), pointer, dimension(:,:) :: wthv ! buoyancy flux
    real(r8), pointer, dimension(:,:) :: tkh 
    real(r8), pointer, dimension(:,:) :: tk
@@ -615,7 +618,7 @@ end function shoc_implements_cnst
    itim_old = pbuf_old_tim_idx()     
    
    !  Establish associations between pointers and physics buffer fields   
-   call pbuf_get_field(pbuf, tke_idx,     tke)
+   call pbuf_get_field(pbuf, tke_idx,     tke_zi)
    call pbuf_get_field(pbuf, wthv_idx,     wthv,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))  
    call pbuf_get_field(pbuf, tkh_idx,      tkh,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))  
    call pbuf_get_field(pbuf, tk_idx,       tk,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))  
@@ -719,7 +722,11 @@ end function shoc_implements_cnst
        thlm(i,k) = state1%t(i,k)*exner(i,k)-(latvap/cpair)*state1%q(i,k,ixcldliq)
        thv(i,k) = state1%t(i,k)*exner(i,k)*(1.0_r8+zvir*state1%q(i,k,ixq)-state1%q(i,k,ixcldliq)) 
  
-       tke(i,k) = max(tke_tol,state1%q(i,k,ixtke))
+       tke_zt(i,k) = max(tke_tol,state1%q(i,k,ixtke))
+       
+       ! Cloud fraction needs to be initialized for first 
+       !  PBL height calculation call
+       cloud_frac(i,k) = alst(i,k) 
      
      enddo
    enddo         
@@ -789,10 +796,11 @@ end function shoc_implements_cnst
 	wpthlp_sfc(:ncol), wprtp_sfc(:ncol), upwp_sfc(:ncol), vpwp_sfc(:ncol), & ! Input
 	wtracer_sfc(:ncol,:), edsclr_dim, wm_zt(:ncol,:), & ! Input
 	exner(:ncol,:),state1%phis(:ncol), & ! Input
-	shoc_s(:ncol,:), tke(:ncol,:), thlm(:ncol,:), rtm(:ncol,:), & ! Input/Ouput
+	shoc_s(:ncol,:), tke_zt(:ncol,:), thlm(:ncol,:), rtm(:ncol,:), & ! Input/Ouput
 	um(:ncol,:), vm(:ncol,:), edsclr_in(:ncol,:,:), & ! Input/Output
-	wthv(:ncol,:),tkh(:ncol,:),tk(:ncol,:), rcm(:ncol,:), & ! Input/Output
-        cloud_frac(:ncol,:), pblh(:ncol), & ! Output
+	wthv(:ncol,:),tkh(:ncol,:),tk(:ncol,:), & ! Input/Output
+	cloud_frac(:ncol,:), rcm(:ncol,:), & ! Input/Output
+        pblh(:ncol), & ! Output
         shoc_mix_out(:ncol,:), isotropy_out(:ncol,:), & ! Output (diagnostic)
         w_sec_out(:ncol,:), thl_sec_out(:ncol,:), qw_sec_out(:ncol,:), qwthl_sec_out(:ncol,:), & ! Output (diagnostic)   
         wthl_sec_out(:ncol,:), wqw_sec_out(:ncol,:), wtke_sec_out(:ncol,:), & ! Output (diagnostic)
@@ -813,13 +821,18 @@ end function shoc_implements_cnst
      enddo
    enddo
 
+   ! Eddy diffusivities and TKE are needed for aerosol activation code.
+   !   Linearly interpolate from midpoint grid and onto the interface grid.
+   !   The output variables for these routines (khzm, khzt, and tke_zi)
+   !   are PBUF pointers
    call linear_interp(state%zm(:ncol,:pver),state%zi(:ncol,:pverp),&
                 tk(:ncol,:pver),khzm(:ncol,:pverp),pver,pverp,ncol,0._r8)
    call linear_interp(state%zm(:ncol,:pver),state%zi(:ncol,:pverp),&
                 tkh(:ncol,:pver),khzt(:ncol,:pverp),pver,pverp,ncol,0._r8)
+   call linear_interp(state%zm(:ncol,:pver),state%zi(:ncol,:pverp),&
+                tke_zt(:ncol,:pver),tke_zi(:ncol,:pverp),pver,pverp,ncol,tke_tol)
 
-   !  Now compute the tendencies of SHOC to CAM, note that pverp is the ghost point
-   !  for all variables and therefore is never called in this loop
+   !  Now compute the tendencies of SHOC to E3SM
    do k=1,pver
      do i=1,ncol
        
@@ -829,7 +842,7 @@ end function shoc_implements_cnst
        ptend_loc%q(i,k,ixcldliq) = (rcm(i,k)-state1%q(i,k,ixcldliq))/hdtime   ! Tendency of liquid water
        ptend_loc%s(i,k) = (shoc_s(i,k)-state1%s(i,k))/hdtime
        
-       ptend_loc%q(i,k,ixtke)=(tke(i,k)-state1%q(i,k,ixtke))/hdtime ! TKE
+       ptend_loc%q(i,k,ixtke)=(tke_zt(i,k)-state1%q(i,k,ixtke))/hdtime ! TKE
        
    !  Apply tendencies to ice mixing ratio, liquid and ice number, and aerosol constituents.
    !  Loading up this array doesn't mean the tendencies are applied.  
@@ -1038,7 +1051,7 @@ end function shoc_implements_cnst
       enddo
     enddo
 
-    call outfld('SHOC_TKE', tke, pcols, lchnk)
+    call outfld('SHOC_TKE', tke_zt, pcols, lchnk)
     call outfld('WTHV_SEC', wthv_output, pcols, lchnk)
     call outfld('SHOC_MIX', shoc_mix_out, pcols, lchnk)
     call outfld('TK', tk, pcols, lchnk)
