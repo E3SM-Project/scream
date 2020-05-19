@@ -2,6 +2,7 @@
 #define P3_FUNCTIONS_CLDLIQ_IMM_FREEZING_IMPL_HPP
 
 #include "p3_functions.hpp" // for ETI only but harmless for GPU
+#include "p3_functions_subgrid_variance_scaling_impl.hpp"
 
 namespace scream {
 namespace p3 {
@@ -32,8 +33,12 @@ void Functions<S,D>
     Spack expAimmDt, inv_lamc3;
     expAimmDt.set(qc_not_small_and_t_freezing, exp(AIMM * (ZeroDegC-t)));
     inv_lamc3.set(qc_not_small_and_t_freezing, cube(1/lamc));
+
+    Spack sgs_var_coef;
+    sgs_var_coef = subgrid_variance_scaling(qc_relvar, 2);
+    
     qcheti.set(qc_not_small_and_t_freezing,
-               CONS6 * cdist1 * tgamma(sp(7.0)+mu_c) * expAimmDt *
+               sgs_var_coef * CONS6 * cdist1 * tgamma(sp(7.0)+mu_c) * expAimmDt *
                square(inv_lamc3));
     ncheti.set(qc_not_small_and_t_freezing,
                CONS5 * cdist1 * tgamma(sp(4.0)+mu_c) * expAimmDt * inv_lamc3);
