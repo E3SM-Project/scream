@@ -180,7 +180,7 @@ void ice_cldliq_wet_growth_c(Real rho, Real temp, Real pres, Real rhofaci, Real 
                              Real* qrcol, Real* qccol, Real* qwgrth, Real* nrshdr, Real* qcshd);
 
 void get_latent_heat_c(Int its, Int ite, Int kts, Int kte, Real* s, Real* v, Real* f);
-
+  
 void check_values_c(Real* qv, Real* temp, Int kts, Int kte, Int timestepcount,
                     Int force_abort, Int source_ind, Real* col_loc);
 
@@ -2748,6 +2748,34 @@ void get_latent_heat_f(Int its, Int ite, Int kts, Int kte, Real* v, Real* s, Rea
   std::copy(temp.v, temp.v+total, v);
   std::copy(temp.s, temp.s+total, s);
   std::copy(temp.f, temp.f+total, f);
+}
+
+Real subgrid_variance_scaling_f(Real relvar_, Real expon_)
+{
+  //The fortran version calling this function operates on scalar inputs
+  //and expects scalar output. The C++ version expects relvar to be a Spack
+  //and expon to be a scalar and returns a Spack.
+
+  using P3F = Functions<Real, DefaultDevice>;
+  using Spack = typename P3F::Spack;
+  using Scalar = typename P3F::Scalar;
+  using view_1d = typename P3F::view_1d<Real>;
+
+  view_1d t_d("t_h", 1);
+  auto t_h = Kokkos::create_mirror_view(t_d);
+
+  Kokkos::parallel_for(1, KOKKOS_LAMBDA(const Int&) {
+      Spack relvar(relvar_);
+      Scalar expon(expon_);
+      Spack out;
+	
+      out=P3F::subgrid_variance_scaling(relvar,expon);
+      t_d(0) = out[0];
+      
+    });
+  Kokkos::deep_copy(t_h, t_d);
+  
+  return t_h[0];
 }
 
 void check_values_f(Real* qv, Real* temp, Int kstart, Int kend,

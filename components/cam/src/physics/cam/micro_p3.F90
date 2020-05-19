@@ -90,13 +90,23 @@ contains
 
   !==================================================================================================!
   function subgrid_variance_scaling(relvar, expon) result(res)
-
-  ! Finds a coefficient for process rates based on the relative variance
+  ! Finds a coefficient for process rates based on the inverse relative variance
   ! of cloud water.
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   use micro_p3_iso_f, only: cloud_water_autoconversion_f
+#endif
+    
   real(rtype), intent(in) :: relvar
   real(rtype), intent(in) :: expon
   real(rtype) :: res,res_tmp
-
+  
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   if (use_cxx) then
+      res=subgrid_variance_scaling_f(relvar,expon)
+      return
+   endif
+#endif
+  
   res_tmp = bfb_gamma(relvar+expon)/bfb_gamma(relvar)
   res = res_tmp/bfb_pow(relvar,expon)
 

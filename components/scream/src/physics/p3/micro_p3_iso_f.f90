@@ -495,6 +495,16 @@ subroutine  update_prognostic_ice_f(qcheti,qccol,qcshd,nccol,ncheti,ncshdc,qrcol
    real(kind=c_real), dimension(its:ite, kts:kte), intent(out) :: v, s, f
  end subroutine get_latent_heat_f
 
+ real(kind=c_real) function subgrid_variance_scaling_f(relvar,expon) bind(C)
+   use iso_c_binding
+
+   ! arguments
+   real(kind=c_real), value, intent(in) :: relvar,expon
+   ! return
+   !real(kind=c_real) :: res
+   
+ end function subgrid_variance_scaling_f
+
  subroutine check_values_f(qv, temp, kts, kte, timestepcount, force_abort, source_ind, col_loc) bind(C)
    use iso_c_binding
 
