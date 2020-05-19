@@ -89,7 +89,7 @@ module micro_p3
 contains
 
   !==================================================================================================!
-  function var_coef(relvar, expon) result(res)
+  function subgrid_variance_scaling(relvar, expon) result(res)
 
   ! Finds a coefficient for process rates based on the relative variance
   ! of cloud water.
@@ -100,7 +100,7 @@ contains
   res_tmp = bfb_gamma(relvar+expon)/bfb_gamma(relvar)
   res = res_tmp/bfb_pow(relvar,expon)
 
-  end function var_coef
+  end function subgrid_variance_scaling
   ! ============================================ !
   SUBROUTINE p3_init(lookup_file_dir,version_p3)
     !------------------------------------------------------------------------------------------!
@@ -2677,7 +2677,7 @@ subroutine cldliq_immersion_freezing(t,lamc,mu_c,cdist1,qc_incld,qc_relvar,    &
       ! for future: calculate gamma(mu_c+4) in one place since its used multiple times  !AaronDonahue, TODO
       dum1 = bfb_exp(aimm*(zerodegc-t))
       dum2 = bfb_cube(1._rtype/lamc)
-      sbgrd_var_coef = var_coef(qc_relvar, 2._rtype)
+      sbgrd_var_coef = subgrid_variance_scaling(qc_relvar, 2._rtype)
       Q_nuc = sbgrd_var_coef*cons6*cdist1*bfb_gamma(7._rtype+mu_c)*dum1*bfb_square(dum2)
       N_nuc = cons5*cdist1*bfb_gamma(mu_c+4._rtype)*dum1*dum2
       qcheti = Q_nuc
@@ -2942,7 +2942,7 @@ if (qr_incld.ge.qsmall .and. qc_incld.ge.qsmall) then
    elseif (iparam.eq.3) then
       !Khroutdinov and Kogan (2000)
       print*,'p3_QcAccret_Expon = ',p3_QcAccret_Expon
-      sbgrd_var_coef = var_coef(qc_relvar, 1.15_rtype ) !p3_QcAccret_Expon
+      sbgrd_var_coef = subgrid_variance_scaling(qc_relvar, 1.15_rtype ) !p3_QcAccret_Expon
       qcacc = sbgrd_var_coef*67._rtype*bfb_pow(qc_incld*qr_incld, 1.15_rtype) !p3_QcAccret_Expon
       ncacc = qcacc*nc_incld/qc_incld
    endif
@@ -3043,7 +3043,7 @@ subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,qc_relvar,    &
 
       !Khroutdinov and Kogan (2000)
       print*,'p3_QcAutoCon_Expon = ',p3_QcAutoCon_Expon
-      sbgrd_var_coef = var_coef(qc_relvar, 2.47)
+      sbgrd_var_coef = subgrid_variance_scaling(qc_relvar, 2.47)
       qcaut = sbgrd_var_coef*1350._rtype*bfb_pow(qc_incld,2.47)*bfb_pow(nc_incld*1.e-6_rtype*rho,-1.79_rtype)
       ! note: ncautr is change in Nr; ncautc is change in Nc
       ncautr = qcaut*cons3
