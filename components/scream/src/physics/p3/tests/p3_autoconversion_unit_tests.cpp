@@ -33,22 +33,26 @@ static void  cloud_water_autoconversion_unit_bfb_tests(){
     // rho, qc_incld, nc_incld, qc_relvar
     {9.703E-01, 5.100E-03, 2.061E+08, 1.0},
     {1.006E+00,  5.100E-03, 1.988E+08,1.0},
-    {1.139E+00 },
+    //{1.139E+00 },
+    {1.139E+00,  0.0,       0.0,      1.0},
     {1.151E+00,  1.000E-06, 1.737E+08,1.0},
 
     {9.703E-01, 5.100E-03, 2.061E+08, 1.0},
     {1.006E+00,  5.100E-03, 1.988E+08,1.0},
-    {1.139E+00 },
+    //{1.139E+00 },
+    {1.139E+00,  0.0,       0.0,      1.0},
     {1.151E+00,  1.000E-06, 1.737E+08,1.0},
 
     {9.703E-01, 5.100E-03, 2.061E+08, 1.0},
     {1.006E+00,  5.100E-03, 1.988E+08,1.0},
-    {1.139E+00 },
+    //{1.139E+00 },
+    {1.139E+00,  0.0,       0.0,      1.0},
     {1.151E+00,  1.000E-06, 1.737E+08,1.0},
 
     {9.703E-01, 5.100E-03, 2.061E+08, 1.0},
     {1.006E+00,  5.100E-03, 1.988E+08,1.0},
-    {1.139E+00 },
+    //{1.139E+00 },
+    {1.139E+00,  0.0,       0.0,      1.0},
     {1.151E+00,  1.000E-06, 1.737E+08,1.0},
   };
 
@@ -80,7 +84,7 @@ static void  cloud_water_autoconversion_unit_bfb_tests(){
     }
 
     Functions::cloud_water_autoconversion(rho, qc_incld, nc_incld,
-      qcaut, qc_relvar, ncautc, ncautr);
+      qc_relvar, qcaut, ncautc, ncautr);
     
     // Copy results back into views
     for (Int s = 0; s < Spack::n; ++s) {

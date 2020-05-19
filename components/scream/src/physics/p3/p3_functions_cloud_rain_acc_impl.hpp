@@ -2,6 +2,7 @@
 #define P3_FUNCTIONS_CLOUD_RAIN_ACC_IMPL_HPP
 
 #include "p3_functions.hpp" // for ETI only but harmless for GPU
+#include "p3_functions_subgrid_variance_scaling_impl.hpp"
 
 namespace scream {
 namespace p3 {
@@ -21,11 +22,14 @@ void Functions<S,D>
 {
   constexpr Scalar qsmall = C::QSMALL;
 
+  Spack sgs_var_coef;
+  sgs_var_coef = subgrid_variance_scaling(qc_relvar, sp(1.15) );
+  
   const auto qr_and_qc_not_small = (qr_incld >= qsmall) && (qc_incld >= qsmall);
   if (qr_and_qc_not_small.any()) {
     // Khroutdinov and Kogan (2000)
     qcacc.set(qr_and_qc_not_small,
-              sp(67.0) * pow(qc_incld * qr_incld, sp(1.15)));
+              sgs_var_coef * sp(67.0) * pow(qc_incld * qr_incld, sp(1.15)));
     ncacc.set(qr_and_qc_not_small, qcacc * nc_incld / qc_incld);
 
     qcacc.set(ncacc == 0, 0);

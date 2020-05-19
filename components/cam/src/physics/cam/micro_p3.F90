@@ -2941,8 +2941,9 @@ if (qr_incld.ge.qsmall .and. qc_incld.ge.qsmall) then
            1.e+6_rtype*inv_rho
    elseif (iparam.eq.3) then
       !Khroutdinov and Kogan (2000)
-      sbgrd_var_coef = var_coef(qc_relvar, p3_QcAccret_Expon)
-      qcacc = sbgrd_var_coef*67._rtype*bfb_pow(qc_incld*qr_incld,p3_QcAccret_Expon)
+      print*,'p3_QcAccret_Expon = ',p3_QcAccret_Expon
+      sbgrd_var_coef = var_coef(qc_relvar, 1.15_rtype ) !p3_QcAccret_Expon
+      qcacc = sbgrd_var_coef*67._rtype*bfb_pow(qc_incld*qr_incld, 1.15_rtype) !p3_QcAccret_Expon
       ncacc = qcacc*nc_incld/qc_incld
    endif
 
@@ -3041,8 +3042,9 @@ subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,qc_relvar,    &
    qc_not_small: if (qc_incld.ge.1.e-8_rtype) then
 
       !Khroutdinov and Kogan (2000)
-      sbgrd_var_coef = var_coef(qc_relvar, p3_QcAutoCon_Expon)
-      qcaut = sbgrd_var_coef*1350._rtype*bfb_pow(qc_incld,p3_QcAutoCon_Expon)*bfb_pow(nc_incld*1.e-6_rtype*rho,-1.79_rtype)
+      print*,'p3_QcAutoCon_Expon = ',p3_QcAutoCon_Expon
+      sbgrd_var_coef = var_coef(qc_relvar, 2.47)
+      qcaut = sbgrd_var_coef*1350._rtype*bfb_pow(qc_incld,2.47)*bfb_pow(nc_incld*1.e-6_rtype*rho,-1.79_rtype)
       ! note: ncautr is change in Nr; ncautc is change in Nc
       ncautr = qcaut*cons3
       ncautc = qcaut*nc_incld/qc_incld
