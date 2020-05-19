@@ -575,6 +575,41 @@
         <value compset="AR9[57]_CAM">262.5</value>
       </values>
     </entry> 
+
+    <entry id="SSTICE_DATA_FILENAME">
+      <values>
+        <value compset="_CAM5%SCREAM-HR-DYAMOND1">$DIN_LOC_ROOT/atm/cam/sst/sst_ifs_2560x5136_20160725_20160916_c200505.nc</value>
+        <value compset="_CAM5%SCREAM-LR-DYAMOND1">$DIN_LOC_ROOT/atm/cam/sst/sst_ifs_2560x5136_20160725_20160916_c200505.nc</value>
+      </values>
+    </entry> 
+
+    <entry id="SSTICE_GRID_FILENAME">
+      <values>
+        <value compset="_CAM5%SCREAM-HR-DYAMOND1">$DIN_LOC_ROOT/ocn/docn7/domain.ocn.2560x5136.200505.nc</value>
+        <value compset="_CAM5%SCREAM-LR-DYAMOND1">$DIN_LOC_ROOT/ocn/docn7/domain.ocn.2560x5136.200505.nc</value>
+      </values>
+    </entry> 
+
+    <entry id="SSTICE_YEAR_ALIGN">
+      <values>
+        <value compset="_CAM5%SCREAM-HR-DYAMOND1">2016</value>
+        <value compset="_CAM5%SCREAM-HR-DYAMOND1">2016</value>
+      </values>
+    </entry> 
+
+    <entry id="SSTICE_YEAR_START">
+      <values>
+        <value compset="_CAM5%SCREAM-HR-DYAMOND1">2016</value>
+        <value compset="_CAM5%SCREAM-LR-DYAMOND1">2016</value>
+      </values>
+    </entry> 
+
+    <entry id="SSTICE_YEAR_END">
+      <values>
+        <value compset="_CAM5%SCREAM-HR-DYAMOND1">2016</value>
+        <value compset="_CAM5%SCREAM-LR-DYAMOND1">2016</value>
+      </values>
+    </entry> 
     
   </entries>
 
