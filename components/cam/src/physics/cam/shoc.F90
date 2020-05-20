@@ -182,7 +182,7 @@ subroutine shoc_main ( &
      host_dse, tke, thetal, qw, &         ! Input/Output
      u_wind, v_wind,qtracers,&            ! Input/Output
      wthv_sec,tkh,tk,&                    ! Input/Output
-     shoc_cldfrac,shoc_ql,&               ! Input/Output
+     shoc_ql,shoc_cldfrac,&               ! Input/Output
      pblh,&                               ! Output
      shoc_mix, isotropy,&                 ! Output (diagnostic)
      w_sec, thl_sec, qw_sec, qwthl_sec,&  ! Output (diagnostic)
