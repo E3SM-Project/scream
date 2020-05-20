@@ -216,6 +216,17 @@
     <lname>2010S_CAM5%CMIP6_CLM45%SPBC_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
+
+  <compset>
+    <alias>F2010C5-CMIP6-LR</alias>
+    <lname>2010_CAM5%CMIP6-LR_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>F2010C5-CMIP6-HR</alias>
+    <lname>2010_CAM5%CMIP6-HR_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+  
   <compset>
     <alias>FC5ATMMODCOSP</alias>
     <lname>2000_CAM5%ATMMODCOSP_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
@@ -364,8 +375,8 @@
   </compset> 
 
   <compset>
-    <alias>F2010SC5-CMIP6-LR_SHOC</alias>
-    <lname>2010S_CAM5%CMIP6-SHOC_CLM45%SPBC_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+    <alias>F2010C5-CMIP6-LR_SHOC</alias>
+    <lname>2010S_CAM5%SHOC_CLM45%SPBC_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
 
