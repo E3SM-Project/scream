@@ -21,6 +21,8 @@ Functions<S,D>::subgrid_variance_scaling(const Spack& relvar, const Scalar& expo
      Gettelman (2008; JCLI) eq 9 for details.
   */
 
+  //may want to add checks that relvar is within allowable range.
+  
   Spack result;
   Spack exponent=Spack(expon);
   result=pack::tgamma( relvar+exponent )/( pack::tgamma(relvar)*pack::pow(relvar,exponent) );

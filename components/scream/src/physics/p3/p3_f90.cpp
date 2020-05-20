@@ -100,7 +100,7 @@ void FortranDataIterator::init (const FortranData::Ptr& dp) {
         d_->name.data(),                                                \
         d_->name.size()})
   fdipb(qv); fdipb(th); fdipb(pres);
-  fdipb(dzq); fdipb(npccn); fdipb(naai); fdipb(qc_relvar); fdipb(qc);
+  fdipb(dzq); fdipb(npccn); fdipb(naai); fdipb(qc); //fdipb(qc_relvar);
   fdipb(nc); fdipb(qr); fdipb(nr); fdipb(qitot); fdipb(nitot);
   fdipb(qirim); fdipb(birim); fdipb(prt_liq); fdipb(prt_sol);
   fdipb(diag_ze); fdipb(diag_effc); fdipb(diag_effi);
