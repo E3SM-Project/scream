@@ -2653,7 +2653,7 @@ function subgrid_variance_scaling(relvar, expon) result(res)
   
   res_tmp = bfb_gamma(relvar+expon)/bfb_gamma(relvar)
   res = res_tmp/bfb_pow(relvar,expon)
-
+   
 end function subgrid_variance_scaling
 
 subroutine cldliq_immersion_freezing(t,lamc,mu_c,cdist1,qc_incld,qc_relvar,    &

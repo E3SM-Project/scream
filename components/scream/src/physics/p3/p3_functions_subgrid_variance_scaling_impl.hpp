@@ -24,7 +24,7 @@ Functions<S,D>::subgrid_variance_scaling(const Spack& relvar, const Scalar& expo
   Spack result;
   Spack exponent=Spack(expon);
   result=pack::tgamma( relvar+exponent )/( pack::tgamma(relvar)*pack::pow(relvar,exponent) );
-      
+  
   return result;
 				
 }
