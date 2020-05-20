@@ -428,6 +428,21 @@ void ice_melting_f(Real rho,Real t,Real pres,Real rhofaci,Real f1pr05,Real f1pr1
 
 ///////////////////////////////////////////////////////////////////////////////
 
+struct SubgridVarianceScalingData
+{
+  // inputs
+  Real relvar,expon;
+  // no outputs - is a function
+};
+
+Real subgrid_variance_scaling(SubgridVarianceScalingData& d);
+
+extern "C"{
+  Real subgrid_variance_scaling_f(Real relvar,Real expon);
+}
+  
+///////////////////////////////////////////////////////////////////////////////
+
 struct GetCloudDsd2Data
 {
   // Inputs
