@@ -2,6 +2,8 @@
 #define P3_FUNCTIONS_ICE_MELTING_IMPL_HPP
 
 #include "p3_functions.hpp" // for ETI only but harmless for GPU
+#include "physics_functions.hpp" // also for ETI not on GPUs
+#include "physics_saturation_impl.hpp"
 
 namespace scream {
 namespace p3 {
@@ -21,6 +23,8 @@ void Functions<S,D>
   // currently enhanced melting from collision is neglected
   // include RH dependence
 
+  using physics = scream::physics::Functions<Scalar, Device>;
+  
   const auto Pi = C::Pi;
   const auto QSMALL = C::QSMALL;
   const auto Tmelt = C::Tmelt;
