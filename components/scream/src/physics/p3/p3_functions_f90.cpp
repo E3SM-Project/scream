@@ -180,6 +180,8 @@ void ice_cldliq_wet_growth_c(Real rho, Real temp, Real pres, Real rhofaci, Real 
                              Real* qrcol, Real* qccol, Real* qwgrth, Real* nrshdr, Real* qcshd);
 
 void get_latent_heat_c(Int its, Int ite, Int kts, Int kte, Real* s, Real* v, Real* f);
+
+Real subgrid_variance_scaling_c(Real relvar, Real expon);
   
 void check_values_c(Real* qv, Real* temp, Int kts, Int kte, Int timestepcount,
                     Int force_abort, Int source_ind, Real* col_loc);
@@ -934,6 +936,11 @@ void ice_melting(IceMeltingData& d){
   ice_melting_c(d.rho,d.t,d.pres,d.rhofaci,d.f1pr05,d.f1pr14,
 		d.xxlv,d.xlf,d.dv,d.sc,d.mu,d.kap,
 		d.qv,d.qitot_incld,d.nitot_incld,&d.qimlt,&d.nimlt);
+}
+
+Real subgrid_variance_scaling(SubgridVarianceScalingData& d){
+  p3_init(true);
+  return subgrid_variance_scaling_c(d.relvar,d.expon);
 }
 
 void compute_rain_fall_velocity(ComputeRainFallVelocityData& d)

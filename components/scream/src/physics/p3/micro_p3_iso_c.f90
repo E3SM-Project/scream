@@ -807,6 +807,17 @@ subroutine  update_prognostic_ice_c(qcheti,qccol,qcshd,nccol,ncheti,ncshdc,qrcol
    call get_latent_heat(its,ite,kts,kte,v,s,f)
  end subroutine get_latent_heat_c
 
+ function subgrid_variance_scaling_c(relvar,expon) result(res) bind(C)
+   use micro_p3, only: subgrid_variance_scaling
+
+   ! arguments
+   real(kind=c_real), value, intent(in) :: relvar,expon
+   real(kind=c_real) :: res
+
+   res = subgrid_variance_scaling(relvar,expon)
+   return
+ end function subgrid_variance_scaling_c
+ 
  subroutine check_values_c(qv, temp, kts, kte, timestepcount, &
                            force_abort, source_ind, col_loc) bind(C)
    use micro_p3, only: check_values
