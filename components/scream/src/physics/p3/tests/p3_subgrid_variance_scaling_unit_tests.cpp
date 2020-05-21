@@ -23,24 +23,71 @@ namespace unit_test {
 template <typename D>
 struct UnitWrap::UnitTest<D>::TestP3SubgridVarianceScaling
 {
-  
-  KOKKOS_FUNCTION static void subgrid_variance_scaling_bfb_tests(const Scalar& relvar,
-    const Scalar& expon, int& errors){
+  /* PMC skip bfb for debugging.
+
+  //-----------------------------------------------------------------
+  static void run_bfb_tests(){
     //test that C++ and F90 implementations are BFB
+
+    //First create a Spack spanning the gammut of possible relvar vals
+    static constexpr Int max_pack_size = 16;
+    REQUIRE(Spack::n <= max_pack_size);
+    Spack relvars[max_pack_size] = {
+      0.1,0.5,1.0,2.0,
+      3.0,4.0,5.0,6.0,
+      6.5,7.0,8.0,9.0,
+      9.1,9.5,9.8,10.};
     
-    //Get value from F90 code
-    Scalar f_scaling = subgrid_variance_scaling(relvar,expon);
-    
-    //Get value from C++ code
-    const Spack relvars(relvar);
-    Spack c_scaling = Functions::subgrid_variance_scaling(relvars,expon);
-    
-    if ( f_scaling != c_scaling[0] ){ //c_scaling is identical in each index, so [0] is sufficient
-      printf("F90 and C++ subgrid_variance_scaling not BFB for relvar,expon,F90 val, C++val=",relvar,expon,f_scaling,c_scaling[0]);
-      errors++;}
-    
-  } //end of bfb_tests
-  
+    // Sync relvars to device
+    view_1d<Spack> relvars_device("relvars", Spack::n);
+    auto relvars_host = Kokkos::create_mirror_view(relvars_device);
+    std::copy(&relvars[0], &relvars[0] + Spack::n, relvars_host.data());
+    Kokkos::deep_copy(relvars_device, relvars_host);
+
+    Spack f_scaling; //function output from F90 on CPU
+
+    //Get view of output from C++ fn call. 
+    //Spack c_scaling;
+    view_1d<Spack> scaling_device("c_scaling", Spack::n);
+    auto scaling_host = Kokkos::create_mirror_view(scaling_device);
+    //note no copy here - just need to get output back from device.
+
+    //Loop over exponent values and make sure BFB is maintained in each case.
+    Real expons[4] = {1.0,2.47,-1.1,0.1};
+    for (Int i = 0; i < 4; ++i) {
+
+      // Call Fortran version
+      for (Int j = 0; j < Spack::n; ++j) {
+        f_scaling[j] = subgrid_variance_scaling(relvars[j],expons[i]); 
+      }
+
+      // Get expon value onto device
+      Kokkos::View<Scalar, Kokkos::LayoutRight, D> expon_device("expon", 1);
+      auto expon_host = Kokkos::create_mirror_view(expon_device);
+      std::copy(&expons[i],&expons[i]+1,expon_host.data());
+      Kokkos::deep_copy(expon_device, expon_host);
+      
+      // Run the lookup from a kernel and copy results back to host
+      Kokkos::parallel_for(RangePolicy(0, 1), KOKKOS_LAMBDA(const Int& j) {
+
+	  scaling_device = Functions::cloud_water_autoconversion(
+			        relvars_device,expon_device);
+
+	}); //end of parallel for
+      
+      // Copy results back to host
+      Kokkos::deep_copy(scaling_device, scaling_host);
+
+      // Validate results
+      for (Int s = 0; s < Spack::n; ++s) {
+	REQUIRE(f_scaling[s] == scaling_host[s] );
+      }
+    } //end loop over expons[i]
+  } //end function run_bfb_tests
+
+  */
+
+  //-----------------------------------------------------------------
   KOKKOS_FUNCTION static void subgrid_variance_scaling_linearity_test(const Scalar& relvar,
     int& errors){
     //If expon=1, subgrid_variance_scaling should be 1 
@@ -52,52 +99,59 @@ struct UnitWrap::UnitTest<D>::TestP3SubgridVarianceScaling
     Spack c_scaling = Functions::subgrid_variance_scaling(relvars,1.0);
     
     if ( std::abs(c_scaling[0] -  1) > tol ){
-      printf("subgrid_variance_scaling !=1 for exponent=1. relvar,scaling=",relvar,c_scaling)
-	error++;}
+      printf("subgrid_variance_scaling !=1 for exponent=1. relvar,scaling=",relvar,c_scaling);
+	errors++;}
   }
   
+  //-----------------------------------------------------------------
   KOKKOS_FUNCTION static void subgrid_variance_scaling_relvar1_test(int& errors){
     //If relvar=1, subgrid_variance_scaling should be factorial(expon)  
     
     Scalar tol = (util::is_single_precision<Scalar>::value ) ? C::Tol*2 : C::Tol;
     
     //Get value from C++ code
-    const Spack relvars(relvar);
-    Spack c_scaling = Functions::subgrid_variance_scaling(1.0,4.0);
+    const Spack ones(1);
+    printf("ones = ",ones);
+    Spack c_scaling = Functions::subgrid_variance_scaling(ones,4.0);
     
-    fact = std::factorial(4);
+    Real fact = std::tgamma(5.0); //factorial(n) = gamma(n+1) 
     
-    if ( std::abs(c_scaling[0] -  fact) > tol ){
+    if ( std::abs(c_scaling[0] -  fact) > tol ){ 
       printf("subgrid_variance_scaling not factorial(expon) for relvar=1. For expon=4, should be,is=",fact,c_scaling);
-      error++;}
+      errors++;}
   }
-  
-  
-  KOKKOS_FUNCTION static void subgrid_variance_scaling_relvar3_test(int& errors);
+
+  /* PMC skip for debugging
+  //-----------------------------------------------------------------
+  KOKKOS_FUNCTION static void subgrid_variance_scaling_relvar3_test(int& errors){
   //If expon=3, subgrid variance scaling should be relvar^3+3*relvar^2+2*relvar/relvar^3
 
   Scalar tol = (util::is_single_precision<Scalar>::value ) ? C::Tol*2 : C::Tol;
 
   static constexpr Int max_pack_size = 16;
   REQUIRE(Spack::n <= max_pack_size);
-  Spack relvars = {
-    0.1,0.5,1.0,2.0,
-    3.0,4.0,5.0,6.0,
-    6.5,7.0,8.0,9.0,
-    9.1,9.5,9.8,10.}
+  Spack relvars[max_pack_size] = {0.1,0.5,1.0,2.0,
+				  3.0,4.0,5.0,6.0,
+				  6.5,7.0,8.0,9.0,
+				  9.1,9.5,9.8,10.};
 
   //Get value from C++ code
   Spack c_scaling = Functions::subgrid_variance_scaling(relvars,3.0);
 
+  Spack targ=1+3/relvars + 2/pack::pow(relvars,2.0);
+  
   for (Int s = 0; s < Spack::n; ++s) {
-    targ=1+3/relvars[s] + 2/relvars[s]**2;
-    if ( std::abs(targ - c_scaling[s])>tol){
+    if ( std::abs(targ[s] - c_scaling[s])>tol){
       printf("When expon=3, subgrid_variance_scaling doesn't match analytic expectation");
       errors++;
-    }
-  }
+    } // end if
+  }   //end for
+  }   //end relvar3_test
   
-  static void run_subgrid_variance_scaling(){
+  */
+
+  //-----------------------------------------------------------------
+  static void run_property_tests(){
     /*This function executes all the SGS variance scaling tests by looping
      *over a bunch of test and summing their return statuses.
      *If that sum is zero, no errors have occurred. Otherwise you have errors.
@@ -107,31 +161,38 @@ struct UnitWrap::UnitTest<D>::TestP3SubgridVarianceScaling
     TeamPolicy policy(util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, 1));
     Kokkos::parallel_reduce("SGSvarScaling::run", policy, KOKKOS_LAMBDA(const MemberType& team, int& errors) {
 	errors = 0;
-	
-	//First test that C++ and F90 implementations are BFB
-	subgrid_variance_scaling_bfb_tests(1.0,1.0,errors);
-	subgrid_variance_scaling_bfb_tests(1.0,2.0,errors);
-	subgrid_variance_scaling_bfb_tests(1.0,-2.0,errors);
-	subgrid_variance_scaling_bfb_tests(2.5,1.0,errors);
-	subgrid_variance_scaling_bfb_tests(0.1,2.47,errors);
-	subgrid_variance_scaling_bfb_tests(10.0,-1.1,errors);
-	subgrid_variance_scaling_bfb_tests(10.0,0.1,errors);
-	
-	//If expon=1, subgrid_variance_scaling should be 1 
+		
+	//If expon=1, subgrid_variance_scaling should be 1
+	//                            args = relvar,return error count
 	subgrid_variance_scaling_linearity_test(10.,errors); 
 	subgrid_variance_scaling_linearity_test(0.1,errors); 
 	
-	//If relvar=1, subgrid_variance_scaling should be factorial(expon)  
+	//If relvar=1, subgrid_variance_scaling should be factorial(expon)
+	//                            args = return error count
 	subgrid_variance_scaling_relvar1_test(errors);
 	
 	//If expon=3, subgrid variance scaling should be relvar^3+3*relvar^2+2*relvar/relvar^3
-	subgrid_variance_scaling_relvar3_test(2.0,errors);
-	subgrid_variance_scaling_relvar3_test(3.5,errors);
+	//                          args = return error count
+	//subgrid_variance_scaling_relvar3_test(errors);
 	
       }, nerr);
       
     Kokkos::fence();
     REQUIRE(nerr == 0);
-  }
-}; //end of TestP3SubgridVarianceScaling struct
+  } //end of TestP3SubgridVarianceScaling struct
   
+}; // UnitWrap
+  
+} // namespace unit_test
+} // namespace p3
+} // namespace scream
+ 
+namespace{
+
+TEST_CASE("p3_subgrid_variance_scaling_test", "[p3_subgrid_variance_scaling_test]"){
+  //scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestP3SubgridVarianceScaling::run_bfb_tests();
+  scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestP3SubgridVarianceScaling::run_property_tests();
+}
+
+} // namespace
+
