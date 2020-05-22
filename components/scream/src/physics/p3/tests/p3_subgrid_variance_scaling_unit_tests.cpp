@@ -109,7 +109,7 @@ struct UnitWrap::UnitTest<D>::TestP3SubgridVarianceScaling
     Spack c_scaling = Functions::subgrid_variance_scaling(relvars,1.0);
     
     if ( std::abs(c_scaling[0] -  1) > tol ){
-      printf("subgrid_variance_scaling !=1 for exponent=1. relvar,scaling=",relvar,c_scaling);
+      printf("subgrid_variance_scaling should be 1 for expon=1, but is %e\n",c_scaling[0]);
 	errors++;}
   }
   
@@ -126,7 +126,8 @@ struct UnitWrap::UnitTest<D>::TestP3SubgridVarianceScaling
     Real fact = std::tgamma(5.0); //factorial(n) = gamma(n+1) 
     
     if ( std::abs(c_scaling[0] -  fact) > tol ){ 
-      printf("subgrid_variance_scaling not factorial(expon) for relvar=1. For expon=4, should be,is=",fact,c_scaling);
+      printf("subgrid_variance_scaling should be factorial(expon) when relvar=1.\n");
+      printf("For expon=4, should be %f but is=%f\n",fact,c_scaling[0]);
       errors++;}
   }
 
@@ -137,8 +138,8 @@ struct UnitWrap::UnitTest<D>::TestP3SubgridVarianceScaling
   Scalar tol = (util::is_single_precision<Scalar>::value ) ? C::Tol*2 : C::Tol;
 
   static constexpr Int max_pack_size = 16;
-  REQUIRE(Spack::n <= max_pack_size);
-  
+  //tested that pack size is at least this big outside this fn because exception handling
+  //not allowed on device.
   Real relvar_info[max_pack_size] = {0.1,0.5,1.0,2.0,
 				     3.0,4.0,5.0,6.0,
 				     6.5,7.0,8.0,9.0,
@@ -171,6 +172,11 @@ struct UnitWrap::UnitTest<D>::TestP3SubgridVarianceScaling
      *We do that loop in the parallel reduce below.
      */
     int nerr = 0;
+
+    //functions below use Spack size <16 but can't deal w/ exceptions on GPU, so do it here.
+    static constexpr Int max_pack_size = 16;
+    REQUIRE(Spack::n <= max_pack_size);
+
     TeamPolicy policy(util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, 1));
     Kokkos::parallel_reduce("SGSvarScaling::run", policy, KOKKOS_LAMBDA(const MemberType& team, int& errors) {
 	errors = 0;

@@ -517,6 +517,7 @@ struct Functions
                                   const Spack& nitot_incld, Spack& nislf);
 
   // TODO (comments)
+  KOKKOS_FUNCTION
   static void evaporate_sublimate_precip(const Spack& qr_incld, const Spack& qc_incld,
 					 const Spack& nr_incld, const Spack& qitot_incld,
 					 const Spack& lcldm, const Spack& rcldm,
