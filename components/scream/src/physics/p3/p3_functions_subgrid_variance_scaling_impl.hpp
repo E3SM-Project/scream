@@ -21,8 +21,30 @@ Functions<S,D>::subgrid_variance_scaling(const Spack& relvar, const Scalar& expo
      Gettelman (2008; JCLI) eq 9 for details.
   */
 
-  //may want to add checks that relvar is within allowable range.
+  /* ***bounds checking not operational yet ***
+
+  // Check that relvar is within allowable range
+  //============================================
+  const Scalar relvar_min = 0.1;
+  const Scalar relvar_max = 10.0;
+
+  const auto relvar_exceeds_bounds  = !(relvar > relvar_min && relvar < relvar_max);
+
+  if (relvar_exceeds_bounds.any()) {
+    scream_require_msg( condition, "relvar outside allowable bounds" );
+  }
+
+  // Check that expon >0.
+  //============================================
+  if (expon < 0.0){
+    const auto msg = "expon<0. This might be ok, but isn't unit tested and can drive subgrid_variance_scaling negative. Be careful if you proceed.";
+    scream_require_msg( condition, msg );
+  }
+
+  */
   
+  // Compute result
+  //============================================
   Spack result;
   Spack exponent=Spack(expon);
   result=pack::tgamma( relvar+exponent )/( pack::tgamma(relvar)*pack::pow(relvar,exponent) );
