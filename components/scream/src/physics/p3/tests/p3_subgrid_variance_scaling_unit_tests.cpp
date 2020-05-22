@@ -56,52 +56,27 @@ struct UnitWrap::UnitTest<D>::TestP3SubgridVarianceScaling
     
     //Loop over exponent values and make sure BFB is maintained in each case.
     Real expons[3] = {1.0,2.47,0.1};
-    for (Int i = 0; i < 4; ++i) {
-      printf("expon = %f\n",expons[i]);
+    for (Int i = 0; i < 3; ++i) {
 
       // Call Fortran version
       for (Int j = 0; j < Spack::n; ++j) {
 	f_data.relvar=relvars_host(0)[j];
 	f_data.expon =expons[i];
         f_scaling[j] = subgrid_variance_scaling(f_data);
-	printf("  relvar = %f, f_scaling[j] = %f\n",f_data.relvar,f_scaling[j]);
       }
 
       // Get expon value onto device
-      Kokkos::View<Scalar, Kokkos::LayoutRight, D> expon_device("expon", 1); //this line has runtime errors.      
+      view_1d<Scalar> expon_device("expon_device", 1);
       auto expon_host = Kokkos::create_mirror_view(expon_device);
-
-    } /* 
-
-      expon_host(0)[0]=expons[i]; //this line causes build errors
-      //std::copy(&expons[i],&expons[i]+1,expon_host.data()); //this line causes build errors.
+      expon_host(0)=expons[i]; //this line causes build errors
       Kokkos::deep_copy(expon_device, expon_host);
-
-      printf("expon_host =%f\n",expon_host(0));
-
-    }
-      /*
       
       // Run the lookup from a kernel and copy results back to host
       Kokkos::parallel_for(RangePolicy(0, 1), KOKKOS_LAMBDA(const Int& j) {
-
-	  //views aren't the Spacks fns are expecting, so convert.
-	  Spack scaling_local; //output, so don't need to assign yet.
-	  Scalar expon_local = 2.0;
-	  //expon_local = *expon_device.data();
-	  Spack relvars_local;   //relvars_device(0);
-	  for (Int s = 0; s < Spack::n; ++s) {
-	    relvars_local[s] = 2.0;}
-
-	  //printf("expon_device = ",expon_device);
-	  //printf("relvars_device = ",relvars_device);
 	  
 	  // Call the function on C++
-	  scaling_local = Functions::subgrid_variance_scaling(
-		          relvars_local,2.0);
-
-	  for (Int s = 0; s < Spack::n; ++s) {
-	    relvars_device[s] = 2.0;} //relvars_local[s];}
+	  scaling_device(0) = Functions::subgrid_variance_scaling(
+		              relvars_device(0),expon_device(0) );
  
 	}); //end of parallel for
       
@@ -109,15 +84,16 @@ struct UnitWrap::UnitTest<D>::TestP3SubgridVarianceScaling
       Kokkos::deep_copy(scaling_device, scaling_host);
       
       // Validate results
-      Scalar c_scaling;
+      //Scalar c_scaling;
       for (Int s = 0; s < Spack::n; ++s) {
-	c_scaling = scaling_host(s)[s];
-	REQUIRE(f_scaling[s] == c_scaling );
+
+	//For debugging
+	//printf("relvar=%f, expon=%f, C++=%e, F90=%e, diff=%e\n",relvars_host(0)[s],
+	//       expon_host(0),scaling_host(0)[s],f_scaling[s],scaling_host(0)[s] - f_scaling[s]);
+	
+	REQUIRE(f_scaling[s] == scaling_host(0)[s] );
       }
     } //end loop over expons[i]
-
-
-    */
 
   } //end function run_bfb_tests
 

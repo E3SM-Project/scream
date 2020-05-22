@@ -2642,7 +2642,7 @@ function subgrid_variance_scaling(relvar, expon) result(res)
     
   real(rtype), intent(in) :: relvar
   real(rtype), intent(in) :: expon
-  real(rtype) :: res,res_tmp
+  real(rtype) :: res
   
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
@@ -2651,8 +2651,7 @@ function subgrid_variance_scaling(relvar, expon) result(res)
    endif
 #endif
   
-  res_tmp = bfb_gamma(relvar+expon)/bfb_gamma(relvar)
-  res = res_tmp/bfb_pow(relvar,expon)
+  res = bfb_gamma(relvar+expon)/(bfb_gamma(relvar)*bfb_pow(relvar,expon))
    
 end function subgrid_variance_scaling
 
