@@ -77,12 +77,6 @@ struct UnitWrap::UnitTest<D>::TestP3SubgridVarianceScaling
 	  // Call the function on C++
 	  scaling_device(0) = Functions::subgrid_variance_scaling(
 		              relvars_device(0),expon_device(0) );
-
-	  //For debugging
-	  for (Int s = 0; s < Spack::n; ++s) {	  
-	    printf("relvar=%f, expon=%f, C++=%e\n",relvars_device(0)[s],
-		   expon_device(0),scaling_device(0)[s]);
-	  }
 	  
 	}); //end of parallel for
       
@@ -93,10 +87,6 @@ struct UnitWrap::UnitTest<D>::TestP3SubgridVarianceScaling
       //Scalar c_scaling;
       for (Int s = 0; s < Spack::n; ++s) {
 
-	//For debugging
-	//printf("relvar=%f, expon=%f, C++=%e, F90=%e, diff=%e\n",relvars_host(0)[s],
-	//       expon_host(0),scaling_host(0)[s],f_scaling[s],scaling_host(0)[s] - f_scaling[s]);
-	
 	REQUIRE(f_scaling[s] == scaling_host(0)[s] );
       }
     } //end loop over expons[i]
