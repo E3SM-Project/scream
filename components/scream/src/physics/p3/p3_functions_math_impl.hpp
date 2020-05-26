@@ -63,7 +63,6 @@ Functions<S,D>::qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice)
   return ep_2 * e_pres / pack::max(p_atm-e_pres, sp(1.e-3));
 }
 
-
 } // namespace p3
 } // namespace scream
 

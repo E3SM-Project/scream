@@ -23,6 +23,7 @@ struct Constants
   static constexpr Scalar RH2O          = 461.505;
   static constexpr Scalar RV            = RH2O;         // Water vapor gas constant ~ J/K/kg     !461.51
   static constexpr Scalar RhoH2O        = 1000.0;
+  static constexpr Scalar RhoIce        = 917.0;        // Ice density at 0 C from Wallace+Hobbes 1977
   static constexpr Scalar MWH2O         = 18.016;
   static constexpr Scalar MWdry         = 28.966;
   static constexpr Scalar ep_2          = MWH2O/MWdry;  // ratio of molecular mass of water to the molecular mass of dry air !0.622
@@ -61,11 +62,13 @@ struct Constants
   static constexpr Scalar ZERO          = 0.0;
   static constexpr Scalar ONE           = 1.0;
   static constexpr Scalar P0            = 100000.0;        // reference pressure, Pa
-  static constexpr Scalar RD            = 287.15;          // gas constant for dry air, J/kg/K
+  static constexpr Scalar RD            = Rair;          // gas constant for dry air, J/kg/K
   static constexpr Scalar RHOSUR        = P0/(RD*Tmelt);
+  static constexpr Scalar rhosui        = 60000/(RD*253.15);
   static constexpr Scalar CP            = Cpair;          // heat constant of air at constant pressure, J/kg
   static constexpr Scalar INV_CP        = 1.0/CP;
-  static constexpr Scalar Tol           = util::is_single_precision<Real>::value ? 2e-5 : 1e-14;
+  //  static constexpr Scalar Tol           = util::is_single_precision<Real>::value ? 2e-5 : 1e-14;
+  static constexpr Scalar Tol = std::numeric_limits<Real>::epsilon();
   static constexpr Scalar mu_r_const    = 1.0;
   static constexpr Scalar dt_left_tol   = 1.e-4;
   static constexpr Scalar bcn           = 2.;
@@ -84,6 +87,10 @@ struct Constants
   static constexpr Scalar MWWV          = 18.016;
   static constexpr Scalar RWV           = Rgas / MWWV;
   static constexpr Scalar ZVIR          = (RWV / Rair) - 1.0;
+  static constexpr Scalar max_total_Ni  = 500.e+3;  // maximum total ice concentration (sum of all categories) (m)
+  static constexpr Scalar f1r           = 0.78;
+  static constexpr Scalar f2r           = 0.32;
+  static constexpr Scalar nmltratio     = 0.2; // ratio of rain number produced to ice number loss from melting
 
   // Table dimension constants
   static constexpr int VTABLE_DIM0    = 300;
