@@ -1012,6 +1012,7 @@ end subroutine micro_p3_readnl
          dzq(its:ite,kts:kte),        & ! IN     vertical grid spacing            m
          npccn(its:ite,kts:kte),      & ! IN ccn activation number tendency kg-1 s-1
          naai(its:ite,kts:kte),       & ! IN activated ice nuclei concentration kg-1
+         relvar(its:ite,kts:kte)      & ! IN cloud liquid relative variance
          it,                          & ! IN     time step counter NOTE: starts at 1 for first time step
          prt_liq(its:ite),            & ! OUT    surface liquid precip rate       m s-1
          prt_sol(its:ite),            & ! OUT    surface frozen precip rate       m s-1
@@ -1048,7 +1049,6 @@ end subroutine micro_p3_readnl
          vap_ice_exchange(its:ite,kts:kte),& ! OUT sum of vap-ice phase change tendencies
          vap_cld_exchange(its:ite,kts:kte),& ! OUT sum of vap-cld phase change tendencies
          col_location(its:ite,:3),         & ! IN column locations
-         relvar(its:ite,kts:kte)           & ! IN cloud liquid relative variance
          )
 
     p3_main_outputs(:,:,:) = -999._rtype

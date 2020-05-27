@@ -1564,8 +1564,7 @@ contains
     else
 
        print*
-       print*,'** polysvp1 i_type must be 0 or 1 but is: ',i_type,T
-       print*,' T = ',T
+       print*,'** polysvp1 i_type must be 0 or 1 but is: ',i_type
        print*
        stop
 
