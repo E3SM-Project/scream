@@ -3053,8 +3053,8 @@ subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,qc_relvar,    &
 
       !Khroutdinov and Kogan (2000)
       !print*,'p3_QcAutoCon_Expon = ',p3_QcAutoCon_Expon
-      sbgrd_var_coef = subgrid_variance_scaling(qc_relvar, 2.47)
-      qcaut = sbgrd_var_coef*1350._rtype*bfb_pow(qc_incld,2.47)*bfb_pow(nc_incld*1.e-6_rtype*rho,-1.79_rtype)
+      sbgrd_var_coef = subgrid_variance_scaling(qc_relvar, 2.47_rtype)
+      qcaut = sbgrd_var_coef*1350._rtype*bfb_pow(qc_incld,2.47_rtype)*bfb_pow(nc_incld*1.e-6_rtype*rho,-1.79_rtype)
       ! note: ncautr is change in Nr; ncautc is change in Nc
       ncautr = qcaut*cons3
       ncautc = qcaut*nc_incld/qc_incld
