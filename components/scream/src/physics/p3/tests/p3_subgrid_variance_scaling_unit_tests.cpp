@@ -28,69 +28,64 @@ struct UnitWrap::UnitTest<D>::TestP3SubgridVarianceScaling
   static void run_bfb_tests(){
     //test that C++ and F90 implementations are BFB
 
-    //First create a Spack spanning the gammut of possible relvar vals
-    static constexpr Int max_pack_size = 16;
-    REQUIRE(Spack::n <= max_pack_size);
-    Real relvars_info[max_pack_size] = {
+    //Set of relvar values to loop over
+    Scalar relvars[16] = {
       0.1,0.5,1.0,2.0,
       3.0,4.0,5.0,6.0,
       6.5,7.0,8.0,9.0,
       9.1,9.5,9.8,10.};
-    
-    // Sync relvars to device
-    view_1d<Spack> relvars_device("relvars",1);
-    auto relvars_host = Kokkos::create_mirror_view(relvars_device);    
-    for (Int s = 0; s < Spack::n; ++s) {
-      relvars_host(0)[s] = relvars_info[s];}
 
-    Kokkos::deep_copy(relvars_device, relvars_host);
-    
-    //Get view of output from C++ fn call. 
-    view_1d<Spack> scaling_device("c_scaling", 1);
-    auto scaling_host = Kokkos::create_mirror_view(scaling_device);
-    //note no copy here - just need to get output *back* from device.
+    //Set of exponents to loop over
+    Scalar expons[3] = {1.0,2.47,0.1};
 
-    Spack f_scaling; //function output from F90 on CPU
-    //input data for F90 needs to be a struct defined in p3_functions_f90.hpp
+    //initialize struct required for F90 call
     SubgridVarianceScalingData f_data;
+    Scalar f_scaling;
+
+    //Make C++ output available on host and device
+    view_1d<Scalar> scaling_device("c scaling",1);
+    auto scaling_host = Kokkos::create_mirror_view(scaling_device);    
     
-    //Loop over exponent values and make sure BFB is maintained in each case.
-    Real expons[3] = {1.0,2.47,0.1};
-    for (Int i = 0; i < 3; ++i) {
+    for (Int i = 0; i < 3; ++i) {  // loop over exponents
+      for (Int j = 0; j < 16; ++j) { // loop over relvars
 
-      // Call Fortran version
-      for (Int j = 0; j < Spack::n; ++j) {
-	f_data.relvar=relvars_host(0)[j];
+	// Get F90 solution
+	// ----------------------------------
+	f_data.relvar=relvars[j];
 	f_data.expon =expons[i];
-        f_scaling[j] = subgrid_variance_scaling(f_data);
-      }
+        f_scaling = subgrid_variance_scaling(f_data);
 
-      // Get expon value onto device
-      view_1d<Scalar> expon_device("expon_device", 1);
-      auto expon_host = Kokkos::create_mirror_view(expon_device);
-      expon_host(0)=expons[i]; //this line causes build errors
-      Kokkos::deep_copy(expon_device, expon_host);
-      
-      // Run the lookup from a kernel and copy results back to host
-      Kokkos::parallel_for(RangePolicy(0, 1), KOKKOS_LAMBDA(const Int& j) {
-	  
-	  // Call the function on C++
-	  scaling_device(0) = Functions::subgrid_variance_scaling(
-		              relvars_device(0),expon_device(0) );
-	  
-	}); //end of parallel for
-      
-      // Copy results back to host
-      Kokkos::deep_copy(scaling_host, scaling_device);
-      
-      // Validate results
-      //Scalar c_scaling;
-      for (Int s = 0; s < Spack::n; ++s) {
+	// Get C++ solution
+	// ----------------------------------
 
-	REQUIRE(f_scaling[s] == scaling_host(0)[s] );
-      }
+	//Make scalar copies so available on device
+	Scalar expon = expons[i];
+	Scalar relvar = relvars[j];
+	
+	RangePolicy my_policy(0,1);
+	Kokkos::parallel_for(my_policy,KOKKOS_LAMBDA(int i){
+
+	    printf("expon=%f, relvar=%f\n",expon,relvar);
+	    
+	    Spack scalings = Functions::subgrid_variance_scaling(Spack(relvar),expon );
+
+	    //all elements of scalings are identical. just copy 1 back to host.
+	    scaling_device(0) = scalings[0];
+
+	    printf("c_scaling = %f\n",scaling_device(0));
+	    
+	  });
+
+	// Copy results back to host
+	Kokkos::deep_copy(scaling_host, scaling_device);
+
+	printf(" f_scaling = %f, scaling_host = %f\n",f_scaling,scaling_host(0));
+
+	// Validate results
+	REQUIRE(f_scaling == scaling_host(0) );
+	
+      } //end loop over relvar[j]
     } //end loop over expons[i]
-
   } //end function run_bfb_tests
 
   //-----------------------------------------------------------------
