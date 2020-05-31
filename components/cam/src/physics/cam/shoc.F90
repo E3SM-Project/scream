@@ -1000,16 +1000,9 @@ subroutine diag_second_shoc_moments(&
     ! Diagnose the second order moments, 
     !  calculate surface boundary conditions
     call diag_second_moments_lbycond(&
-       shcol,nlev,nlevi,&                   ! Input
-       num_tracer,thetal,qw,&               ! Input
-       u_wind,v_wind,tracer,&               ! Input
-       isotropy,tkh,tk,&                    ! Input
-       dz_zi,zt_grid,zi_grid,&              ! Input
-       wthl_sfc,wqw_sfc,uw_sfc,vw_sfc,&     ! Input
-       wtracer_sfc,shoc_mix,&               ! Input
-       thl_sec,qw_sec,wthl_sec,wqw_sec,&    ! Output
-       qwthl_sec,uw_sec,vw_sec,wtke_sec,&   ! Output
-       wtracer_sec)                         ! Output
+         shcol,nlevi, &                         ! Input
+         wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &   ! Input
+         thl_sec,qw_sec,qwthl_sec)              ! Output
 
     ! Diagnose the second order moments, 
     !  for points away from boundaries
@@ -1018,6 +1011,16 @@ subroutine diag_second_shoc_moments(&
          thetal,qw,isotropy,tkh,&               ! Input
          dz_zi,zt_grid,zi_grid, &               ! Input
          thl_sec,qw_sec,qwthl_sec)              ! Output
+
+    ! Diagnose the second order moments flux, 
+    !  for points away from boundaries
+    call diag_second_moments_flux_lbycond(&
+         shcol,nlevi, num_tracer,&                    ! Input
+         wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &         ! Input
+         wtracer_sfc,&                                ! Input
+         wthl_sec,wqw_sec,&                           ! Output
+         uw_sec, vw_sec, wtke_sec, &                  ! Output
+         wtracer_sec)                                 ! Output
 
     ! Diagnose the second order moments flux, 
     !  for points away from boundaries
@@ -1048,16 +1051,9 @@ end subroutine diag_second_shoc_moments
 !  lower boundary conditions
 
 subroutine diag_second_moments_lbycond(&
-         shcol,nlev,nlevi, &                    ! Input
-         num_tracer,thetal,qw, &                ! Input
-         u_wind,v_wind,tracer, &                ! Input
-         isotropy,tkh,tk,&                      ! Input
-         dz_zi,zt_grid,zi_grid,&                ! Input
+         shcol,nlevi, &                         ! Input
          wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &   ! Input
-         wtracer_sfc,shoc_mix, &                ! Input
-         thl_sec,qw_sec,wthl_sec,wqw_sec,&      ! Output
-         qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Output
-         wtracer_sec)                           ! Output
+         thl_sec,qw_sec,qwthl_sec)              ! Output
 
   ! Purpose of this subroutine is to diagnose the lower
   !  boundary condition for the second order moments needed 
@@ -1072,35 +1068,9 @@ subroutine diag_second_moments_lbycond(&
 ! INPUT VARIABLES
   ! number of SHOC columns
   integer, intent(in) :: shcol
-  ! number of midpoint levels
-  integer, intent(in) :: nlev
   ! number of interface levels
   integer, intent(in) :: nlevi
-  ! number of tracers
-  integer, intent(in) :: num_tracer
 
-  ! liquid water potential temperature [K]
-  real(rtype), intent(in) :: thetal(shcol,nlev)
-  ! total water mixing ratio [kg/kg]
-  real(rtype), intent(in) :: qw(shcol,nlev)
-  ! zonal wind component [m/s]
-  real(rtype), intent(in) :: u_wind(shcol,nlev)
-  ! meridional wind component [m/s]
-  real(rtype), intent(in) :: v_wind(shcol,nlev)
-  ! return to isotropy timescale [s]
-  real(rtype), intent(in) :: isotropy(shcol,nlev)
-  ! eddy coefficient for heat [m2/s]
-  real(rtype), intent(in) :: tkh(shcol,nlev)
-  ! eddy coefficient for momentum [m2/s]
-  real(rtype), intent(in) :: tk(shcol,nlev)
-  ! tracers [varies]
-  real(rtype), intent(in) :: tracer(shcol,nlev,num_tracer) ! tracers
-  ! heights of mid-point grid [m]
-  real(rtype), intent(in) :: zt_grid(shcol,nlev)
-  ! heights of interface grid [m]
-  real(rtype), intent(in) :: zi_grid(shcol,nlevi)
-  ! thickness centered on interface grid [m]
-  real(rtype), intent(in) :: dz_zi(shcol,nlevi)
   ! Surface sensible heat flux [K m/s]
   real(rtype), intent(in) :: wthl_sfc(shcol)
   ! Surface latent heat flux [kg/kg m/s]
@@ -1109,10 +1079,6 @@ subroutine diag_second_moments_lbycond(&
   real(rtype), intent(in) :: uw_sfc(shcol)
   ! Surface momentum flux (v-direction) [m3/s3]
   real(rtype), intent(in) :: vw_sfc(shcol)
-  ! Tracer flux [varies m/s]
-  real(rtype), intent(in) :: wtracer_sfc(shcol,num_tracer)
-  ! Mixing length [m]
-  real(rtype), intent(in) :: shoc_mix(shcol,nlev)
 
 ! OUTPUT VARIABLES
   ! second order liquid wat. potential temp. [K^2]
@@ -1121,40 +1087,15 @@ subroutine diag_second_moments_lbycond(&
   real(rtype), intent(out) :: qw_sec(shcol,nlevi)
   ! covariance of temp and moisture [K kg/kg]
   real(rtype), intent(out) :: qwthl_sec(shcol,nlevi)
-  ! vertical flux of heat [K m/s]
-  real(rtype), intent(out) :: wthl_sec(shcol,nlevi)
-  ! vertical flux of total water [kg/kg m/s]
-  real(rtype), intent(out) :: wqw_sec(shcol,nlevi)
-  ! vertical flux of zonal wind [m2/s2]
-  real(rtype), intent(out) :: uw_sec(shcol,nlevi)
-  ! vertical flux of meridional wind [m2/s2]
-  real(rtype), intent(out) :: vw_sec(shcol,nlevi)
-  ! vertical flux of tke [m3/s3]
-  real(rtype), intent(out) :: wtke_sec(shcol,nlevi)
-  ! vertical flux of tracer [varies m/s]
-  real(rtype), intent(out) :: wtracer_sec(shcol,nlevi,num_tracer)
 
 ! LOCAL VARIABLES
-  integer :: kb, kt, k, i, p
-  real(rtype) :: grid_dz2,grid_dz,grid_dzw
-  real(rtype) :: gr1,gr2,grw1
-  real(rtype) :: isotropy_zi(shcol,nlevi)
-  real(rtype) :: tkh_zi(shcol,nlevi)
-  real(rtype) :: tk_zi(shcol,nlevi)
-  real(rtype) :: shoc_mix_zi(shcol,nlevi)
-  real(rtype) :: sm ! Mixing coefficient
+  integer :: i, p
   real(rtype) :: ustar2, wstar, uf
 
   ! Constants to parameterize surface variances
   real(rtype), parameter :: a_const = 1.8_rtype
   real(rtype), parameter :: z_const = 1.0_rtype
   real(rtype), parameter :: ufmin = 0.01_rtype
-
-  ! Interpolate some variables from the midpoint grid to the interface grid
-  call linear_interp(zt_grid,zi_grid,isotropy,isotropy_zi,nlev,nlevi,shcol,0._rtype)
-  call linear_interp(zt_grid,zi_grid,tkh,tkh_zi,nlev,nlevi,shcol,0._rtype)
-  call linear_interp(zt_grid,zi_grid,tk,tk_zi,nlev,nlevi,shcol,0._rtype)
-  call linear_interp(zt_grid,zi_grid,shoc_mix,shoc_mix_zi,nlev,nlevi,shcol,minlen)
 
   ! apply the surface conditions to diagnose turbulent
   !  moments at the surface
@@ -1176,6 +1117,76 @@ subroutine diag_second_moments_lbycond(&
     qwthl_sec(i,nlevi) = 0.2_rtype * a_const * (wthl_sfc(i)/uf) * &
                          (wqw_sfc(i)/uf)
 
+  enddo ! end i loop (column loop)
+  return
+end subroutine diag_second_moments_lbycond
+
+!==============================================================
+! SHOC Diagnose the second order moments flux, 
+!  lower boundary conditions
+
+subroutine diag_second_moments_flux_lbycond(&
+         shcol,nlevi, num_tracer,&                    ! Input
+         wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &         ! Input
+         wtracer_sfc,&                                ! Input
+         wthl_sec,wqw_sec,&                           ! Output
+         uw_sec, vw_sec, wtke_sec, &                  ! Output
+         wtracer_sec)                                 ! Output
+
+  ! Purpose of this subroutine is to diagnose the lower
+  !  boundary condition for the second order moments needed 
+  !  for the SHOC parameterization.  
+  ! The thermodymnamic, tracer, and momentum fluxes are set 
+  !  to the surface fluxes for the host model, while the
+  !  thermodynamic variances and covariances are computed
+  !  according to that of Andre et al. 1978.  
+
+  implicit none
+
+! INPUT VARIABLES
+  ! number of SHOC columns
+  integer, intent(in) :: shcol
+  ! number of interface levels
+  integer, intent(in) :: nlevi
+  ! number of tracers
+  integer, intent(in) :: num_tracer
+
+  ! Surface sensible heat flux [K m/s]
+  real(rtype), intent(in) :: wthl_sfc(shcol)
+  ! Surface latent heat flux [kg/kg m/s]
+  real(rtype), intent(in) :: wqw_sfc(shcol)
+  ! Surface momentum flux (u-direction) [m3/s3]
+  real(rtype), intent(in) :: uw_sfc(shcol)
+  ! Surface momentum flux (v-direction) [m3/s3]
+  real(rtype), intent(in) :: vw_sfc(shcol)
+  ! Tracer flux [varies m/s]
+  real(rtype), intent(in) :: wtracer_sfc(shcol,num_tracer)
+
+! OUTPUT VARIABLES
+  ! vertical flux of heat [K m/s]
+  real(rtype), intent(out) :: wthl_sec(shcol,nlevi)
+  ! vertical flux of total water [kg/kg m/s]
+  real(rtype), intent(out) :: wqw_sec(shcol,nlevi)
+  ! vertical flux of zonal wind [m2/s2]
+  real(rtype), intent(out) :: uw_sec(shcol,nlevi)
+  ! vertical flux of meridional wind [m2/s2]
+  real(rtype), intent(out) :: vw_sec(shcol,nlevi)
+  ! vertical flux of tke [m3/s3]
+  real(rtype), intent(out) :: wtke_sec(shcol,nlevi)
+  ! vertical flux of tracer [varies m/s]
+  real(rtype), intent(out) :: wtracer_sec(shcol,nlevi,num_tracer)
+
+! LOCAL VARIABLES
+  integer :: i, p
+  real(rtype) :: ustar2
+
+  ! apply the surface conditions to diagnose turbulent
+  !  moments at the surface
+  do i=1,shcol
+
+    ! Parameterize thermodyanmics variances via Andre et al. 1978
+    ustar2 = sqrt(uw_sfc(i) * uw_sfc(i) + vw_sfc(i) * vw_sfc(i))
+
     ! Vertical fluxes of heat and moisture, simply
     !  use the surface fluxes given by host model
     wthl_sec(i,nlevi) = wthl_sfc(i)
@@ -1189,7 +1200,7 @@ subroutine diag_second_moments_lbycond(&
 
   enddo ! end i loop (column loop)
   return
-end subroutine diag_second_moments_lbycond
+end subroutine diag_second_moments_flux_lbycond
 
 subroutine diag_second_moments(&
          shcol,nlev,nlevi, &                    ! Input
