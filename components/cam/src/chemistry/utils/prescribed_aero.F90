@@ -482,6 +482,8 @@ end subroutine spec_c_to_a
     if (single_column) then
       randn = 0._r8
     endif
+
+    randn = 0._r8 ! Set randn=0 for all simulations
     
     do i = 1, aero_cnt
        !Species with '_a' are updated using random sampling.
