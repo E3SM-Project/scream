@@ -63,7 +63,8 @@ class TestAllScream(object):
         os.chdir(str(self._root_dir)) # needed, or else every git command will need repo=root_dir
         expect(get_current_commit(), "Root dir: {}, does not appear to be a git repo".format(self._root_dir))
 
-        self._original_branch = get_current_branch()
+        # Get current head, rather than branch. We only need commits to move to/from
+        self._original_branch = get_current_head()
         self._original_commit = get_current_commit()
 
         if not self._kokkos:
@@ -357,6 +358,8 @@ class TestAllScream(object):
     ###############################################################################
     def test_all_scream(self):
     ###############################################################################
+        rc,output,err = get_current_branch()
+        print ("currently on branch {}".format(output))
         success = True
         try:
             # First, create build directories (one per test)
