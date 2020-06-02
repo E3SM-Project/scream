@@ -83,7 +83,10 @@ class TestAllScream(object):
                     self._baseline_ref = "HEAD"
                 elif self._integration_test:
                     self._baseline_ref = "origin/master"
+                    print ("merging git ref 'origin/master'")
                     merge_git_ref(git_ref="origin/master")
+                    ch = get_current_commit()
+                    print ("done. Now head is {}".format(ch)) 
                 else:
                     self._baseline_ref = get_common_ancestor("origin/master")
                     # Prefer a symbolic ref if possible
@@ -99,7 +102,9 @@ class TestAllScream(object):
                 expect(test_baseline_dir.is_dir(), "Missing baseline {}".format(test_baseline_dir))
 
             if self._integration_test:
+                print ("merging git ref 'origin/master'")
                 merge_git_ref(git_ref="origin/master")
+                print ("done. Now head is {}".format(ch)) 
 
         # Deduce how many resources per test
         proc_count = 4
@@ -290,6 +295,7 @@ class TestAllScream(object):
                     print('Generation of baselines for build {} failed'.format(self._test_full_names[test]))
                     return False
 
+        print ("baselines generated. now switching back to the branch")
         checkout_git_ref(git_head_ref, verbose=True)
 
         return success

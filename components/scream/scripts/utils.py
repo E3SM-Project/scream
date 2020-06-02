@@ -325,12 +325,19 @@ def get_current_commit(short=False, repo=None, tag=False, commit=None):
     """
     if tag:
         rc, output, err = run_cmd("git describe --tags $(git log -n1 --pretty='%h')", from_dir=repo)
+        if rc != 0:
+            print("Warning: getting current with tag=true failed with error: {}".format(commit, err))
     else:
         commit = "HEAD" if commit is None else commit
         rc, output, err = run_cmd("git rev-parse {} {}".format("--short" if short else "", commit), from_dir=repo)
+        if rc != 0:
+            print("Warning: getting current commit {} failed with error: {}".format(commit, err))
+            rc2, output2, err2 = run_cmd("git branch -a")
+            print("List of available branches: {}".format(output2))
+            rc2, output2, err2 = run_cmd("git rev-parse {} -- {}".format("--short" if short else "", commit), from_dir=repo)
+            print ("running a second time, but with '--', yields output: {}".format(output2))
+            print ("running a second time, but with '--', yields error: {}".format(err2))
 
-    if rc != 0:
-        print("Warning: getting current commit {} failed with error: {}".format(commit, err))
 
     return output if rc == 0 else None
 
@@ -342,6 +349,7 @@ def get_current_head(repo=None):
     """
     branch = get_current_branch(repo=repo)
     if not branch:
+        print("getting current head")
         return get_current_commit(repo=repo)
     else:
         return branch
@@ -399,6 +407,7 @@ def checkout_git_ref(git_ref, verbose=False, repo=None):
     """
     Checks out 'branch_ref', and updates submodules
     """
+    print ("checking out ref {}".format(git_ref))
     if get_current_commit() != get_current_commit(commit=git_ref):
         expect(is_repo_clean(repo=repo), "If we need to change HEAD, then the repo must be clean before running")
         expect(git_ref is not None, "Missing git-ref")
