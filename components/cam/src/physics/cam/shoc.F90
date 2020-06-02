@@ -1016,7 +1016,7 @@ subroutine diag_second_shoc_moments(&
          wtracer_sfc,ustar2,wstar,&             ! Input
          wthl_sec,wqw_sec,&                     ! Output
          uw_sec, vw_sec, wtke_sec, &            ! Output
-	 thl_sec, qw_sec, qwthl_sec, &          ! Output
+         thl_sec, qw_sec, qwthl_sec, &          ! Output
          wtracer_sec)                           ! Output
 
     ! Diagnose the second order moments, 
@@ -1114,7 +1114,7 @@ subroutine diag_second_moments_lbycond(&
          wtracer_sfc,ustar2,wstar,&                   ! Input
          wthl_sec,wqw_sec,&                           ! Output
          uw_sec, vw_sec, wtke_sec,&                   ! Output
-	 thl_sec,qw_sec,qwthl_sec,&                   ! Output
+         thl_sec,qw_sec,qwthl_sec,&                   ! Output
          wtracer_sec)                                 ! Output
 
   ! Purpose of this subroutine is to diagnose the lower
@@ -1189,7 +1189,7 @@ subroutine diag_second_moments_lbycond(&
     thl_sec(i,nlevi) = 0.4_rtype * a_const * (wthl_sfc(i)/uf)**2
     qw_sec(i,nlevi) = 0.4_rtype * a_const * (wqw_sfc(i)/uf)**2
     qwthl_sec(i,nlevi) = 0.2_rtype * a_const * (wthl_sfc(i)/uf) * &
-                         (wqw_sfc(i)/uf)    
+                         (wqw_sfc(i)/uf)  
 
     ! Vertical fluxes of heat and moisture, simply
     !  use the surface fluxes given by host model
@@ -1305,60 +1305,60 @@ subroutine diag_second_moments(&
   ! Calculate the temperature variance   
   call calc_shoc_varorcovar(&
          shcol,nlev,nlevi,thl2tune,&              ! Input
-	 isotropy_zi,tkh_zi,dz_zi,thetal,thetal,& ! Input
-	 thl_sec)                                 ! Ouput
+         isotropy_zi,tkh_zi,dz_zi,thetal,thetal,& ! Input
+         thl_sec)                                 ! Ouput
 
   ! Calculate the moisture variance	 
   call calc_shoc_varorcovar(&
-         shcol,nlev,nlevi,thl2tune,&              ! Input
-	 isotropy_zi,tkh_zi,dz_zi,qw,qw,&         ! Input
-	 qw_sec)                                  ! Ouput	 
+         shcol,nlev,nlevi,qw2tune,&               ! Input
+         isotropy_zi,tkh_zi,dz_zi,qw,qw,&         ! Input
+         qw_sec)                                  ! Ouput	 
 
   ! Calculate the temperature and moisture covariance
   call calc_shoc_varorcovar(&
-         shcol,nlev,nlevi,thl2tune,&              ! Input
-	 isotropy_zi,tkh_zi,dz_zi,thetal,qw,&     ! Input
-	 qwthl_sec)                               ! Ouput
+         shcol,nlev,nlevi,qwthl2tune,&            ! Input
+         isotropy_zi,tkh_zi,dz_zi,thetal,qw,&     ! Input
+         qwthl_sec)                               ! Ouput
   
   ! Calculate vertical flux for heat
   call calc_shoc_vertflux(&                       
          shcol,nlev,nlevi,tkh_zi,dz_zi,thetal,&   ! Input
-	 wthl_sec)                                ! Output
+         wthl_sec)                                ! Output
 	 
   ! Calculate vertical flux for moisture 
   call calc_shoc_vertflux(&                       
          shcol,nlev,nlevi,tkh_zi,dz_zi,qw,&       ! Input
-	 wqw_sec)                                 ! Output
+         wqw_sec)                                 ! Output
 	 
   ! Calculate vertical flux for TKE
   call calc_shoc_vertflux(&                       
          shcol,nlev,nlevi,tkh_zi,dz_zi,tke,&      ! Input
-	 wtke_sec)                                ! Output
+         wtke_sec)                                ! Output
 	 
   ! Calculate vertical flux for momentum (zonal wind)
   call calc_shoc_vertflux(&                       
          shcol,nlev,nlevi,tk_zi,dz_zi,u_wind,&   ! Input
-	 uw_sec)                                 ! Output
+         uw_sec)                                 ! Output
 	 
   ! Calculate vertical flux for momentum (meridional wind)
   call calc_shoc_vertflux(&                       
          shcol,nlev,nlevi,tk_zi,dz_zi,v_wind,&   ! Input
-	 vw_sec)                                 ! Output
+         vw_sec)                                 ! Output
 	 
   ! Calculate vertical flux for tracers
   do p=1,num_tracer
     call calc_shoc_vertflux(&                       
            shcol,nlev,nlevi,tkh_zi,dz_zi,tracer(:shcol,:nlev,p),& ! Input
-	   wtracer_sec(:shcol,:nlev,p))                           ! Output
-  enddo	 	 	 	 	 
+           wtracer_sec(:shcol,:nlev,p))                           ! Output
+  enddo 
   
   return
 end subroutine diag_second_moments
 
 subroutine calc_shoc_varorcovar(&
          shcol,nlev,nlevi,tunefac,&                ! Input
-	 isotropy_zi,tkh_zi,dz_zi,invar1,invar2,&  ! Input
-	 varorcovar)                               ! Ouput
+         isotropy_zi,tkh_zi,dz_zi,invar1,invar2,&  ! Input
+         varorcovar)                               ! Ouput
 
   ! Compute either the variance or covariance
   !  (depending on if invar1 is the same as invar2)
@@ -1370,9 +1370,9 @@ subroutine calc_shoc_varorcovar(&
   ! number of SHOC columns
   integer, intent(in) :: shcol
   ! number of midpoint levels
-  integer, intent(in) :: nlev	
+  integer, intent(in) :: nlev
   ! number of interface levels
-  integer, intent(in) :: nlevi    
+  integer, intent(in) :: nlevi 
   ! tuning factor for (co)variance []
   real(rtype), intent(in) :: tunefac
   ! Return to isotopic timescale [s]
@@ -1396,7 +1396,7 @@ subroutine calc_shoc_varorcovar(&
   
   do k=2,nlev
     do i=1,shcol
-      
+
       kt=k-1 ! define upper grid point indicee
       grid_dz2=(1._rtype/dz_zi(i,k))**2 ! vertical grid diff squared
       sm=isotropy_zi(i,k)*tkh_zi(i,k) ! coefficient for variances
@@ -1413,7 +1413,7 @@ end subroutine calc_shoc_varorcovar
 
 subroutine calc_shoc_vertflux(&
          shcol,nlev,nlevi,tkh_zi,dz_zi,invar,&  ! Input
-	 vertflux)                              ! Ouput
+         vertflux)                              ! Ouput
 
   ! Compute either the vertical flux via
   !  downgradient diffusion for a given set of 
@@ -1425,9 +1425,9 @@ subroutine calc_shoc_vertflux(&
   ! number of SHOC columns
   integer, intent(in) :: shcol
   ! number of midpoint levels
-  integer, intent(in) :: nlev	
+  integer, intent(in) :: nlev
   ! number of interface levels
-  integer, intent(in) :: nlevi    
+  integer, intent(in) :: nlevi  
   ! Eddy diffusivity for heat [ms-2]
   real(rtype), intent(in) :: tkh_zi(shcol,nlevi)
   ! delta z centerend on zi grid [m]
@@ -1448,7 +1448,7 @@ subroutine calc_shoc_vertflux(&
       kt=k-1 ! define upper grid point indicee
       grid_dz=1._rtype/dz_zi(i,k) ! vertical grid diff squared
       
-      ! Compute the variance or covariance
+      ! Compute the vertical flux via downgradient diffusion
       vertflux(i,k)=-1._rtype*tkh_zi(i,k)*grid_dz*&
         (invar(i,kt)-invar(i,k))
       
