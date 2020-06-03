@@ -87,16 +87,20 @@ P3 regression tests (again, from the `RUN_ROOT_DIR/test` directory), use
 ctest -R p3_regression
 ```
 
-You can see a list of available options by typing
+###
+
+We can create groupings of tests by using **labels**. For example, we have a
+`driver` label that runs tests for SCREAM's standalone driver. You can see a
+list of available labels by typing
 
 ```
 ctest --print-labels
 ```
 
-To see which tests are associated with a given label (e.g. `p3_regression`), use
+To see which tests are associated with a given label (e.g. `driver`), use
 
 ```
-ctest -L p3_regression -N
+ctest -L driver -N
 ```
 
 # SCREAM Test Suites
