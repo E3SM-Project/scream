@@ -7,6 +7,17 @@ paths:
 + `${RUN_ROOT_DIR}`: the root directory where SCREAM is built and run
 + `${SCREAM_SRC_DIR}`: the directory into which you've cloned the `scream` repo
 
+SCREAM's configuration and build system is based on [CMake](https://cmake.org/).
+CMake has been around a while and has gained a lot of traction in recent years,
+especially in the HPC community. It has good [reference documentation](https://cmake.org/cmake/help/latest/index.html),
+but it can be tricky to use if you've never encountered. Ask a SCREAM team
+member for help if you're stuck.
+
+If you see a `CMakeLists.txt` files or a file with a `.cmake` suffix, that's
+just part of the build system. You might also see files with `CTest` as part of
+their name. These files are related to [CTest](https://cmake.org/cmake/help/latest/manual/ctest.1.html),
+CMake's testing tool.
+
 ## 1. Start From a Trustworthy Commit
 
 First, make sure you've cloned the [SCREAM repo](https://github.com/E3SM-Project/scream)
