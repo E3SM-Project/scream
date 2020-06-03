@@ -2975,25 +2975,39 @@ end subroutine linear_interp
 ! For water below -80C simply assumed esw/esi = 2.
 ! des/dT below -80C computed as a finite difference of es
 
-real(rtype) function esatw_shoc(t)
+pure function esatw_shoc(temp) result(esatw)
    implicit none
-   real(rtype) t    ! temperature (K)
+
+   !intent-ins
+   real(rtype), intent(in) :: temp    ! temperature [K]
+
+   !return value
+   real(rtype) :: esatw
+
+   !local variables
+   real(rtype), parameter :: t0       = 273.16_rtype
+   real(rtype), parameter :: t_thresh = -80._rtype
+
    real(rtype) a0,a1,a2,a3,a4,a5,a6,a7,a8
-   data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
+   real(rtype) t_cels !temp in celsius
+
+
+   data a0, a1, a2, a3, a4, a5, a6, a7, a8 /&
         6.105851_rtype, 0.4440316_rtype, 0.1430341e-1_rtype, &
         0.2641412e-3_rtype, 0.2995057e-5_rtype, 0.2031998e-7_rtype, &
         0.6936113e-10_rtype, 0.2564861e-13_rtype,-0.3704404e-15_rtype/
-!         6.11239921, 0.443987641, 0.142986287e-1, &
-!       0.264847430e-3, 0.302950461e-5, 0.206739458e-7, &
-!       0.640689451e-10, -0.952447341e-13,-0.976195544e-15/
-   real(rtype) dt
-   dt = t-273.16_rtype
-   if(dt.gt.-80._rtype) then
-      esatw_shoc = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
+
+   t_cels = temp-t0 !convert temperature in celsius
+
+   if(t_cels.gt.t_thresh) then
+      esatw = a0 + t_cels*(a1+t_cels*(a2+t_cels*(a3+t_cels*(a4+t_cels*(a5+t_cels*(a6+t_cels*(a7+a8*t_cels)))))))
    else
-      esatw_shoc = 2._rtype*0.01_rtype*exp(9.550426_rtype - 5723.265_rtype/t + 3.53068_rtype*Log(t) - 0.00728332_rtype*t)
+      esatw = 2._rtype*0.01_rtype*exp(9.550426_rtype - 5723.265_rtype/temp + 3.53068_rtype*log(temp) - 0.00728332_rtype*temp)
    end if
-end
+
+   return esatw
+
+ end function esatw_shoc
 
 end module shoc
 
