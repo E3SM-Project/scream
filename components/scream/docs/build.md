@@ -1,4 +1,4 @@
-# Building and Testing Standalone SCREAM
+# Building and Testing SCREAM
 
 Follow these simple instructions to build and test SCREAM's standalone
 configuration for yourself. This document makes use of the following
@@ -24,7 +24,6 @@ This usually looks something like the following:
 ```
 mkdir -p $RUN_ROOT_DIR/test
 cmake \
-    -D CMAKE_INSTALL_PREFIX=${RUN_ROOT_DIR}/install \
     -D CMAKE_BUILD_TYPE=Debug \
     -D KOKKOS_ENABLE_DEBUG=ON \
     -D KOKKOS_ENABLE_AGGRESSIVE_VECTORIZATION=OFF \
@@ -33,7 +32,7 @@ cmake \
     -D KOKKOS_ENABLE_PROFILING=OFF \
     -D KOKKOS_ENABLE_DEPRECATED_CODE=OFF \
     -D KOKKOS_ENABLE_EXPLICIT_INSTANTIATION:BOOL=OFF \
-    ${SCREAM_SRC_DIR}
+    ${SCREAM_SRC_DIR}/components/scream
 ```
 
 Here, we've configured a `Debug` build to make it easier to find and fix errors.
@@ -85,7 +84,7 @@ ctest -R p3_regression
 implementations with our P3 Fortran reference implementation. If you're working
 on the C++/Kokkos implementation, you can invoke any new tests to the function
 `Baseline::run_and_cmp` in
-`${SCREAM_SRC_DIR}/scream/components/scream/p3/tests/p3_run_and_cmp.cpp`.
+`${SCREAM_SRC_DIR}/components/scream/p3/tests/p3_run_and_cmp.cpp`.
 
 If the reference Fortran implementation changes enough that a new baseline file
 is required, make sure to let other SCREAM team members know, in order to
