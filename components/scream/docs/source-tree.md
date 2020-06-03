@@ -39,7 +39,7 @@ Herein lіes the source code for SCREAM. Broadly, here's where things are:
 + `dynamics`: Here's where HOMME lives within SCREAM, along with code for
   interfacing with it using SCREAM's data structures.
 + `interface`: Glue code for embedding SCREAM within E3SM as an atmosphere
-  process.
+  component.
 + `physics`: Source code for physics-related atmospheric processes, including
   + `p3`: The C++/Kokkos implementation of P3 microphysics within SCREAM.
   + `shoc`: The C++/Kokkos implementation of SHOC macrophysics within SCREAM.
@@ -52,10 +52,8 @@ Each of these directories contains a `CMakeLists.txt` file for defining how
 things are build, and a `tests/` subdirectory that houses relevant
 unit and verification tests.
 
-You'll also see some files in the `src/` directory itself:
+You'll also see some other files in the `src/` directory itself:
 
-+ `CMakeLists.txt`: The build definition file that points CMake at the various
-  subdirectories in `src/`.
 + `scream_config.f.in`: A template for generating a Fortran include file with
   SCREAM configuration information.
 + `scream_config.h.in`: A template for generating a C++ header file with
