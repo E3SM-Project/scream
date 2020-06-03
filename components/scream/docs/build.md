@@ -1,0 +1,93 @@
+# Building and Testing Standalone SCREAM
+
+Follow these simple instructions to build and test SCREAM's standalone
+configuration for yourself. This document makes use of the following
+paths:
+
++ `${RUN_ROOT_DIR}`: the root directory where SCREAM is built and run
++ `${SCREAM_SRC_DIR}`: the directory into which you've cloned the `scream` repo
+
+## 1. Start From a Trustworthy Commit
+
+First, make sure you've cloned the [SCREAM repo](https://github.com/E3SM-Project/scream)
+to `SCREAM_SRC_DIR`. If you're running a branch that's not `master`, check out
+this branch with
+
+```
+git checkout <branch>
+```
+
+## 2. Configure Your SCREAM Build
+
+Create a test directory in `RUN_ROOT_DIR` and use CMake to configure your build.
+This usually looks something like the following:
+```
+mkdir -p $RUN_ROOT_DIR/test
+cmake \
+    -D CMAKE_INSTALL_PREFIX=${RUN_ROOT_DIR}/install \
+    -D CMAKE_BUILD_TYPE=Debug \
+    -D KOKKOS_ENABLE_DEBUG=ON \
+    -D KOKKOS_ENABLE_AGGRESSIVE_VECTORIZATION=OFF \
+    -D KOKKOS_ENABLE_SERIAL=ON \
+    -D KOKKOS_ENABLE_OPENMP=ON \
+    -D KOKKOS_ENABLE_PROFILING=OFF \
+    -D KOKKOS_ENABLE_DEPRECATED_CODE=OFF \
+    -D KOKKOS_ENABLE_EXPLICIT_INSTANTIATION:BOOL=OFF \
+    ${SCREAM_SRC_DIR}
+```
+
+Here, we've configured a `Debug` build to make it easier to find and fix errors.
+For performance testing, you should configure a `Release` build and make use of
+other options, depending on your architecture.
+
+## 3. Build SCREAM
+
+Now you can build SCREAM from that same directory:
+
+```
+make -j
+```
+
+## 4. Run SCREAM's Tests
+
+Before running the tests, generate a baseline file:
+
+```
+cd $RUN_ROOT_DIR/test
+make baseline
+```
+
+The tests will run, automatically using the baseline file, which is located in
+the CMake-configurable path `${SCREAM_TEST_DATA_DIR}`. By default, this path is
+set to `data/` within your build directory (which is `$RUN_ROOT_DIR/test`, in
+our case).
+
+To run all of SCREAM's tests, make sure you're in `RUN_ROOT_DIR/test` and type
+
+```
+ctest -VV
+```
+
+This runs everything and reports results in an extra-verbose (`-VV`) manner.
+
+You can also run subsets of the SCREAM tests. For example, to run only the
+P3 regression tests (again, from the `RUN_ROOT_DIR/test` directory), use
+
+```
+ctest -R p3_regression
+```
+
+# SCREAM Test Suites
+
+## The `p3_regression` Suite
+
+`p3_regression` uses a baseline file to compare any new or altered
+implementations with our P3 Fortran reference implementation. If you're working
+on the C++/Kokkos implementation, you can invoke any new tests to the function
+`Baseline::run_and_cmp` in
+`${SCREAM_SRC_DIR}/scream/components/scream/p3/tests/p3_run_and_cmp.cpp`.
+
+If the reference Fortran implementation changes enough that a new baseline file
+is required, make sure to let other SCREAM team members know, in order to
+minimize disruptions.
+
