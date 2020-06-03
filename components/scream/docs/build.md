@@ -19,10 +19,10 @@ git checkout <branch>
 
 ## 2. Configure Your SCREAM Build
 
-Create a test directory in `RUN_ROOT_DIR` and use CMake to configure your build.
+Change to your `RUN_ROOT_DIR` directory and use CMake to configure your build.
 This usually looks something like the following:
 ```
-mkdir -p $RUN_ROOT_DIR/test
+cd $RUN_ROOT_DIR
 cmake \
     -D CMAKE_BUILD_TYPE=Debug \
     -D KOKKOS_ENABLE_DEBUG=ON \
@@ -74,6 +74,18 @@ P3 regression tests (again, from the `RUN_ROOT_DIR/test` directory), use
 
 ```
 ctest -R p3_regression
+```
+
+You can see a list of available options by typing
+
+```
+ctest --print-labels
+```
+
+To see which tests are associated with a given label (e.g. `p3_regression`), use
+
+```
+ctest -L p3_regression -N
 ```
 
 # SCREAM Test Suites
