@@ -87,7 +87,7 @@ P3 regression tests (again, from the `RUN_ROOT_DIR/test` directory), use
 ctest -R p3_regression
 ```
 
-###
+### Grouping Tests with Labels
 
 We can create groupings of tests by using **labels**. For example, we have a
 `driver` label that runs tests for SCREAM's standalone driver. You can see a
