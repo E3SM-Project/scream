@@ -338,7 +338,7 @@ contains
   !==========================================================================================!
 
   SUBROUTINE p3_main_pre_main_loop(kts, kte, kbot, ktop, kdir, log_predictNc, dt, &
-       pres, pdel, dzq, npccn, exner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, xxlv, xxls, xlf, &
+       pres, pdel, dzq, ncnuc, exner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, xxlv, xxls, xlf, &
        t, rho, inv_rho, qvs, qvi, sup, supi, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, &
        qitot, nitot, qirim, birim, qc_incld, qr_incld, qitot_incld, qirim_incld, &
        nc_incld, nr_incld, nitot_incld, birim_incld, log_nucleationPossible, log_hydrometeorsPresent)
@@ -355,7 +355,7 @@ contains
     logical(btype), intent(in) :: log_predictNc
     real(rtype), intent(in) :: dt
 
-    real(rtype), intent(in), dimension(kts:kte) :: pres, pdel, dzq, npccn, exner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, xxlv, xxls, xlf
+    real(rtype), intent(in), dimension(kts:kte) :: pres, pdel, dzq, ncnuc, exner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, xxlv, xxls, xlf
 
     real(rtype), intent(inout), dimension(kts:kte) :: t, rho, inv_rho, qvs, qvi, sup, supi, rhofacr, rhofaci, &
          acn, qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, qc_incld, qr_incld, qitot_incld, &
@@ -419,6 +419,13 @@ contains
           nc(k) = 0._rtype
        else
           log_hydrometeorsPresent = .true.    ! updated further down
+               
+          !Droplet activation OR specify cloud droplet number (for 1-moment version)
+          if (.not.(log_predictNc)) then
+            nc(k) = nccnst*inv_rho(k)
+          else
+            nc(k) = max(nc(k) + ncnuc(k) * dt,0.0_rtype)
+          endif
        endif
 
        if (qr(k).lt.qsmall .or. (qr(k).lt.1.e-8_rtype .and. sup(k).lt.-0.1_rtype)) then
@@ -633,20 +640,18 @@ contains
          tmparr1,inv_exner
 
     real(rtype)    :: mu,dv,sc,dqsdt,ab,kap,epsr,epsc,epsi_tot, &
-         dum,dum1,    &
-         dum3,dum4,dum5,dum6, &
-         dqsidt,abi,rhop,tmp1,  &
-         tmp2,odt,     &
-         deltaD_init,    &
+         dum,dum1,               &
+         dum3,dum4,dum5,dum6,    &
+         dqsidt,abi,rhop,tmp1,   &
+         tmp2,odt,               &
+         deltaD_init,            &
          timeScaleFactor, vtrmi1
-
 
     integer :: dumi,i,k,dumj,dumii,dumjj,dumzz,      &
          ktop,kbot,kdir
 
     logical(btype) :: log_nucleationPossible,log_hydrometeorsPresent,     &
          log_exitlevel
-
 
     ! quantities related to process rates/parameters, interpolated from lookup tables:
     ! For a more in depth reference to where these came from consult the file
@@ -671,6 +676,9 @@ contains
     !--These will be added as namelist parameters in the future
     logical(btype), parameter :: debug_ON     = .true.  !.true. to switch on debugging checks/traps throughout code  TODO: Turn this back off as default once the tlay error is found.
     logical(btype), parameter :: debug_ABORT  = .false.  !.true. will result in forced abort in s/r 'check_values'
+
+    ! Holding state-vars for tendencies calculation
+    real(rtype),dimension(its:ite,kts:kte) :: qc_old,nc_old,qr_old,nr_old,qitot_old,nitot_old,qv_old,th_old 
 
     !-----------------------------------------------------------------------------------!
     !  End of variables/parameters declarations
@@ -731,11 +739,21 @@ contains
     ! AaronDonahue added this load of latent heat to be consistent with E3SM, since the inconsistentcy was causing water conservation errors.
     call get_latent_heat(its,ite,kts,kte,xxlv,xxls,xlf)
     !==
+
+    ! initialize microphysics processes tendency output
+    qc_old = qc         ! Liq. microphysics tendency, initialize
+    nc_old = nc         ! Liq. # microphysics tendency, initialize
+    qr_old = qr         ! Rain microphysics tendency, initialize
+    nr_old = nr         ! Rain # microphysics tendency, initialize
+    qitot_old = qitot   ! Ice  microphysics tendency, initialize
+    nitot_old = nitot   ! Ice  # microphysics tendency, initialize
+    qv_old = qv         ! Vapor  microphysics tendency, initialize
+    th_old = th         ! Pot. Temp. microphysics tendency, initialize
+
     !-----------------------------------------------------------------------------------!
     i_loop_main: do i = its,ite  ! main i-loop (around the entire scheme)
 
 !      if (debug_ON) call check_values(qv,T,i,it,debug_ABORT,100,col_location)
-
        call p3_main_pre_main_loop(kts, kte, kbot, ktop, kdir, log_predictNc, dt, &
             pres(i,:), pdel(i,:), dzq(i,:), npccn(i,:), exner(i,:), inv_exner(i,:), inv_lcldm(i,:), inv_icldm(i,:), inv_rcldm(i,:), xxlv(i,:), xxls(i,:), xlf(i,:), &
             t(i,:), rho(i,:), inv_rho(i,:), qvs(i,:), qvi(i,:), sup(i,:), supi(i,:), rhofacr(i,:), rhofaci(i,:), acn(i,:), qv(i,:), th(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), &
@@ -762,15 +780,16 @@ contains
 
           if (qitot(i,k).ge.qsmall) log_exitlevel = .false.
           !enddo
-          if (log_exitlevel .and.                                                           &
-               ((t(i,k).lt.zerodegc .and. supi(i,k).lt.-0.05_rtype) .or.                              &
-               (t(i,k).ge.zerodegc .and. sup(i,k) .lt.-0.05_rtype))) goto 555   !i.e. skip all process rates
+          if (log_exitlevel .and. &
+               ((t(i,k).lt.zerodegc .and. supi(i,k).lt.-0.05_rtype) .or. &
+               (t(i,k).ge.zerodegc .and. sup(i,k) .lt.-0.05_rtype))) goto 555 !i.e. skip all process rates
+
 
           ! All microphysics tendencies will be computed as IN-CLOUD, they will be mapped back to cell-average later.
 
           ! initialize warm-phase process rates
           qcacc   = 0._rtype;     qrevp   = 0._rtype;     qcaut   = 0._rtype;
-          ncacc   = 0._rtype;     ncnuc   = 0._rtype;     ncslf   = 0._rtype
+          ncacc   = 0._rtype;                             ncslf   = 0._rtype
           ncautc  = 0._rtype;     qcnuc   = 0._rtype;     nrslf   = 0._rtype
           nrevp   = 0._rtype;     ncautr  = 0._rtype
 
@@ -783,16 +802,6 @@ contains
           ncheti  = 0._rtype;     nrcol   = 0._rtype;     nislf   = 0._rtype
           ninuc   = 0._rtype;     qidep   = 0._rtype;     qiberg  = 0._rtype
           nrheti  = 0._rtype;     nisub   = 0._rtype;     qwgrth  = 0._rtype
-
-          ! initialize microphysics processes tendency output
-          p3_tend_out(i,k,42) = qc(i,k)    ! Liq. microphysics tendency, initialize
-          p3_tend_out(i,k,43) = nc(i,k)    ! Liq. # microphysics tendency, initialize
-          p3_tend_out(i,k,44) = qr(i,k)    ! Rain microphysics tendency, initialize
-          p3_tend_out(i,k,45) = nr(i,k)    ! Rain # microphysics tendency, initialize
-          p3_tend_out(i,k,46) = qitot(i,k) ! Ice  microphysics tendency, initialize
-          p3_tend_out(i,k,47) = nitot(i,k) ! Ice  # microphysics tendency, initialize
-          p3_tend_out(i,k,48) = qv(i,k)    ! Vapor  microphysics tendency, initialize
-          p3_tend_out(i,k,49) = th(i,k)    ! Pot. Temp. microphysics tendency, initialize
 
           log_wetgrowth = .false.
 
@@ -963,9 +972,7 @@ contains
 
           !.................................................................
           ! droplet activation
-          call droplet_activation(t(i,k),pres(i,k),qv(i,k),qc(i,k),inv_rho(i,k),&
-             sup(i,k),xxlv(i,k),npccn(i,k),log_predictNc,odt,&
-             qcnuc,ncnuc)
+          ! The macrophysics handles the activation to cloud drops number and mass (see 'ncnuc')
 
           !................
           ! cloud water autoconversion
@@ -993,7 +1000,7 @@ contains
           ! Here we map the microphysics tendency rates back to CELL-AVERAGE quantities for updating
           ! cell-average quantities.
           call back_to_cell_average(lcldm(i,k), rcldm(i,k), icldm(i,k), qcacc, qrevp, qcaut,&
-            ncacc, ncslf, ncautc, nrslf, nrevp, ncautr, qcnuc, ncnuc, qisub, nrshdr, qcheti,&
+            ncacc, ncslf, ncautc, nrslf, nrevp, ncautr, qcnuc, qisub, nrshdr, qcheti,&
             qrcol, qcshd, qimlt, qccol, qrheti, nimlt, nccol, ncshdc, ncheti, nrcol, nislf,&
             qidep, nrheti, nisub, qinuc, ninuc, qiberg)
 
@@ -1049,9 +1056,9 @@ contains
             th(i,k), qv(i,k), qitot(i,k), nitot(i,k), qirim(i,k), birim(i,k), qc(i,k), nc(i,k), qr(i,k), nr(i,k) )
 
           !-- warm-phase only processes:
-          call update_prognostic_liquid(qcacc, ncacc, qcaut, ncautc, qcnuc, ncautr, ncslf, &
-            qrevp, nrevp, nrslf,  &
-            log_predictNc, inv_rho(i,k), exner(i,k), xxlv(i,k), dt, &
+          call update_prognostic_liquid(qcacc, ncacc, qcaut, ncautc, qcnuc, ncautr, ncslf,  &
+            qrevp, nrevp, nrslf,                                                            &
+            log_predictNc, inv_rho(i,k), exner(i,k), xxlv(i,k), dt,                         &
             th(i,k), qv(i,k), qc(i,k), nc(i,k), qr(i,k), nr(i,k))
 
           !==
@@ -1104,7 +1111,7 @@ contains
           p3_tend_out(i,k, 5) = ncautc  ! change in cloud droplet number from autoconversion
           p3_tend_out(i,k, 6) = ncslf   ! change in cloud droplet number from self-collection  (Not in paper?)
           p3_tend_out(i,k, 7) = nrslf   ! change in rain number from self-collection  (Not in paper?)
-          p3_tend_out(i,k, 8) = ncnuc   ! change in cloud droplet number from activation of CCN
+          p3_tend_out(i,k, 8) = ncnuc(i,k)   ! change in cloud droplet number from activation of CCN
           p3_tend_out(i,k,10) = qcnuc   ! activation of cloud droplets from CCN
           p3_tend_out(i,k,11) = qrevp   ! rain evaporation
           p3_tend_out(i,k,13) = nrevp   ! change in rain number from evaporation
@@ -1132,14 +1139,14 @@ contains
           p3_tend_out(i,k,34) = 0._rtype  ! used to be qcmul, but that has been removed.  Kept at 0.0 as placeholder.
           p3_tend_out(i,k,35) = ncshdc    ! source for rain number due to cloud water/ice collision above freezing  and shedding (combined with NRSHD in the paper)
           ! measure microphysics processes tendency output
-          p3_tend_out(i,k,42) = ( qc(i,k)    - p3_tend_out(i,k,42) ) * odt ! Liq. microphysics tendency, measure
-          p3_tend_out(i,k,43) = ( nc(i,k)    - p3_tend_out(i,k,43) ) * odt ! Liq. # microphysics tendency, measure
-          p3_tend_out(i,k,44) = ( qr(i,k)    - p3_tend_out(i,k,44) ) * odt ! Rain microphysics tendency, measure
-          p3_tend_out(i,k,45) = ( nr(i,k)    - p3_tend_out(i,k,45) ) * odt ! Rain # microphysics tendency, measure
-          p3_tend_out(i,k,46) = ( qitot(i,k) - p3_tend_out(i,k,46) ) * odt ! Ice  microphysics tendency, measure
-          p3_tend_out(i,k,47) = ( nitot(i,k) - p3_tend_out(i,k,47) ) * odt ! Ice  # microphysics tendency, measure
-          p3_tend_out(i,k,48) = ( qv(i,k)    - p3_tend_out(i,k,48) ) * odt ! Vapor  microphysics tendency, measure
-          p3_tend_out(i,k,49) = ( th(i,k)    - p3_tend_out(i,k,49) ) * odt ! Pot. Temp. microphysics tendency, measure
+          p3_tend_out(i,k,42) = ( qc(i,k)    - qc_old(i,k) ) * odt ! Liq. microphysics tendency, measure
+          p3_tend_out(i,k,43) = ( nc(i,k)    - nc_old(i,k) ) * odt ! Liq. # microphysics tendency, measure
+          p3_tend_out(i,k,44) = ( qr(i,k)    - qr_old(i,k) ) * odt ! Rain microphysics tendency, measure
+          p3_tend_out(i,k,45) = ( nr(i,k)    - nr_old(i,k) ) * odt ! Rain # microphysics tendency, measure
+          p3_tend_out(i,k,46) = ( qitot(i,k) - qitot_old(i,k) ) * odt ! Ice  microphysics tendency, measure
+          p3_tend_out(i,k,47) = ( nitot(i,k) - nitot_old(i,k) ) * odt ! Ice  # microphysics tendency, measure
+          p3_tend_out(i,k,48) = ( qv(i,k)    - qv_old(i,k) ) * odt ! Vapor  microphysics tendency, measure
+          p3_tend_out(i,k,49) = ( th(i,k)    - th_old(i,k) ) * odt ! Pot. Temp. microphysics tendency, measure
           ! Outputs associated with aerocom comparison:
           pratot(i,k) = qcacc ! cloud drop accretion by rain
           prctot(i,k) = qcaut ! cloud drop autoconversion to rain
@@ -2791,66 +2798,6 @@ subroutine ice_nucleation(t,inv_rho,nitot,naai,supi,odt,log_predictNc,    &
 
 end subroutine
 
-
-subroutine droplet_activation(t,pres,qv,qc,inv_rho,sup,xxlv,npccn,log_predictNc,odt,    &
-   qcnuc,ncnuc)
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: droplet_activation_f
-#endif
-
-   implicit none
-
-   real(rtype), intent(in) :: t
-   real(rtype), intent(in) :: pres
-   real(rtype), intent(in) :: qv
-   real(rtype), intent(in) :: qc
-   real(rtype), intent(in) :: inv_rho
-   real(rtype), intent(in) :: sup
-   real(rtype), intent(in) :: xxlv
-   real(rtype), intent(in) :: npccn
-
-   logical(btype), intent(in) :: log_predictNc
-   real(rtype), intent(in)  :: odt
-
-   real(rtype), intent(inout) :: qcnuc
-   real(rtype), intent(inout) :: ncnuc
-
-   real(rtype) :: dum, dumqvs, dqsdt, ab
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call droplet_activation_f(t,pres,qv,qc,inv_rho,sup,xxlv,npccn, log_predictNc,odt, &
-           qcnuc,ncnuc)
-      return
-   endif
-#endif
-
-   !.................................................................
-   ! droplet activation
-
-   if (log_predictNc) then
-      ! for predicted Nc, use activation predicted by aerosol scheme
-      ! note that this is also applied at the first time step
-      if (sup.gt.1.e-6) then
-         ncnuc = npccn
-         !TODO Limit qcnuc so that conditions never become sub-saturated
-         qcnuc = ncnuc*cons7
-      endif
-   else if (sup.gt.1.e-6) then
-      ! for specified Nc, make sure droplets are present if conditions are supersaturated
-      ! this is not applied at the first time step, since saturation adjustment is applied at the first step
-      dum   = nccnst*inv_rho*cons7-qc
-      dum   = max(0._rtype,dum)
-      dumqvs = qv_sat(t,pres,0)
-      dqsdt = xxlv*dumqvs/(rv*t*t)
-      ab    = 1._rtype + dqsdt*xxlv*inv_cp
-      dum   = min(dum,(qv-dumqvs)/ab)  ! limit overdepletion of supersaturation
-      qcnuc = dum*odt
-   endif
-
-end subroutine droplet_activation
-
 subroutine droplet_self_collection(rho,inv_rho,qc_incld,mu_c,nu,ncautc,    &
    ncslf)
 
@@ -3060,7 +3007,7 @@ end subroutine cloud_water_autoconversion
 
 subroutine back_to_cell_average(lcldm,rcldm,icldm,    &
    qcacc,qrevp,qcaut,&
-   ncacc,ncslf,ncautc,nrslf,nrevp,ncautr,qcnuc,ncnuc,qisub,nrshdr,qcheti,&
+   ncacc,ncslf,ncautc,nrslf,nrevp,ncautr,qcnuc,qisub,nrshdr,qcheti,&
    qrcol,qcshd,qimlt,qccol,qrheti,nimlt,nccol,ncshdc,ncheti,nrcol,nislf,&
    qidep,nrheti,nisub,qinuc,ninuc,qiberg)
 
@@ -3079,7 +3026,7 @@ subroutine back_to_cell_average(lcldm,rcldm,icldm,    &
    real(rtype), intent(in) :: icldm
 
    real(rtype), intent(inout) :: qcacc, qrevp, qcaut, ncacc, ncslf, ncautc, nrslf, nrevp, ncautr
-   real(rtype), intent(inout) :: qcnuc, ncnuc
+   real(rtype), intent(inout) :: qcnuc
    real(rtype), intent(inout) :: qisub, nrshdr, qcheti, qrcol, qcshd, qimlt, qccol, qrheti, nimlt, nccol, ncshdc, ncheti, nrcol, nislf, qidep
    real(rtype), intent(inout) :: nrheti, nisub, qinuc, ninuc, qiberg
 
@@ -3115,7 +3062,6 @@ subroutine back_to_cell_average(lcldm,rcldm,icldm,    &
    ncautr  = ncautr*lr_cldm    ! Autoconversion of rain drops within rain/liq cloud
      ! AaronDonahue: These variables are related to aerosol activation and their usage will be changed in a later PR.
    qcnuc   = qcnuc*lcldm       ! Impact on liq. from nucleation
-   ncnuc   = ncnuc*lcldm       ! Number change due to aerosol activation
 
    ! map ice-phase  process rates to cell-avg
    qisub   = qisub*icldm       ! Sublimation of ice in ice cloud
@@ -3430,8 +3376,8 @@ subroutine update_prognostic_ice(qcheti,qccol,qcshd,    &
 end subroutine update_prognostic_ice
 
 subroutine update_prognostic_liquid(qcacc,ncacc,qcaut,ncautc,qcnuc,ncautr,ncslf,    &
-    qrevp,nrevp,nrslf,    &
-    log_predictNc,inv_rho,exner,xxlv,dt,    &
+    qrevp,nrevp,nrslf,                                                              &
+    log_predictNc,inv_rho,exner,xxlv,dt,                                      &
     th,qv,qc,nc,qr,nr)
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
