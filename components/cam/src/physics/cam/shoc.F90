@@ -968,9 +968,9 @@ subroutine diag_second_shoc_moments(&
   real(rtype), intent(in) :: wthl_sfc(shcol)
   ! Surface latent heat flux [kg/kg m/s]
   real(rtype), intent(in) :: wqw_sfc(shcol)
-  ! Surface momentum flux (u-direction) [m3/s3]
+  ! Surface momentum flux (u-direction) [m2/s2]
   real(rtype), intent(in) :: uw_sfc(shcol)
-  ! Surface momentum flux (v-direction) [m3/s3]
+  ! Surface momentum flux (v-direction) [m2/s2]
   real(rtype), intent(in) :: vw_sfc(shcol)
   ! Tracer flux [varies m/s]
   real(rtype), intent(in) :: wtracer_sfc(shcol,num_tracer)  
@@ -1001,46 +1001,46 @@ subroutine diag_second_shoc_moments(&
   real(rtype) :: wstar(shcol)
   real(rtype) :: ustar2(shcol) 
 
-    ! Calculate surface properties needed for lower 
-    !  boundary conditions
-    call diag_second_moments_srf(&
-         shcol,nlevi, &                         ! Input
-         wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &   ! Input
-         ustar2,wstar)                          ! Output
+  ! Calculate surface properties needed for lower 
+  !  boundary conditions
+  call diag_second_moments_srf(&
+     shcol,nlevi, &                         ! Input
+     wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &   ! Input
+     ustar2,wstar)                          ! Output
 
-    ! Diagnose the second order moments flux, 
-    !  for the lower boundary 
-    call diag_second_moments_lbycond(&
-         shcol,nlevi, num_tracer,&              ! Input
-         wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &   ! Input
-         wtracer_sfc,ustar2,wstar,&             ! Input
-         wthl_sec,wqw_sec,&                     ! Output
-         uw_sec, vw_sec, wtke_sec, &            ! Output
-         thl_sec, qw_sec, qwthl_sec, &          ! Output
-         wtracer_sec)                           ! Output
+  ! Diagnose the second order moments flux, 
+  !  for the lower boundary 
+  call diag_second_moments_lbycond(&
+     shcol,nlevi, num_tracer,&              ! Input
+     wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &   ! Input
+     wtracer_sfc,ustar2,wstar,&             ! Input
+     wthl_sec,wqw_sec,&                     ! Output
+     uw_sec, vw_sec, wtke_sec, &            ! Output
+     thl_sec, qw_sec, qwthl_sec, &          ! Output
+     wtracer_sec)                           ! Output
 
-    ! Diagnose the second order moments, 
-    !  for points away from boundaries.  this is 
-    !  the main computation for the second moments
-    call diag_second_moments(&
-       shcol,nlev,nlevi, &                    ! Input
-       num_tracer,thetal,qw, &                ! Input
-       u_wind,v_wind,tracer,tke, &            ! Input
-       isotropy,tkh,tk,&                      ! Input
-       dz_zi,zt_grid,zi_grid,shoc_mix, &      ! Input
-       thl_sec, qw_sec,wthl_sec,wqw_sec,&     ! Input/Output
-       qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Input/Output
-       wtracer_sec,&                          ! Input/Output
-       w_sec)                                 ! Output
+  ! Diagnose the second order moments, 
+  !  for points away from boundaries.  this is 
+  !  the main computation for the second moments
+  call diag_second_moments(&
+     shcol,nlev,nlevi, &                    ! Input
+     num_tracer,thetal,qw, &                ! Input
+     u_wind,v_wind,tracer,tke, &            ! Input
+     isotropy,tkh,tk,&                      ! Input
+     dz_zi,zt_grid,zi_grid,shoc_mix, &      ! Input
+     thl_sec, qw_sec,wthl_sec,wqw_sec,&     ! Input/Output
+     qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Input/Output
+     wtracer_sec,&                          ! Input/Output
+     w_sec)                                 ! Output
 
-    ! Diagnose the second order moments,
-    !  calculate the upper boundary conditions
-    call diag_second_moments_ubycond(&
-       shcol,nlevi,num_tracer, &              ! Input
-       thl_sec, qw_sec,&                      ! Input/Output
-       wthl_sec,wqw_sec,&                     ! Input/Output
-       qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Input/Output
-       wtracer_sec)                           ! Input/Output
+  ! Diagnose the second order moments,
+  !  calculate the upper boundary conditions
+  call diag_second_moments_ubycond(&
+     shcol,nlevi,num_tracer, &              ! Input
+     thl_sec, qw_sec,&                      ! Input/Output
+     wthl_sec,wqw_sec,&                     ! Input/Output
+     qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Input/Output
+     wtracer_sec)                           ! Input/Output
  
   return
 end subroutine diag_second_shoc_moments
@@ -1071,9 +1071,9 @@ subroutine diag_second_moments_srf(&
   real(rtype), intent(in) :: wthl_sfc(shcol)
   ! Surface latent heat flux [kg/kg m/s]
   real(rtype), intent(in) :: wqw_sfc(shcol)
-  ! Surface momentum flux (u-direction) [m3/s3]
+  ! Surface momentum flux (u-direction) [m2/s2]
   real(rtype), intent(in) :: uw_sfc(shcol)
-  ! Surface momentum flux (v-direction) [m3/s3]
+  ! Surface momentum flux (v-direction) [m2/s2]
   real(rtype), intent(in) :: vw_sfc(shcol)
 
 ! OUTPUT VARIABLES
@@ -1139,9 +1139,9 @@ subroutine diag_second_moments_lbycond(&
   real(rtype), intent(in) :: wthl_sfc(shcol)
   ! Surface latent heat flux [kg/kg m/s]
   real(rtype), intent(in) :: wqw_sfc(shcol)
-  ! Surface momentum flux (u-direction) [m3/s3]
+  ! Surface momentum flux (u-direction) [m2/s2]
   real(rtype), intent(in) :: uw_sfc(shcol)
-  ! Surface momentum flux (v-direction) [m3/s3]
+  ! Surface momentum flux (v-direction) [m2/s2]
   real(rtype), intent(in) :: vw_sfc(shcol)
   ! Tracer flux [varies m/s]
   real(rtype), intent(in) :: wtracer_sfc(shcol,num_tracer)
@@ -1189,7 +1189,7 @@ subroutine diag_second_moments_lbycond(&
     thl_sec(i,nlevi) = 0.4_rtype * a_const * (wthl_sfc(i)/uf)**2
     qw_sec(i,nlevi) = 0.4_rtype * a_const * (wqw_sfc(i)/uf)**2
     qwthl_sec(i,nlevi) = 0.2_rtype * a_const * (wthl_sfc(i)/uf) * &
-                         (wqw_sfc(i)/uf)  
+                         (wqw_sfc(i)/uf)
 
     ! Vertical fluxes of heat and moisture, simply
     !  use the surface fluxes given by host model
@@ -1306,19 +1306,19 @@ subroutine diag_second_moments(&
   call calc_shoc_varorcovar(&
          shcol,nlev,nlevi,thl2tune,&              ! Input
          isotropy_zi,tkh_zi,dz_zi,thetal,thetal,& ! Input
-         thl_sec)                                 ! Ouput
+         thl_sec)                                 ! Output
 
   ! Calculate the moisture variance	 
   call calc_shoc_varorcovar(&
          shcol,nlev,nlevi,qw2tune,&               ! Input
          isotropy_zi,tkh_zi,dz_zi,qw,qw,&         ! Input
-         qw_sec)                                  ! Ouput	 
+         qw_sec)                                  ! Output	 
 
   ! Calculate the temperature and moisture covariance
   call calc_shoc_varorcovar(&
          shcol,nlev,nlevi,qwthl2tune,&            ! Input
          isotropy_zi,tkh_zi,dz_zi,thetal,qw,&     ! Input
-         qwthl_sec)                               ! Ouput
+         qwthl_sec)                               ! Output
   
   ! Calculate vertical flux for heat
   call calc_shoc_vertflux(&                       
@@ -1337,13 +1337,13 @@ subroutine diag_second_moments(&
 	 
   ! Calculate vertical flux for momentum (zonal wind)
   call calc_shoc_vertflux(&                       
-         shcol,nlev,nlevi,tk_zi,dz_zi,u_wind,&   ! Input
-         uw_sec)                                 ! Output
+         shcol,nlev,nlevi,tk_zi,dz_zi,u_wind,&    ! Input
+         uw_sec)                                  ! Output
 	 
   ! Calculate vertical flux for momentum (meridional wind)
   call calc_shoc_vertflux(&                       
-         shcol,nlev,nlevi,tk_zi,dz_zi,v_wind,&   ! Input
-         vw_sec)                                 ! Output
+         shcol,nlev,nlevi,tk_zi,dz_zi,v_wind,&    ! Input
+         vw_sec)                                  ! Output
 	 
   ! Calculate vertical flux for tracers
   do p=1,num_tracer
@@ -1358,7 +1358,7 @@ end subroutine diag_second_moments
 subroutine calc_shoc_varorcovar(&
          shcol,nlev,nlevi,tunefac,&                ! Input
          isotropy_zi,tkh_zi,dz_zi,invar1,invar2,&  ! Input
-         varorcovar)                               ! Ouput
+         varorcovar)                               ! Output
 
   ! Compute either the variance or covariance
   !  (depending on if invar1 is the same as invar2)
@@ -1413,7 +1413,7 @@ end subroutine calc_shoc_varorcovar
 
 subroutine calc_shoc_vertflux(&
          shcol,nlev,nlevi,tkh_zi,dz_zi,invar,&  ! Input
-         vertflux)                              ! Ouput
+         vertflux)                              ! Output
 
   ! Compute either the vertical flux via
   !  downgradient diffusion for a given set of 
