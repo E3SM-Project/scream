@@ -400,11 +400,6 @@ contains
        dum        = 1.496e-6_rtype * bfb_pow(t(k), 1.5_rtype) / (t(k)+120._rtype)  ! this is mu
        acn(k)     = g*rhow/(18._rtype*dum)  ! 'a' parameter for droplet fallspeed (Stokes' law)
 
-       !specify cloud droplet number (for 1-moment version)
-       if (.not.(log_predictNc)) then
-          nc(k) = nccnst*inv_rho(k)
-       endif
-
        if ((t(k).lt.zerodegc .and. supi(k).ge.-0.05_rtype)) log_nucleationPossible = .true.
 
        if (qc(k).lt.qsmall) then
