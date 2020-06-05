@@ -1,8 +1,9 @@
-# Building and Testing SCREAM
+# Building and Testing SCREAM Unit Tests
 
 Follow these simple instructions to build and test SCREAM's standalone
-configuration for yourself. This document makes use of the following
-paths:
+configuration for yourself. Note that similar documentation is available on confluence (for E3SM team members) 
+at https://acme-climate.atlassian.net/wiki/spaces/NGDNA/pages/1264386127/Running+SCREAM+Tests. 
+This document makes use of the following paths:
 
 + `${RUN_ROOT_DIR}`: the root directory where SCREAM is built and run
 + `${SCREAM_SRC_DIR}`: the directory into which you've cloned the `scream` repo
