@@ -1359,6 +1359,34 @@ contains
                   aer_asm_bnd_sw = 0
                end if
 
+               ! Check optical properties and clip if they go out of range
+               call t_startf('rrtmgp_check_optics_sw')
+               call check_range( &
+                  cld_tau_gpt_sw(1:ncol,1:nlev_rad,1:nswgpts), 0._r8, huge(cld_tau_gpw_sw), &
+                  trim(subroutine_name) // ' cld_tau_gpt_sw', lat, lon, clip_values=.true. &
+               )
+               call check_range( &
+                  cld_ssa_gpt_sw(1:ncol,1:nlev_rad,1:nswgpts), 0._r8, 1._r8, &
+                  trim(subroutine_name) // ' cld_ssa_gpt_sw', lat, lon, clip_values=.true. &
+               )
+               call check_range( &
+                  cld_asm_gpt_sw(1:ncol,1:nlev_rad,1:nswgpts),-1._r8, 1._r8, &
+                  trim(subroutine_name) // ' cld_asm_gpt_sw', lat, lon, clip_values=.true. &
+               )
+               call check_range( &
+                  aer_tau_bnd_sw(1:ncol,1:nlev_rad,1:nswbands), 0._r8, huge(aer_tau_gpw_sw), &
+                  trim(subroutine_name) // ' aer_tau_bnd_sw', lat, lon, clip_values=.true. &
+               )
+               call check_range( &
+                  aer_ssa_bnd_sw(1:ncol,1:nlev_rad,1:nswbands), 0._r8, 1._r8, &
+                  trim(subroutine_name) // ' aer_ssa_bnd_sw', lat, lon, clip_values=.true. &
+               )
+               call check_range( &
+                  aer_asm_bnd_sw(1:ncol,1:nlev_rad,1:nswbands),-1._r8, 1._r8, &
+                  trim(subroutine_name) // ' aer_asm_bnd_sw', lat, lon, clip_values=.true. &
+               )
+               call t_stopf('rrtmgp_check_optics_sw')
+
                ! Call the shortwave radiation driver
                call radiation_driver_sw( &
                   ncol, active_gases, gas_vmr, &
@@ -1431,6 +1459,17 @@ contains
                else
                   aer_tau_bnd_lw = 0
                end if
+               ! Check optical properties and clip if they go out of range
+               call t_startf('rrtmgp_check_optics_lw')
+               call check_range( &
+                  cld_tau_gpt_lw(1:ncol,1:nlev_rad,1:nlwgpts), 0._r8, huge(cld_tau_gpw_lw), &
+                  trim(subroutine_name) // ' cld_tau_gpt_lw', lat, lon, clip_values=.true. &
+               )
+               call check_range( &
+                  aer_tau_bnd_lw(1:ncol,1:nlev_rad,1:nlwbands), 0._r8, huge(aer_tau_gpw_lw), &
+                  trim(subroutine_name) // ' aer_tau_bnd_lw', lat, lon, clip_values=.true. &
+               )
+               call t_stopf('rrtmgp_check_optics_lw')
                ! Call the longwave radiation driver to calculate fluxes and heating rates
                call radiation_driver_lw( &
                   ncol, active_gases, gas_vmr, &
