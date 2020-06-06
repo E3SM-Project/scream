@@ -467,8 +467,8 @@ contains
        t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, qitot, nitot, &
        qirim, birim, xxlv, xxls, xlf, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld, nr_incld, &
        nitot_incld, birim_incld, mu_c, nu, lamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, cmeiout, prain, &
-       nevapr, prer_evap, vap_cld_exchange, vap_liq_exchange, vap_ice_exchange, liq_ice_exchange, pratot, &
-       prctot, p3_tend_out, log_hydrometeorsPresent, qc_old, nc_old, qr_old, nr_old, qitot_old, nitot_old, qv_old, th_old)
+       nevapr, prer_evap, vap_liq_exchange, vap_ice_exchange, liq_ice_exchange, pratot, &
+       prctot, p3_tend_out, log_hydrometeorsPresent)
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
     !use micro_p3_iso_f, only: p3_main_main_loop_f
@@ -483,13 +483,12 @@ contains
     real(rtype), intent(in) :: dt, odt
 
     real(rtype), intent(in), dimension(kts:kte) :: pres, pdel, dzq, ncnuc, exner, inv_exner, inv_lcldm, inv_icldm,   &
-         inv_rcldm, naai, qc_relvar, icldm, lcldm, rcldm, qc_old, nc_old, qr_old, nr_old, qitot_old, nitot_old,      & 
-         qv_old, th_old
+         inv_rcldm, naai, qc_relvar, icldm, lcldm, rcldm
 
-    real(rtype), intent(inout), dimension(kts:kte) :: t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn,   &
+    real(rtype), intent(inout), dimension(kts:kte) :: t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn,        &
          qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, xlf, qc_incld, qr_incld,                    &
          qitot_incld, qirim_incld, nc_incld, nr_incld, nitot_incld, birim_incld, mu_c, nu, lamc, cdist, cdist1,      &
-         cdistr, mu_r, lamr, logn0r, cmeiout, prain, nevapr, prer_evap, vap_cld_exchange, vap_liq_exchange,          &
+         cdistr, mu_r, lamr, logn0r, cmeiout, prain, nevapr, prer_evap, vap_liq_exchange,                            &
          vap_ice_exchange, liq_ice_exchange, pratot, prctot
 
     real(rtype), intent(inout), dimension(kts:kte,49) :: p3_tend_out ! micro physics tendencies
@@ -909,7 +908,6 @@ contains
       p3_tend_out(k, 5) = ncautc    ! change in cloud droplet number from autoconversion
       p3_tend_out(k, 6) = ncslf     ! change in cloud droplet number from self-collection  (Not in paper?)
       p3_tend_out(k, 7) = nrslf     ! change in rain number from self-collection  (Not in paper?)
-      p3_tend_out(k, 8) = ncnuc(k)  ! change in cloud droplet number from activation of CCN
       p3_tend_out(k,11) = qrevp     ! rain evaporation
       p3_tend_out(k,13) = nrevp     ! change in rain number from evaporation
       p3_tend_out(k,14) = ncautr    ! change in rain number from autoconversion of cloud water
@@ -935,15 +933,6 @@ contains
       p3_tend_out(k,33) = qcshd     ! source for rain mass due to cloud water/ice collision above freezing and shedding or wet growth and shedding
       p3_tend_out(k,34) = 0._rtype  ! used to be qcmul, but that has been removed.  Kept at 0.0 as placeholder.
       p3_tend_out(k,35) = ncshdc    ! source for rain number due to cloud water/ice collision above freezing  and shedding (combined with NRSHD in the paper)
-      ! measure microphysics processes tendency output
-      p3_tend_out(k,42) = ( qc(k)    - qc_old(k) ) * odt    ! Liq. microphysics tendency, measure
-      p3_tend_out(k,43) = ( nc(k)    - nc_old(k) ) * odt    ! Liq. # microphysics tendency, measure
-      p3_tend_out(k,44) = ( qr(k)    - qr_old(k) ) * odt    ! Rain microphysics tendency, measure
-      p3_tend_out(k,45) = ( nr(k)    - nr_old(k) ) * odt    ! Rain # microphysics tendency, measure
-      p3_tend_out(k,46) = ( qitot(k) - qitot_old(k) ) * odt ! Ice  microphysics tendency, measure
-      p3_tend_out(k,47) = ( nitot(k) - nitot_old(k) ) * odt ! Ice  # microphysics tendency, measure
-      p3_tend_out(k,48) = ( qv(k)    - qv_old(k) ) * odt    ! Vapor  microphysics tendency, measure
-      p3_tend_out(k,49) = ( th(k)    - th_old(k) ) * odt    ! Pot. Temp. microphysics tendency, measure
       ! Outputs associated with aerocom comparison:
       pratot(k) = qcacc ! cloud drop accretion by rain
       prctot(k) = qcaut ! cloud drop autoconversion to rain
@@ -967,7 +956,7 @@ contains
        diag_effi,diag_vmi,diag_di,diag_rhoi,log_predictNc, &
        pdel,exner,cmeiout,prain,nevapr,prer_evap,rflx,sflx,rcldm,lcldm,icldm,  &
        pratot,prctot,p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-       vap_ice_exchange,vap_cld_exchange,col_location)
+       vap_ice_exchange,col_location)
 
     !----------------------------------------------------------------------------------------!
     !                                                                                        !
@@ -1037,7 +1026,6 @@ contains
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: liq_ice_exchange ! sum of liq-ice phase change tendenices
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: vap_liq_exchange ! sum of vap-liq phase change tendenices
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: vap_ice_exchange ! sum of vap-ice phase change tendenices
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: vap_cld_exchange ! sum of vap-cld phase change tendenices
     ! INPUT needed for PBUF variables used by other parameterizations
 
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: icldm, lcldm, rcldm ! Ice, Liquid and Rain cloud fraction
@@ -1198,9 +1186,18 @@ contains
             t(i,:), rho(i,:), inv_rho(i,:), qvs(i,:), qvi(i,:), supi(i,:), rhofacr(i,:), rhofaci(i,:), acn(i,:), qv(i,:), th(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), qitot(i,:), nitot(i,:), &
             qirim(i,:), birim(i,:), xxlv(i,:), xxls(i,:), xlf(i,:), qc_incld(i,:), qr_incld(i,:), qitot_incld(i,:), qirim_incld(i,:), nc_incld(i,:), nr_incld(i,:), &
             nitot_incld(i,:), birim_incld(i,:), mu_c(i,:), nu(i,:), lamc(i,:), cdist(i,:), cdist1(i,:), cdistr(i,:), mu_r(i,:), lamr(i,:), logn0r(i,:), cmeiout(i,:), prain(i,:), &
-            nevapr(i,:), prer_evap(i,:), vap_cld_exchange(i,:), vap_liq_exchange(i,:), vap_ice_exchange(i,:), liq_ice_exchange(i,:), pratot(i,:), &
-            prctot(i,:), p3_tend_out(i,:,:), log_hydrometeorsPresent, qc_old(i,:), nc_old(i,:), qr_old(i,:), nr_old(i,:), qitot_old(i,:), nitot_old(i,:), qv_old(i,:), th_old(i,:))
+            nevapr(i,:), prer_evap(i,:), vap_liq_exchange(i,:), vap_ice_exchange(i,:), liq_ice_exchange(i,:), pratot(i,:), &
+            prctot(i,:), p3_tend_out(i,:,:), log_hydrometeorsPresent)
 
+      ! measure microphysics processes tendency output
+      p3_tend_out(i,:,42) = ( qc(i,:)    - qc_old(i,:) ) * odt    ! Liq. microphysics tendency, measure
+      p3_tend_out(i,:,43) = ( nc(i,:)    - nc_old(i,:) ) * odt    ! Liq. # microphysics tendency, measure
+      p3_tend_out(i,:,44) = ( qr(i,:)    - qr_old(i,:) ) * odt    ! Rain microphysics tendency, measure
+      p3_tend_out(i,:,45) = ( nr(i,:)    - nr_old(i,:) ) * odt    ! Rain # microphysics tendency, measure
+      p3_tend_out(i,:,46) = ( qitot(i,:) - qitot_old(i,:) ) * odt ! Ice  microphysics tendency, measure
+      p3_tend_out(i,:,47) = ( nitot(i,:) - nitot_old(i,:) ) * odt ! Ice  # microphysics tendency, measure
+      p3_tend_out(i,:,48) = ( qv(i,:)    - qv_old(i,:) ) * odt    ! Vapor  microphysics tendency, measure
+      p3_tend_out(i,:,49) = ( th(i,:)    - th_old(i,:) ) * odt    ! Pot. Temp. microphysics tendency, measure      
        !NOTE: At this point, it is possible to have negative (but small) nc, nr, nitot.  This is not
        !      a problem; those values get clipped to zero in the sedimentation section (if necessary).
        !      (This is not done above simply for efficiency purposes.)
@@ -1269,7 +1266,6 @@ contains
              qv(i,k) = qv(i,k)+qc(i,k)
              th(i,k) = th(i,k)-exner(i,k)*qc(i,k)*xxlv(i,k)*inv_cp
              vap_liq_exchange(i,k) = vap_liq_exchange(i,k) - qc(i,k)
-             vap_cld_exchange(i,k) = vap_cld_exchange(i,k) - qc(i,k)
              qc(i,k) = 0._rtype
              nc(i,k) = 0._rtype
           endif
@@ -3177,7 +3173,7 @@ subroutine cloud_water_conservation(qc,dt,    &
 
    real(rtype), intent(in) :: qc, dt
    real(rtype), intent(inout) :: qcaut, qcacc, qccol, qcheti, qcshd, qiberg, qisub, qidep
-   real(rtype) :: sinks, sources, ratio
+   real(rtype) :: sinks, ratio
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
@@ -3188,9 +3184,8 @@ subroutine cloud_water_conservation(qc,dt,    &
 #endif
 
    sinks   = (qcaut+qcacc+qccol+qcheti+qcshd+qiberg)*dt
-   sources = qc
-   if (sinks.gt.sources .and. sinks.ge.1.e-20_rtype) then
-      ratio  = sources/sinks
+   if (sinks .gt. qc .and. sinks.ge.1.e-20_rtype) then
+      ratio  = qc/sinks
       qcaut  = qcaut*ratio
       qcacc  = qcacc*ratio
       qccol  = qccol*ratio
@@ -3205,7 +3200,7 @@ subroutine cloud_water_conservation(qc,dt,    &
    !"ratio" of timestep and vapor deposition and sublimation  for the
    !remaining frac of the timestep.  Only limit if there will be cloud
    !water to begin with.
-   if (sources.gt.1.e-20_rtype) then
+   if (qc .gt. 1.e-20_rtype) then
       qidep  = qidep*(1._rtype-ratio)
       qisub  = qisub*(1._rtype-ratio)
    end if
