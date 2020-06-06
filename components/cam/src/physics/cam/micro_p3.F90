@@ -373,8 +373,8 @@ contains
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
       call p3_main_pre_main_loop_f(kts, kte, kbot, ktop, kdir, log_predictNc, dt, &
-           pres, pdel, dzq, npccn, exner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, xxlv, xxls, xlf, &
-           t, rho, inv_rho, qvs, qvi, sup, supi, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, &
+           pres, pdel, dzq, ncnuc, exner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, xxlv, xxls, xlf, &
+           t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, &
            qitot, nitot, qirim, birim, qc_incld, qr_incld, qitot_incld, qirim_incld, &
            nc_incld, nr_incld, nitot_incld, birim_incld, log_nucleationPossible, log_hydrometeorsPresent)
       return
@@ -3069,7 +3069,7 @@ subroutine back_to_cell_average(lcldm,rcldm,icldm,                         &
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
       call back_to_cell_average_f(lcldm,rcldm,icldm,qcacc,qrevp,qcaut,&
-        ncacc,ncslf,ncautc,nrslf,nrevp,ncautr,qcnuc,ncnuc,qisub,nrshdr,&
+        ncacc,ncslf,ncautc,nrslf,nrevp,ncautr,qisub,nrshdr,&
         qcheti,qrcol,qcshd,qimlt,qccol,qrheti,nimlt,nccol,ncshdc,ncheti,&
         nrcol,nislf,qidep,nrheti,nisub,qinuc,ninuc,qiberg)
       return
@@ -3177,7 +3177,7 @@ subroutine cloud_water_conservation(qc,dt,    &
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
-      call  cloud_water_conservation_f(qc,qcnuc,dt,    &
+      call  cloud_water_conservation_f(qc,dt,    &
          qcaut,qcacc,qccol,qcheti,qcshd,qiberg,qisub,qidep)
       return
    endif
@@ -3444,7 +3444,7 @@ subroutine update_prognostic_liquid(qcacc,ncacc,qcaut,ncautc,ncautr,ncslf,    &
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
-      call  update_prognostic_liquid_f(qcacc,ncacc,qcaut,ncautc,qcnuc,ncautr,ncslf,    &
+      call  update_prognostic_liquid_f(qcacc,ncacc,qcaut,ncautc,ncautr,ncslf,    &
            qrevp,nrevp,nrslf,    &
            log_predictNc,inv_rho,exner,xxlv,dt,    &
            th,qv,qc,nc,qr,nr)

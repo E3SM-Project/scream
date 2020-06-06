@@ -148,7 +148,7 @@ struct Functions
                                    const Spack& icldm, Spack& qcacc, Spack& qrevp,
                                    Spack& qcaut, Spack& ncacc, Spack& ncslf,
                                    Spack& ncautc, Spack& nrslf, Spack& nrevp,
-                                   Spack& ncautr, Spack& qcnuc, Spack& ncnuc,
+                                   Spack& ncautr, 
                                    Spack& qisub, Spack& nrshdr, Spack& qcheti,
                                    Spack& qrcol, Spack& qcshd, Spack& qimlt,
                                    Spack& qccol, Spack& qrheti, Spack& nimlt,
@@ -368,7 +368,7 @@ struct Functions
     bool& log_present);
 
   KOKKOS_FUNCTION
-  static void cloud_water_conservation(const Spack& qc, const Spack& qcnuc,const Scalar dt,
+  static void cloud_water_conservation(const Spack& qc, const Scalar dt,
    Spack& qcaut, Spack& qcacc, Spack &qccol, Spack& qcheti, Spack& qcshd, Spack& qiberg, Spack& qisub, Spack& qidep);
 
   KOKKOS_FUNCTION
@@ -519,7 +519,7 @@ struct Functions
   //liquid-phase dependent processes:
   KOKKOS_FUNCTION
   static void update_prognostic_liquid(const Spack& qcacc, const Spack& ncacc,
-    const Spack& qcaut,const Spack& ncautc, const Spack& qcnuc, const Spack& ncautr,
+    const Spack& qcaut,const Spack& ncautc, const Spack& ncautr,
     const Spack& ncslf, const Spack& qrevp, const Spack& nrevp, const Spack& nrslf,
     const bool log_predictNc, const Spack& inv_rho, const Spack& exner, const Spack& xxlv,
     const Scalar dt, Spack& th, Spack& qv, Spack& qc, Spack& nc, Spack& qr, Spack& nr);
@@ -634,7 +634,7 @@ struct Functions
     const uview_1d<const Spack>& opres,
     const uview_1d<const Spack>& opdel,
     const uview_1d<const Spack>& odzq,
-    const uview_1d<const Spack>& onpccn,
+    const uview_1d<const Spack>& oncnuc,
     const uview_1d<const Spack>& oexner,
     const uview_1d<const Spack>& inv_exner,
     const uview_1d<const Spack>& inv_lcldm,
@@ -648,7 +648,6 @@ struct Functions
     const uview_1d<Spack>& inv_rho,
     const uview_1d<Spack>& qvs,
     const uview_1d<Spack>& qvi,
-    const uview_1d<Spack>& sup,
     const uview_1d<Spack>& supi,
     const uview_1d<Spack>& rhofacr,
     const uview_1d<Spack>& rhofaci,
