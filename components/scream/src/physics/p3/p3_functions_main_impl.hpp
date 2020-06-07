@@ -183,12 +183,7 @@ void Functions<S,D>
     Spack dum  = sp(1.496e-6) * pack::pow(t(k), sp(1.5)) / (t(k) + 120); // this is mu
     acn(k)     = g * rhow / (18 * dum); // 'a' parameter for droplet fallspeed (Stokes' law)
 
-    // specify cloud droplet number (for 1-moment version)
-    if (!log_predictNc) {
-      onc(k) = nccnst * inv_rho(k);
-    }
-
-    if ( (t(k) < zerodegc && supi(k) >= 0.05).any() ) {
+    if ( (t(k) < zerodegc && supi(k) >= -0.05).any() ) {
       log_nucleationPossible = true;
     }
 
@@ -243,11 +238,6 @@ void Functions<S,D>
     obirim(k).set(drymass, 0);
 
     t(k) = oth(k) * inv_exner(k);
-
-    // Activation of cloud droplets
-    if (log_predictNc) {
-      onc(k) += oncnuc(k) * dt;
-    }
 
     calculate_incloud_mixingratios(
       oqc(k), oqr(k), oqitot(k), oqirim(k), onc(k), onr(k), onitot(k), obirim(k),

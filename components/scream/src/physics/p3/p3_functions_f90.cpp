@@ -3125,7 +3125,7 @@ void p3_main_pre_main_loop_f(
       uqirim_d       (temp_d[26]),
       ubirim_d       (temp_d[27]),
       uxxlv_d        (temp_d[28]),
-      uxxls_d        (temp_d[20]),
+      uxxls_d        (temp_d[29]),
       uxlf_d         (temp_d[30]),
       uqc_incld_d    (temp_d[31]),
       uqr_incld_d    (temp_d[32]),
