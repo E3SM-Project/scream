@@ -168,11 +168,6 @@ void ice_nucleation_c(Real temp, Real inv_rho, Real nitot, Real naai,
                       Real supi, Real odt, bool log_predictNc,
                       Real* qinuc, Real* ninuc);
 
-void droplet_activation_c(Real temp, Real pres, Real qv, Real qc,
-                          Real inv_rho, Real sup, Real xxlv, Real npccn,
-                          bool log_predictNc, Real odt,
-                          Real* qcnuc, Real* ncnuc);
-
 void ice_cldliq_wet_growth_c(Real rho, Real temp, Real pres, Real rhofaci, Real f1pr05,
                              Real f1pr14, Real xxlv, Real xlf, Real dv,
                              Real kap, Real mu, Real sc, Real qv, Real qc_incld,
@@ -547,17 +542,6 @@ void ice_nucleation(IceNucleationData& d)
   p3_init(true);
   ice_nucleation_c(d.temp, d.inv_rho, d.nitot, d.naai,
                    d.supi, d.odt, d.log_predictNc,&d.qinuc, &d.ninuc);
-}
-
-void droplet_activation(DropletActivationData& d)
-{
-  p3_init(true);
-
-  droplet_activation_c(d.temp, d.pres, d.qv, d.qc,
-                       d.inv_rho, d.sup, d.xxlv, d.npccn,
-                       d.log_predictNc, d.odt,
-                       &d.qcnuc, &d.ncnuc);
-
 }
 
 void ice_cldliq_wet_growth(IceWetGrowthData& d)
@@ -2612,39 +2596,6 @@ void ice_nucleation_f(Real temp_, Real inv_rho_, Real nitot_, Real naai_,
   *qinuc_         = t_h(0);
   *ninuc_         = t_h(1);
 }
-
-void droplet_activation_f(Real temp_, Real pres_, Real qv_, Real qc_,
-                          Real inv_rho_, Real sup_, Real xxlv_, Real npccn_,
-                          bool log_predictNc_, Real odt_,
-                          Real* qcnuc_, Real* ncnuc_)
-{
-  using P3F  = Functions<Real, DefaultDevice>;
-
-  using Spack        = typename P3F::Spack;
-  using view_1d      = typename P3F::view_1d<Real>;
-
-  view_1d t_d("t_d", 2);
-  const auto t_h = Kokkos::create_mirror_view(t_d);
-
-  const Real qcnuc_loc{*qcnuc_}, ncnuc_loc{*ncnuc_};
-
-  Kokkos::parallel_for(1, KOKKOS_LAMBDA(const Int&) {
-
-    Spack temp{temp_}, pres{pres_}, qv{qv_}, qc{qc_}, inv_rho{inv_rho_}, sup{sup_}, xxlv{xxlv_}, npccn{npccn_};
-    Spack qcnuc{qcnuc_loc}, ncnuc{ncnuc_loc};
-
-    P3F::droplet_activation(temp, pres, qv, qc, inv_rho, sup, xxlv, npccn, log_predictNc_, odt_, qcnuc, ncnuc);
-
-    t_d(0) = qcnuc[0];
-    t_d(1) = ncnuc[0];
-  });
-
-  Kokkos::deep_copy(t_h, t_d);
-
-  *qcnuc_  = t_h(0);
-  *ncnuc_  = t_h(1);
-}
-
 
 void ice_cldliq_wet_growth_f(Real rho_, Real temp_, Real pres_, Real rhofaci_, Real f1pr05_,
                              Real f1pr14_, Real xxlv_, Real xlf_, Real dv_,
