@@ -681,7 +681,7 @@ struct Functions
     const uview_1d<const Spack>& opres,
     const uview_1d<const Spack>& opdel,
     const uview_1d<const Spack>& odzq,
-    const uview_1d<const Spack>& onpccn,
+    const uview_1d<const Spack>& oncnuc,
     const uview_1d<const Spack>& oexner,
     const uview_1d<const Spack>& inv_exner,
     const uview_1d<const Spack>& inv_lcldm,
@@ -758,7 +758,7 @@ struct Functions
     const uview_1d<const Spack>& opres,
     const uview_1d<const Spack>& opdel,
     const uview_1d<const Spack>& odzq,
-    const uview_1d<const Spack>& onpccn,
+    const uview_1d<const Spack>& oncnuc,
     const uview_1d<const Spack>& oexner,
     const uview_1d<const Spack>& inv_exner,
     const uview_1d<const Spack>& inv_lcldm,
@@ -831,7 +831,7 @@ struct Functions
     // inputs
     const view_2d<const Spack>& pres,          // pressure                             Pa
     const view_2d<const Spack>& dzq,           // vertical grid spacing                m
-    const view_2d<const Spack>& npccn,         // IN ccn activated number tendency     kg-1 s-1
+    const view_2d<const Spack>& ncnuc,         // IN ccn activated number tendency     kg-1 s-1
     const view_2d<const Spack>& naai,          // IN actived ice nuclei concentration  1/kg
     const view_2d<const Spack>& qc_relvar,     // assumed SGS 1/(var(qc)/mean(qc))     kg2/kg2
     const Real&                 dt,            // model time step                      s

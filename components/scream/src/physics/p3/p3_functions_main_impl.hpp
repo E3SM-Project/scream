@@ -263,7 +263,7 @@ void Functions<S,D>
   const uview_1d<const Spack>& opres,
   const uview_1d<const Spack>& opdel,
   const uview_1d<const Spack>& odzq,
-  const uview_1d<const Spack>& onpccn,
+  const uview_1d<const Spack>& oncnuc,
   const uview_1d<const Spack>& oexner,
   const uview_1d<const Spack>& inv_exner,
   const uview_1d<const Spack>& inv_lcldm,
@@ -754,7 +754,7 @@ void Functions<S,D>
   const uview_1d<const Spack>& opres,
   const uview_1d<const Spack>& opdel,
   const uview_1d<const Spack>& odzq,
-  const uview_1d<const Spack>& onpccn,
+  const uview_1d<const Spack>& oncnuc,
   const uview_1d<const Spack>& oexner,
   const uview_1d<const Spack>& inv_exner,
   const uview_1d<const Spack>& inv_lcldm,
@@ -949,7 +949,7 @@ void Functions<S,D>
   // inputs
   const view_2d<const Spack>& pres,          // pressure                             Pa
   const view_2d<const Spack>& dzq,           // vertical grid spacing                m
-  const view_2d<const Spack>& npccn,         // IN ccn activated number tendency     kg-1 s-1
+  const view_2d<const Spack>& ncnuc,         // IN ccn activated number tendency     kg-1 s-1
   const view_2d<const Spack>& naai,          // IN actived ice nuclei concentration  1/kg
   const view_2d<const Spack>& qc_relvar,     // Assumed SGS 1/(var(qc)/mean(qc))     kg2/kg2
   const Real&                 dt,            // model time step                      s
@@ -1093,7 +1093,7 @@ void Functions<S,D>
     // after this.
     const auto opres             = util::subview(pres, i);
     const auto odzq              = util::subview(dzq, i);
-    const auto onpccn            = util::subview(npccn, i);
+    const auto oncnuc            = util::subview(ncnuc, i);
     const auto onaai             = util::subview(naai, i);
     const auto oqc_relvar        = util::subview(qc_relvar, i);
     const auto opdel             = util::subview(pdel, i);
@@ -1149,7 +1149,7 @@ void Functions<S,D>
 
     p3_main_pre_main_loop(
       team, nk, log_predictNc, dt,
-      opres, opdel, odzq, onpccn, oexner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, oxxlv, oxxls, oxlf,
+      opres, opdel, odzq, oncnuc, oexner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, oxxlv, oxxls, oxlf,
       t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn, oqv, oth, oqc, onc, oqr, onr, oqitot, onitot, oqirim, obirim, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld, nr_incld, nitot_incld, birim_incld,
       log_nucleationPossible, log_hydrometeorsPresent);
 
@@ -1167,7 +1167,7 @@ void Functions<S,D>
     p3_main_main_loop(
       team, nk_pack, log_predictNc, dt, odt,
       dnu, itab, itabcol, revap_table,
-      opres, opdel, odzq, onpccn, oexner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, onaai, oqc_relvar, oicldm, olcldm, orcldm,
+      opres, opdel, odzq, oncnuc, oexner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, onaai, oqc_relvar, oicldm, olcldm, orcldm,
       t, rho, inv_rho, qvs, qvi, sup, supi, rhofacr, rhofaci, acn, oqv, oth, oqc, onc, oqr, onr, oqitot, onitot, oqirim, obirim, oxxlv, oxxls, oxlf, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld, nr_incld, nitot_incld, birim_incld, omu_c, nu, olamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, ocmeiout, oprain, onevapr, oprer_evap, ovap_cld_exchange, ovap_liq_exchange, ovap_ice_exchange, oliq_ice_exchange, opratot, oprctot,
       log_hydrometeorsPresent);
 
@@ -1220,7 +1220,7 @@ void Functions<S,D>
     p3_main_post_main_loop(
       team, nk_pack, log_predictNc, dt, odt,
       dnu, itab, itabcol, revap_table,
-      opres, opdel, odzq, onpccn, oexner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, onaai, oicldm, olcldm, orcldm,
+      opres, opdel, odzq, oncnuc, oexner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, onaai, oicldm, olcldm, orcldm,
       t, rho, inv_rho, qvs, qvi, sup, supi, rhofacr, rhofaci, acn, oqv, oth, oqc, onc, oqr, onr, oqitot, onitot, oqirim, obirim, oxxlv, oxxls, oxlf, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld, nr_incld, nitot_incld, birim_incld, omu_c, nu, olamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, ocmeiout, oprain, onevapr, oprer_evap, ovap_cld_exchange, ovap_liq_exchange, ovap_ice_exchange, oliq_ice_exchange, opratot, oprctot, ze_rain, ze_ice, odiag_vmi, odiag_effi, odiag_di, odiag_rhoi, odiag_ze, tmparr1);
 
     //
