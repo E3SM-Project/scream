@@ -7,7 +7,7 @@ module radiation_utils
    private
 
    public :: compress_day_columns, expand_day_columns, &
-             calculate_heating_rate, clip_values, &
+             calculate_heating_rate, clip_values, check_range, &
              handle_error
 
    ! Interface blocks for overloaded procedures
@@ -22,6 +22,12 @@ module radiation_utils
    interface clip_values
       module procedure clip_values_1d, clip_values_2d
    end interface clip_values
+
+   ! Procedure to check range, with extra arguments to print lat/lon location
+   ! where errors occur
+   interface check_range
+      module procedure check_range_2d, check_range_3d
+   end interface
 
    ! Name of this module for error messages
    character(len=*), parameter :: module_name = 'radiation_utils'
@@ -118,14 +124,12 @@ contains
 
    !-------------------------------------------------------------------------------
 
-   subroutine calculate_heating_rate(fluxes, pint, heating_rate)
+   subroutine calculate_heating_rate(flux_up, flux_dn, pint, heating_rate)
 
       use physconst, only: gravit
-      use mo_fluxes_byband, only: ty_fluxes_byband
 
       ! Inputs
-      type(ty_fluxes_byband), intent(in) :: fluxes
-      real(r8), intent(in) :: pint(:,:)
+      real(r8), intent(in), dimension(:,:) :: flux_up, flux_dn, pint
 
       ! Output heating rate; same size as pint with one fewer vertical level
       real(r8), intent(out) :: heating_rate(:,:)
@@ -137,10 +141,10 @@ contains
       character(len=32) :: subname = 'calculate_heating_rate'
 
       ! Get dimension sizes and make sure arrays conform
-      call assert(size(pint,1) == size(fluxes%flux_up,1), subname // ': sizes do not conform.')
-      call assert(size(pint,2) == size(fluxes%flux_up,2), subname // ': sizes do not conform.')
-      call assert(size(heating_rate,1) == size(fluxes%flux_up,1), subname // ': sizes do not conform.')
-      call assert(size(heating_rate,2) == size(fluxes%flux_up,2)-1, subname // ': sizes do not conform.')
+      call assert(size(pint,1) == size(flux_up,1), subname // ': sizes do not conform.')
+      call assert(size(pint,2) == size(flux_up,2), subname // ': sizes do not conform.')
+      call assert(size(heating_rate,1) == size(flux_up,1), subname // ': sizes do not conform.')
+      call assert(size(heating_rate,2) == size(flux_up,2)-1, subname // ': sizes do not conform.')
 
       ! Loop over levels and calculate heating rates; note that the fluxes *should*
       ! be defined at interfaces, so the loop ktop,kbot and grabbing the current
@@ -160,8 +164,8 @@ contains
       do ilev = 1,size(pint,2)-1
          do icol = 1,size(pint,1)
             heating_rate(icol,ilev) = ( &
-               fluxes%flux_up(icol,ilev+1) - fluxes%flux_up(icol,ilev) - &
-               fluxes%flux_dn(icol,ilev+1) + fluxes%flux_dn(icol,ilev) &
+               flux_up(icol,ilev+1) - flux_up(icol,ilev) - &
+               flux_dn(icol,ilev+1) + flux_dn(icol,ilev) &
             ) * gravit / (pint(icol,ilev+1) - pint(icol,ilev))
          end do
       end do
@@ -281,6 +285,82 @@ contains
 
    end subroutine clip_values_2d
 
+   !-------------------------------------------------------------------------------
+   subroutine check_range_2d(v, vmin, vmax, vname, lat, lon, abort_on_error, clip_values)
+      use cam_abortutils, only: endrun
+      real(r8), intent(inout) :: v(:,:)
+      real(r8), intent(in) :: vmin, vmax
+      character(len=*), intent(in) :: vname
+      real(r8), intent(in) :: lat(:), lon(:)
+      logical, intent(in), optional :: abort_on_error, clip_values
+      logical :: abort_on_error_local, clip_values_local
+      integer :: ix, iz
+      if (present(abort_on_error)) then
+         abort_on_error_local = abort_on_error
+      else
+         abort_on_error_local = .true.
+      end if
+      if (present(clip_values)) then
+         clip_values_local = clip_values
+      else
+         clip_values_local = .false.
+      end if
+      do iz = 1,size(v, 2)
+         do ix = 1,size(v, 1)
+            if (v(ix,iz) < vmin .or. v(ix,iz) > vmax) then
+               print *, 'WARNING: ' // trim(vname) // &
+                        ' out of range; value = ', v(ix,iz), &
+                        '; lat, lon, lev = ', lat(ix), lon(ix), iz
+               if (clip_values_local) then
+                  if (v(ix,iz) < vmin) v(ix,iz) = vmin
+                  if (v(ix,iz) > vmax) v(ix,iz) = vmax
+               else if (abort_on_error_local) then
+                  call endrun('check_range failed for ' // trim(vname))
+               end if
+            end if
+         end do
+      end do
+   end subroutine check_range_2d
+   !-------------------------------------------------------------------------------
+   subroutine check_range_3d(v, vmin, vmax, vname, lat, lon, abort_on_error, clip_values)
+      use cam_abortutils, only: endrun
+      real(r8), intent(inout) :: v(:,:,:)
+      real(r8), intent(in) :: vmin, vmax
+      character(len=*), intent(in) :: vname
+      real(r8), intent(in) :: lat(:), lon(:)
+      logical, intent(in), optional :: abort_on_error, clip_values
+      logical :: abort_on_error_local, clip_values_local
+      integer :: ix, iy, iz
+      if (present(abort_on_error)) then
+         abort_on_error_local = abort_on_error
+      else
+         abort_on_error_local = .true.
+      end if
+      if (present(clip_values)) then
+         clip_values_local = clip_values
+      else
+         clip_values_local = .false.
+      end if
+      do iz = 1,size(v, 3)
+         do iy = 1,size(v,2)
+            do ix = 1,size(v, 1)
+               if (v(ix,iy,iz) < vmin .or. v(ix,iy,iz) > vmax) then
+                  print *, 'WARNING: ' // trim(vname) // &
+                           ' out of range; value = ', v(ix,iy,iz), &
+                           '; lat, lon, lev = ', lat(ix), lon(ix), iz
+                  if (clip_values_local) then
+                     if (v(ix,iy,iz) < vmin) v(ix,iy,iz) = vmin
+                     if (v(ix,iy,iz) > vmax) v(ix,iy,iz) = vmax
+                  else if (abort_on_error_local) then
+                     call endrun('check_range failed for ' // trim(vname))
+                  end if
+               end if
+            end do
+         end do
+      end do
+   end subroutine check_range_3d
+   !-------------------------------------------------------------------------------
+
    !----------------------------------------------------------------------------
 
    subroutine handle_error(error_message, stop_on_error)
@@ -303,10 +383,10 @@ contains
       ! nothing and return silently.
       if (len(trim(error_message)) > 0) then
          if (stop_on_error_local) then
-           call endrun(module_name // ': ' // error_message)
+            call endrun(module_name // ': ' // error_message)
          else
-	   write(iulog,*) 'WARNING: ', error_message
-	 end if
+            write(iulog,*) 'WARNING: ', error_message
+         end if
       end if
    end subroutine handle_error
 

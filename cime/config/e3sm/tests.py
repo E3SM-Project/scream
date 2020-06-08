@@ -33,6 +33,7 @@ _TESTS = {
             "ERS.f19_g16.I20TRGSWCNPRDCTCBC.clm-ctc_f19_g16_I20TRGSWCNPRDCTCBC",
             "ERS.f09_g16.ICLM45BC",
             "SMS.r05_r05.I1850CLM45CN",
+            "SMS_Ly2_P1x1.1x1_smallvilleIA.ICLM45CNCROP.clm-lulcc_sville",
             )
         },
 
@@ -131,8 +132,8 @@ _TESTS = {
             "HOMME_P24.f19_g16_rx1.A",
             "HOMMEBFB_P24.f19_g16_rx1.A",
             )
-        },    
-    
+        },
+
     "e3sm_integration" : {
         "inherit" : ("e3sm_developer", "e3sm_atm_integration"),
         "time"    : "03:00:00",
@@ -300,7 +301,7 @@ _TESTS = {
     "e3sm_bench_lores_g" : {
         "share"    : True,
         "time"     : "01:00:00",
-        "tests"    : ( 
+        "tests"    : (
                  "PFS_P320.T62_oEC60to30v3.GMPAS-IAF.bench-gmpas_noio",
                  "PFS_P480.T62_oEC60to30v3.GMPAS-IAF.bench-gmpas_noio",
                  "PFS_P640.T62_oEC60to30v3.GMPAS-IAF.bench-gmpas_noio",
@@ -330,4 +331,19 @@ _TESTS = {
         "time"    : "01:00:00",
     },
 
+    "e3sm_scream" : {
+        "time"  : "03:00:00",
+        "tests" : (
+            "SMS_D.ne4_ne4.FSCREAM-HR",
+            "SMS_D.ne4_ne4.FSCREAM-LR",
+            "ERS.ne4_ne4.FSCREAM-HR",
+            "ERS.ne4_ne4.FSCREAM-LR",
+            "ERP.ne4_ne4.FSCREAM-HR.cam-double_memleak_tol",
+            "ERP.ne4_ne4.FSCREAM-LR.cam-double_memleak_tol",
+            "REP.ne4_ne4.FSCREAM-HR",
+            "REP.ne4_ne4.FSCREAM-LR",
+            "PEM.ne4_ne4.FSCREAM-HR",
+            "PEM.ne4_ne4.FSCREAM-LR",
+            )
+    }
 }

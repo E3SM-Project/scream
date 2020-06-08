@@ -102,7 +102,7 @@ module phys_grid
    use cam_abortutils,   only: endrun
    use perf_mod
    use cam_logfile,      only: iulog
-   use scamMod,          only: single_column, scmlat, scmlon
+   use scamMod,          only: single_column, scmlat, scmlon, iop_mode
    use shr_const_mod,    only: SHR_CONST_PI
    use dycore,           only: dycore_is
    use units,            only: getunit, freeunit
@@ -271,6 +271,12 @@ module phys_grid
    integer, private :: nproc_busy_d    ! number of processes active during the dynamics
                                        !  (assigned a dynamics block)
 
+! Physics grid decomposition environment
+   integer, private :: nlthreads       ! number of OpenMP threads available to this process
+   integer, dimension(:), allocatable, private :: npthreads
+                                       ! number of OpenMP threads available to each process
+                                       !  (deallocated at end of phys_grid_init)
+
 ! Physics grid decomposition options:  
 ! -1: each chunk is a dynamics block
 !  0: chunk definitions and assignments do not require interprocess comm.
@@ -405,6 +411,18 @@ contains
     real(r8) :: clat_p_tmp
     real(r8) :: clon_p_tmp
 
+    ! for calculation and output of physics decomposition statistics
+    integer :: chunk_ncols                ! number of columns assigned to a chunk
+    integer :: min_chunk_ncols            ! min number of columns assigned to a chunk
+    integer :: max_chunk_ncols            ! max number of columns assigned to a chunk
+    integer :: min_process_nthreads       ! min number of threads available to a process
+    integer :: max_process_nthreads       ! max number of threads available to a process
+    integer :: min_process_nchunks        ! min number of chunks assigned to a process
+    integer :: max_process_nchunks        ! max number of chunks assigned to a process
+    integer :: min_process_ncols          ! min number of columns assigned to a process
+    integer :: max_process_ncols          ! max number of columns assigned to a process
+    integer, dimension(:), allocatable :: process_ncols ! number of columns per process
+
     ! Maps and values for physics grid
     real(r8),                   pointer :: lonvals(:)
     real(r8),                   pointer :: latvals(:)
@@ -420,6 +438,12 @@ contains
     logical                             :: unstructured
     real(r8)                            :: lonmin, latmin
 
+    integer :: nlthreads                  ! number of local OpenMP threads
+#if ( defined _OPENMP )
+    integer omp_get_max_threads
+    external omp_get_max_threads
+#endif
+
     nullify(lonvals)
     nullify(latvals)
     nullify(grid_map)
@@ -433,9 +457,9 @@ contains
     !
     ! Initialize physics grid, using dynamics grid
     ! a) column coordinates
-    if (single_column .and. dycore_is ('SE')) lbal_opt = -1 !+PAB make this default option for SCM
+    if (single_column .and. .not. iop_mode .and. dycore_is ('SE')) lbal_opt = -1
     call get_horiz_grid_dim_d(hdim1_d,hdim2_d)
-    if (single_column .and. dycore_is('SE')) then
+    if (single_column .and. .not. iop_mode .and. dycore_is('SE')) then
       ngcols = 1
     else
       ngcols = hdim1_d*hdim2_d
@@ -621,6 +645,24 @@ contains
     deallocate( cdex )
 
     !
+    ! Determine number of threads per process, for use in create_chunks
+    ! and in output of decomposition statistics
+    !
+    allocate( npthreads(0:npes-1) )
+    npthreads(:) = 0
+
+    nlthreads = 1
+#if ( defined _OPENMP )
+    nlthreads = OMP_GET_MAX_THREADS()
+#endif
+!
+#if ( defined SPMD )
+    call mpiallgatherint(nlthreads, 1, npthreads, 1, mpicom)
+#else
+    npthreads(0) = nlthreads
+#endif
+
+    !
     ! Determine block index bounds
     !
     call get_block_bounds_d(firstblock,lastblock)
@@ -643,11 +685,11 @@ contains
        !
        maxblksiz = 0
        do jb=firstblock,lastblock
-          if (single_column .and. dycore_is('SE')) then
-	    maxblksiz = 1
-	  else
+          if (single_column .and. .not. iop_mode .and. dycore_is('SE')) then
+            maxblksiz = 1
+          else
             maxblksiz = max(maxblksiz,get_block_gcol_cnt_d(jb))
-	  endif
+          endif
        enddo
        if (pcols < maxblksiz) then
 	  write(iulog,*) 'pcols = ',pcols, ' maxblksiz=',maxblksiz
@@ -657,7 +699,7 @@ contains
        !
        ! Determine total number of chunks
        !
-       if (single_column .and. dycore_is('SE')) then
+       if (single_column .and. .not. iop_mode .and. dycore_is('SE')) then
          nchunks = 1
        else
 	 nchunks = (lastblock-firstblock+1)
@@ -677,11 +719,11 @@ contains
 
        do cid=1,nchunks
           ! get number of global column indices in block
-          if (single_column .and. dycore_is('SE')) then
-	    max_ncols = 1
-	  else
-	    max_ncols = get_block_gcol_cnt_d(cid+firstblock-1)
-	  endif
+          if (single_column .and. .not. iop_mode .and. dycore_is('SE')) then
+            max_ncols = 1
+          else
+            max_ncols = get_block_gcol_cnt_d(cid+firstblock-1)
+          endif
           ! fill cdex array with global indices from current block
           call get_block_gcol_d(cid+firstblock-1,max_ncols,cdex)
 
@@ -882,7 +924,7 @@ contains
     area_d = 0.0_r8
     wght_d = 0.0_r8
 
-    if (single_column .and. dycore_is('SE')) then
+    if (single_column .and. .not. iop_mode .and. dycore_is('SE')) then
       area_d = 4.0_r8*pi
       wght_d = 4.0_r8*pi
     else
@@ -1150,13 +1192,73 @@ contains
     physgrid_set = .true.   ! Set flag indicating physics grid is now set
     !
     if (masterproc) then
-       write(iulog,*) 'PHYS_GRID_INIT:  Using PCOLS=',pcols,     &
-            '  phys_loadbalance=',lbal_opt,            &
-            '  phys_twin_algorithm=',twin_alg,         &
-            '  phys_alltoall=',phys_alltoall,          &
-            '  chunks_per_thread=',chunks_per_thread
+!
+! Determine number of threads per process
+!
+      nlthreads = 1
+#if ( defined _OPENMP )
+      nlthreads = OMP_GET_MAX_THREADS()
+#endif
+      allocate( process_ncols(0:npes-1) )
+      process_ncols(:) = 0
+
+      min_chunk_ncols = ngcols_p
+      max_chunk_ncols = 0
+      do cid = 1,nchunks
+        chunk_ncols = chunks(cid)%ncols
+        if (chunk_ncols < min_chunk_ncols) min_chunk_ncols = chunk_ncols
+        if (chunk_ncols > max_chunk_ncols) max_chunk_ncols = chunk_ncols
+        owner_p = chunks(cid)%owner
+        process_ncols(owner_p) = process_ncols(owner_p) + chunk_ncols
+      enddo
+
+      min_process_nthreads = npthreads(0)
+      max_process_nthreads = npthreads(0)
+      min_process_nchunks  = npchunks(0)
+      max_process_nchunks  = npchunks(0)
+      min_process_ncols    = process_ncols(0)
+      max_process_ncols    = process_ncols(0)
+      do p=1,npes-1
+        if (npthreads(p) < min_process_nthreads) &
+          min_process_nthreads = npthreads(p)
+        if (npthreads(p) > max_process_nthreads) &
+          max_process_nthreads = npthreads(p)
+
+        if (npchunks(p) < min_process_nchunks) &
+          min_process_nchunks = npchunks(p)
+        if (npchunks(p) > max_process_nchunks) &
+          max_process_nchunks = npchunks(p)
+
+        if (process_ncols(p) < min_process_ncols) &
+          min_process_ncols = process_ncols(p)
+        if (process_ncols(p) > max_process_ncols) &
+          max_process_ncols = process_ncols(p)
+      enddo
+      deallocate(process_ncols)
+
+      write(iulog,*) 'PHYS_GRID_INIT:  Using'
+      write(iulog,*) '  PCOLS=              ',pcols
+      write(iulog,*) '  phys_loadbalance=   ',lbal_opt
+      write(iulog,*) '  phys_twin_algorithm=',twin_alg
+      write(iulog,*) '  phys_alltoall=      ',phys_alltoall
+      write(iulog,*) '  chunks_per_thread=  ',chunks_per_thread
+      write(iulog,*) '  num threads=        ',nlthreads
+      write(iulog,*) 'PHYS_GRID_INIT:  Decomposition Statistics:'
+      write(iulog,*) '  total number of physics columns=   ',ngcols_p
+      write(iulog,*) '  total number of chunks=            ',nchunks
+      write(iulog,*) '  total number of physics processes= ',npes
+      write(iulog,*) '  (min,max) # of threads per physics process: (',  &
+                        min_process_nthreads,',',max_process_nthreads,')'
+      write(iulog,*) '  (min,max) # of physics columns per chunk:   (',  &
+                        min_chunk_ncols,',',max_chunk_ncols,')'
+      write(iulog,*) '  (min,max) # of chunks per process:          (',  &
+                        min_process_nchunks,',',max_process_nchunks,')'
+      write(iulog,*) '  (min,max) # of physics columns per process: (',  &
+                        min_process_ncols,',',max_process_ncols,')'
     endif
-    !
+
+    ! Clean-up
+    deallocate(npthreads)
 
     call t_stopf("phys_grid_init")
     call t_adj_detailf(+2)
@@ -4094,8 +4196,6 @@ logical function phys_grid_initialized ()
                                          !  thread
 !---------------------------Local workspace-----------------------------
    integer :: i, j, p                    ! loop indices
-   integer :: nlthreads                  ! number of local OpenMP threads
-   integer :: npthreads(0:npes-1)        ! number of OpenMP threads per process
    integer :: proc_smp_mapx(0:npes-1)    ! process/virtual SMP node map
    integer :: firstblock, lastblock      ! global block index bounds
    integer :: maxblksiz                  ! maximum number of columns in a dynamics block
@@ -4170,24 +4270,10 @@ logical function phys_grid_initialized ()
    integer, dimension(:), allocatable :: heap
    integer, dimension(:), allocatable :: heap_len
 
-#if ( defined _OPENMP )
-   integer omp_get_max_threads
-   external omp_get_max_threads
-#endif
-
 !-----------------------------------------------------------------------
-!
-! Determine number of threads per process
-!
-   nlthreads = 1
-#if ( defined _OPENMP )
-   nlthreads = OMP_GET_MAX_THREADS()
-#endif
-!
-#if ( defined SPMD )
-   call mpiallgatherint(nlthreads, 1, npthreads, 1, mpicom)
-#else
-   npthreads(0) = nlthreads
+
+! Make sure that proc_smp_map is set appropriately even if not using MPI
+#if ( ! defined SPMD )
    proc_smp_map(0) = 0
 #endif
 

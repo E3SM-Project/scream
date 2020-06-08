@@ -1,5 +1,5 @@
 #include <catch2/catch.hpp>
-#include "share/atmosphere_process.hpp"
+#include "share/atm_process/atmosphere_process.hpp"
 #include "share/scream_pack.hpp"
 #include "share/grid/user_provided_grids_manager.hpp"
 #include "share/grid/se_grid.hpp"
@@ -75,13 +75,13 @@ TEST_CASE("shoc-stand-alone", "") {
   }
 
   // TODO: get the field repo from the driver, and go get (one of)
-  //       the output(s) of P3, to check its numerical value (if possible)
+  //       the output(s) of SHOC, to check its numerical value (if possible)
 
-  // Finalize 
+  // Finalize
   ad.finalize();
   upgm.clean_up();
 
-  // If we got here, we were able to run p3
+  // If we got here, we were able to run SHOC
   REQUIRE(true);
 }
 } // empty namespace

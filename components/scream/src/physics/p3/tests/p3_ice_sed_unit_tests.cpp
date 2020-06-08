@@ -1,12 +1,12 @@
 #include "catch2/catch.hpp"
 
-#include "share/scream_types.hpp"
-#include "share/util/scream_utils.hpp"
-#include "share/scream_kokkos.hpp"
-#include "share/scream_pack.hpp"
+#include "ekat/scream_types.hpp"
+#include "ekat/util/scream_utils.hpp"
+#include "ekat/scream_kokkos.hpp"
+#include "ekat/scream_pack.hpp"
+#include "ekat/util/scream_kokkos_utils.hpp"
 #include "physics/p3/p3_functions.hpp"
 #include "physics/p3/p3_functions_f90.hpp"
-#include "share/util/scream_kokkos_utils.hpp"
 
 #include "p3_unit_tests_common.hpp"
 
@@ -32,17 +32,21 @@ static void run_phys_ice_sed()
   // TODO
 }
 
+static void run_phys_homogeneous_freezing()
+{
+  // TODO
+}
+
 static void run_phys()
 {
   run_phys_calc_bulk_rhime();
   run_phys_ice_sed();
+  run_phys_homogeneous_freezing();
 }
 
 static void run_bfb_calc_bulk_rhime()
 {
   constexpr Scalar qsmall = C::QSMALL;
-  static constexpr Int max_pack_size = 16;
-  REQUIRE(Spack::n <= max_pack_size);
 
   // Load some lookup inputs, need at least one per pack value
   CalcBulkRhoRimeData cbrr_fortran[max_pack_size] = {
@@ -70,36 +74,38 @@ static void run_bfb_calc_bulk_rhime()
 
   // Sync to device, needs to happen before fortran calls so that
   // inout data is in original state
-  view_1d<CalcBulkRhoRimeData> cbrr_device("cbrr", Spack::n);
+  view_1d<CalcBulkRhoRimeData> cbrr_device("cbrr", max_pack_size);
   const auto cbrr_host = Kokkos::create_mirror_view(cbrr_device);
-  std::copy(&cbrr_fortran[0], &cbrr_fortran[0] + Spack::n, cbrr_host.data());
+  std::copy(&cbrr_fortran[0], &cbrr_fortran[0] + max_pack_size, cbrr_host.data());
   Kokkos::deep_copy(cbrr_device, cbrr_host);
 
   // Get data from fortran
-  for (Int i = 0; i < Spack::n; ++i) {
+  for (Int i = 0; i < max_pack_size; ++i) {
     if (cbrr_fortran[i].qi_tot > qsmall) {
       calc_bulk_rho_rime(cbrr_fortran[i]);
     }
   }
 
   // Calc bulk rime from a kernel and copy results back to host
-  Kokkos::parallel_for(1, KOKKOS_LAMBDA(const Int&) {
+  Kokkos::parallel_for(num_test_itrs, KOKKOS_LAMBDA(const Int& i) {
+    const Int offset = i * Spack::n;
+
     // Init pack inputs
     Spack qi_tot, qi_rim, bi_rim;
-    for (Int s = 0; s < Spack::n; ++s) {
-      qi_tot[s] = cbrr_device(s).qi_tot;
-      qi_rim[s] = cbrr_device(s).qi_rim;
-      bi_rim[s] = cbrr_device(s).bi_rim;
+    for (Int s = 0, vs = offset; s < Spack::n; ++s, ++vs) {
+      qi_tot[s] = cbrr_device(vs).qi_tot;
+      qi_rim[s] = cbrr_device(vs).qi_rim;
+      bi_rim[s] = cbrr_device(vs).bi_rim;
     }
 
     Smask gt_small(qi_tot > qsmall);
     Spack rho_rime = Functions::calc_bulk_rho_rime(gt_small, qi_tot, qi_rim, bi_rim);
 
     // Copy results back into views
-    for (Int s = 0; s < Spack::n; ++s) {
-      cbrr_device(s).qi_rim   = qi_rim[s];
-      cbrr_device(s).bi_rim   = bi_rim[s];
-      cbrr_device(s).rho_rime = rho_rime[s];
+    for (Int s = 0, vs = offset; s < Spack::n; ++s, ++vs) {
+      cbrr_device(vs).qi_rim   = qi_rim[s];
+      cbrr_device(vs).bi_rim   = bi_rim[s];
+      cbrr_device(vs).rho_rime = rho_rime[s];
     }
   });
 
@@ -107,7 +113,7 @@ static void run_bfb_calc_bulk_rhime()
   Kokkos::deep_copy(cbrr_host, cbrr_device);
 
   // Validate results
-  for (Int s = 0; s < Spack::n; ++s) {
+  for (Int s = 0; s < max_pack_size; ++s) {
     REQUIRE(cbrr_fortran[s].qi_rim   == cbrr_host(s).qi_rim);
     REQUIRE(cbrr_fortran[s].bi_rim   == cbrr_host(s).bi_rim);
     REQUIRE(cbrr_fortran[s].rho_rime == cbrr_host(s).rho_rime);
@@ -188,10 +194,78 @@ static void run_bfb_ice_sed()
   }
 }
 
+static void run_bfb_homogeneous_freezing()
+{
+  const std::array< std::pair<Real, Real>, HomogeneousFreezingData::NUM_ARRAYS > ranges = {
+    std::make_pair(C::homogfrze - 10, C::homogfrze + 10), // t
+    std::make_pair(0.000E+00, 1.000E+00), // exner
+    std::make_pair(0.000E+00, 1.000E+00), // xlf
+    std::make_pair(0.000E+00, C::QSMALL*2), // qc
+    std::make_pair(0.000E+00, 1.000E+00), // nc
+    std::make_pair(0.000E+00, C::QSMALL*2), // qr
+    std::make_pair(0.000E+00, 1.000E+00), // nr
+    std::make_pair(0.000E+00, 1.000E+00), // qitot
+    std::make_pair(0.000E+00, 1.000E+00), // nitot
+    std::make_pair(0.000E+00, 1.000E+00), // qirim
+    std::make_pair(0.000E+00, 1.000E+00), // birim
+    std::make_pair(0.000E+00, 1.000E+00), // th
+  };
+
+  HomogeneousFreezingData hfds_fortran[] = {
+    //                    kts, kte, ktop, kbot, kdir, ranges
+    HomogeneousFreezingData(1,  72,   27,   72,   -1, ranges),
+    HomogeneousFreezingData(1,  72,   72,   27,    1, ranges),
+    HomogeneousFreezingData(1,  72,   27,   27,   -1, ranges),
+    HomogeneousFreezingData(1,  72,   27,   27,    1, ranges),
+  };
+
+  static constexpr Int num_runs = sizeof(hfds_fortran) / sizeof(HomogeneousFreezingData);
+
+  // Create copies of data for use by cxx. Needs to happen before fortran calls so that
+  // inout data is in original state
+  HomogeneousFreezingData hfds_cxx[num_runs] = {
+    HomogeneousFreezingData(hfds_fortran[0]),
+    HomogeneousFreezingData(hfds_fortran[1]),
+    HomogeneousFreezingData(hfds_fortran[2]),
+    HomogeneousFreezingData(hfds_fortran[3]),
+  };
+
+    // Get data from fortran
+  for (Int i = 0; i < num_runs; ++i) {
+    homogeneous_freezing(hfds_fortran[i]);
+  }
+
+  // Get data from cxx
+  for (Int i = 0; i < num_runs; ++i) {
+    HomogeneousFreezingData& d = hfds_cxx[i];
+    homogeneous_freezing_f(d.kts, d.kte, d.ktop, d.kbot, d.kdir,
+                           d.t, d.exner, d.xlf,
+                           d.qc, d.nc, d.qr, d.nr, d.qitot, d.nitot, d.qirim, d.birim, d.th);
+  }
+
+  for (Int i = 0; i < num_runs; ++i) {
+    // Due to pack issues, we must restrict checks to the active k space
+    Int start = std::min(hfds_fortran[i].kbot, hfds_fortran[i].ktop) - 1; // 0-based indx
+    Int end   = std::max(hfds_fortran[i].kbot, hfds_fortran[i].ktop);     // 0-based indx
+    for (Int k = start; k < end; ++k) {
+      REQUIRE(hfds_fortran[i].qc[k]    == hfds_cxx[i].qc[k]);
+      REQUIRE(hfds_fortran[i].nc[k]    == hfds_cxx[i].nc[k]);
+      REQUIRE(hfds_fortran[i].qr[k]    == hfds_cxx[i].qr[k]);
+      REQUIRE(hfds_fortran[i].nr[k]    == hfds_cxx[i].nr[k]);
+      REQUIRE(hfds_fortran[i].qitot[k] == hfds_cxx[i].qitot[k]);
+      REQUIRE(hfds_fortran[i].nitot[k] == hfds_cxx[i].nitot[k]);
+      REQUIRE(hfds_fortran[i].qirim[k] == hfds_cxx[i].qirim[k]);
+      REQUIRE(hfds_fortran[i].birim[k] == hfds_cxx[i].birim[k]);
+      REQUIRE(hfds_fortran[i].th[k]    == hfds_cxx[i].th[k]);
+    }
+  }
+}
+
 static void run_bfb()
 {
   run_bfb_calc_bulk_rhime();
   run_bfb_ice_sed();
+  run_bfb_homogeneous_freezing();
 }
 
 };

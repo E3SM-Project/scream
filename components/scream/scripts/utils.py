@@ -2,9 +2,11 @@
 Utilities
 """
 
-import os, sys, re, signal
+import os, sys, re, signal, subprocess
 
+###############################################################################
 def expect(condition, error_msg, exc_type=SystemExit, error_prefix="ERROR:"):
+###############################################################################
     """
     Similar to assert except doesn't generate an ugly stacktrace. Useful for
     checking user error, not programming error.
@@ -19,26 +21,24 @@ def expect(condition, error_msg, exc_type=SystemExit, error_prefix="ERROR:"):
         msg = error_prefix + " " + error_msg
         raise exc_type(msg)
 
-_hack=object()
-def run_cmd(cmd, input_str=None, from_dir=None, verbose=None,
-            arg_stdout=_hack, arg_stderr=_hack, env=None, combine_output=False):
+###############################################################################
+def run_cmd(cmd, input_str=None, from_dir=None, verbose=None, dry_run=False,
+            arg_stdout=subprocess.PIPE, arg_stderr=subprocess.PIPE, env=None, combine_output=False):
+###############################################################################
     """
     Wrapper around subprocess to make it much more convenient to run shell commands
 
     >>> run_cmd('ls file_i_hope_doesnt_exist')[0] != 0
     True
     """
-    import subprocess # Not safe to do globally, module not available in older pythons
-
-    # Real defaults for these value should be subprocess.PIPE
-    if arg_stdout is _hack:
-        arg_stdout = subprocess.PIPE
-
-    if arg_stderr is _hack:
-        arg_stderr = subprocess.STDOUT if combine_output else subprocess.PIPE
+    arg_stderr = subprocess.STDOUT if combine_output else arg_stderr
+    from_dir = str(from_dir) if from_dir else from_dir
 
     if verbose:
         print("RUN: {}\nFROM: {}".format(cmd, os.getcwd() if from_dir is None else from_dir))
+
+    if dry_run:
+        return 0, "", ""
 
     if (input_str is not None):
         stdin = subprocess.PIPE
@@ -70,8 +70,10 @@ def run_cmd(cmd, input_str=None, from_dir=None, verbose=None,
 
     return stat, output, errput
 
-def run_cmd_no_fail(cmd, input_str=None, from_dir=None, verbose=None,
-                    arg_stdout=_hack, arg_stderr=_hack, env=None, combine_output=False, exc_type=SystemExit):
+###############################################################################
+def run_cmd_no_fail(cmd, input_str=None, from_dir=None, verbose=None, dry_run=False,
+                    arg_stdout=subprocess.PIPE, arg_stderr=subprocess.PIPE, env=None, combine_output=False, exc_type=SystemExit):
+###############################################################################
     """
     Wrapper around subprocess to make it much more convenient to run shell commands.
     Expects command to work. Just returns output string.
@@ -88,7 +90,8 @@ def run_cmd_no_fail(cmd, input_str=None, from_dir=None, verbose=None,
     >>> run_cmd_no_fail('echo THE ERROR >&2', combine_output=True) == 'THE ERROR'
     True
     """
-    stat, output, errput = run_cmd(cmd, input_str, from_dir, verbose, arg_stdout, arg_stderr, env, combine_output)
+    stat, output, errput = run_cmd(cmd, input_str=input_str, from_dir=from_dir, verbose=verbose, dry_run=dry_run,
+                                   arg_stdout=arg_stdout, arg_stderr=arg_stderr, env=env, combine_output=combine_output)
     if stat != 0:
         # If command produced no errput, put output in the exception since we
         # have nothing else to go on.
@@ -100,7 +103,9 @@ def run_cmd_no_fail(cmd, input_str=None, from_dir=None, verbose=None,
 
     return output
 
+###############################################################################
 def check_minimum_python_version(major, minor):
+###############################################################################
     """
     Check your python version.
 
@@ -111,7 +116,9 @@ def check_minimum_python_version(major, minor):
     expect(sys.version_info[0] > major or
            (sys.version_info[0] == major and sys.version_info[1] >= minor), msg)
 
+###############################################################################
 def convert_to_seconds(time_str):
+###############################################################################
     """
     Convert time value in [[HH:]MM:]SS to seconds
 
@@ -130,7 +137,9 @@ def convert_to_seconds(time_str):
 
     return result
 
+###############################################################################
 def convert_to_babylonian_time(seconds):
+###############################################################################
     """
     Convert time value to seconds to HH:MM:SS
 
@@ -144,7 +153,9 @@ def convert_to_babylonian_time(seconds):
 
     return "{:02d}:{:02d}:{:02d}".format(hours, minutes, seconds)
 
+###############################################################################
 def format_time(time_format, input_format, input_time):
+###############################################################################
     """
     Converts the string input_time from input_format to time_format
     Valid format specifiers are "%H", "%M", and "%S"
@@ -214,7 +225,9 @@ def format_time(time_format, input_format, input_time):
         output_time += field[1:]
     return output_time
 
+###############################################################################
 class SharedArea(object):
+###############################################################################
     """
     Enable 0002 umask within this manager
     """
@@ -229,7 +242,9 @@ class SharedArea(object):
     def __exit__(self, *_):
         os.umask(self._orig_umask)
 
+###############################################################################
 class Timeout(object):
+###############################################################################
     """
     A context manager that implements a timeout. By default, it
     will raise exception, but a custon function call can be provided.
@@ -251,7 +266,9 @@ class Timeout(object):
         if self._seconds is not None:
             signal.alarm(0)
 
+###############################################################################
 def median(items):
+###############################################################################
     """
     >>> items = [2.3]
     >>> median(items)
@@ -269,33 +286,22 @@ def median(items):
         quotient, remainder = divmod(len(items), 2)
         return sorted(items)[quotient] if remainder else sum(sorted(items)[quotient - 1:quotient + 1]) / 2.
 
+###############################################################################
 def get_current_branch(repo=None):
+###############################################################################
     """
     Return the name of the current branch for a repository
-
-    >>> if "GIT_BRANCH" in os.environ:
-    ...     get_current_branch() is not None
-    ... else:
-    ...     os.environ["GIT_BRANCH"] = "foo"
-    ...     get_current_branch() == "foo"
-    True
+    If in detached HEAD state, returns None
     """
-    if ("GIT_BRANCH" in os.environ):
-        # This approach works better for Jenkins jobs because the Jenkins
-        # git plugin does not use local tracking branches, it just checks out
-        # to a commit
-        branch = os.environ["GIT_BRANCH"]
-        if (branch.startswith("origin/")):
-            branch = branch.replace("origin/", "", 1)
-        return branch
-    else:
-        stat, output, _ = run_cmd("git symbolic-ref HEAD", from_dir=repo)
-        if (stat != 0):
-            return None
-        else:
-            return output.replace("refs/heads/", "")
 
-def get_current_commit(short=False, repo=None, tag=False, commit="HEAD"):
+    stat, output, err = run_cmd("git rev-parse --abbrev-ref HEAD", from_dir=repo)
+    expect (stat==0, "Error! The command 'git rev-parse --abbrev-ref HEAD' failed with error: {}".format(err))
+
+    return None if output=="HEAD" else output
+
+###############################################################################
+def get_current_commit(short=False, repo=None, tag=False, commit=None):
+###############################################################################
     """
     Return the sha1 of the current HEAD commit
 
@@ -303,13 +309,19 @@ def get_current_commit(short=False, repo=None, tag=False, commit="HEAD"):
     True
     """
     if tag:
-        rc, output, _ = run_cmd("git describe --tags $(git log -n1 --pretty='%h')", from_dir=repo)
+        rc, output, err = run_cmd("git describe --tags $(git log -n1 --pretty='%h')", from_dir=repo)
     else:
-        rc, output, _ = run_cmd("git rev-parse {} {}".format("--short" if short else "", commit), from_dir=repo)
+        commit = "HEAD" if commit is None else commit
+        rc, output, err = run_cmd("git rev-parse {} {}".format("--short" if short else "", commit), from_dir=repo)
+
+    if rc != 0:
+        print("Warning: getting current commit {} failed with error: {}".format(commit, err))
 
     return output if rc == 0 else None
 
+###############################################################################
 def get_current_head(repo=None):
+###############################################################################
     """
     Return current head, preferring branch name if possible
     """
@@ -319,6 +331,110 @@ def get_current_head(repo=None):
     else:
         return branch
 
-def is_repo_clean(repo=None):
+###############################################################################
+def is_repo_clean(repo=None, silent=False):
+###############################################################################
     rc, output, _ = run_cmd("git status --porcelain --untracked-files=no", combine_output=True, from_dir=repo)
+    if (rc != 0 or output != "") and not silent:
+        print("Warning: repo is not clean: {}".format(output))
+
     return rc == 0 and output == ""
+
+###############################################################################
+def get_common_ancestor(other_head, head="HEAD", repo=None):
+###############################################################################
+    """
+    Returns None on error.
+    """
+    rc, output, _ = run_cmd("git merge-base {} {}".format(other_head, head), from_dir=repo)
+    return output if rc == 0 else None
+
+###############################################################################
+def update_submodules(repo=None):
+###############################################################################
+    """
+    Updates submodules
+    """
+    run_cmd_no_fail("git submodule update --init --recursive", from_dir=repo)
+
+###############################################################################
+def merge_git_ref(git_ref, repo=None, verbose=False):
+###############################################################################
+    """
+    Merge given git ref into the current branch, and updates submodules
+    """
+
+    # Even thoguh it can allow some extra corner cases (dirty repo, but ahead of git_ref),
+    # this check is mostly for debugging purposes, as it will inform that no merge occurred
+    out = get_common_ancestor(git_ref)
+    if out==get_current_commit(commit=git_ref):
+        if verbose:
+            print ("Merge of '{}' not necessary. Current HEAD is already ahead.".format(git_ref))
+        return
+
+    expect(is_repo_clean(repo=repo), "Cannot merge ref '{}'. The repo is not clean.".format(git_ref))
+    run_cmd_no_fail("git merge {} -m 'Automatic merge of {}'".format(git_ref,git_ref), from_dir=repo)
+    update_submodules(repo=repo)
+    expect(is_repo_clean(repo=repo), "Something went wrong while performing the merge of '{}'".format(git_ref))
+    if verbose:
+        print ("merged {} successfully merged.".format(git_ref))
+        print_last_commit()
+
+###############################################################################
+def print_last_commit(git_ref=None, repo=None):
+###############################################################################
+    """
+    Prints a one-liner of the last commit
+    """
+    git_ref = get_current_head(repo) if git_ref is None else git_ref
+    last_commit = run_cmd_no_fail("git log {} -1 --oneline".format(git_ref), from_dir=repo)
+    print("Last commit on ref '{}': {}".format(git_ref, last_commit))
+
+###############################################################################
+def checkout_git_ref(git_ref, verbose=False, repo=None):
+###############################################################################
+    """
+    Checks out 'branch_ref', and updates submodules
+    """
+    if get_current_commit() != get_current_commit(commit=git_ref):
+        expect(is_repo_clean(repo=repo), "If we need to change HEAD, then the repo must be clean before running")
+        expect(git_ref is not None, "Missing git-ref")
+
+        run_cmd_no_fail("git checkout {}".format(git_ref), from_dir=repo)
+        update_submodules(repo=repo)
+        git_commit = get_current_commit()
+        expect(is_repo_clean(repo=repo), "Something went wrong when checking out git ref '{}'".format(git_ref))
+
+        if verbose:
+            print("Switched to '{}' ({})".format(git_ref,git_commit))
+            print_last_commit(git_ref=git_ref)
+
+###############################################################################
+def get_git_toplevel_dir(repo=None):
+###############################################################################
+    """
+    Get repo toplevel directory
+    """
+    return run_cmd_no_fail("git rev-parse --show-toplevel", from_dir=repo)
+
+###############################################################################
+def cleanup_repo(orig_branch, orig_commit, repo=None):
+###############################################################################
+    """
+    Discards all unstaged changes, as well as untracked files
+    """
+    curr_commit = get_current_commit(repo=repo)
+
+    # Is this a pointless check? Maybe.
+    if not is_repo_clean(repo=repo):
+        # Discard any modifications to the repo (either tracked or untracked),
+        # but keep the ctest-build directory
+        run_cmd_no_fail("git clean -df --exclude=ctest-build", from_dir=repo)
+        toplevel_dir = get_git_toplevel_dir(repo=repo)
+        run_cmd_no_fail("git checkout -- {}".format(toplevel_dir), from_dir=repo)
+
+    checkout_git_ref(orig_branch, repo=repo)
+
+    # Is this also a pointless check?
+    if curr_commit != orig_commit:
+        run_cmd_no_fail("git reset --hard {}".format(orig_commit), from_dir=repo)

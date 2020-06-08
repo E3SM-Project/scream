@@ -13,6 +13,9 @@ Directory where CAM executable will be created.
 <entry id="cam_root" value="">
 Root directory of CAM source distribution.
 </entry>
+<entry id="caseroot" value="">
+Root directory of the case.
+</entry>
 <entry id="usr_src" value="" list="1">
 User source directories to prepend to the filepath.  Multiple directories
 are specified as a comma separated list with no embedded white space.
@@ -152,6 +155,10 @@ Modifications that allow perturbation growth testing: 0=off, 1=on.
 <entry id="scam" valid_values="0,1" value="0">
 Configure CAM for single column mode: 0=off, 1=on.  This option only
 supported for the Eulerian dycore.
+</entry>
+<entry id="iop_mode" valid_values="0,1" value="0">
+Configure for intensive observation perdiod (IOP) mode: 0=off, 1=on.  This option only
+supported for the SE dycore.
 </entry>
 <entry id="e3smreplay" valid_values="0,1" value="0">
 Configure E3SM to generate an IOP file that can be used to drive the SCM: 0=no, 1=yes.

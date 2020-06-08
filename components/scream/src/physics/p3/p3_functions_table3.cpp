@@ -1,11 +1,11 @@
 #include "p3_functions_table3_impl.hpp"
-#include "share/scream_types.hpp"
+#include "ekat/scream_types.hpp"
 
 namespace scream {
 namespace p3 {
 
 /*
- * Explicit instatiation for doing p3 table functions on Reals using the
+ * Explicit instantiation for doing p3 table functions on Reals using the
  * default device.
  */
 

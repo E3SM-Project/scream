@@ -2,7 +2,6 @@
 #define P3_FUNCTIONS_UPDATE_PROGNOSTICS_IMPL_HPP
 
 #include "p3_functions.hpp"
-#include "p3_constants.hpp"
 
 namespace scream {
 namespace p3 {
@@ -15,25 +14,26 @@ void Functions<S,D>
                         const Spack& qrheti,      const Spack& nrheti, const Spack& nrshdr,    const Spack& qimlt,
                         const Spack& nimlt,       const Spack& qisub,  const Spack& qidep,     const Spack& qinuc,
                         const Spack& ninuc,       const Spack& nislf,  const Spack& nisub,     const Spack& qiberg,
-                        const Spack& exner,       const Spack& xxls,	 const Spack& xlf,       const bool log_predictNc,
-                        const bool log_wetgrowth, const Scalar dt,	 const Spack& nmltratio, const Spack& rhorime_c,
+                        const Spack& exner,       const Spack& xxls,   const Spack& xlf,       const bool log_predictNc,
+                        const Smask& log_wetgrowth, const Scalar dt,  const Scalar& nmltratio, const Spack& rhorime_c,
                         Spack& th, Spack& qv, Spack& qitot, Spack& nitot, Spack& qirim, Spack& birim, Spack& qc,
                         Spack& nc, Spack& qr, Spack& nr)
 {
+  constexpr Scalar QSMALL    = C::QSMALL;
+  constexpr Scalar INV_RHO_RIMEMAX = C::INV_RHO_RIMEMAX;
 
-  qc = qc - (qcheti + qccol + qcshd + qiberg) * dt;
+  qc = qc + (-qcheti-qccol-qcshd-qiberg)*dt;
 
   if ( log_predictNc ){
-    nc = nc - (nccol + ncheti) * dt;
+    nc = nc + (-nccol-ncheti)*dt;
   }
 
-  qr = qr - (qrcol - qimlt + qrheti - qcshd) * dt;
+  qr = qr + (-qrcol+qimlt-qrheti+qcshd)*dt;
 
   //apply factor to source for rain number from melting of ice, (ad-hoc
   // but accounts for rapid evaporation of small melting ice particles)
-  nr = nr - (nrcol + nrheti - nmltratio * nimlt - nrshdr - ncshdc) * dt;
+  nr = nr + (-nrcol-nrheti+nmltratio*nimlt+nrshdr+ncshdc)*dt;
 
-  constexpr Scalar QSMALL    = C::QSMALL;
   const auto qitot_not_small = qitot >= QSMALL;
 
   if ( qitot_not_small.any() ) {
@@ -46,8 +46,6 @@ void Functions<S,D>
   qitot = qitot + (qidep + qinuc + qiberg) * dt + dum;
   qirim = qirim + dum;
 
-  constexpr Scalar INV_RHO_RIMEMAX = C::INV_RHO_RIMEMAX;
-
   birim = birim + (qrcol * INV_RHO_RIMEMAX + qccol / rhorime_c + (qrheti +
                                                                   qcheti) * INV_RHO_RIMEMAX) * dt;
 
@@ -55,20 +53,18 @@ void Functions<S,D>
 
   //PMC nCat deleted interactions_loop
 
-  const auto qirim_lt_thresh = qirim < 0.0 ;
+  const auto qirim_lt_thresh = qirim < 0 ;
   if (qirim_lt_thresh.any()){
-    qirim.set(qirim_lt_thresh, 0.0);
-    birim.set(qirim_lt_thresh, 0.0);
+    qirim.set(qirim_lt_thresh, 0);
+    birim.set(qirim_lt_thresh, 0);
   }
 
   // densify under wet growth
   // -- to be removed post-v2.1.  Densification automatically happens
   //    during wet growth due to parameterized rime density --
 
-  if (log_wetgrowth){
-    qirim = qitot;
-    birim = qirim * INV_RHO_RIMEMAX;
-  }
+  qirim.set(log_wetgrowth, qitot);
+  birim.set(log_wetgrowth, qirim * INV_RHO_RIMEMAX);
 
   // densify in above freezing conditions and melting
   // -- future work --
@@ -76,12 +72,47 @@ void Functions<S,D>
   //   Alternatively, it can be simplified by tending qirim -- qitot
   //   and birim such that rho_rim (qirim/birim) --> rho_liq during melting.
   // ==
-  qv = qv - (qidep - qisub + qinuc) * dt;
+  qv = qv + (-qidep+qisub-qinuc)*dt;
 
   constexpr Scalar INV_CP = C::INV_CP;
   th = th + exner * ((qidep - qisub + qinuc) * xxls * INV_CP +
                      (qrcol + qccol + qcheti + qrheti - qimlt + qiberg) * xlf * INV_CP) * dt;
+}
 
+
+template<typename S, typename D>
+KOKKOS_FUNCTION
+void Functions<S,D>
+::update_prognostic_liquid(const Spack& qcacc, const Spack& ncacc,
+			   const Spack& qcaut,const Spack& ncautc, const Spack& ncautr,
+			   const Spack& ncslf, const Spack& qrevp, const Spack& nrevp, const Spack& nrslf,
+			   const bool log_predictNc, const Spack& inv_rho, const Spack& exner, const Spack& xxlv,
+			   const Scalar dt, Spack& th, Spack& qv, Spack& qc, Spack& nc, Spack& qr, Spack& nr)
+{
+  constexpr Scalar NCCNST = C::NCCNST;
+  constexpr int IPARAM    = C::IPARAM;
+  constexpr Scalar INV_CP = C::INV_CP;
+
+  qc = qc + (-qcacc-qcaut)*dt;
+  qr = qr + (qcacc+qcaut-qrevp)*dt;
+
+  if (log_predictNc) {
+    nc = nc + (-ncacc-ncautc+ncslf)*dt;
+  }
+  else {
+    nc = NCCNST * inv_rho;
+  }
+
+  if (IPARAM == 1 || IPARAM == 2) {
+    nr = nr + (sp(0.5) * ncautc - nrslf - nrevp) * dt;
+  }
+  else {
+    nr = nr + (ncautr - nrslf - nrevp) * dt;
+  }
+
+  qv = qv + qrevp *dt;
+
+  th = th + exner*(-qrevp * xxlv * INV_CP) * dt;
 }
 
 } // namespace p3

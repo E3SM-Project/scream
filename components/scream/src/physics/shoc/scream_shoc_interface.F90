@@ -39,22 +39,42 @@ module scream_shoc_interface_mod
   real(kind=c_real) :: cpliq  =    4188.00000000000
   real(kind=c_real) :: tmelt  =    273.150000000000
   real(kind=c_real) :: pi     =    3.14159265358979
+  real(kind=c_real) :: karman =    0.40000000000000
+  real(kind=c_real) :: zvir   =    0.60779307282415
 
 contains
 
   !====================================================================!
   subroutine shoc_init_f90 (q) bind(c)
 
-    use shoc,                   only: shoc_init,r8
- 
+    use physics_utils,          only: rtype
+    use shoc,                   only: shoc_init
+
     real(kind=c_real), intent(inout) :: q(pcols,pver,9) ! State array  kg/kg
 
-    call shoc_init( &
-          real(gravit,kind=r8),&
-          real(rair,kind=r8),  &
-          real(rh2o,kind=r8),  &
-          real(cpair,kind=r8), &
-          real(latvap,kind=r8))   
+    real(kind=rtype) :: pref_mid(pcols,pver) ! pressure at midlevel hPa; rtype for now b/c shoc supports only rtype currently
+    integer(kind=c_int) :: kts, kte, k
+
+    kts     = 1
+    kte     = pver
+
+    do k = kte,kts,-1
+       pref_mid(:,k)    = 1e3_rtype - (1e3_rtype-0.1)/real(pver)!state%pmid(:,:)
+    end do
+
+    call shoc_init(&
+         pver,&
+         real(gravit,kind=rtype),&
+         real(rair,kind=rtype),  &
+         real(rh2o,kind=rtype),  &
+         real(cpair,kind=rtype), &
+         real(zvir,kind=rtype),  &
+         real(latvap,kind=rtype),&
+         real(latice,kind=rtype),&
+         real(karman,kind=rtype),&
+         pref_mid,            &
+         kte,&
+         kts)
 
     q(:,:,:) = 0.0_rtype
     q(:,:,1) = 1.0e-5_rtype!state%q(:,:,1)
@@ -66,22 +86,21 @@ contains
     q(:,:,7) = 1.0e5_rtype!state%q(:,:,ixnumrain)
     q(:,:,8) = 1.0e-8_rtype!state%q(:,:,ixcldrim) !Aaron, changed ixqirim to ixcldrim to match Kai's code
     q(:,:,9) = 1.0e4_rtype!state%q(:,:,ixrimvol)
-     
+
 
     test = 0.0
     print '(a15,f16.8,e16.8,i8,i8)', 'SHOC init = ', test, sum(q(1,:,1)), pcols, pver
 
   end subroutine shoc_init_f90
   !====================================================================!
-  subroutine shoc_main_f90 (dtime,q,FQ,qdp) bind(c)
+  subroutine shoc_main_f90 (dtime,q,FQ) bind(c)
 
     use shoc,           only: shoc_main
 
 !    real, intent(in) :: q(pcols,pver,9) ! Tracer mass concentrations from SCREAM      kg/kg
-    real(kind=c_real), intent(in)    :: dtime ! Timestep 
+    real(kind=c_real), intent(in)    :: dtime ! Timestep
     real(kind=c_real), intent(inout) :: q(pcols,pver,qsize) ! Tracer mass concentrations from SCREAM kg/kg
     real(kind=c_real), intent(inout) :: FQ(pcols,4,pver) ! Tracer mass concentrations from SCREAM kg/kg
-    real(kind=c_real), intent(in)    :: qdp(pcols,2,4,pver) ! Tracer mass concentrations from SCREAM kg/kg
 
     real(kind=c_real) :: cldliq(pcols,pver)     !cloud liquid water mixing ratio        kg/kg
     real(kind=c_real) :: numliq(pcols,pver)     !cloud liquid water drop concentraiton  #/kg
@@ -94,7 +113,7 @@ contains
     real(kind=c_real) :: rimvol(pcols,pver)     !rime volume mixing ratio               m3/kg
     real(kind=c_real) :: pres(pcols,pver)       !pressure at midlevel                   hPa
 
-    real(kind=c_real) :: inv_cp 
+    real(kind=c_real) :: inv_cp
 
     integer(kind=c_int) :: k, ncol
     integer :: i
@@ -126,29 +145,29 @@ contains
         qirim(i,k)   = q(i,k,8) !1.0e-8_rtype!state%q(:,:,ixcldrim) !Aaron, changed ixqirim to ixcldrim to match Kai's code
         rimvol(i,k)  = q(i,k,9) !1.0e4_rtype!state%q(:,:,ixrimvol)
       end do
-    end do 
+    end do
 
-    do k = kte,kts,-1 
+    do k = kte,kts,-1
       pres(:,k)    = 1e3_rtype - (1e3_rtype-0.1)/real(pver)!state%pmid(:,:)
     end do
 
     do i = its,ite
       do k = kts,kte
-        q(i,k,1) = qv(i,k)*1.01 
-        q(i,k,2) = cldliq(i,k)  
-        q(i,k,3) = ice(i,k)     
-        q(i,k,4) = numliq(i,k)  
-        q(i,k,5) = numice(i,k)  
-        q(i,k,6) = rain(i,k)    
-        q(i,k,7) = numrain(i,k) 
-        q(i,k,8) = qirim(i,k)   
+        q(i,k,1) = qv(i,k)*1.01
+        q(i,k,2) = cldliq(i,k)
+        q(i,k,3) = ice(i,k)
+        q(i,k,4) = numliq(i,k)
+        q(i,k,5) = numice(i,k)
+        q(i,k,6) = rain(i,k)
+        q(i,k,7) = numrain(i,k)
+        q(i,k,8) = qirim(i,k)
         q(i,k,9) = rimvol(i,k)
       end do
-    end do  
+    end do
 
     test = test + dtime
     FQ(1,1,1) = 9e9
-    print '(a15,f16.8,5e16.8)', 'SHOC run = ', test, qtest, sum(q), sum(qv), sum(FQ(:,:,:)), sum(qdp)
+    print '(a15,f16.8,4e16.8)', 'SHOC run = ', test, qtest, sum(q), sum(qv), sum(FQ(:,:,:))
 
   end subroutine shoc_main_f90
   !====================================================================!

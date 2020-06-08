@@ -1699,11 +1699,17 @@ Default: 1
 </entry>
 
 <entry id="inithist" type="char*8"  category="history"
-       group="cam_history_nl" valid_values="NONE,6-HOURLY,DAILY,MONTHLY,YEARLY,CAMIOP,ENDOFRUN" >
+       group="cam_history_nl" valid_values="NONE,NSTEPS,HOURLY,6-HOURLY,DAILY,MONTHLY,YEARLY,CAMIOP,ENDOFRUN" >
 Frequency that initial files will be output: 6-hourly, daily, monthly,
-yearly, or never.  Valid values: 'NONE', '6-HOURLY', 'DAILY', 'MONTHLY',
+yearly, or never.  Valid values: 'NONE', 'NSTEPS','HOURLY', '6-HOURLY', 'DAILY', 'MONTHLY',
 'YEARLY', 'CAMIOP', 'ENDOFRUN'.
 Default: 'YEARLY'
+</entry>
+
+<entry id="inithist_nsteps" type="integer"  category="history"
+       group="cam_history_nl" valid_values="" >
+Number of physics steps that initial files will be output. Used only when inithist == 'NSTEPS'
+Default: 1
 </entry>
 
 <entry id="inithist_all" type="logical"  category="history"
@@ -2167,6 +2173,18 @@ Output microphysics tendencies in standard atm output file.
 Default: TRUE
 </entry>
 
+<!-- micro_p3 -->
+<entry id="p3_QcAutoCon_Expon" type="real" category="microphysics"
+	group="micro_nl" valid_values="" >
+Exponent of power function fit used by P3 qc in autoconversion 
+Default: 2.47_rtype
+</entry>
+
+<entry id="p3_QcAccret_Expon" type="real" category="microphysics"
+	group="micro_nl" valid_values="" >
+Exponent of power function fit used by P3 qc in accretion 
+Default: 1.15_rtype
+</entry>
 
 <!-- micro_mg -->
 <entry id="micro_do_nccons" type="logical" category="microphys"
@@ -4063,6 +4081,15 @@ Switch for diagnostics specific to CLUBB.
 Default: .true.
 </entry>
 
+<entry id="get_presc_aero_data" type="logical"  category="diagnostics"
+       group="phys_ctl_nl" valid_values="" >
+Output needed to generate input to drive a prescribed aerosol climate run. 
+Requires that history_aerosol be set to true. Note that additional
+post processing is required with output in order to generate a 
+prescribed aerosol climate run.  
+Default: .false.
+</entry>
+
 <!-- Radiation -->
 <entry id="radiation_scheme" type="char*16" category="radiation"
        group="phys_ctl_nl" valid_values="rrtmg,camrt" >
@@ -4312,6 +4339,11 @@ File path for RRTMGP longwave gaseous absorption coefficients file.
 File path for RRTMGP shortwave gaseous absorption coefficients file.
 </entry>
 
+<entry id="rrtmgp_clip_temperatures" type="logical"
+       category="radiation" group="radiation_nl" valid_values="">
+Flag to determine whether temperatures should be clipped or limited when
+outside the range of the absorption coefficient look-up table values.
+</entry>
 <!-- Rayleigh Friction Parameterization -->
 
 <entry id="rayk0" type="integer" category="rayleigh_friction"
@@ -7347,6 +7379,12 @@ Default: set to shr_const value
 <entry id="rearth" type="real" category="physconst"
        group="physconst_nl" valid_values="" >
 Radius of Earth [m].
+Default: set to shr_const value
+</entry>
+
+<entry id="omega" type="real" category="physconst"
+       group="physconst_nl" valid_values="" >
+Earth Rotation rate [m/s].
 Default: set to shr_const value
 </entry>
 

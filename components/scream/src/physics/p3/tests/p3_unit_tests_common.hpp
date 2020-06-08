@@ -1,9 +1,9 @@
 #ifndef P3_UNIT_TESTS_COMMON_HPP
 #define P3_UNIT_TESTS_COMMON_HPP
 
-#include "share/scream_types.hpp"
-#include "share/util/scream_utils.hpp"
-#include "share/scream_kokkos.hpp"
+#include "ekat/scream_types.hpp"
+#include "ekat/util/scream_utils.hpp"
+#include "ekat/scream_kokkos.hpp"
 #include "physics/p3/p3_functions.hpp"
 
 namespace scream {
@@ -57,23 +57,50 @@ struct UnitWrap {
     using Table3             = typename Functions::Table3;
     using C                  = typename Functions::C;
 
+    static constexpr Int max_pack_size = 16;
+    static constexpr Int num_test_itrs = max_pack_size / Spack::n;
+
     // Put struct decls here
     struct TestTableIce;
     struct TestTable3;
+    struct TestBackToCellAverage;
+    struct TestPreventIceOverdepletion;
     struct TestFind;
     struct TestUpwind;
     struct TestGenSed;
-    struct TestP3Func;
+    struct TestP3Saturation;
     struct TestDsd2;
+    struct TestP3Conservation;
     struct TestP3CloudWaterAutoconversion;
+    struct TestCalcRimeDensity;
+    struct TestCldliqImmersionFreezing;
+    struct TestRainImmersionFreezing;
+    struct TestDropletSelfCollection;
     struct TestCloudSed;
+    struct TestCloudRainAccretion;
     struct TestIceSed;
     struct TestRainSed;
+    struct TestGetTimeSpacePhysVariables;
     struct TestP3UpdatePrognosticIce;
+    struct TestIceCollection;
+    struct TestEvapSublPrecip;
+    struct TestRainSelfCollection;
+    struct TestP3IceMelting;
+    struct TestP3SubgridVarianceScaling;
+    struct TestP3UpdatePrognosticLiq;
+    struct TestP3IceDepSublimation;
+    struct TestP3FunctionsImposeMaxTotalNi;
+    struct TestIceRelaxationTimescale;
+    struct TestCalcLiqRelaxationTimescale;
+    struct TestIceNucleation;
+    struct TestIceCldliqWetGrowth;
+    struct TestLatentHeat;
+    struct TestCheckValues;
+    struct TestIncloudMixing;
+    struct TestP3Main;
   };
 
 };
-
 
 } // namespace unit_test
 } // namespace p3

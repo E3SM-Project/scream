@@ -5,7 +5,7 @@
 module scream_p3_interface_mod
 
   use iso_c_binding, only: c_ptr, c_f_pointer, c_int, c_double, c_bool,C_NULL_CHAR, c_float
-  use micro_p3_utils, only: rtype
+  use physics_utils, only: rtype
 
   implicit none
 
@@ -57,38 +57,37 @@ contains
 
   end subroutine p3_init_f90
   !====================================================================!
-  subroutine p3_standalone_init_f90 (q,T,zi,pmid,pdel,ast,naai,npccn) bind(c)
+  subroutine p3_standalone_init_f90 (q,T,zi,pmid,pdel,ast,naai,ncnuc) bind(c)
     use micro_p3,       only: p3_init
     use micro_p3_utils, only: micro_p3_utils_init
 
-    real(kind=c_real), intent(inout) :: q(pcols,pver,9)      ! State array  kg/kg
-    real(kind=c_real), intent(inout) :: T(pcols,pver)        ! 
+    real(kind=c_real), intent(inout) :: q(pcols,pver,qsize)  ! State array  kg/kg Pa
+    real(kind=c_real), intent(inout) :: T(pcols,pver)        !
     real(kind=c_real), intent(inout) :: zi(pcols,pver+1)     ! 
     real(kind=c_real), intent(inout) :: pmid(pcols,pver)     ! 
     real(kind=c_real), intent(inout) :: pdel(pcols,pver)     ! 
     real(kind=c_real), intent(inout) :: ast(pcols,pver)      ! 
     real(kind=c_real), intent(inout) :: naai(pcols,pver)     ! ice nucleation number
-    real(kind=c_real), intent(inout) :: npccn(pcols,pver)    ! liquid activation number tendency
+    real(kind=c_real), intent(inout) :: ncnuc(pcols,pver)    ! liquid activation number tendency
 
-    character(len=100) :: case_title, tmp_c1, tmp_c2
+    character(len=100) :: case_title
 
     integer(kind=c_int) :: i, k
     logical(kind=c_bool) :: masterproc
 
     ! READ inputs from SCM for p3-stand-alone:
-    q(:,:,:) = 0.0_rtype
     open(unit=981,file='./data/p3_universal_constants.inp',status='old',action='read')
     read(981,'(A)') case_title
     read(981,'(2I8)') ncol, nlev
     if (ncol.gt.pcols.or.nlev.gt.pver) then
-       print *, 'ERROR (P3-Init): inconsistentcy between array dimensions'
+       print *, 'ERROR (P3-Init): inconsistency between array dimensions'
        close(981)
        return
     end if
     read(981,'(12E16.8)') cpair,rair,rh2o,rhoh2o,mwh2o,mwdry,gravit,latvap,latice,cpliq,tmelt,pi
     do i = 1,ncol
       do k = 1,nlev
-        read(981,'(16E16.8)') ast(i,k), naai(i,k), npccn(i,k), pmid(i,k), zi(i,k), T(i,k), &
+        read(981,'(16E16.8)') ast(i,k), naai(i,k), ncnuc(i,k), pmid(i,k), zi(i,k), T(i,k), &
                          q(i,k,1), q(i,k,2), q(i,k,3), q(i,k,4), q(i,k,5), q(i,k,6), &
                          q(i,k,7), q(i,k,8), q(i,k,9), pdel(i,k)
       end do
@@ -96,36 +95,26 @@ contains
     end do
     close(981)
 
-    !q(:,:,1) = 1.0e-5_rtype!state%q(:,:,1)
-    !q(:,:,2) = 1.0e-6_rtype!state%q(:,:,ixcldliq)
-    !q(:,:,3) = 1.0e-7_rtype!state%q(:,:,ixcldice)
-    !q(:,:,4) = 1.0e6_rtype!state%q(:,:,ixnumliq)
-    !q(:,:,5) = 1.0e5_rtype!state%q(:,:,ixnumice)
-    !q(:,:,6) = 1.0e-5_rtype!state%q(:,:,ixrain)
-    !q(:,:,7) = 1.0e5_rtype!state%q(:,:,ixnumrain)
-    !q(:,:,8) = 1.0e-8_rtype!state%q(:,:,ixcldrim) !Aaron, changed ixqirim to ixcldrim to match Kai's code
-    !q(:,:,9) = 1.0e4_rtype!state%q(:,:,ixrimvol)
     masterproc = .false.
     call micro_p3_utils_init(cpair,rair,rh2o,rhoh2o,mwh2o,mwdry,gravit,latvap,latice, &
              cpliq,tmelt,pi,0,masterproc)
     print *, 'P3-Standalone-Init Finished'
   end subroutine p3_standalone_init_f90
   !====================================================================!
-  subroutine p3_main_f90 (dtime,qdp,zi,pmid,pdel,ast,naai,npccn,q,FQ,T) bind(c)
+  subroutine p3_main_f90 (dtime,zi,pmid,pdel,ast,naai,ncnuc,q,FQ,T) bind(c)
     use micro_p3,       only: p3_main
 
 !    real, intent(in) :: q(pcols,pver,9) ! Tracer mass concentrations from SCREAM      kg/kg
     real(kind=c_real), intent(in)    :: dtime ! Timestep 
     real(kind=c_real), intent(inout) :: q(pcols,pver,qsize) ! Tracer mass concentrations from SCREAM kg/kg
     real(kind=c_real), intent(inout) :: FQ(pcols,4,pver)    ! Tracer mass tendency for physics
-    real(kind=c_real), intent(in)    :: qdp(pcols,2,4,pver) ! Tracer mass concentrations from Dynamics
     real(kind=c_real), intent(inout) :: T(pcols,pver)       ! temperature
     real(kind=c_real), intent(in)    :: zi(pcols,pver+1)    ! vertical level interfaces
     real(kind=c_real), intent(in)    :: pmid(pcols,pver)    ! pressure mid-levels
     real(kind=c_real), intent(in)    :: pdel(pcols,pver)    ! pressure thickness
     real(kind=c_real), intent(in)    :: ast(pcols,pver)     ! cloud fraction 
     real(kind=c_real), intent(in)    :: naai(pcols,pver)    ! ice nucleation number
-    real(kind=c_real), intent(in)    :: npccn(pcols,pver)   ! liquid activation number tendency
+    real(kind=c_real), intent(in)    :: ncnuc(pcols,pver)   ! liquid activation number tendency
     !INTERNAL VARIABLES
     real(kind=c_real) :: th(pcols,pver)         !potential temperature  K
     real(kind=c_real) :: dzq(pcols,pver)        !geometric layer thickness              m
@@ -170,8 +159,10 @@ contains
     real(kind=c_real) :: vap_liq_exchange(pcols,pver) ! sum of vap-liq phase change tendenices
     real(kind=c_real) :: vap_ice_exchange(pcols,pver) ! sum of vap-ice phase change tendenices
     real(kind=c_real) :: vap_cld_exchange(pcols,pver) ! sum of vap-cld phase change tendenices
+    real(kind=c_real) :: qc_relvar(pcols,pver)        ! 1/(var(qc)/mean(qc)**2) for P3 subgrid qc.
+    real(kind=c_real) :: inv_cp
 
-    real(kind=c_real) :: inv_cp 
+    real(kind=c_real) :: col_location(pcols,3) 
 
     ! For rrtmg optics. specified distribution.
     real(kind=c_real), parameter :: dcon   = 25.e-6_rtype      ! Convective size distribution effective radius (um)
@@ -199,7 +190,7 @@ contains
     ! pdel                   pressure layer thickness, again can be gotten from pres 
     ! lcdlm, icldm, rcldm    cloud fractions
     ! exner                  exner expression.  Can be backed out from pressure.
-    ! npccn and naai         activation arrays.
+    ! ncnuc and naai         activation arrays.
     
 
     ! MAKE LOCAL COPIES OF VARS MODIFIED BY P3
@@ -227,6 +218,7 @@ contains
         qirim(:,k)   = q(i,k,8) !1.0e-8_rtype!state%q(:,:,ixcldrim) !Aaron, changed ixqirim to ixcldrim to match Kai's code
         rimvol(:,k)  = q(i,k,9) !1.0e4_rtype!state%q(:,:,ixrimvol)
       end do
+      col_location(i,:) = real(i)
     end do 
 
 !    do k = kte,kts,-1 
@@ -244,7 +236,7 @@ contains
 !          pdel(icol,k)  = (1e3_rtype-0.1)/real(pver) ! should be changed to come from model state.
        end do
     end do
-    ! Initialize the raidation dependent variables.
+    ! Initialize the radiation dependent variables.
     mu      = mucon
     lambdac = (mucon + 1._rtype)/dcon
     dei     = deicon
@@ -252,9 +244,13 @@ contains
     call get_cloud_fraction(its,ite,kts,kte,ast(its:ite,kts:kte),cldliq(its:ite,kts:kte), &
             rain(its:ite,kts:kte),ice(its:ite,kts:kte),precip_frac_method, &
             icldm(its:ite,kts:kte),lcldm(its:ite,kts:kte),rcldm(its:ite,kts:kte))
-!    icldm(:,:) = 1.0_rtype
-!    lcldm(:,:) = 1.0_rtype
-!    rcldm(:,:) = 1.0_rtype
+    !    icldm(:,:) = 1.0_rtype
+    !    lcldm(:,:) = 1.0_rtype
+    !    rcldm(:,:) = 1.0_rtype
+
+    ! Hack qc_relvar (should get more thoughtful value later):
+    qc_relvar(:,:) = 1.0_rtype
+    
     ! CALL P3
     !==============
     call p3_main( &
@@ -271,8 +267,9 @@ contains
          rimvol(its:ite,kts:kte),     & ! INOUT  ice, rime volume mixing ratio    m3 kg-1
          pmid(its:ite,kts:kte),       & ! IN     pressure at cell midpoints       Pa
          dzq(its:ite,kts:kte),        & ! IN     vertical grid spacing            m
-         npccn(its:ite,kts:kte),      & ! IN ccn activation number tendency kg-1 s-1
+         ncnuc(its:ite,kts:kte),      & ! IN ccn activation number tendency kg-1 s-1
          naai(its:ite,kts:kte),       & ! IN activated ice nuclei concentration kg-1
+         qc_relvar(its:ite,kts:kte),  & ! IN 1/(var(qc)/mean(qc)**2) used in P3.
          it,                          & ! IN     time step counter NOTE: starts at 1 for first time step
          prt_liq(its:ite),            & ! OUT    surface liquid precip rate       m s-1
          prt_sol(its:ite),            & ! OUT    surface frozen precip rate       m s-1
@@ -307,7 +304,7 @@ contains
          liq_ice_exchange(its:ite,kts:kte),& ! OUT sum of liq-ice phase change tendenices   
          vap_liq_exchange(its:ite,kts:kte),& ! OUT sun of vap-liq phase change tendencies
          vap_ice_exchange(its:ite,kts:kte),& ! OUT sum of vap-ice phase change tendencies
-         vap_cld_exchange(its:ite,kts:kte) & ! OUT sum of vap-cld phase change tendencies
+         col_location(its:ite,3)           & ! IN location of columns
          )
     do i = its,ite
       do k = kts,kte
@@ -327,7 +324,7 @@ contains
       end do
     end do  
 
-    print '(a15,f16.8,5e16.8)', 'P3 run = ', test, qtest, sum(q), sum(qv), sum(FQ(:,:,:)), sum(qdp)
+    print '(a15,f16.8,4e16.8)', 'P3 run = ', test, qtest, sum(q), sum(qv), sum(FQ(:,:,:))
   end subroutine p3_main_f90
   !====================================================================!
   subroutine p3_finalize_f90 () bind(c)

@@ -7,7 +7,7 @@ module shoc_intr
   !                                                                    !
   ! SHOC replaces the exisiting turbulence, shallow convection, and    !
   !   macrophysics in E3SM                                             !  
-  !                                                                    !  
+  !                                                                    ! 
   !                                                                    !
   !---------------------------Code history---------------------------- !
   ! Authors:  P. Bogenschutz                                           ! 
@@ -78,8 +78,7 @@ module shoc_intr
       shoc_liq_sh = 10.e-6, &
       shoc_ice_deep = 25.e-6, &
       shoc_ice_sh = 50.e-6  
-      
-  logical      :: do_tms    
+         
   logical      :: lq(pcnst)
   logical      :: lq2(pcnst)
  
@@ -122,7 +121,6 @@ module shoc_intr
     
     call phys_getopts( eddy_scheme_out                 = eddy_scheme, &
                        deep_scheme_out                 = deep_scheme, & 
-                       do_tms_out                      = do_tms,      &
                        history_budget_out              = history_budget, &
                        history_budget_histfile_num_out = history_budget_histfile_num, &
                        micro_do_icesupersat_out        = micro_do_icesupersat, &
@@ -134,9 +132,9 @@ module shoc_intr
     call cnst_add('SHOC_TKE',0._r8,0._r8,0._r8,ixtke,longname='turbulent kinetic energy',cam_outfld=.false.)
   
     ! Fields that are not prognostic should be added to PBUF
-    call pbuf_add_field('WTHV', 'global', dtype_r8, (/pcols,pverp,dyn_time_lvls/), wthv_idx)
-    call pbuf_add_field('TKH', 'global', dtype_r8, (/pcols,pverp,dyn_time_lvls/), tkh_idx) 
-    call pbuf_add_field('TK', 'global', dtype_r8, (/pcols,pverp,dyn_time_lvls/), tk_idx) 
+    call pbuf_add_field('WTHV', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), wthv_idx)
+    call pbuf_add_field('TKH', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), tkh_idx) 
+    call pbuf_add_field('TK', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), tk_idx) 
 
     call pbuf_add_field('pblh',       'global', dtype_r8, (/pcols/), pblh_idx)
     call pbuf_add_field('tke',        'global', dtype_r8, (/pcols, pverp/), tke_idx)
@@ -272,8 +270,8 @@ end function shoc_implements_cnst
     integer :: lptr
     integer :: nmodes, nspec, m, l
     integer :: ixnumliq
-    integer :: ntop_eddy
-    integer :: nbot_eddy
+    integer :: ntop_shoc
+    integer :: nbot_shoc
     character(len=128) :: errstring   
 
     logical :: history_amwg
@@ -305,7 +303,7 @@ end function shoc_implements_cnst
     dp_frac_idx = pbuf_get_index('DP_FRAC')     ! Deep convection cloud fraction
     icwmrdp_idx = pbuf_get_index('ICWMRDP')     ! In-cloud deep convective mixing ratio
     sh_frac_idx = pbuf_get_index('SH_FRAC')     ! Shallow convection cloud fraction
-    relvar_idx  = pbuf_get_index('RELVAR')      ! Relative cloud water variance
+    relvar_idx      = pbuf_get_index('RELVAR')      ! Relative cloud water variance
     accre_enhan_idx = pbuf_get_index('ACCRE_ENHAN') ! accretion enhancement for MG
     prer_evap_idx   = pbuf_get_index('PRER_EVAP')
     qrl_idx         = pbuf_get_index('QRL')
@@ -318,6 +316,9 @@ end function shoc_implements_cnst
       call pbuf_set_field(pbuf2d, tkh_idx, 0.0_r8) 
       call pbuf_set_field(pbuf2d, tk_idx, 0.0_r8) 
       call pbuf_set_field(pbuf2d, fice_idx, 0.0_r8)
+      call pbuf_set_field(pbuf2d, tke_idx, tke_tol)
+      call pbuf_set_field(pbuf2d, alst_idx, 0.0_r8)
+      call pbuf_set_field(pbuf2d, aist_idx, 0.0_r8)
       
       call pbuf_set_field(pbuf2d, vmag_gust_idx,    1.0_r8)
       
@@ -347,38 +348,6 @@ end function shoc_implements_cnst
        lq(ixnumliq) = .false.
        edsclr_dim = edsclr_dim-1
     endif 
-   
-    ! ----------------------------------------------------------------- !
-    ! Set-up HB diffusion.  Only initialized to diagnose PBL depth      !
-    ! ----------------------------------------------------------------- !
-
-    ! Initialize eddy diffusivity module
-
-    ntop_eddy = 1    ! if >1, must be <= nbot_molec
-    nbot_eddy = pver ! currently always pver
-
-    call init_hb_diff( gravit, cpair, ntop_eddy, nbot_eddy, pref_mid, karman, eddy_scheme )
-
-    ! ----------------------------------------------------------------- !
-    ! Initialize turbulent mountain stress module                       !
-    ! ------------------------------------------------------------------!
-
-    if ( do_tms) then
-       call init_tms( r8, tms_orocnst, tms_z0fac, karman, gravit, rair, errstring)
-       call handle_errmsg(errstring, subname="init_tms")
-
-       call addfld( 'TAUTMSX' ,  horiz_only,  'A','N/m2',  'Zonal      turbulent mountain surface stress' )
-       call addfld( 'TAUTMSY' ,  horiz_only,  'A','N/m2',  'Meridional turbulent mountain surface stress' )
-       if (history_amwg) then
-          call add_default( 'TAUTMSX ', 1, ' ' )
-          call add_default( 'TAUTMSY ', 1, ' ' )
-       end if
-       if (masterproc) then
-          write(iulog,*)'Using turbulent mountain stress module'
-          write(iulog,*)'  tms_orocnst = ',tms_orocnst
-          write(iulog,*)'  tms_z0fac = ',tms_z0fac
-       end if
-    endif
 
     ! Add SHOC fields
     call addfld('SHOC_TKE', (/'lev'/), 'A', 'm2/s2', 'TKE')
@@ -400,6 +369,7 @@ end function shoc_implements_cnst
     call addfld('ISOTROPY',(/'lev'/),'A', 's', 'timescale')
     call addfld('CONCLD',(/'lev'/),  'A',        'fraction', 'Convective cloud cover')
     call addfld('BRUNT',(/'lev'/), 'A', 's-1', 'Brunt frequency')
+    call addfld('RELVAR',(/'lev'/), 'A', 'kg/kg', 'SHOC cloud liquid relative variance')
 
     call add_default('SHOC_TKE', 1, ' ')
     call add_default('WTHV_SEC', 1, ' ')
@@ -420,13 +390,19 @@ end function shoc_implements_cnst
     call add_default('ISOTROPY',1,' ')
     call add_default('CONCLD',1,' ')
     call add_default('BRUNT',1,' ')
+    call add_default('RELVAR',1,' ')
+
     ! ---------------------------------------------------------------!
     ! Initialize SHOC                                                !
     ! ---------------------------------------------------------------!
  
+    ntop_shoc = 1    ! if >1, must be <= nbot_molec
+    nbot_shoc = pver ! currently always pver 
+ 
     call shoc_init( &
-          gravit, rair, rh2o, cpair, &
-	  latvap)   
+          pver, gravit, rair, rh2o, cpair, &
+	  zvir, latvap, latice, karman, &
+	  pref_mid, nbot_shoc, ntop_shoc )   
     
     ! --------------- !
     ! End             !
@@ -474,7 +450,7 @@ end function shoc_implements_cnst
     use trb_mtn_stress,            only: compute_tms
     use shoc,           only: shoc_main
     use cam_history,    only: outfld
-    use scamMod,        only: single_column   
+    use scamMod,        only: single_column, iop_mode  
  
     implicit none
     
@@ -530,21 +506,8 @@ end function shoc_implements_cnst
    real(r8) :: dtime                            ! SHOC time step                              [s]   
    real(r8) :: edsclr_in(pcols,pver,edsclr_dim)      ! Scalars to be diffused through SHOC         [units vary]   
    real(r8) :: edsclr_out(pcols,pver,edsclr_dim)
-   real(r8) :: tke_in(pcols,pver)
-   real(r8) :: thlm_in(pcols,pver)
-   real(r8) :: thv_in(pcols,pver)
-   real(r8) :: temp_in(pcols,pver)
-   real(r8) :: qv_in(pcols,pver)
    real(r8) :: rcm_in(pcols,pver)
-   real(r8) :: rvm_in(pcols,pver)
-   real(r8) :: rtm_in(pcols,pver)
-   real(r8) :: wthv_in(pcols,pver)
-   real(r8) :: pres_in(pcols,pver)
-   real(r8) :: um_in(pcols,pver)
-   real(r8) :: vm_in(pcols,pver)
-   real(r8) :: pdel_in(pcols,pver)
    real(r8) :: cloudfrac_shoc(pcols,pver)
-   real(r8) :: rcm_shoc(pcols,pver)
    real(r8) :: newfice(pcols,pver)              ! fraction of ice in cloud at CLUBB start       [-]
    real(r8) :: exner(pcols,pver)
    real(r8) :: thlm(pcols,pver)
@@ -553,7 +516,7 @@ end function shoc_implements_cnst
    real(r8) :: rvm(pcols,pver)
    real(r8) :: rtm(pcols,pver)
    real(r8) :: rcm(pcols,pver)
-!   real(r8) :: tke(pcols,pver)
+   real(r8) :: rcm2(pcols,pver)                 ! cloud liquid variance                         [kg/kg]
    real(r8) :: ksrftms(pcols)                   ! Turbulent mountain stress surface drag        [kg/s/m2]
    real(r8) :: tautmsx(pcols)                   ! U component of turbulent mountain stress      [N/m2]
    real(r8) :: tautmsy(pcols)                   ! V component of turbulent mountain stress      [N/m2]
@@ -564,21 +527,17 @@ end function shoc_implements_cnst
    real(r8) :: cloud_frac(pcols,pver)          ! CLUBB cloud fraction                          [fraction]
    real(r8) :: dlf2(pcols,pver)
    real(r8) :: isotropy(pcols,pver)
+   real(r8) :: host_dx, host_dy
+   real(r8) :: host_temp(pcols,pver)
    real(r8) :: host_dx_in(pcols), host_dy_in(pcols)  
    real(r8) :: shoc_mix_out(pcols,pver), tk_in(pcols,pver), tkh_in(pcols,pver)
-   real(r8) :: isotropy_out(pcols,pver)
+   real(r8) :: isotropy_out(pcols,pver), tke_zt(pcols,pver)
    real(r8) :: w_sec_out(pcols,pver), thl_sec_out(pcols,pverp)
    real(r8) :: qw_sec_out(pcols,pverp), qwthl_sec_out(pcols,pverp)
    real(r8) :: wthl_sec_out(pcols,pverp), wqw_sec_out(pcols,pverp)
    real(r8) :: wtke_sec_out(pcols,pverp), uw_sec_out(pcols,pverp)
    real(r8) :: vw_sec_out(pcols,pverp), w3_out(pcols,pverp)
    real(r8) :: wqls_out(pcols,pver), brunt_out(pcols,pver)
-   real(r8) :: shoc_mix(pcols,pver)
-   real(r8) :: w_sec(pcols,pver), thl_sec(pcols,pverp)
-   real(r8) :: qw_sec(pcols,pverp), qwthl_sec(pcols,pverp)
-   real(r8) :: wthl_sec(pcols,pverp), wqw_sec(pcols,pverp)
-   real(r8) :: wtke_sec(pcols,pverp), uw_sec(pcols,pverp)
-   real(r8) :: vw_sec(pcols,pverp), w3(pcols,pverp), wqls(pcols,pver), brunt(pcols,pver)
 
    real(r8) :: wthl_output(pcols,pverp)
    real(r8) :: wqw_output(pcols,pverp)
@@ -606,7 +565,7 @@ end function shoc_implements_cnst
    ! Pointers        !
    ! --------------- !
   
-   real(r8), pointer, dimension(:,:) :: tke  ! turbulent kinetic energy 
+   real(r8), pointer, dimension(:,:) :: tke_zi  ! turbulent kinetic energy, interface
    real(r8), pointer, dimension(:,:) :: wthv ! buoyancy flux
    real(r8), pointer, dimension(:,:) :: tkh 
    real(r8), pointer, dimension(:,:) :: tk
@@ -631,7 +590,8 @@ end function shoc_implements_cnst
    real(r8), pointer, dimension(:,:) :: accre_enhan
    real(r8), pointer, dimension(:,:) :: relvar
    
-   logical :: lqice(pcnst)   
+   logical :: lqice(pcnst)
+   real(r8) :: relvarmax
    
    !------------------------------------------------------------------!
    !------------------------------------------------------------------!
@@ -663,7 +623,7 @@ end function shoc_implements_cnst
    itim_old = pbuf_old_tim_idx()     
    
    !  Establish associations between pointers and physics buffer fields   
-   call pbuf_get_field(pbuf, tke_idx,     tke)
+   call pbuf_get_field(pbuf, tke_idx,     tke_zi)
    call pbuf_get_field(pbuf, wthv_idx,     wthv,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))  
    call pbuf_get_field(pbuf, tkh_idx,      tkh,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))  
    call pbuf_get_field(pbuf, tk_idx,       tk,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))  
@@ -730,9 +690,13 @@ end function shoc_implements_cnst
 
    ! Set grid space, in meters. If SCM, set to a grid size representative
    !  of a typical GCM.  Otherwise, compute locally.    
-   if (single_column) then
+   if (single_column .and. .not. iop_mode) then
      host_dx_in(:) = 100000._r8
      host_dy_in(:) = 100000._r8
+   else if (iop_mode) then
+     call grid_size_uniform(host_dx, host_dy)
+     host_dx_in(:) = host_dx
+     host_dy_in(:) = host_dy
    else
      call grid_size(state1, host_dx_in, host_dy_in)
    endif
@@ -767,43 +731,14 @@ end function shoc_implements_cnst
        thlm(i,k) = state1%t(i,k)*exner(i,k)-(latvap/cpair)*state1%q(i,k,ixcldliq)
        thv(i,k) = state1%t(i,k)*exner(i,k)*(1.0_r8+zvir*state1%q(i,k,ixq)-state1%q(i,k,ixcldliq)) 
  
-       tke(i,k) = max(tke_tol,state1%q(i,k,ixtke))
+       tke_zt(i,k) = max(tke_tol,state1%q(i,k,ixtke))
+       
+       ! Cloud fraction needs to be initialized for first 
+       !  PBL height calculation call
+       cloud_frac(i,k) = alst(i,k) 
      
      enddo
-   enddo        
-  
-   ! Compute integrals of static energy, kinetic energy, water vapor, and liquid water
-   ! for the computation of total energy before SHOC is called.  This is for an 
-   ! effort to conserve energy since liquid water potential temperature (which SHOC 
-   ! conserves) and static energy (which CAM conserves) are not exactly equal.   
-   se_b = 0._r8
-   ke_b = 0._r8
-   wv_b = 0._r8
-   wl_b = 0._r8
-   do k=1,pver
-     do i=1,ncol
-       se_b(i) = se_b(i) + state1%s(i,k)*state1%pdel(i,k)/gravit
-       ke_b(i) = ke_b(i) + 0.5_r8*(um(i,k)**2+vm(i,k)**2)*state1%pdel(i,k)/gravit
-       wv_b(i) = wv_b(i) + state1%q(i,k,ixq)*state1%pdel(i,k)/gravit
-       wl_b(i) = wl_b(i) + state1%q(i,k,ixcldliq)*state1%pdel(i,k)/gravit
-     enddo
-   enddo
-   
-   ! ------------------------------------------------- !
-   ! Begin module to compute turbulent mountain stress !
-   ! ------------------------------------------------- !
-    if ( do_tms) then
-       call t_startf('compute_tms')
-       call compute_tms( pcols,        pver,      ncol,                   &
-                     state1%u,     state1%v,  state1%t,  state1%pmid, &
-                     state1%exner, state1%zm, sgh30,     ksrftms,     &
-                     tautmsx,      tautmsy,   cam_in%landfrac ) 
-       call t_stopf('compute_tms')
-    endif
-    
-   ! ------------------------------------------------- !
-   ! End module to compute turbulent mountain stress   !
-   ! ------------------------------------------------- !  
+   enddo         
    
    ! ------------------------------------------------- !
    ! Prepare inputs for SHOC call                      !
@@ -816,18 +751,19 @@ end function shoc_implements_cnst
    enddo
    
    !  Define the SHOC thermodynamic grid (in units of m)
-   wm_zt(:,1) = 0._r8
+   wm_zt(:,pver) = 0._r8
    do k=1,pver
      do i=1,ncol
-       zt_g(i,k) = state1%zm(i,pver-k+1)-state1%zi(i,pver+1)
-       rrho(i,k)=(1._r8/gravit)*(state1%pdel(i,pver-k+1)/dz_g(i,pver-k+1))
-       wm_zt(i,k) = -1._r8*state1%omega(i,pver-k+1)/(rrho(i,k)*gravit)
+       zt_g(i,k) = state1%zm(i,k)-state1%zi(i,pver+1)
+       rrho(i,k)=(1._r8/gravit)*(state1%pdel(i,k)/dz_g(i,k))
+       wm_zt(i,k) = -1._r8*state1%omega(i,k)/(rrho(i,k)*gravit)
+       shoc_s(i,k) = state1%s(i,k)
      enddo
    enddo
      
    do k=1,pverp
      do i=1,ncol
-       zi_g(i,k) = state1%zi(i,pverp-k+1)-state1%zi(i,pver+1)
+       zi_g(i,k) = state1%zi(i,k)-state1%zi(i,pver+1)
      enddo
    enddo
 
@@ -838,42 +774,12 @@ end function shoc_implements_cnst
    do i=1,ncol
       !  Surface fluxes provided by host model
 
-      wpthlp_sfc(i) = cam_in%shf(i)/(cpair*rrho_i(i,1))       ! Sensible heat flux
-      wprtp_sfc(i)  = cam_in%cflx(i,1)/(rrho_i(i,1))      ! Latent heat flux
-      upwp_sfc(i)   = cam_in%wsx(i)/rrho_i(i,1)               ! Surface meridional momentum flux
-      vpwp_sfc(i)   = cam_in%wsy(i)/rrho_i(i,1)               ! Surface zonal momentum flux  
+      wpthlp_sfc(i) = cam_in%shf(i)/(cpair*rrho_i(i,pverp))       ! Sensible heat flux
+      wprtp_sfc(i)  = cam_in%cflx(i,1)/(rrho_i(i,pverp))      ! Latent heat flux
+      upwp_sfc(i)   = cam_in%wsx(i)/rrho_i(i,pverp)               ! Surface meridional momentum flux
+      vpwp_sfc(i)   = cam_in%wsy(i)/rrho_i(i,pverp)               ! Surface zonal momentum flux  
       wtracer_sfc(i,:) = 0._r8  ! in E3SM tracer fluxes are done elsewhere
-   enddo   
-      
-   ! ------------------------------------------------- !
-   ! Apply TMS                                         !
-   ! ------------------------------------------------- !    
-   if ( do_tms) then
-     do i=1,ncol
-       upwp_sfc(i) = upwp_sfc(i)-((ksrftms(i)*state1%u(i,pver))/rrho_i(i,1))
-       vpwp_sfc(i) = vpwp_sfc(i)-((ksrftms(i)*state1%v(i,pver))/rrho_i(i,1))
-     enddo 
-   endif           
-
-   ! Need to flip arrays around for SHOC 
-   do k=1,pver
-     do i=1,ncol
-       um_in(i,k)      = um(i,pver-k+1)
-       vm_in(i,k)      = vm(i,pver-k+1)   
-       rvm_in(i,k)     = rvm(i,pver-k+1)
-       rcm_in(i,k)     = rcm(i,pver-k+1)
-       rtm_in(i,k)     = rtm(i,pver-k+1)
-       thlm_in(i,k)    = thlm(i,pver-k+1)
-       thv_in(i,k)     = thv(i,pver-k+1)
-       temp_in(i,k)    = state%t(i,pver-k+1)
-       tke_in(i,k)     = tke(i,pver-k+1)
-       wthv_in(i,k)    = wthv(i,pver-k+1)
-       tkh_in(i,k)     = tkh(i,pver-k+1)
-       tk_in(i,k)      = tk(i,pver-k+1)
-       pdel_in(i,k)    = state1%pdel(i,pver-k+1)
-       pres_in(i,k)    = state1%pmid(i,pver-k+1)
-     enddo  
-   enddo   
+   enddo               
    
    !  Do the same for tracers 
    icnt=0
@@ -882,7 +788,7 @@ end function shoc_implements_cnst
        icnt=icnt+1
        do k=1,pver
          do i=1,ncol
-           edsclr_in(i,k,icnt) = state1%q(i,pver-k+1,ixind)
+           edsclr_in(i,k,icnt) = state1%q(i,k,ixind)
          enddo
        enddo
      end if
@@ -892,123 +798,50 @@ end function shoc_implements_cnst
    ! Actually call SHOC                                !
    ! ------------------------------------------------- !   
 
-   do t=1,nadv
-
-     call shoc_main( &
-          ncol, pver, pverp, dtime, & ! Input
-	  host_dx_in(:ncol), host_dy_in(:ncol), thv_in(:ncol,:),rcm_in(:ncol,:),& ! Input
-          zt_g(:ncol,:), zi_g(:ncol,:), pres_in(:ncol,:), pdel_in(:ncol,:),& ! Input
-	  wpthlp_sfc(:ncol), wprtp_sfc(:ncol), upwp_sfc(:ncol), vpwp_sfc(:ncol), & ! Input
-	  wtracer_sfc(:ncol,:), edsclr_dim, wm_zt(:ncol,:), & ! Input
-	  tke_in(:ncol,:), thlm_in(:ncol,:), rtm_in(:ncol,:), & ! Input/Ouput
-	  um_in(:ncol,:), vm_in(:ncol,:), edsclr_in(:ncol,:,:), & ! Input/Output
-	  wthv_in(:ncol,:),tkh_in(:ncol,:),tk_in(:ncol,:), & ! Input/Output
-          cloudfrac_shoc(:ncol,:), rcm_shoc(:ncol,:), & ! Output
-          shoc_mix_out(:ncol,:), isotropy_out(:ncol,:), & ! Output (diagnostic)
-          w_sec_out(:ncol,:), thl_sec_out(:ncol,:), qw_sec_out(:ncol,:), qwthl_sec_out(:ncol,:), & ! Output (diagnostic)          
-          wthl_sec_out(:ncol,:), wqw_sec_out(:ncol,:), wtke_sec_out(:ncol,:), & ! Output (diagnostic)
-          uw_sec_out(:ncol,:), vw_sec_out(:ncol,:), w3_out(:ncol,:), & ! Output (diagnostic)
-          wqls_out(:ncol,:),brunt_out(:ncol,:)) ! Output (diagnostic)
-
-          rcm_in(:,:) = rcm_shoc(:,:)
-
-   enddo  ! end time loop
+   call shoc_main( &
+        ncol, pver, pverp, dtime, nadv, & ! Input
+	host_dx_in(:ncol), host_dy_in(:ncol), thv(:ncol,:),& ! Input
+        zt_g(:ncol,:), zi_g(:ncol,:), state%pmid(:ncol,:pver), state%pint(:ncol,:pverp), state1%pdel(:ncol,:pver),& ! Input
+	wpthlp_sfc(:ncol), wprtp_sfc(:ncol), upwp_sfc(:ncol), vpwp_sfc(:ncol), & ! Input
+	wtracer_sfc(:ncol,:), edsclr_dim, wm_zt(:ncol,:), & ! Input
+	exner(:ncol,:),state1%phis(:ncol), & ! Input
+	shoc_s(:ncol,:), tke_zt(:ncol,:), thlm(:ncol,:), rtm(:ncol,:), & ! Input/Ouput
+	um(:ncol,:), vm(:ncol,:), edsclr_in(:ncol,:,:), & ! Input/Output
+	wthv(:ncol,:),tkh(:ncol,:),tk(:ncol,:), & ! Input/Output
+	rcm(:ncol,:),cloud_frac(:ncol,:), & ! Input/Output
+        pblh(:ncol), & ! Output
+        shoc_mix_out(:ncol,:), isotropy_out(:ncol,:), & ! Output (diagnostic)
+        w_sec_out(:ncol,:), thl_sec_out(:ncol,:), qw_sec_out(:ncol,:), qwthl_sec_out(:ncol,:), & ! Output (diagnostic)   
+        wthl_sec_out(:ncol,:), wqw_sec_out(:ncol,:), wtke_sec_out(:ncol,:), & ! Output (diagnostic)
+        uw_sec_out(:ncol,:), vw_sec_out(:ncol,:), w3_out(:ncol,:), & ! Output (diagnostic)
+        wqls_out(:ncol,:),brunt_out(:ncol,:),rcm2(:ncol,:)) ! Output (diagnostic)
    
-   ! Arrays need to be "flipped" to E3SM grid
+   ! Transfer back to pbuf variables
    
    do k=1,pver
      do i=1,ncol 
-       um(i,k) = um_in(i,pver-k+1)
-       vm(i,k) = vm_in(i,pver-k+1)
-       thlm(i,k) = thlm_in(i,pver-k+1)
-       rtm(i,k) = rtm_in(i,pver-k+1)
-       rcm(i,k) = rcm_shoc(i,pver-k+1)
-       cloud_frac(i,k) = min(cloudfrac_shoc(i,pver-k+1),1._r8)
-       wthv(i,k) = wthv_in(i,pver-k+1)
-       tke(i,k) = tke_in(i,pver-k+1)
+     
+       cloud_frac(i,k) = min(cloud_frac(i,k),1._r8)
        
        do ixind=1,edsclr_dim
-         edsclr_out(i,k,ixind) = edsclr_in(i,pver-k+1,ixind)
+         edsclr_out(i,k,ixind) = edsclr_in(i,k,ixind)
        enddo      
-
-       shoc_mix(i,k) = shoc_mix_out(i,pver-k+1)
-       tk(i,k) = tk_in(i,pver-k+1)
-       tkh(i,k) = tkh_in(i,pver-k+1)
-       isotropy(i,k) = isotropy_out(i,pver-k+1)
-       w_sec(i,k) = w_sec_out(i,pver-k+1)
-       wqls(i,k) = wqls_out(i,pver-k+1)
-       brunt(i,k) = brunt_out(i,pver-k+1)
  
      enddo
    enddo
 
-   do k=1,pverp
-     do i=1,ncol
-
-       w3(i,k) = w3_out(i,pverp-k+1)
-       thl_sec(i,k) = thl_sec_out(i,pverp-k+1)
-       qw_sec(i,k) = qw_sec_out(i,pverp-k+1)
-       qwthl_sec(i,k) = qwthl_sec_out(i,pverp-k+1)
-       wthl_sec(i,k) = wthl_sec_out(i,pverp-k+1)
-       wqw_sec(i,k) = wqw_sec_out(i,pverp-k+1)
-       wtke_sec(i,k) = wtke_sec_out(i,pverp-k+1)
-       uw_sec(i,k) = uw_sec_out(i,pverp-k+1)
-       vw_sec(i,k) = vw_sec_out(i,pverp-k+1)
-
-     enddo
-   enddo
-
+   ! Eddy diffusivities and TKE are needed for aerosol activation code.
+   !   Linearly interpolate from midpoint grid and onto the interface grid.
+   !   The output variables for these routines (khzm, khzt, and tke_zi)
+   !   are PBUF pointers
    call linear_interp(state%zm(:ncol,:pver),state%zi(:ncol,:pverp),&
                 tk(:ncol,:pver),khzm(:ncol,:pverp),pver,pverp,ncol,0._r8)
    call linear_interp(state%zm(:ncol,:pver),state%zi(:ncol,:pverp),&
                 tkh(:ncol,:pver),khzt(:ncol,:pverp),pver,pverp,ncol,0._r8)
-   
-   ! Compute integrals for static energy, kinetic energy, water vapor, and liquid water
-   ! after SHOC is called.  This is for energy conservation purposes. 
-   se_a = 0._r8
-   ke_a = 0._r8
-   wv_a = 0._r8
-   wl_a = 0._r8
-   do k=1,pver
-     do i=1,ncol
-       shoc_t(i,k) = (thlm(i,k)+(latvap/cpair)*rcm(i,k))/exner(i,k)
-       shoc_s(i,k) = cpair*shoc_t(i,k)+ &
-                      gravit*state1%zm(i,k)+state1%phis(i)
-       se_a(i) = se_a(i) + shoc_s(i,k)*state1%pdel(i,k)/gravit
-       ke_a(i) = ke_a(i) + 0.5_r8*(um(i,k)**2+vm(i,k)**2)*state1%pdel(i,k)/gravit
-       wv_a(i) = wv_a(i) + (rtm(i,k)-rcm(i,k))*state1%pdel(i,k)/gravit
-       wl_a(i) = wl_a(i) + (rcm(i,k))*state1%pdel(i,k)/gravit
+   call linear_interp(state%zm(:ncol,:pver),state%zi(:ncol,:pverp),&
+                tke_zt(:ncol,:pver),tke_zi(:ncol,:pverp),pver,pverp,ncol,tke_tol)
 
-     enddo    
-   enddo     
-  
-   ! Based on these integrals, compute the total energy before and after SHOC call
-   do i=1,ncol
-     te_a(i) = se_a(i) + ke_a(i) + (latvap+latice)*wv_a(i)+latice*wl_a(i)
-     te_b(i) = se_b(i) + ke_b(i) + (latvap+latice)*wv_b(i)+latice*wl_b(i)
-     te_b(i) = te_b(i)+(cam_in%shf(i)+(cam_in%cflx(i,1))*(latvap+latice))*hdtime
-   enddo  
-   
-   ! Limit the energy fixer to find highest layer where SHOC is active
-   ! Find first level where wp2 is higher than lowest threshold
-   do i=1,ncol
-     shoctop(i) = 1
-     do while (tke(i,shoctop(i)) .eq. tke_tol .and. shoctop(i) .lt. pver-1)
-       shoctop(i) = shoctop(i) + 1
-     enddo   
-   
-     ! Compute the disbalance of total energy, over depth where SHOC is active
-     se_dis(i) = (te_a(i) - te_b(i))/(state1%pint(i,pverp)-state1%pint(i,shoctop(i)))  
-   enddo    
-
-   do i=1,ncol
-     do k=shoctop(i),pver
-       shoc_s(i,k) = shoc_s(i,k) - se_dis(i)*gravit
-     enddo
-   enddo
-
-   !  Now compute the tendencies of SHOC to CAM, note that pverp is the ghost point
-   !  for all variables and therefore is never called in this loop
+   !  Now compute the tendencies of SHOC to E3SM
    do k=1,pver
      do i=1,ncol
        
@@ -1018,7 +851,7 @@ end function shoc_implements_cnst
        ptend_loc%q(i,k,ixcldliq) = (rcm(i,k)-state1%q(i,k,ixcldliq))/hdtime   ! Tendency of liquid water
        ptend_loc%s(i,k) = (shoc_s(i,k)-state1%s(i,k))/hdtime
        
-       ptend_loc%q(i,k,ixtke)=(tke(i,k)-state1%q(i,k,ixtke))/hdtime ! TKE
+       ptend_loc%q(i,k,ixtke)=(tke_zt(i,k)-state1%q(i,k,ixtke))/hdtime ! TKE
        
    !  Apply tendencies to ice mixing ratio, liquid and ice number, and aerosol constituents.
    !  Loading up this array doesn't mean the tendencies are applied.  
@@ -1106,10 +939,16 @@ end function shoc_implements_cnst
     call physics_ptend_sum(ptend_loc,ptend_all,ncol)
     call physics_update(state1,ptend_loc,hdtime)
    
-    ! For purposes of this implementaiton, just set relvar and accre_enhan to 1
-    relvar(:,:) = 1.0_r8   
+    ! For purposes of this implementation, just set relvar and accre_enhan to 1
+    relvar(:,:) = 1.0_r8
     accre_enhan(:,:) = 1._r8  
    
+! +++ JShpund: add relative cloud liquid variance (a vectorized version based on CLUBB)
+!     TODO: double check the hardcoded values ('relvarmax', '0.001_r8')
+    relvarmax = 10.0_r8
+    where (rcm(:ncol,:pver) /= 0.0 .and. rcm2(:ncol,:pver) /= 0.0) &
+           relvar(:ncol,:pver) = min(relvarmax,max(0.001_r8,rcm(:ncol,:pver)**2.0/rcm2(:ncol,:pver)))
+
     ! --------------------------------------------------------------------------------- ! 
     !  Diagnose some quantities that are computed in macrop_tend here.                  !
     !  These are inputs required for the microphysics calculation.                      !
@@ -1207,38 +1046,6 @@ end function shoc_implements_cnst
       enddo
     enddo
    
-    ! --------------------------------------------------------------------------------- !  
-    !  DIAGNOSE THE PBL DEPTH                                                           !
-    !  this is needed for aerosol code                                                  !
-    ! --------------------------------------------------------------------------------- ! 
-
-    do i=1,ncol
-      do k=1,pver
-        th(i,k) = state1%t(i,k)*state1%exner(i,k)
-        thv(i,k) = th(i,k)*(1.0_r8+zvir*state1%q(i,k,ixq))
-      enddo
-    enddo
- 
-    ! diagnose surface friction and obukhov length (inputs to diagnose PBL depth)
-    do i=1,ncol
-      rrho(i,1) = (1._r8/gravit)*(state1%pdel(i,pver)/dz_g(i,pver))
-      call calc_ustar( state1%t(i,pver), state1%pmid(i,pver), cam_in%wsx(i), cam_in%wsy(i), &
-                       rrho(i,1), ustar2(i) )
-      call calc_obklen( th(i,pver), thv(i,pver), cam_in%cflx(i,1), cam_in%shf(i), rrho(i,1), ustar2(i), &
-                        kinheat(i), kinwat(i), kbfs(i), obklen(i) )  
-    enddo
-   
-    dummy2(:) = 0._r8
-    dummy3(:) = 0._r8
-   
-    where (kbfs .eq. -0.0_r8) kbfs = 0.0_r8
-
-    !  Compute PBL depth according to Holtslag-Boville Scheme
-    call pblintd(ncol, thv, state1%zm, state1%u, state1%v, &
-                ustar2, obklen, kbfs, pblh, dummy2, &
-                state1%zi, cloud_frac(:,1:pver), 1._r8-cam_in%landfrac, dummy3)  
-		
-    ! Assign the first pver levels of cloud_frac back to cld
     cld(:,1:pver) = cloud_frac(:,1:pver)	
 
     ! --------------------------------------------------------!
@@ -1247,37 +1054,38 @@ end function shoc_implements_cnst
 
     do k=1,pverp
       do i=1,ncol
-        wthl_output(i,k) = wthl_sec(i,k) * rrho_i(i,pverp-k+1) * cpair
-        wqw_output(i,k) = wqw_sec(i,k) * rrho_i(i,pverp-k+1) * latvap 
+        wthl_output(i,k) = wthl_sec_out(i,k) * rrho_i(i,k) * cpair
+        wqw_output(i,k) = wqw_sec_out(i,k) * rrho_i(i,k) * latvap 
       enddo
     enddo
 
     do k=1,pver
       do i=1,ncol
-        wthv_output(i,k) = wthv(i,k) * rrho(i,pver-k+1) * cpair
-        wql_output(i,k) = wqls(i,k) * rrho(i,pver-k+1) * latvap 
+        wthv_output(i,k) = wthv(i,k) * rrho(i,k) * cpair
+        wql_output(i,k) = wqls_out(i,k) * rrho(i,k) * latvap 
       enddo
     enddo
 
-    call outfld('SHOC_TKE', tke, pcols, lchnk)
+    call outfld('SHOC_TKE', tke_zt, pcols, lchnk)
     call outfld('WTHV_SEC', wthv_output, pcols, lchnk)
-    call outfld('SHOC_MIX', shoc_mix, pcols, lchnk)
+    call outfld('SHOC_MIX', shoc_mix_out, pcols, lchnk)
     call outfld('TK', tk, pcols, lchnk)
     call outfld('TKH', tkh, pcols, lchnk)
-    call outfld('W_SEC', w_sec, pcols, lchnk)
-    call outfld('THL_SEC', thl_sec, pcols, lchnk)
-    call outfld('QW_SEC', qw_sec, pcols, lchnk)
-    call outfld('QWTHL_SEC', qwthl_sec, pcols, lchnk)
+    call outfld('W_SEC', w_sec_out, pcols, lchnk)
+    call outfld('THL_SEC', thl_sec_out, pcols, lchnk)
+    call outfld('QW_SEC', qw_sec_out, pcols, lchnk)
+    call outfld('QWTHL_SEC', qwthl_sec_out, pcols, lchnk)
     call outfld('WTHL_SEC', wthl_output, pcols, lchnk)
     call outfld('WQW_SEC', wqw_output, pcols, lchnk)
-    call outfld('WTKE_SEC', wtke_sec, pcols, lchnk)
-    call outfld('UW_SEC', uw_sec, pcols, lchnk)
-    call outfld('VW_SEC', vw_sec, pcols, lchnk)
-    call outfld('W3', w3, pcols, lchnk)
+    call outfld('WTKE_SEC', wtke_sec_out, pcols, lchnk)
+    call outfld('UW_SEC', uw_sec_out, pcols, lchnk)
+    call outfld('VW_SEC', vw_sec_out, pcols, lchnk)
+    call outfld('W3', w3_out, pcols, lchnk)
     call outfld('WQL_SEC',wql_output, pcols, lchnk)
-    call outfld('ISOTROPY',isotropy, pcols,lchnk)
+    call outfld('ISOTROPY',isotropy_out, pcols,lchnk)
     call outfld('CONCLD',concld,pcols,lchnk)
-    call outfld('BRUNT',brunt,pcols,lchnk)
+    call outfld('BRUNT',brunt_out,pcols,lchnk)
+    call outfld('RELVAR',relvar,pcols,lchnk)
 
 #endif    
     return         
@@ -1316,6 +1124,24 @@ end function shoc_implements_cnst
       grid_dy(i) = grid_dx(i) ! Assume these are the same
   enddo   
 
-  end subroutine grid_size      
+  end subroutine grid_size  
+  
+  subroutine grid_size_uniform(grid_dx, grid_dy)
+  
+    ! Estimate grid box size at equator using
+    !  the earth radius set for this case.  This assumes
+    !  that all grid points are uniform, which is 
+    !  reasonable for IOP mode (not currently compatible with RRM) 
+  
+    use physical_constants, only: rearth, dd_pi
+    use dimensions_mod, only: np, ne
+    
+    real(r8), intent(out) :: grid_dx, grid_dy
+    
+    grid_dx = dd_pi*rearth/(2000.d0*dble(ne*(np-1)))
+    grid_dx = grid_dx*1000._r8
+    grid_dy = grid_dx
+  
+  end subroutine grid_size_uniform    
 
 end module shoc_intr

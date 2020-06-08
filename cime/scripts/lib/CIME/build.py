@@ -20,8 +20,7 @@ _CMD_ARGS_FOR_BUILD = \
 def get_standard_makefile_args(case, shared_lib=False):
     make_args = "CIME_MODEL={} ".format(case.get_value("MODEL"))
     make_args += " compile_threaded={} ".format(stringify_bool(case.get_build_threaded()))
-    if not shared_lib:
-        make_args += " USE_KOKKOS={} ".format(stringify_bool(uses_kokkos(case)))
+    make_args += " USE_KOKKOS={} ".format(stringify_bool(uses_kokkos(case)))
     for var in _CMD_ARGS_FOR_BUILD:
         make_args += xml_to_make_variable(case, var)
 
@@ -63,7 +62,9 @@ def xml_to_make_variable(case, varname, cmake=False):
 def uses_kokkos(case):
 ###############################################################################
     cam_target = case.get_value("CAM_TARGET")
-    return get_model() == "e3sm" and cam_target in ("preqx_kokkos", "theta-l")
+    atm_comp   = case.get_value("COMP_ATM")
+
+    return get_model() == "e3sm" and (cam_target in ("preqx_kokkos", "theta-l") and atm_comp != "scream")
 
 ###############################################################################
 def _build_model(build_threaded, exeroot, incroot, complist,
@@ -169,6 +170,8 @@ def _build_model_cmake(exeroot, complist, lid, cimeroot, buildlist,
         if not os.path.exists(build_dir):
             os.makedirs(build_dir)
 
+    # Components-specific cmake args
+    cmp_cmake_args = ""
     for model, _, _, _, config_dir in complist:
         if buildlist is not None and model.lower() not in buildlist:
             continue
@@ -177,7 +180,7 @@ def _build_model_cmake(exeroot, complist, lid, cimeroot, buildlist,
         if model == "cpl":
             config_dir = os.path.join(cimeroot, "src", "drivers", comp_interface, "cime_config")
 
-        _create_build_metadata_for_component(config_dir, libroot, bldroot, case)
+        cmp_cmake_args += _create_build_metadata_for_component(config_dir, libroot, bldroot, case)
 
     # Call CMake
     cmake_args = get_standard_cmake_args(case, sharedpath)
@@ -187,7 +190,12 @@ def _build_model_cmake(exeroot, complist, lid, cimeroot, buildlist,
         cmake_args += " -GNinja "
         cmake_env += "PATH={}:$PATH ".format(ninja_path)
 
-    cmake_cmd = "{}cmake {} {}/components".format(cmake_env, cmake_args, srcroot)
+    # Glue all pieces together:
+    #  - cmake environment
+    #  - common (i.e. project-wide) cmake args
+    #  - component-specific cmake args
+    #  - path to src folder
+    cmake_cmd = "{}cmake {} {} {}/components".format(cmake_env, cmake_args, cmp_cmake_args, srcroot)
     stat = 0
     if dry_run:
         logger.info("CMake cmd:\ncd {} && {}\n\n".format(bldroot, cmake_cmd))
@@ -433,7 +441,8 @@ def _create_build_metadata_for_component(config_dir, libroot, bldroot, case):
     In many cases, the bld/configure script will have already created these.
     """
     buildlib = imp.load_source("buildlib_cmake", os.path.join(config_dir, "buildlib_cmake"))
-    buildlib.buildlib(bldroot, libroot, case)
+    cmake_args = buildlib.buildlib(bldroot, libroot, case)
+    return "" if cmake_args is None else cmake_args
 
 ###############################################################################
 def _clean_impl(case, cleanlist, clean_all, clean_depends):
