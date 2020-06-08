@@ -641,10 +641,14 @@ subroutine diag_init()
       call add_default ('KVH&IC     ',0, 'I')
       call add_default ('KVM&IC     ',0, 'I')
       call add_default ('TBOT&IC    ',0, 'I')
-      do m = 1,pcnst
-         call add_default(trim(cnst_name(m))//'shoc_tend',0,'I')
-      end do
+      !do m = 1,pcnst
+      !   call add_default(trim(cnst_name(m))//'shoc_tend',0,'I')
+      !end do
    end if
+
+   !do m = 1,pcnst
+   !      call add_default(trim(cnst_name(m))//'shoc_tend',0,'I')
+   !end do
 
    ! CAM export state 
    call addfld('a2x_BCPHIWET', horiz_only, 'A', 'kg/m2/s', 'wetdep of hydrophilic black carbon')

@@ -132,6 +132,8 @@ subroutine stepon_init(dyn_in, dyn_out )
   call addfld ('T&IC', (/'lev'/), 'I','K',  'Temperature',     gridname=grid_name)
   do m = 1,pcnst
     call addfld (trim(cnst_name(m))//'&IC',(/'lev'/),'I','kg/kg',cnst_longname(m),gridname=grid_name)
+    !Hassan added:
+    call addfld(trim(cnst_name(m))//'_tend_advective',(/'lev'/),'I','kg/kg/s',trim(cnst_name(m))//'_tend_advective',gridname='GLL')
   end do
   
   call add_default ('U&IC',0, 'I')
@@ -506,7 +508,8 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
 #if defined (E3SM_SCM_REPLAY)
    real(r8) :: forcing_temp(npsq,nlev), forcing_q(npsq,nlev,pcnst)
 #endif   
-   
+   real(r8) :: advective_tendency_q(npsq,nlev,pcnst)
+    
    elem => dyn_out%elem
    
 #if (defined E3SM_SCM_REPLAY)   
@@ -520,7 +523,10 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    enddo
 
 #endif   
-   
+   do ie=1,nelemd
+      ftmp_q(:,:,:,:,ie) = dyn_in%elem(ie)%state%Q(:,:,:,:)
+   enddo
+ 
    if (single_column) then
      
      ! Update IOP properties e.g. omega, divT, divQ
@@ -582,6 +588,30 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    enddo
 
 #endif   
+
+   do ie=1,nelemd
+     do k=1,nlev
+       do j=1,np
+         do i=1,np
+        
+           ! Note that this calculation will not provide b4b results with 
+           !  an E3SM because the dynamics tendency is not computed in the exact
+           !  same way as an E3SM run, introducing error with roundoff 
+
+           do p=1,pcnst         
+             advective_tendency_q(i+(j-1)*np,k,p) = (dyn_in%elem(ie)%state%Q(i,j,k,p) - &
+                ftmp_q(i,j,k,p,ie))/dtime
+           enddo
+        
+         enddo
+       enddo
+     enddo
+
+     do p=1,pcnst
+       call outfld(trim(cnst_name(p))//'_tend_advective',advective_tendency_q(:,:,p),npsq,ie)
+     enddo
+
+   enddo
 
 end subroutine stepon_run3
 

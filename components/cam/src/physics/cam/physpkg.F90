@@ -2567,15 +2567,15 @@ end if
                 call physics_ptend_scale(ptend, 1._r8/cld_macmic_num_steps, ncol)
                 !    Update physics tendencies and copy state to state_eq, because that is 
                 !      input for microphysics              
-                call physics_update(state, ptend, ztodt, tend)
-                call check_energy_chng(state, tend, "clubb_tend", nstep, ztodt, &
-                     cam_in%cflx(:,1)/cld_macmic_num_steps, flx_cnd/cld_macmic_num_steps, &
-                     det_ice/cld_macmic_num_steps, flx_heat/cld_macmic_num_steps)
 		
                 !Store SHOC tendencies - Hassan added
                 do m = 1,pcnst
                    call outfld(trim(cnst_name(m))//'shoc_tend',ptend%q(:,:,m),pcols,lchnk)
                 end do
+                call physics_update(state, ptend, ztodt, tend)
+                call check_energy_chng(state, tend, "clubb_tend", nstep, ztodt, &
+                     cam_in%cflx(:,1)/cld_macmic_num_steps, flx_cnd/cld_macmic_num_steps, &
+                     det_ice/cld_macmic_num_steps, flx_heat/cld_macmic_num_steps)
           endif
 
           call t_stopf('macrop_tend')

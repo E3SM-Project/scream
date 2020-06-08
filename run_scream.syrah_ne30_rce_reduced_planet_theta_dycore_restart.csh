@@ -9,13 +9,13 @@
 ###===================================================================
 
 ### BASIC INFO ABOUT RUN
-set my_npes        = 320
-set job_name       = small_planet_RCE_3km_run_scream_code_syrah_ne30_run_constant_drop_number_p3_clubb_theta_dycore_test_stuff
+set my_npes        = 1080
+set job_name       = branch_from_march_303K_SST
 #set compset        = FC5AV1C-L
 set compset        = F-EAMv1-RCEMIP
 set resolution     = ne30_ne30
 set machine        = syrah
-set walltime       = 00:10:00
+set walltime       = 16:00:00
 setenv project       cbronze
 
 ### SOURCE CODE OPTIONS
@@ -27,7 +27,7 @@ set tag_name       = default
 set case_name = ${machine}.${tag_name}.${job_name}.${resolution}
 
 ### BUILD OPTIONS
-set debug_compile  = true
+set debug_compile  = false
 set old_executable = false
 
 ### AUTOMATIC DELETION OPTIONS
@@ -44,7 +44,7 @@ set debug_queue      = false
 set processor_config = customlc
 
 ### STARTUP TYPE
-set model_start_type = initial
+set model_start_type = continue
 set restart_files_dir = none
 
 ### DIRECTORIES
@@ -59,7 +59,7 @@ set stop_units                  = ndays
 set stop_num                    = 12 
 set restart_units               = $stop_units
 set restart_num                 = $stop_num
-set num_resubmits               = 0
+set num_resubmits               = 5
 set do_short_term_archiving     = false
 
 ### SIMULATION OPTIONS
@@ -983,12 +983,13 @@ cat <<EOF >> user_nl_cam
  use_gw_oro      = .false.
  micro_aerosolactivation = .false.
  NHTFRQ = 120, 120 
- fincl2 = 'TMQ:I','CLOUD:I','PRECL:I','U:I','V:I','OMEGA:I','Q:I','T:I','CLDLIQ:I','CLDICE:I','CLDRIM','QRL:I','QRS:I','AQRAIN:I','vap_cld_exchange:I','vap_ice_exchange:I','liq_ice_exchange:I','vap_liq_exchange:I','P3_mtend_CLDICE:I','P3_mtend_CLDRAIN:I','P3_mtend_CLDLIQ:I','P3_mtend_NUMICE:I','P3_mtend_NUMRAIN:I','P3_sed_CLDICE:I','P3_sed_CLDRAIN:I','P3_qrevp:I','P3_qcacc:I','P3_qcaut:I','P3_qimlt:I','CLDLIQshoc_tend','CLDLIQ_tend_advective'
+ fincl2 = 'TMQ:I','CLOUD:I','PRECL:I','U:I','V:I','OMEGA:I','Q:I','T:I','CLDLIQ:I','CLDICE:I','CLDRIM','QRL:I','QRS:I','AQRAIN:I','vap_cld_exchange:I','vap_ice_exchange:I','liq_ice_exchange:I','vap_liq_exchange:I','P3_mtend_CLDICE:I','P3_mtend_CLDRAIN:I','P3_mtend_CLDLIQ:I','P3_mtend_NUMICE:I','P3_mtend_NUMRAIN:I','P3_sed_CLDICE:I','P3_sed_CLDRAIN:I','P3_qrevp:I','P3_qcacc:I','P3_qcaut:I','P3_qimlt:I','CLDLIQshoc_tend:I','CLDICEshoc_tend:I','CLDLIQ_tend_advective:I','CLDICE_tend_advective:I','Q_tend_advective:I','LHFLX:I','LWCF:I','SWCF:I','FLNS:I','FSNS:I','FLNT:I','FSNT:I'
 EOF
 
 cat <<EOF >> user_nl_clm
 ! finidat=''
 EOF
+
 
 ### NOTES ON COMMON NAMELIST OPTIONS ###
 
