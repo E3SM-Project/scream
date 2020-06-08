@@ -554,12 +554,6 @@ struct Functions
                              Spack& qinuc, Spack& ninuc);
 
   KOKKOS_FUNCTION
-  static void droplet_activation(const Spack& temp, const Spack& pres, const Spack& qv, const Spack& qc,
-                                 const Spack& inv_rho,const Spack& sup, const Spack& xxlv, const Spack& npccn,
-                                 const bool& log_predictNc, const Scalar& odt,
-                                 Spack& qcnuc, Spack& ncnuc);
-
-  KOKKOS_FUNCTION
   static Spack subgrid_variance_scaling(const Spack& relvar, const Scalar& expon);
   
   KOKKOS_FUNCTION
@@ -936,7 +930,6 @@ void init_tables_from_f90_c(Real* vn_table_data, Real* vm_table_data,
 # include "p3_functions_ice_relaxation_timescale_impl.hpp"
 # include "p3_functions_ice_nucleation_impl.hpp"
 # include "p3_functions_ice_melting_impl.hpp"
-# include "p3_functions_droplet_activation_impl.hpp"
 # include "p3_functions_calc_liq_relaxation_timescale_impl.hpp"
 # include "p3_functions_ice_cldliq_wet_growth_impl.hpp"
 # include "p3_functions_get_latent_heat_impl.hpp"
