@@ -1395,9 +1395,10 @@ subroutine calc_shoc_varorcovar(&
   real(rtype) :: sm, grid_dz2
   
   do k=2,nlev
+    
+    kt=k-1 ! define upper grid point indicee
     do i=1,shcol
 
-      kt=k-1 ! define upper grid point indicee
       grid_dz2=(1._rtype/dz_zi(i,k))**2 ! vertical grid diff squared
       sm=isotropy_zi(i,k)*tkh_zi(i,k) ! coefficient for variances
       
@@ -1443,9 +1444,10 @@ subroutine calc_shoc_vertflux(&
   real(rtype) :: grid_dz
   
   do k=2,nlev
+
+    kt=k-1 ! define upper grid point indicee
     do i=1,shcol
       
-      kt=k-1 ! define upper grid point indicee
       grid_dz=1._rtype/dz_zi(i,k) ! vertical grid diff squared
       
       ! Compute the vertical flux via downgradient diffusion
