@@ -305,6 +305,7 @@ contains
       end if
 
       ! Set output optics
+      tau_out = 0._r8
       do iband = 1,nbnd
          tau_out(1:ncol,1:nlev,iband) = combined_tau(iband,1:ncol,1:nlev)
          liq_tau_out(1:ncol,1:nlev,iband) = liq_tau(iband,1:ncol,1:nlev)
@@ -539,6 +540,10 @@ contains
                             count(night_indices > 0), night_indices, is_cmip6_volc, &
                             tau, tau_w, tau_w_g, tau_w_f)
 
+      ! Initialize outputs (in case column dimension > ncol)
+      tau_out = 0._r8
+      ssa_out = 0._r8
+      asm_out = 0._r8
       ! Extract quantities from products
       do icol = 1,ncol
          ! Copy cloud optical depth over directly
