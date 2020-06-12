@@ -1163,7 +1163,10 @@ contains
     !-----------------------------------------------------------------------------------!
     i_loop_main: do i = its,ite  ! main i-loop (around the entire scheme)
 
-       if (debug_ON) call check_values(qv,T,i,it,debug_ABORT,100,col_location)
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,100,col_location(i,:))
+       endif
 
        call p3_main_pre_main_loop(kts, kte, kbot, ktop, kdir, log_predictNc, dt, &
             pres(i,:), pdel(i,:), dzq(i,:), ncnuc(i,:), exner(i,:), inv_exner(i,:), inv_lcldm(i,:), inv_icldm(i,:), inv_rcldm(i,:), xxlv(i,:), xxls(i,:), xlf(i,:), &
@@ -1173,7 +1176,7 @@ contains
 
        if (debug_ON) then
           tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qv,tmparr1,i,it,debug_ABORT,200,col_location)
+          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,200,col_location(i,:))
        endif
 
        !jump to end of i-loop if log_nucleationPossible=.false.  (i.e. skip everything)
@@ -1202,9 +1205,10 @@ contains
        !      a problem; those values get clipped to zero in the sedimentation section (if necessary).
        !      (This is not done above simply for efficiency purposes.)
 
+
        if (debug_ON) then
           tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qv,tmparr1,i,it,debug_ABORT,300,col_location)
+          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,300,col_location(i,:))
        endif
 
        if (.not. log_hydrometeorsPresent) goto 333
@@ -1359,7 +1363,10 @@ contains
 
        enddo k_loop_final_diagnostics
 
-          if (debug_ON) call check_values(qv,Ti,it,debug_ABORT,800,col_location)
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,800,col_location(i,:))
+       endif
 
        !..............................................
        ! merge ice categories with similar properties
