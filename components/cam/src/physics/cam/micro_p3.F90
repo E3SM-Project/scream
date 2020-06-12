@@ -1163,7 +1163,7 @@ contains
     !-----------------------------------------------------------------------------------!
     i_loop_main: do i = its,ite  ! main i-loop (around the entire scheme)
 
-!      if (debug_ON) call check_values(qv,T,i,it,debug_ABORT,100,col_location)
+       if (debug_ON) call check_values(qv,T,i,it,debug_ABORT,100,col_location)
 
        call p3_main_pre_main_loop(kts, kte, kbot, ktop, kdir, log_predictNc, dt, &
             pres(i,:), pdel(i,:), dzq(i,:), ncnuc(i,:), exner(i,:), inv_exner(i,:), inv_lcldm(i,:), inv_icldm(i,:), inv_rcldm(i,:), xxlv(i,:), xxls(i,:), xlf(i,:), &
@@ -1171,10 +1171,10 @@ contains
             qitot(i,:), nitot(i,:), qirim(i,:), birim(i,:), qc_incld(i,:), qr_incld(i,:), qitot_incld(i,:), qirim_incld(i,:), &
             nc_incld(i,:), nr_incld(i,:), nitot_incld(i,:), birim_incld(i,:), log_nucleationPossible, log_hydrometeorsPresent)
 
-!      if (debug_ON) then
-!         tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-!         call check_values(qv,tmparr1,i,it,debug_ABORT,200,col_location)
-!      endif
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qv,tmparr1,i,it,debug_ABORT,200,col_location)
+       endif
 
        !jump to end of i-loop if log_nucleationPossible=.false.  (i.e. skip everything)
        if (.not. (log_nucleationPossible .or. log_hydrometeorsPresent)) goto 333
@@ -1202,10 +1202,10 @@ contains
        !      a problem; those values get clipped to zero in the sedimentation section (if necessary).
        !      (This is not done above simply for efficiency purposes.)
 
-!      if (debug_ON) then
-!         tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-!         call check_values(qv,tmparr1,i,it,debug_ABORT,300,col_location)
-!      endif
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qv,tmparr1,i,it,debug_ABORT,300,col_location)
+       endif
 
        if (.not. log_hydrometeorsPresent) goto 333
 
@@ -1359,7 +1359,7 @@ contains
 
        enddo k_loop_final_diagnostics
 
-       !   if (debug_ON) call check_values(qv,Ti,it,debug_ABORT,800,col_location)
+          if (debug_ON) call check_values(qv,Ti,it,debug_ABORT,800,col_location)
 
        !..............................................
        ! merge ice categories with similar properties
