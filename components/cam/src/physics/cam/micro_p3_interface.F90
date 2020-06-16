@@ -1368,8 +1368,8 @@ end subroutine micro_p3_readnl
    call outfld('P3_mtend_TH',      tend_out(:,:,49), pcols, lchnk)
    ! Phase change tendencies 
    call outfld('vap_ice_exchange',      vap_ice_exchange,      pcols, lchnk)
-   call outfld('vap_liq_exchange',      vap_ice_exchange,      pcols, lchnk)
-   call outfld('liq_ice_exchange',      vap_ice_exchange,      pcols, lchnk)
+   call outfld('vap_liq_exchange',      vap_liq_exchange,      pcols, lchnk)
+   call outfld('liq_ice_exchange',      liq_ice_exchange,      pcols, lchnk)
 
    call t_stopf('micro_p3_tend_finish')
   end subroutine micro_p3_tend
