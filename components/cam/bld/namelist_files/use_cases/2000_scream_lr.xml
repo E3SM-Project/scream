@@ -102,4 +102,7 @@
 <!-- For high-res, we use se_ftype = 1 to improve dynamics/physics coupling -->
 <se_ftype hgrid="ne1024np4">1</se_ftype>
 
+<!-- Use the less sensitive advection scheme -->
+<semi_lagrange_cdr_alg>3</semi_lagrange_cdr_alg>
+
 </namelist_defaults>
