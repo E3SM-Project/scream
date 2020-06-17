@@ -78,6 +78,13 @@ struct Functions
   KOKKOS_FUNCTION
   static Spack polysvp1(const Spack& t, const bool ice);
 
+  //  compute saturation vapor pressure
+  //  polysvp1 returned in units of pa.
+  //  t is input in units of k.
+  //  ice refers to saturation with respect to liquid (false) or ice (true)
+  KOKKOS_FUNCTION
+  static Spack svp_murphy_koop(const Spack& t, const bool ice);
+
   // Calls polysvp1 to obtain the saturation vapor pressure, and then computes
   // and returns the saturation mixing ratio, with respect to either liquid or ice,
   // depending on value of 'ice'

@@ -10,6 +10,40 @@ namespace physics {
  * Implementation of saturation functions. Clients should NOT #include
  * this file, #include physics_functions.hpp instead.
  */
+
+
+template <typename S, typename D>
+KOKKOS_FUNCTION
+typename Functions<S,D>::Spack
+Functions<S,D>::svp_murphy_koop(const Spack& t, const bool ice)
+{
+  // Murphy & Koop (2005)
+  Spack result;
+  const auto tmelt = C::Tmelt;
+  Smask ice_mask = (t < tmelt) && ice;
+  Smask liq_mask = !ice_mask;
+
+  if (ice_mask.any()) {
+    // (good down to 110 K)
+    Spack ice_result = exp(sp(9.550426) - (sp(5723.265) / t) + (sp(3.53068) * log(t)) -
+			   (sp(0.00728332) * t));
+
+    result.set(ice_mask, ice_result);
+  }
+
+  if (liq_mask.any()) {
+    // (good for 123 < T < 332 K)
+    Spack liq_result = exp(sp(54.842763) - (sp(6763.22) / t) - (sp(4.210) * log(t)) +
+	     (sp(0.000367) * t) + (tanh(sp(0.0415) * (t - sp(218.8))) *
+				   (sp(53.878) - (sp(1331.22) / t) - (sp(9.44523) * log(t)) +
+				   sp(0.014025) * t)));
+
+    result.set(liq_mask, liq_result);
+  }
+
+  return result;
+}
+
 template <typename S, typename D>
 KOKKOS_FUNCTION
 typename Functions<S,D>::Spack
@@ -59,6 +93,7 @@ Functions<S,D>::qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice)
   Spack e_pres; // saturation vapor pressure [Pa]
 
   e_pres = polysvp1(t_atm, ice);
+  //e_pres = svp_murphy_koop(t_atm, ice);
   const auto ep_2 = C::ep_2;
   return ep_2 * e_pres / pack::max(p_atm-e_pres, sp(1.e-3));
 }
