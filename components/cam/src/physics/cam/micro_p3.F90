@@ -1230,6 +1230,12 @@ contains
          dt,odt,dnu,log_predictNc, &
          qc(i,:),nc(i,:),nc_incld(i,:),mu_c(i,:),lamc(i,:),prt_liq(i),p3_tend_out(i,:,36),p3_tend_out(i,:,37))
 
+
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,400,col_location(i,:))
+       endif
+
        !------------------------------------------------------------------------------------------!
        ! Rain sedimentation:  (adaptive substepping)
        p3_tend_out(i,:,38) = qr(i,:) ! Rain sedimentation tendency, initialize
@@ -1238,6 +1244,11 @@ contains
        call rain_sedimentation(kts,kte,ktop,kbot,kdir, &
          qr_incld(i,:),rho(i,:),inv_rho(i,:),rhofacr(i,:),rcldm(i,:),inv_dzq(i,:),dt,odt, &
          qr(i,:),nr(i,:),nr_incld(i,:),mu_r(i,:),lamr(i,:),prt_liq(i),rflx(i,:),p3_tend_out(i,:,38),p3_tend_out(i,:,39))
+
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,500,col_location(i,:))
+       endif
 
        !------------------------------------------------------------------------------------------!
        ! Ice sedimentation:  (adaptive substepping)
@@ -1249,12 +1260,24 @@ contains
          qitot(i,:),qitot_incld(i,:),nitot(i,:),qirim(i,:),qirim_incld(i,:),birim(i,:),birim_incld(i,:),nitot_incld(i,:), &
          prt_sol(i),p3_tend_out(i,:,40),p3_tend_out(i,:,41))
 
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,600,col_location(i,:))
+       endif
+
+       
        !.......................................
        ! homogeneous freezing of cloud and rain
 
        call homogeneous_freezing(kts,kte,ktop,kbot,kdir,t(i,:),exner(i,:),xlf(i,:),  &
          qc(i,:),nc(i,:),qr(i,:),nr(i,:),qitot(i,:),nitot(i,:),qirim(i,:),birim(i,:),th(i,:))
 
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,700,col_location(i,:))
+       endif
+
+       
        !...................................................
        ! final checks to ensure consistency of mass/number
        ! and compute diagnostic fields for output
