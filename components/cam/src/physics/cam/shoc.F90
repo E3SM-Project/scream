@@ -2159,7 +2159,8 @@ subroutine shoc_tke(&
   lambda_slope=0.65_rtype
   brunt_low=0.02_rtype
 
-  ! Critical value of dimensionless Monin-Obukhov length
+  ! Critical value of dimensionless Monin-Obukhov length,
+  !   used to damp mixing coefficients based on surface stability
   zL_crit_val = 100.0_rtype 
   ! Transition depth [m] above PBL top to allow 
   !   stability diffusivities
@@ -2259,14 +2260,16 @@ subroutine shoc_tke(&
       !  the lowest model grid layer height to scale
       z_over_L = zt_grid(i,nlev)/obklen(i)
 
-      if (z_over_L .gt. zL_crit_val .and. (zt_grid(i,k) .lt. pblh(i)+pbl_trans)) then
-        ! If surface layer is moderately to very stable, based on near surface 
+      if (z_over_L .gt. 0._rtype .and. (zt_grid(i,k) .lt. pblh(i)+pbl_trans)) then
+	! If surface layer is stable, based on near surface
         !  dimensionless Monin-Obukov use modified coefficients of 
         !  tkh and tk that are primarily based on shear production 
         !  and SHOC length scale, to promote mixing within the PBL
         !  and to a height slighty above to ensure smooth transition.
-        tkh(i,k)=Ckh_s*(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
-        tk(i,k)=Ckm_s*(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
+        tkh(i,k)=min(Ckh_s,z_over_L/zL_crit_val)*&
+	  (shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
+        tk(i,k)=min(Ckm_s,z_over_L/zL_crit_val)*&
+	  (shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
       else
         ! Default definition of eddy diffusivity for heat and momentum  
       
