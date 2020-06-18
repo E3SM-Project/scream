@@ -565,6 +565,9 @@ contains
 
     logical(btype) :: log_exitlevel, log_wetgrowth
 
+    logical(btype), parameter :: debugP3_ON     = .true.  !.true. to switch on debugging checks/traps throughout code  TODO: Turn this back off as default once the tlay error is found.
+    real(rtype), dimension(kts:kte) :: tmparr1
+    
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
       ! call p3_main_main_loop_f(
@@ -853,12 +856,26 @@ contains
            log_predictNc, log_wetgrowth, dt, nmltratio, rhorime_c, &
            th(k), qv(k), qitot(k), nitot(k), qirim(k), birim(k), qc(k), nc(k), qr(k), nr(k) )
 
+      !-- ChrisTerai - Add updates to temperature and humidity here ---------
+      if (debugP3_ON) then
+         tmparr1(:) = th(:)*inv_exner(:)!(pres(i,:)*1.e-5)**(rd*inv_cp)                
+         call check_values(qv(:),tmparr1(:),kts,kte,it,debug_ABORT,230,col_location(:))
+      endif
+      
+      
+      !
+      
       !-- warm-phase only processes:
       call update_prognostic_liquid(qcacc, ncacc, qcaut, ncautc, ncautr, ncslf,  &
            qrevp, nrevp, nrslf,                                                  &
            log_predictNc, inv_rho(k), exner(k), xxlv(k), dt,                     &
            th(k), qv(k), qc(k), nc(k), qr(k), nr(k))
-
+      !-- ChrisTerai - Add updates to temperature and humidity here ---------
+      if (debugP3_ON) then
+         tmparr1(:) = th(:)*inv_exner(:)!(pres(i,:)*1.e-5)**(rd*inv_cp)                
+         call check_values(qv(:),tmparr1(:),kts,kte,it,debug_ABORT,260,col_location(:))
+      endif
+      
       !==
       ! AaronDonahue - Add extra variables needed from microphysics by E3SM:
       cmeiout(k) = qidep - qisub + qinuc
@@ -947,6 +964,17 @@ contains
 
    enddo k_loop_main
 
+   check_nans(qidep,kts,'qidep')
+   check_nans(qidep,kts,'qisub')
+   check_nans(qidep,kts,'qinuc')
+   check_nans(qidep,kts,'qrcol')
+   check_nans(qidep,kts,'qccol')
+   check_nans(qidep,kts,'qcheti')
+   check_nans(qidep,kts,'qrheti')
+   check_nans(qidep,kts,'qimlt')
+   check_nans(qidep,kts,'qiberg')
+   check_nans(qidep,kts,'qrevp')
+   
  END SUBROUTINE p3_main_main_loop
 
   !==========================================================================================!
@@ -2165,6 +2193,57 @@ contains
 
   end subroutine check_values
 
+  subroutine check_nans(procrate,kts,kte,procrate_name)
+
+    !------------------------------------------------------------------------------------
+    ! Checks current values of process rates for reasonable values and
+    ! stops and prints values if they are out of specified allowable rangesnans.
+    !
+    ! The value 'source_ind' indicates the approximate location in 'p3_main'
+    ! from where 'check_values' was called before it resulted in a trap.
+    !
+    !------------------------------------------------------------------------------------
+
+    implicit none
+
+    !Calling parameters:
+    real(rtype), dimension(kts:kte), intent(in) :: procrate
+    integer,                intent(in) :: kts,kte
+    character (len = 8), intent(in) :: procrate_name
+    
+    !Local variables:
+    integer         :: k
+    logical(btype)         :: trap,badvalue_found
+
+    trap = .false.
+
+    k_loop: do k = kts, kte
+
+       ! check unrealistic values or NANs for T and Qv
+       if (.not.(procrate(k)>1.e-1_rtype .or. procrate(k)<=1.e-1_rtype)) then
+          write(iulog,'(a60,i5,a2,i8,a2,f8.4,a2,f8.4,a2,i4,a2,i8,a2,e16.8)') &
+             '** WARNING IN P3_MAIN_MAIN -- lvl, proc: ',k,', ',procrate_name
+          trap = .true.
+       endif
+
+       ! check NANs for mp variables:
+       badvalue_found = .false.
+
+    enddo k_loop
+
+    if (trap .and. force_abort) then
+       print*
+       print*,'** DEBUG TRAP IN P3_MAIN, s/r CHECK_VALUES -- source: ',source_ind
+       print*
+       if (source_ind/=100) stop
+    endif
+
+   return
+
+  end subroutine check_nans
+
+
+  
   subroutine ice_cldliq_collection(rho,t,rhofaci,    &
   f1pr04,qitot_incld,qc_incld,nitot_incld,nc_incld,    &
              qccol,nccol,qcshd,ncshdc)
