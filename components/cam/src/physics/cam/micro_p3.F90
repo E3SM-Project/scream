@@ -468,7 +468,7 @@ contains
        qirim, birim, xxlv, xxls, xlf, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld, nr_incld, &
        nitot_incld, birim_incld, mu_c, nu, lamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, cmeiout, prain, &
        nevapr, prer_evap, vap_liq_exchange, vap_ice_exchange, liq_ice_exchange, pratot, &
-       prctot, p3_tend_out, log_hydrometeorsPresent)
+       prctot, p3_tend_out, log_hydrometeorsPresent,timestepcount,force_abort,col_loc)
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
     !use micro_p3_iso_f, only: p3_main_main_loop_f
@@ -478,12 +478,13 @@ contains
 
     ! args
 
-    integer, intent(in) :: kts, kte, kbot, ktop, kdir
-    logical(btype), intent(in) :: log_predictNc
+    integer, intent(in) :: kts, kte, kbot, ktop, kdir, timestepcount
+    logical(btype), intent(in) :: log_predictNc,force_abort
     real(rtype), intent(in) :: dt, odt
 
     real(rtype), intent(in), dimension(kts:kte) :: pres, pdel, dzq, ncnuc, exner, inv_exner, inv_lcldm, inv_icldm,   &
          inv_rcldm, naai, qc_relvar, icldm, lcldm, rcldm
+    real(rtype), dimension(3), intent(in) :: col_loc 
 
     real(rtype), intent(inout), dimension(kts:kte) :: t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn,        &
          qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, xlf, qc_incld, qr_incld,                    &
@@ -859,7 +860,7 @@ contains
       !-- ChrisTerai - Add updates to temperature and humidity here ---------
       if (debugP3_ON) then
          tmparr1(:) = th(:)*inv_exner(:)!(pres(i,:)*1.e-5)**(rd*inv_cp)                
-         call check_values(qv(:),tmparr1(:),kts,kte,it,debug_ABORT,230,col_location(:))
+         call check_values(qv,tmparr1,kts,kte,timestepcount,force_abort,230,col_loc)
       endif
       
       
@@ -873,7 +874,7 @@ contains
       !-- ChrisTerai - Add updates to temperature and humidity here ---------
       if (debugP3_ON) then
          tmparr1(:) = th(:)*inv_exner(:)!(pres(i,:)*1.e-5)**(rd*inv_cp)                
-         call check_values(qv(:),tmparr1(:),kts,kte,it,debug_ABORT,260,col_location(:))
+         call check_values(qv,tmparr1,kts,kte,timestepcount,force_abort,260,col_loc)
       endif
       
       !==
@@ -964,16 +965,15 @@ contains
 
    enddo k_loop_main
 
-   check_nans(qidep,kts,'qidep')
-   check_nans(qidep,kts,'qisub')
-   check_nans(qidep,kts,'qinuc')
-   check_nans(qidep,kts,'qrcol')
-   check_nans(qidep,kts,'qccol')
-   check_nans(qidep,kts,'qcheti')
-   check_nans(qidep,kts,'qrheti')
-   check_nans(qidep,kts,'qimlt')
-   check_nans(qidep,kts,'qiberg')
-   check_nans(qidep,kts,'qrevp')
+   call check_nans(p3_tend_out(:,17),kts,kte,timestepcount,col_loc, 'qidep')
+   call check_nans(p3_tend_out(:,23),kts,kte,timestepcount,col_loc, 'qisub')
+   call check_nans(p3_tend_out(:,19),kts,kte,timestepcount,col_loc, 'qinuc')
+   call check_nans(p3_tend_out(:,18),kts,kte,timestepcount,col_loc, 'qrcol')
+   call check_nans(p3_tend_out(:,15),kts,kte,timestepcount,col_loc, 'qccol')
+   call check_nans(p3_tend_out(:,28),kts,kte,timestepcount,col_loc,'qchet')
+   call check_nans(p3_tend_out(:,29),kts,kte,timestepcount,col_loc,'qrhet')
+   call check_nans(p3_tend_out(:,24),kts,kte,timestepcount,col_loc, 'qimlt')
+   call check_nans(p3_tend_out(:,11),kts,kte,timestepcount,col_loc, 'qrevp')
    
  END SUBROUTINE p3_main_main_loop
 
@@ -1218,7 +1218,7 @@ contains
             qirim(i,:), birim(i,:), xxlv(i,:), xxls(i,:), xlf(i,:), qc_incld(i,:), qr_incld(i,:), qitot_incld(i,:), qirim_incld(i,:), nc_incld(i,:), nr_incld(i,:), &
             nitot_incld(i,:), birim_incld(i,:), mu_c(i,:), nu(i,:), lamc(i,:), cdist(i,:), cdist1(i,:), cdistr(i,:), mu_r(i,:), lamr(i,:), logn0r(i,:), cmeiout(i,:), prain(i,:), &
             nevapr(i,:), prer_evap(i,:), vap_liq_exchange(i,:), vap_ice_exchange(i,:), liq_ice_exchange(i,:), pratot(i,:), &
-            prctot(i,:), p3_tend_out(i,:,:), log_hydrometeorsPresent)
+            prctot(i,:), p3_tend_out(i,:,:), log_hydrometeorsPresent,it,debug_ABORT,col_location(i,:))
 
       ! measure microphysics processes tendency output
       p3_tend_out(i,:,42) = ( qc(i,:)    - qc_old(i,:) ) * odt    ! Liq. microphysics tendency, measure
@@ -2193,7 +2193,7 @@ contains
 
   end subroutine check_values
 
-  subroutine check_nans(procrate,kts,kte,procrate_name)
+  subroutine check_nans(procrate,kts,kte,timestepcount,col_loc,procrate_name)
 
     !------------------------------------------------------------------------------------
     ! Checks current values of process rates for reasonable values and
@@ -2208,35 +2208,27 @@ contains
 
     !Calling parameters:
     real(rtype), dimension(kts:kte), intent(in) :: procrate
-    integer,                intent(in) :: kts,kte
-    character (len = 8), intent(in) :: procrate_name
+    integer,                intent(in) :: kts,kte,timestepcount
+    character (len = 5), intent(in) :: procrate_name
+    real(rtype), dimension(3), intent(in) :: col_loc
     
     !Local variables:
     integer         :: k
-    logical(btype)         :: trap,badvalue_found
+    logical(btype)         :: badvalue_found
 
-    trap = .false.
 
     k_loop: do k = kts, kte
 
        ! check unrealistic values or NANs for T and Qv
        if (.not.(procrate(k)>1.e-1_rtype .or. procrate(k)<=1.e-1_rtype)) then
           write(iulog,'(a60,i5,a2,i8,a2,f8.4,a2,f8.4,a2,i4,a2,i8,a2,e16.8)') &
-             '** WARNING IN P3_MAIN_MAIN -- lvl, proc: ',k,', ',procrate_name
-          trap = .true.
+             '** WARNING IN P3_MAIN_MAIN -- lvl, tstep, gcol, lon, lat, proc: ',k,', ',timestepcount,', ',int(col_loc(1)),', ',col_loc(2),', ',col_loc(3),', ',procrate_name
        endif
 
        ! check NANs for mp variables:
        badvalue_found = .false.
 
     enddo k_loop
-
-    if (trap .and. force_abort) then
-       print*
-       print*,'** DEBUG TRAP IN P3_MAIN, s/r CHECK_VALUES -- source: ',source_ind
-       print*
-       if (source_ind/=100) stop
-    endif
 
    return
 
