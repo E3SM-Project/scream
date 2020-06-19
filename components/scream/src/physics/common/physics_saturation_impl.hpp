@@ -25,18 +25,23 @@ Functions<S,D>::svp_murphy_koop(const Spack& t, const bool ice)
 
   if (ice_mask.any()) {
     // (good down to 110 K)
-    Spack ice_result = exp(sp(9.550426) - (sp(5723.265) / t) + (sp(3.53068) * log(t)) -
-			   (sp(0.00728332) * t));
+    //creating array for storing coefficients of ice sat equation
+    const Scalar ic[]= {9.550426, 5723.265, 3.53068, 0.00728332};
+    Spack ice_result = exp(ic[0] - (ic[1] / t) + (ic[2] * log(t)) - (ic[3] * t));
 
     result.set(ice_mask, ice_result);
   }
 
   if (liq_mask.any()) {
     // (good for 123 < T < 332 K)
-    Spack liq_result = exp(sp(54.842763) - (sp(6763.22) / t) - (sp(4.210) * log(t)) +
-	     (sp(0.000367) * t) + (tanh(sp(0.0415) * (t - sp(218.8))) *
-				   (sp(53.878) - (sp(1331.22) / t) - (sp(9.44523) * log(t)) +
-				   sp(0.014025) * t)));
+
+    //creating array for storing coefficients of liq sat equation
+    const Scalar lq[] = {54.842763, 6763.22, 4.210, 0.000367, 0.0415, 218.8, 53.878,
+			 1331.22, 9.44523, 0.014025 };
+
+    Spack liq_result = exp(lq[0] - (lq[1] / t) - (lq[2] * log(t)) + (lq[3] * t) +
+			   (tanh(lq[4] * (t - lq[5])) * (lq[6] - (lq[7] / t) -
+							 (lq[8] * log(t)) + lq[9] * t)));
 
     result.set(liq_mask, liq_result);
   }
@@ -92,8 +97,8 @@ Functions<S,D>::qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice)
 {
   Spack e_pres; // saturation vapor pressure [Pa]
 
-  e_pres = polysvp1(t_atm, ice);
-  //e_pres = svp_murphy_koop(t_atm, ice);
+  //e_pres = polysvp1(t_atm, ice);
+  e_pres = svp_murphy_koop(t_atm, ice);
   const auto ep_2 = C::ep_2;
   return ep_2 * e_pres / pack::max(p_atm-e_pres, sp(1.e-3));
 }

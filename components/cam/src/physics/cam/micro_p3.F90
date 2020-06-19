@@ -1548,6 +1548,57 @@ contains
 
   !==========================================================================================!
 
+  real(rtype) function svp_murphy_koop(t, i_type)
+
+    implicit none
+
+    !-------------------------------------------------------------------
+    ! Compute saturation vapor pressure (returned in units of pa)
+    ! Inputs:
+    ! "t", units [K]
+    !  i_type refers to saturation with respect to liquid (0) or ice (1)
+    !--------------------------------------------------------------------
+
+    !Murphy & Koop (2005)
+    real(rtype), intent(in) :: t
+    integer,intent(in)      :: i_type
+
+    !local vars
+    character(len=1000) :: err_msg
+
+    !Defined "ic" and "lq" arrays with zero index to mimic c++ implementation
+    !parameters for ice saturation eqn
+    real(rtype), parameter :: ic(0:3)  =(/9.550426_rtype, 5723.265_rtype, 3.53068_rtype, &
+         0.00728332_rtype/)
+
+    !parameters for liq saturation eqn
+    real(rtype), parameter :: lq(0:9) = (/54.842763_rtype, 6763.22_rtype, 4.210_rtype, &
+         0.000367_rtype, 0.0415_rtype, 218.8_rtype, 53.878_rtype, 1331.22_rtype,       &
+         9.44523_rtype, 0.014025_rtype /)
+
+    if (i_type .eq. 1 .and. t .lt. zerodegc) then
+
+       !(good down to 110 K)
+       svp_murphy_koop = exp(ic(0) - (ic(1) / t) + (ic(2) * log(t)) - (ic(3) * t))
+
+    elseif (i_type .eq. 0 .or. t .ge. zerodegc) then
+
+       ! (good for 123 < T < 332 K)
+       svp_murphy_koop = exp(lq(0) - (lq(1) / t) - (lq(2) * log(t)) + (lq(3) * t) + &
+            (tanh(lq(4) * (t - lq(5))) * (lq(6) - (lq(7) / t) - &
+            (lq(8) * log(t)) + lq(9) * t)));
+    else
+
+       write(err_msg,*)'** svp_murphy_koop i_type must be 0 or 1 but is: ', &
+            i_type,'in file:',__FILE__,' at line:',__LINE__
+
+       print(err_msg)
+       stop
+    endif
+
+    return
+  end function svp_murphy_koop
+
 !_rtype
   real(rtype) function polysvp1(T,i_type)
 
@@ -2067,7 +2118,8 @@ contains
 
     !------------------
 
-    e_pres = polysvp1(t_atm,i_wrt)
+    !e_pres = polysvp1(t_atm,i_wrt)
+    e_pres = svp_murphy_koop(t_atm,i_wrt)
     qv_sat = ep_2*e_pres/max(1.e-3_rtype,(p_atm-e_pres))
 
     return
