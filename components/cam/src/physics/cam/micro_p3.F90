@@ -112,6 +112,7 @@ contains
   END SUBROUTINE p3_init
 
   SUBROUTINE p3_init_a(lookup_file_dir,version_p3)
+    use cam_abortutils, only : endrun
     ! Passed arguments:
     character*(*), intent(in)     :: lookup_file_dir       !directory of the lookup tables
 
@@ -149,7 +150,7 @@ contains
        print*, '               -- ABORTING -- '
        print*, '************************************************'
        print*
-       stop
+       call endrun()
     end if
 
     itab(:,:,:,:) = 0.
@@ -1486,9 +1487,10 @@ contains
 
   !==========================================================================================!
 
-!_rtype
-  real(rtype) function polysvp1(T,i_type)
+  !_rtype
+  real(rtype) function polysvp1(t,i_type)
 
+    use cam_abortutils, only : endrun
     !-------------------------------------------
     !  COMPUTE SATURATION VAPOR PRESSURE
     !  POLYSVP1 RETURNED IN UNITS OF PA.
@@ -1498,10 +1500,13 @@ contains
 
     implicit none
 
-    real(rtype)    :: T
-    integer :: i_type
+    real(rtype), intent(in) :: t
+    integer, intent(in)     :: i_type
 
     ! REPLACE GOFF-GRATCH WITH FASTER FORMULATION FROM FLATAU ET AL. 1992, TABLE 4 (RIGHT-HAND COLUMN)
+
+    !local variables
+    character(len=1000) :: err_msg
 
     ! ice
     real(rtype) a0i,a1i,a2i,a3i,a4i,a5i,a6i,a7i,a8i
@@ -1555,10 +1560,10 @@ contains
     !PMC added error checking
     else
 
-       print*
-       print*,'** polysvp1 i_type must be 0 or 1 but is: ',i_type,T
-       print*
-       stop
+       write(err_msg,*)'** polysvp1 i_type must be 0 or 1 but is: ', &
+            i_type,' temperature is:',t,' in file:',__FILE__,' at line:',__LINE__
+
+       call endrun(err_msg)
 
     endif
 
@@ -2031,6 +2036,8 @@ contains
     ! from where 'check_values' was called before it resulted in a trap.
     !
     !------------------------------------------------------------------------------------
+    use cam_abortutils, only : endrun
+
 #ifdef SCREAM_CONFIG_IS_CMAKE
     use micro_p3_iso_f, only: check_values_f
 #endif
@@ -2086,7 +2093,7 @@ contains
        print*
        print*,'** DEBUG TRAP IN P3_MAIN, s/r CHECK_VALUES -- source: ',source_ind
        print*
-       if (source_ind/=100) stop
+       if (source_ind/=100) call endrun('Source_ind should be 100, source_ind is:'//source_ind//' in file '//__FILE__//' at line'//__LINE__)
     endif
 
    return
@@ -2329,7 +2336,7 @@ f1pr05,f1pr14,xxlv,xlf,dv,sc,mu,kap,qv,qitot_incld,nitot_incld,    &
 
    if (qitot_incld .ge.qsmall .and. t.gt.zerodegc) then
       qsat0 = qv_sat( zerodegc,pres,0 )
-      
+
       qimlt = ((f1pr05+f1pr14*bfb_cbrt(sc)*bfb_sqrt(rhofaci*rho/mu))*((t-   &
       zerodegc)*kap-rho*xxlv*dv*(qsat0-qv))*2._rtype*pi/xlf)*nitot_incld
 
