@@ -2474,6 +2474,10 @@ end if
        snow_sed_macmic = 0._r8
        prec_pcw_macmic = 0._r8
        snow_pcw_macmic = 0._r8
+       
+       ! Add check to state before aerosol activation and macrophysics
+       if (state_debug_checks) &
+         call physics_state_check(state, name="before aero act macro")
 
        do macmic_it = 1, cld_macmic_num_steps
 
@@ -2585,6 +2589,9 @@ end if
           call t_stopf('macrop_tend')
         end if ! l_st_mac
 
+        ! Add check to state before microphsyics
+        if (state_debug_checks) &
+          call physics_state_check(state, name="before microphys")
           !===================================================
           ! Calculate cloud microphysics 
           !===================================================
@@ -2682,6 +2689,10 @@ end if
 
      end if !microp_scheme
 
+     ! Check after microphysics
+     if (state_debug_checks) &
+          call physics_state_check(state, name="after microphys")
+     
 if (l_tracer_aero) then
 
     ! Add the precipitation from CARMA to the precipitation from stratiform.
