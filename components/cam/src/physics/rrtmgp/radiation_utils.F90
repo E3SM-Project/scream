@@ -20,7 +20,7 @@ module radiation_utils
    end interface expand_day_columns
 
    interface clip_values
-      module procedure clip_values_1d, clip_values_2d
+      module procedure clip_values_1d, clip_values_2d, clip_values_3d
    end interface clip_values
 
    ! Procedure to check range, with extra arguments to print lat/lon location
@@ -28,6 +28,9 @@ module radiation_utils
    interface check_range
       module procedure check_range_2d, check_range_3d
    end interface
+
+   ! Max length for character strings
+   integer, parameter :: max_char_len = 512
 
    ! Name of this module for error messages
    character(len=*), parameter :: module_name = 'radiation_utils'
@@ -389,36 +392,30 @@ contains
       end do
    end subroutine check_range_3d
    !-------------------------------------------------------------------------------
-
-   !----------------------------------------------------------------------------
-
-   subroutine handle_error(error_message, stop_on_error)
+   subroutine handle_error(error_message, fatal)
       use cam_abortutils, only: endrun
-      use cam_logfile, only: iulog
       character(len=*), intent(in) :: error_message
-      logical, intent(in), optional :: stop_on_error
-      logical :: stop_on_error_local = .true.
+      logical, intent(in), optional :: fatal
+      logical :: fatal_local = .true.
 
       ! Allow passing of an optional flag to not stop the run if an error is
       ! encountered. This allows this subroutine to be used when inquiring if a
       ! variable exists without failing.
-      if (present(stop_on_error)) then
-         stop_on_error_local = stop_on_error
+      if (present(fatal)) then
+         fatal_local = fatal
       else
-         stop_on_error_local = .true.
+         fatal_local = .true.
       end if
 
       ! If we encounter an error, fail if we require success. Otherwise do
       ! nothing and return silently.
       if (len(trim(error_message)) > 0) then
-         if (stop_on_error_local) then
-            call endrun(module_name // ': ' // error_message)
+         if (fatal_local) then
+            call endrun(trim(error_message))
          else
-            write(iulog,*) 'WARNING: ', error_message
+            print *, trim(error_message)
          end if
       end if
    end subroutine handle_error
-
    !----------------------------------------------------------------------------
-
 end module radiation_utils
