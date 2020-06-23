@@ -1227,11 +1227,11 @@ contains
             trim(subname) // ' tint' &
          ), fatal=.false.)
          call handle_error(clip_values( &
-            pmid(1:ncol,1:nlev_rad), k_dist_lw%get_pres_min(), k_dist_lw%get_pres_max(), &
+            pmid(1:ncol,1:nlev_rad), k_dist_lw%get_press_min(), k_dist_lw%get_press_max(), &
             trim(subname) // ' pmid' &
          ), fatal=.false.)
          call handle_error(clip_values( &
-            pint(1:ncol,1:nlev_rad+1), k_dist_lw%get_pres_min(), k_dist_lw%get_pres_max(), &
+            pint(1:ncol,1:nlev_rad+1), k_dist_lw%get_press_min(), k_dist_lw%get_press_max(), &
             trim(subname) // ' pint' &
          ), fatal=.false.)
          call t_stopf('rrtmgp_check_state')
