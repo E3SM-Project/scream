@@ -1214,10 +1214,10 @@ contains
             pmid(1:ncol,1:nlev_rad), pint(1:ncol,1:nlev_rad+1) &
          )
 
-         ! Check temperatures to make sure they are within the bounds of the
-         ! absorption coefficient look-up tables. If out of bounds, optionally clip
+         ! Check state variables to make sure they are within the bounds of the
+         ! absorption coefficient look-up tables. If out of bounds, clip
          ! values to min/max specified
-         call t_startf('rrtmgp_check_temperatures')
+         call t_startf('rrtmgp_check_state')
          call handle_error(clip_values( &
             tmid(1:ncol,1:nlev_rad), k_dist_lw%get_temp_min(), k_dist_lw%get_temp_max(), &
             trim(subname) // ' tmid' &
@@ -1226,7 +1226,15 @@ contains
             tint(1:ncol,1:nlev_rad+1), k_dist_lw%get_temp_min(), k_dist_lw%get_temp_max(), &
             trim(subname) // ' tint' &
          ), fatal=.false.)
-         call t_stopf('rrtmgp_check_temperatures')
+         call handle_error(clip_values( &
+            pmid(1:ncol,1:nlev_rad), k_dist_lw%get_pres_min(), k_dist_lw%get_pres_max(), &
+            trim(subname) // ' pmid' &
+         ), fatal=.false.)
+         call handle_error(clip_values( &
+            pint(1:ncol,1:nlev_rad+1), k_dist_lw%get_pres_min(), k_dist_lw%get_pres_max(), &
+            trim(subname) // ' pint' &
+         ), fatal=.false.)
+         call t_stopf('rrtmgp_check_state')
       end if
      
       ! Do shortwave stuff...
