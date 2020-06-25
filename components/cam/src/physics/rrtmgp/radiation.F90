@@ -1559,6 +1559,21 @@ contains
       character(*), parameter :: subroutine_name = 'radiation_driver_sw'
 
 
+      ! Check inputs
+      call assert_valid(gas_vmr, trim(subroutine_name) // ': gas_vmr')
+      call assert_valid(pmid, trim(subroutine_name) // ': pmid')
+      call assert_valid(pint, trim(subroutine_name) // ': pint')
+      call assert_valid(tmid, trim(subroutine_name) // ': tmid')
+      call assert_valid(albedo_dir, trim(subroutine_name) // ': albedo_dir')
+      call assert_valid(albedo_dif, trim(subroutine_name) // ': albedo_dif')
+      call assert_valid(coszrs, trim(subroutine_name) // ': coszrs')
+      call assert_valid(cld_tau_gpt, trim(subroutine_name) // ': cld_tau_gpt')
+      call assert_valid(cld_ssa_gpt, trim(subroutine_name) // ': cld_ssa_gpt')
+      call assert_valid(cld_asm_gpt, trim(subroutine_name) // ': cld_asm_gpt')
+      call assert_valid(aer_tau_bnd, trim(subroutine_name) // ': aer_tau_bnd')
+      call assert_valid(aer_ssa_bnd, trim(subroutine_name) // ': aer_ssa_bnd')
+      call assert_valid(aer_asm_bnd, trim(subroutine_name) // ': aer_asm_bnd')
+
       if (fixed_total_solar_irradiance<0) then
          ! Get orbital eccentricity factor to scale total sky irradiance
          tsi_scaling = get_eccentricity_factor()
@@ -1717,6 +1732,10 @@ contains
       call free_fluxes(fluxes_allsky_day)
       call free_fluxes(fluxes_clrsky_day)
 
+      ! Check outputs
+      call check_fluxes(fluxes_allsky, trim(subroutine_name) // ': fluxes_allsky')
+      call check_fluxes(fluxes_clrsky, trim(subroutine_name) // ': fluxes_clrsky')
+
    end subroutine radiation_driver_sw
 
    !----------------------------------------------------------------------------
@@ -1813,6 +1832,16 @@ contains
       type(ty_optical_props_1scl) :: aer_optics_lw
       type(ty_optical_props_1scl) :: cld_optics_lw
 
+
+      ! Check inputs
+      call assert_valid(gas_vmr,     trim(subroutine_name) // ': gas_vmr')
+      call assert_valid(pmid,        trim(subroutine_name) // ': pmid')
+      call assert_valid(pint,        trim(subroutine_name) // ': pint')
+      call assert_valid(tmid,        trim(subroutine_name) // ': tmid')
+      call assert_valid(tint,        trim(subroutine_name) // ': tint')
+      call assert_valid(cld_tau_gpt, trim(subroutine_name) // ': cld_tau_gpt')
+      call assert_valid(aer_tau_bnd, trim(subroutine_name) // ': aer_tau_bnd')
+
       ! Set surface emissivity to 1 here. There is a note in the RRTMG
       ! implementation that this is treated in the land model, but the old
       ! RRTMG implementation also sets this to 1. This probably does not make
@@ -1892,6 +1921,10 @@ contains
       ! Free fluxes and optical properties
       call free_optics_lw(cld_optics_lw)
       call free_optics_lw(aer_optics_lw)
+
+      ! Check outputs
+      call check_fluxes(fluxes_allsky, trim(subroutine_name) // ': fluxes_allsky')
+      call check_fluxes(fluxes_clrsky, trim(subroutine_name) // ': fluxes_clrsky')
 
    end subroutine radiation_driver_lw
 
@@ -1987,11 +2020,24 @@ contains
 
       integer :: ncol
 
+      ! Check inputs
+      call check_fluxes(fluxes, 'set_net_fluxes_sw: fluxes')
+
+      ! Initialize outputs
+      fsds = 0._r8
+      fsns = 0._r8
+      fsnt = 0._r8
+
       ! Copy data
       ncol = size(fluxes%flux_up, 1)
       fsds(1:ncol) = fluxes%flux_dn(1:ncol,kbot+1)
       fsns(1:ncol) = fluxes%flux_dn(1:ncol,kbot+1) - fluxes%flux_up(1:ncol,kbot+1)
       fsnt(1:ncol) = fluxes%flux_dn(1:ncol,ktop) - fluxes%flux_up(1:ncol,ktop)
+
+      ! Check outputs
+      call assert_valid(fsds(1:ncol), 'set_net_fluxes_sw: fsds')
+      call assert_valid(fsns(1:ncol), 'set_net_fluxes_sw: fsns')
+      call assert_valid(fsnt(1:ncol), 'set_net_fluxes_sw: fsnt')
 
    end subroutine set_net_fluxes_sw
 
@@ -2005,10 +2051,21 @@ contains
       real(r8), intent(inout) :: flnt(:)
       integer :: ncol
 
+      ! Check inputs
+      call check_fluxes(fluxes, 'set_net_fluxes_lw: fluxes')
+
+      ! Initialize outputs
+      flns = 0._r8
+      flnt = 0._r8
+
       ! Copy data
       ncol = size(fluxes%flux_up, 1)
       flns(1:ncol) = fluxes%flux_up(1:ncol,kbot+1) - fluxes%flux_dn(1:ncol,kbot+1)
       flnt(1:ncol) = fluxes%flux_up(1:ncol,ktop) - fluxes%flux_dn(1:ncol,ktop)
+
+      ! Check outputs
+      call assert_valid(flns(1:ncol), 'set_net_fluxes_lw: flns')
+      call assert_valid(flnt(1:ncol), 'set_net_fluxes_lw: flnt')
 
    end subroutine set_net_fluxes_lw
 
@@ -2451,6 +2508,26 @@ contains
       if (associated(fluxes%bnd_flux_net)) deallocate(fluxes%bnd_flux_net)
       if (associated(fluxes%bnd_flux_dn_dir)) deallocate(fluxes%bnd_flux_dn_dir)
    end subroutine free_fluxes
+
+   !----------------------------------------------------------------------------
+
+   subroutine check_fluxes(fluxes, message)
+      use mo_fluxes_byband, only: ty_fluxes_byband
+      type(ty_fluxes_byband), intent(in) :: fluxes
+      character(len=*), intent(in) :: message
+      call assert_valid(fluxes%flux_up,            trim(message) // '%flux_up')
+      call assert_valid(fluxes%flux_dn,            trim(message) // '%flux_dn')
+      if (associated(fluxes%flux_dn_dir)) then
+         call assert_valid(fluxes%flux_dn_dir,     trim(message) // '%flux_dn_dir')
+      end if
+      call assert_valid(fluxes%flux_net,           trim(message) // '%flux_net')
+      call assert_valid(fluxes%bnd_flux_up,        trim(message) // '%bnd_flux_up')
+      call assert_valid(fluxes%bnd_flux_dn,        trim(message) // '%bnd_flux_dn')
+      if (associated(fluxes%bnd_flux_dn_dir)) then
+         call assert_valid(fluxes%bnd_flux_dn_dir, trim(message) // '%bnd_flux_dn_dir')
+      end if
+      call assert_valid(fluxes%bnd_flux_net,       trim(message) // '%bnd_flux_net')
+   end subroutine check_fluxes
 
    !----------------------------------------------------------------------------
 
