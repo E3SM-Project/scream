@@ -187,6 +187,7 @@ subroutine shoc_main ( &
      wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, & ! Input
      wtracer_sfc,num_qtracers,w_field, &  ! Input
      exner,phis, &                        ! Input
+     col_loc, macmic_it, &                ! Input
      host_dse, tke, thetal, qw, &         ! Input/Output
      u_wind, v_wind,qtracers,&            ! Input/Output
      wthv_sec,tkh,tk,&                    ! Input/Output
@@ -246,6 +247,10 @@ subroutine shoc_main ( &
   real(rtype), intent(in) :: exner(shcol,nlev)
   ! Host model surface geopotential height
   real(rtype), intent(in) :: phis(shcol)
+  ! Location of column
+  real(rtype), intent(in) :: col_loc(shcol,3)
+  ! macmic_it (macro/micro sub timestep)
+  integer, intent(in)     :: macmic_it
 
 ! INPUT/OUTPUT VARIABLES
   ! prognostic temp variable of host model
@@ -464,6 +469,7 @@ subroutine shoc_main ( &
        wthl_sec,w_sec,&                     ! Input
        wqw_sec,qwthl_sec,w3,pres,&          ! Input
        zt_grid,zi_grid,&                    ! Input
+       col_loc,macmic_it,t,&                ! Input for diag
        shoc_cldfrac,shoc_ql,&               ! Output
        wqls_sec,wthv_sec,shoc_ql2)          ! Output
 
@@ -1834,6 +1840,7 @@ subroutine shoc_assumed_pdf(&
          wthl_sec,w_sec, &                  ! Input
          wqw_sec,qwthl_sec,w3,pres, &       ! Input
          zt_grid,zi_grid,&                  ! Input
+         col_loc,macmic_it,cyc_shoc,&       ! Input for diag
          shoc_cldfrac,shoc_ql,&             ! Output
          wqls,wthv_sec,shoc_ql2)            ! Output
 
@@ -1854,6 +1861,9 @@ subroutine shoc_assumed_pdf(&
   integer, intent(in) :: nlev
   ! number of interface layers
   integer, intent(in) :: nlevi
+  ! Integers indicating shoc cycle and macmic_it
+  integer, intent(in) :: cyc_shoc
+  integer, intent(in) :: macmic_it
 
   ! liquid water potential temperature [K]
   real(rtype), intent(in) :: thetal(shcol,nlev)
@@ -1881,6 +1891,8 @@ subroutine shoc_assumed_pdf(&
   real(rtype), intent(in) :: zt_grid(shcol,nlev)
   ! heights on interface grid [m]
   real(rtype), intent(in) :: zi_grid(shcol,nlevi)
+  ! location of the column for diagnostics
+  real(rtype), intent(in) :: col_loc(shcol,3)
 
 ! OUTPUT VARIABLES
   ! SGS cloud fraction [-]
@@ -2053,6 +2065,13 @@ subroutine shoc_assumed_pdf(&
 
       endif
 
+      !CRT - include statements and printout with the following info
+
+      !if (thl1_1 .le. 0.0_rtype .or. thl1_2 .le. 0.0_rtype) then
+      !   write(0,'(a70,i8,a1,f8.4,a1,f8.4,a1,i3,a1,i2,a1,i2,a1,f8.3)') &
+      !        '** WARNING IN SHOC -- gcol, lon, lat, lvl, macmic_it, shoc_cyc, thl1_1',int(col_loc(i,1)),',', &
+      !        col_loc(i,2),',',col_loc(i,3),',',k,',',macmic_it,',',cyc_shoc,',',thl1_1
+      !endif
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !  FIND PARAMETERS FOR TOTAL WATER MIXING RATIO
 

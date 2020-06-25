@@ -450,7 +450,10 @@ end function shoc_implements_cnst
     use trb_mtn_stress,            only: compute_tms
     use shoc,           only: shoc_main
     use cam_history,    only: outfld
-    use scamMod,        only: single_column, iop_mode  
+    use scamMod,        only: single_column, iop_mode
+    use phys_grd,       only: get_rlat_all_p, get_rlon_all_p, get_gcol_all_p
+    use physconst,      only: pi
+    
  
     implicit none
     
@@ -560,6 +563,10 @@ end function shoc_implements_cnst
    real(r8) :: wv_a(pcols), wv_b(pcols), wl_b(pcols), wl_a(pcols)
    real(r8) :: se_dis(pcols), se_a(pcols), se_b(pcols), shoc_s(pcols,pver)
    real(r8) :: shoc_t(pcols,pver)
+
+   ! Variables for location diagnostics
+   integer  :: tmpi_loc(pcols) ! Global column index temp array
+   real(r8) :: col_location(pcols,3),tmp_loc(pcols)  ! Array of column lon (index 1) and lat (index 2)
    
    ! --------------- !
    ! Pointers        !
@@ -789,7 +796,16 @@ end function shoc_implements_cnst
        enddo
      end if
    enddo    
-    
+
+   ! Retrieve location information for any print statements for crashes
+   tmp_loc =-999.0_r8
+   call get_rlon_all_p(lchnk,ncol,tmp_loc)
+   col_location(:ncol,2) = tmp_loc(:ncol)*180.0_r8/pi
+   call get_rlat_all_p(lchnk,ncol,tmp_loc)
+   col_location(:ncol,3) = tmp_loc(:ncol)*180.0_r8/pi
+   call get_gcol_all_p(lchnk,ncol,tmpi_loc)
+   col_location(:ncol,1) = real(tmpi_loc(:ncol))
+   
    ! ------------------------------------------------- !
    ! Actually call SHOC                                !
    ! ------------------------------------------------- !   
@@ -801,6 +817,7 @@ end function shoc_implements_cnst
 	wpthlp_sfc(:ncol), wprtp_sfc(:ncol), upwp_sfc(:ncol), vpwp_sfc(:ncol), & ! Input
 	wtracer_sfc(:ncol,:), edsclr_dim, wm_zt(:ncol,:), & ! Input
 	exner(:ncol,:),state1%phis(:ncol), & ! Input
+        col_location(:ncol,:),macmic_it, &   ! Input
 	shoc_s(:ncol,:), tke_zt(:ncol,:), thlm(:ncol,:), rtm(:ncol,:), & ! Input/Ouput
 	um(:ncol,:), vm(:ncol,:), edsclr_in(:ncol,:,:), & ! Input/Output
 	wthv(:ncol,:),tkh(:ncol,:),tk(:ncol,:), & ! Input/Output
