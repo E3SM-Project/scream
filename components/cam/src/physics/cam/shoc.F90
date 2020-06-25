@@ -2072,7 +2072,7 @@ subroutine shoc_assumed_pdf(&
       !      and value)
       !
       !  if (thl1_1 .le. 0.0_rtype .or. thl1_2 .le. 0.0_rtype) then
-      !    write(iulog,'(a70,i8,a1,f8.4,a1,f8.4,a1,i3,a1,i2,a1,i2,a1,f8.3)') &
+      !    write(0,'(a70,i8,a1,f8.4,a1,f8.4,a1,i3,a1,i2,a1,i2,a1,f8.3)') &
       !      '** WARNING IN SHOC -- gcol, lon, lat, lvl, macmic_it, shoc_cyc, thl1_1',int(col_loc(i,1)),',', &
       !      col_loc(i,2),',',col_loc(i,3),',',k,',',macmic_it,',',cyc_shoc,',',thl1_1
       !  endif
@@ -4017,14 +4017,14 @@ subroutine check_var_val(checkvar,upper_bnd,lower_bnd,k,col_location,micmac_time
     implicit none
 
     !Calling parameters:
-    real(r8), dimension(3), intent(in) :: col_location
-    real(r8), intent(in)               :: checkvar,upper_bnd,lower_bnd
+    real(rtype), dimension(3), intent(in) :: col_location
+    real(rtype), intent(in)               :: checkvar,upper_bnd,lower_bnd
     integer, intent(in)                :: k,micmac_timestep
     character(len=*),    intent(in), optional :: name
     
     if (.not.(checkvar>lower_bnd .and. checkvar<upper_bnd)) then
-       write(iulog,'(a52,i8,a2,f8.4,a2,f8.4,a2,i4,f8.3,a12)') &
-            '** WARNING IN SHOC -- gcol, lon, lat lvl, value, name',int(col_location(1)),', ',col_location(2),', ',col_location(3),', ',k,', ',Var,' ,',name
+       write(0,'(a52,i8,a2,f8.4,a2,f8.4,a2,i4,f8.3,a12)') &
+            '** WARNING IN SHOC -- gcol, lon, lat lvl, value, name',int(col_location(1)),', ',col_location(2),', ',col_location(3),', ',k,', ',checkvar,' ,',name
     endif
 
    return

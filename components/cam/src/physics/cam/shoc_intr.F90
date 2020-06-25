@@ -453,6 +453,7 @@ end function shoc_implements_cnst
     use scamMod,        only: single_column, iop_mode  
 
     use phys_grid,      only: get_rlat_all_p, get_rlon_all_p, get_gcol_all_p
+    use physconst,      only: pi
     
     implicit none
     
