@@ -36,7 +36,15 @@ module micro_p3_interface
   use time_manager,   only: is_first_step
   use perf_mod,       only: t_startf, t_stopf
   use micro_p3_utils, only: p3_QcAutoCon_Expon, p3_QcAccret_Expon
-       
+  use pio,            only: file_desc_t
+  use cam_pio_utils,  only: cam_pio_openfile
+  use cam_grid_support, only: cam_grid_check, cam_grid_id
+  use cam_grid_support, only: cam_grid_get_dim_names
+  use ncdio_atm,       only: infld
+  use time_manager,   only: get_curr_date
+  use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp, psubcols
+
+     
   implicit none
   save
 
@@ -118,6 +126,7 @@ module micro_p3_interface
    logical            :: micro_aerosolactivation = .false.   ! Use aerosol activation
    logical            :: micro_subgrid_cloud     = .false.   ! Use subgrid cloudiness
    logical            :: micro_tend_output       = .false.   ! Default microphysics tendencies to output file
+   logical            :: log_prescribeCCN        = .false.   ! Use prescribed CCN
    contains
 !===============================================================================
 subroutine micro_p3_readnl(nlfile)
@@ -134,7 +143,7 @@ subroutine micro_p3_readnl(nlfile)
 
   namelist /micro_nl/ &
        micro_p3_tableversion, micro_p3_lookup_dir, micro_aerosolactivation, micro_subgrid_cloud, &
-       micro_tend_output, p3_QcAutoCon_Expon, p3_QcAccret_Expon
+       log_prescribeCCN,micro_tend_output, p3_QcAutoCon_Expon, p3_QcAccret_Expon
 
   !-----------------------------------------------------------------------------
 
@@ -156,6 +165,7 @@ subroutine micro_p3_readnl(nlfile)
      write(iulog,'(A20,1x,A100)') 'micro_p3_lookup_dir: ',     micro_p3_lookup_dir
      write(iulog,'(A30,1x,L)')    'micro_aerosolactivation: ', micro_aerosolactivation
      write(iulog,'(A30,1x,L)')    'micro_subgrid_cloud: ',     micro_subgrid_cloud
+     write(iulog,'(A30,1x,L)')    'log_prescribeCCN: ',     log_prescribeCCN
      write(iulog,'(A30,1x,L)')    'micro_tend_output: ',       micro_tend_output
      write(iulog,'(A30,1x,8e12.4)') 'p3_QcAutoCon_Expon',        p3_QcAutoCon_Expon
      write(iulog,'(A30,1x,8e12.4)') 'p3_QcAccret_Expon',         p3_QcAccret_Expon
@@ -168,6 +178,7 @@ subroutine micro_p3_readnl(nlfile)
   call mpibcast(micro_p3_lookup_dir,     len(micro_p3_lookup_dir),   mpichar, 0, mpicom)
   call mpibcast(micro_aerosolactivation, 1,                          mpilog,  0, mpicom)
   call mpibcast(micro_subgrid_cloud,     1,                          mpilog,  0, mpicom)
+  call mpibcast(log_prescribeCCN,     1,                          mpilog,  0, mpicom)
   call mpibcast(micro_tend_output,       1,                          mpilog,  0, mpicom)
   call mpibcast(p3_QcAutoCon_Expon,      1,                          mpir8,   0, mpicom)
   call mpibcast(p3_QcAccret_Expon,       1,                          mpir8,   0, mpicom)
@@ -703,6 +714,8 @@ end subroutine micro_p3_readnl
     end subroutine get_cloud_fraction
 
   !================================================================================================
+  subroutine get_prescribed_CCN(nccn_prescribed,micro_p3_lookup_dir,its,ite,kts,kte)
+
   subroutine micro_p3_tend(state, ptend, dtime, pbuf)
 
     use phys_grid,      only: get_rlat_all_p, get_rlon_all_p, get_gcol_all_p
