@@ -111,6 +111,9 @@ contains
   END SUBROUTINE p3_init
 
   SUBROUTINE p3_init_a(lookup_file_dir,version_p3)
+
+    use scream_abortutils, only : endscreamrun
+
     ! Passed arguments:
     character*(*), intent(in)     :: lookup_file_dir       !directory of the lookup tables
 
@@ -148,7 +151,7 @@ contains
        print*, '               -- ABORTING -- '
        print*, '************************************************'
        print*
-       stop
+       call endscreamrun()
     end if
 
     itab(:,:,:,:) = 0.
@@ -950,14 +953,14 @@ contains
 
  END SUBROUTINE p3_main_main_loop
 
- subroutine p3_main_post_loop(kts, kte, kbot, ktop, kdir, &
+ subroutine p3_main_post_main_loop(kts, kte, kbot, ktop, kdir, &
       exner, lcldm, rcldm, &
       rho, inv_rho, rhofaci, qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, &
       mu_c, nu, lamc, mu_r, lamr, vap_liq_exchange, &
       ze_rain, ze_ice, diag_vmi, diag_effi, diag_di, diag_rhoi, diag_ze, diag_effc)
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
-   !use micro_p3_iso_f, only: p3_main_pre_main_loop_f
+   use micro_p3_iso_f, only: p3_main_post_main_loop_f
 #endif
 
    implicit none
@@ -985,6 +988,17 @@ contains
    real(rtype)    :: f1pr15   ! mass-weighted mean diameter          See lines 1212 - 1279  dmm
    real(rtype)    :: f1pr16   ! mass-weighted mean particle density  See lines 1212 - 1279  rhomm
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   if (use_cxx) then
+      call p3_main_post_main_loop_f(kts, kte, kbot, ktop, kdir, &
+           exner, lcldm, rcldm, &
+           rho, inv_rho, rhofaci, qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, &
+           mu_c, nu, lamc, mu_r, lamr, vap_liq_exchange, &
+           ze_rain, ze_ice, diag_vmi, diag_effi, diag_di, diag_rhoi, diag_ze, diag_effc)
+      return
+   endif
+#endif
+
    k_loop_final_diagnostics:  do k = kbot,ktop,kdir
 
       ! cloud:
@@ -1006,7 +1020,7 @@ contains
          call get_rain_dsd2(qr(k),nr(k),mu_r(k),lamr(k),tmp1,tmp2,rcldm(k))
 
          ze_rain(k) = nr(k)*(mu_r(k)+6._rtype)*(mu_r(k)+5._rtype)*(mu_r(k)+4._rtype)*           &
-              (mu_r(k)+3._rtype)*(mu_r(k)+2._rtype)*(mu_r(k)+1._rtype)/lamr(k)**6
+              (mu_r(k)+3._rtype)*(mu_r(k)+2._rtype)*(mu_r(k)+1._rtype)/bfb_pow(lamr(k), 6._rtype)
          ze_rain(k) = max(ze_rain(k),1.e-22_rtype)
       else
          qv(k) = qv(k)+qr(k)
@@ -1077,7 +1091,7 @@ contains
       endif qi_not_small
 
       ! sum ze components and convert to dBZ
-      diag_ze(k) = 10._rtype*log10((ze_rain(k) + ze_ice(k))*1.e18_rtype)
+      diag_ze(k) = 10._rtype*bfb_log10((ze_rain(k) + ze_ice(k))*1.e18_rtype)
 
       ! if qr is very small then set Nr to 0 (needs to be done here after call
       ! to ice lookup table because a minimum Nr of nsmall will be set otherwise even if qr=0)
@@ -1087,7 +1101,7 @@ contains
 
    enddo k_loop_final_diagnostics
 
- end subroutine p3_main_post_loop
+ end subroutine p3_main_post_main_loop
 
   !==========================================================================================!
 
@@ -1259,6 +1273,11 @@ contains
     inv_lcldm = 1.0_rtype/lcldm
     inv_rcldm = 1.0_rtype/rcldm
 
+    prer_evap = 0._rtype
+    liq_ice_exchange = 0._rtype
+    vap_liq_exchange = 0._rtype
+    vap_ice_exchange = 0._rtype
+
     mu_c = 0.0_rtype
     lamc = 0.0_rtype
     ! AaronDonahue added exner term to replace all instances of th(i,k)/t(i,k), since th(i,k) is updated but t(i,k) is not, and this was
@@ -1372,7 +1391,7 @@ contains
        !...................................................
        ! final checks to ensure consistency of mass/number
        ! and compute diagnostic fields for output
-       call p3_main_post_loop(kts, kte, kbot, ktop, kdir, &
+       call p3_main_post_main_loop(kts, kte, kbot, ktop, kdir, &
             exner(i,:), lcldm(i,:), rcldm(i,:), &
             rho(i,:), inv_rho(i,:), rhofaci(i,:), qv(i,:), th(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), qitot(i,:), nitot(i,:), &
             qirim(i,:), birim(i,:), xxlv(i,:), xxls(i,:), &
@@ -1601,8 +1620,8 @@ contains
     return
   end function MurphyKoop_svp
 
-!_rtype
-  real(rtype) function polysvp1(T,i_type)
+  !_rtype
+  real(rtype) function polysvp1(t,i_type)
 
     !-------------------------------------------
     !  COMPUTE SATURATION VAPOR PRESSURE
@@ -1611,12 +1630,17 @@ contains
     !  i_type REFERS TO SATURATION WITH RESPECT TO LIQUID (0) OR ICE (1)
     !-------------------------------------------
 
+    use scream_abortutils, only : endscreamrun
+
     implicit none
 
-    real(rtype)    :: T
-    integer :: i_type
+    real(rtype), intent(in) :: t
+    integer, intent(in)     :: i_type
 
     ! REPLACE GOFF-GRATCH WITH FASTER FORMULATION FROM FLATAU ET AL. 1992, TABLE 4 (RIGHT-HAND COLUMN)
+
+    !local variables
+    character(len=1000) :: err_msg
 
     ! ice
     real(rtype) a0i,a1i,a2i,a3i,a4i,a5i,a6i,a7i,a8i
@@ -1637,7 +1661,7 @@ contains
 
     !-------------------------------------------
 
-    if (i_type.EQ.1 .and. T.lt.zerodegc) then
+    if (i_type.eq.1 .and. t.lt.zerodegc) then
        ! ICE
 
        !       Flatau formulation:
@@ -1652,7 +1676,7 @@ contains
        !          log10(6.1071))*100.
 
 
-    elseif (i_type.EQ.0 .or. T.ge.zerodegc) then
+    elseif (i_type.eq.0 .or. t.ge.zerodegc) then
        ! LIQUID
 
        !       Flatau formulation:
@@ -1670,11 +1694,10 @@ contains
     !PMC added error checking
     else
 
-       print*
-       print*,'** polysvp1 i_type must be 0 or 1 but is: ',i_type
-       print*
-       stop
+       write(err_msg,*)'** polysvp1 i_type must be 0 or 1 but is: ', &
+            i_type,' temperature is:',t,' in file: ',__FILE__,' at line:',__LINE__
 
+       call endscreamrun(err_msg)
     endif
 
    return
@@ -2147,6 +2170,9 @@ contains
     ! from where 'check_values' was called before it resulted in a trap.
     !
     !------------------------------------------------------------------------------------
+
+    use scream_abortutils, only : endscreamrun
+
 #ifdef SCREAM_CONFIG_IS_CMAKE
     use micro_p3_iso_f, only: check_values_f
 #endif
@@ -2169,6 +2195,7 @@ contains
     real(rtype), parameter :: x_low  = 0._rtype
     integer         :: k
     logical(btype)         :: trap,badvalue_found
+    character(len=1000)    :: err_msg
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
     if (use_cxx) then
@@ -2202,7 +2229,11 @@ contains
        print*
        print*,'** DEBUG TRAP IN P3_MAIN, s/r CHECK_VALUES -- source: ',source_ind
        print*
-       if (source_ind/=100) stop
+       if (source_ind/=100) then
+          write(err_msg,*)'Source_ind should be 100, source_ind is:', &
+               source_ind,' in file:',__FILE__,' at line:',__LINE__
+          call endscreamrun(err_msg)
+       endif
     endif
 
    return

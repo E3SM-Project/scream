@@ -51,7 +51,8 @@
 #define scream_require_msg(condition, msg)  impl_throw(condition, msg, std::logic_error)
 #define scream_krequire_msg(condition, msg) impl_kthrow(condition, msg)
 
-#define scream_error_msg(msg)               impl_throw(false, msg, std::logic_error)
+#define scream_error_msg(msg)               scream_require_msg(false, msg)
+#define scream_kerror_msg(msg)              scream_krequire_msg(false, msg)
 
 // Macros to do asserts inside constexpr functions
 // This is not necessary with C++14, where constexpr functions are "regular"
@@ -63,7 +64,7 @@
 // As soon as we can use C++14, this macro can be removed, and you can simply use
 // `assert(check);` in the body of the constexpr function.
 #if defined(NDEBUG) || !defined(EKAT_CONSTEXPR_ASSERT)
-#define CONSTEXPR_ASSERT(CHECK) void(0)
+#define CONSTEXPR_ASSERT(CHECK) void(CHECK)
 #else
 namespace impl {
 struct assert_failure {
