@@ -15,7 +15,7 @@ namespace physics {
 template <typename S, typename D>
 KOKKOS_FUNCTION
 typename Functions<S,D>::Spack
-Functions<S,D>::svp_murphy_koop(const Spack& t, const bool ice)
+Functions<S,D>::MurphyKoop_svp(const Spack& t, const bool ice)
 {
   // Murphy & Koop (2005)
   Spack result;
@@ -98,7 +98,7 @@ Functions<S,D>::qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice)
   Spack e_pres; // saturation vapor pressure [Pa]
 
   //e_pres = polysvp1(t_atm, ice);
-  e_pres = svp_murphy_koop(t_atm, ice);
+  e_pres = MurphyKoop_svp(t_atm, ice);
   const auto ep_2 = C::ep_2;
   return ep_2 * e_pres / pack::max(p_atm-e_pres, sp(1.e-3));
 }

@@ -1548,7 +1548,7 @@ contains
 
   !==========================================================================================!
 
-  real(rtype) function svp_murphy_koop(t, i_type)
+  real(rtype) function MurphyKoop_svp(t, i_type)
 
     implicit none
 
@@ -1576,22 +1576,22 @@ contains
          0.000367_rtype, 0.0415_rtype, 218.8_rtype, 53.878_rtype, 1331.22_rtype,       &
          9.44523_rtype, 0.014025_rtype /)
 
-    logt = log(t)
+    logt = bfb_log(t)
 
     if (i_type .eq. 1 .and. t .lt. zerodegc) then
 
        !(good down to 110 K)
-       svp_murphy_koop = exp(ic(1) - (ic(2) / t) + (ic(3) * logt) - (ic(4) * t))
+       MurphyKoop_svp = exp(ic(1) - (ic(2) / t) + (ic(3) * logt) - (ic(4) * t))
 
     elseif (i_type .eq. 0 .or. t .ge. zerodegc) then
 
        ! (good for 123 < T < 332 K)
-       svp_murphy_koop = exp(lq(1) - (lq(2) / t) - (lq(3) * logt) + (lq(4) * t) + &
+       MurphyKoop_svp = exp(lq(1) - (lq(2) / t) - (lq(3) * logt) + (lq(4) * t) + &
             (tanh(lq(5) * (t - lq(6))) * (lq(7) - (lq(8) / t) - &
             (lq(9) * logt) + lq(10) * t)));
     else
 
-       write(err_msg,*)'** svp_murphy_koop i_type must be 0 or 1 but is: ', &
+       write(err_msg,*)'** MurphyKoop_svp i_type must be 0 or 1 but is: ', &
             i_type,'in file:',__FILE__,' at line:',__LINE__
 
        print(err_msg)
@@ -1599,7 +1599,7 @@ contains
     endif
 
     return
-  end function svp_murphy_koop
+  end function MurphyKoop_svp
 
 !_rtype
   real(rtype) function polysvp1(T,i_type)
@@ -2121,7 +2121,7 @@ contains
     !------------------
 
     !e_pres = polysvp1(t_atm,i_wrt)
-    e_pres = svp_murphy_koop(t_atm,i_wrt)
+    e_pres = MurphyKoop_svp(t_atm,i_wrt)
     qv_sat = ep_2*e_pres/max(1.e-3_rtype,(p_atm-e_pres))
 
     return
