@@ -673,7 +673,7 @@ contains
          varname="state%zm",        msg=msg)
 
     ! 2-D variables (at interfaces)
-    call shr_assert_in_domain(state%pint(:ncol,:),      lt=400._r8, gt=100._r8, &
+    call shr_assert_in_domain(state%pint(:ncol,:),      lt=posinf_r8, gt=0._r8, &
          varname="state%pint",      msg=msg)
     call shr_assert_in_domain(state%pintdry(:ncol,:),   lt=posinf_r8, gt=0._r8, &
          varname="state%pintdry",   msg=msg)
