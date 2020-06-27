@@ -960,7 +960,7 @@ contains
        diag_effi,diag_vmi,diag_di,diag_rhoi,log_predictNc, &
        pdel,exner,cmeiout,prain,nevapr,prer_evap,rflx,sflx,rcldm,lcldm,icldm,  &
        pratot,prctot,p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-       vap_ice_exchange,col_location)
+       vap_ice_exchange,col_location,log_prescribeCCN,nccn_prescribed)
 
     !----------------------------------------------------------------------------------------!
     !                                                                                        !
@@ -1030,6 +1030,10 @@ contains
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: liq_ice_exchange ! sum of liq-ice phase change tendenices
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: vap_liq_exchange ! sum of vap-liq phase change tendenices
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: vap_ice_exchange ! sum of vap-ice phase change tendenices
+    ! INPUT for prescribed CCN option
+    logical(btype), intent(in)                                  :: log_prescribeCCN 
+    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: nccn_prescribed
+
     ! INPUT needed for PBUF variables used by other parameterizations
 
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: icldm, lcldm, rcldm ! Ice, Liquid and Rain cloud fraction

@@ -2167,6 +2167,12 @@ Specify if cloud fraction is applied to microphysics tendencies.
 Default: TRUE
 </entry>
 
+<entry id="log_prescribeCCN" type="logical" category="microphys"
+       group="micro_nl" valid_values="" >
+Specify if CCN concentration is read in from ncdf file within p3.
+Default: FALSE
+</entry>
+
 <entry id="micro_tend_output" type="logical" category="microphys"
        group="micro_nl" valid_values="" >
 Output microphysics tendencies in standard atm output file.

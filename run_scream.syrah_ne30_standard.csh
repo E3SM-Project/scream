@@ -11,6 +11,7 @@
 ### BASIC INFO ABOUT RUN
 set my_npes        = 1080
 set job_name       = control_run
+#set compset        = FC5AV1C-L
 set compset        = FSCREAM-LR
 set resolution     = ne30_ne30
 set machine        = syrah
@@ -55,7 +56,7 @@ set short_term_archive_root_dir = default
 
 ### LENGTH OF SIMULATION, RESTARTS, AND ARCHIVING
 set stop_units                  = ndays
-set stop_num                    = 110
+set stop_num                    = 100 
 set restart_units               = $stop_units
 set restart_num                 = $stop_num
 set num_resubmits               = 10
@@ -65,6 +66,10 @@ set do_short_term_archiving     = false
 set atm_output_freq             = -24
 set records_per_atm_output_file = 40
 set start_date                  = default
+
+### TIMESTEP Options
+#@ dtime = 120
+#@ ncpl = 86400 / $dtime
 
 ### COUPLER HISTORY FILES
 set do_cpl_hist    = true
@@ -364,7 +369,7 @@ if ( `lowercase $fetch_code` == true ) then
   cd $code_root_dir/$tag_name
   git config commit.template $code_root_dir/$tag_name/.git/hooks/commit.template
   ## Bring in MPAS ocean/ice repo
-  git submodule update --init --recursive
+  git submodule update --init
 
   if ( `lowercase $e3sm_tag` == master ) then
     e3sm_newline
@@ -718,35 +723,41 @@ if ( `lowercase $processor_config` == '1' ) then
     $xmlchange_exe --id $layout_name --val $sequential_or_concurrent
   end
 
-else if ( `lowercase $processor_config` == 'customknl' ) then
+else if ( `lowercase $processor_config` == 'customlc' ) then
 
   e3sm_print 'using custom layout for cori-knl because $processor_config = '$processor_config
 
-  ${xmlchange_exe} MAX_TASKS_PER_NODE="64"
-  ${xmlchange_exe} PES_PER_NODE="256"
+  if ( $machine == syrah || $machine == cab ) then
+     set maxpe = 16
+  else if ( $machine == quartz ) then
+     set maxpe = 36
+  endif
 
-  ${xmlchange_exe} NTASKS_ATM="5400"
+
+  ${xmlchange_exe} MAX_TASKS_PER_NODE="$maxpe"
+
+  ${xmlchange_exe} NTASKS_ATM="$my_npes"
   ${xmlchange_exe} ROOTPE_ATM="0"
 
-  ${xmlchange_exe} NTASKS_LND="320"
-  ${xmlchange_exe} ROOTPE_LND="5120"
+  ${xmlchange_exe} NTASKS_LND="$my_npes"
+  ${xmlchange_exe} ROOTPE_LND="0"
 
-  ${xmlchange_exe} NTASKS_ICE="5120"
+  ${xmlchange_exe} NTASKS_ICE="$my_npes"
   ${xmlchange_exe} ROOTPE_ICE="0"
 
-  ${xmlchange_exe} NTASKS_OCN="3840"
-  ${xmlchange_exe} ROOTPE_OCN="5440"
+  ${xmlchange_exe} NTASKS_OCN="$my_npes"
+  ${xmlchange_exe} ROOTPE_OCN="0"
 
-  ${xmlchange_exe} NTASKS_CPL="5120"
+  ${xmlchange_exe} NTASKS_CPL="$my_npes"
   ${xmlchange_exe} ROOTPE_CPL="0"
 
-  ${xmlchange_exe} NTASKS_GLC="320"
-  ${xmlchange_exe} ROOTPE_GLC="5120"
+  ${xmlchange_exe} NTASKS_GLC="$my_npes"
+  ${xmlchange_exe} ROOTPE_GLC="0"
 
-  ${xmlchange_exe} NTASKS_ROF="320"
-  ${xmlchange_exe} ROOTPE_ROF="5120"
+  ${xmlchange_exe} NTASKS_ROF="$my_npes"
+  ${xmlchange_exe} ROOTPE_ROF="0"
 
-  ${xmlchange_exe} NTASKS_WAV="5120"
+  ${xmlchange_exe} NTASKS_WAV="$my_npes"
   ${xmlchange_exe} ROOTPE_WAV="0"
 
   ${xmlchange_exe} NTHRDS_ATM="1"
@@ -830,6 +841,8 @@ else
   e3sm_newline
   $xmlchange_exe --id CAM_CONFIG_OPTS --append --val='-cosp'
 endif
+
+#./xmlchange CAM_TARGET=theta-l
 
 #===========================
 # SET THE PARTITION OF NODES
@@ -936,9 +949,6 @@ cat <<EOF >> user_nl_clm
 ! finidat=''
 EOF
 
-### NOTES ON COMMON NAMELIST OPTIONS ###
-
-### ATMOSPHERE NAMELIST ###
 
 #NHTFRQ : The frequency with which the atmosphere writes its output.
 #    0=monthly, +N=every N timesteps,  -N=every N hours
@@ -1247,6 +1257,14 @@ endif
 #if ( $machine == 'cori*' ) then      ### fix pnetcdf problem on Cori. (github #593)
 #  $xmlchange_exe --id PIO_TYPENAME  --val "netcdf"
 #endif
+
+#if ( $dtime > 0 ) then
+#  echo "dtime is stated, changing timestep to $dtime sec"
+#  ./xmlchange ATM_NCPL=$ncpl
+#  ./xmlchange CAM_NAMELIST_OPTS="dtime=$dtime"
+  #./xmlchange CLM_NAMELIST_OPTS="dtime=$dtime"
+#endif
+
 
 #=================================================
 # SUBMIT THE SIMULATION TO THE RUN QUEUE

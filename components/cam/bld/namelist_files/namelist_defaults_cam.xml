@@ -1019,6 +1019,7 @@
 <micro_tend_output       	      > .true.  </micro_tend_output>
 <p3_QcAutoCon_Expon    		      >  2.47   </p3_QcAutoCon_Expon>
 <p3_QcAccret_Expon    		      >  1.15   </p3_QcAccret_Expon>
+<log_prescribeCCN>                    > .false. </log_prescribeCCN>
 
 <rrtmg_temp_fix                      > .false.      </rrtmg_temp_fix>
 

@@ -3501,6 +3501,7 @@ add_default($nl, 'micro_subgrid_cloud');
 add_default($nl, 'micro_tend_output');
 add_default($nl, 'p3_QcAutoCon_Expon');
 add_default($nl, 'p3_QcAccret_Expon');
+add_default($nl, 'log_prescribeCCN');
 
 # CLUBB_SGS
 add_default($nl, 'do_clubb_sgs');

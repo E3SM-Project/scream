@@ -769,6 +769,9 @@ end subroutine micro_p3_readnl
     real(rtype), dimension(pcols,pver) :: vap_cld_exchange ! sum of vap-cld phase change tendenices
     real(rtype) :: dummy_out(pcols,pver)    ! dummy_output variable for p3_main to replace unused variables.
 
+    !Prescribed CCN concentration
+    real(rtype), dimension(pcols,pver) :: nccn_prescribed 
+
     ! PBUF Variables
     real(rtype), pointer :: ast(:,:)      ! Relative humidity cloud fraction
     real(rtype), pointer :: naai(:,:)     ! ice nucleation number
@@ -1014,6 +1017,9 @@ end subroutine micro_p3_readnl
     end do
     p3_main_inputs(1,pver+1,5) = state%zi(1,pver+1)
 
+    !read in prescribed CCN if log_prescribeCCN is true
+    if (log_prescribeCCN) call get_prescribed_CCN(nccn_prescribed,micro_p3_lookup_dir,its,ite,kts,kte)
+
     ! CALL P3
     !==============
     ! TODO: get proper value for 'it' from time module
@@ -1071,6 +1077,8 @@ end subroutine micro_p3_readnl
          vap_liq_exchange(its:ite,kts:kte),& ! OUT sun of vap-liq phase change tendencies
          vap_ice_exchange(its:ite,kts:kte),& ! OUT sum of vap-ice phase change tendencies
          col_location(its:ite,:3)          & ! IN column locations
+         log_prescribeCCN,                 & !IN  .true. = prescribe CCN
+         nccn_prescribe(its:ite,kts:kte    & !IN prescribed CCN concentration
          )
 
     p3_main_outputs(:,:,:) = -999._rtype
