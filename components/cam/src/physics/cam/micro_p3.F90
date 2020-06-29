@@ -1433,6 +1433,22 @@ contains
           call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,800,col_location(i,:))
        endif
 
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,810,col_location(i,:))
+       endif
+       
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,820,col_location(i,:))
+       endif
+       
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qitot(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,830,col_location(i,:))
+       endif
+       
+
        
        !..............................................
        ! merge ice categories with similar properties
