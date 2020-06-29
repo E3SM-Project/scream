@@ -1305,6 +1305,16 @@ contains
           tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
           call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,100,col_location(i,:))
        endif
+
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,110,col_location(i,:))
+       endif
+       
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,120,col_location(i,:))
+       endif
        
        call p3_main_pre_main_loop(kts, kte, kbot, ktop, kdir, log_predictNc, dt, &
             pres(i,:), pdel(i,:), dzq(i,:), ncnuc(i,:), exner(i,:), inv_exner(i,:), inv_lcldm(i,:), inv_icldm(i,:), inv_rcldm(i,:), xxlv(i,:), xxls(i,:), xlf(i,:), &
@@ -1315,6 +1325,16 @@ contains
        if (debug_ON) then
           tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
           call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,200,col_location(i,:))
+       endif
+
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,210,col_location(i,:))
+       endif
+       
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,220,col_location(i,:))
        endif
 
        !jump to end of i-loop if log_nucleationPossible=.false.  (i.e. skip everything)
@@ -1346,10 +1366,22 @@ contains
 !         call check_values(qv,tmparr1,i,it,debug_ABORT,300,col_location)
 !      endif
 
-      if (debug_ON) then
+       if (debug_ON) then
           tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
           call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,300,col_location(i,:))
        endif
+
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,310,col_location(i,:))
+       endif
+       
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,320,col_location(i,:))
+       endif
+
+
        
        if (.not. log_hydrometeorsPresent) goto 333
 
@@ -1374,6 +1406,16 @@ contains
           tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
           call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,500,col_location(i,:))
        endif
+
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,510,col_location(i,:))
+       endif
+       
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,520,col_location(i,:))
+       endif
        !------------------------------------------------------------------------------------------!
        ! Rain sedimentation:  (adaptive substepping)
        p3_tend_out(i,:,38) = qr(i,:) ! Rain sedimentation tendency, initialize
@@ -1387,6 +1429,17 @@ contains
           tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
           call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,600,col_location(i,:))
        endif
+
+
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,610,col_location(i,:))
+       endif
+       
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,620,col_location(i,:))
+       endif
        !------------------------------------------------------------------------------------------!
        ! Ice sedimentation:  (adaptive substepping)
        p3_tend_out(i,:,40) = qitot(i,:) ! Ice sedimentation tendency, initialize
@@ -1399,11 +1452,21 @@ contains
 
        if (debug_ON) then
           tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,700,col_location(i,:))
+          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,605,col_location(i,:))
        endif
        !.......................................
        ! homogeneous freezing of cloud and rain
 
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,615,col_location(i,:))
+       endif
+       
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,625,col_location(i,:))
+       endif
+       
        call homogeneous_freezing(kts,kte,ktop,kbot,kdir,t(i,:),exner(i,:),xlf(i,:),  &
          qc(i,:),nc(i,:),qr(i,:),nr(i,:),qitot(i,:),nitot(i,:),qirim(i,:),birim(i,:),th(i,:))
 
