@@ -2221,7 +2221,7 @@ contains
 
     !Local variables:
     real(rtype), parameter :: T_low  = 160._rtype !173._rtype
-    real(rtype), parameter :: T_high = 1e7._rtype !323._rtype
+    real(rtype), parameter :: T_high = 1.e7_rtype !323._rtype
     real(rtype), parameter :: Q_high = 40.e-3_rtype
     real(rtype), parameter :: N_high = 1.e+20_rtype
     real(rtype), parameter :: B_high = Q_high*1.e-3_rtype
@@ -2247,7 +2247,7 @@ contains
              '** WARNING IN P3_MAIN -- src, gcol, lon, lat, lvl, tstep, T:',source_ind,', ',int(col_loc(1)),', ',col_loc(2),', ',col_loc(3),', ',k,', ',timestepcount,', ',T(k)
           trap = .true.
        endif
-       if (.not.(Qv(k)>=0. .and. Qv(k)<Q_high)) then
+       if (.not.(Qv(k)>=0._rtype .and. Qv(k)<Q_high)) then
           write(iulog,'(a60,i5,a2,i8,a2,f8.4,a2,f8.4,a2,i4,a2,i8,a2,e16.8)') &
              '** WARNING IN P3_MAIN -- src, gcol, lon, lat, lvl, tstep, Qv:',source_ind,', ',int(col_loc(1)),', ',col_loc(2),', ',col_loc(3),', ',k,', ',timestepcount,', ',Qv(k)
           !trap = .true.  !note, tentatively no trap, since Qv could be negative passed in to mp
