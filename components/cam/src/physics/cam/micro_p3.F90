@@ -1411,6 +1411,37 @@ contains
           tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
           call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,700,col_location(i,:))
        endif
+
+
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,710,col_location(i,:))
+       endif
+       
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,720,col_location(i,:))
+       endif
+       
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qitot(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,730,col_location(i,:))
+       endif
+
+       if (debug_ON) then
+          tmparr1(i,:) = xxlv(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,740,col_location(i,:))
+       endif
+
+       if (debug_ON) then
+          tmparr1(i,:) = xxls(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,750,col_location(i,:))
+       endif
+
+       if (debug_ON) then
+          tmparr1(i,:) = xlf(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,760,col_location(i,:))
+       endif
        
        !...................................................
        ! final checks to ensure consistency of mass/number
@@ -2190,7 +2221,7 @@ contains
 
     !Local variables:
     real(rtype), parameter :: T_low  = 160._rtype !173._rtype
-    real(rtype), parameter :: T_high = 355._rtype !323._rtype
+    real(rtype), parameter :: T_high = 1e7._rtype !323._rtype
     real(rtype), parameter :: Q_high = 40.e-3_rtype
     real(rtype), parameter :: N_high = 1.e+20_rtype
     real(rtype), parameter :: B_high = Q_high*1.e-3_rtype
