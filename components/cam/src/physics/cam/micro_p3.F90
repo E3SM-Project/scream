@@ -1208,13 +1208,13 @@ contains
 
     real(rtype), dimension(its:ite,kts:kte)      :: inv_dzq,inv_rho,ze_ice,ze_rain,prec,rho,       &
          rhofacr,rhofaci,acn,xxls,xxlv,xlf,qvs,qvi,supi,       &
-         tmparr1,inv_exner
+         tmparr1,inv_exner,dum_mic
 
     ! -- scalar locals -- !
 
     real(rtype) :: odt, timeScaleFactor
 
-    integer :: ktop,kbot,kdir,i
+    integer :: ktop,kbot,kdir,i,mici
 
     logical(btype) :: log_nucleationPossible, log_hydrometeorsPresent
 
@@ -1365,6 +1365,15 @@ contains
 !         tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
 !         call check_values(qv,tmparr1,i,it,debug_ABORT,300,col_location)
 !      endif
+       !Check microphysical process rates
+       dum_mic(:,:)=0._rtype
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          mici_loop: do mici = 2,48
+             dum_mic(i,:) = p3_tend_out(i,:,mici)
+             call check_values(dum_mic(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,mici,col_location(i,:))
+          enddo mici_loop
+       endif
 
        if (debug_ON) then
           tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
