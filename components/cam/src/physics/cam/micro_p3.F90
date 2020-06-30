@@ -53,7 +53,7 @@ module micro_p3
        get_latent_heat, zerodegc, pi=>pi_e3sm, dnu, &
        rainfrze, icenuct, homogfrze, iulog=>iulog_e3sm, &
        masterproc=>masterproc_e3sm, calculate_incloud_mixingratios, mu_r_constant, &
-       lookup_table_1a_dum1_c, use_cxx, &
+       lookup_table_1a_dum1_c, &
        p3_QcAutoCon_Expon, p3_QcAccret_Expon
 
   ! Bit-for-bit math functions.
@@ -111,6 +111,9 @@ contains
   END SUBROUTINE p3_init
 
   SUBROUTINE p3_init_a(lookup_file_dir,version_p3)
+
+    use scream_abortutils, only : endscreamrun
+
     ! Passed arguments:
     character*(*), intent(in)     :: lookup_file_dir       !directory of the lookup tables
 
@@ -148,7 +151,7 @@ contains
        print*, '               -- ABORTING -- '
        print*, '************************************************'
        print*
-       stop
+       call endscreamrun()
     end if
 
     itab(:,:,:,:) = 0.
@@ -338,14 +341,10 @@ contains
   !==========================================================================================!
 
   SUBROUTINE p3_main_pre_main_loop(kts, kte, kbot, ktop, kdir, log_predictNc, dt, &
-       pres, pdel, dzq, npccn, exner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, xxlv, xxls, xlf, &
-       t, rho, inv_rho, qvs, qvi, sup, supi, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, &
+       pres, pdel, dzq, ncnuc, exner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, xxlv, xxls, xlf, &
+       t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, &
        qitot, nitot, qirim, birim, qc_incld, qr_incld, qitot_incld, qirim_incld, &
        nc_incld, nr_incld, nitot_incld, birim_incld, log_nucleationPossible, log_hydrometeorsPresent)
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: p3_main_pre_main_loop_f
-#endif
 
     implicit none
 
@@ -355,9 +354,9 @@ contains
     logical(btype), intent(in) :: log_predictNc
     real(rtype), intent(in) :: dt
 
-    real(rtype), intent(in), dimension(kts:kte) :: pres, pdel, dzq, npccn, exner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, xxlv, xxls, xlf
+    real(rtype), intent(in), dimension(kts:kte) :: pres, pdel, dzq, ncnuc, exner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, xxlv, xxls, xlf
 
-    real(rtype), intent(inout), dimension(kts:kte) :: t, rho, inv_rho, qvs, qvi, sup, supi, rhofacr, rhofaci, &
+    real(rtype), intent(inout), dimension(kts:kte) :: t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, &
          acn, qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, qc_incld, qr_incld, qitot_incld, &
          qirim_incld, nc_incld, nr_incld, nitot_incld, birim_incld
 
@@ -369,17 +368,6 @@ contains
 
     log_nucleationPossible = .false.
     log_hydrometeorsPresent = .false.
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call p3_main_pre_main_loop_f(kts, kte, kbot, ktop, kdir, log_predictNc, dt, &
-           pres, pdel, dzq, npccn, exner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, xxlv, xxls, xlf, &
-           t, rho, inv_rho, qvs, qvi, sup, supi, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, &
-           qitot, nitot, qirim, birim, qc_incld, qr_incld, qitot_incld, qirim_incld, &
-           nc_incld, nr_incld, nitot_incld, birim_incld, log_nucleationPossible, log_hydrometeorsPresent)
-      return
-   endif
-#endif
 
     k_loop_1: do k = kbot,ktop,kdir
        !calculate some time-varying atmospheric variables
@@ -393,7 +381,6 @@ contains
        qvs(k)     = qv_sat(t(k),pres(k),0)
        qvi(k)     = qv_sat(t(k),pres(k),1)
 
-       sup(k)     = qv(k)/qvs(k)-1._rtype
        supi(k)    = qv(k)/qvi(k)-1._rtype
 
        rhofacr(k) = bfb_pow(rhosur*inv_rho(k), 0.54_rtype)
@@ -401,27 +388,28 @@ contains
        dum        = 1.496e-6_rtype * bfb_pow(t(k), 1.5_rtype) / (t(k)+120._rtype)  ! this is mu
        acn(k)     = g*rhow/(18._rtype*dum)  ! 'a' parameter for droplet fallspeed (Stokes' law)
 
-       !specify cloud droplet number (for 1-moment version)
-       if (.not.(log_predictNc)) then
-          nc(k) = nccnst*inv_rho(k)
-       endif
+       if ((t(k).lt.zerodegc .and. supi(k).ge.-0.05_rtype)) log_nucleationPossible = .true.
 
-       if ((t(k).lt.zerodegc .and. supi(k).ge.-0.05_rtype) .or.                              &
-            (t(k).ge.zerodegc .and. sup(k).ge.-0.05_rtype )) log_nucleationPossible = .true.
-
-       !--- apply mass clipping if dry and mass is sufficiently small
-       !    (implying all mass is expected to evaporate/sublimate in one time step)
-
-       if (qc(k).lt.qsmall .or. (qc(k).lt.1.e-8_rtype .and. sup(k).lt.-0.1_rtype)) then
+       if (qc(k).lt.qsmall) then
+      !--- apply mass clipping if mass is sufficiently small
+      !    (implying all mass is expected to evaporate/sublimate in one time step)
           qv(k) = qv(k) + qc(k)
           th(k) = th(k) - exner(k)*qc(k)*xxlv(k)*inv_cp
           qc(k) = 0._rtype
           nc(k) = 0._rtype
        else
           log_hydrometeorsPresent = .true.    ! updated further down
+      !--- Apply droplet activation here (before other microphysical processes) for consistency with qc increase by saturation
+      !    adjustment already applied in macrophysics. If prescribed drop number is used, this is also a good place to
+      !    prescribe that value
+          if (.not.(log_predictNc)) then
+            nc(k) = nccnst*inv_rho(k)
+          else
+            nc(k) = max(nc(k) + ncnuc(k) * dt,0.0_rtype)
+          endif
        endif
 
-       if (qr(k).lt.qsmall .or. (qr(k).lt.1.e-8_rtype .and. sup(k).lt.-0.1_rtype)) then
+       if (qr(k).lt.qsmall) then
           qv(k) = qv(k) + qr(k)
           th(k) = th(k) - exner(k)*qr(k)*xxlv(k)*inv_cp
           qr(k) = 0._rtype
@@ -454,11 +442,6 @@ contains
 
        t(k) = th(k) * inv_exner(k)
 
-       !Activaiton of cloud droplets
-       if (log_predictNc) then
-          nc(k) = nc(k) + npccn(k) * dt
-       endif
-
        call calculate_incloud_mixingratios(qc(k),qr(k),qitot(k),qirim(k),nc(k),nr(k),nitot(k),birim(k), &
             inv_lcldm(k),inv_icldm(k),inv_rcldm(k), &
             qc_incld(k),qr_incld(k),qitot_incld(k),qirim_incld(k),nc_incld(k),nr_incld(k),nitot_incld(k),birim_incld(k))
@@ -468,16 +451,12 @@ contains
   END SUBROUTINE p3_main_pre_main_loop
 
   SUBROUTINE p3_main_main_loop(kts, kte, kbot, ktop, kdir, log_predictNc, dt, odt, &
-       pres, pdel, dzq, npccn, exner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, naai, qc_relvar, icldm, lcldm, rcldm,&
-       t, rho, inv_rho, qvs, qvi, sup, supi, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, qitot, nitot, &
+       pres, pdel, dzq, ncnuc, exner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, naai, qc_relvar, icldm, lcldm, rcldm,&
+       t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, qitot, nitot, &
        qirim, birim, xxlv, xxls, xlf, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld, nr_incld, &
        nitot_incld, birim_incld, mu_c, nu, lamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, cmeiout, prain, &
-       nevapr, prer_evap, vap_cld_exchange, vap_liq_exchange, vap_ice_exchange, liq_ice_exchange, pratot, &
+       nevapr, prer_evap, vap_liq_exchange, vap_ice_exchange, liq_ice_exchange, pratot, &
        prctot, p3_tend_out, log_hydrometeorsPresent)
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    !use micro_p3_iso_f, only: p3_main_main_loop_f
-#endif
 
     implicit none
 
@@ -487,18 +466,18 @@ contains
     logical(btype), intent(in) :: log_predictNc
     real(rtype), intent(in) :: dt, odt
 
-    real(rtype), intent(in), dimension(kts:kte) :: pres, pdel, dzq, npccn, exner, inv_exner, inv_lcldm, inv_icldm, &
+    real(rtype), intent(in), dimension(kts:kte) :: pres, pdel, dzq, ncnuc, exner, inv_exner, inv_lcldm, inv_icldm,   &
          inv_rcldm, naai, qc_relvar, icldm, lcldm, rcldm
 
-    real(rtype), intent(inout), dimension(kts:kte) :: t, rho, inv_rho, qvs, qvi, sup, supi, rhofacr, rhofaci, acn, &
-         qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, xlf, qc_incld, qr_incld, &
-         qitot_incld, qirim_incld, nc_incld, nr_incld, nitot_incld, birim_incld, mu_c, nu, lamc, cdist, cdist1, &
-         cdistr, mu_r, lamr, logn0r, cmeiout, prain, nevapr, prer_evap, vap_cld_exchange, vap_liq_exchange, &
+    real(rtype), intent(inout), dimension(kts:kte) :: t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn,        &
+         qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, xlf, qc_incld, qr_incld,                    &
+         qitot_incld, qirim_incld, nc_incld, nr_incld, nitot_incld, birim_incld, mu_c, nu, lamc, cdist, cdist1,      &
+         cdistr, mu_r, lamr, logn0r, cmeiout, prain, nevapr, prer_evap, vap_liq_exchange,                            &
          vap_ice_exchange, liq_ice_exchange, pratot, prctot
 
     real(rtype), intent(inout), dimension(kts:kte,49) :: p3_tend_out ! micro physics tendencies
 
-    logical(btype), intent(inout) :: log_hydrometeorsPresent
+    logical(btype), intent(out) :: log_hydrometeorsPresent
 
     ! -------- locals ------- !
 
@@ -512,8 +491,6 @@ contains
     real(rtype) :: ncautc  ! change in cloud droplet number from autoconversion
     real(rtype) :: ncslf   ! change in cloud droplet number from self-collection  (Not in paper?)
     real(rtype) :: nrslf   ! change in rain number from self-collection  (Not in paper?)
-    real(rtype) :: ncnuc   ! change in cloud droplet number from activation of CCN
-    real(rtype) :: qcnuc   ! activation of cloud droplets from CCN
     real(rtype) :: qrevp   ! rain evaporation
     real(rtype) :: nrevp   ! change in rain number from evaporation
     real(rtype) :: ncautr  ! change in rain number from autoconversion of cloud water
@@ -555,31 +532,21 @@ contains
     real(rtype)    :: f1pr03   ! ice collection within a category     See lines  809 -  928  nagg
     real(rtype)    :: f1pr04   ! collection of cloud water by ice     See lines  929 - 1009  nrwat
     real(rtype)    :: f1pr05   ! melting                              See lines 1212 - 1279  vdep
-    real(rtype)    :: f1pr06   ! effective radius                     See lines 1281 - 1356  eff
     real(rtype)    :: f1pr07   ! collection of rain number by ice     See lines 1010 - 1209  nrrain
     real(rtype)    :: f1pr08   ! collection of rain mass by ice       See lines 1010 - 1209  qrrain
     real(rtype)    :: f1pr09   ! minimum ice number (lambda limiter)  See lines  704 -  705  nlarge
     real(rtype)    :: f1pr10   ! maximum ice number (lambda limiter)  See lines  704 -  705  nsmall
-    real(rtype)    :: f1pr13   ! reflectivity                         See lines  731 -  808  refl
     real(rtype)    :: f1pr14   ! melting (ventilation term)           See lines 1212 - 1279  vdep1
-    real(rtype)    :: f1pr15   ! mass-weighted mean diameter          See lines 1212 - 1279  dmm
-    real(rtype)    :: f1pr16   ! mass-weighted mean particle density  See lines 1212 - 1279  rhomm
 
     real(rtype)    :: mu,dv,sc,dqsdt,ab,kap,epsr,epsc,epsi,epsi_tot, &
-         dum,dum1,dum3,dum4,dum5,dum6,dqsidt,abi,rhop,vtrmi1,eii
+         dum1,dum3,dum4,dum5,dum6,dqsidt,abi,rhop,vtrmi1,eii
 
     integer :: dumi,k,dumj,dumii,dumjj,dumzz
 
     logical(btype) :: log_exitlevel, log_wetgrowth
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      ! call p3_main_main_loop_f(
-      ! return
-   endif
-#endif
-
    rhorime_c = 400._rtype
+   log_hydrometeorsPresent = .false.
 
    !------------------------------------------------------------------------------------------!
    !   main k-loop (for processes):
@@ -592,15 +559,14 @@ contains
       if (qitot(k).ge.qsmall) log_exitlevel = .false.
       !enddo
       if (log_exitlevel .and.                                                           &
-           ((t(k).lt.zerodegc .and. supi(k).lt.-0.05_rtype) .or.                              &
-           (t(k).ge.zerodegc .and. sup(k) .lt.-0.05_rtype))) goto 555   !i.e. skip all process rates
+         (t(k).lt.zerodegc .and. supi(k).lt.-0.05_rtype)) goto 555   !i.e. skip all process rates
 
       ! All microphysics tendencies will be computed as IN-CLOUD, they will be mapped back to cell-average later.
 
       ! initialize warm-phase process rates
       qcacc   = 0._rtype;     qrevp   = 0._rtype;     qcaut   = 0._rtype;
-      ncacc   = 0._rtype;     ncnuc   = 0._rtype;     ncslf   = 0._rtype
-      ncautc  = 0._rtype;     qcnuc   = 0._rtype;     nrslf   = 0._rtype
+      ncacc   = 0._rtype;     ncslf   = 0._rtype;
+      ncautc  = 0._rtype;     nrslf   = 0._rtype;
       nrevp   = 0._rtype;     ncautr  = 0._rtype
 
       ! initialize ice-phase  process rates
@@ -612,16 +578,6 @@ contains
       ncheti  = 0._rtype;     nrcol   = 0._rtype;     nislf   = 0._rtype
       ninuc   = 0._rtype;     qidep   = 0._rtype;     qiberg  = 0._rtype
       nrheti  = 0._rtype;     nisub   = 0._rtype;     qwgrth  = 0._rtype
-
-      ! initialize microphysics processes tendency output
-      p3_tend_out(k,42) = qc(k)    ! Liq. microphysics tendency, initialize
-      p3_tend_out(k,43) = nc(k)    ! Liq. # microphysics tendency, initialize
-      p3_tend_out(k,44) = qr(k)    ! Rain microphysics tendency, initialize
-      p3_tend_out(k,45) = nr(k)    ! Rain # microphysics tendency, initialize
-      p3_tend_out(k,46) = qitot(k) ! Ice  microphysics tendency, initialize
-      p3_tend_out(k,47) = nitot(k) ! Ice  # microphysics tendency, initialize
-      p3_tend_out(k,48) = qv(k)    ! Vapor  microphysics tendency, initialize
-      p3_tend_out(k,49) = th(k)    ! Pot. Temp. microphysics tendency, initialize
 
       log_wetgrowth = .false.
 
@@ -745,7 +701,6 @@ contains
       call calc_rime_density(t(k),rhofaci(k),&
            f1pr02,acn(k),lamc(k),mu_c(k),qc_incld(k),qccol,&
            vtrmi1,rhorime_c)
-
       !............................................................
       ! contact and immersion freezing droplets
       call cldliq_immersion_freezing(t(k),&
@@ -790,12 +745,6 @@ contains
            nitot(k),naai(k),supi(k),odt,log_predictNc,&
            qinuc, ninuc)
 
-      !.................................................................
-      ! droplet activation
-      call droplet_activation(t(k),pres(k),qv(k),qc(k),inv_rho(k),&
-           sup(k),xxlv(k),npccn(k),log_predictNc,odt,&
-           qcnuc,ncnuc)
-
       !................
       ! cloud water autoconversion
       ! NOTE: cloud_water_autoconversion must be called before droplet_self_collection
@@ -822,10 +771,9 @@ contains
       ! Here we map the microphysics tendency rates back to CELL-AVERAGE quantities for updating
       ! cell-average quantities.
       call back_to_cell_average(lcldm(k), rcldm(k), icldm(k), qcacc, qrevp, qcaut,&
-           ncacc, ncslf, ncautc, nrslf, nrevp, ncautr, qcnuc, ncnuc, qisub, nrshdr, qcheti,&
+           ncacc, ncslf, ncautc, nrslf, nrevp, ncautr, qisub, nrshdr, qcheti,&
            qrcol, qcshd, qimlt, qccol, qrheti, nimlt, nccol, ncshdc, ncheti, nrcol, nislf,&
            qidep, nrheti, nisub, qinuc, ninuc, qiberg)
-
 
       !.................................................................
       ! conservation of water
@@ -856,7 +804,7 @@ contains
       !          cannot possibly overdeplete qv
 
       ! cloud
-      call cloud_water_conservation(qc(k), qcnuc, dt, qcaut, qcacc, qccol, qcheti, qcshd, qiberg, qisub, qidep)
+      call cloud_water_conservation(qc(k), dt, qcaut, qcacc, qccol, qcheti, qcshd, qiberg, qisub, qidep)
 
       ! rain
       call rain_water_conservation(qr(k), qcaut, qcacc, qimlt, qcshd, dt, qrevp, qrcol, qrheti)
@@ -878,9 +826,9 @@ contains
            th(k), qv(k), qitot(k), nitot(k), qirim(k), birim(k), qc(k), nc(k), qr(k), nr(k) )
 
       !-- warm-phase only processes:
-      call update_prognostic_liquid(qcacc, ncacc, qcaut, ncautc, qcnuc, ncautr, ncslf, &
-           qrevp, nrevp, nrslf,  &
-           log_predictNc, inv_rho(k), exner(k), xxlv(k), dt, &
+      call update_prognostic_liquid(qcacc, ncacc, qcaut, ncautc, ncautr, ncslf,  &
+           qrevp, nrevp, nrslf,                                                  &
+           log_predictNc, inv_rho(k), exner(k), xxlv(k), dt,                     &
            th(k), qv(k), qc(k), nc(k), qr(k), nr(k))
 
       !==
@@ -890,9 +838,9 @@ contains
       nevapr(k)  = qisub + qrevp
       prer_evap(k) = qrevp
       vap_ice_exchange(k) = qidep - qisub + qinuc
-      vap_liq_exchange(k) = -qrevp + qcnuc
+      vap_liq_exchange(k) = - qrevp
       liq_ice_exchange(k) = qcheti + qrheti - qimlt + qiberg + qccol + qrcol
-      vap_cld_exchange(k) = qcnuc
+
       ! clipping for small hydrometeor values
       if (qc(k).lt.qsmall) then
          qv(k) = qv(k) + qc(k)
@@ -927,17 +875,15 @@ contains
 
       ! Record microphysics tendencies for output:
       ! warm-phase process rates
-      p3_tend_out(k, 2) = qcacc   ! cloud droplet accretion by rain
-      p3_tend_out(k, 3) = qcaut   ! cloud droplet autoconversion to rain
-      p3_tend_out(k, 4) = ncacc   ! change in cloud droplet number from accretion by rain
-      p3_tend_out(k, 5) = ncautc  ! change in cloud droplet number from autoconversion
-      p3_tend_out(k, 6) = ncslf   ! change in cloud droplet number from self-collection  (Not in paper?)
-      p3_tend_out(k, 7) = nrslf   ! change in rain number from self-collection  (Not in paper?)
-      p3_tend_out(k, 8) = ncnuc   ! change in cloud droplet number from activation of CCN
-      p3_tend_out(k,10) = qcnuc   ! activation of cloud droplets from CCN
-      p3_tend_out(k,11) = qrevp   ! rain evaporation
-      p3_tend_out(k,13) = nrevp   ! change in rain number from evaporation
-      p3_tend_out(k,14) = ncautr  ! change in rain number from autoconversion of cloud water
+      p3_tend_out(k, 2) = qcacc     ! cloud droplet accretion by rain
+      p3_tend_out(k, 3) = qcaut     ! cloud droplet autoconversion to rain
+      p3_tend_out(k, 4) = ncacc     ! change in cloud droplet number from accretion by rain
+      p3_tend_out(k, 5) = ncautc    ! change in cloud droplet number from autoconversion
+      p3_tend_out(k, 6) = ncslf     ! change in cloud droplet number from self-collection  (Not in paper?)
+      p3_tend_out(k, 7) = nrslf     ! change in rain number from self-collection  (Not in paper?)
+      p3_tend_out(k,11) = qrevp     ! rain evaporation
+      p3_tend_out(k,13) = nrevp     ! change in rain number from evaporation
+      p3_tend_out(k,14) = ncautr    ! change in rain number from autoconversion of cloud water
       ! ice-phase  process rates
       p3_tend_out(k,15) = qccol     ! collection of cloud water by ice
       p3_tend_out(k,16) = qwgrth    ! wet growth rate
@@ -960,15 +906,6 @@ contains
       p3_tend_out(k,33) = qcshd     ! source for rain mass due to cloud water/ice collision above freezing and shedding or wet growth and shedding
       p3_tend_out(k,34) = 0._rtype  ! used to be qcmul, but that has been removed.  Kept at 0.0 as placeholder.
       p3_tend_out(k,35) = ncshdc    ! source for rain number due to cloud water/ice collision above freezing  and shedding (combined with NRSHD in the paper)
-      ! measure microphysics processes tendency output
-      p3_tend_out(k,42) = ( qc(k)    - p3_tend_out(k,42) ) * odt ! Liq. microphysics tendency, measure
-      p3_tend_out(k,43) = ( nc(k)    - p3_tend_out(k,43) ) * odt ! Liq. # microphysics tendency, measure
-      p3_tend_out(k,44) = ( qr(k)    - p3_tend_out(k,44) ) * odt ! Rain microphysics tendency, measure
-      p3_tend_out(k,45) = ( nr(k)    - p3_tend_out(k,45) ) * odt ! Rain # microphysics tendency, measure
-      p3_tend_out(k,46) = ( qitot(k) - p3_tend_out(k,46) ) * odt ! Ice  microphysics tendency, measure
-      p3_tend_out(k,47) = ( nitot(k) - p3_tend_out(k,47) ) * odt ! Ice  # microphysics tendency, measure
-      p3_tend_out(k,48) = ( qv(k)    - p3_tend_out(k,48) ) * odt ! Vapor  microphysics tendency, measure
-      p3_tend_out(k,49) = ( th(k)    - p3_tend_out(k,49) ) * odt ! Pot. Temp. microphysics tendency, measure
       ! Outputs associated with aerocom comparison:
       pratot(k) = qcacc ! cloud drop accretion by rain
       prctot(k) = qcaut ! cloud drop autoconversion to rain
@@ -985,14 +922,149 @@ contains
 
  END SUBROUTINE p3_main_main_loop
 
+ subroutine p3_main_post_main_loop(kts, kte, kbot, ktop, kdir, &
+      exner, lcldm, rcldm, &
+      rho, inv_rho, rhofaci, qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, &
+      mu_c, nu, lamc, mu_r, lamr, vap_liq_exchange, &
+      ze_rain, ze_ice, diag_vmi, diag_effi, diag_di, diag_rhoi, diag_ze, diag_effc)
+
+   implicit none
+
+   ! args
+
+   integer, intent(in) :: kts, kte, kbot, ktop, kdir
+
+   real(rtype), intent(in), dimension(kts:kte) :: exner, lcldm, rcldm
+
+   real(rtype), intent(inout), dimension(kts:kte) :: rho, inv_rho, rhofaci, &
+        qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, &
+        mu_c, nu, lamc, mu_r, &
+        lamr, vap_liq_exchange, &
+        ze_rain, ze_ice, diag_vmi, diag_effi, diag_di, diag_rhoi, diag_ze, diag_effc
+
+   ! locals
+   integer :: k, dumi, dumii, dumjj, dumzz
+   real(rtype) :: tmp1, tmp2, dum1, dum4, dum5, dum6, rhop
+   real(rtype)    :: f1pr02   ! mass-weighted fallspeed              See lines  731 -  808  ums
+   real(rtype)    :: f1pr06   ! effective radius                     See lines 1281 - 1356  eff
+   real(rtype)    :: f1pr09   ! minimum ice number (lambda limiter)  See lines  704 -  705  nlarge
+   real(rtype)    :: f1pr10   ! maximum ice number (lambda limiter)  See lines  704 -  705  nsmall
+   real(rtype)    :: f1pr13   ! reflectivity                         See lines  731 -  808  refl
+   real(rtype)    :: f1pr15   ! mass-weighted mean diameter          See lines 1212 - 1279  dmm
+   real(rtype)    :: f1pr16   ! mass-weighted mean particle density  See lines 1212 - 1279  rhomm
+
+   k_loop_final_diagnostics:  do k = kbot,ktop,kdir
+
+      ! cloud:
+      if (qc(k).ge.qsmall) then
+         call get_cloud_dsd2(qc(k),nc(k),mu_c(k),rho(k),nu(k),dnu,lamc(k),  &
+              tmp1,tmp2,lcldm(k))
+         diag_effc(k) = 0.5_rtype*(mu_c(k)+3._rtype)/lamc(k)
+      else
+         qv(k) = qv(k)+qc(k)
+         th(k) = th(k)-exner(k)*qc(k)*xxlv(k)*inv_cp
+         vap_liq_exchange(k) = vap_liq_exchange(k) - qc(k)
+         qc(k) = 0._rtype
+         nc(k) = 0._rtype
+      endif
+
+      ! rain:
+      if (qr(k).ge.qsmall) then
+
+         call get_rain_dsd2(qr(k),nr(k),mu_r(k),lamr(k),tmp1,tmp2,rcldm(k))
+
+         ze_rain(k) = nr(k)*(mu_r(k)+6._rtype)*(mu_r(k)+5._rtype)*(mu_r(k)+4._rtype)*           &
+              (mu_r(k)+3._rtype)*(mu_r(k)+2._rtype)*(mu_r(k)+1._rtype)/bfb_pow(lamr(k), 6._rtype)
+         ze_rain(k) = max(ze_rain(k),1.e-22_rtype)
+      else
+         qv(k) = qv(k)+qr(k)
+         th(k) = th(k)-exner(k)*qr(k)*xxlv(k)*inv_cp
+         vap_liq_exchange(k) = vap_liq_exchange(k) - qr(k)
+         qr(k) = 0._rtype
+         nr(k) = 0._rtype
+      endif
+
+      ! ice:
+
+      call impose_max_total_Ni(nitot(k),max_total_Ni,inv_rho(k))
+
+      qi_not_small:  if (qitot(k).ge.qsmall) then
+
+         !impose lower limits to prevent taking log of # < 0
+         nitot(k) = max(nitot(k),nsmall)
+         nr(k)    = max(nr(k),nsmall)
+
+         call calc_bulkRhoRime(qitot(k),qirim(k),birim(k),rhop)
+
+         ! if (.not. tripleMoment_on) zitot(k) = diag_mom6(qitot(k),nitot(k),rho(k))
+         call find_lookupTable_indices_1a(dumi,dumjj,dumii,dumzz,dum1,dum4,          &
+              dum5,dum6,isize,rimsize,densize,     &
+              qitot(k),nitot(k),           &
+              qirim(k),rhop)
+         !qirim(k),zitot(k),rhop)
+
+         call access_lookup_table(dumjj,dumii,dumi, 2,dum1,dum4,dum5,f1pr02)
+         call access_lookup_table(dumjj,dumii,dumi, 6,dum1,dum4,dum5,f1pr06)
+         call access_lookup_table(dumjj,dumii,dumi, 7,dum1,dum4,dum5,f1pr09)
+         call access_lookup_table(dumjj,dumii,dumi, 8,dum1,dum4,dum5,f1pr10)
+         call access_lookup_table(dumjj,dumii,dumi, 9,dum1,dum4,dum5,f1pr13)
+         call access_lookup_table(dumjj,dumii,dumi,11,dum1,dum4,dum5,f1pr15)
+         call access_lookup_table(dumjj,dumii,dumi,12,dum1,dum4,dum5,f1pr16)
+
+         ! impose mean ice size bounds (i.e. apply lambda limiters)
+         ! note that the Nmax and Nmin are normalized and thus need to be multiplied by existing N
+         nitot(k) = min(nitot(k),f1pr09*nitot(k))
+         nitot(k) = max(nitot(k),f1pr10*nitot(k))
+
+         !--this should already be done in s/r 'calc_bulkRhoRime'
+         if (qirim(k).lt.qsmall) then
+            qirim(k) = 0._rtype
+            birim(k) = 0._rtype
+         endif
+         !==
+
+         ! note that reflectivity from lookup table is normalized, so we need to multiply by N
+         diag_vmi(k)   = f1pr02*rhofaci(k)
+         diag_effi(k)  = f1pr06 ! units are in m
+         diag_di(k)    = f1pr15
+         diag_rhoi(k)  = f1pr16
+         ! note factor of air density below is to convert from m^6/kg to m^6/m^3
+         ze_ice(k) = ze_ice(k) + 0.1892_rtype*f1pr13*nitot(k)*rho(k)   ! sum contribution from each ice category (note: 0.1892 = 0.176/0.93)
+         ze_ice(k) = max(ze_ice(k),1.e-22_rtype)
+
+      else
+
+         qv(k) = qv(k) + qitot(k)
+         th(k) = th(k) - exner(k)*qitot(k)*xxls(k)*inv_cp
+         qitot(k) = 0._rtype
+         nitot(k) = 0._rtype
+         qirim(k) = 0._rtype
+         birim(k) = 0._rtype
+         diag_di(k) = 0._rtype
+
+      endif qi_not_small
+
+      ! sum ze components and convert to dBZ
+      diag_ze(k) = 10._rtype*bfb_log10((ze_rain(k) + ze_ice(k))*1.e18_rtype)
+
+      ! if qr is very small then set Nr to 0 (needs to be done here after call
+      ! to ice lookup table because a minimum Nr of nsmall will be set otherwise even if qr=0)
+      if (qr(k).lt.qsmall) then
+         nr(k) = 0._rtype
+      endif
+
+   enddo k_loop_final_diagnostics
+
+ end subroutine p3_main_post_main_loop
+
   !==========================================================================================!
 
   SUBROUTINE p3_main(qc,nc,qr,nr,th,qv,dt,qitot,qirim,nitot,birim,   &
-       pres,dzq,npccn,naai,qc_relvar,it,prt_liq,prt_sol,its,ite,kts,kte,diag_ze,diag_effc,     &
+       pres,dzq,ncnuc,naai,qc_relvar,it,prt_liq,prt_sol,its,ite,kts,kte,diag_ze,diag_effc,     &
        diag_effi,diag_vmi,diag_di,diag_rhoi,log_predictNc, &
        pdel,exner,cmeiout,prain,nevapr,prer_evap,rflx,sflx,rcldm,lcldm,icldm,  &
        pratot,prctot,p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-       vap_ice_exchange,vap_cld_exchange,col_location)
+       vap_ice_exchange,col_location)
 
     !----------------------------------------------------------------------------------------!
     !                                                                                        !
@@ -1026,7 +1098,7 @@ contains
     real(rtype), intent(inout), dimension(its:ite,kts:kte)      :: th         ! potential temperature            K
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: pres       ! pressure                         Pa
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: dzq        ! vertical grid spacing            m
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: npccn      ! IN ccn activated number tendency kg-1 s-1
+    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: ncnuc      ! IN ccn activated number tendency kg-1 s-1
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: naai       ! IN actived ice nuclei concentration  1/kg
     real(rtype), intent(in)                                     :: dt         ! model time step                  s
 
@@ -1062,7 +1134,6 @@ contains
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: liq_ice_exchange ! sum of liq-ice phase change tendenices
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: vap_liq_exchange ! sum of vap-liq phase change tendenices
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: vap_ice_exchange ! sum of vap-ice phase change tendenices
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: vap_cld_exchange ! sum of vap-cld phase change tendenices
     ! INPUT needed for PBUF variables used by other parameterizations
 
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: icldm, lcldm, rcldm ! Ice, Liquid and Rain cloud fraction
@@ -1072,7 +1143,10 @@ contains
     real(rtype), intent(out),   dimension(its:ite,kts:kte,49)   :: p3_tend_out ! micro physics tendencies
     real(rtype), intent(in),    dimension(its:ite,3)            :: col_location
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: qc_relvar
+
+    !
     !----- Local variables and parameters:  -------------------------------------------------!
+    !
 
     real(rtype), dimension(its:ite,kts:kte) :: mu_r  ! shape parameter of rain
     real(rtype), dimension(its:ite,kts:kte) :: t     ! temperature at the beginning of the microhpysics step [K]
@@ -1093,40 +1167,22 @@ contains
     real(rtype), dimension(its:ite,kts:kte) :: nc_incld, nr_incld, nitot_incld, birim_incld ! In cloud number concentrations
 
     real(rtype), dimension(its:ite,kts:kte)      :: inv_dzq,inv_rho,ze_ice,ze_rain,prec,rho,       &
-         rhofacr,rhofaci,acn,xxls,xxlv,xlf,qvs,qvi,sup,supi,       &
+         rhofacr,rhofaci,acn,xxls,xxlv,xlf,qvs,qvi,supi,       &
          tmparr1,inv_exner
 
     ! -- scalar locals -- !
 
-    real(rtype) :: dum1, dum4, dum5, dum6, odt, rhop, timeScaleFactor, tmp1, tmp2
+    real(rtype) :: odt, timeScaleFactor
 
-    integer :: dumi,i,k,dumj,dumii,dumjj,dumzz,      &
-         ktop,kbot,kdir
+    integer :: ktop,kbot,kdir,i
 
     logical(btype) :: log_nucleationPossible, log_hydrometeorsPresent
-
-    ! quantities related to process rates/parameters, interpolated from lookup tables:
-    ! For a more in depth reference to where these came from consult the file
-    ! "create_p3_lookupTable_1.F90-v4.1".  All line numbers below reference this
-    ! file.
-
-    real(rtype)    :: f1pr02   ! mass-weighted fallspeed              See lines  731 -  808  ums
-    real(rtype)    :: f1pr03   ! ice collection within a category     See lines  809 -  928  nagg
-    real(rtype)    :: f1pr04   ! collection of cloud water by ice     See lines  929 - 1009  nrwat
-    real(rtype)    :: f1pr05   ! melting                              See lines 1212 - 1279  vdep
-    real(rtype)    :: f1pr06   ! effective radius                     See lines 1281 - 1356  eff
-    real(rtype)    :: f1pr07   ! collection of rain number by ice     See lines 1010 - 1209  nrrain
-    real(rtype)    :: f1pr08   ! collection of rain mass by ice       See lines 1010 - 1209  qrrain
-    real(rtype)    :: f1pr09   ! minimum ice number (lambda limiter)  See lines  704 -  705  nlarge
-    real(rtype)    :: f1pr10   ! maximum ice number (lambda limiter)  See lines  704 -  705  nsmall
-    real(rtype)    :: f1pr13   ! reflectivity                         See lines  731 -  808  refl
-    real(rtype)    :: f1pr14   ! melting (ventilation term)           See lines 1212 - 1279  vdep1
-    real(rtype)    :: f1pr15   ! mass-weighted mean diameter          See lines 1212 - 1279  dmm
-    real(rtype)    :: f1pr16   ! mass-weighted mean particle density  See lines 1212 - 1279  rhomm
 
     !--These will be added as namelist parameters in the future
     logical(btype), parameter :: debug_ON     = .true.  !.true. to switch on debugging checks/traps throughout code  TODO: Turn this back off as default once the tlay error is found.
     logical(btype), parameter :: debug_ABORT  = .false.  !.true. will result in forced abort in s/r 'check_values'
+
+    real(rtype),dimension(its:ite,kts:kte) :: qc_old, nc_old, qr_old, nr_old, qitot_old, nitot_old, qv_old, th_old
 
     !-----------------------------------------------------------------------------------!
     !  End of variables/parameters declarations
@@ -1174,6 +1230,11 @@ contains
     inv_lcldm = 1.0_rtype/lcldm
     inv_rcldm = 1.0_rtype/rcldm
 
+    prer_evap = 0._rtype
+    liq_ice_exchange = 0._rtype
+    vap_liq_exchange = 0._rtype
+    vap_ice_exchange = 0._rtype
+
     mu_c = 0.0_rtype
     lamc = 0.0_rtype
     ! AaronDonahue added exner term to replace all instances of th(i,k)/t(i,k), since th(i,k) is updated but t(i,k) is not, and this was
@@ -1183,6 +1244,17 @@ contains
     qv      = max(qv,0._rtype)        !clip water vapor to prevent negative values passed in (beginning of microphysics)
     ! AaronDonahue added this load of latent heat to be consistent with E3SM, since the inconsistentcy was causing water conservation errors.
     call get_latent_heat(its,ite,kts,kte,xxlv,xxls,xlf)
+
+   ! initialize microphysics processes tendency output
+    qc_old = qc         ! Liq. microphysics tendency, initialize
+    nc_old = nc         ! Liq. # microphysics tendency, initialize
+    qr_old = qr         ! Rain microphysics tendency, initialize
+    nr_old = nr         ! Rain # microphysics tendency, initialize
+    qitot_old = qitot   ! Ice  microphysics tendency, initialize
+    nitot_old = nitot   ! Ice  # microphysics tendency, initialize
+    qv_old = qv         ! Vapor  microphysics tendency, initialize
+    th_old = th         ! Pot. Temp. microphysics tendency, initialize
+
     !==
     !-----------------------------------------------------------------------------------!
     i_loop_main: do i = its,ite  ! main i-loop (around the entire scheme)
@@ -1190,8 +1262,8 @@ contains
 !      if (debug_ON) call check_values(qv,T,i,it,debug_ABORT,100,col_location)
 
        call p3_main_pre_main_loop(kts, kte, kbot, ktop, kdir, log_predictNc, dt, &
-            pres(i,:), pdel(i,:), dzq(i,:), npccn(i,:), exner(i,:), inv_exner(i,:), inv_lcldm(i,:), inv_icldm(i,:), inv_rcldm(i,:), xxlv(i,:), xxls(i,:), xlf(i,:), &
-            t(i,:), rho(i,:), inv_rho(i,:), qvs(i,:), qvi(i,:), sup(i,:), supi(i,:), rhofacr(i,:), rhofaci(i,:), acn(i,:), qv(i,:), th(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), &
+            pres(i,:), pdel(i,:), dzq(i,:), ncnuc(i,:), exner(i,:), inv_exner(i,:), inv_lcldm(i,:), inv_icldm(i,:), inv_rcldm(i,:), xxlv(i,:), xxls(i,:), xlf(i,:), &
+            t(i,:), rho(i,:), inv_rho(i,:), qvs(i,:), qvi(i,:), supi(i,:), rhofacr(i,:), rhofaci(i,:), acn(i,:), qv(i,:), th(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), &
             qitot(i,:), nitot(i,:), qirim(i,:), birim(i,:), qc_incld(i,:), qr_incld(i,:), qitot_incld(i,:), qirim_incld(i,:), &
             nc_incld(i,:), nr_incld(i,:), nitot_incld(i,:), birim_incld(i,:), log_nucleationPossible, log_hydrometeorsPresent)
 
@@ -1203,24 +1275,31 @@ contains
        !jump to end of i-loop if log_nucleationPossible=.false.  (i.e. skip everything)
        if (.not. (log_nucleationPossible .or. log_hydrometeorsPresent)) goto 333
 
-       log_hydrometeorsPresent = .false.   ! reset value; used again below
-
        call p3_main_main_loop(kts, kte, kbot, ktop, kdir, log_predictNc, dt, odt, &
-            pres(i,:), pdel(i,:), dzq(i,:), npccn(i,:), exner(i,:), inv_exner(i,:), inv_lcldm(i,:), inv_icldm(i,:), inv_rcldm(i,:), naai(i,:), qc_relvar(i,:), icldm(i,:), lcldm(i,:), rcldm(i,:),&
-            t(i,:), rho(i,:), inv_rho(i,:), qvs(i,:), qvi(i,:), sup(i,:), supi(i,:), rhofacr(i,:), rhofaci(i,:), acn(i,:), qv(i,:), th(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), qitot(i,:), nitot(i,:), &
+            pres(i,:), pdel(i,:), dzq(i,:), ncnuc(i,:), exner(i,:), inv_exner(i,:), inv_lcldm(i,:), inv_icldm(i,:), inv_rcldm(i,:), naai(i,:), qc_relvar(i,:), icldm(i,:), lcldm(i,:), rcldm(i,:),&
+            t(i,:), rho(i,:), inv_rho(i,:), qvs(i,:), qvi(i,:), supi(i,:), rhofacr(i,:), rhofaci(i,:), acn(i,:), qv(i,:), th(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), qitot(i,:), nitot(i,:), &
             qirim(i,:), birim(i,:), xxlv(i,:), xxls(i,:), xlf(i,:), qc_incld(i,:), qr_incld(i,:), qitot_incld(i,:), qirim_incld(i,:), nc_incld(i,:), nr_incld(i,:), &
             nitot_incld(i,:), birim_incld(i,:), mu_c(i,:), nu(i,:), lamc(i,:), cdist(i,:), cdist1(i,:), cdistr(i,:), mu_r(i,:), lamr(i,:), logn0r(i,:), cmeiout(i,:), prain(i,:), &
-            nevapr(i,:), prer_evap(i,:), vap_cld_exchange(i,:), vap_liq_exchange(i,:), vap_ice_exchange(i,:), liq_ice_exchange(i,:), pratot(i,:), &
+            nevapr(i,:), prer_evap(i,:), vap_liq_exchange(i,:), vap_ice_exchange(i,:), liq_ice_exchange(i,:), pratot(i,:), &
             prctot(i,:), p3_tend_out(i,:,:), log_hydrometeorsPresent)
 
+       ! measure microphysics processes tendency output
+       p3_tend_out(i,:,42) = ( qc(i,:)    - qc_old(i,:) ) * odt    ! Liq. microphysics tendency, measure
+       p3_tend_out(i,:,43) = ( nc(i,:)    - nc_old(i,:) ) * odt    ! Liq. # microphysics tendency, measure
+       p3_tend_out(i,:,44) = ( qr(i,:)    - qr_old(i,:) ) * odt    ! Rain microphysics tendency, measure
+       p3_tend_out(i,:,45) = ( nr(i,:)    - nr_old(i,:) ) * odt    ! Rain # microphysics tendency, measure
+       p3_tend_out(i,:,46) = ( qitot(i,:) - qitot_old(i,:) ) * odt ! Ice  microphysics tendency, measure
+       p3_tend_out(i,:,47) = ( nitot(i,:) - nitot_old(i,:) ) * odt ! Ice  # microphysics tendency, measure
+       p3_tend_out(i,:,48) = ( qv(i,:)    - qv_old(i,:) ) * odt    ! Vapor  microphysics tendency, measure
+       p3_tend_out(i,:,49) = ( th(i,:)    - th_old(i,:) ) * odt    ! Pot. Temp. microphysics tendency, measure
        !NOTE: At this point, it is possible to have negative (but small) nc, nr, nitot.  This is not
        !      a problem; those values get clipped to zero in the sedimentation section (if necessary).
        !      (This is not done above simply for efficiency purposes.)
 
-!      if (debug_ON) then
-!         tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-!         call check_values(qv,tmparr1,i,it,debug_ABORT,300,col_location)
-!      endif
+       !      if (debug_ON) then
+       !         tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !         call check_values(qv,tmparr1,i,it,debug_ABORT,300,col_location)
+       !      endif
 
        if (.not. log_hydrometeorsPresent) goto 333
 
@@ -1269,112 +1348,12 @@ contains
        !...................................................
        ! final checks to ensure consistency of mass/number
        ! and compute diagnostic fields for output
-
-       k_loop_final_diagnostics:  do k = kbot,ktop,kdir
-
-          ! cloud:
-          if (qc(i,k).ge.qsmall) then
-             call get_cloud_dsd2(qc(i,k),nc(i,k),mu_c(i,k),rho(i,k),nu(i,k),dnu,lamc(i,k),  &
-                  tmp1,tmp2,lcldm(i,k))
-             diag_effc(i,k) = 0.5_rtype*(mu_c(i,k)+3._rtype)/lamc(i,k)
-          else
-             qv(i,k) = qv(i,k)+qc(i,k)
-             th(i,k) = th(i,k)-exner(i,k)*qc(i,k)*xxlv(i,k)*inv_cp
-             vap_liq_exchange(i,k) = vap_liq_exchange(i,k) - qc(i,k)
-             vap_cld_exchange(i,k) = vap_cld_exchange(i,k) - qc(i,k)
-             qc(i,k) = 0._rtype
-             nc(i,k) = 0._rtype
-          endif
-
-          ! rain:
-          if (qr(i,k).ge.qsmall) then
-
-             call get_rain_dsd2(qr(i,k),nr(i,k),mu_r(i,k),lamr(i,k),   &
-                  !                        cdistr(i,k),logn0r(i,k))
-                  tmp1,tmp2,rcldm(i,k))
-
-             ze_rain(i,k) = nr(i,k)*(mu_r(i,k)+6._rtype)*(mu_r(i,k)+5._rtype)*(mu_r(i,k)+4._rtype)*           &
-                  (mu_r(i,k)+3._rtype)*(mu_r(i,k)+2._rtype)*(mu_r(i,k)+1._rtype)/lamr(i,k)**6
-             ze_rain(i,k) = max(ze_rain(i,k),1.e-22_rtype)
-          else
-             qv(i,k) = qv(i,k)+qr(i,k)
-             th(i,k) = th(i,k)-exner(i,k)*qr(i,k)*xxlv(i,k)*inv_cp
-             vap_liq_exchange(i,k) = vap_liq_exchange(i,k) - qr(i,k)
-             qr(i,k) = 0._rtype
-             nr(i,k) = 0._rtype
-          endif
-
-          ! ice:
-
-          call impose_max_total_Ni(nitot(i,k),max_total_Ni,inv_rho(i,k))
-
-          qi_not_small:  if (qitot(i,k).ge.qsmall) then
-
-             !impose lower limits to prevent taking log of # < 0
-             nitot(i,k) = max(nitot(i,k),nsmall)
-             nr(i,k)         = max(nr(i,k),nsmall)
-
-             call calc_bulkRhoRime(qitot(i,k),qirim(i,k),birim(i,k),rhop)
-
-             ! if (.not. tripleMoment_on) zitot(i,k) = diag_mom6(qitot(i,k),nitot(i,k),rho(i,k))
-             call find_lookupTable_indices_1a(dumi,dumjj,dumii,dumzz,dum1,dum4,          &
-                  dum5,dum6,isize,rimsize,densize,     &
-                  qitot(i,k),nitot(i,k),           &
-                  qirim(i,k),rhop)
-             !qirim(i,k),zitot(i,k),rhop)
-
-             call access_lookup_table(dumjj,dumii,dumi, 2,dum1,dum4,dum5,f1pr02)
-             call access_lookup_table(dumjj,dumii,dumi, 6,dum1,dum4,dum5,f1pr06)
-             call access_lookup_table(dumjj,dumii,dumi, 7,dum1,dum4,dum5,f1pr09)
-             call access_lookup_table(dumjj,dumii,dumi, 8,dum1,dum4,dum5,f1pr10)
-             call access_lookup_table(dumjj,dumii,dumi, 9,dum1,dum4,dum5,f1pr13)
-             call access_lookup_table(dumjj,dumii,dumi,11,dum1,dum4,dum5,f1pr15)
-             call access_lookup_table(dumjj,dumii,dumi,12,dum1,dum4,dum5,f1pr16)
-
-             ! impose mean ice size bounds (i.e. apply lambda limiters)
-             ! note that the Nmax and Nmin are normalized and thus need to be multiplied by existing N
-             nitot(i,k) = min(nitot(i,k),f1pr09*nitot(i,k))
-             nitot(i,k) = max(nitot(i,k),f1pr10*nitot(i,k))
-
-             !--this should already be done in s/r 'calc_bulkRhoRime'
-             if (qirim(i,k).lt.qsmall) then
-                qirim(i,k) = 0._rtype
-                birim(i,k) = 0._rtype
-             endif
-             !==
-
-             ! note that reflectivity from lookup table is normalized, so we need to multiply by N
-             diag_vmi(i,k)   = f1pr02*rhofaci(i,k)
-             diag_effi(i,k)  = f1pr06 ! units are in m
-             diag_di(i,k)    = f1pr15
-             diag_rhoi(i,k)  = f1pr16
-             ! note factor of air density below is to convert from m^6/kg to m^6/m^3
-             ze_ice(i,k) = ze_ice(i,k) + 0.1892_rtype*f1pr13*nitot(i,k)*rho(i,k)   ! sum contribution from each ice category (note: 0.1892 = 0.176/0.93)
-             ze_ice(i,k) = max(ze_ice(i,k),1.e-22_rtype)
-
-          else
-
-             qv(i,k) = qv(i,k) + qitot(i,k)
-             th(i,k) = th(i,k) - exner(i,k)*qitot(i,k)*xxls(i,k)*inv_cp
-             qitot(i,k) = 0._rtype
-             nitot(i,k) = 0._rtype
-             qirim(i,k) = 0._rtype
-             birim(i,k) = 0._rtype
-             diag_di(i,k) = 0._rtype
-
-          endif qi_not_small
-
-          ! sum ze components and convert to dBZ
-          diag_ze(i,k) = 10._rtype*log10((ze_rain(i,k) + ze_ice(i,k))*1.e18_rtype)
-
-          ! if qr is very small then set Nr to 0 (needs to be done here after call
-          ! to ice lookup table because a minimum Nr of nsmall will be set otherwise even if qr=0)
-          if (qr(i,k).lt.qsmall) then
-             nr(i,k) = 0._rtype
-          endif
-
-       enddo k_loop_final_diagnostics
-
+       call p3_main_post_main_loop(kts, kte, kbot, ktop, kdir, &
+            exner(i,:), lcldm(i,:), rcldm(i,:), &
+            rho(i,:), inv_rho(i,:), rhofaci(i,:), qv(i,:), th(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), qitot(i,:), nitot(i,:), &
+            qirim(i,:), birim(i,:), xxlv(i,:), xxls(i,:), &
+            mu_c(i,:), nu(i,:), lamc(i,:), mu_r(i,:), lamr(i,:), vap_liq_exchange(i,:), &
+            ze_rain(i,:), ze_ice(i,:), diag_vmi(i,:), diag_effi(i,:), diag_di(i,:), diag_rhoi(i,:), diag_ze(i,:), diag_effc(i,:))
        !   if (debug_ON) call check_values(qv,Ti,it,debug_ABORT,800,col_location)
 
        !..............................................
@@ -1403,9 +1382,7 @@ contains
 
     !=== (end of section for diagnostic hydrometeor/precip types)
 
-
     ! end of main microphysics routine
-
 
     return
 
@@ -1415,21 +1392,11 @@ contains
 
   SUBROUTINE access_lookup_table(dumjj,dumii,dumi,index,dum1,dum4,dum5,proc)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: access_lookup_table_f
-#endif
-
     implicit none
 
     real(rtype)    :: dum1,dum4,dum5,proc,iproc1,gproc1,tmp1,tmp2
     integer :: dumjj,dumii,dumi,index
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    if (use_cxx) then
-       call access_lookup_table_f(dumjj,dumii,dumi,index,dum1,dum4,dum5,proc)
-       return
-    endif
-#endif
     ! get value at current density index
 
     ! first interpolate for current rimed fraction index
@@ -1466,21 +1433,11 @@ contains
   SUBROUTINE access_lookup_table_coll(dumjj,dumii,dumj,dumi,index,dum1,dum3,          &
        dum4,dum5,proc)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: access_lookup_table_coll_f
-#endif
-
     implicit none
 
     real(rtype)    :: dum1,dum3,dum4,dum5,proc,dproc1,dproc2,iproc1,gproc1,tmp1,tmp2
     integer :: dumjj,dumii,dumj,dumi,index
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    if (use_cxx) then
-       call access_lookup_table_coll_f(dumjj,dumii,dumj,dumi,index,dum1,dum3,dum4,dum5,proc)
-       return
-    endif
-#endif
     ! This subroutine interpolates lookup table values for rain/ice collection processes
 
     ! current density index
@@ -1544,8 +1501,8 @@ contains
 
   !==========================================================================================!
 
-!_rtype
-  real(rtype) function polysvp1(T,i_type)
+  !_rtype
+  real(rtype) function polysvp1(t,i_type)
 
     !-------------------------------------------
     !  COMPUTE SATURATION VAPOR PRESSURE
@@ -1554,12 +1511,17 @@ contains
     !  i_type REFERS TO SATURATION WITH RESPECT TO LIQUID (0) OR ICE (1)
     !-------------------------------------------
 
+    use scream_abortutils, only : endscreamrun
+
     implicit none
 
-    real(rtype)    :: T
-    integer :: i_type
+    real(rtype), intent(in) :: t
+    integer, intent(in)     :: i_type
 
     ! REPLACE GOFF-GRATCH WITH FASTER FORMULATION FROM FLATAU ET AL. 1992, TABLE 4 (RIGHT-HAND COLUMN)
+
+    !local variables
+    character(len=1000) :: err_msg
 
     ! ice
     real(rtype) a0i,a1i,a2i,a3i,a4i,a5i,a6i,a7i,a8i
@@ -1580,7 +1542,7 @@ contains
 
     !-------------------------------------------
 
-    if (i_type.EQ.1 .and. T.lt.zerodegc) then
+    if (i_type.eq.1 .and. t.lt.zerodegc) then
        ! ICE
 
        !       Flatau formulation:
@@ -1595,7 +1557,7 @@ contains
        !          log10(6.1071))*100.
 
 
-    elseif (i_type.EQ.0 .or. T.ge.zerodegc) then
+    elseif (i_type.eq.0 .or. t.ge.zerodegc) then
        ! LIQUID
 
        !       Flatau formulation:
@@ -1613,11 +1575,10 @@ contains
     !PMC added error checking
     else
 
-       print*
-       print*,'** polysvp1 i_type must be 0 or 1 but is: ',i_type
-       print*
-       stop
+       write(err_msg,*)'** polysvp1 i_type must be 0 or 1 but is: ', &
+            i_type,' temperature is:',t,' in file: ',__FILE__,' at line:',__LINE__
 
+       call endscreamrun(err_msg)
     endif
 
    return
@@ -1635,9 +1596,6 @@ contains
     !------------------------------------------------------------------------------------------!
     ! Finds indices in 3D ice (only) lookup table
     !------------------------------------------------------------------------------------------!
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: find_lookuptable_indices_1a_f
-#endif
 
     implicit none
 
@@ -1646,14 +1604,6 @@ contains
     real(rtype),    intent(out) :: dum1,dum4,dum5,dum6
     integer, intent(in)  :: isize,rimsize,densize
     real(rtype),    intent(in)  :: qitot,nitot,qirim,rhop
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    if (use_cxx) then
-       call find_lookuptable_indices_1a_f(dumi,dumjj,dumii,dumzz,dum1,dum4,dum5,dum6,      &
-            qitot,nitot,qirim,rhop)
-       return
-    endif
-#endif
 
     !------------------------------------------------------------------------------------------!
     ! find index for qi (normalized ice mass mixing ratio = qitot/nitot)
@@ -1705,9 +1655,6 @@ contains
     !------------------------------------------------------------------------------------------!
     ! Finds indices in 3D rain lookup table
     !------------------------------------------------------------------------------------------!
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: find_lookuptable_indices_1b_f
-#endif
 
     implicit none
 
@@ -1721,12 +1668,6 @@ contains
     real(rtype)                 :: dumlr
     real(rtype)                 :: real_rcollsize
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    if (use_cxx) then
-       call find_lookupTable_indices_1b_f(dumj,dum3,qr,nr)
-       return
-    endif
-#endif
     !------------------------------------------------------------------------------------------!
     real_rcollsize = real(rcollsize)
     ! find index for scaled mean rain size
@@ -1804,10 +1745,6 @@ contains
   !===========================================================================================
   subroutine get_cloud_dsd2(qc,nc,mu_c,rho,nu,dnu,lamc,cdist,cdist1,lcldm)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: get_cloud_dsd2_f
-#endif
-
     implicit none
 
     !arguments:
@@ -1821,13 +1758,6 @@ contains
     integer                         :: dumi
 
     !--------------------------------------------------------------------------
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    if (use_cxx) then
-       call get_cloud_dsd2_f(qc,nc,mu_c,rho,nu,lamc,cdist,cdist1,lcldm)
-       return
-    endif
-#endif
 
     nu = 0.0_rtype
 
@@ -1880,10 +1810,6 @@ contains
   !===========================================================================================
   subroutine get_rain_dsd2(qr,nr,mu_r,lamr,cdistr,logn0r,rcldm)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: get_rain_dsd2_f
-#endif
-
     ! Computes and returns rain size distribution parameters
 
     implicit none
@@ -1897,13 +1823,6 @@ contains
     real(rtype)                            :: inv_dum,lammax,lammin
 
     !--------------------------------------------------------------------------
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    if (use_cxx) then
-       call get_rain_dsd2_f(qr,nr,mu_r,lamr,cdistr,logn0r,rcldm)
-       return
-    endif
-#endif
 
     if (qr.ge.qsmall) then
 
@@ -1954,10 +1873,6 @@ contains
     !  and adjusts qirim and birim appropriately.
     !--------------------------------------------------------------------------------
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: calc_bulk_rho_rime_f
-#endif
-
     implicit none
 
     !arguments:
@@ -1966,12 +1881,6 @@ contains
     real(rtype), intent(out)   :: rho_rime
 
     !--------------------------------------------------------------------------
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    if (use_cxx) then
-       call calc_bulk_rho_rime_f(qi_tot, qi_rim, bi_rim, rho_rime)
-       return
-    endif
-#endif
 
     if (bi_rim.ge.1.e-15_rtype) then
        rho_rime = qi_rim/bi_rim
@@ -2014,9 +1923,6 @@ contains
     ! If the sum of all nitot(:) exceeds maximum allowable, each category to preserve
     ! ratio of number between categories.
     !--------------------------------------------------------------------------------
-#ifdef SCREAM_CONFIG_IS_CMAKE
-      use micro_p3_iso_f, only: impose_max_total_ni_f
-#endif
 
     implicit none
 
@@ -2027,12 +1933,6 @@ contains
     !local variables:
     real(rtype)                              :: dum
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    if (use_cxx) then
-       call impose_max_total_ni_f(nitot_local,max_total_Ni,inv_rho_local)
-       return
-    endif
-#endif
     if (nitot_local.ge.1.e-20_rtype) then
        dum = max_total_Ni*inv_rho_local/nitot_local
        nitot_local = nitot_local*min(dum,1._rtype)
@@ -2089,9 +1989,8 @@ contains
     ! from where 'check_values' was called before it resulted in a trap.
     !
     !------------------------------------------------------------------------------------
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: check_values_f
-#endif
+
+    use scream_abortutils, only : endscreamrun
 
     implicit none
 
@@ -2111,13 +2010,7 @@ contains
     real(rtype), parameter :: x_low  = 0._rtype
     integer         :: k
     logical(btype)         :: trap,badvalue_found
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    if (use_cxx) then
-       call check_values_f(Qv, T, kts, kte, timestepcount, force_abort, source_ind, col_loc)
-       return
-    endif
-#endif
+    character(len=1000)    :: err_msg
 
     trap = .false.
 
@@ -2144,7 +2037,11 @@ contains
        print*
        print*,'** DEBUG TRAP IN P3_MAIN, s/r CHECK_VALUES -- source: ',source_ind
        print*
-       if (source_ind/=100) stop
+       if (source_ind/=100) then
+          write(err_msg,*)'Source_ind should be 100, source_ind is:', &
+               source_ind,' in file:',__FILE__,' at line:',__LINE__
+          call endscreamrun(err_msg)
+       endif
     endif
 
    return
@@ -2164,10 +2061,6 @@ contains
    ! for T < 273.15, assume collected cloud water is instantly frozen
    ! note 'f1pr' values are normalized, so we need to multiply by N
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: ice_cldliq_collection_f
-#endif
-
    implicit none
 
    real(rtype), intent(in) :: rho
@@ -2184,14 +2077,6 @@ contains
    real(rtype), intent(out) :: nccol
    real(rtype), intent(out) :: qcshd
    real(rtype), intent(out) :: ncshdc
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    if (use_cxx) then
-       call ice_cldliq_collection_f(rho, t, rhofaci, f1pr04, qitot_incld, qc_incld, nitot_incld, &
-                                    nc_incld, qccol, nccol, qcshd, ncshdc)
-       return
-    endif
-#endif
 
    if (qitot_incld .ge.qsmall .and. qc_incld .ge.qsmall) then
       if  (t .le.zerodegc) then
@@ -2229,10 +2114,6 @@ contains
 
    ! note 'f1pr' values are normalized, so we need to multiply by N
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: ice_rain_collection_f
-#endif
-
    implicit none
 
    real(rtype), intent(in) :: rho
@@ -2247,14 +2128,6 @@ contains
 
    real(rtype), intent(out) :: qrcol
    real(rtype), intent(out) :: nrcol
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    if (use_cxx) then
-       call ice_rain_collection_f(rho, t, rhofaci, logn0r, f1pr07, f1pr08, &
-                                  qitot_incld, nitot_incld, qr_incld, qrcol,nrcol)
-       return
-    endif
-#endif
 
    if (qitot_incld.ge.qsmall .and. qr_incld.ge.qsmall) then
       if (t.le.zerodegc) then
@@ -2289,9 +2162,6 @@ contains
    ! and air density correction factor since these are not included
    ! in the lookup table calculations
    ! note 'f1pr' values are normalized, so we need to multiply by N
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: ice_self_collection_f
-#endif
 
    implicit none
 
@@ -2306,14 +2176,6 @@ contains
    real(rtype), intent(out) :: nislf
 
    real(rtype) :: tmp1, Eii_fact
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    if (use_cxx) then
-       call ice_self_collection_f(rho, rhofaci, f1pr03, eii, qirim_incld, &
-                                  qitot_incld, nitot_incld, nislf)
-       return
-    endif
-#endif
 
    if (qitot_incld.ge.qsmall) then
       ! Determine additional collection efficiency factor to be applied to ice-ice collection.
@@ -2351,10 +2213,6 @@ f1pr05,f1pr14,xxlv,xlf,dv,sc,mu,kap,qv,qitot_incld,nitot_incld,    &
    ! currently enhanced melting from collision is neglected
    ! include RH dependence
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: ice_melting_f
-#endif
-
    implicit none
 
    real(rtype), intent(in) :: rho
@@ -2378,17 +2236,9 @@ f1pr05,f1pr14,xxlv,xlf,dv,sc,mu,kap,qv,qitot_incld,nitot_incld,    &
 
    real(rtype) :: qsat0
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call ice_melting_f(rho,t,pres,rhofaci,f1pr05,f1pr14,xxlv,xlf,dv, &
-           sc,mu,kap,qv,qitot_incld,nitot_incld,qimlt,nimlt)
-      return
-   endif
-#endif
-
    if (qitot_incld .ge.qsmall .and. t.gt.zerodegc) then
       qsat0 = qv_sat( zerodegc,pres,0 )
-      
+
       qimlt = ((f1pr05+f1pr14*bfb_cbrt(sc)*bfb_sqrt(rhofaci*rho/mu))*((t-   &
       zerodegc)*kap-rho*xxlv*dv*(qsat0-qv))*2._rtype*pi/xlf)*nitot_incld
 
@@ -2406,10 +2256,6 @@ subroutine ice_cldliq_wet_growth(rho,t,pres,rhofaci,    &
 f1pr05,f1pr14,xxlv,xlf,dv,kap,mu,sc,    &
 qv,qc_incld,qitot_incld,nitot_incld,qr_incld,    &
            log_wetgrowth,qrcol,qccol,qwgrth,nrshdr,qcshd)
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: ice_cldliq_wet_growth_f
-#endif
 
    implicit none
 
@@ -2439,16 +2285,6 @@ qv,qc_incld,qitot_incld,nitot_incld,qr_incld,    &
    real(rtype), intent(inout) :: qcshd
 
    real(rtype) :: qsat0, dum, dum1
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    if (use_cxx) then
-       call ice_cldliq_wet_growth_f(rho,t,pres,rhofaci, &
-                                    f1pr05,f1pr14,xxlv,xlf,dv,kap,mu,sc, &
-                                    qv,qc_incld,qitot_incld,nitot_incld,qr_incld, &
-                                    log_wetgrowth,qrcol,qccol,qwgrth,nrshdr,qcshd)
-       return
-    endif
-#endif
 
    if (qitot_incld.ge.qsmall .and. qc_incld+qr_incld.ge.1.e-6_rtype .and. t.lt.zerodegc) then
       qsat0=qv_sat( zerodegc,pres,0 )
@@ -2486,11 +2322,7 @@ epsi,epsi_tot)
    !-----------------------------
    ! calcualte total inverse ice relaxation timescale combined for all ice categories
    ! note 'f1pr' values are normalized, so we need to multiply by N
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: ice_relaxation_timescale_f
-#endif
    implicit none
-
 
    real(rtype), intent(in) :: rho
    real(rtype), intent(in) :: t
@@ -2505,15 +2337,6 @@ epsi,epsi_tot)
 
    real(rtype), intent(out) :: epsi
    real(rtype), intent(inout) :: epsi_tot
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    if (use_cxx) then
-      call ice_relaxation_timescale_f(rho,t,rhofaci,     &
-                                      f1pr05,f1pr14,dv,mu,sc,qitot_incld,nitot_incld, &
-                                      epsi,epsi_tot)
-       return
-    endif
-#endif
 
    if (qitot_incld.ge.qsmall .and. t.lt.zerodegc) then
       epsi = ((f1pr05+f1pr14*bfb_cbrt(sc)*bfb_sqrt(rhofaci*rho/mu))*2._rtype*pi* &
@@ -2532,9 +2355,6 @@ subroutine calc_liq_relaxation_timescale(rho,f1r,f2r,     &
 dv,mu,sc,mu_r,lamr,cdistr,cdist,qr_incld,qc_incld, &
 epsr,epsc)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: calc_liq_relaxation_timescale_f
-#endif
    implicit none
 
    real(rtype), intent(in)  :: rho
@@ -2555,15 +2375,6 @@ epsr,epsc)
    integer     :: dumii, dumjj
    real(rtype) :: rdumii, rdumjj
    real(rtype) :: dum, dum1, dum2, inv_dum3
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call calc_liq_relaxation_timescale_f(rho,f1r,f2r,dv,mu,sc,mu_r,lamr, &
-                                           cdistr,cdist,qr_incld,qc_incld,epsr,  &
-                                           epsc)
-      return
-   endif
-#endif
 
    if (qr_incld.ge.qsmall) then
       call find_lookupTable_indices_3(dumii,dumjj,dum1,rdumii,rdumjj,inv_dum3,mu_r,lamr)
@@ -2599,9 +2410,6 @@ subroutine calc_rime_density(t,rhofaci,    &
 f1pr02,acn,lamc, mu_c,qc_incld,qccol,    &
            vtrmi1,rhorime_c)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: calc_rime_density_f
-#endif
    !.........................
    ! calculate rime density
 
@@ -2636,12 +2444,6 @@ f1pr02,acn,lamc, mu_c,qc_incld,qccol,    &
    real(rtype) :: V_impact = 0.0_rtype
    real(rtype) :: Ri = 0.0_rtype
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call calc_rime_density_f(t,rhofaci,f1pr02,acn,lamc,mu_c,qc_incld,qccol,vtrmi1,rhorime_c)
-      return
-   endif
-#endif
    ! if (qitot_incld(i,k).ge.qsmall .and. t(i,k).lt.zerodegc) then
    !  NOTE:  condition applicable for cloud only; modify when rain is added back
    if (qccol.ge.qsmall .and. t.lt.zerodegc) then
@@ -2684,32 +2486,18 @@ end subroutine calc_rime_density
 function subgrid_variance_scaling(relvar, expon) result(res)
   ! Finds a coefficient for process rates based on the inverse relative variance
   ! of cloud water.
-  
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: subgrid_variance_scaling_f
-#endif
-    
+
   real(rtype), intent(in) :: relvar
   real(rtype), intent(in) :: expon
   real(rtype) :: res
-  
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      res = subgrid_variance_scaling_f(relvar,expon)
-      return
-   endif
-#endif
-  
+
   res = bfb_gamma(relvar+expon)/(bfb_gamma(relvar)*bfb_pow(relvar,expon))
-   
+
 end function subgrid_variance_scaling
 
 subroutine cldliq_immersion_freezing(t,lamc,mu_c,cdist1,qc_incld,qc_relvar,    &
            qcheti,ncheti)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: cldliq_immersion_freezing_f
-#endif
    !............................................................
    ! contact and immersion freezing droplets
 
@@ -2727,12 +2515,6 @@ subroutine cldliq_immersion_freezing(t,lamc,mu_c,cdist1,qc_incld,qc_relvar,    &
 
    real(rtype) :: dum1, dum2, Q_nuc, N_nuc, sbgrd_var_coef
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call cldliq_immersion_freezing_f(t,lamc,mu_c,cdist1,qc_incld,qc_relvar,qcheti,ncheti)
-      return
-   endif
-#endif
    if (qc_incld.ge.qsmall .and. t.le.rainfrze) then
       ! for future: calculate gamma(mu_c+4) in one place since its used multiple times  !AaronDonahue, TODO
       dum1 = bfb_exp(aimm*(zerodegc-t))
@@ -2752,9 +2534,6 @@ subroutine rain_immersion_freezing(t,    &
 lamr, mu_r, cdistr, qr_incld,    &
 qrheti, nrheti)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: rain_immersion_freezing_f
-#endif
    !............................................................
    ! immersion freezing of rain
    ! for future: get rid of log statements below for rain freezing
@@ -2771,13 +2550,6 @@ qrheti, nrheti)
    real(rtype), intent(out) :: nrheti
 
    real(rtype) :: Q_nuc, N_nuc
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call rain_immersion_freezing_f(t,lamr,mu_r,cdistr,qr_incld,qrheti,nrheti)
-      return
-   endif
-#endif
 
    if (qr_incld.ge.qsmall .and. t.le.rainfrze) then
 
@@ -2801,9 +2573,6 @@ subroutine ice_nucleation(t,inv_rho,nitot,naai,supi,odt,log_predictNc,    &
    ! deposition/condensation-freezing nucleation
    ! allow ice nucleation if < -15 C and > 5% ice supersaturation
    ! use CELL-AVERAGE values, freezing of vapor
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: ice_nucleation_f
-#endif
 
    implicit none
 
@@ -2820,14 +2589,6 @@ subroutine ice_nucleation(t,inv_rho,nitot,naai,supi,odt,log_predictNc,    &
 
 
    real(rtype) :: dum, N_nuc, Q_nuc
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    if (use_cxx) then
-       call ice_nucleation_f(t,inv_rho,nitot,naai,supi,odt,log_predictNc,    &
-                             qinuc,ninuc)
-       return
-    endif
-#endif
 
    if ( t .lt.icenuct .and. supi.ge.0.05_rtype) then
       if(.not. log_predictNc) then
@@ -2849,72 +2610,8 @@ subroutine ice_nucleation(t,inv_rho,nitot,naai,supi,odt,log_predictNc,    &
 
 end subroutine
 
-
-subroutine droplet_activation(t,pres,qv,qc,inv_rho,sup,xxlv,npccn,log_predictNc,odt,    &
-   qcnuc,ncnuc)
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: droplet_activation_f
-#endif
-
-   implicit none
-
-   real(rtype), intent(in) :: t
-   real(rtype), intent(in) :: pres
-   real(rtype), intent(in) :: qv
-   real(rtype), intent(in) :: qc
-   real(rtype), intent(in) :: inv_rho
-   real(rtype), intent(in) :: sup
-   real(rtype), intent(in) :: xxlv
-   real(rtype), intent(in) :: npccn
-
-   logical(btype), intent(in) :: log_predictNc
-   real(rtype), intent(in)  :: odt
-
-   real(rtype), intent(inout) :: qcnuc
-   real(rtype), intent(inout) :: ncnuc
-
-   real(rtype) :: dum, dumqvs, dqsdt, ab
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call droplet_activation_f(t,pres,qv,qc,inv_rho,sup,xxlv,npccn, log_predictNc,odt, &
-           qcnuc,ncnuc)
-      return
-   endif
-#endif
-
-   !.................................................................
-   ! droplet activation
-
-   if (log_predictNc) then
-      ! for predicted Nc, use activation predicted by aerosol scheme
-      ! note that this is also applied at the first time step
-      if (sup.gt.1.e-6) then
-         ncnuc = npccn
-         !TODO Limit qcnuc so that conditions never become sub-saturated
-         qcnuc = ncnuc*cons7
-      endif
-   else if (sup.gt.1.e-6) then
-      ! for specified Nc, make sure droplets are present if conditions are supersaturated
-      ! this is not applied at the first time step, since saturation adjustment is applied at the first step
-      dum   = nccnst*inv_rho*cons7-qc
-      dum   = max(0._rtype,dum)
-      dumqvs = qv_sat(t,pres,0)
-      dqsdt = xxlv*dumqvs/(rv*t*t)
-      ab    = 1._rtype + dqsdt*xxlv*inv_cp
-      dum   = min(dum,(qv-dumqvs)/ab)  ! limit overdepletion of supersaturation
-      qcnuc = dum*odt
-   endif
-
-end subroutine droplet_activation
-
 subroutine droplet_self_collection(rho,inv_rho,qc_incld,mu_c,nu,ncautc,    &
    ncslf)
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: droplet_self_collection_f
-#endif
 
    !............................
    ! self-collection of droplets
@@ -2930,12 +2627,6 @@ subroutine droplet_self_collection(rho,inv_rho,qc_incld,mu_c,nu,ncautc,    &
 
    real(rtype), intent(out) :: ncslf
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call droplet_self_collection_f(rho,inv_rho,qc_incld,mu_c,nu,ncautc,ncslf)
-      return
-   endif
-#endif
    if (qc_incld.ge.qsmall) then
 
       if (iparam.eq.1) then
@@ -2957,60 +2648,49 @@ end subroutine droplet_self_collection
 subroutine cloud_rain_accretion(rho,inv_rho,qc_incld,nc_incld,qr_incld,qc_relvar,    &
    qcacc,ncacc)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: cloud_rain_accretion_f
-#endif
+  !............................
+  ! accretion of cloud by rain
 
-!............................
-! accretion of cloud by rain
+  implicit none
 
-implicit none
+  real(rtype), intent(in) :: rho
+  real(rtype), intent(in) :: inv_rho
+  real(rtype), intent(in) :: qc_incld
+  real(rtype), intent(in) :: nc_incld
+  real(rtype), intent(in) :: qr_incld
+  real(rtype), intent(in) :: qc_relvar
 
-real(rtype), intent(in) :: rho
-real(rtype), intent(in) :: inv_rho
-real(rtype), intent(in) :: qc_incld
-real(rtype), intent(in) :: nc_incld
-real(rtype), intent(in) :: qr_incld
-real(rtype), intent(in) :: qc_relvar
+  real(rtype), intent(out) :: qcacc
+  real(rtype), intent(out) :: ncacc
 
-real(rtype), intent(out) :: qcacc
-real(rtype), intent(out) :: ncacc
+  real(rtype) :: dum, dum1, sbgrd_var_coef
 
-real(rtype) :: dum, dum1, sbgrd_var_coef
+  if (qr_incld.ge.qsmall .and. qc_incld.ge.qsmall) then
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call  cloud_rain_accretion_f(rho,inv_rho,qc_incld,nc_incld,qr_incld, &
-         qc_relvar, qcacc, ncacc)
-      return
-   endif
-#endif
-if (qr_incld.ge.qsmall .and. qc_incld.ge.qsmall) then
+     if (iparam.eq.1) then
+        !Seifert and Beheng (2001)
+        dum   = 1._rtype-qc_incld/(qc_incld+qr_incld)
+        dum1  = (dum/(dum+5.e-4_rtype))**4
+        qcacc = kr*rho*0.001_rtype*qc_incld*qr_incld*dum1
+        ncacc = qcacc*rho*0.001_rtype*(nc_incld*rho*1.e-6_rtype)/(qc_incld*rho*   &
+             0.001_rtype)*1.e+6_rtype*inv_rho
+     elseif (iparam.eq.2) then
+        !Beheng (994)
+        qcacc = 6._rtype*rho*(qc_incld*qr_incld)
+        ncacc = qcacc*rho*1.e-3_rtype*(nc_incld*rho*1.e-6_rtype)/(qc_incld*rho*1.e-3_rtype)* &
+             1.e+6_rtype*inv_rho
+     elseif (iparam.eq.3) then
+        !Khroutdinov and Kogan (2000)
+        !print*,'p3_QcAccret_Expon = ',p3_QcAccret_Expon
+        sbgrd_var_coef = subgrid_variance_scaling(qc_relvar, 1.15_rtype ) !p3_QcAccret_Expon
+        qcacc = sbgrd_var_coef*67._rtype*bfb_pow(qc_incld*qr_incld, 1.15_rtype) !p3_QcAccret_Expon
+        ncacc = qcacc*nc_incld/qc_incld
+     endif
 
-   if (iparam.eq.1) then
-      !Seifert and Beheng (2001)
-      dum   = 1._rtype-qc_incld/(qc_incld+qr_incld)
-      dum1  = (dum/(dum+5.e-4_rtype))**4
-      qcacc = kr*rho*0.001_rtype*qc_incld*qr_incld*dum1
-      ncacc = qcacc*rho*0.001_rtype*(nc_incld*rho*1.e-6_rtype)/(qc_incld*rho*   &
-           0.001_rtype)*1.e+6_rtype*inv_rho
-   elseif (iparam.eq.2) then
-      !Beheng (994)
-      qcacc = 6._rtype*rho*(qc_incld*qr_incld)
-      ncacc = qcacc*rho*1.e-3_rtype*(nc_incld*rho*1.e-6_rtype)/(qc_incld*rho*1.e-3_rtype)* &
-           1.e+6_rtype*inv_rho
-   elseif (iparam.eq.3) then
-      !Khroutdinov and Kogan (2000)
-      !print*,'p3_QcAccret_Expon = ',p3_QcAccret_Expon
-      sbgrd_var_coef = subgrid_variance_scaling(qc_relvar, 1.15_rtype ) !p3_QcAccret_Expon
-      qcacc = sbgrd_var_coef*67._rtype*bfb_pow(qc_incld*qr_incld, 1.15_rtype) !p3_QcAccret_Expon
-      ncacc = qcacc*nc_incld/qc_incld
-   endif
+     if (qcacc.eq.0._rtype) ncacc = 0._rtype
+     if (ncacc.eq.0._rtype) qcacc = 0._rtype
 
-   if (qcacc.eq.0._rtype) ncacc = 0._rtype
-   if (ncacc.eq.0._rtype) qcacc = 0._rtype
-
-endif
+  endif
 
 end subroutine cloud_rain_accretion
 
@@ -3021,10 +2701,6 @@ subroutine rain_self_collection(rho,qr_incld,nr_incld,    &
    ! self-collection and breakup of rain
    ! (breakup following modified Verlinde and Cotton scheme)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: rain_self_collection_f
-#endif
-
    implicit none
 
    real(rtype), intent(in) :: rho
@@ -3033,14 +2709,6 @@ subroutine rain_self_collection(rho,qr_incld,nr_incld,    &
    real(rtype), intent(out) :: nrslf
 
    real(rtype) :: dum, dum1, dum2
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call  rain_self_collection_f(rho,qr_incld,nr_incld,    &
-         nrslf)
-      return
-   endif
-#endif
 
    if (qr_incld.ge.qsmall) then
 
@@ -3074,10 +2742,6 @@ end subroutine rain_self_collection
 subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,qc_relvar,    &
    qcaut,ncautc,ncautr)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: cloud_water_autoconversion_f
-#endif
-
    implicit none
 
    real(rtype), intent(in) :: rho
@@ -3089,15 +2753,7 @@ subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,qc_relvar,    &
    real(rtype), intent(out) :: ncautc
    real(rtype), intent(out) :: ncautr
 
-   real(rtype) :: dum, sbgrd_var_coef
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call cloud_water_autoconversion_f(rho,qc_incld,nc_incld,    &
-         qc_relvar,qcaut,ncautc,ncautr)
-      return
-   endif
-#endif
+   real(rtype) :: sbgrd_var_coef
 
    qc_not_small: if (qc_incld.ge.1.e-8_rtype) then
 
@@ -3116,15 +2772,11 @@ subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,qc_relvar,    &
 
 end subroutine cloud_water_autoconversion
 
-subroutine back_to_cell_average(lcldm,rcldm,icldm,    &
-   qcacc,qrevp,qcaut,&
-   ncacc,ncslf,ncautc,nrslf,nrevp,ncautr,qcnuc,ncnuc,qisub,nrshdr,qcheti,&
-   qrcol,qcshd,qimlt,qccol,qrheti,nimlt,nccol,ncshdc,ncheti,nrcol,nislf,&
+subroutine back_to_cell_average(lcldm,rcldm,icldm,                         &
+   qcacc,qrevp,qcaut,                                                      &
+   ncacc,ncslf,ncautc,nrslf,nrevp,ncautr,qisub,nrshdr,qcheti,              &
+   qrcol,qcshd,qimlt,qccol,qrheti,nimlt,nccol,ncshdc,ncheti,nrcol,nislf,   &
    qidep,nrheti,nisub,qinuc,ninuc,qiberg)
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: back_to_cell_average_f
-#endif
 
    ! Here we map the microphysics tendency rates back to CELL-AVERAGE quantities for updating
    ! cell-average quantities.
@@ -3137,21 +2789,10 @@ subroutine back_to_cell_average(lcldm,rcldm,icldm,    &
    real(rtype), intent(in) :: icldm
 
    real(rtype), intent(inout) :: qcacc, qrevp, qcaut, ncacc, ncslf, ncautc, nrslf, nrevp, ncautr
-   real(rtype), intent(inout) :: qcnuc, ncnuc
    real(rtype), intent(inout) :: qisub, nrshdr, qcheti, qrcol, qcshd, qimlt, qccol, qrheti, nimlt, nccol, ncshdc, ncheti, nrcol, nislf, qidep
    real(rtype), intent(inout) :: nrheti, nisub, qinuc, ninuc, qiberg
 
    real(rtype) :: ir_cldm, il_cldm, lr_cldm
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call back_to_cell_average_f(lcldm,rcldm,icldm,qcacc,qrevp,qcaut,&
-        ncacc,ncslf,ncautc,nrslf,nrevp,ncautr,qcnuc,ncnuc,qisub,nrshdr,&
-        qcheti,qrcol,qcshd,qimlt,qccol,qrheti,nimlt,nccol,ncshdc,ncheti,&
-        nrcol,nislf,qidep,nrheti,nisub,qinuc,ninuc,qiberg)
-      return
-   endif
-#endif
 
    ir_cldm = min(icldm,rcldm)  ! Intersection of ICE and RAIN cloud
    il_cldm = min(icldm,lcldm)  ! Intersection of ICE and LIQUID cloud
@@ -3171,9 +2812,6 @@ subroutine back_to_cell_average(lcldm,rcldm,icldm,    &
    nrslf   = nrslf*rcldm       ! Self collection occurs locally in rain cloud
    nrevp   = nrevp*rcldm       ! Change in rain number due to evaporation
    ncautr  = ncautr*lr_cldm    ! Autoconversion of rain drops within rain/liq cloud
-     ! AaronDonahue: These variables are related to aerosol activation and their usage will be changed in a later PR.
-   qcnuc   = qcnuc*lcldm       ! Impact on liq. from nucleation
-   ncnuc   = ncnuc*lcldm       ! Number change due to aerosol activation
 
    ! map ice-phase  process rates to cell-avg
    qisub   = qisub*icldm       ! Sublimation of ice in ice cloud
@@ -3210,10 +2848,6 @@ subroutine prevent_ice_overdepletion(pres,t,qv,xxls,odt,    &
    !   amongst categories.
    !PMC - might need to rethink above statement since only one category now.
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: prevent_ice_overdepletion_f
-#endif
-
    implicit none
 
    real(rtype), intent(in) :: pres
@@ -3227,14 +2861,6 @@ subroutine prevent_ice_overdepletion(pres,t,qv,xxls,odt,    &
 
    real(rtype) :: dumqvi, qdep_satadj
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call prevent_ice_overdepletion_f(pres,t,qv,xxls,odt, &
-         qidep,qisub)
-      return
-   endif
-#endif
-
    dumqvi = qv_sat(t,pres,1)
    qdep_satadj = (qv-dumqvi)/(1._rtype+bfb_square(xxls)*dumqvi/(cp*rv*bfb_square(t)))*odt
    qidep  = qidep*min(1._rtype,max(0._rtype, qdep_satadj)/max(qidep, 1.e-20_rtype))
@@ -3242,31 +2868,18 @@ subroutine prevent_ice_overdepletion(pres,t,qv,xxls,odt,    &
 
 end subroutine prevent_ice_overdepletion
 
-subroutine cloud_water_conservation(qc,qcnuc,dt,    &
+subroutine cloud_water_conservation(qc,dt,    &
    qcaut,qcacc,qccol,qcheti,qcshd,qiberg,qisub,qidep)
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: cloud_water_conservation_f
-#endif
 
    implicit none
 
-   real(rtype), intent(in) :: qc, qcnuc, dt
+   real(rtype), intent(in) :: qc, dt
    real(rtype), intent(inout) :: qcaut, qcacc, qccol, qcheti, qcshd, qiberg, qisub, qidep
-   real(rtype) :: sinks, sources, ratio
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call  cloud_water_conservation_f(qc,qcnuc,dt,    &
-         qcaut,qcacc,qccol,qcheti,qcshd,qiberg,qisub,qidep)
-      return
-   endif
-#endif
+   real(rtype) :: sinks, ratio
 
    sinks   = (qcaut+qcacc+qccol+qcheti+qcshd+qiberg)*dt
-   sources = qc + (qcnuc)*dt
-   if (sinks.gt.sources .and. sinks.ge.1.e-20_rtype) then
-      ratio  = sources/sinks
+   if (sinks .gt. qc .and. sinks.ge.1.e-20_rtype) then
+      ratio  = qc/sinks
       qcaut  = qcaut*ratio
       qcacc  = qcacc*ratio
       qccol  = qccol*ratio
@@ -3281,7 +2894,7 @@ subroutine cloud_water_conservation(qc,qcnuc,dt,    &
    !"ratio" of timestep and vapor deposition and sublimation  for the
    !remaining frac of the timestep.  Only limit if there will be cloud
    !water to begin with.
-   if (sources.gt.1.e-20_rtype) then
+   if (qc .gt. 1.e-20_rtype) then
       qidep  = qidep*(1._rtype-ratio)
       qisub  = qisub*(1._rtype-ratio)
    end if
@@ -3292,24 +2905,12 @@ end subroutine cloud_water_conservation
 subroutine rain_water_conservation(qr,qcaut,qcacc,qimlt,qcshd,dt,    &
    qrevp,qrcol,qrheti)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: rain_water_conservation_f
-#endif
-
    implicit none
 
    real(rtype), intent(in) :: qr, qcaut, qcacc, qimlt, qcshd, dt
    real(rtype), intent(inout) :: qrevp, qrcol, qrheti
 
    real(rtype) :: sinks, sources, ratio
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call  rain_water_conservation_f(qr,qcaut,qcacc,qimlt,qcshd,dt,    &
-         qrevp,qrcol,qrheti)
-      return
-   endif
-#endif
 
    sinks   = (qrevp+qrcol+qrheti)*dt
    sources = qr + (qcaut+qcacc+qimlt+qcshd)*dt
@@ -3325,23 +2926,11 @@ end subroutine rain_water_conservation
 subroutine ice_water_conservation(qitot,qidep,qinuc,qiberg,qrcol,qccol,qrheti,qcheti,dt,    &
    qisub,qimlt)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: ice_water_conservation_f
-#endif
-
    implicit none
 
    real(rtype), intent(in) :: qitot, qidep, qinuc, qrcol, qccol, qrheti, qcheti, qiberg, dt
    real(rtype), intent(inout) :: qisub, qimlt
    real(rtype) :: sinks, sources, ratio
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call  ice_water_conservation_f(qitot,qidep,qinuc,qiberg,qrcol,qccol,qrheti,qcheti,dt,    &
-      qisub,qimlt)
-      return
-   endif
-#endif
 
    sinks   = (qisub+qimlt)*dt
    sources = qitot + (qidep+qinuc+qrcol+qccol+  &
@@ -3362,10 +2951,6 @@ subroutine update_prognostic_ice(qcheti,qccol,qcshd,    &
    exner,xxls,xlf,    &
    log_predictNc,log_wetgrowth,dt,nmltratio,rhorime_c,    &
    th,qv,qitot,nitot,qirim,birim,qc,nc,qr,nr)
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: update_prognostic_ice_f
-#endif
 
    !-- ice-phase dependent processes:
    implicit none
@@ -3415,25 +3000,10 @@ subroutine update_prognostic_ice(qcheti,qccol,qcshd,    &
 
    real(rtype) :: dum
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call  update_prognostic_ice_f(qcheti,qccol,qcshd,    &
-           nccol,ncheti,ncshdc,    &
-           qrcol,nrcol,qrheti,nrheti,nrshdr,    &
-           qimlt,nimlt,qisub,qidep,qinuc,ninuc,nislf,nisub,qiberg,    &
-           exner,xxls,xlf,    &
-           log_predictNc,log_wetgrowth,dt,nmltratio,rhorime_c,    &
-           th,qv,qitot,nitot,qirim,birim,qc,nc,qr,nr)
-      return
-   endif
-#endif
-
-
    qc = qc + (-qcheti-qccol-qcshd-qiberg)*dt
    if (log_predictNc) then
       nc = nc + (-nccol-ncheti)*dt
    endif
-
    qr = qr + (-qrcol+qimlt-qrheti+qcshd)*dt
 
    ! apply factor to source for rain number from melting of ice, (ad-hoc
@@ -3451,14 +3021,12 @@ subroutine update_prognostic_ice(qcheti,qccol,qcshd,    &
    qitot = qitot + (qidep+qinuc+qiberg)*dt + dum
    qirim = qirim + dum
 
-
    birim = birim + (qrcol*inv_rho_rimeMax+qccol/rhorime_c+(qrheti+ &
         qcheti)*inv_rho_rimeMax)*dt
 
    nitot = nitot + (ninuc-nimlt-nisub-nislf+nrheti+ncheti)*dt
 
    !PMC nCat deleted interactions_loop
-
 
    if (qirim.lt.0._rtype) then
       qirim = 0._rtype
@@ -3483,18 +3051,13 @@ subroutine update_prognostic_ice(qcheti,qccol,qcshd,    &
    qv = qv + (-qidep+qisub-qinuc)*dt
 
    th = th + exner*((qidep-qisub+qinuc)*xxls*inv_cp +(qrcol+qccol+   &
-        qcheti+qrheti-qimlt+qiberg)* xlf*inv_cp)*dt
-
+       qcheti+qrheti-qimlt+qiberg)* xlf*inv_cp)*dt
 end subroutine update_prognostic_ice
 
-subroutine update_prognostic_liquid(qcacc,ncacc,qcaut,ncautc,qcnuc,ncautr,ncslf,    &
-    qrevp,nrevp,nrslf,    &
-    log_predictNc,inv_rho,exner,xxlv,dt,    &
+subroutine update_prognostic_liquid(qcacc,ncacc,qcaut,ncautc,ncautr,ncslf,    &
+    qrevp,nrevp,nrslf,                                                        &
+    log_predictNc,inv_rho,exner,xxlv,dt,                                      &
     th,qv,qc,nc,qr,nr)
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   use micro_p3_iso_f, only: update_prognostic_liquid_f
-#endif
 
    !-- warm-phase only processes:
    implicit none
@@ -3503,7 +3066,6 @@ subroutine update_prognostic_liquid(qcacc,ncacc,qcaut,ncautc,qcnuc,ncautr,ncslf,
    real(rtype), intent(in) :: ncacc
    real(rtype), intent(in) :: qcaut
    real(rtype), intent(in) :: ncautc
-   real(rtype), intent(in) :: qcnuc
    real(rtype), intent(in) :: ncautr
    real(rtype), intent(in) :: ncslf
    real(rtype), intent(in) :: qrevp
@@ -3524,17 +3086,7 @@ subroutine update_prognostic_liquid(qcacc,ncacc,qcaut,ncautc,qcnuc,ncautr,ncslf,
    real(rtype), intent(inout) :: qr
    real(rtype), intent(inout) :: nr
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call  update_prognostic_liquid_f(qcacc,ncacc,qcaut,ncautc,qcnuc,ncautr,ncslf,    &
-           qrevp,nrevp,nrslf,    &
-           log_predictNc,inv_rho,exner,xxlv,dt,    &
-           th,qv,qc,nc,qr,nr)
-      return
-   endif
-#endif
-
-   qc = qc + (-qcacc-qcaut+qcnuc)*dt
+   qc = qc + (-qcacc-qcaut)*dt
    qr = qr + (qcacc+qcaut-qrevp)*dt
 
    if (log_predictNc) then
@@ -3548,8 +3100,8 @@ subroutine update_prognostic_liquid(qcacc,ncacc,qcaut,ncautc,qcnuc,ncautr,ncslf,
       nr = nr + (ncautr-nrslf-nrevp)*dt
    endif
 
-   qv = qv + (-qcnuc+qrevp)*dt
-   th = th + exner*((qcnuc-qrevp)*xxlv*    &
+   qv = qv + qrevp*dt
+   th = th + exner*(-qrevp*xxlv*    &
         inv_cp)*dt
 
 end subroutine update_prognostic_liquid
@@ -3559,10 +3111,6 @@ end subroutine update_prognostic_liquid
 subroutine ice_deposition_sublimation(qitot_incld,nitot_incld,t,    &
 qvs,qvi,epsi,abi,qv,    &
 qidep,qisub,nisub,qiberg)
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-  use micro_p3_iso_f, only: ice_deposition_sublimation_f
-#endif
 
    implicit none
 
@@ -3580,15 +3128,6 @@ qidep,qisub,nisub,qiberg)
    real(rtype), intent(out) :: qiberg
 
    real(rtype) :: oabi
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call ice_deposition_sublimation_f(qitot_incld,nitot_incld,t,    &
-           qvs,qvi,epsi,abi,qv,    &
-           qidep,qisub,nisub,qiberg)
-      return
-   endif
-#endif
 
    oabi = 1._rtype/abi
    if (qitot_incld>=qsmall) then
@@ -3626,10 +3165,6 @@ subroutine evaporate_sublimate_precip(qr_incld,qc_incld,nr_incld,qitot_incld,   
 lcldm,rcldm,qvs,ab,epsr,qv,    &
 qrevp,nrevp)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-  use micro_p3_iso_f, only: evaporate_sublimate_precip_f
-#endif
-
    implicit none
 
    real(rtype), intent(in)  :: qr_incld
@@ -3646,15 +3181,6 @@ qrevp,nrevp)
    real(rtype), intent(out) :: nrevp
 
    real(rtype) :: qclr, cld
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call evaporate_sublimate_precip_f(qr_incld,qc_incld,nr_incld,qitot_incld,    &
-           lcldm,rcldm,qvs,ab,epsr,qv,    &
-           qrevp,nrevp)
-      return
-   endif
-#endif
 
    ! It is assumed that macrophysics handles condensation/evaporation of qc and
    ! that there is no condensation of rain. Thus qccon, qrcon and qcevp have
@@ -3694,10 +3220,6 @@ subroutine get_time_space_phys_variables( &
 t,pres,rho,xxlv,xxls,qvs,qvi, &
 mu,dv,sc,dqsdt,dqsidt,ab,abi,kap,eii)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: get_time_space_phys_variables_f, cxx_pow, cxx_sqrt
-#endif
-
    implicit none
 
    real(rtype), intent(in)  :: t
@@ -3718,13 +3240,6 @@ mu,dv,sc,dqsdt,dqsidt,ab,abi,kap,eii)
    real(rtype), intent(out) :: eii
 
    real(rtype) :: dum
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call get_time_space_phys_variables_f(t,pres,rho,xxlv,xxls,qvs,qvi, &
-           mu,dv,sc,dqsdt,dqsidt,ab,abi,kap,eii)
-      return
-   endif
-#endif
 
    !time/space varying physical variables
    mu     = 1.496e-6_rtype*bfb_pow(t,1.5_rtype)/(t+120._rtype)
@@ -3755,10 +3270,6 @@ subroutine cloud_sedimentation(kts,kte,ktop,kbot,kdir,   &
    dt,odt,dnu,log_predictNc, &
    qc, nc, nc_incld,mu_c,lamc,prt_liq,qc_tend,nc_tend)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: cloud_sedimentation_f
-#endif
-
    implicit none
    integer, intent(in) :: kts, kte
    integer, intent(in) :: ktop, kbot, kdir
@@ -3785,15 +3296,13 @@ subroutine cloud_sedimentation(kts,kte,ktop,kbot,kdir,   &
 
    logical(btype) :: log_qxpresent
    integer :: k
-   integer :: k_qxtop, k_qxbot, k_temp
-   integer :: tmpint1
+   integer :: k_qxtop, k_qxbot
    integer, parameter :: num_arrays = 2
    type(realptr), dimension(num_arrays) :: vs, fluxes, qnr
 
    real(rtype) :: dt_left
    real(rtype) :: prt_accum
    real(rtype) :: Co_max
-   real(rtype) :: dt_sub
    real(rtype) :: nu
    real(rtype), dimension(kts:kte), target :: V_qc
    real(rtype), dimension(kts:kte), target :: V_nc
@@ -3801,16 +3310,6 @@ subroutine cloud_sedimentation(kts,kte,ktop,kbot,kdir,   &
    real(rtype), dimension(kts:kte), target :: flux_nx
 
    real(rtype) :: tmp1, tmp2, dum
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call cloud_sedimentation_f(kts,kte,ktop,kbot,kdir,   &
-           qc_incld,rho,inv_rho,lcldm,acn,inv_dzq,&
-           dt,odt,log_predictNc, &
-           qc, nc, nc_incld,mu_c,lamc,prt_liq,qc_tend,nc_tend)
-      return
-   endif
-#endif
 
    k_qxtop = kbot
    log_qxpresent = .false.
@@ -3909,10 +3408,6 @@ subroutine rain_sedimentation(kts,kte,ktop,kbot,kdir,   &
    qr_incld,rho,inv_rho,rhofacr,rcldm,inv_dzq,dt,odt,  &
    qr,nr,nr_incld,mu_r,lamr,prt_liq,rflx,qr_tend,nr_tend)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-  use micro_p3_iso_f, only: rain_sedimentation_f
-#endif
-
    implicit none
    integer, intent(in) :: kts, kte
    integer, intent(in) :: ktop, kbot, kdir
@@ -3939,7 +3434,7 @@ subroutine rain_sedimentation(kts,kte,ktop,kbot,kdir,   &
 
    logical(btype) :: log_qxpresent
    integer :: k
-   integer :: k_qxtop, k_qxbot, k_temp
+   integer :: k_qxtop, k_qxbot
    integer, parameter :: num_arrays = 2
    type(realptr), dimension(num_arrays) :: vs, fluxes, qnr
 
@@ -3950,15 +3445,6 @@ subroutine rain_sedimentation(kts,kte,ktop,kbot,kdir,   &
    real(rtype), dimension(kts:kte), target :: V_nr
    real(rtype), dimension(kts:kte), target :: flux_qx
    real(rtype), dimension(kts:kte), target :: flux_nx
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call rain_sedimentation_f(kts,kte,ktop,kbot,kdir,   &
-           qr_incld,rho,inv_rho,rhofacr,rcldm,inv_dzq,dt,odt,  &
-           qr,nr,nr_incld,mu_r,lamr,prt_liq,rflx,qr_tend,nr_tend)
-      return
-   endif
-#endif
 
    vs(1)%p => V_qr
    vs(2)%p => V_nr
@@ -4024,16 +3510,13 @@ subroutine rain_sedimentation(kts,kte,ktop,kbot,kdir,   &
       prt_liq = prt_liq + prt_accum*inv_rhow*odt
 
    endif qr_present
+
    qr_tend(:) = ( qr(:) - qr_tend(:) ) * odt ! Rain sedimentation tendency, measure
    nr_tend(:) = ( nr(:) - nr_tend(:) ) * odt ! Rain # sedimentation tendency, measure
 
 end subroutine rain_sedimentation
 
 subroutine compute_rain_fall_velocity(qr_incld, rcldm, rhofacr, nr, nr_incld, mu_r, lamr, V_qr, V_nr)
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: compute_rain_fall_velocity_f
-#endif
 
    real(rtype), intent(in) :: qr_incld
    real(rtype), intent(in) :: rcldm
@@ -4048,20 +3531,11 @@ subroutine compute_rain_fall_velocity(qr_incld, rcldm, rhofacr, nr, nr_incld, mu
    real(rtype) :: tmp1, tmp2, dum1, dum2, inv_dum3, rdumii, rdumjj
    integer :: dumii, dumjj
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call compute_rain_fall_velocity_f(qr_incld, rcldm, rhofacr, nr, nr_incld, mu_r, lamr, V_qr, V_nr)
-      return
-   endif
-#endif
-
    !Compute Vq, Vn:
 
-   call get_rain_dsd2(qr_incld,nr_incld,mu_r,lamr,     &
-   tmp1,tmp2,rcldm)
+   call get_rain_dsd2(qr_incld,nr_incld,mu_r,lamr,tmp1,tmp2,rcldm)
 
-   call find_lookupTable_indices_3(dumii,dumjj,dum1,rdumii,rdumjj,inv_dum3, &
-   mu_r,lamr)
+   call find_lookupTable_indices_3(dumii,dumjj,dum1,rdumii,rdumjj,inv_dum3,mu_r,lamr)
 
    nr = nr_incld*rcldm
 
@@ -4083,16 +3557,11 @@ subroutine compute_rain_fall_velocity(qr_incld, rcldm, rhofacr, nr, nr_incld, mu
 
    V_nr = dum1+(rdumjj-real(dumjj))*(dum2-dum1)            !interpolated
    V_nr = V_nr*rhofacr               !corrected for air density
-
 end subroutine compute_rain_fall_velocity
 
 subroutine ice_sedimentation(kts,kte,ktop,kbot,kdir,    &
    rho,inv_rho,rhofaci,icldm,inv_dzq,dt,odt,  &
    qitot,qitot_incld,nitot,qirim,qirim_incld,birim,birim_incld,nitot_incld,prt_sol,qi_tend,ni_tend)
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: ice_sedimentation_f
-#endif
 
    implicit none
    integer, intent(in) :: kts, kte
@@ -4121,15 +3590,13 @@ subroutine ice_sedimentation(kts,kte,ktop,kbot,kdir,    &
 
    logical(btype) :: log_qxpresent
    integer :: k
-   integer :: k_qxtop, k_qxbot, k_temp
-   integer :: tmpint1
+   integer :: k_qxtop, k_qxbot
    integer, parameter :: num_arrays = 4
    type(realptr), dimension(num_arrays) :: vs, fluxes, qnr
 
    real(rtype) :: dt_left
    real(rtype) :: prt_accum
    real(rtype) :: Co_max
-   real(rtype) :: dt_sub
    real(rtype) :: rhop
    real(rtype), dimension(kts:kte), target :: V_qit
    real(rtype), dimension(kts:kte), target :: V_nit
@@ -4144,15 +3611,6 @@ subroutine ice_sedimentation(kts,kte,ktop,kbot,kdir,    &
 
    real(rtype) :: dum1, dum4, dum5, dum6
    integer dumi, dumii, dumjj, dumzz
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call ice_sedimentation_f(kts,kte,ktop,kbot,kdir,    &
-           rho,inv_rho,rhofaci,icldm,inv_dzq,dt,odt,  &
-           qitot,qitot_incld,nitot,qirim,qirim_incld,birim,birim_incld,nitot_incld,prt_sol,qi_tend,ni_tend)
-      return
-   endif
-#endif
 
    log_qxpresent = .false.  !note: this applies to ice category 'iice' only
    k_qxtop       = kbot
@@ -4248,11 +3706,6 @@ end subroutine ice_sedimentation
 subroutine generalized_sedimentation(kts, kte, kdir, k_qxtop, k_qxbot, kbot, Co_max, dt_left, prt_accum, inv_dzq, inv_rho, rho, &
      num_arrays, vs, fluxes, qnx)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: generalized_sedimentation_f
-    use iso_c_binding
-#endif
-
    implicit none
 
    integer, intent(in) :: kts, kte, kdir, k_qxtop, kbot, num_arrays
@@ -4265,23 +3718,8 @@ subroutine generalized_sedimentation(kts, kte, kdir, k_qxtop, k_qxbot, kbot, Co_
 
    type(realptr), intent(in), dimension(num_arrays), target :: vs, fluxes, qnx
 
-   integer :: tmpint1, k_temp, k, i
+   integer :: tmpint1, k_temp, i
    real(rtype) :: dt_sub
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-  type(c_ptr), dimension(num_arrays) :: fluxes_c, vs_c, qnx_c
-
-  if (use_cxx) then
-     do i = 1, num_arrays
-        fluxes_c(i) = c_loc(fluxes(i)%p)
-        vs_c(i)     = c_loc(vs(i)%p)
-        qnx_c(i)    = c_loc(qnx(i)%p)
-     end do
-     call generalized_sedimentation_f(kts, kte, kdir, k_qxtop, k_qxbot, kbot, Co_max, dt_left, prt_accum, inv_dzq, inv_rho, rho, &
-          num_arrays, vs_c, fluxes_c, qnx_c)
-     return
-  endif
-#endif
 
    !-- compute dt_sub
    tmpint1 = int(Co_max+1._rtype)    !number of substeps remaining if dt_sub were constant
@@ -4306,11 +3744,6 @@ end subroutine generalized_sedimentation
 
 subroutine calc_first_order_upwind_step(kts, kte, kdir, kbot, k_qxtop, dt_sub, rho, inv_rho, inv_dzq, num_arrays, fluxes, vs, qnx)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use micro_p3_iso_f, only: calc_first_order_upwind_step_f
-    use iso_c_binding
-#endif
-
   implicit none
 
   integer, intent(in) :: kts, kte, kdir, kbot, k_qxtop, num_arrays
@@ -4320,21 +3753,6 @@ subroutine calc_first_order_upwind_step(kts, kte, kdir, kbot, k_qxtop, dt_sub, r
 
   integer :: i, k
   real(rtype) :: fluxdiv
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-  type(c_ptr), dimension(num_arrays) :: fluxes_c, vs_c, qnx_c
-
-  if (use_cxx) then
-     do i = 1, num_arrays
-        fluxes_c(i) = c_loc(fluxes(i)%p)
-        vs_c(i)     = c_loc(vs(i)%p)
-        qnx_c(i)    = c_loc(qnx(i)%p)
-     end do
-     call calc_first_order_upwind_step_f(kts, kte, kdir, kbot, k_qxtop, dt_sub, rho, inv_rho, inv_dzq, &
-          num_arrays, fluxes_c, vs_c, qnx_c)
-     return
-  endif
-#endif
 
   !-- calculate fluxes
   do k = kbot,k_qxtop,kdir
@@ -4366,10 +3784,6 @@ end subroutine calc_first_order_upwind_step
 subroutine homogeneous_freezing(kts,kte,ktop,kbot,kdir,t,exner,xlf,    &
    qc,nc,qr,nr,qitot,nitot,qirim,birim,th)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-  use micro_p3_iso_f, only: homogeneous_freezing_f
-#endif
-
    !.......................................
    ! homogeneous freezing of cloud and rain
 
@@ -4394,14 +3808,6 @@ subroutine homogeneous_freezing(kts,kte,ktop,kbot,kdir,t,exner,xlf,    &
    real(rtype) :: Q_nuc
    real(rtype) :: N_nuc
    integer :: k
-
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    if (use_cxx) then
-       call homogeneous_freezing_f(kts,kte,ktop,kbot,kdir,t,exner,xlf,    &
-            qc,nc,qr,nr,qitot,nitot,qirim,birim,th)
-       return
-    endif
-#endif
 
    k_loop_fz:  do k = kbot,ktop,kdir
       if (qc(k).ge.qsmall .and. t(k).lt.homogfrze) then

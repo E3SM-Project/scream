@@ -1,12 +1,12 @@
 #include "catch2/catch.hpp"
 
-#include "share/scream_types.hpp"
-#include "share/util/scream_utils.hpp"
-#include "share/scream_kokkos.hpp"
-#include "share/scream_pack.hpp"
+#include "ekat/scream_types.hpp"
+#include "ekat/util/scream_utils.hpp"
+#include "ekat/scream_kokkos.hpp"
+#include "ekat/scream_pack.hpp"
+#include "ekat/util/scream_kokkos_utils.hpp"
 #include "physics/p3/p3_functions.hpp"
 #include "physics/p3/p3_functions_f90.hpp"
-#include "share/util/scream_kokkos_utils.hpp"
 
 #include "p3_unit_tests_common.hpp"
 
@@ -99,7 +99,7 @@ static void run_bfb_calc_bulk_rhime()
     }
 
     Smask gt_small(qi_tot > qsmall);
-    Spack rho_rime = Functions::calc_bulk_rho_rime(gt_small, qi_tot, qi_rim, bi_rim);
+    Spack rho_rime = Functions::calc_bulk_rho_rime(qi_tot, qi_rim, bi_rim, gt_small);
 
     // Copy results back into views
     for (Int s = 0, vs = offset; s < Spack::n; ++s, ++vs) {
