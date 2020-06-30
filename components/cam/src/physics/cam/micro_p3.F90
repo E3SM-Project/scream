@@ -1569,6 +1569,8 @@ contains
 
   real(rtype) function MurphyKoop_svp(t, i_type)
 
+    use scream_abortutils, only : endscreamrun
+
     implicit none
 
     !-------------------------------------------------------------------
@@ -1580,9 +1582,10 @@ contains
 
     !Murphy & Koop (2005)
     real(rtype), intent(in) :: t
-    integer,intent(in)      :: i_type
+    integer, intent(in)     :: i_type
 
     !local vars
+    character(len=14), parameter :: subname = 'MurphyKoop_svp'
     character(len=1000) :: err_msg
     real(rtype)         :: logt
 
@@ -1594,6 +1597,9 @@ contains
     real(rtype), parameter :: lq(10) = (/54.842763_rtype, 6763.22_rtype, 4.210_rtype, &
          0.000367_rtype, 0.0415_rtype, 218.8_rtype, 53.878_rtype, 1331.22_rtype,       &
          9.44523_rtype, 0.014025_rtype /)
+
+    !Check if temprature is within legitimate range
+    call check_temp(t, subname)
 
     logt = bfb_log(t)
 
@@ -1612,9 +1618,7 @@ contains
 
        write(err_msg,*)'** MurphyKoop_svp i_type must be 0 or 1 but is: ', &
             i_type,'in file:',__FILE__,' at line:',__LINE__
-
-       print(err_msg)
-       stop
+       call endscreamrun(err_msg)
     endif
 
     return
@@ -1640,6 +1644,7 @@ contains
     ! REPLACE GOFF-GRATCH WITH FASTER FORMULATION FROM FLATAU ET AL. 1992, TABLE 4 (RIGHT-HAND COLUMN)
 
     !local variables
+    character(len=8), parameter :: subname = 'polysvp1'
     character(len=1000) :: err_msg
 
     ! ice
@@ -1660,6 +1665,9 @@ contains
     real(rtype) dt
 
     !-------------------------------------------
+
+    !Check if temprature is within legitimate range
+    call check_temp(t, subname)
 
     if (i_type.eq.1 .and. t.lt.zerodegc) then
        ! ICE
@@ -1703,6 +1711,35 @@ contains
    return
 
   end function polysvp1
+
+  subroutine check_temp(t, subname)
+    !Check if temprature values are in legit range
+    use scream_abortutils, only : endscreamrun
+    use ieee_arithmetic,   only : ieee_is_finite, ieee_is_nan
+
+    implicit none
+
+    real(rtype),      intent(in) :: t
+    character(len=*), intent(in) :: subname
+
+    character(len=1000) :: err_msg
+
+    if(t <= 0.0_rtype) then
+       write(err_msg,*)'Error: Called from:',trim(adjustl(subname)),'; Temperature is:',t,' which is <= 0._r8 in file:',__FILE__, &
+            ' at line:',__LINE__
+       call endscreamrun(err_msg)
+    elseif(.not. ieee_is_finite(t)) then
+       write(err_msg,*)'Error: Called from:',trim(adjustl(subname)),'; Temperature is:',t,' which is not finite in file:', &
+            __FILE__,' at line:',__LINE__
+       call endscreamrun(err_msg)
+    elseif(ieee_is_nan(t)) then
+       write(err_msg,*)'Error: Called from:',trim(adjustl(subname)),'; Temperature is:',t,' which is NaN in file:',__FILE__, &
+             'at line:',__LINE__
+       call endscreamrun(err_msg)
+    endif
+
+    return
+  end subroutine check_temp
 
   !------------------------------------------------------------------------------------------!
 
