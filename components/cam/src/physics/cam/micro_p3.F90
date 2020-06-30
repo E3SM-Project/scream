@@ -1371,7 +1371,7 @@ contains
           tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
           mici_loop: do mici = 2,48
              dum_mic(i,:) = p3_tend_out(i,:,mici)
-             call check_values(dum_mic(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,mici,col_location(i,:))
+             call check_nans(dum_mic(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,mici,col_location(i,:))
           enddo mici_loop
        endif
 
@@ -2341,6 +2341,76 @@ contains
 
   end subroutine check_values
 
+  subroutine check_nans(Qv,T,kts,kte,timestepcount,force_abort,source_ind,col_loc)
+
+    !------------------------------------------------------------------------------------
+    ! Checks current values of prognotic variables for reasonable values and
+    ! stops and prints values if they are out of specified allowable ranges.
+    !
+    ! 'check_consistency' means include trap for inconsistency in moments;
+    ! otherwise, only trap for Q, T, and negative Qx, etc.  This option is here
+    ! to allow for Q<qsmall.and.N>nsmall or Q>qsmall.and.N<small which can be produced
+    ! at the leading edges due to sedimentation and whose values are accpetable
+    ! since lambda limiters are later imposed after SEDI (so one does not necessarily
+    ! want to trap for inconsistency after sedimentation has been called).
+    !
+    ! The value 'source_ind' indicates the approximate location in 'p3_main'
+    ! from where 'check_values' was called before it resulted in a trap.
+    !
+    !------------------------------------------------------------------------------------
+
+    implicit none
+
+    !Calling parameters:
+    real(rtype), dimension(kts:kte), intent(in) :: Qv, T
+    real(rtype), dimension(3), intent(in) :: col_loc
+    integer,                intent(in) :: source_ind,timestepcount,kts,kte
+    logical(btype),                intent(in) :: force_abort         !.TRUE. = forces abort if value violation is detected
+
+    !Local variables:
+    real(rtype), parameter :: T_low  = 160._rtype !173._rtype
+    real(rtype), parameter :: T_high = 1.e7_rtype !323._rtype
+    real(rtype), parameter :: Q_high = 4.e13_rtype
+    real(rtype), parameter :: Q_low  = -4.e13_rtype
+    real(rtype), parameter :: N_high = 1.e+20_rtype
+    real(rtype), parameter :: B_high = Q_high*1.e-3_rtype
+    real(rtype), parameter :: x_high = 1.e+30_rtype
+    real(rtype), parameter :: x_low  = 0._rtype
+    integer         :: k
+    logical(btype)         :: trap,badvalue_found
+
+    trap = .false.
+
+    k_loop: do k = kts, kte
+
+       ! check unrealistic values or NANs for T and Qv
+       if (.not.(T(k)>T_low .and. T(k)<T_high)) then
+          write(iulog,'(a60,i5,a2,i8,a2,f8.4,a2,f8.4,a2,i4,a2,i8,a2,e16.8)') &
+             '** WARNING IN P3_MAIN -- src, gcol, lon, lat, lvl, tstep, T:',source_ind,', ',int(col_loc(1)),', ',col_loc(2),', ',col_loc(3),', ',k,', ',timestepcount,', ',T(k)
+          trap = .true.
+       endif
+       if (.not.(Qv(k)>=Q_low .and. Qv(k)<Q_high)) then
+          write(iulog,'(a60,i5,a2,i8,a2,f8.4,a2,f8.4,a2,i4,a2,i8,a2,e16.8)') &
+             '** WARNING IN P3_MAIN -- src, gcol, lon, lat, lvl, tstep, Qt:',source_ind,', ',int(col_loc(1)),', ',col_loc(2),', ',col_loc(3),', ',k,', ',timestepcount,', ',Qv(k)
+          !trap = .true.  !note, tentatively no trap, since Qv could be negative passed in to mp
+       endif
+
+       ! check NANs for mp variables:
+       badvalue_found = .false.
+
+    enddo k_loop
+
+    if (trap .and. force_abort) then
+       print*
+       print*,'** DEBUG TRAP IN P3_MAIN, s/r CHECK_VALUES -- source: ',source_ind
+       print*
+       if (source_ind/=100) stop
+    endif
+
+   return
+
+  end subroutine check_nans
+  
   subroutine ice_cldliq_collection(rho,t,rhofaci,    &
   f1pr04,qitot_incld,qc_incld,nitot_incld,nc_incld,    &
              qccol,nccol,qcshd,ncshdc)

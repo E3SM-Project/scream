@@ -2068,15 +2068,23 @@ subroutine shoc_assumed_pdf(&
 
       endif
 
+      ! error message from NDK
+      if (thl1_1 .le. 0.0_rtype .or. thl1_2 .le. 0.0_rtype) then
+         write(*,'(2(a,i8),8(a,es24.16))') "ndk0 k=", k, " i=", i, " thlsec=", thlsec, " thl_tol**2=", thl_tol**2, &
+              " abs(w1_2-w1_1)=", abs(w1_2-w1_1), " w_thresh=", w_thresh, " w1_1=", w1_1, " w1_2=", w1_2
+         write(*,'(2(a,i8),8(a,es24.16))') "ndk1 k=", k, " i=", i, " sqrtthl=", sqrtthl, " wthlsec=", wthlsec, &
+              " sqrtw2=", sqrtw2, " corrtest1=", corrtest1, &
+              " thl_first=", thl_first, " pval=", pval
+         write(*,'(2(a,i8),8(a,es24.16))') "ndk2 k=", k, " i=", i, " thl1_1=", thl1_1, " thl1_2=", thl1_2, &
+              " prev_thl1_1=", (-1._rtype*corrtest1)/w1_2, " prev_thl1_2=", (-1._rtype*corrtest1)/w1_1
+      endif
       !CRT - include if statement and printout with the following information (col_loc, macmic_it, cyc_shoc,
       !      and value)
-      !
-      !  if (thl1_1 .le. 0.0_rtype .or. thl1_2 .le. 0.0_rtype) then
-      !    write(0,'(a70,i8,a1,f8.4,a1,f8.4,a1,i3,a1,i2,a1,i2,a1,f8.3)') &
-      !      '** WARNING IN SHOC -- gcol, lon, lat, lvl, macmic_it, shoc_cyc, thl1_1',int(col_loc(i,1)),',', &
-      !      col_loc(i,2),',',col_loc(i,3),',',k,',',macmic_it,',',cyc_shoc,',',thl1_1
-      !  endif
-      
+      if (thl1_1 .le. 0.0_rtype .or. thl1_2 .le. 0.0_rtype) then
+         write(*,'(a70,i8,a1,f8.4,a1,f8.4,a1,i3,a1,i2,a1,i2,a1,f8.3)') &
+              '** WARNING IN SHOC -- gcol, lon, lat, lvl, macmic_it, shoc_cyc, thl1_1',int(col_loc(i,1)),',', &
+              col_loc(i,2),',',col_loc(i,3),',',k,',',macmic_it,',',cyc_shoc,',',thl1_1
+      endif
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !  FIND PARAMETERS FOR TOTAL WATER MIXING RATIO
 
