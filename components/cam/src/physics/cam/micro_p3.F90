@@ -2370,8 +2370,8 @@ contains
     !Local variables:
     real(rtype), parameter :: T_low  = 160._rtype !173._rtype
     real(rtype), parameter :: T_high = 1.e7_rtype !323._rtype
-    real(rtype), parameter :: Q_high = 4.e13_rtype
-    real(rtype), parameter :: Q_low  = -4.e13_rtype
+    real(rtype), parameter :: Q_high = 4.e15_rtype
+    real(rtype), parameter :: Q_low  = -4.e15_rtype
     real(rtype), parameter :: N_high = 1.e+20_rtype
     real(rtype), parameter :: B_high = Q_high*1.e-3_rtype
     real(rtype), parameter :: x_high = 1.e+30_rtype

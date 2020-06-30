@@ -2082,8 +2082,8 @@ subroutine shoc_assumed_pdf(&
       !      and value)
       if (thl1_1 .le. 0.0_rtype .or. thl1_2 .le. 0.0_rtype) then
          write(*,'(a70,i8,a1,f8.4,a1,f8.4,a1,i3,a1,i2,a1,i2,a1,f8.3)') &
-              '** WARNING IN SHOC -- gcol, lon, lat, lvl, macmic_it, shoc_cyc, thl1_1',int(col_loc(i,1)),',', &
-              col_loc(i,2),',',col_loc(i,3),',',k,',',macmic_it,',',cyc_shoc,',',thl1_1
+              '** WARNING IN SHOC -- gcol, lon, lat, lvl, macmic_it, shoc_cyc, thl1_2',int(col_loc(i,1)),',', &
+              col_loc(i,2),',',col_loc(i,3),',',k,',',macmic_it,',',cyc_shoc,',',thl1_2
       endif
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !  FIND PARAMETERS FOR TOTAL WATER MIXING RATIO
@@ -2125,6 +2125,12 @@ subroutine shoc_assumed_pdf(&
 
         sqrtqw2_1=sqrt(qw2_1)
         sqrtqw2_2=sqrt(qw2_2)
+        
+         if (qw1_1 .le. 0.0_rtype .or. qw1_2 .le. 0.0_rtype) then
+            write(*,'(a70,i8,a1,f8.4,a1,f8.4,a1,i3,a1,i2,a1,i2,a1,f8.3,a1,f8.3)') &
+                 '*WARN IN SHOC - gcol, lon, lat, lvl, macmic_it, shoc_cyc, qw1_1, qw1_2',int(col_loc(i,1)),',', &
+                 col_loc(i,2),',',col_loc(i,3),',',k,',',macmic_it,',',cyc_shoc,',',qw1_1,',',qw1_2
+         endif
 
       endif
 
