@@ -1201,42 +1201,6 @@ subroutine diag_second_shoc_moments(&
      qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Input/Output
      wtracer_sec)                           ! Input/Output
  
-    ! Diagnose the second order moments,
-    !  calculate surface boundary conditions
-    call diag_second_moments_lbycond(&
-       shcol,nlev,nlevi,&                   ! Input
-       num_tracer,thetal,qw,&               ! Input
-       u_wind,v_wind,tracer,&               ! Input
-       isotropy,tkh,tk,&                    ! Input
-       dz_zi,zt_grid,zi_grid,&              ! Input
-       wthl_sfc,wqw_sfc,uw_sfc,vw_sfc,&     ! Input
-       wtracer_sfc,shoc_mix,&               ! Input
-       thl_sec,qw_sec,wthl_sec,wqw_sec,&    ! Output
-       qwthl_sec,uw_sec,vw_sec,wtke_sec,&   ! Output
-       wtracer_sec)                         ! Output
-
-    ! Diagnose the second order moments,
-    !  for points away from boundaries
-    call diag_second_moments(&
-       shcol,nlev,nlevi, &                    ! Input
-       num_tracer,thetal,qw, &                ! Input
-       u_wind,v_wind,tracer,tke, &            ! Input
-       isotropy,tkh,tk,&                      ! Input
-       dz_zi,zt_grid,zi_grid,shoc_mix, &      ! Input
-       thl_sec, qw_sec,wthl_sec,wqw_sec,&     ! Input/Output
-       qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Input/Output
-       wtracer_sec,&                          ! Input/Output
-       w_sec)                                 ! Output
-
-    ! Diagnose the second order moments,
-    !  calculate the upper boundary conditions
-    call diag_second_moments_ubycond(&
-       shcol,nlevi,num_tracer, &              ! Input
-       thl_sec, qw_sec,&                      ! Input/Output
-       wthl_sec,wqw_sec,&                     ! Input/Output
-       qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Input/Output
-       wtracer_sec)                           ! Input/Output
-
   return
 end subroutine diag_second_shoc_moments
 
