@@ -2150,8 +2150,8 @@ subroutine shoc_tke(&
   real(rtype) :: qsatt,dqsat,tk_in, u_grad, v_grad
   real(rtype) :: tscale1,lambda,buoy_sgs_save,grid_dzw,grw1,grid_dz
   real(rtype) :: lambda_low,lambda_high,lambda_slope, brunt_low
-  real(rtype) :: brunt_int(shcol), z_over_L
-  real(rtype) :: zL_crit_val, pbl_trans
+  real(rtype) :: brunt_int(shcol), z_over_L, Ck_min
+  real(rtype) :: zL_crit_val, pbl_trans, Ckh_stab, Ckm_stab
   integer i,j,k,kc,kb,kt
 
   lambda_low=0.001_rtype
@@ -2176,6 +2176,8 @@ subroutine shoc_tke(&
   Ckh_s=1.0_rtype 
   Ckm_s=1.0_rtype 
   Ce=Ck**3/Cs**4
+  ! minimum allowable value for diffusivities
+  Ck_min = 0.01_rtype
 
   Ce1=Ce/0.7_rtype*0.19_rtype
   Ce2=Ce/0.7_rtype*0.51_rtype
@@ -2256,7 +2258,7 @@ subroutine shoc_tke(&
       ! Compute the return to isotropic timescale
       isotropy(i,k)=min(maxiso,tscale1/(1._rtype+lambda*buoy_sgs_save*tscale1**2))
 
-      ! Dimensionless Okukhov length considering only 
+      ! Dimensionless Obukhov length considering only 
       !  the lowest model grid layer height to scale
       z_over_L = zt_grid(i,nlev)/obklen(i)
 
@@ -2266,10 +2268,14 @@ subroutine shoc_tke(&
         !  tkh and tk that are primarily based on shear production 
         !  and SHOC length scale, to promote mixing within the PBL
         !  and to a height slighty above to ensure smooth transition.
-        tkh(i,k)=min(Ckh_s,z_over_L/zL_crit_val)*&
-	  (shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
-        tk(i,k)=min(Ckm_s,z_over_L/zL_crit_val)*&
-	  (shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
+	
+	! Compute diffusivity coefficient as function of dimensionless
+	!  Obukhov, given a critical value
+	Ckh_stab = max(Ck_min,min(Ckh_s,z_over_L/zL_crit_val))
+	Ckm_stab = max(Ck_min,min(Ckm_s,z_over_L/zL_crit_val))
+	! Compute the diffusivities 
+        tkh(i,k)=Ckh_stab*(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
+        tk(i,k)=Ckm_stab*(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
       else
         ! Default definition of eddy diffusivity for heat and momentum  
       
