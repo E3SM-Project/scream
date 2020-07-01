@@ -1337,6 +1337,11 @@ contains
           call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,220,col_location(i,:))
        endif
 
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_nans(qc_relvar(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,230,col_location(i,:))
+       endif
+
        !jump to end of i-loop if log_nucleationPossible=.false.  (i.e. skip everything)
        if (.not. (log_nucleationPossible .or. log_hydrometeorsPresent)) goto 333
 
@@ -1389,6 +1394,12 @@ contains
           tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
           call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,320,col_location(i,:))
        endif
+
+       if (debug_ON) then
+          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          call check_nans(qc_relvar(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,330,col_location(i,:))
+       endif
+
 
 
        
