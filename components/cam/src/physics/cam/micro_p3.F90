@@ -1338,7 +1338,7 @@ contains
        endif
 
        if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          tmparr1(i,:) = 0._rtype!(pres(i,:)*1.e-5)**(rd*inv_cp)
           call check_nans(qc_relvar(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,230,col_location(i,:))
        endif
 
@@ -1373,13 +1373,30 @@ contains
        !Check microphysical process rates
        dum_mic(:,:)=0._rtype
        if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          tmparr1(i,:) = 0._rtype!(pres(i,:)*1.e-5)**(rd*inv_cp)
           mici_loop: do mici = 2,48
              dum_mic(i,:) = p3_tend_out(i,:,mici)
              call check_nans(dum_mic(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,mici,col_location(i,:))
           enddo mici_loop
        endif
 
+       dum_mic(:,:)=0._rtype
+       if (debug_ON) then
+          tmparr1(i,:) = exner(i,:)*p3_tend_out(i,:,11)*xxlv(i,:)*inv_cp*dt !p3_tend_out(k,11) = qrevp Delta theta via qrevap 
+          dum_mic(i,:) = 0._rtype
+          mici = 66
+          call check_nans(dum_mic(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,mici,col_location(i,:))
+       endif
+
+       dum_mic(:,:)=0._rtype
+       if (debug_ON) then
+          tmparr1(i,:) = exner(i,:)*((vap_ice_exchange(i,:))*xxls(i,:)*inv_cp+ &
+               (liq_ice_exchange(i,:))*xlf(i,:)*inv_cp)*dt  
+          dum_mic(i,:) = 0._rtype
+          mici = 77
+          call check_nans(dum_mic(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,mici,col_location(i,:))
+       endif
+       
        if (debug_ON) then
           tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
           call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,300,col_location(i,:))
@@ -1396,7 +1413,7 @@ contains
        endif
 
        if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+          tmparr1(i,:) = 0._rtype!(pres(i,:)*1.e-5)**(rd*inv_cp)
           call check_nans(qc_relvar(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,330,col_location(i,:))
        endif
 
@@ -2379,8 +2396,8 @@ contains
     logical(btype),                intent(in) :: force_abort         !.TRUE. = forces abort if value violation is detected
 
     !Local variables:
-    real(rtype), parameter :: T_low  = 160._rtype !173._rtype
-    real(rtype), parameter :: T_high = 1.e7_rtype !323._rtype
+    real(rtype), parameter :: T_low  = -10._rtype !173._rtype
+    real(rtype), parameter :: T_high = 10._rtype !323._rtype
     real(rtype), parameter :: Q_high = 4.e15_rtype
     real(rtype), parameter :: Q_low  = -4.e15_rtype
     real(rtype), parameter :: N_high = 1.e+20_rtype
@@ -2397,7 +2414,7 @@ contains
        ! check unrealistic values or NANs for T and Qv
        if (.not.(T(k)>T_low .and. T(k)<T_high)) then
           write(iulog,'(a60,i5,a2,i8,a2,f8.4,a2,f8.4,a2,i4,a2,i8,a2,e16.8)') &
-             '** WARNING IN P3_MAIN -- src, gcol, lon, lat, lvl, tstep, T:',source_ind,', ',int(col_loc(1)),', ',col_loc(2),', ',col_loc(3),', ',k,', ',timestepcount,', ',T(k)
+             '** WARNING IN P3_MAIN -- src, gcol, lon, lat, lvl, tstep, DT:',source_ind,', ',int(col_loc(1)),', ',col_loc(2),', ',col_loc(3),', ',k,', ',timestepcount,', ',T(k)
           trap = .true.
        endif
        if (.not.(Qv(k)>=Q_low .and. Qv(k)<Q_high)) then
