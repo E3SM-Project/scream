@@ -414,14 +414,14 @@ contains
       !--- Apply droplet activation here (before other microphysical processes) for consistency with qc increase by saturation 
       !    adjustment already applied in macrophysics. If prescribed drop number is used, this is also a good place to 
       !    prescribe that value
-          if (.not.(log_predictNc)) then
+          if (.not.(log_predictNc) .and. .not.(log_prescribeCCN)) then
             nc(k) = nccnst*inv_rho(k)
           else
-            !if (.not.(log_prescribeCCN)) then
-            !   nc(k) = max(nc(k) + ncnuc(k) * dt,0.0_rtype)
-            !else
-               nc(k) = max(nc(k),CCN_prescribed(k))
-            !end if             !Hassan added this additional condition for predicting Nc using prescribed CCN from file
+            if (.not.(log_prescribeCCN)) then
+               nc(k) = max(nc(k) + ncnuc(k) * dt,0.0_rtype)
+            else
+               nc(k) = max(nc(k),nccn_prescribed(k))
+            end if             !Hassan added this additional condition for predicting Nc using prescribed CCN from file
           endif
        endif
 
@@ -2822,7 +2822,7 @@ subroutine ice_nucleation(t,inv_rho,nitot,naai,supi,odt,log_predictNc,    &
 #endif
 
    if ( t .lt.icenuct .and. supi.ge.0.05_rtype) then
-      if(.not. log_predictNc) then !.or. log_prescribeCCN!) then
+      if(.not. log_predictNc .or. log_prescribeCCN) then
 !         ! dum = exp(-0.639+0.1296*100.*supi(i,k))*1000.*inv_rho(i,k)  !Meyers et al. (1992)
          dum = 0.005_rtype*bfb_exp(0.304_rtype*(zerodegc-t))*1000._rtype*inv_rho   !Cooper (1986)
          dum = min(dum,100.e3_rtype*inv_rho)
@@ -3463,7 +3463,7 @@ subroutine update_prognostic_liquid(qcacc,ncacc,qcaut,ncautc,ncautr,ncslf,    &
    qc = qc + (-qcacc-qcaut)*dt
    qr = qr + (qcacc+qcaut-qrevp)*dt
 
-   if (log_predictNc) then
+   if (log_predictNc or. log_prescribeCCN) then
       nc = nc + (-ncacc-ncautc+ncslf)*dt
    else
       nc = nccnst*inv_rho

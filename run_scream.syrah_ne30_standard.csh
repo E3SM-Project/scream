@@ -9,13 +9,13 @@
 ###===================================================================
 
 ### BASIC INFO ABOUT RUN
-set my_npes        = 1080
-set job_name       = control_run
+set my_npes        = 64
+set job_name       = test_prescribed_CCN_3
 #set compset        = FC5AV1C-L
 set compset        = FSCREAM-LR
 set resolution     = ne30_ne30
 set machine        = syrah
-set walltime       = 16:00:00
+set walltime       = 00:10:00
 setenv project       cbronze
 
 ### SOURCE CODE OPTIONS
@@ -38,7 +38,7 @@ set seconds_before_delete_run_dir    = -1
 
 ### SUBMIT OPTIONS
 set submit_run       = true
-set debug_queue      = false
+set debug_queue      = true
 
 ### PROCESSOR CONFIGURATION
 set processor_config = customlc
@@ -48,7 +48,7 @@ set model_start_type = initial
 set restart_files_dir = none
 
 ### DIRECTORIES
-set code_root_dir               = /g/g12/beydoun1/scream_rce
+set code_root_dir               = /g/g12/beydoun1/scream_develop
 set e3sm_simulations_dir        = /p/lustre2/beydoun1
 set case_build_dir              = default
 set case_run_dir                = default
@@ -59,7 +59,7 @@ set stop_units                  = ndays
 set stop_num                    = 100 
 set restart_units               = $stop_units
 set restart_num                 = $stop_num
-set num_resubmits               = 10
+set num_resubmits               = 0
 set do_short_term_archiving     = false
 
 ### SIMULATION OPTIONS
@@ -943,6 +943,7 @@ $xmlchange_exe --id DEBUG --val `uppercase $debug_compile`
 cat <<EOF >> user_nl_cam
  nhtfrq = $atm_output_freq
  mfilt  = $records_per_atm_output_file
+ log_prescribeCCN = .true.
 EOF
 
 cat <<EOF >> user_nl_clm

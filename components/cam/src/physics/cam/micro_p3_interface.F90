@@ -36,13 +36,13 @@ module micro_p3_interface
   use time_manager,   only: is_first_step
   use perf_mod,       only: t_startf, t_stopf
   use micro_p3_utils, only: p3_QcAutoCon_Expon, p3_QcAccret_Expon
-  use pio,            only: file_desc_t
-  use cam_pio_utils,  only: cam_pio_openfile
-  use cam_grid_support, only: cam_grid_check, cam_grid_id
-  use cam_grid_support, only: cam_grid_get_dim_names
-  use ncdio_atm,       only: infld
-  use time_manager,   only: get_curr_date
-  use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp, psubcols
+  !use pio,            only: file_desc_t
+  !use cam_pio_utils,  only: cam_pio_openfile
+  !use cam_grid_support, only: cam_grid_check, cam_grid_id
+  !use cam_grid_support, only: cam_grid_get_dim_names
+  !use ncdio_atm,       only: infld
+  !use time_manager,   only: get_curr_date
+  !use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp, psubcols
 
      
   implicit none
@@ -715,7 +715,49 @@ end subroutine micro_p3_readnl
 
   !================================================================================================
   subroutine get_prescribed_CCN(nccn_prescribed,micro_p3_lookup_dir,its,ite,kts,kte)
+   
+    use pio,              only: file_desc_t
+    use cam_pio_utils,    only: cam_pio_openfile
+    use cam_grid_support, only: cam_grid_check, cam_grid_id
+    use cam_grid_support, only: cam_grid_get_dim_names
+    use ncdio_atm,        only: infld
+    use time_manager,     only: get_curr_date
+    use ppgrid,           only: begchunk, endchunk, pcols, pver, pverp, psubcols
+ 
+   !INOUT/OUTPUT VARIABLES
+   integer,intent(in) :: its,ite,kts,kte        
+   real(rtype),dimension(its:ite,kts:kte),intent(inout)  :: nccn_prescribed
+   character*(*), intent(in)    :: micro_p3_lookup_dir                !directory of the lookup tables
 
+   !internal variables
+   character(len=*) :: year,month,day,tod,base_file_name,filename
+   character(len=8) :: dim1name, dim2name
+   type(file_desc_t), pointer :: nccn_ncid
+
+
+   !get current time step's date
+   call get_curr_date(year,month,day,tod)
+
+   !assign base_file_name the name of the CCN file being used 
+   base_file_name = "prescribed_CCN_file_"
+
+   !retrieve the name of the relevant file by combining base file name with
+   !month and full file path:
+   filename = trim(micro_p3_lookup_dir)//'/'//trim(base_file_name)//trim(month)//'.nc'  
+
+   grid_id = cam_grid_id('physgrid')
+
+   call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
+
+   call cam_pio_openfile(ncon_ncid,CCN_FILENAME,PIO_NOWRITE)
+
+   call infld('CCN3', nccn_ncid, dim1name, dim2name, 1, pcols, begchunk, &
+        &endchunk,nccn_prescribed, found, gridname='physgrid')
+
+   call cam_pio_closefile(nccn_ncid)
+
+  end subroutine get_prescribed_CCN
+    
   subroutine micro_p3_tend(state, ptend, dtime, pbuf)
 
     use phys_grid,      only: get_rlat_all_p, get_rlon_all_p, get_gcol_all_p
@@ -1078,7 +1120,7 @@ end subroutine micro_p3_readnl
          vap_ice_exchange(its:ite,kts:kte),& ! OUT sum of vap-ice phase change tendencies
          col_location(its:ite,:3)          & ! IN column locations
          log_prescribeCCN,                 & !IN  .true. = prescribe CCN
-         nccn_prescribe(its:ite,kts:kte    & !IN prescribed CCN concentration
+         nccn_prescribed(its:ite,kts:kte    & !IN prescribed CCN concentration
          )
 
     p3_main_outputs(:,:,:) = -999._rtype
