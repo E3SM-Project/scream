@@ -1374,10 +1374,14 @@ contains
        dum_mic(:,:)=0._rtype
        if (debug_ON) then
           tmparr1(i,:) = 0._rtype!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          mici_loop: do mici = 2,48
+          mici_loop: do mici = 2,29
              dum_mic(i,:) = p3_tend_out(i,:,mici)
              call check_nans(dum_mic(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,mici,col_location(i,:))
           enddo mici_loop
+          mici_loop2: do mici = 31,48
+             dum_mic(i,:) = p3_tend_out(i,:,mici)
+             call check_nans(dum_mic(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,mici,col_location(i,:))
+          enddo mici_loop2
        endif
 
        dum_mic(:,:)=0._rtype
