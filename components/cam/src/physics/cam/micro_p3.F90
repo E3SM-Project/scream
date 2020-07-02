@@ -3896,6 +3896,12 @@ qrevp,nrevp)
       ! calculate q for out-of-cloud region
       qclr = (qv-cld*qvs)/(1._rtype-cld)
 
+      ! apply limiter to how log qclr can get
+      if (qclr.lt.0.0_rtype) then
+         write(iulog,*) ' qclr less than 0'
+         qclr=0.0_rtype
+      endif
+
       ! rain evaporation
       if (qr_incld.ge.qsmall) then
          qrevp = epsr * (qclr-qvs)/ab
