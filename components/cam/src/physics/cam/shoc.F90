@@ -2150,7 +2150,7 @@ subroutine shoc_tke(&
   real(rtype) :: qsatt,dqsat,tk_in, u_grad, v_grad
   real(rtype) :: tscale1,lambda,buoy_sgs_save,grid_dzw,grw1,grid_dz
   real(rtype) :: lambda_low,lambda_high,lambda_slope, brunt_low
-  real(rtype) :: brunt_int(shcol), z_over_L, Ck_min
+  real(rtype) :: brunt_int(shcol), z_over_L, Ck_s_min
   real(rtype) :: zL_crit_val, pbl_trans, Ckh_stab, Ckm_stab
   integer i,j,k,kc,kb,kt
 
@@ -2160,7 +2160,7 @@ subroutine shoc_tke(&
   brunt_low=0.02_rtype
 
   ! Critical value of dimensionless Monin-Obukhov length,
-  !   used to damp mixing coefficients based on surface stability
+  !   above which diffusivities are no longer damped
   zL_crit_val = 100.0_rtype 
   ! Transition depth [m] above PBL top to allow 
   !   stability diffusivities
@@ -2177,7 +2177,7 @@ subroutine shoc_tke(&
   Ckm_s=1.0_rtype 
   Ce=Ck**3/Cs**4
   ! minimum allowable value for diffusivities
-  Ck_min = 0.01_rtype
+  Ck_s_min = 0.1_rtype
 
   Ce1=Ce/0.7_rtype*0.19_rtype
   Ce2=Ce/0.7_rtype*0.51_rtype
@@ -2271,8 +2271,8 @@ subroutine shoc_tke(&
 	
 	! Compute diffusivity coefficient as function of dimensionless
 	!  Obukhov, given a critical value
-	Ckh_stab = max(Ck_min,min(Ckh_s,z_over_L/zL_crit_val))
-	Ckm_stab = max(Ck_min,min(Ckm_s,z_over_L/zL_crit_val))
+	Ckh_stab = max(Ck_s_min,min(Ckh_s,z_over_L/zL_crit_val))
+	Ckm_stab = max(Ck_s_min,min(Ckm_s,z_over_L/zL_crit_val))
 	! Compute the diffusivities 
         tkh(i,k)=Ckh_stab*(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
         tk(i,k)=Ckm_stab*(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
