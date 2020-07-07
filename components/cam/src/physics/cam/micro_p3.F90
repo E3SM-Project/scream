@@ -729,7 +729,7 @@ contains
            dv,mu,sc,mu_r(k),lamr(k),cdistr(k),cdist(k),qr_incld(k),qc_incld(k), &
            epsr,epsc)
 
-      call evaporate_sublimate_precip(qr_incld(k),qc_incld(k),nr_incld(k),qitot_incld(k), &
+      call evaporate_precip(qr_incld(k),qc_incld(k),nr_incld(k),qitot_incld(k), &
            lcldm(k),rcldm(k),qvs(k),ab,epsr,qv(k), &
            qrevp,nrevp)
 
@@ -3161,10 +3161,18 @@ qidep,qisub,nisub,qiberg)
 end subroutine ice_deposition_sublimation
 
 
-subroutine evaporate_sublimate_precip(qr_incld,qc_incld,nr_incld,qitot_incld,    &
+subroutine evaporate_precip(qr_incld,qc_incld,nr_incld,qitot_incld,    &
 lcldm,rcldm,qvs,ab,epsr,qv,    &
 qrevp,nrevp)
 
+   ! Evaporate qr in the portion of each cell which has rain but no cloud.
+   ! It is assumed that macrophysics handles condensation/evaporation of qc and
+   ! that there is no condensation of rain. Thus qccon, qrcon and qcevp have
+   ! been removed from the original P3-WRF. Further, sublimation is handled by
+   ! ice_deposition_sublimation since P3 only has a single ice category.
+
+   use scream_abortutils, only : endscreamrun
+  
    implicit none
 
    real(rtype), intent(in)  :: qr_incld
@@ -3182,39 +3190,59 @@ qrevp,nrevp)
 
    real(rtype) :: qclr, cld
 
-   ! It is assumed that macrophysics handles condensation/evaporation of qc and
-   ! that there is no condensation of rain. Thus qccon, qrcon and qcevp have
-   ! been removed from the original P3-WRF.
-
-   ! Determine temporary cloud fraction, set to zero if cloud water + ice is
-   ! very small.  This will ensure that evap/subl of precip occurs over entire
-   ! grid cell, since min cloud fraction is specified otherwise.
-   if (qc_incld + qitot_incld < 1.e-6_rtype) then
-      cld = 0._rtype
+   ! First, check that qv<=qvs. If not, unexpected supersaturation has occurred
+   ! and the assumptions of this parameterization will have been violated.
+   ! This check should eventually be commented out and/or moved to a debug-mode
+   ! feature.
+   if (qv>qvs) then
+       print*
+       print*,'In evaporate_precip, qv supersaturated. qv = ',qv,', qvs = ',qvs
+       print*
+       call endscreamrun("qv supersaturated in evaporate_precip")
+    endif
+   
+   ! Determine temporary cloud fraction which ramps to 0 as cloud water
+   ! approaches zero. This avoids problems due to lcldm having a positive
+   ! minimum value which would result in evaporation never occurring in a
+   ! small portion of the grid. Ramping rather than thresholding is used
+   ! to preserve convergence.
+   if (qc_incld < 1.e-6_rtype) then
+      cld = lcldm*qc_incld/1.e-6_rtype
    else
       cld = lcldm
    end if
 
    ! Only calculate if there is some rain fraction > cloud fraction
    qrevp = 0.0_rtype
-   if (rcldm > cld) then
-      ! calculate q for out-of-cloud region
-      qclr = (qv-cld*qvs)/(1._rtype-cld)
+   nrevp = 0.0_rtype
+   if (rcldm > cld .and. qr_incld.ge.qsmall) then
+      
+      ! calculate q for clear-sky region
+      qclr = (qv-cld*qvs)/(1._rtype-cld) !if cld==1, this line could crash
+      qclr = max(0._rtype, qclr) !as cld approaches 1, qclr goes negative.
+      qclr = min(qclr,qv) !ensured by qv<qvs check above, here in case 1/(1-cld)
+                          !causes instability
 
-      ! rain evaporation
-      if (qr_incld.ge.qsmall) then
-         qrevp = epsr * (qclr-qvs)/ab
-      end if
+      ! compute in-evaporating-region evap rate
+      ! Note qclr<=qv<=qvs so qclr-qvs is definitely negative.
+      ! The minus sign in front makes qrevp positive
+      qrevp = -epsr * (qclr-qvs)/ab 
 
-      ! only evap in out-of-cloud region
-      qrevp = -min(qrevp*(rcldm-cld),0._rtype)
+      ! turn into cell-average evap rate
+      qrevp = qrevp*(rcldm - cld)
+
+      ! and now turn into average over precipitating area
       qrevp = qrevp/rcldm
-   end if ! rcld>cld
-   if (qr_incld.gt.qsmall)  nrevp = qrevp*(nr_incld/qr_incld)
+
+      ! reduce drop number proportional to mass lost.
+      nrevp = nr_incld*(qrevp/qr_incld)
+      
+   end if ! rcld>cld and qr_incld>qsmall
+   
 
    return
 
-end subroutine evaporate_sublimate_precip
+end subroutine evaporate_precip
 
 subroutine get_time_space_phys_variables( &
 t,pres,rho,xxlv,xxls,qvs,qvi, &
