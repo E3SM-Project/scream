@@ -1306,10 +1306,10 @@ contains
           call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,100,col_location(i,:))
        endif
 
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,110,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,110,col_location(i,:))
+       !endif
        
        !if (debug_ON) then
        !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
@@ -1327,20 +1327,20 @@ contains
        !   call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,200,col_location(i,:))
        !endif
 
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,210,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,210,col_location(i,:))
+       !endif
        
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,220,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,220,col_location(i,:))
+       !endif
 
-       if (debug_ON) then
-          tmparr1(i,:) = 0._rtype!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_nans(qc_relvar(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,230,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = 0._rtype!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_nans(qc_relvar(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,230,col_location(i,:))
+       !endif
 
        !jump to end of i-loop if log_nucleationPossible=.false.  (i.e. skip everything)
        if (.not. (log_nucleationPossible .or. log_hydrometeorsPresent)) goto 333
@@ -1372,17 +1372,17 @@ contains
 !      endif
        !Check microphysical process rates
        dum_mic(:,:)=0._rtype
-       if (debug_ON) then
-          tmparr1(i,:) = 0._rtype!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          mici_loop: do mici = 2,29
-             dum_mic(i,:) = p3_tend_out(i,:,mici)
-             call check_nans(dum_mic(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,mici,col_location(i,:))
-          enddo mici_loop
-          mici_loop2: do mici = 31,48
-             dum_mic(i,:) = p3_tend_out(i,:,mici)
-             call check_nans(dum_mic(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,mici,col_location(i,:))
-          enddo mici_loop2
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = 0._rtype!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   mici_loop: do mici = 2,29
+       !      dum_mic(i,:) = p3_tend_out(i,:,mici)
+       !      call check_nans(dum_mic(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,mici,col_location(i,:))
+       !   enddo mici_loop
+       !   mici_loop2: do mici = 31,48
+       !      dum_mic(i,:) = p3_tend_out(i,:,mici)
+       !      call check_nans(dum_mic(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,mici,col_location(i,:))
+       !   enddo mici_loop2
+       !endif
 
        dum_mic(:,:)=0._rtype
        if (debug_ON) then
@@ -1392,29 +1392,29 @@ contains
           call check_nans(dum_mic(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,mici,col_location(i,:))
        endif
 
-       dum_mic(:,:)=0._rtype
-       if (debug_ON) then
-          tmparr1(i,:) = exner(i,:)*((vap_ice_exchange(i,:))*xxls(i,:)*inv_cp+ &
-               (liq_ice_exchange(i,:))*xlf(i,:)*inv_cp)*dt  
-          dum_mic(i,:) = 0._rtype
-          mici = 77
-          call check_nans(dum_mic(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,mici,col_location(i,:))
-       endif
+       !dum_mic(:,:)=0._rtype
+       !if (debug_ON) then
+       !   tmparr1(i,:) = exner(i,:)*((vap_ice_exchange(i,:))*xxls(i,:)*inv_cp+ &
+       !        (liq_ice_exchange(i,:))*xlf(i,:)*inv_cp)*dt  
+       !   dum_mic(i,:) = 0._rtype
+       !   mici = 77
+       !   call check_nans(dum_mic(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,mici,col_location(i,:))
+       !endif
        
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,300,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,300,col_location(i,:))
+       !endif
 
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,310,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,310,col_location(i,:))
+       !endif
        
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,320,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,320,col_location(i,:))
+       !endif
 
        if (debug_ON) then
           tmparr1(i,:) = 0._rtype!(pres(i,:)*1.e-5)**(rd*inv_cp)
@@ -1443,20 +1443,20 @@ contains
          dt,odt,dnu,log_predictNc, &
          qc(i,:),nc(i,:),nc_incld(i,:),mu_c(i,:),lamc(i,:),prt_liq(i),p3_tend_out(i,:,36),p3_tend_out(i,:,37))
 
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,500,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,500,col_location(i,:))
+       !endif
 
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,510,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,510,col_location(i,:))
+       !endif
        
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,520,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,520,col_location(i,:))
+       !endif
        !------------------------------------------------------------------------------------------!
        ! Rain sedimentation:  (adaptive substepping)
        p3_tend_out(i,:,38) = qr(i,:) ! Rain sedimentation tendency, initialize
@@ -1466,10 +1466,10 @@ contains
          qr_incld(i,:),rho(i,:),inv_rho(i,:),rhofacr(i,:),rcldm(i,:),inv_dzq(i,:),dt,odt, &
          qr(i,:),nr(i,:),nr_incld(i,:),mu_r(i,:),lamr(i,:),prt_liq(i),rflx(i,:),p3_tend_out(i,:,38),p3_tend_out(i,:,39))
 
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,600,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,600,col_location(i,:))
+       !endif
 
 
        !if (debug_ON) then
@@ -1491,10 +1491,10 @@ contains
          qitot(i,:),qitot_incld(i,:),nitot(i,:),qirim(i,:),qirim_incld(i,:),birim(i,:),birim_incld(i,:),nitot_incld(i,:), &
          prt_sol(i),p3_tend_out(i,:,40),p3_tend_out(i,:,41))
 
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,605,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,605,col_location(i,:))
+       !endif
        !.......................................
        ! homogeneous freezing of cloud and rain
 
@@ -1511,10 +1511,10 @@ contains
        call homogeneous_freezing(kts,kte,ktop,kbot,kdir,t(i,:),exner(i,:),xlf(i,:),  &
          qc(i,:),nc(i,:),qr(i,:),nr(i,:),qitot(i,:),nitot(i,:),qirim(i,:),birim(i,:),th(i,:))
 
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,700,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,700,col_location(i,:))
+       !endif
 
 
        !if (debug_ON) then
@@ -1527,10 +1527,10 @@ contains
        !   call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,720,col_location(i,:))
        !endif
        
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qitot(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,730,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qitot(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,730,col_location(i,:))
+       !endif
 
        !if (debug_ON) then
        !   tmparr1(i,:) = xxlv(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
@@ -1563,25 +1563,25 @@ contains
        
 
 
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,800,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,800,col_location(i,:))
+       !endif
 
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,810,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,810,col_location(i,:))
+       !endif
        
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,820,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qc(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,820,col_location(i,:))
+       !endif
        
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qitot(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,830,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qitot(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,830,col_location(i,:))
+       !endif
        
 
        
@@ -1602,10 +1602,10 @@ contains
           call check_values(qv(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,900,col_location(i,:))
        endif
 
-       if (debug_ON) then
-          tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
-          call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,910,col_location(i,:))
-       endif
+       !if (debug_ON) then
+       !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
+       !   call check_values(qr(i,:),tmparr1(i,:),kts,kte,it,debug_ABORT,910,col_location(i,:))
+       !endif
        
        !if (debug_ON) then
        !   tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
@@ -3898,7 +3898,7 @@ qrevp,nrevp)
 
       ! apply limiter to how log qclr can get
       if (qclr.lt.0.0_rtype) then
-         write(iulog,*) ' qclr less than 0'
+         !write(iulog,*) ' qclr less than 0'
          qclr=0.0_rtype
       endif
 
