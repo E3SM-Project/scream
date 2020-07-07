@@ -85,16 +85,15 @@ struct Functions
   KOKKOS_FUNCTION
   static Spack MurphyKoop_svp(const Spack& t, const bool ice);
 
-  // Checks whether temperature is within legitimate range or not
-  KOKKOS_FUNCTION
-  static void check_temp(const Spack& t, const std::string& fname);
-
   // Calls a function to obtain the saturation vapor pressure, and then computes
   // and returns the saturation mixing ratio, with respect to either liquid or ice,
   // depending on value of 'ice'
   KOKKOS_FUNCTION
   static Spack qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice, const int& func_idx = 1);
 
+  // Checks whether temperature is within legitimate range or not
+  KOKKOS_FUNCTION
+  static void check_temp(const Spack& t, const std::string& fname);
 };
 
 } // namespace physics

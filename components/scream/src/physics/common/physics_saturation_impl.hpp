@@ -18,17 +18,17 @@ void  Functions<S,D>
 {
   Smask is_neg_temp = (temp <= 0);
   if (is_neg_temp.any()){
-    std::cout << "Error: Called from:"<< fname <<"; Temperature has <= 0 values"<< "\n";
+    scream::error::runtime_abort("Error: Called from:"+ fname +"; Temperature has <= 0 values");
   }
   /*
   Smask is_nan_temp = isnan(temp);
   if (is_nan_temp.any()){
-    std::cout << "Error: Called from:"<< fname <<"; Temperature has NaN values"<< "\n";
+    scream::error::runtime_abort("Error: Called from:"+ fname +"; Temperature has NaN values");
   }
 
   Smask is_finite_temp = isfinite(temp);
   if (is_finite_temp.any()){
-    std::cout << "Error: Called from:"<< fname <<"; Temperature has infinite values"<< "\n";
+      scream::error::runtime_abort("Error: Called from:"+ fname +";  Temperature has infinite values");
     }*/
 }
 
@@ -39,11 +39,8 @@ Functions<S,D>::MurphyKoop_svp(const Spack& t, const bool ice)
 {
   //Formuas used below are from the following paper:
   //Murphy, D. M., and T. Koop (2005), Review of the vapour pressures of ice
-  //and supercooled water for atmospheric applications, Quart J. Roy. Meteor. 
+  //and supercooled water for atmospheric applications, Quart J. Roy. Meteor.
   //Soc., 131(608), 1539–1565,
-
-  const std::string fname = "MurphyKoop_svp";
-  check_temp(t, fname);
 
   Spack result;
   const auto tmelt = C::Tmelt;
@@ -64,7 +61,7 @@ Functions<S,D>::MurphyKoop_svp(const Spack& t, const bool ice)
     //Equation (10) of the paper
     // (good for 123 < T < 332 K)
     //creating array for storing coefficients of liq sat equation
-    const Scalar lq[] = {54.842763, 6763.22, 4.210, 0.000367, 0.0415, 218.8, 53.878, //coefficients 
+    const Scalar lq[] = {54.842763, 6763.22, 4.210, 0.000367, 0.0415, 218.8, 53.878, //coefficients
 			 1331.22, 9.44523, 0.014025 };
 
     Spack liq_result = exp(lq[0] - (lq[1] / t) - (lq[2] * log(t)) + (lq[3] * t) +
@@ -83,7 +80,6 @@ typename Functions<S,D>::Spack
 Functions<S,D>::polysvp1(const Spack& t, const bool ice)
 {
   // REPLACE GOFF-GRATCH WITH FASTER FORMULATION FROM FLATAU ET AL. 1992, TABLE 4 (RIGHT-HAND COLUMN)
-  //check_temp(t, "polysvp1");
   // ice
   static Scalar ai[] = {
     6.11147274,     0.503160820,     0.188439774e-1,
@@ -124,10 +120,12 @@ typename Functions<S,D>::Spack
 Functions<S,D>::qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice, const int& func_idx)
 {
   //func_idx is an optional argument to decide which scheme is to be called for saturation vapor pressure
-  //Current;y default is set to "MurphyKoop_svp"
-  //func_idx = 0 --> polysvp1 (Faltau et al. 1992)
+  //Currently default is set to "MurphyKoop_svp"
+  //func_idx = 0 --> polysvp1 (Flatau et al. 1992)
   //func_idx = 1 --> MurphyKoop_svp (Murphy, D. M., and T. Koop 2005)
-  //
+
+  //First check if the temprature is legitimate or not
+  check_temp(t_atm, "qv_sat");
 
   Spack e_pres; // saturation vapor pressure [Pa]
 
@@ -140,8 +138,7 @@ Functions<S,D>::qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice, c
       e_pres = MurphyKoop_svp(t_atm, ice);
       break;
     default:
-      exit(0);
-      //error::runtime_abort("Error: Invalid func_idx supplied to qv_sat:"<< func_idx <<";\n")
+      scream::error::runtime_abort("Error: Invalid func_idx supplied to qv_sat:"+ func_idx );
     }
 
   const auto ep_2 = C::ep_2;

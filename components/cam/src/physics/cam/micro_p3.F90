@@ -1598,9 +1598,6 @@ contains
          0.000367_rtype, 0.0415_rtype, 218.8_rtype, 53.878_rtype, 1331.22_rtype,       &
          9.44523_rtype, 0.014025_rtype /)
 
-    !Check if temprature is within legitimate range
-    call check_temp(t, subname)
-
     logt = bfb_log(t)
 
     if (i_type .eq. 1 .and. t .lt. zerodegc) then
@@ -1665,9 +1662,6 @@ contains
     real(rtype) dt
 
     !-------------------------------------------
-
-    !Check if temprature is within legitimate range
-    call check_temp(t, subname)
 
     if (i_type.eq.1 .and. t.lt.zerodegc) then
        ! ICE
@@ -2179,6 +2173,8 @@ contains
     real(rtype)            :: e_pres         !saturation vapor pressure [Pa]
 
     !------------------
+    !Check if temprature is within legitimate range
+    call check_temp(t_atm, "qv_sat")
 
     !e_pres = polysvp1(t_atm,i_wrt)
     e_pres = MurphyKoop_svp(t_atm,i_wrt)

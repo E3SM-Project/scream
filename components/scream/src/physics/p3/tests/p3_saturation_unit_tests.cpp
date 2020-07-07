@@ -28,7 +28,7 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
 
   static Scalar condNum(const Scalar& svp, const Scalar& temp, const bool isIce=false){
 
-    //compute condition number for saturation vapor pressure calc.
+    //computes condition number for saturation vapor pressure calc.
 
     //Set constant values
     //--------------------------------------
@@ -48,11 +48,14 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
     // so it can't replace curve fits like Flatau. But Clausius-Clapeyron is good enough for
     // getting a ballpark value, which is all we're doing here.
 
-    auto latent = LatVap; //for liquid
-    auto rho    = RhoLiq; // for liquid
+    //for liquid
+    auto latent = LatVap;
+    auto rho    = RhoLiq;
+
     if(isIce){
-      latent = LatVap+LatIce; //for ice
-      rho    = RhoIce;        // for ice
+      //for ice
+      latent += LatIce;
+      rho     = RhoIce;
     }
 
     return latent*svp/(RV*temp - svp/rho); //return condition number
@@ -61,12 +64,17 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
 
   KOKKOS_FUNCTION  static void saturation_tests(const Scalar& temperature, const Scalar& pressure,
 						//Flatau (polysvp1) correct values
-						const Scalar& correct_sat_ice_p, const Scalar& correct_sat_liq_p,
-						const Scalar& correct_mix_ice_rp, const Scalar& correct_mix_liq_rp,
+						const Scalar& correct_sat_ice_fp, const Scalar& correct_sat_liq_fp,
+						const Scalar& correct_mix_ice_fr, const Scalar& correct_mix_liq_fr,
 						//Muphy and Koop (MurphyKoop_svp) correct values
-						const Scalar& correct_sat_ice_mk, const Scalar& correct_sat_liq_mk,
-						const Scalar& correct_mix_ice_rmk, const Scalar& correct_mix_liq_rmk,
+						const Scalar& correct_sat_ice_mkp, const Scalar& correct_sat_liq_mkp,
+						const Scalar& correct_mix_ice_mkr, const Scalar& correct_mix_liq_mkr,
 						int& errors ){
+    //Nomenclature:
+    //subscript "_fp"  stands for "Flatau Pressure"
+    //subscript "_fr"  stands for "Flatau mixing Ratios"
+    //subscript "_mkp" stands for "Murphy Koop Pressure"
+    //subscript "_mkr" stands for "Murphy Koop mixing Ratios"
 
     //Allow usage of saturation functions
     using physics = scream::physics::Functions<Scalar, Device>;
@@ -76,19 +84,18 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
     const Spack temps(temperature);
     const Spack pres(pressure);
 
-    std::cout.precision(std::numeric_limits<double>::max_digits10);
-    //Get values from polysvp1 and qv_sat (calling MurphyKoop_svp) to test against "correct" values
+    //Get values from polysvp1 and qv_sat (calling polysvp1) to test against "correct" values
     //--------------------------------------
-    Spack sat_ice_p  = physics::polysvp1(temps, true);
-    Spack sat_liq_p  = physics::polysvp1(temps, false);
-    Spack mix_ice_rp = physics::qv_sat(temps, pres, true, 0);
-    Spack mix_liq_rp = physics::qv_sat(temps, pres, false,0);
+    Spack sat_ice_fp  = physics::polysvp1(temps, true);
+    Spack sat_liq_fp  = physics::polysvp1(temps, false);
+    Spack mix_ice_fr = physics::qv_sat(temps, pres, true, 0);//last argument "0" forces qv_sat to call "polysvp1"
+    Spack mix_liq_fr = physics::qv_sat(temps, pres, false,0);//last argument "0" forces qv_sat to call "polysvp1"
 
     //Get values from MurphyKoop_svp and qv_sat (calling MurphyKoop_svp) to test against "correct" values
-    Spack sat_ice_mk   = physics::MurphyKoop_svp(temps, true);
-    Spack sat_liq_mk   = physics::MurphyKoop_svp(temps, false);
-    Spack mix_ice_rmk  = physics::qv_sat(temps, pres, true, 1);
-    Spack mix_liq_rmk  = physics::qv_sat(temps, pres, false,1);
+    Spack sat_ice_mkp   = physics::MurphyKoop_svp(temps, true);
+    Spack sat_liq_mkp   = physics::MurphyKoop_svp(temps, false);
+    Spack mix_ice_mkr  = physics::qv_sat(temps, pres, true, 1);//last argument "1" forces qv_sat to call "MurphyKoop_svp"
+    Spack mix_liq_mkr  = physics::qv_sat(temps, pres, false,1);//last argument "1" forces qv_sat to call "MurphyKoop_svp"
 
     //Set error tolerances
     //--------------------------------------
@@ -103,40 +110,36 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
     //necessary b/c packs were created by copying a scalar up to pack size. Thus just evaluating
     // 1st entry below.
 
-    const Scalar Cond_ice_p=condNum(sat_ice_p[0],temps[0], true);
-    const Scalar Cond_liq_p=condNum(sat_liq_p[0],temps[0]);
+    const Scalar Cond_ice_fp=condNum(sat_ice_fp[0],temps[0], true); //"isIce=true"
+    const Scalar Cond_liq_fp=condNum(sat_liq_fp[0],temps[0]);
 
-    const Scalar Cond_ice_mk=condNum(sat_ice_mk[0],temps[0], true);
-    const Scalar Cond_liq_mk=condNum(sat_liq_mk[0],temps[0]);
+    const Scalar Cond_ice_mkp=condNum(sat_ice_mkp[0],temps[0], true);//"isIce=true"
+    const Scalar Cond_liq_mkp=condNum(sat_liq_mkp[0],temps[0]);
 
     // Test vapor pressure against Flatau's impl of Wexler:
     // ---------------------------------------------------------
     // Now check that computed vs expected values are small enough.
-    if ( std::abs(sat_ice_p[0] - correct_sat_ice_p ) > Cond_ice_p*tol ) {
-      printf("esi_p for T = %f abs diff is %e but max allowed is %e\n",temperature,std::abs(sat_ice_p[0] - correct_sat_ice_p ),tol*Cond_ice_p );
-      std::cout<<"sat_ice_p:"<<sat_ice_p[0]<<", "<<correct_sat_ice_p<<","<<temps[0]<<"\n";
+    if ( std::abs(sat_ice_fp[0] - correct_sat_ice_fp ) > Cond_ice_fp*tol ) {
+      printf("esi_fp for T = %f abs diff is %e but max allowed is %e\n",
+	     temperature,std::abs(sat_ice_fp[0] - correct_sat_ice_fp ),tol*Cond_ice_fp );
       errors++;}
-    if (std::abs(sat_liq_p[0] - correct_sat_liq_p) > Cond_liq_p*tol)  {
-      printf("esl_p  for T = %f abs diff is %e but max allowed is %e\n",temperature,std::abs(sat_liq_p[0] - correct_sat_liq_p ),tol*Cond_liq_p);
-      std::cout<<"sat_liq_p:"<<sat_liq_p[0]<<", "<<correct_sat_liq_p<<","<<temps[0]<<"\n";
+    if (std::abs(sat_liq_fp[0] - correct_sat_liq_fp) > Cond_liq_fp*tol)  {
+      printf("esl_fp  for T = %f abs diff is %e but max allowed is %e\n",
+	     temperature,std::abs(sat_liq_fp[0] - correct_sat_liq_fp ),tol*Cond_liq_fp);
       errors++;}
 
     // Test vapor pressure against Murphy and Koop:
     // ---------------------------------------------------------
     // Now check that computed vs expected values are small enough.
-    if ( std::abs(sat_ice_mk[0] - correct_sat_ice_mk ) > Cond_ice_mk*tol ) {
-      printf("esi_mk for T = %f abs diff is %e but max allowed is %e\n",temperature,std::abs(sat_ice_mk[0] - correct_sat_ice_mk ),tol*Cond_ice_mk );
+    if ( std::abs(sat_ice_mkp[0] - correct_sat_ice_mkp ) > Cond_ice_mkp*tol ) {
+      printf("esi_mkp for T = %f abs diff is %e but max allowed is %e\n",
+	     temperature,std::abs(sat_ice_mkp[0] - correct_sat_ice_mkp ),tol*Cond_ice_mkp );
       errors++;}
-    if (std::abs(sat_liq_mk[0] - correct_sat_liq_mk) > Cond_liq_mk*tol)  {
-      printf("esl_mk  for T = %f abs diff is %e but max allowed is %e\n",temperature,std::abs(sat_liq_mk[0] - correct_sat_liq_mk ),tol*Cond_liq_mk);
-      std::cout<<"sat_liq_mk:"<<sat_liq_mk[0]<<", "<<correct_sat_liq_mk<<","<<temps[0]<<"\n";
+    if (std::abs(sat_liq_mkp[0] - correct_sat_liq_mkp) > Cond_liq_mkp*tol)  {
+      printf("esl_mkp  for T = %f abs diff is %e but max allowed is %e\n",
+	     temperature,std::abs(sat_liq_mkp[0] - correct_sat_liq_mkp ),tol*Cond_liq_mkp);
+      std::cout<<"sat_liq_mkp:"<<sat_liq_mkp[0]<<", "<<correct_sat_liq_mkp<<","<<temps[0]<<"\n";
       errors++;}
-
-    //==========================================================
-    // Test Saturation Mixing Ratio
-    //==========================================================
-    // First, compute condition # Cond=x*f'(x)/f(x), with x=temperature, f(x)=mix_X_r[0], and
-    // f'(x) = L*mix_X_r[0]/(Rv*temperature**2.) from Clausius-Clapeyron. Nice cancelation leaves:
 
     //Set constant values
     //--------------------------------------
@@ -144,26 +147,31 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
     const Scalar LatVap = C::LatVap;
     const Scalar LatIce = C::LatIce;
 
+    //==========================================================
+    // Test Saturation Mixing Ratio
+    //==========================================================
+    // First, compute condition # Cond=x*f'(x)/f(x), with x=temperature, f(x)=mix_X_r[0], and
+    // f'(x) = L*mix_X_r[0]/(Rv*temperature**2.) from Clausius-Clapeyron. Nice cancelation leaves:
+
     const Scalar Cond_ice_r=(LatVap+LatIce)/(RV*temps[0]);
     const Scalar Cond_liq_r=LatVap/(RV*temps[0]);
 
     //Test mixing-ratios against Wexler approx:
     // -------------------
     // Now check that computed vs expected values are small enough (Flatau).
-    if (std::abs(mix_ice_rp[0] -  correct_mix_ice_rp) > Cond_ice_r*tol ) {
-      printf("qsi_p: abs(calc-expected)=%e %e\n",std::abs(mix_ice_rp[0] -  correct_mix_ice_rp),tol*Cond_ice_r);
+    if (std::abs(mix_ice_fr[0] -  correct_mix_ice_fr) > Cond_ice_r*tol ) {
+      printf("qsi_fp: abs(calc-expected)=%e %e\n",std::abs(mix_ice_fr[0] -  correct_mix_ice_fr),tol*Cond_ice_r);
       errors++;}
-    if (std::abs(mix_liq_rp[0] -  correct_mix_liq_rp) > Cond_liq_r*tol ) {
-      printf("qsl_p: abs(calc-expected)=%e %e\n",std::abs(mix_liq_rp[0] -  correct_mix_liq_rp),tol*Cond_liq_r);
-      std::cout<<"qsl_p:"<<mix_liq_rp[0]<<", "<<correct_mix_liq_rp<<","<<temps[0]<<"\n";
+    if (std::abs(mix_liq_fr[0] -  correct_mix_liq_fr) > Cond_liq_r*tol ) {
+      printf("qsl_fp: abs(calc-expected)=%e %e\n",std::abs(mix_liq_fr[0] -  correct_mix_liq_fr),tol*Cond_liq_r);
       errors++;}
 
     // Now check that computed vs expected values are small enough (Murphy and Koop).
-    if (std::abs(mix_ice_rmk[0] -  correct_mix_ice_rmk) > Cond_ice_r*tol ) {
-      printf("qsi_mk: abs(calc-expected)=%e %e\n",std::abs(mix_ice_rmk[0] -  correct_mix_ice_rmk),tol*Cond_ice_r);
+    if (std::abs(mix_ice_mkr[0] -  correct_mix_ice_mkr) > Cond_ice_r*tol ) {
+      printf("qsi_mkp: abs(calc-expected)=%e %e\n",std::abs(mix_ice_mkr[0] -  correct_mix_ice_mkr),tol*Cond_ice_r);
       errors++;}
-    if (std::abs(mix_liq_rmk[0] -  correct_mix_liq_rmk) > Cond_liq_r*tol ) {
-      printf("qsl_mk: abs(calc-expected)=%e %e\n",std::abs(mix_liq_rmk[0] -  correct_mix_liq_rmk),tol*Cond_liq_r);
+    if (std::abs(mix_liq_mkr[0] -  correct_mix_liq_mkr) > Cond_liq_r*tol ) {
+      printf("qsl_mkp: abs(calc-expected)=%e %e\n",std::abs(mix_liq_mkr[0] -  correct_mix_liq_mkr),tol*Cond_liq_r);
       errors++;}
 
   }
@@ -194,8 +202,10 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
       // directly from the RHS of table 4 of Flatau et al 1992.
       // Note that ice values are identical to liquid values b/c C++ uses liq val for T>=0 C.
 
+      // "MK" stands for Murphy and Koop
       saturation_tests(tmelt, 1e5, 611.23992100000009, 611.23992100000009,
 		       0.0038251131382843278, 0.0038251131382843278,
+		       // MK "correct values"
 		       611.2126978267946, 611.2126978267946,
 		       0.0038249417291628678, 0.0038249417291628678, errors);
 
@@ -203,46 +213,64 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
       //---------------------------------------
       saturation_tests(243.15, 1e5, 38.024844602056795, 51.032583257624964,
 		       0.00023659331311441935, 0.00031756972127516819,
+		       // MK "correct values"
 		       38.01217277745647, 50.93561537896607,
 		       0.00023651443812988484, 0.0003169659941390894, errors);
 
-      //Warm Case: Test values @ 303.15 @ 1e5 Pa
+      //Warm Case: Test values @ 303.15K @ 1e5 Pa
       //---------------------------------------
       saturation_tests(303.15, 1e5, 4245.1933273786717, 4245.1933273786717,
 		       0.027574442204332306, 0.027574442204332306,
+		       // MK "correct values"
 		       4246.814076877233, 4246.814076877233,
 		       0.027585436614272162, 0.027585436614272162, errors);
 
       //Following values are picked from Murphy and Koop (2005)
       //Table C1 titled: "VALUES RECOMMENDED FOR CHECKING COMPUTER CODES"
+      //Saturation vapor pressure (SVP) values in the table were upto only 5 significant digits.
+      //Python code at https://github.com/E3SM-Project/scream-docs.git analysis-scripts/test_qv_sat.py
+      //was extended to print Murphy and Koop SVP. "correct values" below are from that python code
+      //for both Flatau and "Murphy and Koop". Python code's computed "correct values" are exactly
+      //same as compared to the values in MK table upto 5 significant digits.
 
+      //Test values @ 150K @ 1e5 Pa
       saturation_tests(150, 1e5, 0.0565113360640801, 0.17827185346988017,
 		       3.514840868181163e-07, 1.1088004687434155e-06,
+		       // MK "correct values"
 		       6.1061006509816675e-06, 1.5621037177920032e-05,
 		       3.79781500154674e-11, 9.715825652191167e-11, errors);
 
+      //Test values @ 180K @ 1e5 Pa
       saturation_tests(180, 1e5, 0.0565113360640801, 0.17827185346988017,
 		       3.514840868181163e-07, 1.1088004687434155e-06,
+		       // MK "correct va5Blues"
 		       0.005397500125274297, 0.01123923029036248,
 		       3.3570864981545485e-08, 6.990471437859482e-08, errors);
 
+      //Test values @ 210K  @ 1e5 Pa
       saturation_tests(210, 1e5, 0.7021857060894199, 1.2688182238880685,
 		       4.3674192198021676e-06, 7.891776277281936e-06,
+		       // MK "correct values"
 		       0.7020234713180218, 1.2335424085746476,
 		       4.366410153074117e-06, 7.672365591576349e-06, errors);
 
+      //Test values @ 240K @ 1e5 Pa
       saturation_tests(240, 1e5, 27.280908658710246, 37.77676490183603,
 		       0.00016972553017335565, 0.0002350491600776575,
+		       // MK "correct values"
 		       27.272365420780556, 37.66700070557609,
 		       0.00016967236474679822, 0.0002343659437158037, errors);
 
+      //Test values @ 273.16K @ 1e5 Pa
       saturation_tests(273.16, 1e5, 611.6840516537769, 611.6840516537769,
 		       0.003827909594290528, 0.003827909594290528,
+		       // MK "correct values"
 		       611.6570436443282, 611.6570436443282,
 		       0.0038277395384149105, 0.0038277395384149105, errors);
-
+      //Test values @ 300K @ 1e5 Pa
       saturation_tests(300, 1e5, 3535.4066341569387, 3535.4066341569387,
 		       0.022795088436007804, 0.022795088436007804,
+		       // MK "correct values"
 		       3536.7644130514645, 3536.7644130514645,
 		       0.022804163906259393, 0.022804163906259393, errors);
 
@@ -250,6 +278,7 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
       //---------------------------------------
       saturation_tests(243.15, 5e4, 38.024844602056795, 51.032583257624964,
 		       0.00047336669164733106, 0.00063546390177500586,
+		       // MK "correct values"
 		       38.01217277745647, 50.93561537896607,
 		       0.00047320882161578, 0.0006342552147122389, errors);
     }, nerr);
