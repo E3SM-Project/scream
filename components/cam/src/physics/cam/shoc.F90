@@ -2690,7 +2690,7 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
   ! Return to isotropic timescale [s]
   real(rtype), intent(in) :: isotropy(shcol,nlev)
   ! turbulent kinetic energy [m2/s2]
-  real(rtype), intent(inout) :: tke(shcol,nlev)  
+  real(rtype), intent(in) :: tke(shcol,nlev)  
 
   !intent-inouts
   ! eddy coefficient for heat [m2/s]
@@ -2730,7 +2730,7 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
         z_over_L = zt_grid_1d(i)/obklen(i)
 
         if (z_over_L .gt. 0._rtype .and. (zt_grid(i,k) .lt. pblh(i)+pbl_trans)) then
-           ! If surface layer is moderately to very stable, based on near surface
+           ! If surface layer is stable, based on near surface
            !  dimensionless Monin-Obukov use modified coefficients of
            !  tkh and tk that are primarily based on shear production
            !  and SHOC length scale, to promote mixing within the PBL
@@ -2739,7 +2739,9 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
 	   ! Compute diffusivity coefficient as function of dimensionless
            !  Obukhov, given a critical value
            Ckh_s = max(Ck_s_min,min(Ckh_s_def,z_over_L/zL_crit_val))
-           Ckm_s = max(Ck_s_min,min(Ckm_s_def,z_over_L/zL_crit_val))	   
+           Ckm_s = max(Ck_s_min,min(Ckm_s_def,z_over_L/zL_crit_val))	
+	   
+	   ! Compute stable PBL diffusivities   
            tkh(i,k) = Ckh_s*(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
            tk(i,k)  = Ckm_s*(shoc_mix(i,k)**2)*sqrt(sterm_zt(i,k))
         else
