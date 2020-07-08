@@ -1594,7 +1594,7 @@ contains
     real(rtype) dt
 
     !-------------------------------------------
-
+    call endscreamrun('poly called')
     if (i_type.eq.1 .and. t.lt.zerodegc) then
        ! ICE
 
