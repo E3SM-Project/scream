@@ -3213,15 +3213,24 @@ qrevp,nrevp)
    end if
 
    ! Only calculate if there is some rain fraction > cloud fraction
+   ! TODO: discontinuous behavior if qr_incld.ge.qsmall may cause
+   !       convergence issues. Treatment should be improved.
    qrevp = 0.0_rtype
    nrevp = 0.0_rtype
    if (rcldm > cld .and. qr_incld.ge.qsmall) then
       
       ! calculate q for clear-sky region
-      qclr = (qv-cld*qvs)/(1._rtype-cld) !if cld==1, this line could crash
+      ! TODO: as cld -> 1, qclr could blow up. Fixing this requires knowing
+      !       what qclr should do in this limit, which requires L'Hospital's
+      !       rule and an understanding of how qv approaches qvs as a function
+      !       of cld. This relationship will vary depending on your cloud macrophysics
+      !       scheme and any microphysical processes applied before now. Practically,
+      !       we haven't seen the following line to crash the code, so leaving as-is
+      !       with limiters to prevent evap from getting too out of control. A real fix
+      !       may require a completely different approach to rain evaporation.
+      qclr = (qv-cld*qvs)/(1._rtype-cld)
       qclr = max(0._rtype, qclr) !as cld approaches 1, qclr goes negative.
-      qclr = min(qclr,qv) !ensured by qv<qvs check above, here in case 1/(1-cld)
-                          !causes instability
+      qclr = min(qclr,qv) !qv<qvs check above should prevent this, but just in case...
 
       ! compute in-evaporating-region evap rate
       ! Note qclr<=qv<=qvs so qclr-qvs is definitely negative.
@@ -3239,7 +3248,6 @@ qrevp,nrevp)
       
    end if ! rcld>cld and qr_incld>qsmall
    
-
    return
 
 end subroutine evaporate_precip
