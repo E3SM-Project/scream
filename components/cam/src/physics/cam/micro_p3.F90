@@ -1519,7 +1519,6 @@ contains
     integer, intent(in)     :: i_type
 
     !local vars
-    character(len=14), parameter :: subname = 'MurphyKoop_svp'
     character(len=1000) :: err_msg
     real(rtype)         :: logt
 
@@ -1547,8 +1546,8 @@ contains
             (lq(9) * logt) + lq(10) * t)));
     else
 
-       write(err_msg,*)'** MurphyKoop_svp i_type must be 0 or 1 but is: ', &
-            i_type,'in file:',__FILE__,' at line:',__LINE__
+       write(err_msg,*)'Error: Either MurphyKoop_svp i_type is not 0 or 1 or t=NaN. itype= ', &
+            i_type,' and temperature t=',t,' in file: ',__FILE__,' at line:',__LINE__
        call endscreamrun(err_msg)
     endif
 
@@ -1575,7 +1574,6 @@ contains
     ! REPLACE GOFF-GRATCH WITH FASTER FORMULATION FROM FLATAU ET AL. 1992, TABLE 4 (RIGHT-HAND COLUMN)
 
     !local variables
-    character(len=8), parameter :: subname = 'polysvp1'
     character(len=1000) :: err_msg
 
     ! ice
@@ -1630,8 +1628,8 @@ contains
     !PMC added error checking
     else
 
-       write(err_msg,*)'** polysvp1 i_type must be 0 or 1 but is: ', &
-            i_type,' temperature is:',t,' in file: ',__FILE__,' at line:',__LINE__
+       write(err_msg,*)'Error: Either polysvp1 i_type is not 0 or 1 or t=NaN. itype= ', &
+            i_type,' and temperature t=',t,' in file: ',__FILE__,' at line:',__LINE__
 
        call endscreamrun(err_msg)
     endif

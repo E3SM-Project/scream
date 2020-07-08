@@ -26,7 +26,7 @@ template <typename D>
 struct UnitWrap::UnitTest<D>::TestP3Saturation
 {
 
-  static Scalar condNum(const Scalar& svp, const Scalar& temp, const bool isIce=false){
+  KOKKOS_FUNCTION static Scalar condNum(const Scalar& svp, const Scalar& temp, const bool isIce=false){
 
     //computes condition number for saturation vapor pressure calc.
 
@@ -84,18 +84,20 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
     const Spack temps(temperature);
     const Spack pres(pressure);
 
-    //Get values from polysvp1 and qv_sat (calling polysvp1) to test against "correct" values
+    //Get values from polysvp1 and qv_sat (qv_sat calls polysvp1 here) to test against "correct" values
     //--------------------------------------
     Spack sat_ice_fp  = physics::polysvp1(temps, true);
     Spack sat_liq_fp  = physics::polysvp1(temps, false);
-    Spack mix_ice_fr = physics::qv_sat(temps, pres, true, 0);//last argument "0" forces qv_sat to call "polysvp1"
-    Spack mix_liq_fr = physics::qv_sat(temps, pres, false,0);//last argument "0" forces qv_sat to call "polysvp1"
+    //last argument "0" of qv_sat function below forces qv_sat to call "polysvp1"
+    Spack mix_ice_fr = physics::qv_sat(temps, pres, true, 0);
+    Spack mix_liq_fr = physics::qv_sat(temps, pres, false,0);
 
-    //Get values from MurphyKoop_svp and qv_sat (calling MurphyKoop_svp) to test against "correct" values
+    //Get values from MurphyKoop_svp and qv_sat (qv_sat calls MurphyKoop_svp here) to test against "correct" values
     Spack sat_ice_mkp   = physics::MurphyKoop_svp(temps, true);
     Spack sat_liq_mkp   = physics::MurphyKoop_svp(temps, false);
-    Spack mix_ice_mkr  = physics::qv_sat(temps, pres, true, 1);//last argument "1" forces qv_sat to call "MurphyKoop_svp"
-    Spack mix_liq_mkr  = physics::qv_sat(temps, pres, false,1);//last argument "1" forces qv_sat to call "MurphyKoop_svp"
+    //last argument "1" of qv_sat function below forces qv_sat to call "MurphyKoop_svp"
+    Spack mix_ice_mkr  = physics::qv_sat(temps, pres, true, 1);
+    Spack mix_liq_mkr  = physics::qv_sat(temps, pres, false,1);
 
     //Set error tolerances
     //--------------------------------------
@@ -138,7 +140,6 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
     if (std::abs(sat_liq_mkp[0] - correct_sat_liq_mkp) > Cond_liq_mkp*tol)  {
       printf("esl_mkp  for T = %f abs diff is %e but max allowed is %e\n",
 	     temperature,std::abs(sat_liq_mkp[0] - correct_sat_liq_mkp ),tol*Cond_liq_mkp);
-      std::cout<<"sat_liq_mkp:"<<sat_liq_mkp[0]<<", "<<correct_sat_liq_mkp<<","<<temps[0]<<"\n";
       errors++;}
 
     //Set constant values
@@ -243,7 +244,7 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
       //Test values @ 180K @ 1e5 Pa
       saturation_tests(180, 1e5, 0.0565113360640801, 0.17827185346988017,
 		       3.514840868181163e-07, 1.1088004687434155e-06,
-		       // MK "correct va5Blues"
+		       // MK "correct values"
 		       0.005397500125274297, 0.01123923029036248,
 		       3.3570864981545485e-08, 6.990471437859482e-08, errors);
 

@@ -37,7 +37,7 @@ KOKKOS_FUNCTION
 typename Functions<S,D>::Spack
 Functions<S,D>::MurphyKoop_svp(const Spack& t, const bool ice)
 {
-  //Formuas used below are from the following paper:
+  //Formulas used below are from the following paper:
   //Murphy, D. M., and T. Koop (2005), Review of the vapour pressures of ice
   //and supercooled water for atmospheric applications, Quart J. Roy. Meteor.
   //Soc., 131(608), 1539–1565,
@@ -51,7 +51,7 @@ Functions<S,D>::MurphyKoop_svp(const Spack& t, const bool ice)
     //Equation (7) of the paper
     // (good down to 110 K)
     //creating array for storing coefficients of ice sat equation
-    const Scalar ic[]= {9.550426, 5723.265, 3.53068, 0.00728332}; // coefficients
+    const Scalar ic[]= {9.550426, 5723.265, 3.53068, 0.00728332};
     Spack ice_result = exp(ic[0] - (ic[1] / t) + (ic[2] * log(t)) - (ic[3] * t));
 
     result.set(ice_mask, ice_result);
@@ -61,7 +61,7 @@ Functions<S,D>::MurphyKoop_svp(const Spack& t, const bool ice)
     //Equation (10) of the paper
     // (good for 123 < T < 332 K)
     //creating array for storing coefficients of liq sat equation
-    const Scalar lq[] = {54.842763, 6763.22, 4.210, 0.000367, 0.0415, 218.8, 53.878, //coefficients
+    const Scalar lq[] = {54.842763, 6763.22, 4.210, 0.000367, 0.0415, 218.8, 53.878,
 			 1331.22, 9.44523, 0.014025 };
 
     Spack liq_result = exp(lq[0] - (lq[1] / t) - (lq[2] * log(t)) + (lq[3] * t) +
@@ -124,7 +124,7 @@ Functions<S,D>::qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice, c
   //func_idx = 0 --> polysvp1 (Flatau et al. 1992)
   //func_idx = 1 --> MurphyKoop_svp (Murphy, D. M., and T. Koop 2005)
 
-  //First check if the temprature is legitimate or not
+  //First check if the temperature is legitimate or not
   check_temp(t_atm, "qv_sat");
 
   Spack e_pres; // saturation vapor pressure [Pa]
