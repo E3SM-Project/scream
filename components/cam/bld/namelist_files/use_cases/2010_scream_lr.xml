@@ -75,11 +75,10 @@
 <rrtmg_temp_fix          >.true.</rrtmg_temp_fix>
 <nucleate_ice_subgrid    >1.2D0</nucleate_ice_subgrid>
 <cld_sed                 >1.0D0</cld_sed>
-<n_so4_monolayers_pcage  > 8.0D0     </n_so4_monolayers_pcage>
 <relvar_fix              > .true.    </relvar_fix>
 
 <!-- Parameters specific to deep convection (default off for HR compset) -->
-<deep_scheme             > zm     </deep_scheme>
+<deep_scheme             > 'ZM'   </deep_scheme>
 <zmconv_c0_lnd           > 0.007  </zmconv_c0_lnd>
 <zmconv_c0_ocn           > 0.007  </zmconv_c0_ocn>
 <zmconv_dmpdz            >-0.7e-3 </zmconv_dmpdz>
@@ -186,7 +185,7 @@
 
 <!-- Settings related to the SCREAM NH dycore -->
 <theta_hydrostatic_mode>.true.</theta_hydrostatic_mode>
-<tstep_type>10</tstep_type>
+<tstep_type>5</tstep_type>
 
 <!-- Dynamics/physics coupling; should be the default, but set to make sure -->
 <se_ftype>2</se_ftype>
