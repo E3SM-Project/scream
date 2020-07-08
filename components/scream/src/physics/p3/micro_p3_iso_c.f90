@@ -658,14 +658,14 @@ subroutine  update_prognostic_ice_c(qcheti,qccol,qcshd,nccol,ncheti,ncshdc,qrcol
 
   subroutine evaporate_sublimate_precip_c(qr_incld, qc_incld, nr_incld, qitot_incld, lcldm, &
        rcldm, qvs, ab, epsr, qv, qrevp, nrevp) bind(C)
-    use micro_p3, only: evaporate_sublimate_precip
+    use micro_p3, only: evaporate_precip
 
     ! arguments
     real(kind=c_real), value, intent(in) :: qr_incld, qc_incld, nr_incld, qitot_incld, lcldm, &
         rcldm, qvs, ab, epsr, qv
     real(kind=c_real), intent(out) :: qrevp, nrevp
 
-    call evaporate_sublimate_precip(qr_incld, qc_incld, nr_incld, qitot_incld, lcldm, &
+    call evaporate_precip(qr_incld, qc_incld, nr_incld, qitot_incld, lcldm, &
        rcldm, qvs, ab, epsr, qv, qrevp, nrevp)
   end subroutine evaporate_sublimate_precip_c
 
