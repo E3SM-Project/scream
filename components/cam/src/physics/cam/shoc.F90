@@ -2447,7 +2447,7 @@ subroutine shoc_tke(&
 
   !Compute eddy diffusivity for heat and momentum
   call eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
-       shoc_mix, sterm_zt, isotropy, tkh, tk, tke)
+       shoc_mix, sterm_zt, isotropy, tke, tkh, tk)
 
   return
 
@@ -2595,7 +2595,8 @@ subroutine adv_sgs_tke(nlev, shcol, dtime, shoc_mix, wthv_sec, &
         a_diss(i,k)=Cee/shoc_mix(i,k)*tke(i,k)**1.5
 
         ! March equation forward one timestep
-        tke(i,k)=max(0._rtype,tke(i,k)+dtime*(max(0._rtype,a_prod_sh+a_prod_bu)-a_diss(i,k)))
+        tke(i,k)=max(mintke,tke(i,k)+dtime* &
+	  (max(0._rtype,a_prod_sh+a_prod_bu)-a_diss(i,k)))
 
         tke(i,k)=min(tke(i,k),maxtke)
      enddo
@@ -2665,7 +2666,7 @@ subroutine isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
 end subroutine isotropic_ts
 
 subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
-     shoc_mix, sterm_zt, isotropy, tkh, tk, tke)
+     shoc_mix, sterm_zt, isotropy, tke, tkh, tk)
 
   !------------------------------------------------------------
   ! Compute eddy diffusivity for heat and momentum
@@ -2688,14 +2689,14 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
   real(rtype), intent(in) :: sterm_zt(shcol,nlev)
   ! Return to isotropic timescale [s]
   real(rtype), intent(in) :: isotropy(shcol,nlev)
+  ! turbulent kinetic energy [m2/s2]
+  real(rtype), intent(inout) :: tke(shcol,nlev)  
 
   !intent-inouts
   ! eddy coefficient for heat [m2/s]
   real(rtype), intent(inout) :: tkh(shcol,nlev)
   ! eddy coefficient for momentum [m2/s]
   real(rtype), intent(inout) :: tk(shcol,nlev)
-  ! turbulent kinetic energy [m2/s2]
-  real(rtype), intent(inout) :: tke(shcol,nlev)
 
   !local vars
   integer     :: i, k
@@ -2747,7 +2748,6 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
            tk(i,k)  = Ckm*isotropy(i,k)*tke(i,k)
         endif
 
-        tke(i,k) = max(mintke,tke(i,k))
      enddo
   enddo
 
