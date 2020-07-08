@@ -1,8 +1,8 @@
-#include "share/scream_session.hpp"
-#include "share/util/file_utils.hpp"
-#include "share/util/scream_utils.hpp"
-#include "share/scream_types.hpp"
-#include "share/scream_assert.hpp"
+#include "ekat/scream_session.hpp"
+#include "ekat/util/file_utils.hpp"
+#include "ekat/util/scream_utils.hpp"
+#include "ekat/scream_types.hpp"
+#include "ekat/scream_assert.hpp"
 
 #include "physics/p3/p3_f90.hpp"
 #include "physics/p3/p3_functions_f90.hpp"
@@ -71,9 +71,9 @@ struct Baseline {
       // Run reference p3 on this set of parameters.
       const auto d = ic::Factory::create(ps.ic, ic_ncol);
       set_params(ps, *d);
-      p3_init(use_fortran);
+      p3_init();
       for (int it=0; it<ps.it; it++) {
-        p3_main(*d);
+        p3_main(*d, use_fortran);
         write(fid, d);
       }
       // Save the fields to the baseline file.
@@ -96,11 +96,11 @@ struct Baseline {
       {
         const auto d = ic::Factory::create(ps.ic, ic_ncol);
         set_params(ps, *d);
-        p3_init(use_fortran);
+        p3_init();
         for (int it=0; it<ps.it; it++) {
           std::cout << "--- checking case # " << case_num << ", it = " << it+1 << "/" << ps.it << " ---\n" << std::flush;
           read(fid, d_ref);
-          p3_main(*d);
+          p3_main(*d, use_fortran);
           ne = compare("ref", tol, d_ref, d);
           if (ne) std::cout << "Ref impl failed.\n";
           nerr += ne;

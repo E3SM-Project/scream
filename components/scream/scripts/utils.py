@@ -377,7 +377,7 @@ def merge_git_ref(git_ref, repo=None, verbose=False):
     update_submodules(repo=repo)
     expect(is_repo_clean(repo=repo), "Something went wrong while performing the merge of '{}'".format(git_ref))
     if verbose:
-        print ("merged {} successfully merged.".format(git_ref))
+        print ("git ref {} successfully merged.".format(git_ref))
         print_last_commit()
 
 ###############################################################################
@@ -438,3 +438,12 @@ def cleanup_repo(orig_branch, orig_commit, repo=None):
     # Is this also a pointless check?
     if curr_commit != orig_commit:
         run_cmd_no_fail("git reset --hard {}".format(orig_commit), from_dir=repo)
+
+###############################################################################
+def get_cpu_core_count ():
+###############################################################################
+    """
+    Get the number of CPU processors available on the current node
+    """
+
+    return int(run_cmd_no_fail("cat /proc/cpuinfo | grep processor | wc -l"))
