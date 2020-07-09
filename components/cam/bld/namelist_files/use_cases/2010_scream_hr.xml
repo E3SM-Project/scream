@@ -41,7 +41,7 @@
 
 <!-- For comprehensive history -->
 <history_amwg>.true.</history_amwg>
-<history_aerosol>.true.</history_aerosol>
+<history_aerosol>.false.</history_aerosol>
 <history_aero_optics>.true.</history_aero_optics>
 
 <!-- File for BC dep in snow feature -->
