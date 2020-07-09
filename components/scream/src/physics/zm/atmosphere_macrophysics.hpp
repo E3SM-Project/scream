@@ -1,5 +1,5 @@
-#ifndef SCREAM_SHOC_MACROPHYSICS_HPP
-#define SCREAM_SHOC_MACROPHYSICS_HPP
+#ifndef SCREAM_ZM_MACROPHYSICS_HPP
+#define SCREAM_ZM_MACROPHYSICS_HPP
 
 #include "share/atm_process/atmosphere_process.hpp"
 #include "ekat/scream_parameter_list.hpp"
@@ -15,10 +15,10 @@ namespace scream
  * The AD should store exactly ONE instance of this class stored
  * in its list of subcomponents (the AD should make sure of this).
  *
- *  Note: for now, scream is only going to accommodate SHOC as macrophysics
+ *  Note: for now, scream is only going to accommodate ZM as macrophysics
 */
 
-class ZMMacrophysics : public scream::AtmosphereProcess
+class ZMMacrophysics : public AtmosphereProcess
 {
 public:
   using field_type       = Field<      Real,device_type>;
@@ -73,8 +73,8 @@ protected:
   util::TimeStamp   m_current_ts;
   Comm              m_zm_comm;
 
-}; // class SHOCMacrophysics
+}; // class ZMMacrophysics
 
 } // namespace scream
 
-#endif // SCREAM_SHOC_MACROPHYSICS_HPP
+#endif // SCREAM_ZM_MACROPHYSICS_HPP
