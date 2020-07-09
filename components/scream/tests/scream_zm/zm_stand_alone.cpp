@@ -28,9 +28,10 @@ protected:
 };
 
 TEST_CASE("zm-standalone", "") {
+  
   using namespace scream;
   using namespace scream::control;
-  constexpr int num_iters = 10;
+  constexpr int num_iters = 20;
   constexpr int num_cols  = 32;
 
   // Load ad parameter list
@@ -66,7 +67,6 @@ TEST_CASE("zm-standalone", "") {
   ad.initialize(atm_comm,ad_params,time);
   for (int i=0; i<num_iters; ++i) {
     ad.run(300.0);
-    std :: cout << "this one's in the test cases\n";     
 }
 
   // Finalize 
