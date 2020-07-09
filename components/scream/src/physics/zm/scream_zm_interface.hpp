@@ -1,5 +1,5 @@
-#ifndef SCREAM_SHOC_INTERFACE_HPP
-#define SCREAM_SHOC_INTERFACE_HPP
+#ifndef SCREAM_ZM_INTERFACE_HPP
+#define SCREAM_ZM_INTERFACE_HPP
 
 #include "ekat/scream_assert.hpp"
 #include "ekat/util/scream_utils.hpp"

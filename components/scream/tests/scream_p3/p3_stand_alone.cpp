@@ -31,7 +31,6 @@ TEST_CASE("p3-stand-alone", "") {
 
   constexpr int num_iters = 10;
   constexpr int num_cols  = 32;
-
   // Load ad parameter list
   std::string fname = "input.yaml";
   ParameterList ad_params("Atmosphere Driver");

@@ -2,7 +2,7 @@
 #include "physics/p3/scream_p3_interface.hpp"
 #include "physics/p3/atmosphere_microphysics.hpp"
 #include "physics/p3/p3_inputs_initializer.hpp"
-
+#include <iostream>
 #include <array>
 
 namespace scream
@@ -73,6 +73,7 @@ void P3Microphysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
 // =========================================================================================
 void P3Microphysics::initialize (const util::TimeStamp& t0)
 {
+  std :: cout << "please for the love of god work\n"; 
   m_current_ts = t0;
 
   // Call f90 routine

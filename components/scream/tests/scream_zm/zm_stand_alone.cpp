@@ -6,9 +6,10 @@
 #include "share/grid/se_grid.hpp"
 #include "control/atmosphere_driver.hpp"
 
-#include "physics/zm/atmosphere_microphysics.hpp"
+#include "physics/zm/atmosphere_macrophysics.hpp"
 #include "physics/zm/scream_zm_interface.hpp"
 
+#include <iostream>
 namespace scream {
 
 // === A dummy physics grids for this test === //
@@ -29,7 +30,6 @@ protected:
 TEST_CASE("zm-standalone", "") {
   using namespace scream;
   using namespace scream::control;
-
   constexpr int num_iters = 10;
   constexpr int num_cols  = 32;
 
@@ -66,7 +66,8 @@ TEST_CASE("zm-standalone", "") {
   ad.initialize(atm_comm,ad_params,time);
   for (int i=0; i<num_iters; ++i) {
     ad.run(300.0);
-  }
+    std :: cout << "this one's in the test cases\n";     
+}
 
   // Finalize 
   ad.finalize();
