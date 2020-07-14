@@ -5,7 +5,7 @@
 module scream_zm_interface_mod
 
   use iso_c_binding, only: c_ptr, c_f_pointer, c_int, c_double, c_bool,C_NULL_CHAR, c_float
-  use shr_kind_mod, only: r8 => shr_kind_r
+  
   implicit none
 #include "scream_config.f"
 #ifdef SCREAM_DOUBLE_PRECISION
@@ -24,16 +24,14 @@ module scream_zm_interface_mod
 
   real   :: test
   
-  real(kind=c_real) :: gravit =    9.80616000000000
-  real(kind=c_real) :: latvap =    2501000.00000000
 contains
 
   !====================================================================!
-  subroutine zm_init_f90 (cpair, gravit, latvap) bind(c)
+  subroutine zm_init_f90 () bind(c)
     
-    use zm_conv_intr,                   only: zm_conv_init
-    real(rtype), intent(in)  :: cpair  ! specific heat of dry air
-    call zm_conv_init(cpair)
+!    use zm_conv_intr,                   only: zm_conv_init
+!    real(rtype), intent(in)  :: cpair  ! specific heat of dry air
+!    call zm_conv_init(cpair)
     Print *, 'In zm_init_f90'
 
   end subroutine zm_init_f90
