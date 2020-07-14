@@ -3201,6 +3201,10 @@ qrevp,nrevp)
       ! calculate q for out-of-cloud region
       qclr = (qv-cld*qvs)/(1._rtype-cld)
 
+      if (qclr.le.0._rtype) then
+         qclr=0._rtype
+      endif
+
       ! rain evaporation
       if (qr_incld.ge.qsmall) then
          qrevp = epsr * (qclr-qvs)/ab
