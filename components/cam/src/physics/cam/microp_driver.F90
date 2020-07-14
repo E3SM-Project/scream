@@ -165,7 +165,7 @@ end subroutine microp_driver_init
 
 !===============================================================================
 
-subroutine microp_driver_tend(state, ptend, dtime, pbuf)
+subroutine microp_driver_tend(state, ptend, dtime, pbuf, macmic_it)
 
    ! Call the microphysics parameterization run methods.
 
@@ -176,6 +176,7 @@ subroutine microp_driver_tend(state, ptend, dtime, pbuf)
    type(physics_buffer_desc), pointer :: pbuf(:)
 
    real(r8), intent(in)  :: dtime                    ! Timestep
+   integer, intent(in)   :: macmic_it                ! macmic index
 
    ! Local variables
 
@@ -196,7 +197,7 @@ subroutine microp_driver_tend(state, ptend, dtime, pbuf)
       call t_stopf('microp_mg_cam_tend')
    case ('P3')
       call t_startf('microp_p3_tend')
-      call micro_p3_tend(state, ptend, dtime, pbuf)
+      call micro_p3_tend(state, ptend, dtime, pbuf, macmic_it)
       call t_stopf('microp_p3_tend')
    case ('RK')
       ! microp_driver doesn't handle this one

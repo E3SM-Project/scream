@@ -2637,7 +2637,7 @@ end if
              call physics_tend_dealloc(tend_sc)
              call physics_ptend_dealloc(ptend_sc)
           else
-             call microp_driver_tend(state, ptend, cld_macmic_ztodt, pbuf)
+             call microp_driver_tend(state, ptend, cld_macmic_ztodt, pbuf, macmic_it)
           end if
           ! combine aero and micro tendencies for the grid
           if (.not. micro_do_icesupersat) then

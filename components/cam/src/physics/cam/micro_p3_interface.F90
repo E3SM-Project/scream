@@ -471,6 +471,12 @@ end subroutine micro_p3_readnl
    call add_hist_coord('P3_output_dim', 32, 'Output field dimension for p3_main subroutine', 'N/A', (/ 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32 /))
    call addfld('P3_input',  (/ 'ilev         ', 'P3_input_dim ' /),  'I', 'N/A', 'Inputs for p3_main subroutine')
    call addfld('P3_output', (/ 'ilev         ', 'P3_output_dim' /), 'I', 'N/A', 'Outputs for p3_main subroutine')
+   call addfld('P3_output_1', (/ 'ilev         ', 'P3_output_dim' /), 'I', 'N/A', 'Outputs for p3_main subroutine')
+   call addfld('P3_output_2', (/ 'ilev         ', 'P3_output_dim' /), 'I', 'N/A', 'Outputs for p3_main subroutine')
+   call addfld('P3_output_3', (/ 'ilev         ', 'P3_output_dim' /), 'I', 'N/A', 'Outputs for p3_main subroutine')
+   call addfld('P3_output_4', (/ 'ilev         ', 'P3_output_dim' /), 'I', 'N/A', 'Outputs for p3_main subroutine')
+   call addfld('P3_output_5', (/ 'ilev         ', 'P3_output_dim' /), 'I', 'N/A', 'Outputs for p3_main subroutine')
+   call addfld('P3_output_6', (/ 'ilev         ', 'P3_output_dim' /), 'I', 'N/A', 'Outputs for p3_main subroutine')
    ! Record of microphysics tendencies
    ! warm-phase process rates
    call addfld('P3_qrcon',  (/ 'lev' /), 'A', 'kg/kg/s', 'P3 Tendency for rain condensation   (Not in paper?)')
@@ -700,7 +706,7 @@ end subroutine micro_p3_readnl
     end subroutine get_cloud_fraction
 
   !================================================================================================
-  subroutine micro_p3_tend(state, ptend, dtime, pbuf)
+  subroutine micro_p3_tend(state, ptend, dtime, pbuf, macmic_it)
 
     use phys_grid,      only: get_rlat_all_p, get_rlon_all_p, get_gcol_all_p
     use time_manager,   only: get_nstep
@@ -718,6 +724,7 @@ end subroutine micro_p3_readnl
     type(physics_state),         intent(in)    :: state
     type(physics_ptend),         intent(out)   :: ptend
     real(rtype),                 intent(in)    :: dtime
+    integer,                     intent(in)    :: macmic_it
     type(physics_buffer_desc),   pointer       :: pbuf(:)
     logical :: lq(pcnst)   !list of what constituents to update
 
@@ -1096,6 +1103,29 @@ end subroutine micro_p3_readnl
     call outfld('P3_input',  p3_main_inputs,  pcols, lchnk)
     call outfld('P3_output', p3_main_outputs, pcols, lchnk)
 
+    if (macmic_it.eq.1) then
+       call outfld('P3_output_1', p3_main_outputs, pcols, lchnk)
+    endif
+    
+    if (macmic_it.eq.2) then
+       call outfld('P3_output_2', p3_main_outputs, pcols, lchnk)
+    endif
+
+    if (macmic_it.eq.3) then
+       call outfld('P3_output_3', p3_main_outputs, pcols, lchnk)
+    endif
+    
+    if (macmic_it.eq.4) then
+       call outfld('P3_output_4', p3_main_outputs, pcols, lchnk)
+    endif
+    
+    if (macmic_it.eq.5) then
+       call outfld('P3_output_5', p3_main_outputs, pcols, lchnk)
+    endif
+
+    if (macmic_it.eq.6) then
+       call outfld('P3_output_6', p3_main_outputs, pcols, lchnk)
+    endif
     !MASSAGE OUTPUT TO FIT E3SM EXPECTATIONS
     !============= 
 
