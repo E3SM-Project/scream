@@ -390,6 +390,15 @@ contains
 
        if ((t(k).lt.zerodegc .and. supi(k).ge.-0.05_rtype)) log_nucleationPossible = .true.
 
+       !Prevent Cell-Average Supersaturation
+       if (qv(k).gt.qvs(k)) then
+          qv(k) = qvs(k)
+          qc(k) = qc(k) + qv(k) - qvs(k)
+          th(k) = th(k) - exner(k)*(qv(k) - qvs(k))*xxlv(k)*inv_cp
+          !not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
+       endif
+       !---PMC
+       
        if (qc(k).lt.qsmall) then
       !--- apply mass clipping if mass is sufficiently small
       !    (implying all mass is expected to evaporate/sublimate in one time step)
