@@ -397,7 +397,6 @@ contains
           th(k) = th(k) - exner(k)*(qv(k) - qvs(k))*xxlv(k)*inv_cp
           !not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
        endif
-       !---PMC
        
        if (qc(k).lt.qsmall) then
       !--- apply mass clipping if mass is sufficiently small
@@ -963,6 +962,18 @@ contains
    real(rtype)    :: f1pr16   ! mass-weighted mean particle density  See lines 1212 - 1279  rhomm
 
    k_loop_final_diagnostics:  do k = kbot,ktop,kdir
+
+      !This call isn't active yet b/c need to pass pres into this func to do so
+      !and b/c it isn't clear it is needed.
+      !Prevent Cell-Average Supersaturation
+      !qvs(k)     = qv_sat(t(k),pres(k),0)
+      !if (qv(k).gt.qvs(k)) then
+         !write(iulog,*) "post-loop, qv=",qv(k)," > qvs=",qvs(k)," for k=",k
+         !qv(k) = qvs(k)
+         !qc(k) = qc(k) + qv(k) - qvs(k)
+         !th(k) = th(k) - exner(k)*(qv(k) - qvs(k))*xxlv(k)*inv_cp
+         !not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
+      !endif
 
       ! cloud:
       if (qc(k).ge.qsmall) then
@@ -3203,9 +3214,9 @@ qrevp,nrevp)
    ! and the assumptions of this parameterization will have been violated.
    ! This check should eventually be commented out and/or moved to a debug-mode
    ! feature.
-   if (qv>qvs) then
+   if ( qv-qvs .gt. 1.e-12_rtype ) then
        print*
-       print*,'In evaporate_precip, qv supersaturated. qv = ',qv,', qvs = ',qvs
+       print*,'In evaporate_precip, qv supersaturated. qv=',qv,', qvs=',qvs,', diff=',qv-qvs
        print*
        call endscreamrun("qv supersaturated in evaporate_precip")
     endif
@@ -3242,9 +3253,10 @@ qrevp,nrevp)
       qclr = min(qclr,qv) !qv<qvs check above should prevent this, but just in case...
 
       ! compute in-evaporating-region evap rate
-      ! Note qclr<=qv<=qvs so qclr-qvs is definitely negative.
+      ! Note qclr<=qv<=qvs so qclr-qvs should be negative.
+      ! In practice roundoff error *might* make qrevp slightly negative, so adding max(0,...)
       ! The minus sign in front makes qrevp positive
-      qrevp = -epsr * (qclr-qvs)/ab 
+      qrevp = max(0._rtype, -epsr * (qclr-qvs)/ab )
 
       ! turn into cell-average evap rate
       qrevp = qrevp*(rcldm - cld)
