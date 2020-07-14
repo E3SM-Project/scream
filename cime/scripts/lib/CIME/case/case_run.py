@@ -106,7 +106,7 @@ def _run_model_impl(case, lid, skip_pnl=False, da_cycle=0):
         loop = False
 
         model_log("e3sm", logger, "{} SAVE_PRERUN_PROVENANCE BEGINS HERE".format(time.strftime("%Y-%m-%d %H:%M:%S")))
-        save_prerun_provenance(case)
+        #save_prerun_provenance(case)
         model_log("e3sm", logger, "{} SAVE_PRERUN_PROVENANCE HAS FINISHED".format(time.strftime("%Y-%m-%d %H:%M:%S")))
 
         model_log("e3sm", logger, "{} MODEL EXECUTION BEGINS HERE".format(time.strftime("%Y-%m-%d %H:%M:%S")))
