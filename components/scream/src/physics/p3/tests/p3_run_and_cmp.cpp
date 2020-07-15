@@ -93,9 +93,8 @@ static Int compare (const std::string& label, const Scalar* a,
 struct Baseline {
   Baseline () {
     for (const bool log_predictNc : {true, false})
-      for (const int it : {1, 6})   // # of steps to run is either 1 or 6.
-	//                 initial condit,     dt,  nsteps, prescribe or predict nc
-        params_.push_back({ic::Factory::mixed, 300, it, log_predictNc});
+      //                 initial condit,     dt,  nsteps, prescribe or predict nc
+      params_.push_back({ic::Factory::mixed, 300, 6, log_predictNc});
   }
 
   Int generate_baseline (const std::string& filename, bool use_fortran) {
