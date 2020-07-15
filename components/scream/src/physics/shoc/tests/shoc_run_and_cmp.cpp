@@ -21,21 +21,22 @@ using namespace scream::shoc;
    * runs the new/experimental version of the code and compares it against
    * the baseline data you've saved to file. Both baseline and cmp modes
    * start from an initial condition in ../shoc_ic_cases.cpp. Each call to 
-   * shoc_main loops through nadv=15 steps. On top of this, shoc_main is 
-   * called iteratively num_iters=10 steps, performing checks and potentially
-   * writing output each time. This means that shoc_run_and_cmp is really 
-   * a single 150-step shoc run.
+   * shoc_main loops through nadv=15 steps with dt=5 min. On top of this, 
+   * shoc_main is called iteratively num_iters=10 steps, performing checks 
+   * and potentiallywriting output each time. This means that shoc_run_and_cmp 
+   * is really a single 150-step shoc run.
    */
   
+
+/* Given a column of data for variable "label" from the reference run 
+ * (probably master) and from your new exploratory run, loop over all 
+ * heights and confirm whether or not the relative difference between  
+ * runs is within tolerance "tol". If not, print debug info. Here, "a"
+ * is the value from the reference run and "b" is from the new run.
+ */
 template <typename Scalar>
 static Int compare (const std::string& label, const Scalar* a,
                     const Scalar* b, const Int& n, const Real& tol) {
-  /* Given a column of data for variable "label" from the reference run 
-   * (probably master) and from your new exploratory run, loop over all 
-   * heights and confirm whether or not the relative difference between  
-   * runs is within tolerance "tol". If not, print debug info. Here, "a"
-   * is the value from the reference run and "b" is from the new run.
-   */
 
   Int nerr1 = 0;
   Int nerr2 = 0;
@@ -71,12 +72,12 @@ static Int compare (const std::string& label, const Scalar* a,
   return nerr1 + nerr2;
 }
 
-Int compare (const std::string& label, const double& tol,
+ /* When called with the below 3 args, compare loops over all variables 
+  * and calls the above version of "compare" to check for and report 
+  * large discrepancies.
+  */
+ Int compare (const double& tol,
              const FortranData::Ptr& ref, const FortranData::Ptr& d) {
-  /* When called with the above 4 args, compare loops over all variables 
-   * and calls the above version of "compare" to check for and report 
-   * large discrepancies.
-   */
   
   Int nerr = 0;
   FortranDataIterator refi(ref), di(d);
@@ -134,11 +135,11 @@ struct Baseline {
         set_params(ps, *d);
         shoc_init(ps.nlev, use_fortran);
         for (int it = 0; it < num_iters; it++) {
-          std::cout << "--- checking case # " << case_num << ", timestep = " << (it+1)*ps.nadv
+          std::cout << "--- checking case # " << case_num << ", timestep # = " << (it+1)*ps.nadv
                      << " ---\n" << std::flush;
           read(fid, d_ref);
           shoc_main(*d);
-          ne = compare("ref", tol, d_ref, d);
+          ne = compare(tol, d_ref, d);
           if (ne) std::cout << "Ref impl failed.\n";
           nerr += ne;
         }
