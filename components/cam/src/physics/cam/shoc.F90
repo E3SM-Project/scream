@@ -2993,7 +2993,7 @@ subroutine compute_shr_prod(nlevi, nlev, shcol, dz_zi, u_wind, v_wind, sterm)
         sterm(i,k) = u_grad**2+v_grad**2
      enddo
   enddo
-  
+
   ! Set lower and upper boundary for shear production
   ! Note that the lower bound for shear production has already
   ! been taken into account for the TKE boundary condition,
