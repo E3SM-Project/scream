@@ -8,10 +8,10 @@ include(Sourcelist_utils)
 
 set(ZM_SRCS
   #${SCREAM_BASE_DIR}/../cam/src/physics/cam/pbl_utils.F90
-  #${SCREAM_BASE_DIR}/../cam/src/physics/cam/physics_utils.F90
-  #${SCREAM_BASE_DIR}/../cam/src/physics/cam/scream_abortutils.F90
-  ${SCREAM_BASE_DIR}/../cam/src/physics/cam/zm_conv.F90
-  ${SCREAM_BASE_DIR}/../cam/src/physics/cam/zm_conv_intr.F90
+  ${SCREAM_BASE_DIR}/../cam/src/physics/cam/physics_utils.F90
+  ${SCREAM_BASE_DIR}/../cam/src/physics/cam/scream_abortutils.F90
+  zm_conv.F90
+  #${SCREAM_BASE_DIR}/../cam/src/physics/cam/zm_conv_intr.F90
   #${SCREAM_BASE_DIR}/../cam/src/physics/cam/convect_deep.F90
   atmosphere_macrophysics.cpp
   scream_zm_interface.F90
