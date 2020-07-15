@@ -1080,6 +1080,7 @@ contains
     !                                                                                        !
     !----------------------------------------------------------------------------------------!
 
+    use debug_info, only: get_debug_column_id
     implicit none
 
     !----- Input/ouput arguments:  ----------------------------------------------------------!
@@ -1258,6 +1259,9 @@ contains
     !==
     !-----------------------------------------------------------------------------------!
     i_loop_main: do i = its,ite  ! main i-loop (around the entire scheme)
+
+       !update column in the debug_info module
+       call get_debug_column_id(i)
 
 !      if (debug_ON) call check_values(qv,T,i,it,debug_ABORT,100,col_location)
 
@@ -1566,6 +1570,7 @@ contains
 
     use scream_abortutils, only : endscreamrun
 
+    use debug_info, only: report_error_info
     implicit none
 
     real(rtype), intent(in) :: t
@@ -1628,8 +1633,9 @@ contains
     !PMC added error checking
     else
 
-       write(err_msg,*)'Error: Either polysvp1 i_type is not 0 or 1 or t=NaN. itype= ', &
-            i_type,' and temperature t=',t,' in file: ',__FILE__,' at line:',__LINE__
+       call report_error_info('Something went wrong', 'polysvp1')
+       write(err_msg,*)'** polysvp1 i_type must be 0 or 1 but is: ', &
+            i_type,' temperature is:',t,' in file: ',__FILE__,' at line:',__LINE__
 
        call endscreamrun(err_msg)
     endif
