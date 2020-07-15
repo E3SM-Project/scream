@@ -108,11 +108,9 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
     //Set error tolerances
     //--------------------------------------
     //: C::Tol is machine epsilon for single or double precision as appropriate. This will be
-    //multiplied by a condition # to get the actual expected numerical uncertainty. If single precision, multiplying
-    //by an additional fudge factor because the python values we're comparing against were computed via a
-    //bunch of double-precision intermediate calculations which will add error.
+    //multiplied by a condition # to get the actual expected numerical uncertainty.
 
-    Scalar tol = (util::is_single_precision<Scalar>::value ) ? C::Tol*2 : C::Tol;
+    const Scalar tol = C::Tol;
 
     //PMC note: original version looped over pack dimension, testing each entry. This isn't
     //necessary b/c packs were created by copying a scalar up to pack size. Thus just evaluating
@@ -216,8 +214,8 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
       struct sat_test_args {
 	Scalar temp; //temperature [K]
 	Scalar pres; //pressure [Pa]
-	Scalar dp[ncrv]; // double precision expected vals for MK and polysvp1
-	Scalar sp[ncrv]; // single precision expected vals for MK and polysvp1
+	Scalar dp_data[ncrv]; // double precision expected vals for MK and polysvp1
+	Scalar sp_data[ncrv]; // single precision expected vals for MK and polysvp1
       };
 
       const auto ncases   = 10; //total number of test cases
@@ -236,12 +234,12 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
 
       stargs[0] = {tmelt,
 		   atm_pres,
-		   //dp
+		   //dp_data
 		   {611.23992100000009, 611.23992100000009,
 		    0.0038251131382843278, 0.0038251131382843278,
 		    611.2126978267946, 611.2126978267946,
 		    0.0038249417291628678, 0.0038249417291628678},
-		   //sp
+		   //sp_data
 		   {611.2399, 611.2399, 0.0038251132, 0.0038251132,
 		    611.2123, 611.2123, 0.003824939, 0.003824939}
       };
@@ -250,12 +248,12 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
       //---------------------------------------
       stargs[1] = {243.15,
 		   atm_pres,
-		   //dp
+		   //dp_data
 		   {38.024844602056795, 51.032583257624964,
 		    0.00023659331311441935, 0.00031756972127516819,
 		    38.01217277745647, 50.93561537896607,
 		    0.00023651443812988484, 0.0003169659941390894},
-		   //sp
+		   //sp_data
 		   {38.024666, 51.03264, 0.00023659221, 0.00031757005,
 		    38.012142, 50.935585, 0.00023651426, 0.0003169658}
       };
@@ -264,12 +262,12 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
       //---------------------------------------
       stargs[2] = {303.15,
                    atm_pres,
-                   //dp
+                   //dp_data
 		   {4245.1933273786717, 4245.1933273786717,
 		    0.027574442204332306, 0.027574442204332306,
 		    4246.814076877233, 4246.814076877233,
 		    0.027585436614272162, 0.027585436614272162},
-                   //sp
+                   //sp_data
                    {4245.1934, 4245.1934, 0.027574444, 0.027574444,
 		    4246.8115, 4246.8115, 0.027585419, 0.027585419}
       };
@@ -285,12 +283,12 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
       //Test values @ 150K @ 1e5 Pa
       stargs[3] = {150,
                    atm_pres,
-                   //dp
+                   //dp_data
 		   {0.0565113360640801, 0.17827185346988017,
 		    3.514840868181163e-07, 1.1088004687434155e-06,
 		    6.1061006509816675e-06, 1.5621037177920032e-05,
 		    3.79781500154674e-11, 9.715825652191167e-11},
-		   //sp
+		   //sp_data
 		   {0.05517006, 0.17905235, 3.4314175e-07, 1.113655e-06,
 		    6.1060973e-06, 1.5621057e-05, 3.797813e-11, 9.715838e-11}
       };
@@ -298,12 +296,12 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
       //Test values @ 180K @ 1e5 Pa
       stargs[4] = {180,
                    atm_pres,
-                   //dp
+                   //dp_data
 		   {0.0565113360640801, 0.17827185346988017,
 		    3.514840868181163e-07, 1.1088004687434155e-06,
 		    0.005397500125274297, 0.01123923029036248,
 		    3.3570864981545485e-08, 6.990471437859482e-08},
-		   //sp
+		   //sp_data
 		   {0.05517006, 0.17905235, 3.4314175e-07, 1.113655e-06,
 		    0.0053975, 0.011239249, 3.3570867e-08, 6.990483e-08}
       };
@@ -311,12 +309,12 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
       //Test values @ 210K  @ 1e5 Pa
       stargs[5] = {210,
                    atm_pres,
-                   //dp
+                   //dp_data
                    {0.7021857060894199, 1.2688182238880685,
 		    4.3674192198021676e-06, 7.891776277281936e-06,
 		    0.7020234713180218, 1.2335424085746476,
 		    4.366410153074117e-06, 7.672365591576349e-06},
-		   //sp
+		   //sp_data
 		   {0.7016659, 1.2685776, 4.364186e-06, 7.890279e-06,
 		    0.70202345, 1.2335398, 4.36641e-06, 7.67235e-06}
       };
@@ -324,12 +322,12 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
       //Test values @ 240K @ 1e5 Pa
       stargs[6] = {240,
                    atm_pres,
-                   //dp
+                   //dp_data
                    {27.280908658710246, 37.77676490183603,
 		    0.00016972553017335565, 0.0002350491600776575,
 		    27.272365420780556, 37.66700070557609,
 		    0.00016967236474679822, 0.0002343659437158037},
-		   //sp
+		   //sp_data
 		   {27.28076, 37.776802, 0.0001697246, 0.00023504937,
 		    27.27235, 37.666973, 0.00016967228, 0.00023436577}
       };
@@ -337,24 +335,24 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
       //Test values @ 273.16K @ 1e5 Pa
       stargs[7] = {273.16,
                    atm_pres,
-                   //dp
+                   //dp_data
                    {611.6840516537769, 611.6840516537769,
 		    0.003827909594290528, 0.003827909594290528,
 		    611.6570436443282, 611.6570436443282,
 		    0.0038277395384149105, 0.0038277395384149105},
-		   //sp
+		   //sp_data
 		   {611.68445, 611.68445, 0.0038279123, 0.0038279123,
 		    611.65607, 611.65607, 0.0038277335, 0.0038277335}
       };
       //Test values @ 300K @ 1e5 Pa
       stargs[8] = {300,
                    atm_pres,
-                   //dp
+                   //dp_data
                    {3535.4066341569387, 3535.4066341569387,
 		    0.022795088436007804, 0.022795088436007804,
 		    3536.7644130514645, 3536.7644130514645,
 		    0.022804163906259393, 0.022804163906259393},
-		   //sp
+		   //sp_data
 		   {3535.4077, 3535.4077, 0.022795096, 0.022795096,
 		    3536.7559, 3536.7559, 0.022804108, 0.022804108}
       };
@@ -363,12 +361,12 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
       //---------------------------------------
       stargs[9] = {243.15,
                    5e4,
-                   //dp
+                   //dp_data
                    {38.024844602056795, 51.032583257624964,
 		    0.00047336669164733106, 0.00063546390177500586,
 		    38.01217277745647, 50.93561537896607,
 		    0.00047320882161578, 0.0006342552147122389},
-		   //sp
+		   //sp_data
 		   {38.024666, 51.03264, 0.00047336446, 0.00063546456,
 		    38.012142, 50.935585, 0.00047320846, 0.00063425483}
       };
@@ -381,14 +379,14 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
 
       if(is_single_prec){
 	for (int ista = 0; ista < ncases; ista++) {
-	  //use sp values
-	  saturation_tests(stargs[ista].temp,stargs[ista].pres,stargs[ista].sp,errors);
+	  //use sp_data values
+	  saturation_tests(stargs[ista].temp,stargs[ista].pres,stargs[ista].sp_data,errors);
 	}
       }
       else{
 	for (int ista = 0; ista < ncases; ista++) {
-	  //use dp values
-	  saturation_tests(stargs[ista].temp,stargs[ista].pres,stargs[ista].dp,errors);
+	  //use dp_data values
+	  saturation_tests(stargs[ista].temp,stargs[ista].pres,stargs[ista].dp_data,errors);
 	}
       }
 
