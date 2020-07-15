@@ -1,4 +1,4 @@
-!c_doubli--------------------------------------------------------------
+!--------------------------------------------------------------
 ! SHOC parameterization
 !   SHOC = Simplified Higher Order Closure
 !   reference, Bogenschutz and Krueger 2013

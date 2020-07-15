@@ -931,7 +931,7 @@ contains
  END SUBROUTINE p3_main_main_loop
 
  subroutine p3_main_post_main_loop(kts, kte, kbot, ktop, kdir, &
-      exner, lcldm, rcldm, &
+      pres, exner, lcldm, rcldm, &
       rho, inv_rho, rhofaci, qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, &
       mu_c, nu, lamc, mu_r, lamr, vap_liq_exchange, &
       ze_rain, ze_ice, diag_vmi, diag_effi, diag_di, diag_rhoi, diag_ze, diag_effc)
@@ -942,7 +942,7 @@ contains
 
    integer, intent(in) :: kts, kte, kbot, ktop, kdir
 
-   real(rtype), intent(in), dimension(kts:kte) :: exner, lcldm, rcldm
+   real(rtype), intent(in), dimension(kts:kte) :: pres, exner, lcldm, rcldm
 
    real(rtype), intent(inout), dimension(kts:kte) :: rho, inv_rho, rhofaci, &
         qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, &
@@ -961,19 +961,22 @@ contains
    real(rtype)    :: f1pr15   ! mass-weighted mean diameter          See lines 1212 - 1279  dmm
    real(rtype)    :: f1pr16   ! mass-weighted mean particle density  See lines 1212 - 1279  rhomm
 
+   real(rtype), dimension(kts:kte) :: qvs,t !for preventing supersaturation
+   
    k_loop_final_diagnostics:  do k = kbot,ktop,kdir
 
       !This call isn't active yet b/c need to pass pres into this func to do so
       !and b/c it isn't clear it is needed.
       !Prevent Cell-Average Supersaturation
-      !qvs(k)     = qv_sat(t(k),pres(k),0)
-      !if (qv(k).gt.qvs(k)) then
-         !write(iulog,*) "post-loop, qv=",qv(k)," > qvs=",qvs(k)," for k=",k
-         !qv(k) = qvs(k)
-         !qc(k) = qc(k) + qv(k) - qvs(k)
-         !th(k) = th(k) - exner(k)*(qv(k) - qvs(k))*xxlv(k)*inv_cp
+      t(k) = th(k) / exner(k)
+      qvs(k)     = qv_sat(t(k),pres(k),0)
+      if (qv(k).gt.qvs(k)) then
+         write(iulog,*) "post-loop, qv=",qv(k)," > qvs=",qvs(k)," for k=",k
+         qv(k) = qvs(k)
+         qc(k) = qc(k) + qv(k) - qvs(k)
+         th(k) = th(k) - exner(k)*(qv(k) - qvs(k))*xxlv(k)*inv_cp
          !not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
-      !endif
+      endif
 
       ! cloud:
       if (qc(k).ge.qsmall) then
@@ -1369,7 +1372,7 @@ contains
        ! final checks to ensure consistency of mass/number
        ! and compute diagnostic fields for output
        call p3_main_post_main_loop(kts, kte, kbot, ktop, kdir, &
-            exner(i,:), lcldm(i,:), rcldm(i,:), &
+            pres(i,:), exner(i,:), lcldm(i,:), rcldm(i,:), &
             rho(i,:), inv_rho(i,:), rhofaci(i,:), qv(i,:), th(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), qitot(i,:), nitot(i,:), &
             qirim(i,:), birim(i,:), xxlv(i,:), xxls(i,:), &
             mu_c(i,:), nu(i,:), lamc(i,:), mu_r(i,:), lamr(i,:), vap_liq_exchange(i,:), &
