@@ -70,7 +70,7 @@
 <deep_scheme             > 'off'  </deep_scheme>
 
 <!-- Macrophysics/microphysics coupling -->
-<cld_macmic_num_steps    > 6 </cld_macmic_num_steps>
+<cld_macmic_num_steps    > 1 </cld_macmic_num_steps>
 
 <!-- SHOC timestep -->
 <shoc_timestep> 20 </shoc_timestep>
