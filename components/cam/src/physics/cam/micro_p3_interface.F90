@@ -535,6 +535,7 @@ end subroutine micro_p3_readnl
    call addfld('vap_ice_exchange',  (/ 'lev' /), 'A', 'kg/kg/s', 'Tendency for conversion from/to vapor phase to/from frozen phase')
    call addfld('liq_ice_exchange',  (/ 'lev' /), 'A', 'kg/kg/s', 'Tendency for conversion from/to liquid phase to/from frozen phase')
 
+   
    ! determine the add_default fields
    call phys_getopts(history_amwg_out           = history_amwg         , &
                      history_verbose_out        = history_verbose      , &
@@ -1070,36 +1071,38 @@ end subroutine micro_p3_readnl
          )
 
     p3_main_outputs(:,:,:) = -999._rtype
-    do k = 1,pver
-      p3_main_outputs(1,k, 1) = cldliq(1,k)
-      p3_main_outputs(1,k, 2) = numliq(1,k)
-      p3_main_outputs(1,k, 3) = rain(1,k)
-      p3_main_outputs(1,k, 4) = numrain(1,k)
-      p3_main_outputs(1,k, 5) = th(1,k)
-      p3_main_outputs(1,k, 6) = qv(1,k)
-      p3_main_outputs(1,k, 7) = ice(1,k)
-      p3_main_outputs(1,k, 8) = qirim(1,k)
-      p3_main_outputs(1,k, 9) = numice(1,k)
-      p3_main_outputs(1,k,10) = rimvol(1,k)
-      p3_main_outputs(1,k,14) = rel(1,k)
-      p3_main_outputs(1,k,15) = rei(1,k)
-      p3_main_outputs(1,k,18) = diag_rhoi(1,k)
-      p3_main_outputs(1,k,19) = cmeiout(1,k)
-      p3_main_outputs(1,k,20) = prain(1,k)
-      p3_main_outputs(1,k,21) = nevapr(1,k)
-      p3_main_outputs(1,k,22) = prer_evap(1,k)
-      p3_main_outputs(1,k,23) = rflx(1,k)
-      p3_main_outputs(1,k,24) = sflx(1,k)
-      p3_main_outputs(1,k,27) = mu(1,k)
-      p3_main_outputs(1,k,28) = lambdac(1,k)
-      p3_main_outputs(1,k,29) = liq_ice_exchange(1,k)
-      p3_main_outputs(1,k,30) = vap_liq_exchange(1,k)
-      p3_main_outputs(1,k,31) = vap_ice_exchange(1,k)
+    do icol = 1,ncols
+      do k = 1,pver
+        p3_main_outputs(icol,k, 1) = cldliq(icol,k)
+        p3_main_outputs(icol,k, 2) = numliq(icol,k)
+        p3_main_outputs(icol,k, 3) = rain(icol,k)
+        p3_main_outputs(icol,k, 4) = numrain(icol,k)
+        p3_main_outputs(icol,k, 5) = th(icol,k)
+        p3_main_outputs(icol,k, 6) = qv(icol,k)
+        p3_main_outputs(icol,k, 7) = ice(icol,k)
+        p3_main_outputs(icol,k, 8) = qirim(icol,k)
+        p3_main_outputs(icol,k, 9) = numice(icol,k)
+        p3_main_outputs(icol,k,10) = rimvol(icol,k)
+        p3_main_outputs(icol,k,14) = rel(icol,k)
+        p3_main_outputs(icol,k,15) = rei(icol,k)
+        p3_main_outputs(icol,k,18) = diag_rhoi(icol,k)
+        p3_main_outputs(icol,k,19) = cmeiout(icol,k)
+        p3_main_outputs(icol,k,20) = prain(icol,k)
+        p3_main_outputs(icol,k,21) = nevapr(icol,k)
+        p3_main_outputs(icol,k,22) = prer_evap(icol,k)
+        p3_main_outputs(icol,k,23) = rflx(icol,k)
+        p3_main_outputs(icol,k,24) = sflx(icol,k)
+        p3_main_outputs(icol,k,27) = mu(icol,k)
+        p3_main_outputs(icol,k,28) = lambdac(icol,k)
+        p3_main_outputs(icol,k,29) = liq_ice_exchange(icol,k)
+        p3_main_outputs(icol,k,30) = vap_liq_exchange(icol,k)
+        p3_main_outputs(icol,k,31) = vap_ice_exchange(icol,k)
+      end do
+      p3_main_outputs(icol,1,11) = prt_liq(icol)
+      p3_main_outputs(icol,1,12) = prt_sol(icol)
+      p3_main_outputs(icol,pver+1,23) = rflx(icol,pver+1)
+      p3_main_outputs(icol,pver+1,24) = sflx(icol,pver+1)
     end do
-    p3_main_outputs(1,1,11) = prt_liq(1)
-    p3_main_outputs(1,1,12) = prt_sol(1)
-    p3_main_outputs(1,pver+1,23) = rflx(1,pver+1)
-    p3_main_outputs(1,pver+1,24) = sflx(1,pver+1)
     call outfld('P3_input',  p3_main_inputs,  pcols, lchnk)
     call outfld('P3_output', p3_main_outputs, pcols, lchnk)
 
