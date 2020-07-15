@@ -20,6 +20,7 @@ void  Functions<S,D>
   if (is_neg_temp.any()){
     scream::error::runtime_abort("Error: Called from:"+ fname +"; Temperature has <= 0 values");
   }
+  // Cannot test NaNs currently as packs may have NaNs
   /*
   Smask is_nan_temp = isnan(temp);
   if (is_nan_temp.any()){
@@ -35,7 +36,7 @@ void  Functions<S,D>
 template <typename S, typename D>
 KOKKOS_FUNCTION
 typename Functions<S,D>::Spack
-Functions<S,D>::MurphyKoop_svp(const Spack& t, const bool ice)
+Functions<S,D>::MurphyKoop_svp(const Spack& temp, const bool ice)
 {
   //Formulas used below are from the following paper:
   //Murphy, D. M., and T. Koop (2005), Review of the vapour pressures of ice
@@ -44,7 +45,7 @@ Functions<S,D>::MurphyKoop_svp(const Spack& t, const bool ice)
 
   Spack result;
   const auto tmelt = C::Tmelt;
-  Smask ice_mask = (t < tmelt) && ice;
+  Smask ice_mask = (temp < tmelt) && ice;
   Smask liq_mask = !ice_mask;
 
   if (ice_mask.any()) {
@@ -52,7 +53,7 @@ Functions<S,D>::MurphyKoop_svp(const Spack& t, const bool ice)
     // (good down to 110 K)
     //creating array for storing coefficients of ice sat equation
     const Scalar ic[]= {9.550426, 5723.265, 3.53068, 0.00728332};
-    Spack ice_result = exp(ic[0] - (ic[1] / t) + (ic[2] * log(t)) - (ic[3] * t));
+    Spack ice_result = exp(ic[0] - (ic[1] / temp) + (ic[2] * log(temp)) - (ic[3] * temp));
 
     result.set(ice_mask, ice_result);
   }
@@ -63,10 +64,10 @@ Functions<S,D>::MurphyKoop_svp(const Spack& t, const bool ice)
     //creating array for storing coefficients of liq sat equation
     const Scalar lq[] = {54.842763, 6763.22, 4.210, 0.000367, 0.0415, 218.8, 53.878,
 			 1331.22, 9.44523, 0.014025 };
-
-    Spack liq_result = exp(lq[0] - (lq[1] / t) - (lq[2] * log(t)) + (lq[3] * t) +
-			   (tanh(lq[4] * (t - lq[5])) * (lq[6] - (lq[7] / t) -
-							 (lq[8] * log(t)) + lq[9] * t)));
+    const auto logt = log(temp);
+    Spack liq_result = exp(lq[0] - (lq[1] / temp) - (lq[2] * logt) + (lq[3] * temp) +
+			   (tanh(lq[4] * (temp - lq[5])) * (lq[6] - (lq[7] / temp) -
+							 (lq[8] * logt) + lq[9] * temp)));
 
     result.set(liq_mask, liq_result);
   }
