@@ -1071,8 +1071,8 @@ end subroutine micro_p3_readnl
          )
 
     p3_main_outputs(:,:,:) = -999._rtype
-    do icol = 1,ncol
-      do k = 1,pver
+    do icol = 1, ncol
+      do k = 1, pver
         p3_main_outputs(icol,k, 1) = cldliq(icol,k)
         p3_main_outputs(icol,k, 2) = numliq(icol,k)
         p3_main_outputs(icol,k, 3) = rain(icol,k)
