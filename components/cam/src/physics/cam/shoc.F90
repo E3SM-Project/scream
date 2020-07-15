@@ -2990,8 +2990,7 @@ subroutine compute_shr_prod(nlevi, nlev, shcol, dz_zi, u_wind, v_wind, sterm)
         ! calculate vertical gradient of u&v wind
         u_grad = grid_dz*(u_wind(i,km1)-u_wind(i,k))
         v_grad = grid_dz*(v_wind(i,km1)-v_wind(i,k))
-        !sterm(i,k) = u_grad**2+v_grad**2 !standard approach
-        sterm(i,k) = u_grad*u_grad+v_grad*v_grad + 1.e-16_rtype !makes roundoff level change
+        sterm(i,k) = u_grad**2+v_grad**2
      enddo
   enddo
   
