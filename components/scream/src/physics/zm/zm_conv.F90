@@ -275,7 +275,6 @@ subroutine zm_convr(lchnk   ,ncol    , &
 ! and will make use of the standard CAM nomenclature
 ! 
 !-----------------------------------------------------------------------
-   use phys_control, only: cam_physpkg_is
    use time_manager, only: is_first_step, is_first_restart_step   !songxl 2014-05-20
 !
 ! ************************ index of variables **********************
@@ -653,17 +652,6 @@ subroutine zm_convr(lchnk   ,ncol    , &
       dsubcld(i) = 0._r8
    end do
 
-   if( cam_physpkg_is('cam3')) then
-
-      !  For cam3 physics package, call non-dilute
-
-      call buoyan(lchnk   ,ncol    , &
-                  q       ,t       ,p       ,z       ,pf       , &
-                  tp      ,qstp    ,tl      ,rl      ,cape     , &
-                  pblt    ,lcl     ,lel     ,lon     ,maxi     , &
-                  rgas    ,grav    ,cpres   ,msg     , &
-                  tpert   )
-   else
 
       !  Evaluate Tparcel, qs(Tparcel), buoyancy and CAPE, 
       !     lcl, lel, parcel launch level at index maxi()=hmax
@@ -714,7 +702,6 @@ subroutine zm_convr(lchnk   ,ncol    , &
 
           dcape(:ncol) = (cape(:ncol)-capem1(:ncol))/(delt*2._r8)
       endif
-   end if
 
 !
 ! determine whether grid points will undergo some deep convection
@@ -1019,7 +1006,7 @@ subroutine zm_conv_evap(ncol,lchnk, &
 !-----------------------------------------------------------------------
 
     use wv_saturation,  only: qsat
-    use phys_grid, only: get_rlat_all_p
+    !use phys_grid, only: get_rlat_all_p
 
 !------------------------------Arguments--------------------------------
     integer,intent(in) :: ncol, lchnk             ! number of columns and chunk index
@@ -3908,7 +3895,7 @@ SUBROUTINE ientropy (rcall,icol,lchnk,s,p,qt,T,qst,Tfg)
 ! for T and saturated vapor mixing ratio
 ! 
 
-  use phys_grid, only: get_rlon_p, get_rlat_p
+!  use phys_grid, only: get_rlon_p, get_rlat_p
 
   integer, intent(in) :: icol, lchnk, rcall
   real(r8), intent(in)  :: s, p, Tfg, qt
@@ -3997,16 +3984,16 @@ SUBROUTINE ientropy (rcall,icol,lchnk,s,p,qt,T,qst,Tfg)
   T = b
   call qsat_hPa(T, p, est, qst)
 
-  if (.not. converged) then
-     this_lat = get_rlat_p(lchnk, icol)*57.296_r8
-     this_lon = get_rlon_p(lchnk, icol)*57.296_r8
-     write(*,*) '*** ZM_CONV: IENTROPY: Failed and about to exit, info follows ****'
-     write(*,*) 'ZM_CONV: IENTROPY. Details: call#,lchnk,icol= ',rcall,lchnk,icol, &
-          ' lat: ',this_lat,' lon: ',this_lon, &
-          ' P(mb)= ', p, ' Tfg(K)= ', Tfg, ' qt(g/kg) = ', 1000._r8*qt, &
-          ' qst(g/kg) = ', 1000._r8*qst,', s(J/kg) = ',s
-     call endrun('**** ZM_CONV IENTROPY: Tmix did not converge ****')
-  end if
+!  if (.not. converged) then
+!     this_lat = get_rlat_p(lchnk, icol)*57.296_r8
+!     this_lon = get_rlon_p(lchnk, icol)*57.296_r8
+!     write(*,*) '*** ZM_CONV: IENTROPY: Failed and about to exit, info follows ****'
+!     write(*,*) 'ZM_CONV: IENTROPY. Details: call#,lchnk,icol= ',rcall,lchnk,icol, &
+!          ' lat: ',this_lat,' lon: ',this_lon, &
+!          ' P(mb)= ', p, ' Tfg(K)= ', Tfg, ' qt(g/kg) = ', 1000._r8*qt, &
+!          ' qst(g/kg) = ', 1000._r8*qst,', s(J/kg) = ',s
+!     call endrun('**** ZM_CONV IENTROPY: Tmix did not converge ****')
+!  end if
 
 100 format (A,I1,I4,I4,7(A,F6.2))
 
