@@ -361,7 +361,8 @@ contains
          qirim_incld, nc_incld, nr_incld, nitot_incld, birim_incld
 
     logical(btype), intent(out) :: log_nucleationPossible, log_hydrometeorsPresent
-
+    integer :: ssat_tot_cnt, ssat_cnt
+    
     ! locals
     integer :: k
     real(rtype) :: dum
@@ -369,6 +370,8 @@ contains
     log_nucleationPossible = .false.
     log_hydrometeorsPresent = .false.
 
+    ssat_tot_cnt = 0
+    ssat_cnt = 0
     k_loop_1: do k = kbot,ktop,kdir
        !calculate some time-varying atmospheric variables
        !AaronDonahue - changed "rho" to be defined on nonhydrostatic
@@ -390,8 +393,10 @@ contains
 
        if ((t(k).lt.zerodegc .and. supi(k).ge.-0.05_rtype)) log_nucleationPossible = .true.
 
+       ssat_tot_cnt = ssat_tot_cnt + 1
        !Prevent Cell-Average Supersaturation
        if (qv(k).gt.qvs(k)) then
+          ssat_cnt = ssat_cnt+1
           qc(k) = qc(k) + qv(k) - qvs(k)
           th(k) = th(k) - exner(k)*(qv(k) - qvs(k))*xxlv(k)*inv_cp
           qv(k) = qvs(k)
@@ -456,6 +461,10 @@ contains
 
     enddo k_loop_1
 
+    if (ssat_cnt .gt. 0) then
+       write(iulog,*) 'Frac of supersaturated cells = ',float(ssat_cnt)/float(ssat_tot_cnt)
+    end if
+       
   END SUBROUTINE p3_main_pre_main_loop
 
   SUBROUTINE p3_main_main_loop(kts, kte, kbot, ktop, kdir, log_predictNc, dt, odt, &
@@ -737,7 +746,7 @@ contains
            dv,mu,sc,mu_r(k),lamr(k),cdistr(k),cdist(k),qr_incld(k),qc_incld(k), &
            epsr,epsc)
 
-      call evaporate_precip(qr_incld(k),qc_incld(k),nr_incld(k),qitot_incld(k), &
+      call evap_precip(qr_incld(k),qc_incld(k),nr_incld(k),qitot_incld(k), &
            lcldm(k),rcldm(k),qvs(k),ab,epsr,qv(k), &
            qrevp,nrevp)
 
@@ -931,7 +940,7 @@ contains
  END SUBROUTINE p3_main_main_loop
 
  subroutine p3_main_post_main_loop(kts, kte, kbot, ktop, kdir, &
-      pres, exner, lcldm, rcldm, &
+      exner, lcldm, rcldm, &
       rho, inv_rho, rhofaci, qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, &
       mu_c, nu, lamc, mu_r, lamr, vap_liq_exchange, &
       ze_rain, ze_ice, diag_vmi, diag_effi, diag_di, diag_rhoi, diag_ze, diag_effc)
@@ -942,7 +951,7 @@ contains
 
    integer, intent(in) :: kts, kte, kbot, ktop, kdir
 
-   real(rtype), intent(in), dimension(kts:kte) :: pres, exner, lcldm, rcldm
+   real(rtype), intent(in), dimension(kts:kte) :: exner, lcldm, rcldm
 
    real(rtype), intent(inout), dimension(kts:kte) :: rho, inv_rho, rhofaci, &
         qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, &
@@ -961,22 +970,20 @@ contains
    real(rtype)    :: f1pr15   ! mass-weighted mean diameter          See lines 1212 - 1279  dmm
    real(rtype)    :: f1pr16   ! mass-weighted mean particle density  See lines 1212 - 1279  rhomm
 
-   real(rtype), dimension(kts:kte) :: qvs,t !for preventing supersaturation
+   !real(rtype), dimension(kts:kte) :: qvs,t !for preventing supersaturation
    
    k_loop_final_diagnostics:  do k = kbot,ktop,kdir
 
-      !This call isn't active yet b/c need to pass pres into this func to do so
-      !and b/c it isn't clear it is needed.
       !Prevent Cell-Average Supersaturation
-      t(k) = th(k) / exner(k)
-      qvs(k)     = qv_sat(t(k),pres(k),0)
-      if (qv(k).gt.qvs(k)) then
-         write(iulog,*) "post-loop, qv=",qv(k)," > qvs=",qvs(k)," for k=",k
-         qc(k) = qc(k) + qv(k) - qvs(k)
-         th(k) = th(k) - exner(k)*(qv(k) - qvs(k))*xxlv(k)*inv_cp
-         qv(k) = qvs(k)
-         !not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
-      endif
+      !t(k) = th(k) / exner(k)
+      !qvs(k)     = qv_sat(t(k),pres(k),0)
+      !if (qv(k).gt.qvs(k)) then
+      !   write(iulog,*) "post-loop, qv=",qv(k)," > qvs=",qvs(k)," for k=",k
+      !   qc(k) = qc(k) + qv(k) - qvs(k)
+      !   th(k) = th(k) - exner(k)*(qv(k) - qvs(k))*xxlv(k)*inv_cp
+      !   qv(k) = qvs(k)
+      !   !not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
+      !endif
 
       ! cloud:
       if (qc(k).ge.qsmall) then
@@ -1372,7 +1379,7 @@ contains
        ! final checks to ensure consistency of mass/number
        ! and compute diagnostic fields for output
        call p3_main_post_main_loop(kts, kte, kbot, ktop, kdir, &
-            pres(i,:), exner(i,:), lcldm(i,:), rcldm(i,:), &
+            exner(i,:), lcldm(i,:), rcldm(i,:), &
             rho(i,:), inv_rho(i,:), rhofaci(i,:), qv(i,:), th(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), qitot(i,:), nitot(i,:), &
             qirim(i,:), birim(i,:), xxlv(i,:), xxls(i,:), &
             mu_c(i,:), nu(i,:), lamc(i,:), mu_r(i,:), lamr(i,:), vap_liq_exchange(i,:), &
@@ -3184,7 +3191,7 @@ qidep,qisub,nisub,qiberg)
 end subroutine ice_deposition_sublimation
 
 
-subroutine evaporate_precip(qr_incld,qc_incld,nr_incld,qitot_incld,    &
+subroutine evap_precip(qr_incld,qc_incld,nr_incld,qitot_incld,    &
 lcldm,rcldm,qvs,ab,epsr,qv,    &
 qrevp,nrevp)
 
@@ -3219,9 +3226,9 @@ qrevp,nrevp)
    ! feature.
    if ( qv-qvs .gt. 1.e-12_rtype ) then
        print*
-       print*,'In evaporate_precip, qv supersaturated. qv=',qv,', qvs=',qvs,', diff=',qv-qvs
+       print*,'In evap_precip, qv supersaturated. qv=',qv,', qvs=',qvs,', diff=',qv-qvs
        print*
-       call endscreamrun("qv supersaturated in evaporate_precip")
+       call endscreamrun("qv supersaturated in evap_precip")
     endif
    
    ! Determine temporary cloud fraction which ramps to 0 as cloud water
@@ -3274,7 +3281,7 @@ qrevp,nrevp)
    
    return
 
-end subroutine evaporate_precip
+end subroutine evap_precip
 
 subroutine get_time_space_phys_variables( &
 t,pres,rho,xxlv,xxls,qvs,qvi, &

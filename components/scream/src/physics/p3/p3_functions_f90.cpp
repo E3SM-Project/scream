@@ -128,7 +128,7 @@ void  update_prognostic_ice_c(
   Real rhorime_c, Real* th, Real* qv, Real* qitot, Real* nitot, Real* qirim,
   Real* birim, Real* qc, Real* nc, Real* qr, Real* nr);
 
-void evaporate_sublimate_precip_c(Real qr_incld, Real qc_incld, Real nr_incld, Real qitot_incld, Real lcldm,
+void evap_precip_c(Real qr_incld, Real qc_incld, Real nr_incld, Real qitot_incld, Real lcldm,
   Real rcldm, Real qvs, Real ab, Real epsr, Real qv, Real* qrevp, Real* nrevp);
 
 void update_prognostic_liquid_c(
@@ -649,10 +649,10 @@ void update_prognostic_ice(P3UpdatePrognosticIceData& d){
                           &d.birim,         &d.qc,    &d.nc,    &d.qr, &d.nr);
 }
 
-void evaporate_sublimate_precip(EvapSublimatePrecipData& d)
+void evap_precip(EvapPrecipData& d)
 {
   p3_init();
-  evaporate_sublimate_precip_c(d.qr_incld, d.qc_incld, d.nr_incld, d.qitot_incld,
+  evap_precip_c(d.qr_incld, d.qc_incld, d.nr_incld, d.qitot_incld,
 			       d.lcldm, d.rcldm, d.qvs, d.ab, d.epsr, d.qv,
 			       &d.qrevp, &d.nrevp);
 }
@@ -1507,7 +1507,7 @@ void update_prognostic_ice_f( Real qcheti_, Real qccol_, Real qcshd_,  Real ncco
   *nr_    = t_h(9);
 }
 
-void evaporate_sublimate_precip_f(Real qr_incld_, Real qc_incld_, Real nr_incld_, Real qitot_incld_, Real lcldm_,
+void evap_precip_f(Real qr_incld_, Real qc_incld_, Real nr_incld_, Real qitot_incld_, Real lcldm_,
 				  Real rcldm_, Real qvs_, Real ab_, Real epsr_, Real qv_,
 				  Real* qrevp_, Real* nrevp_)
 {
@@ -1525,7 +1525,7 @@ void evaporate_sublimate_precip_f(Real qr_incld_, Real qc_incld_, Real nr_incld_
 
       typename P3F::Spack qrevp(local_qrevp), nrevp(local_nrevp);
 
-      P3F::evaporate_sublimate_precip(qr_incld, qc_incld, nr_incld, qitot_incld,  lcldm, rcldm, qvs, ab,
+      P3F::evap_precip(qr_incld, qc_incld, nr_incld, qitot_incld,  lcldm, rcldm, qvs, ab,
       epsr, qv, qrevp, nrevp);
 
       t_d(0) = qrevp[0];

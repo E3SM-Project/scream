@@ -528,7 +528,7 @@ void Functions<S,D>
         revap_table, rho(k), f1r, f2r, dv, mu, sc, mu_r(k), lamr(k), cdistr(k), cdist(k), qr_incld(k), qc_incld(k),
         epsr, epsc, not_skip_micro);
 
-      evaporate_sublimate_precip(
+      evap_precip(
         qr_incld(k), qc_incld(k), nr_incld(k), qitot_incld(k), lcldm(k), rcldm(k), qvs(k), ab, epsr, qv(k),
         qrevp, nrevp, not_skip_micro);
 

@@ -811,13 +811,13 @@ struct UnitWrap::UnitTest<D>::TestGetTimeSpacePhysVariables
 
 
 template <typename D>
-struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
+struct UnitWrap::UnitTest<D>::TestEvapPrecip
 {
-  static void evaporate_sublimate_precip_unit_bfb_tests(){
+  static void evap_precip_unit_bfb_tests(){
 
     //fortran generated data is input to the following
     //This subroutine has 12 args, only 10 are supplied here for invoking it as last 2 are intent-outs
-    EvapSublimatePrecipData espd[max_pack_size] = {
+    EvapPrecipData espd[max_pack_size] = {
       //qr_incld, qc_incld,  nr_incld,  qitot_incld, lcldm,   rcldm,     qvs,       ab,        epsr,      qv
       {1.0010E-06,1.0000E-06,6.3726E+05,0.0000E+00,1.0000E+00,1.0000E+00,2.0321E-02,4.0889E+00,1.0080E-03,5.0000E-02},
       {5.2632E-07,0.0000E+00,3.3506E+05,0.0000E+00,1.0000E+00,1.0000E+00,1.8120E-02,3.7933E+00,5.2700E-04,4.7222E-04},
@@ -838,7 +838,7 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
     };
 
     // Sync to device
-    view_1d<EvapSublimatePrecipData> espd_device("espd", max_pack_size);
+    view_1d<EvapPrecipData> espd_device("espd", max_pack_size);
     auto espd_host = Kokkos::create_mirror_view(espd_device);
 
     // This copy only copies the input variables.
@@ -847,7 +847,7 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
 
     // Get data from fortran
     for (Int i = 0; i < max_pack_size; ++i) {
-      evaporate_sublimate_precip(espd[i]);
+      evap_precip(espd[i]);
     }
 
     // Run the lookup from a kernel and copy results back to host
@@ -872,7 +872,7 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
         nrevp[s]       = espd_device(vs).nrevp;
       }
 
-      Functions::evaporate_sublimate_precip(qr_incld, qc_incld, nr_incld, qitot_incld,  lcldm, rcldm, qvs, ab,
+      Functions::evap_precip(qr_incld, qc_incld, nr_incld, qitot_incld,  lcldm, rcldm, qvs, ab,
                                             epsr, qv, qrevp, nrevp);
 
       // Copy results back into views
@@ -903,10 +903,10 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
   }
 
   static void run_bfb(){
-    evaporate_sublimate_precip_unit_bfb_tests();
+    evap_precip_unit_bfb_tests();
   }
 
-}; //TestEvapSublPrecip
+}; //TestEvapPrecip
 
 template <typename D>
 struct UnitWrap::UnitTest<D>::TestP3UpdatePrognosticLiq
@@ -1283,8 +1283,8 @@ TEST_CASE("p3_update_prognostic_liquid_test", "[p3_unit_tests]"){
   scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestP3UpdatePrognosticLiq::run_bfb();
 }
 
-TEST_CASE("p3_evaporate_sublimate_precip_test", "[p3_unit_tests]"){
-  scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestEvapSublPrecip::run_bfb();
+TEST_CASE("p3_evap_precip_test", "[p3_unit_tests]"){
+  scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestEvapPrecip::run_bfb();
 }
 
 TEST_CASE("p3_ice_deposition_sublimation_test", "[p3_unit_tests]"){

@@ -530,12 +530,12 @@ struct Functions
 
   // TODO (comments)
   KOKKOS_FUNCTION
-  static void evaporate_sublimate_precip(const Spack& qr_incld, const Spack& qc_incld,
-					 const Spack& nr_incld, const Spack& qitot_incld,
-					 const Spack& lcldm, const Spack& rcldm,
-					 const Spack& qvs, const Spack& ab, const Spack& epsr,
-					 const Spack& qv, Spack& qrevp, Spack& nrevp,
-                                         const Smask& context = Smask(true));
+  static void evap_precip(const Spack& qr_incld, const Spack& qc_incld,
+			  const Spack& nr_incld, const Spack& qitot_incld,
+			  const Spack& lcldm, const Spack& rcldm,
+			  const Spack& qvs, const Spack& ab, const Spack& epsr,
+			  const Spack& qv, Spack& qrevp, Spack& nrevp,
+			  const Smask& context = Smask(true));
 
   //get number and mass tendencies due to melting ice
   KOKKOS_FUNCTION
@@ -905,7 +905,7 @@ void init_tables_from_f90_c(Real* vn_table_data, Real* vm_table_data,
 # include "p3_functions_rain_sed_impl.hpp"
 # include "p3_functions_rain_imm_freezing_impl.hpp"
 # include "p3_functions_get_time_space_phys_variables_impl.hpp"
-# include "p3_functions_evaporate_sublimate_precip_impl.hpp"
+# include "p3_functions_evap_precip_impl.hpp"
 # include "p3_functions_update_prognostics_impl.hpp"
 # include "p3_functions_ice_collection_impl.hpp"
 # include "p3_functions_ice_deposition_sublimation_impl.hpp"

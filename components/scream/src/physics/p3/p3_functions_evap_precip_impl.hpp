@@ -1,5 +1,5 @@
-#ifndef P3_FUNCTIONS_EVAPORATE_SUBLIMATE_PRECIP_IMPL_HPP
-#define P3_FUNCTIONS_EVAPORATE_SUBLIMATE_PRECIP_IMPL_HPP
+#ifndef P3_FUNCTIONS_EVAP_PRECIP_IMPL_HPP
+#define P3_FUNCTIONS_EVAP_PRECIP_IMPL_HPP
 
 #include "p3_functions.hpp"
 #include "physics_constants.hpp"
@@ -10,7 +10,7 @@ namespace p3 {
 template<typename S, typename D>
 KOKKOS_FUNCTION
 void Functions<S,D>
-::evaporate_sublimate_precip(
+::evap_precip(
   const Spack& qr_incld, const Spack& qc_incld, const Spack& nr_incld, const Spack& qitot_incld,
   const Spack& lcldm, const Spack& rcldm, const Spack& qvs, const Spack& ab, const Spack& epsr,
   const Spack& qv, Spack& qrevp, Spack& nrevp,
@@ -21,7 +21,7 @@ void Functions<S,D>
      been removed from the original P3-WRF.
 
      Determine temporary cloud fraction, set to zero if cloud water + ice is
-     very small.  This will ensure that evap/subl of precip occurs over entire */
+     very small.  This will ensure that evap of precip occurs over entire */
 
   constexpr Scalar QSMALL   = C::QSMALL;
 
