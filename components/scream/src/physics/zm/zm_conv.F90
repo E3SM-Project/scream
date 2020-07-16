@@ -19,7 +19,7 @@ module zm_conv
 !  use shr_kind_mod,    only: r8 => shr_kind_r8
 !  use spmd_utils,      only: masterproc
  ! use ppgrid,          only: pcols, pver, pverp
-  use cloud_fraction,  only: cldfrc_fice
+!  use cloud_fraction,  only: cldfrc_fice
  ! use physconst,       only: cpair, epsilo, gravit, latice, latvap, tmelt, rair, &
    !                          cpwv, cpliq, rh2o
 !  use cam_abortutils,  only: endrun
@@ -54,16 +54,21 @@ module zm_conv
 ! Private data
 !
 
-   integer(kind=c_int) :: pcols = 32
-   integer(kind=c_int) :: pver  = 72
+   integer(kind=c_int) :: pcols  = 32
+   integer(kind=c_int) :: pver   = 72
+   integer(kind=c_int) :: pverp  = 73
 
    logical :: masterproc = .false.
-   real(kind=c_real) :: cpair  !=    1004.64000000000
-   real(kind=c_real) :: rh2o   !=    461.504639820160
-   real(kind=c_real) :: gravit !=    9.80616000000000
-   real(kind=c_real) :: latvap !=    2501000.00000000
-   real(kind=c_real) :: latice !=    333700.000000000
-   real(kind=c_real) :: tmelt  !=    273.150000000000
+   real(kind=c_real) :: cpair  =    1004.64000000000
+   real(kind=c_real) :: rh2o   =    461.504639820160
+   real(kind=c_real) :: gravit =    9.80616000000000
+   real(kind=c_real) :: latvap =    2501000.00000000
+   real(kind=c_real) :: latice =    333700.000000000
+   real(kind=c_real) :: tmelt  =    273.150000000000
+   real(kind=c_real) :: rair   =    287.042311365049 
+   real(kind=c_real) :: cpliq  =    4188.00000000000
+   real(kind=c_real) :: cpwv   =    1.810e3
+   real(kind=c_real) :: epsilo =    18.0160000000000/28.9660000000000 !mwh20/mwdry
   
    real(r8), parameter :: unset_r8   = huge(1.0_r8)
    integer , parameter :: unset_int  = huge(1)
@@ -126,11 +131,10 @@ module zm_conv
    real(r8) :: tp_fac = unset_r8  ! PMA tunes tpert
 
    logical :: is_first_step_local = .true.  ! AaronDonahue - TODO, actually check if this is the first step given input from the SCREAM-AD
-   logical :: is_first_restart_step = .false.  ! AaronDonahue - TODO, actually check if this is the first restart step given input from the SCREAM-AD
 
 contains
 
-subroutine zmconv_readnl(nlfile)
+subroutine zmconv_readnl()!nlfile)
 ! AaronDonahue - we do not need/have namelist capabilities yet.  That being
 ! said, we probably still need the constants that are defined here.  Switching
 ! to hard-coded values, no namelist.
@@ -214,7 +218,7 @@ subroutine zm_convi(limcnv_in, no_deep_pbl_in)
    logical, intent(in), optional :: no_deep_pbl_in  ! no_deep_pbl = .true. eliminates ZM convection entirely within PBL 
 
    ! local variables
-   character(len=32)   :: hgrid           ! horizontal grid specifier
+!   character(len=32)   :: hgrid           ! horizontal grid specifier   ! AaronDonahue - Doesn't appear to be used
 
    ! Initialization of ZM constants
    limcnv = limcnv_in
@@ -236,7 +240,7 @@ subroutine zm_convi(limcnv_in, no_deep_pbl_in)
    ! tau=4800. were used in canadian climate center. however, in echam3 t42, 
    ! convection is too weak, thus adjusted to 2400.
 
-   hgrid = get_resolution()
+!   hgrid = get_resolution()  ! AaronDonahue - Doesn't appear to be used.
    if(trigmem)tau = 3600._r8
 
    if ( masterproc ) then
@@ -557,7 +561,6 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !
 !--------------------------Data statements------------------------------
 !
-  is_first_step = is_first_step_local
 !
 ! Set internal variable "msg" (convection limit) to "limcnv-1"
 !
@@ -1016,7 +1019,7 @@ subroutine zm_conv_evap(ncol,lchnk, &
 ! Evaporate some of the precip directly into the environment using a Sundqvist type algorithm
 !-----------------------------------------------------------------------
 
-    use wv_saturation,  only: qsat
+!    use wv_saturation,  only: qsat
     !use phys_grid, only: get_rlat_all_p
 
 !------------------------------Arguments--------------------------------
@@ -1070,8 +1073,12 @@ subroutine zm_conv_evap(ncol,lchnk, &
     prec(:ncol) = prec(:ncol)*1000._r8
 
 ! determine saturation vapor pressure
-    call qsat(t(1:ncol, 1:pver), pmid(1:ncol, 1:pver), &
-         es(1:ncol, 1:pver), qs(1:ncol, 1:pver))
+    do i = 1,ncol
+      do k = 1,pver
+        call qsat(t(i,k), pmid(i,k), &
+             es(i,k), qs(i,k), 0)
+      end do
+    end do
 
 ! determine ice fraction in rain production (use cloud water parameterization fraction at present)
     call cldfrc_fice(ncol, t, fice, fsnow_conv)
@@ -1185,7 +1192,7 @@ subroutine zm_conv_evap(ncol,lchnk, &
 
 
 ! AaronDonahue - skip convtran and momtran for now
-#ifdef 0
+#if 0
 subroutine convtran(lchnk   , &
                     doconvtran,q       ,ncnst   ,mu      ,md      , &
                     du      ,eu      ,ed      ,dp      ,dsubcld , &
@@ -4015,8 +4022,8 @@ end SUBROUTINE ientropy
 ! Wrapper for qsat_water that does translation between Pa and hPa
 ! qsat_water uses Pa internally, so get it right, need to pass in Pa.
 ! Afterward, set es back to hPa.
-elemental subroutine qsat_hPa(t, p, es, qm)
-  use wv_saturation, only: qsat_water
+subroutine qsat_hPa(t, p, es, qm)
+!  use wv_saturation, only: qsat_water
 
   ! Inputs
   real(r8), intent(in) :: t    ! Temperature (K)
@@ -4026,10 +4033,336 @@ elemental subroutine qsat_hPa(t, p, es, qm)
   real(r8), intent(out) :: qm  ! Saturation mass mixing ratio
                                ! (vapor mass over dry mass, kg/kg)
 
-  call qsat_water(t, p*100._r8, es, qm)
+  call qsat(t, p*100._r8, es, qm, 0)
 
   es = es*0.01_r8
 
 end subroutine qsat_hPa
+
+! AaronDonahue - Dummy function to handle whether or not this is the first
+! step, until AD can provide this information directly.
+function is_first_step() result(val)
+  logical :: val
+  val = is_first_step_local
+end function is_first_step
+
+function is_first_restart_step() result(val)
+  logical :: val
+  val = .false.
+end function is_first_restart_step
+! AaronDonahue - Taken from cloud_fraction.F90 and adapted for local use.
+! TODO, we should probably use the ice cloud fraction from macrophysics 
+  subroutine cldfrc_fice(ncol, t, fice, fsnow)
+!
+! Compute the fraction of the total cloud water which is in ice phase.
+! The fraction depends on temperature only. 
+! This is the form that was used for radiation, the code came from cldefr originally
+! 
+! Author: B. A. Boville Sept 10, 2002
+!  modified: PJR 3/13/03 (added fsnow to ascribe snow production for convection )
+!
+! AaronDonahue - taken from original location as a stopgap to get ZM working
+! locally.
+!-----------------------------------------------------------------------
+
+! Arguments
+    integer,  intent(in)  :: ncol                 ! number of active columns
+    real(r8), intent(in)  :: t(pcols,pver)        ! temperature
+
+    real(r8), intent(out) :: fice(pcols,pver)     ! Fractional ice content within cloud
+    real(r8), intent(out) :: fsnow(pcols,pver)    ! Fractional snow content for convection
+
+! Local variables
+    real(r8) :: tmax_fice                         ! max temperature for cloud ice formation
+    real(r8) :: tmin_fice                         ! min temperature for cloud ice formation
+    real(r8) :: tmax_fsnow                        ! max temperature for transition to convective snow
+    real(r8) :: tmin_fsnow                        ! min temperature for transition to convective snow
+
+    integer :: i,k                                ! loop indexes
+    ! Top level
+    integer :: top_lev = 1
+
+!-----------------------------------------------------------------------
+
+    tmax_fice = tmelt - 10._r8        ! max temperature for cloud ice formation
+    tmin_fice = tmax_fice - 30._r8    ! min temperature for cloud ice formation
+    tmax_fsnow = tmelt                ! max temperature for transition to convective snow
+    tmin_fsnow = tmelt - 5._r8        ! min temperature for transition to convective snow
+
+    fice(:,:top_lev-1) = 0._r8
+    fsnow(:,:top_lev-1) = 0._r8
+
+! Define fractional amount of cloud that is ice
+    do k=top_lev,pver
+       do i=1,ncol
+
+! If warmer than tmax then water phase
+          if (t(i,k) > tmax_fice) then
+             fice(i,k) = 0.0_r8
+
+! If colder than tmin then ice phase
+          else if (t(i,k) < tmin_fice) then
+             fice(i,k) = 1.0_r8
+
+! Otherwise mixed phase, with ice fraction decreasing linearly from tmin to tmax
+          else 
+             fice(i,k) =(tmax_fice - t(i,k)) / (tmax_fice - tmin_fice)
+          end if
+
+! snow fraction partitioning
+
+! If warmer than tmax then water phase
+          if (t(i,k) > tmax_fsnow) then
+             fsnow(i,k) = 0.0_r8
+
+! If colder than tmin then ice phase
+          else if (t(i,k) < tmin_fsnow) then
+             fsnow(i,k) = 1.0_r8
+
+! Otherwise mixed phase, with ice fraction decreasing linearly from tmin to tmax
+          else 
+             fsnow(i,k) =(tmax_fsnow - t(i,k)) / (tmax_fsnow - tmin_fsnow)
+          end if
+
+       end do
+    end do
+
+  end subroutine cldfrc_fice
+!---------------------------------------------------------------------
+! QSAT (SPECIFIC HUMIDITY) PROCEDURES
+!---------------------------------------------------------------------
+! AaronDonahue - Taken from micro_p3.F90 to get ZM working locally.
+! TODO - A unified qsat calculation that can be used by multiple physics
+! processes?
+!===========================================================================================
+
+  subroutine qsat(t_atm,p_atm,e_pres,qv_sat, i_wrt)
+
+    !------------------------------------------------------------------------------------
+    ! Calls polysvp1 to obtain the saturation vapor pressure, and then computes
+    ! and returns the saturation mixing ratio, with respect to either liquid or ice,
+    ! depending on value of 'i_wrt'
+    !------------------------------------------------------------------------------------
+
+    implicit none
+
+    !Calling parameters:
+    real(r8), intent(IN)    :: t_atm  !temperature [K]
+    real(r8), intent(IN)    :: p_atm  !pressure    [Pa]
+    real(r8), intent(OUT)   :: e_pres         !saturation vapor pressure [Pa]
+    real(r8), intent(OUT)   :: qv_sat         !saturation mixing ratio         
+    integer, intent(IN)        :: i_wrt  !index, 0 = w.r.t. liquid, 1 = w.r.t. ice
+
+    !Local variables:
+    real(r8) :: ep_2
+
+    !------------------
+    ep_2 = epsilo
+    e_pres = polysvp1(t_atm,i_wrt)
+    qv_sat = ep_2*e_pres/max(1.e-3_r8,(p_atm-e_pres))
+
+    return
+
+  end subroutine qsat
+!==========================================================================================!
+  !_rtype
+  real(r8) function polysvp1(t,i_type)
+
+    !-------------------------------------------
+    !  COMPUTE SATURATION VAPOR PRESSURE
+    !  POLYSVP1 RETURNED IN UNITS OF PA.
+    !  T IS INPUT IN UNITS OF K.
+    !  i_type REFERS TO SATURATION WITH RESPECT TO LIQUID (0) OR ICE (1)
+    !-------------------------------------------
+
+    use scream_abortutils, only : endscreamrun
+
+    implicit none
+
+    real(r8), intent(in) :: t
+    integer, intent(in)     :: i_type
+
+    ! REPLACE GOFF-GRATCH WITH FASTER FORMULATION FROM FLATAU ET AL. 1992, TABLE 4 (RIGHT-HAND COLUMN)
+
+    !local variables
+    character(len=1000) :: err_msg
+
+    ! ice
+    real(r8) a0i,a1i,a2i,a3i,a4i,a5i,a6i,a7i,a8i
+    data a0i,a1i,a2i,a3i,a4i,a5i,a6i,a7i,a8i /&
+         6.11147274_r8,     0.503160820_r8,     0.188439774e-1_r8, &
+         0.420895665e-3_r8, 0.615021634e-5_r8,  0.602588177e-7_r8, &
+         0.385852041e-9_r8, 0.146898966e-11_r8, 0.252751365e-14_r8/
+
+    ! liquid
+    real(r8) a0,a1,a2,a3,a4,a5,a6,a7,a8
+
+    ! V1.7
+    data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
+         6.11239921_r8,      0.443987641_r8,     0.142986287e-1_r8, &
+         0.264847430e-3_r8,  0.302950461e-5_r8,  0.206739458e-7_r8, &
+         0.640689451e-10_r8,-0.952447341e-13_r8,-0.976195544e-15_r8/
+    real(r8) dt
+    real(r8) zerodegc
+    !-------------------------------------------
+    zerodegc = tmelt
+    if (i_type.eq.1 .and. t.lt.zerodegc) then
+       ! ICE
+
+       !       Flatau formulation:
+       dt       = max(-80._r8,t-273.15_r8)
+       polysvp1 = a0i + dt*(a1i+dt*(a2i+dt*(a3i+dt*(a4i+dt*(a5i+dt*(a6i+dt*(a7i+       &
+            a8i*dt)))))))
+       polysvp1 = polysvp1*100._r8
+
+       !       Goff-Gratch formulation:
+       !        POLYSVP1 = 10.**(-9.09718*(273.16/T-1.)-3.56654*                 &
+       !          log10(273.16/T)+0.876793*(1.-T/273.16)+                        &
+       !          log10(6.1071))*100.
+
+
+    elseif (i_type.eq.0 .or. t.ge.zerodegc) then
+       ! LIQUID
+
+       !       Flatau formulation:
+       dt       = max(-80._r8,t-273.15_r8)
+       polysvp1 = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
+       polysvp1 = polysvp1*100._r8
+
+       !       Goff-Gratch formulation:
+       !        POLYSVP1 = 10.**(-7.90298*(373.16/T-1.)+                         &
+       !             5.02808*log10(373.16/T)-                                    &
+       !             1.3816E-7*(10**(11.344*(1.-T/373.16))-1.)+                  &
+       !             8.1328E-3*(10**(-3.49149*(373.16/T-1.))-1.)+                &
+       !             log10(1013.246))*100.
+
+    !PMC added error checking
+    else
+
+       write(err_msg,*)'** polysvp1 i_type must be 0 or 1 but is: ', &
+            i_type,' temperature is:',t,' in file: ',__FILE__,' at line:',__LINE__
+
+       call endscreamrun(err_msg)
+    endif
+
+   return
+
+  end function polysvp1
+! Below is what was originally used by ZM and is taken from wv_saturation
+!elemental subroutine qsat(t, p, es, qs, gam, dqsdt, enthalpy)
+!  !------------------------------------------------------------------!
+!  ! Purpose:                                                         !
+!  !   Look up and return saturation vapor pressure from precomputed  !
+!  !   table, then calculate and return saturation specific humidity. !
+!  !   Optionally return various temperature derivatives or enthalpy  !
+!  !   at saturation.                                                 !
+!  !------------------------------------------------------------------!
+!
+!  ! Inputs
+!  real(r8), intent(in) :: t    ! Temperature
+!  real(r8), intent(in) :: p    ! Pressure
+!  ! Outputs
+!  real(r8), intent(out) :: es  ! Saturation vapor pressure
+!  real(r8), intent(out) :: qs  ! Saturation specific humidity
+!
+!  real(r8), intent(out), optional :: gam    ! (l/cpair)*(d(qs)/dt)
+!  real(r8), intent(out), optional :: dqsdt  ! (d(qs)/dt)
+!  real(r8), intent(out), optional :: enthalpy ! cpair*t + hltalt*q
+!
+!  ! Local variables
+!  real(r8) :: hltalt       ! Modified latent heat for T derivatives
+!  real(r8) :: tterm        ! Account for d(es)/dT in transition region
+!
+!  es = estblf(t)
+!
+!  qs = svp_to_qsat(es, p)
+!
+!  ! Ensures returned es is consistent with limiters on qs.
+!  es = min(es, p)
+!
+!  ! Calculate optional arguments.
+!  if (present(gam) .or. present(dqsdt) .or. present(enthalpy)) then
+!
+!     ! "generalized" analytic expression for t derivative of es
+!     ! accurate to within 1 percent for 173.16 < t < 373.16
+!     call calc_hltalt(t, hltalt, tterm)
+!
+!     if (present(enthalpy)) enthalpy = tq_enthalpy(t, qs, hltalt)
+!
+!     call deriv_outputs(t, p, es, qs, hltalt, tterm, &
+!          gam=gam, dqsdt=dqsdt)
+!
+!  end if
+!
+!end subroutine qsat
+!
+!elemental subroutine qsat_water(t, p, es, qs, gam, dqsdt, enthalpy)
+!  !------------------------------------------------------------------!
+!  ! Purpose:                                                         !
+!  !   Calculate SVP over water at a given temperature, and then      !
+!  !   calculate and return saturation specific humidity.             !
+!  !   Optionally return various temperature derivatives or enthalpy  !
+!  !   at saturation.                                                 !
+!  !------------------------------------------------------------------!
+!
+!!  use wv_sat_methods, only: wv_sat_qsat_water
+!
+!  ! Inputs
+!  real(r8), intent(in) :: t    ! Temperature
+!  real(r8), intent(in) :: p    ! Pressure
+!  ! Outputs
+!  real(r8), intent(out) :: es  ! Saturation vapor pressure
+!  real(r8), intent(out) :: qs  ! Saturation specific humidity
+!
+!  real(r8), intent(out), optional :: gam    ! (l/cpair)*(d(qs)/dt)
+!  real(r8), intent(out), optional :: dqsdt  ! (d(qs)/dt)
+!  real(r8), intent(out), optional :: enthalpy ! cpair*t + hltalt*q
+!
+!  ! Local variables
+!  real(r8) :: hltalt       ! Modified latent heat for T derivatives
+!
+!  call wv_sat_qsat_water(t, p, es, qs)
+!
+!  if (present(gam) .or. present(dqsdt) .or. present(enthalpy)) then
+!
+!     ! "generalized" analytic expression for t derivative of es
+!     ! accurate to within 1 percent for 173.16 < t < 373.16
+!     call no_ip_hltalt(t, hltalt)
+!
+!     if (present(enthalpy)) enthalpy = tq_enthalpy(t, qs, hltalt)
+!
+!     ! For pure water/ice transition term is 0.
+!     call deriv_outputs(t, p, es, qs, hltalt, 0._r8, &
+!          gam=gam, dqsdt=dqsdt)
+!
+!  end if
+!
+!end subroutine qsat_water
+!
+!elemental subroutine wv_sat_qsat_water(t, p, es, qs, idx)
+!  !------------------------------------------------------------------!
+!  ! Purpose:                                                         !
+!  !   Calculate SVP over water at a given temperature, and then      !
+!  !   calculate and return saturation specific humidity.             !
+!  !------------------------------------------------------------------!
+!
+!  ! Inputs
+!  real(r8), intent(in) :: t    ! Temperature
+!  real(r8), intent(in) :: p    ! Pressure
+!  ! Outputs
+!  real(r8), intent(out) :: es  ! Saturation vapor pressure
+!  real(r8), intent(out) :: qs  ! Saturation specific humidity
+!
+!  integer,  intent(in), optional :: idx ! Scheme index
+!
+!  es = wv_sat_svp_water(t, idx)
+!
+!  qs = wv_sat_svp_to_qsat(es, p)
+!
+!  ! Ensures returned es is consistent with limiters on qs.
+!  es = min(es, p)
+!
+!end subroutine wv_sat_qsat_water
+!---------------------------------------------------------------------
 
 end module zm_conv
