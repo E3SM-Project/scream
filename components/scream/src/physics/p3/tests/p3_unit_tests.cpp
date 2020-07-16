@@ -1180,7 +1180,7 @@ struct UnitWrap::UnitTest<D>::TestP3IceDepSublimation
     ice_deposition_sublimation_unit_bfb_tests();
   }
 
-}; //TestP3UpdatePrognosticLiq
+}; //TestP3IceDepSublimation
 
 
 template <typename D>

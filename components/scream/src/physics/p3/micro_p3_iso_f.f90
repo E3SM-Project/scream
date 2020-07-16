@@ -599,6 +599,7 @@ subroutine  update_prognostic_ice_f(qcheti,qccol,qcshd,nccol,ncheti,ncshdc,qrcol
 
    ! args
 
+   integer(kind=c_int), value, intent(in)  :: its, ite, kts, kte, it
    real(kind=c_real), intent(inout), dimension(its:ite,kts:kte) :: qc, nc, qr, nr, qitot, qirim, nitot, birim, qv, th
    real(kind=c_real), intent(in),  dimension(its:ite,kts:kte) :: pres, dzq, ncnuc, naai, pdel, exner, icldm, lcldm, rcldm, qc_relvar
    real(kind=c_real), intent(out), dimension(its:ite,kts:kte) :: diag_ze, diag_effc, diag_effi, diag_vmi, diag_di, diag_rhoi, mu_c, &
@@ -606,7 +607,6 @@ subroutine  update_prognostic_ice_f(qcheti,qccol,qcshd,nccol,ncheti,ncshdc,qrcol
    real(kind=c_real), intent(out), dimension(its:ite,kts:kte+1) :: rflx, sflx
    real(kind=c_real), intent(out), dimension(its:ite) :: prt_liq, prt_sol
 
-   integer(kind=c_int), value, intent(in)  :: its, ite, kts, kte, it
    logical(kind=c_bool), value, intent(in) :: log_predictNc
    real(kind=c_real), value, intent(in)    :: dt
 
