@@ -392,9 +392,9 @@ contains
 
        !Prevent Cell-Average Supersaturation
        if (qv(k).gt.qvs(k)) then
-          qv(k) = qvs(k)
           qc(k) = qc(k) + qv(k) - qvs(k)
           th(k) = th(k) - exner(k)*(qv(k) - qvs(k))*xxlv(k)*inv_cp
+          qv(k) = qvs(k)
           !not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
        endif
        
@@ -972,9 +972,9 @@ contains
       qvs(k)     = qv_sat(t(k),pres(k),0)
       if (qv(k).gt.qvs(k)) then
          write(iulog,*) "post-loop, qv=",qv(k)," > qvs=",qvs(k)," for k=",k
-         qv(k) = qvs(k)
          qc(k) = qc(k) + qv(k) - qvs(k)
          th(k) = th(k) - exner(k)*(qv(k) - qvs(k))*xxlv(k)*inv_cp
+         qv(k) = qvs(k)
          !not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
       endif
 
