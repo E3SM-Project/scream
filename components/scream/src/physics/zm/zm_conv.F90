@@ -43,8 +43,10 @@ module zm_conv
   public zm_convi                 ! ZM schemea
   public zm_convr                 ! ZM schemea
   public zm_conv_evap             ! evaporation of precip from ZM schemea
-  public convtran                 ! convective transport
-  public momtran                  ! convective momentum transport
+! AaronDonahue - TODO Question: Are convtran and momtran going to be used?  Do
+! not appear to be used by zm_convr
+!  public convtran                 ! convective transport
+!  public momtran                  ! convective momentum transport  
   public trigmem                  ! true if convective memory
   public trigdcape_ull            ! true if to use dcape-ULL trigger
 
@@ -121,53 +123,58 @@ module zm_conv
    
    integer  limcnv       ! top interface level limit for convection
 
-   real(r8) :: tp_fac = unset_r8  ! PMA tunes tpert 
+   real(r8) :: tp_fac = unset_r8  ! PMA tunes tpert
+
+   logical :: is_first_step_local = .true.  ! AaronDonahue - TODO, actually check if this is the first step given input from the SCREAM-AD
+   logical :: is_first_restart_step = .false.  ! AaronDonahue - TODO, actually check if this is the first restart step given input from the SCREAM-AD
 
 contains
 
 subroutine zmconv_readnl(nlfile)
+! AaronDonahue - we do not need/have namelist capabilities yet.  That being
+! said, we probably still need the constants that are defined here.  Switching
+! to hard-coded values, no namelist.
+!   use namelist_utils,  only: find_group_name
+!   use units,           only: getunit, freeunit
+!   use mpishorthand
 
-   use namelist_utils,  only: find_group_name
-   use units,           only: getunit, freeunit
-   use mpishorthand
-
-   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
+!   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
    ! Local variables
-   integer :: unitn, ierr
-   character(len=*), parameter :: subname = 'zmconv_readnl'
+!   integer :: unitn, ierr
+!   character(len=*), parameter :: subname = 'zmconv_readnl'
 
-   namelist /zmconv_nl/ zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_tau, & 
-           zmconv_dmpdz, zmconv_alfa, zmconv_trigmem, zmconv_tiedke_add,     &
-           zmconv_cape_cin, zmconv_mx_bot_lyr_adj, zmconv_tp_fac, zmconv_trigdcape_ull
-   !-----------------------------------------------------------------------------
+!   namelist /zmconv_nl/ zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_tau, & 
+!           zmconv_dmpdz, zmconv_alfa, zmconv_trigmem, zmconv_tiedke_add,     &
+!           zmconv_cape_cin, zmconv_mx_bot_lyr_adj, zmconv_tp_fac, zmconv_trigdcape_ull
+!   !-----------------------------------------------------------------------------
 
-   zmconv_tau = 3600._r8
-   if (masterproc) then
-      unitn = getunit()
-      open( unitn, file=trim(nlfile), status='old' )
-      call find_group_name(unitn, 'zmconv_nl', status=ierr)
-      if (ierr == 0) then
-         read(unitn, zmconv_nl, iostat=ierr)
-         if (ierr /= 0) then
-            call endrun(subname // ':: ERROR reading namelist')
-         end if
-      end if
-      close(unitn)
-      call freeunit(unitn)
+!   zmconv_tau = 3600._r8
+!   if (masterproc) then
+!      unitn = getunit()
+!      open( unitn, file=trim(nlfile), status='old' )
+!      call find_group_name(unitn, 'zmconv_nl', status=ierr)
+!      if (ierr == 0) then
+!         read(unitn, zmconv_nl, iostat=ierr)
+!         if (ierr /= 0) then
+!            call endrun(subname // ':: ERROR reading namelist')
+!         end if
+!      end if
+!      close(unitn)
+!      call freeunit(unitn)
 
       ! set local variables
-      c0_lnd         = zmconv_c0_lnd
-      c0_ocn         = zmconv_c0_ocn
-      ke             = zmconv_ke
-      tau            = zmconv_tau
-      trigmem        = zmconv_trigmem
-      trigdcape_ull  = zmconv_trigdcape_ull
-      tiedke_add     = zmconv_tiedke_add
-      num_cin        = zmconv_cape_cin
-      mx_bot_lyr_adj = zmconv_mx_bot_lyr_adj
-      dmpdz          = zmconv_dmpdz
-      tp_fac         = zmconv_tp_fac
+      c0_lnd         = 0.007_r8   ! zmconv_c0_lnd
+      c0_ocn         = 0.007_r8   ! zmconv_c0_ocn
+      ke             = 1.5e-6_r8  ! zmconv_ke
+      tau            = 3600       ! zmconv_tau
+      trigmem        = .false.    ! zmconv_trigmem
+      trigdcape_ull  = .false.    ! zmconv_trigdcape_ull
+      tiedke_add     = 0.8_r8     ! zmconv_tiedke_add
+      num_cin        = 1          ! zmconv_cape_cin
+      mx_bot_lyr_adj = 2          ! zmconv_mx_bot_lyr_adj
+      dmpdz          = -0.7e-3_r8 ! zmconv_dmpdz
+      tp_fac         = 0.0_r8     ! zmconv_tp_fac
       
       if ( zmconv_alfa /= unset_r8 ) then
            alfa_scalar = zmconv_alfa
@@ -179,23 +186,23 @@ subroutine zmconv_readnl(nlfile)
          write(*,*)'**** ZMCONV-DCAPE trigger with unrestricted launch level:', trigdcape_ull
       endif
 
-   end if
-
-#ifdef SPMD
-   ! Broadcast namelist variables
-   call mpibcast(c0_lnd,            1, mpir8,  0, mpicom)
-   call mpibcast(c0_ocn,            1, mpir8,  0, mpicom)
-   call mpibcast(ke,                1, mpir8,  0, mpicom)
-   call mpibcast(tau,               1, mpir8,  0, mpicom)
-   call mpibcast(dmpdz,             1, mpir8,  0, mpicom)
-   call mpibcast(alfa_scalar,       1, mpir8,  0, mpicom)
-   call mpibcast(trigmem,           1, mpilog, 0, mpicom)
-   call mpibcast(trigdcape_ull,     1, mpilog, 0, mpicom)
-   call mpibcast(tiedke_add,        1, mpir8,  0, mpicom)
-   call mpibcast(num_cin,           1, mpiint, 0, mpicom)
-   call mpibcast(mx_bot_lyr_adj,    1, mpiint, 0, mpicom)
-   call mpibcast(tp_fac,       1, mpir8,  0, mpicom)
-#endif
+!   end if
+!
+!#ifdef SPMD
+!   ! Broadcast namelist variables
+!   call mpibcast(c0_lnd,            1, mpir8,  0, mpicom)
+!   call mpibcast(c0_ocn,            1, mpir8,  0, mpicom)
+!   call mpibcast(ke,                1, mpir8,  0, mpicom)
+!   call mpibcast(tau,               1, mpir8,  0, mpicom)
+!   call mpibcast(dmpdz,             1, mpir8,  0, mpicom)
+!   call mpibcast(alfa_scalar,       1, mpir8,  0, mpicom)
+!   call mpibcast(trigmem,           1, mpilog, 0, mpicom)
+!   call mpibcast(trigdcape_ull,     1, mpilog, 0, mpicom)
+!   call mpibcast(tiedke_add,        1, mpir8,  0, mpicom)
+!   call mpibcast(num_cin,           1, mpiint, 0, mpicom)
+!   call mpibcast(mx_bot_lyr_adj,    1, mpiint, 0, mpicom)
+!   call mpibcast(tp_fac,       1, mpir8,  0, mpicom)
+!#endif
 
 end subroutine zmconv_readnl
 
@@ -275,7 +282,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
 ! and will make use of the standard CAM nomenclature
 ! 
 !-----------------------------------------------------------------------
-   use time_manager, only: is_first_step, is_first_restart_step   !songxl 2014-05-20
+!   use time_manager, only: is_first_step, is_first_restart_step   !songxl 2014-05-20
 !
 ! ************************ index of variables **********************
 !
@@ -546,8 +553,11 @@ subroutine zm_convr(lchnk   ,ncol    , &
    real(r8) qdifr
    real(r8) sdifr
 
+   logical :: is_first_step
 !
 !--------------------------Data statements------------------------------
+!
+  is_first_step = is_first_step_local
 !
 ! Set internal variable "msg" (convection limit) to "limcnv-1"
 !
@@ -986,6 +996,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
    end do
    rliq(:ncol) = rliq(:ncol) /1000._r8
 
+   is_first_step_local = .false.
    return
 end subroutine zm_convr
 
@@ -1173,7 +1184,8 @@ subroutine zm_conv_evap(ncol,lchnk, &
   end subroutine zm_conv_evap
 
 
-
+! AaronDonahue - skip convtran and momtran for now
+#ifdef 0
 subroutine convtran(lchnk   , &
                     doconvtran,q       ,ncnst   ,mu      ,md      , &
                     du      ,eu      ,ed      ,dp      ,dsubcld , &
@@ -1881,7 +1893,8 @@ subroutine momtran(lchnk, ncol, &
 
    return
 end subroutine momtran
-
+#endif  
+! AaronDonahue - skip convtran and momtran for now
 !=========================================================================================
 
 subroutine buoyan(lchnk   ,ncol    , &
