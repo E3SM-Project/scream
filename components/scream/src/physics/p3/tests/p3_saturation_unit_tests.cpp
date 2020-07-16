@@ -218,7 +218,7 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
 	Scalar sp_data[ncrv]; // single precision expected vals for MK and polysvp1
       };
 
-      const auto ncases   = 10; //total number of test cases
+      const auto ncases   = 1; //total number of test cases
 
       sat_test_args stargs[ncases]; // variable to store all the data for launching tests
 
@@ -243,7 +243,7 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
 		   {611.2399, 611.2399, 0.0038251132, 0.0038251132,
 		    611.2123, 611.2123, 0.003824939, 0.003824939}
       };
-
+      /*
       // Cold Case: Test values @ 243.15K @ 1e5 Pa
       //---------------------------------------
       stargs[1] = {243.15,
@@ -370,7 +370,7 @@ struct UnitWrap::UnitTest<D>::TestP3Saturation
 		   {38.024666, 51.03264, 0.00047336446, 0.00063546456,
 		    38.012142, 50.935585, 0.00047320846, 0.00063425483}
       };
-
+      */
       //Launch Tests:
       //---------------------------------------------
 
