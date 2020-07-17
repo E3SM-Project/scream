@@ -1540,7 +1540,7 @@ contains
     if (i_type .eq. 1 .and. t .lt. zerodegc) then
 
        !(good down to 110 K)
-       MurphyKoop_svp = exp(ic(1) - (ic(2) / t) + (ic(3) * logt) - (ic(4) * t))
+       MurphyKoop_svp = bfb_exp(ic(1) - (ic(2) / t) + (ic(3) * logt) - (ic(4) * t))
 
     elseif (i_type .eq. 0 .or. t .ge. zerodegc) then
 
@@ -1548,7 +1548,7 @@ contains
 !       MurphyKoop_svp = exp(lq(1) - (lq(2) / t) - (lq(3) * logt) + (lq(4) * t) + &
 !            (tanh(lq(5) * (t - lq(6))) * (lq(7) - (lq(8) / t) - &
 !            (lq(9) * logt) + lq(10) * t)));
-       MurphyKoop_svp = exp(ic(1) - (ic(2) / t) + (ic(3) * logt) - (ic(4) * t))
+       MurphyKoop_svp = bfb_exp(ic(1) - (ic(2) / t) + (ic(3) * logt) - (ic(4) * t))
 
     else
 
