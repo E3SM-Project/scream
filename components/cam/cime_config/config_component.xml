@@ -301,6 +301,8 @@
       <value compset="PIPD_CAM5"        >1850-PD_cam5</value>
       <value compset="2010_CAM5.*SCREAM-LR" >2010_scream_lr</value>
       <value compset="2010_CAM5.*SCREAM-HR" >2010_scream_hr</value>
+      <value compset="2000_CAM5.*SCREAM-LR" >2000_scream_lr</value>
+      <value compset="2000_CAM5.*SCREAM-HR" >2000_scream_hr</value>
       <!-- Aqua planet -->
       <value compset="_CAM5%AQUA"     >aquaplanet_EAMv1</value>
       <!-- Radiative-Convective Equilibrium (RCE) -->
