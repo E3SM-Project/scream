@@ -126,7 +126,7 @@ Functions<S,D>::qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice, c
   //func_idx = 1 --> MurphyKoop_svp (Murphy, D. M., and T. Koop 2005)
 
   //First check if the temperature is legitimate or not
-  //check_temp(t_atm, "qv_sat");
+  check_temp(t_atm, "qv_sat");
 
   Spack e_pres; // saturation vapor pressure [Pa]
 
