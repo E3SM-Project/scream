@@ -369,17 +369,17 @@ _TESTS = {
     "e3sm_scream" : {
         "time"  : "03:00:00",
         "tests" : (
-            "SMS_D.ne4_ne4.FSCREAM-HR",
-            "SMS_D.ne4_ne4.FSCREAM-LR",
-            "SMS_D.ne4_ne4.FSCREAM-SA",
-            "ERS.ne4_ne4.FSCREAM-HR",
-            "ERS.ne4_ne4.FSCREAM-LR",
-            "ERP.ne4_ne4.FSCREAM-HR.cam-double_memleak_tol",
-            "ERP.ne4_ne4.FSCREAM-LR.cam-double_memleak_tol",
-            "REP.ne4_ne4.FSCREAM-HR",
-            "REP.ne4_ne4.FSCREAM-LR",
-            "PEM.ne4_ne4.FSCREAM-HR",
-            "PEM.ne4_ne4.FSCREAM-LR",
+            "SMS_D.ne4pg2_ne4pg2.FSCREAM-HR",
+            "SMS_D.ne4pg2_ne4pg2.FSCREAM-LR",
+            "SMS_D.ne4pg2_ne4pg2.FSCREAM-SA",
+            "ERS.ne4pg2_ne4pg2.FSCREAM-HR",
+            "ERS.ne4pg2_ne4pg2.FSCREAM-LR",
+            "ERP.ne4pg2_ne4pg2.FSCREAM-HR.cam-double_memleak_tol",
+            "ERP.ne4pg2_ne4pg2.FSCREAM-LR.cam-double_memleak_tol",
+            "REP.ne4pg2_ne4pg2.FSCREAM-HR",
+            "REP.ne4pg2_ne4pg2.FSCREAM-LR",
+            "PEM.ne4pg2_ne4pg2.FSCREAM-HR",
+            "PEM.ne4pg2_ne4pg2.FSCREAM-LR",
             )
     }
 }
