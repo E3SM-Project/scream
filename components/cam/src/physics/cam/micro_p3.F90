@@ -3224,12 +3224,12 @@ qrevp,nrevp)
    ! and the assumptions of this parameterization will have been violated.
    ! This check should eventually be commented out and/or moved to a debug-mode
    ! feature.
-   if ( qv-qvs .gt. 1.e-12_rtype ) then
-       print*
-       print*,'In evap_precip, qv supersaturated. qv=',qv,', qvs=',qvs,', diff=',qv-qvs
-       print*
-       call endscreamrun("qv supersaturated in evap_precip")
-    endif
+   !if ( qv-qvs .gt. 1.e-12_rtype ) then
+   !    print*
+   !    print*,'In evap_precip, qv supersaturated. qv=',qv,', qvs=',qvs,', diff=',qv-qvs
+   !    print*
+   !    call endscreamrun("qv supersaturated in evap_precip")
+   ! endif
    
    ! Determine temporary cloud fraction which ramps to 0 as cloud water
    ! approaches zero. This avoids problems due to lcldm having a positive

@@ -166,6 +166,13 @@ void Functions<S,D>
       log_nucleationPossible = true;
     }
 
+    //Prevent Cell-Average Supersaturation
+    auto is_supersat = qv(k) > qvs(k);
+    qc(k).set( is_supersat,qc(k) + qv(k) - qvs(k) );
+    th(k).set( is_supersat,th(k) - exner(k)*(qv(k) - qvs(k))*xxlv(k)*inv_cp);
+    qv(k).set( is_supersat,qvs(k));
+    //not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
+      
     // apply mass clipping if dry and mass is sufficiently small
     // (implying all mass is expected to evaporate/sublimate in one time step)
     auto drymass = qc(k) < qsmall;
