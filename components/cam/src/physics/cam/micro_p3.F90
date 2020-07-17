@@ -1524,7 +1524,7 @@ contains
 
     !local vars
     character(len=1000) :: err_msg
-    real(rtype)         :: logt
+    real(rtype)         :: logt, tmp
 
     !parameters for ice saturation eqn
     real(rtype), parameter :: ic(4)  =(/9.550426_rtype, 5723.265_rtype, 3.53068_rtype, &
@@ -1545,11 +1545,11 @@ contains
     elseif (i_type .eq. 0 .or. t .ge. zerodegc) then
 
        ! (good for 123 < T < 332 K)
-!       MurphyKoop_svp = exp(lq(1) - (lq(2) / t) - (lq(3) * logt) + (lq(4) * t) + &
-!            (tanh(lq(5) * (t - lq(6))) * (lq(7) - (lq(8) / t) - &
-!            (lq(9) * logt) + lq(10) * t)));
-       MurphyKoop_svp = bfb_exp(ic(1) - (ic(2) / t) + (ic(3) * logt) - (ic(4) * t))
-
+       !For some reason, we cannot add line breaks if we use "bfb_exp", storing experssion in "tmp"
+       tmp = lq(1) - (lq(2) / t) - (lq(3) * logt) + (lq(4) * t) + &
+            (tanh(lq(5) * (t - lq(6))) * (lq(7) - (lq(8) / t) - &
+            (lq(9) * logt) + lq(10) * t))
+       MurphyKoop_svp = bfb_exp(tmp)
     else
 
        write(err_msg,*)'Error: Either MurphyKoop_svp i_type is not 0 or 1 or t=NaN. itype= ', &
