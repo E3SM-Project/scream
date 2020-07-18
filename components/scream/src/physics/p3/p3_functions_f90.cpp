@@ -1,5 +1,5 @@
-#include "p3_functions_f90.hpp"
 #include "p3_f90.hpp"
+#include "p3_functions_f90.hpp"
 
 #include "ekat/scream_assert.hpp"
 #include "ekat/util/scream_utils.hpp"
