@@ -5,6 +5,8 @@
 module scream_zm_interface_mod
 
   use iso_c_binding, only: c_ptr, c_f_pointer, c_int, c_double, c_bool,C_NULL_CHAR, c_float
+  use physics_utils, only: r8 => rtype, rtype8, itype, btype
+  use zm_conv,       only: zm_convr, is_first_step
  
   implicit none
 #include "scream_config.f"
@@ -23,77 +25,117 @@ module scream_zm_interface_mod
   public :: zm_finalize_f90
 
   real   :: test
-
+  
   integer(kind=c_int) :: pcols = 32
-  integer(kind=c_int) :: pver  = 72
-!  integer(kind=c_int) :: ncol
+  integer(kind=c_int) :: pver = 72
+
 
   real(kind=c_real) :: cpair  !=    1004.64000000000
   real(kind=c_real) :: gravit !=    9.80616000000000
   real(kind=c_real) :: latvap !=    2501000.00000000
-  
   real(kind=c_real) :: plevp = 0.0 
 
+  real(kind=c_real) :: pverp = 0
+
+
+ 
 contains
 
   !====================================================================!
-  subroutine zm_init_f90 () bind(c)
-    use zm_conv,        only: zm_convi
- 
+  subroutine zm_init_f90 (pref_edge) bind(c)
+    
     implicit none
     real(kind=c_real) :: pref_edge(plevp)  
 
     logical :: no_deep_pbl
 
-    real(kind=c_real) :: prec !total precipitation from ZM convection
-    real(kind=c_real) :: mdt !  tendency - Zhang-McFarlane moist convection
-    real(kind=c_real) :: mdq ! Zhang-McFarlane moist convection
-    real(kind=c_real) :: cice ! Cloud ice tendency - Zhang-McFarlane convection
-    real(kind=c_real) :: cliq ! Cloud liq tendency - Zhang-McFarlane convection
-    real(kind=c_real) :: evap ! Evaporation/snow prod from Zhang convection
-    real(kind=c_real) :: rain_snow_convr ! Rain to snow conversion from Zhang convection
-    real(kind=c_real) :: snow_rain_convr ! Snow to rain prod from Zhang convection
-    real(kind=c_real) :: evapmoistcnv ! Evaporation from Zhang-McFarlane moist convection
-    real(kind=c_real) :: pflux ! Flux of precipitation from ZM convection       
-    real(kind=c_real) :: sflux ! Flux of snow from ZM convection                
-    real(kind=c_real) :: netp ! Net precipitation production from ZM convection
-    real(kind=c_real) :: netsn ! Net snow production from ZM convection         
-    real(kind=c_real) :: heat ! Heating by ice and evaporation in ZM convection'
-    real(kind=c_real) :: massflux ! Convection mass flux from ZM deep 
-    real(kind=c_real) :: prrate ! Convective precipitation rate from ZM deep
 
-    real(kind=c_real) :: basepres ! convection base pressure
-    real(kind=c_real) :: tppres ! convection top  pressure
-
-    real(kind=c_real) :: llvl ! model level of launching parcel
-
-    real(kind=c_real) :: av_pe ! Convectively available potential energy
-    real(kind=c_real) :: conv_occr ! Fractional occurance of ZM convection
-
-   
-    real(kind=c_real) :: tend ! T tendency - ZM convective momentum transport
-    real(kind=c_real) :: tendt ! T tendency - ZM convective momentum transport
-    real(kind=c_real) :: tendv ! V tendency - ZM convective momentum transport
-
-    real(kind=c_real) :: upflx ! ZM convection updraft mass flux
-    real(kind=c_real) :: downflx ! ZM convection downdraft mass flux'
-
-    real(kind=c_real) :: znl_up_frc ! zonal force from ZM updraft pressure gradient term
-    real(kind=c_real) :: znl_dwn_frc ! zonal force from ZM downdraft pressure gradient term
-    real(kind=c_real) :: mrdl_up_frc ! meridional force from ZM updraft pressure gradient term
-    real(kind=c_real) :: mrdl_dwn_frc ! merdional force from ZM downdraft pressure gradient term
-    real(kind=c_real) :: uupd ! ZM in-cloud U updrafts
-    real(kind=c_real) :: udwnd  ! ZM in-cloud U downdrafts
-    real(kind=c_real) :: vupd ! ZM in-cloud V updrafts
-    real(kind=c_real) :: vdwnd ! ZM in-cloud V downdrafts
     Print *, 'In zm_init_f90'
 
   end subroutine zm_init_f90
   !====================================================================!
-  subroutine zm_main_f90 () bind(c)
-    implicit none
-    
- !   Print *, 'In zm_main_f90 '
+  subroutine zm_main_f90 (lchnk   ,ncol    , &
+                    t       ,qh      ,prec    ,jctop   ,jcbot   , &
+                    pblh    ,zm      ,geos    ,zi      ,qtnd    , &
+                    heat    ,pap     ,paph    ,dpp     , &
+                    delt    ,mcon    ,cme     ,cape    , &
+                    tpert   ,dlf     ,pflx    ,zdu     ,rprd    , &
+                    mu      ,md      ,du      ,eu      ,ed      , &
+                    dp      ,dsubcld ,jt      ,maxg    ,ideep   , &
+                    lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
+                    cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star, dcape) bind(c)
+   ! real(kind=c_real), intent(inout) :: q(pcols,pver,9) ! State array  kg/kg
+   real(kind=c_real), intent(inout) :: t(pcols,pver) ! State array  kg/kg
+   real(kind=c_real) :: qh(pcols,pver) 
+   !
+   ! real(kind-c_real), intent(in) :: zm(pcols,pver) 
+   integer :: lchnk
+ 
+   integer, intent(in) :: ncol
+   real(r8), intent(out) :: prec(pcols)
+   real(r8), intent(out) :: jctop(pcols)  ! o row of top-of-deep-convection indices passed out.
+   real(r8), intent(in) :: pblh(pcols)
+   real(r8), intent(in) :: geos(pcols)
+   real(r8), intent(in) :: zi(pcols,pver+1)
+   real(r8), intent(out) :: qtnd(pcols,pver)           ! specific humidity tendency (kg/kg/s)
+   real(r8), intent(out) :: heat(pcols,pver)           ! heating rate (dry static energy tendency, W/kg)
+   real(r8), intent(out) :: mcon(pcols,pverp)
+   real(r8), intent(out) :: dlf(pcols,pver)    ! scattrd version of the detraining cld h2o tend
+   real(r8), intent(out) :: pflx(pcols,pverp)  ! scattered precip flux at each level
+   real(r8), intent(out) :: cme(pcols,pver)
+   real(r8), intent(out) :: cape(pcols)        ! w  convective available potential energy.
+   real(r8), intent(out) :: zdu(pcols,pver)
+   real(r8), intent(out) :: rprd(pcols,pver)     ! rain production rate
+! move these vars from local storage to output so that convective
+! transports can be done in outside of conv_cam.
+   real(r8), intent(out) :: mu(pcols,pver)
+   real(r8), intent(in) :: zm(pcols,pver)
+   real(r8), intent(in) :: pap(pcols,pver)     
+   real(r8), intent(in) :: paph(pcols,pver+1)
+   real(r8), intent(in) :: dpp(pcols,pver)        ! local sigma half-level thickness (i.e. dshj).
+   real(r8), intent(in) :: tpert(pcols)
+   real(r8), intent(out) :: md(pcols,pver)
+   real(r8), intent(out) :: du(pcols,pver)       ! detrainement rate of updraft
+   real(r8), intent(out) :: ed(pcols,pver)       ! entrainment rate of downdraft
+   real(r8), intent(out) :: eu(pcols,pver)       ! entrainment rate of updraft
+   real(r8), intent(out) :: dp(pcols,pver)       ! wg layer thickness in mbs (between upper/lower interface).
+   real(r8), intent(out) :: dsubcld(pcols)       ! wg layer thickness in mbs between lcl and maxi.
+   integer jt(pcols)                          ! wg top  level index of deep cumulus convection.
+   integer maxg(pcols)                        ! wg gathered values of maxi.
+   integer ideep(pcols)                       ! w holds position of gathered points vs longitude index.
+   integer lengath
+!     diagnostic field used by chem/wetdep codes
+   real(r8), intent(out) :: ql(pcols,pver)
+   real(r8) landfracg(pcols)            ! wg grid slice of landfrac  
+   real(r8), intent(inout) :: hu_nm1 (pcols,pver)
+   real(r8), intent(inout) :: cnv_nm1 (pcols,pver)
+   real(r8), intent(in) :: tm1(pcols,pver)       ! grid slice of temperature at mid-layer.
+   real(r8), intent(in) :: qm1(pcols,pver)       ! grid slice of specific humidity.
+   real(r8), intent(in) :: landfrac(pcols) ! RBN Landfrac
+
+
+   real(r8), intent(in), pointer, dimension(:,:) :: t_star ! intermediate T between n and n-1 time step
+   real(r8), intent(in), pointer, dimension(:,:) :: q_star ! intermediate q between n and n-1 time step
+   real(r8), intent(out) :: rliq(pcols) ! reserved liquid (not yet in cldliq) for energy integrals
+   real(r8), intent(out) :: dcape(pcols)           ! output dynamical CAPE
+
+   
+   real(r8), intent(out) :: jcbot(pcols)  ! o row of base of cloud indices passed out.
+   real(r8) delt                     ! length of model time-step in seconds.
+
+ 
+   ! q(:,:,:) = 1.0e-5_rtype!state%q(:,:,1)
+
+    call zm_convr(lchnk   ,ncol    , &
+                    t       ,qh      ,prec    ,jctop   ,jcbot   , &
+                    pblh    ,zm      ,geos    ,zi      ,qtnd    , &
+                    heat    ,pap     ,paph    ,dpp     , &
+                    delt    ,mcon    ,cme     ,cape    , &
+                    tpert   ,dlf     ,pflx    ,zdu     ,rprd    , &
+                    mu      ,md      ,du      ,eu      ,ed      , &
+                    dp      ,dsubcld ,jt      ,maxg    ,ideep   , &
+                    lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
+                    cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star, dcape) 
 
   end subroutine zm_main_f90
   !====================================================================!

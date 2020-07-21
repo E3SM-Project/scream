@@ -49,7 +49,7 @@ module zm_conv
 !  public momtran                  ! convective momentum transport  
   public trigmem                  ! true if convective memory
   public trigdcape_ull            ! true if to use dcape-ULL trigger
-
+  public is_first_step
 !
 ! Private data
 !
@@ -682,13 +682,13 @@ subroutine zm_convr(lchnk   ,ncol    , &
                   rgas    ,grav    ,cpres   ,msg     , &
                   tpert   ,iclosure)
          
-      if (trigdcape_ull) then
-         if (.not. allocated(dcapemx)) then
-            allocate (dcapemx(pcols), stat=ierror)
-            if ( ierror /= 0 ) call endrun('ZM_CONVR error: allocation error dcapemx')
-         endif
-         dcapemx(:ncol) = maxi(:ncol)
-      endif
+  !    if (trigdcape_ull) then
+  !       if (.not. allocated(dcapemx)) then
+  !          allocate (dcapemx(pcols), stat=ierror)
+  !          if ( ierror /= 0 ) call endrun('ZM_CONVR error: allocation error dcapemx')
+  !       endif
+  !       dcapemx(:ncol) = maxi(:ncol)
+  !    endif
         
       if(trigmem)then
          call buoyan_dilute(lchnk   ,ncol    , &
@@ -704,7 +704,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
       endif
 
       !DCAPE-ULL
-      if (.not. is_first_step() .and. trigdcape_ull) then
+      if (.not. is_first_step .and. trigdcape_ull) then
          iclosure = .false.
          call buoyan_dilute(lchnk   ,ncol    , &
                  q_star  ,t_star     ,p       ,z       ,pf       , &
@@ -723,14 +723,14 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !
    capelmt_wk = capelmt   ! capelmt_wk default to capelmt for default trigger
 
-   if (trigdcape_ull .and. (.not. is_first_step()) )  &
+   if (trigdcape_ull .and. (.not. is_first_step) )  &
       capelmt_wk = 0.0_r8
 
    lengath = 0
    do i=1,ncol
 !<songxl 2014-05-20----------------
      if(trigmem)then
-      if (is_first_step() .or. is_first_restart_step()) then
+      if (is_first_step .or. is_first_restart_step()) then
          if (cape(i) > capelmt) then
             lengath = lengath + 1
             index(lengath) = i
@@ -743,7 +743,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
       end if
      else if (trigdcape_ull) then
      ! DCAPE-ULL
-      if (is_first_step()) then
+      if (is_first_step) then
          !Will this cause restart to be non-BFB
            if (cape(i) > capelmt) then
               lengath = lengath + 1
