@@ -13,28 +13,6 @@ namespace physics {
 
 template <typename S, typename D>
 KOKKOS_FUNCTION
-void  Functions<S,D>
-::check_temp(const Spack& temp, const std::string& fname)
-{
-  Smask is_neg_temp = (temp <= 0);
-  if (is_neg_temp.any()){
-    scream::error::runtime_abort("Error: Called from:"+ fname +"; Temperature has <= 0 values");
-  }
-  // Cannot test NaNs currently as packs may have NaNs
-  /*
-  Smask is_nan_temp = isnan(temp);
-  if (is_nan_temp.any()){
-    scream::error::runtime_abort("Error: Called from:"+ fname +"; Temperature has NaN values");
-  }
-
-  Smask is_finite_temp = isfinite(temp);
-  if (is_finite_temp.any()){
-      scream::error::runtime_abort("Error: Called from:"+ fname +";  Temperature has infinite values");
-    }*/
-}
-
-template <typename S, typename D>
-KOKKOS_FUNCTION
 typename Functions<S,D>::Spack
 Functions<S,D>::MurphyKoop_svp(const Spack& temp, const bool ice)
 {
@@ -125,11 +103,7 @@ Functions<S,D>::qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice, c
   //func_idx = 0 --> polysvp1 (Flatau et al. 1992)
   //func_idx = 1 --> MurphyKoop_svp (Murphy, D. M., and T. Koop 2005)
 
-  //First check if the temperature is legitimate or not
-  //check_temp(t_atm, "qv_sat");
-
   Spack e_pres; // saturation vapor pressure [Pa]
-
 
   switch (func_idx){
     case 0:
