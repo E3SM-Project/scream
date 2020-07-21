@@ -90,10 +90,6 @@ struct Functions
   // depending on value of 'ice'
   KOKKOS_FUNCTION
   static Spack qv_sat(const Spack& t_atm, const Spack& p_atm, const bool ice, const int& func_idx = 1);
-
-  // Checks whether temperature is within legitimate range or not
-  KOKKOS_FUNCTION
-  static void check_temp(const Spack& t, const std::string& fname);
 };
 
 } // namespace physics
