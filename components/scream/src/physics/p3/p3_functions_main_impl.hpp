@@ -167,10 +167,13 @@ void Functions<S,D>
     }
 
     //Prevent Cell-Average Supersaturation
-    auto is_supersat = qv(k) > qvs(k);
-    qc(k).set( is_supersat,qc(k) + qv(k) - qvs(k) );
-    th(k).set( is_supersat,th(k) - exner(k)*(qv(k) - qvs(k))*xxlv(k)*inv_cp);
-    qv(k).set( is_supersat,qvs(k));
+    auto is_supersat = qv(k) > qvs(k) && range_mask;
+    qc(k).set(is_supersat, qc(k) + qv(k) - qvs(k) );
+    //auto iss = is_supersat(k);
+    //auto thk = th(k);
+    //std::cout << "is_supersat(k), th(k) = " << iss <<", " << thk << std::endl;
+    th(k).set(is_supersat, th(k) + exner(k) * ( qv(k)-qvs(k) )*xxlv(k)*inv_cp );
+    qv(k).set(is_supersat, qvs(k));
     //not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
       
     // apply mass clipping if dry and mass is sufficiently small
@@ -500,7 +503,7 @@ void Functions<S,D>
         rho(k), t(k), pres(k), rhofaci(k), f1pr05, f1pr14, xxlv(k), xlf(k), dv, kap, mu, sc, qv(k), qc_incld(k), qitot_incld(k), nitot_incld(k), qr_incld(k),
         log_wetgrowth, qrcol, qccol, qwgrth, nrshdr, qcshd, not_skip_micro);
 
-      // calcualte total inverse ice relaxation timescale combined for all ice categories
+      // calculate total inverse ice relaxation timescale combined for all ice categories
       // note 'f1pr' values are normalized, so we need to multiply by N
       ice_relaxation_timescale(
         rho(k), t(k), rhofaci(k), f1pr05, f1pr14, dv, mu, sc, qitot_incld(k), nitot_incld(k),

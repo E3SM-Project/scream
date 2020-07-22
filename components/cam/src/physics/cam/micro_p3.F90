@@ -393,15 +393,16 @@ contains
 
        if ((t(k).lt.zerodegc .and. supi(k).ge.-0.05_rtype)) log_nucleationPossible = .true.
 
-       ssat_tot_cnt = ssat_tot_cnt + 1
+       !ssat_tot_cnt = ssat_tot_cnt + 1
        !Prevent Cell-Average Supersaturation
        if (qv(k).gt.qvs(k)) then
-          ssat_cnt = ssat_cnt+1
+          !   ssat_cnt = ssat_cnt+1
           qc(k) = qc(k) + qv(k) - qvs(k)
-          th(k) = th(k) - exner(k)*(qv(k) - qvs(k))*xxlv(k)*inv_cp
+          th(k) = th(k) + exner(k)*(qv(k) - qvs(k))*xxlv(k)*inv_cp
           qv(k) = qvs(k)
           !not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
        endif
+       print*,'k,qv,qvs,p,t,th = ',k,qv(k),qvs(k),pres(k),t(k),th(k)
        
        if (qc(k).lt.qsmall) then
       !--- apply mass clipping if mass is sufficiently small
