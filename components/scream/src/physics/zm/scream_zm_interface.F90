@@ -6,7 +6,7 @@ module scream_zm_interface_mod
 
   use iso_c_binding, only: c_ptr, c_f_pointer, c_int, c_double, c_bool,C_NULL_CHAR, c_float
   use physics_utils, only: r8 => rtype, rtype8, itype, btype
-  use zm_conv,       only: zm_convr, is_first_step
+  use zm_conv,       only: zm_convr, convtran
  
   implicit none
 #include "scream_config.f"
@@ -26,22 +26,20 @@ module scream_zm_interface_mod
 
   real   :: test
   
-  integer(kind=c_int) :: pcols = 32
-  integer(kind=c_int) :: pver = 72
-
-
+  real(r8) :: pcols = 32
+  real(r8) :: pver = 72
   real(kind=c_real) :: cpair  !=    1004.64000000000
   real(kind=c_real) :: gravit !=    9.80616000000000
   real(kind=c_real) :: latvap !=    2501000.00000000
   real(kind=c_real) :: plevp = 0.0 
 
   real(kind=c_real) :: pverp = 0
+  real(kind=c_real) :: ncnst = 0
 
-
- 
 contains
 
   !====================================================================!
+
   subroutine zm_init_f90 (pref_edge) bind(c)
     
     implicit none
@@ -63,14 +61,14 @@ contains
                     mu      ,md      ,du      ,eu      ,ed      , &
                     dp      ,dsubcld ,jt      ,maxg    ,ideep   , &
                     lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
-                    cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star, dcape) bind(c)
-   ! real(kind=c_real), intent(inout) :: q(pcols,pver,9) ! State array  kg/kg
+                    cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star, dcape, q) bind(c)
    real(kind=c_real), intent(inout) :: t(pcols,pver) ! State array  kg/kg
    real(kind=c_real) :: qh(pcols,pver) 
    !
    ! real(kind-c_real), intent(in) :: zm(pcols,pver) 
    integer :: lchnk
- 
+   integer :: i,ii,j,k
+   
    integer, intent(in) :: ncol
    real(r8), intent(out) :: prec(pcols)
    real(r8), intent(out) :: jctop(pcols)  ! o row of top-of-deep-convection indices passed out.
@@ -119,14 +117,31 @@ contains
    real(r8), intent(out) :: rliq(pcols) ! reserved liquid (not yet in cldliq) for energy integrals
    real(r8), intent(out) :: dcape(pcols)           ! output dynamical CAPE
 
-   
+   real(r8) :: pcont(pcols), pconb(pcols), freqzm(pcols)
    real(r8), intent(out) :: jcbot(pcols)  ! o row of base of cloud indices passed out.
    real(r8) delt                     ! length of model time-step in seconds.
+   integer mx(pcols) 
+   real(r8) q(pcols,pver)              ! w  grid slice of mixing ratio.
+   real(r8), pointer, dimension(:,:,:) :: fracis  ! fraction of transported species that are insoluble
+   integer :: nstep             ! Time step index
 
- 
-   ! q(:,:,:) = 1.0e-5_rtype!state%q(:,:,1)
+   logical :: doconvtran(ncnst)
+   real(r8) :: fake_dpdry(pcols,pver)       ! Delta pressure between interfaces
 
-    call zm_convr(lchnk   ,ncol    , &
+
+! input/output
+
+   real(r8) :: fake_dqdt(pcols,pver,ncnst)  ! Tracer tendency array
+
+   integer :: il1g
+   fake_dpdry(:,:) = 0._r8
+
+   fake_dqdt(:,:,1) = 0._r8
+   il1g = 1
+   doconvtran = .false.
+
+
+   call zm_convr(lchnk   ,ncol, &
                     t       ,qh      ,prec    ,jctop   ,jcbot   , &
                     pblh    ,zm      ,geos    ,zi      ,qtnd    , &
                     heat    ,pap     ,paph    ,dpp     , &
@@ -136,8 +151,13 @@ contains
                     dp      ,dsubcld ,jt      ,maxg    ,ideep   , &
                     lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
                     cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star, dcape) 
+!   call convtran(lchnk   , &
+!                    doconvtran,q       ,ncnst   ,mu      ,md      , &
+!                    du      ,eu      ,ed      ,dp      ,dsubcld , &
+!                    jt      ,mx      ,ideep   ,il1g    , lengath    , &
+!                    1   ,fracis  ,fake_dqdt,  fake_dpdry   )
 
-  end subroutine zm_main_f90
+   end subroutine zm_main_f90
   !====================================================================!
   subroutine zm_finalize_f90 () bind(c)
     implicit none
