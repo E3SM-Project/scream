@@ -530,12 +530,12 @@ struct Functions
 
   // TODO (comments)
   KOKKOS_FUNCTION
-  static void evaporate_sublimate_precip(const Spack& qr_incld, const Spack& qc_incld,
-					 const Spack& nr_incld, const Spack& qitot_incld,
-					 const Spack& lcldm, const Spack& rcldm,
-					 const Spack& qvs, const Spack& ab, const Spack& epsr,
-					 const Spack& qv, Spack& qrevp, Spack& nrevp,
-                                         const Smask& context = Smask(true));
+  static void evap_precip(const Spack& qr_incld, const Spack& qc_incld,
+			  const Spack& nr_incld, const Spack& qitot_incld,
+			  const Spack& lcldm, const Spack& rcldm,
+			  const Spack& qvs, const Spack& ab, const Spack& epsr,
+			  const Spack& qv, Spack& qrevp, Spack& nrevp,
+			  const Smask& context = Smask(true));
 
   //get number and mass tendencies due to melting ice
   KOKKOS_FUNCTION

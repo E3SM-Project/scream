@@ -361,10 +361,11 @@ contains
          qirim_incld, nc_incld, nr_incld, nitot_incld, birim_incld
 
     logical(btype), intent(out) :: log_nucleationPossible, log_hydrometeorsPresent
-
+    
     ! locals
     integer :: k
     real(rtype) :: dum
+    real(rtype) :: dqc
 
     log_nucleationPossible = .false.
     log_hydrometeorsPresent = .false.
@@ -390,6 +391,22 @@ contains
 
        if ((t(k).lt.zerodegc .and. supi(k).ge.-0.05_rtype)) log_nucleationPossible = .true.
 
+       !Prevent Cell-Average Supersaturation
+       if (qv(k).gt.qvs(k)) then
+          !dqc is the change in qc after saturation adjustment. It accounts for condensation
+          !heating causing qvs to rise, reducing qc change by linearizing
+          !              qvs(T_f) ~ qvs(T_i) + dqs/dT*(T_f - T_i)
+          !and noting T_f - T_i = L/cp*dqc for T_f and T_i are T before and after this
+          !condensational adjustment, respectively. Clausius-Clapyron=> dqvs/dT=L*qvs/(L*T^2). Thus
+          !              dqc = qv - qvs(T_f) = qv - qvs(T_i) - dqs/dT*L/cp*dqc.
+          !Solving for dqc yields the expression below.
+          dqc=(qv(k)-qvs(k))/(1._rtype+bfb_square(xxlv(k))*qvs(k)*inv_cp/(rv*bfb_square(T(k))) )
+          qc(k) = qc(k) + dqc
+          qv(k) = qv(k) - dqc
+          th(k) = th(k) + exner(k)*dqc*xxlv(k)*inv_cp
+          !not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
+       endif
+       
        if (qc(k).lt.qsmall) then
       !--- apply mass clipping if mass is sufficiently small
       !    (implying all mass is expected to evaporate/sublimate in one time step)
@@ -729,7 +746,7 @@ contains
            dv,mu,sc,mu_r(k),lamr(k),cdistr(k),cdist(k),qr_incld(k),qc_incld(k), &
            epsr,epsc)
 
-      call evaporate_sublimate_precip(qr_incld(k),qc_incld(k),nr_incld(k),qitot_incld(k), &
+      call evap_precip(qr_incld(k),qc_incld(k),nr_incld(k),qitot_incld(k), &
            lcldm(k),rcldm(k),qvs(k),ab,epsr,qv(k), &
            qrevp,nrevp)
 
@@ -953,6 +970,8 @@ contains
    real(rtype)    :: f1pr15   ! mass-weighted mean diameter          See lines 1212 - 1279  dmm
    real(rtype)    :: f1pr16   ! mass-weighted mean particle density  See lines 1212 - 1279  rhomm
 
+   !real(rtype), dimension(kts:kte) :: qvs,t !for preventing supersaturation
+   
    k_loop_final_diagnostics:  do k = kbot,ktop,kdir
 
       ! cloud:
@@ -3167,10 +3186,18 @@ qidep,qisub,nisub,qiberg)
 end subroutine ice_deposition_sublimation
 
 
-subroutine evaporate_sublimate_precip(qr_incld,qc_incld,nr_incld,qitot_incld,    &
+subroutine evap_precip(qr_incld,qc_incld,nr_incld,qitot_incld,    &
 lcldm,rcldm,qvs,ab,epsr,qv,    &
 qrevp,nrevp)
 
+   ! Evaporate qr in the portion of each cell which has rain but no cloud.
+   ! It is assumed that macrophysics handles condensation/evaporation of qc and
+   ! that there is no condensation of rain. Thus qccon, qrcon and qcevp have
+   ! been removed from the original P3-WRF. Further, sublimation is handled by
+   ! ice_deposition_sublimation since P3 only has a single ice category.
+
+   use scream_abortutils, only : endscreamrun
+  
    implicit none
 
    real(rtype), intent(in)  :: qr_incld
@@ -3188,39 +3215,68 @@ qrevp,nrevp)
 
    real(rtype) :: qclr, cld
 
-   ! It is assumed that macrophysics handles condensation/evaporation of qc and
-   ! that there is no condensation of rain. Thus qccon, qrcon and qcevp have
-   ! been removed from the original P3-WRF.
-
-   ! Determine temporary cloud fraction, set to zero if cloud water + ice is
-   ! very small.  This will ensure that evap/subl of precip occurs over entire
-   ! grid cell, since min cloud fraction is specified otherwise.
-   if (qc_incld + qitot_incld < 1.e-6_rtype) then
-      cld = 0._rtype
+   ! First, check that qv<=qvs. If not, unexpected supersaturation has occurred
+   ! and the assumptions of this parameterization will have been violated.
+   ! This check should eventually be commented out and/or moved to a debug-mode
+   ! feature.
+   !if ( qv-qvs .gt. 1.e-12_rtype ) then
+   !    print*
+   !    print*,'In evap_precip, qv supersaturated. qv=',qv,', qvs=',qvs,', diff=',qv-qvs
+   !    print*
+   !    call endscreamrun("qv supersaturated in evap_precip")
+   ! endif
+   
+   ! Determine temporary cloud fraction which ramps to 0 as cloud water
+   ! approaches zero. This avoids problems due to lcldm having a positive
+   ! minimum value which would result in evaporation never occurring in a
+   ! small portion of the grid. Ramping rather than thresholding is used
+   ! to preserve convergence.
+   if (qc_incld < 1.e-6_rtype) then
+      cld = lcldm*qc_incld/1.e-6_rtype
    else
       cld = lcldm
    end if
 
    ! Only calculate if there is some rain fraction > cloud fraction
+   ! TODO: discontinuous behavior if qr_incld.ge.qsmall may cause
+   !       convergence issues. Treatment should be improved.
    qrevp = 0.0_rtype
-   if (rcldm > cld) then
-      ! calculate q for out-of-cloud region
+   nrevp = 0.0_rtype
+   if (rcldm > cld .and. qr_incld.ge.qsmall) then
+      
+      ! calculate q for clear-sky region
+      ! TODO: as cld -> 1, qclr could blow up. Fixing this requires knowing
+      !       what qclr should do in this limit, which requires L'Hospital's
+      !       rule and an understanding of how qv approaches qvs as a function
+      !       of cld. This relationship will vary depending on your cloud macrophysics
+      !       scheme and any microphysical processes applied before now. Practically,
+      !       we haven't seen the following line to crash the code, so leaving as-is
+      !       with limiters to prevent evap from getting too out of control. A real fix
+      !       may require a completely different approach to rain evaporation.
       qclr = (qv-cld*qvs)/(1._rtype-cld)
+      qclr = max(0._rtype, qclr) !as cld approaches 1, qclr goes negative.
+      qclr = min(qclr,qv) !qv<qvs check above should prevent this, but just in case...
 
-      ! rain evaporation
-      if (qr_incld.ge.qsmall) then
-         qrevp = epsr * (qclr-qvs)/ab
-      end if
+      ! compute in-evaporating-region evap rate
+      ! Note qclr<=qv<=qvs so qclr-qvs should be negative.
+      ! In practice roundoff error *might* make qrevp slightly negative, so adding max(0,...)
+      ! The minus sign in front makes qrevp positive
+      qrevp = max(0._rtype, -epsr * (qclr-qvs)/ab )
 
-      ! only evap in out-of-cloud region
-      qrevp = -min(qrevp*(rcldm-cld),0._rtype)
+      ! turn into cell-average evap rate
+      qrevp = qrevp*(rcldm - cld)
+
+      ! and now turn into average over precipitating area
       qrevp = qrevp/rcldm
-   end if ! rcld>cld
-   if (qr_incld.gt.qsmall)  nrevp = qrevp*(nr_incld/qr_incld)
 
+      ! reduce drop number proportional to mass lost.
+      nrevp = nr_incld*(qrevp/qr_incld)
+      
+   end if ! rcld>cld and qr_incld>qsmall
+   
    return
 
-end subroutine evaporate_sublimate_precip
+end subroutine evap_precip
 
 subroutine get_time_space_phys_variables( &
 t,pres,rho,xxlv,xxls,qvs,qvi, &

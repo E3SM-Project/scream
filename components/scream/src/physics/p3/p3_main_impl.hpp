@@ -129,6 +129,7 @@ void Functions<S,D>
   constexpr Scalar zerodegc     = C::ZeroDegC;
   constexpr Scalar qsmall       = C::QSMALL;
   constexpr Scalar inv_cp       = C::INV_CP;
+  constexpr Scalar RV           = C::RV;
 
   log_nucleationPossible = false;
   log_hydrometeorsPresent = false;
@@ -166,6 +167,22 @@ void Functions<S,D>
       log_nucleationPossible = true;
     }
 
+    //Prevent Cell-Average Supersaturation
+    auto is_supersat = qv(k) > qvs(k) && range_mask;
+    //dqc is the change in qc after saturation adjustment. It accounts for condensation
+    //heating causing qvs to rise, reducing qc change by linearizing
+    //              qvs(T_f) ~ qvs(T_i) + dqs/dT*(T_f - T_i)
+    //and noting T_f - T_i = L/cp*dqc for T_f and T_i are T before and after this
+    //condensational adjustment, respectively. Clausius-Clapyron=> dqvs/dT=L*qvs/(L*T^2). Thus
+    //              dqc = qv - qvs(T_f) = qv - qvs(T_i) - dqs/dT*L/cp*dqc.
+    //Solving for dqc yields the expression below. Note: the denominator here is functionally
+    //identical to variable "ab" used in p3_main_main_loop. Maybe should use that here?
+    auto dqc =(qv(k)-qvs(k))/(1+pack::pow(xxlv(k),2)*qvs(k)*inv_cp/(RV*pack::pow(t(k),2)) );
+    qc(k).set(is_supersat, qc(k) + dqc );
+    qv(k).set(is_supersat, qv(k) - dqc );
+    th(k).set(is_supersat, th(k) + exner(k) * dqc*xxlv(k)*inv_cp );
+    //not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
+      
     // apply mass clipping if dry and mass is sufficiently small
     // (implying all mass is expected to evaporate/sublimate in one time step)
     auto drymass = qc(k) < qsmall;
@@ -493,7 +510,7 @@ void Functions<S,D>
         rho(k), t(k), pres(k), rhofaci(k), f1pr05, f1pr14, xxlv(k), xlf(k), dv, kap, mu, sc, qv(k), qc_incld(k), qitot_incld(k), nitot_incld(k), qr_incld(k),
         log_wetgrowth, qrcol, qccol, qwgrth, nrshdr, qcshd, not_skip_micro);
 
-      // calcualte total inverse ice relaxation timescale combined for all ice categories
+      // calculate total inverse ice relaxation timescale combined for all ice categories
       // note 'f1pr' values are normalized, so we need to multiply by N
       ice_relaxation_timescale(
         rho(k), t(k), rhofaci(k), f1pr05, f1pr14, dv, mu, sc, qitot_incld(k), nitot_incld(k),
@@ -528,7 +545,7 @@ void Functions<S,D>
         revap_table, rho(k), f1r, f2r, dv, mu, sc, mu_r(k), lamr(k), cdistr(k), cdist(k), qr_incld(k), qc_incld(k),
         epsr, epsc, not_skip_micro);
 
-      evaporate_sublimate_precip(
+      evap_precip(
         qr_incld(k), qc_incld(k), nr_incld(k), qitot_incld(k), lcldm(k), rcldm(k), qvs(k), ab, epsr, qv(k),
         qrevp, nrevp, not_skip_micro);
 
