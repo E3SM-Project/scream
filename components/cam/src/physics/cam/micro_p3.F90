@@ -361,17 +361,15 @@ contains
          qirim_incld, nc_incld, nr_incld, nitot_incld, birim_incld
 
     logical(btype), intent(out) :: log_nucleationPossible, log_hydrometeorsPresent
-    integer :: ssat_tot_cnt, ssat_cnt
     
     ! locals
     integer :: k
     real(rtype) :: dum
+    real(rtype) :: dqc
 
     log_nucleationPossible = .false.
     log_hydrometeorsPresent = .false.
 
-    ssat_tot_cnt = 0
-    ssat_cnt = 0
     k_loop_1: do k = kbot,ktop,kdir
        !calculate some time-varying atmospheric variables
        !AaronDonahue - changed "rho" to be defined on nonhydrostatic
@@ -393,16 +391,21 @@ contains
 
        if ((t(k).lt.zerodegc .and. supi(k).ge.-0.05_rtype)) log_nucleationPossible = .true.
 
-       !ssat_tot_cnt = ssat_tot_cnt + 1
        !Prevent Cell-Average Supersaturation
        if (qv(k).gt.qvs(k)) then
-          !   ssat_cnt = ssat_cnt+1
-          qc(k) = qc(k) + qv(k) - qvs(k)
-          th(k) = th(k) + exner(k)*(qv(k) - qvs(k))*xxlv(k)*inv_cp
-          qv(k) = qvs(k)
+          !dqc is the change in qc after saturation adjustment. It accounts for condensation
+          !heating causing qvs to rise, reducing qc change by linearizing
+          !              qvs(T_f) ~ qvs(T_i) + dqs/dT*(T_f - T_i)
+          !and noting T_f - T_i = L/cp*dqc for T_f and T_i are T before and after this
+          !condensational adjustment, respectively. Clausius-Clapyron=> dqvs/dT=L*qvs/(L*T^2). Thus
+          !              dqc = qv - qvs(T_f) = qv - qvs(T_i) - dqs/dT*L/cp*dqc.
+          !Solving for dqc yields the expression below.
+          dqc=(qv(k)-qvs(k))/(1._rtype+bfb_square(xxlv(k))*qvs(k)*inv_cp/(rv*bfb_square(T(k))) )
+          qc(k) = qc(k) + dqc
+          qv(k) = qv(k) - dqc
+          th(k) = th(k) + exner(k)*dqc*xxlv(k)*inv_cp
           !not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
        endif
-       print*,'k,qv,qvs,p,t,th = ',k,qv(k),qvs(k),pres(k),t(k),th(k)
        
        if (qc(k).lt.qsmall) then
       !--- apply mass clipping if mass is sufficiently small
@@ -462,10 +465,6 @@ contains
 
     enddo k_loop_1
 
-    if (ssat_cnt .gt. 0) then
-       write(iulog,*) 'Frac of supersaturated cells = ',float(ssat_cnt)/float(ssat_tot_cnt)
-    end if
-       
   END SUBROUTINE p3_main_pre_main_loop
 
   SUBROUTINE p3_main_main_loop(kts, kte, kbot, ktop, kdir, log_predictNc, dt, odt, &

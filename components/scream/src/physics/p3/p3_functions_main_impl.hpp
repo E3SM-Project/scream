@@ -129,6 +129,7 @@ void Functions<S,D>
   constexpr Scalar zerodegc     = C::ZeroDegC;
   constexpr Scalar qsmall       = C::QSMALL;
   constexpr Scalar inv_cp       = C::INV_CP;
+  constexpr Scalar RV           = C::RV;
 
   log_nucleationPossible = false;
   log_hydrometeorsPresent = false;
@@ -168,12 +169,17 @@ void Functions<S,D>
 
     //Prevent Cell-Average Supersaturation
     auto is_supersat = qv(k) > qvs(k) && range_mask;
-    qc(k).set(is_supersat, qc(k) + qv(k) - qvs(k) );
-    //auto iss = is_supersat(k);
-    //auto thk = th(k);
-    //std::cout << "is_supersat(k), th(k) = " << iss <<", " << thk << std::endl;
-    th(k).set(is_supersat, th(k) + exner(k) * ( qv(k)-qvs(k) )*xxlv(k)*inv_cp );
-    qv(k).set(is_supersat, qvs(k));
+    //dqc is the change in qc after saturation adjustment. It accounts for condensation
+    //heating causing qvs to rise, reducing qc change by linearizing
+    //              qvs(T_f) ~ qvs(T_i) + dqs/dT*(T_f - T_i)
+    //and noting T_f - T_i = L/cp*dqc for T_f and T_i are T before and after this
+    //condensational adjustment, respectively. Clausius-Clapyron=> dqvs/dT=L*qvs/(L*T^2). Thus
+    //              dqc = qv - qvs(T_f) = qv - qvs(T_i) - dqs/dT*L/cp*dqc.
+    //Solving for dqc yields the expression below.
+    auto dqc =(qv(k)-qvs(k))/(1+pack::pow(xxlv(k),2)*qvs(k)*inv_cp/(RV*pack::pow(t(k),2)) );
+    qc(k).set(is_supersat, qc(k) + dqc );
+    qv(k).set(is_supersat, qv(k) - dqc );
+    th(k).set(is_supersat, th(k) + exner(k) * dqc*xxlv(k)*inv_cp );
     //not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
       
     // apply mass clipping if dry and mass is sufficiently small
