@@ -6,7 +6,7 @@ module scream_zm_interface_mod
 
   use iso_c_binding, only: c_ptr, c_f_pointer, c_int, c_double, c_bool,C_NULL_CHAR, c_float
   use physics_utils, only: r8 => rtype, rtype8, itype, btype
-  use zm_conv,       only: zm_convr, convtran
+  use zm_conv,       only: zm_convr
  
   implicit none
 #include "scream_config.f"
