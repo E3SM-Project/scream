@@ -64,7 +64,7 @@ contains
                     cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star  , & 
                     dcape   ,q       ,tend_s  ,tend_q  ,cld     , &
                     snow    ,ntprprd ,ntsnprd , flxprec, flxsnow, &
-                    ztodt) bind(c)
+                    ztodt   , pguall , pgdall , icwu  ) bind(c)
    integer :: lchnk
    integer lengath
    integer :: i,ii,j,k
@@ -129,13 +129,12 @@ contains
 !Used for convtran exclusively 
 !   real(r8), pointer, dimension(:,:,:) :: fracis  
 !   real(r8) :: fake_dpdry(pcols,pver)       
-!   real(r8) :: fake_dqdt(pcols,pver,ncnst)  ! Tracer tendency array
+   real(r8) :: fake_dqdt(pcols,pver,ncnst)  ! Tracer tendency array
 
-!   integer :: il1g
-!   integer :: nstep             
+   integer :: il1g
+   integer :: nstep             
 !
 !   fake_dpdry(:,:) = 0._r8!
-!   fake_dqdt(:,:,1) = 0._r8
 
 !   il1g = 1
 
@@ -150,10 +149,16 @@ contains
    real(r8), pointer, dimension(:,:) :: flxprec      ! Convective-scale flux of precip at interfaces (kg/m2/s)
    real(r8), pointer, dimension(:,:) :: flxsnow      ! Convective-scale flux of snow   at interfaces (kg/m2/s)
    real(r8), intent(in) :: ztodt                       ! 2 delta t (model time increment)
+   real(r8) :: pguall(pcols, pver, 2)
+   real(r8) :: pgdall(pcols, pver, 2)
+   real(r8) :: icwu(pcols,pver, 2)
+   real(r8) :: icwd(pcols,pver, 2)
+   real(r8) :: seten(pcols, pver)
 
    logical :: domomtran(ncnst)
    domomtran = .false.
 
+   fake_dqdt(:,:,1) = 0._r8
 
 
    call zm_convr(lchnk   ,ncol    , &
@@ -172,12 +177,16 @@ contains
                      tend_q   ,rprd,       cld ,ztodt            , &
                      prec, snow, ntprprd, ntsnprd, flxprec, flxsnow )
 
-   call momtran(lchnk, ncol, &
-                    domomtran,q       ,ncnst   ,mu      ,md    , &
-                    du      ,eu      ,ed      ,dp      ,dsubcld , &
-                    jt      ,mx      ,ideep   ,il1g    ,il2g    , &
-                    nstep   ,dqdt    ,pguall     ,pgdall, icwu, icwd, dt, seten    )
 
+
+!TODO: Replace dependecies in zm_conv.F90 in momtran/convtran so the funcs can
+!be implemented 
+!   call momtran(lchnk, ncol, &
+!                    domomtran,q       ,ncnst   ,mu      ,md    , &
+!                    du      ,eu      ,ed      ,dp      ,dsubcld , &
+!                    jt      ,mx      ,ideep   ,il1g    ,lengath    , &
+!                    nstep   ,fake_dqdt    ,pguall     ,pgdall, icwu, icwd, ztodt, seten    )
+!
 !   call convtran(lchnk   , &
 !                    doconvtran,q       ,ncnst   ,mu      ,md      , &
 !                    du      ,eu      ,ed      ,dp      ,dsubcld , &
