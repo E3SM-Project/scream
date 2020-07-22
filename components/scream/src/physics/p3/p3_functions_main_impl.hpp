@@ -175,7 +175,8 @@ void Functions<S,D>
     //and noting T_f - T_i = L/cp*dqc for T_f and T_i are T before and after this
     //condensational adjustment, respectively. Clausius-Clapyron=> dqvs/dT=L*qvs/(L*T^2). Thus
     //              dqc = qv - qvs(T_f) = qv - qvs(T_i) - dqs/dT*L/cp*dqc.
-    //Solving for dqc yields the expression below.
+    //Solving for dqc yields the expression below. Note: the denominator here is functionally
+    //identical to variable "ab" used in p3_main_main_loop. Maybe should use that here?
     auto dqc =(qv(k)-qvs(k))/(1+pack::pow(xxlv(k),2)*qvs(k)*inv_cp/(RV*pack::pow(t(k),2)) );
     qc(k).set(is_supersat, qc(k) + dqc );
     qv(k).set(is_supersat, qv(k) - dqc );

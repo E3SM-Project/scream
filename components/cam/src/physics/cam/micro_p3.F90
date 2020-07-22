@@ -974,17 +974,6 @@ contains
    
    k_loop_final_diagnostics:  do k = kbot,ktop,kdir
 
-      !Prevent Cell-Average Supersaturation
-      !t(k) = th(k) / exner(k)
-      !qvs(k)     = qv_sat(t(k),pres(k),0)
-      !if (qv(k).gt.qvs(k)) then
-      !   write(iulog,*) "post-loop, qv=",qv(k)," > qvs=",qvs(k)," for k=",k
-      !   qc(k) = qc(k) + qv(k) - qvs(k)
-      !   th(k) = th(k) - exner(k)*(qv(k) - qvs(k))*xxlv(k)*inv_cp
-      !   qv(k) = qvs(k)
-      !   !not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
-      !endif
-
       ! cloud:
       if (qc(k).ge.qsmall) then
          call get_cloud_dsd2(qc(k),nc(k),mu_c(k),rho(k),nu(k),dnu,lamc(k),  &
