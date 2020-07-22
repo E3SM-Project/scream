@@ -3363,7 +3363,7 @@ subroutine cloud_sedimentation(kts,kte,ktop,kbot,kdir,   &
                   call get_cloud_dsd2(qc_incld(k),nc_incld(k),mu_c(k),rho(k),nu,dnu,   &
                        lamc(k),tmp1,tmp2,lcldm(k))
 
-                  nc(k) = nc_incld(k)*lcldm(k)
+                  !nc(k) = nc_incld(k)*lcldm(k) !Again, nc is already updated by gen_sed and isn't used below, so why do this? and if so why not also qc?
                   dum = 1._rtype / bfb_pow(lamc(k), bcn)
                   V_qc(k) = acn(k)*bfb_gamma(4._rtype+bcn+mu_c(k))*dum/(bfb_gamma(mu_c(k)+4._rtype))
                   V_nc(k) = acn(k)*bfb_gamma(1._rtype+bcn+mu_c(k))*dum/(bfb_gamma(mu_c(k)+1._rtype))
@@ -3374,6 +3374,10 @@ subroutine cloud_sedimentation(kts,kte,ktop,kbot,kdir,   &
             enddo kloop_sedi_c2
 
             call generalized_sedimentation(kts, kte, kdir, k_qxtop, k_qxbot, kbot, Co_max, dt_left, prt_accum, inv_dzq, inv_rho, rho, num_arrays, vs, fluxes, qnr)
+
+            !Update _incld values with end-of-step cell-ave values
+            qc_incld(:) = qc(:)/lcldm(:)
+            nc_incld(:) = nc(:)/lcldm(:)
 
          enddo substep_sedi_c2
       else
@@ -3386,7 +3390,7 @@ subroutine cloud_sedimentation(kts,kte,ktop,kbot,kdir,   &
                qc_notsmall_c1: if (qc_incld(k)>qsmall) then
                   call get_cloud_dsd2(qc_incld(k),nc_incld(k),mu_c(k),rho(k),nu,dnu,   &
                        lamc(k),tmp1,tmp2,lcldm(k))
-                  nc(k) = nc_incld(k)*lcldm(k)
+                  !nc(k) = nc_incld(k)*lcldm(k) !Again, nc is already getting updated by gen_sed, so why do here? and if so why not also qc?
                   dum = 1._rtype / bfb_pow(lamc(k), bcn)
                   V_qc(k) = acn(k)*bfb_gamma(4._rtype+bcn+mu_c(k))*dum/(bfb_gamma(mu_c(k)+4._rtype))
                endif qc_notsmall_c1
@@ -3396,6 +3400,10 @@ subroutine cloud_sedimentation(kts,kte,ktop,kbot,kdir,   &
 
             call generalized_sedimentation(kts, kte, kdir, k_qxtop, k_qxbot, kbot, Co_max, dt_left, prt_accum, inv_dzq, inv_rho, rho, 1, vs, fluxes, qnr)
 
+            !Update _incld values with end-of-step cell-ave values
+            qc_incld(:) = qc(:)/lcldm(:)
+            nc_incld(:) = nc(:)/lcldm(:)
+            
          enddo substep_sedi_c1
 
       endif two_moment
@@ -3511,6 +3519,10 @@ subroutine rain_sedimentation(kts,kte,ktop,kbot,kdir,   &
             rflx(k+1) = rflx(k+1) + flux_qx(k) ! AaronDonahue
          enddo
 
+         !Update _incld values with end-of-step cell-ave values
+         qr_incld(:) = qr(:)/rcldm(:)
+         nr_incld(:) = nr(:)/rcldm(:)
+         
       enddo substep_sedi_r
 
       prt_liq = prt_liq + prt_accum*inv_rhow*odt
@@ -3543,7 +3555,10 @@ subroutine compute_rain_fall_velocity(qr_incld, rcldm, rhofacr, nr, nr_incld, mu
 
    call find_lookupTable_indices_3(dumii,dumjj,dum1,rdumii,rdumjj,inv_dum3,mu_r,lamr)
 
-   nr = nr_incld*rcldm
+   !nr is not used elsewhere in this function. Here, the updated value from generalized_sed
+   !is getting overwritten with the incld value which wasn't getting updated until this PR.
+   !And why is nr getting updated but not qr? Should delete nr from this function entirely.
+   !nr = nr_incld*rcldm 
 
    !mass-weighted fall speed:
 
@@ -3698,6 +3713,12 @@ subroutine ice_sedimentation(kts,kte,ktop,kbot,kdir,    &
 
          call generalized_sedimentation(kts, kte, kdir, k_qxtop, k_qxbot, kbot, Co_max, dt_left, prt_accum, inv_dzq, inv_rho, rho, num_arrays, vs, fluxes, qnr)
 
+         !update _incld variables
+         qitot_incld(:) = qi(:)/icldm(:)
+         nitot_incld(:) = ni(:)/icldm(:)
+         qirim_incld(:) = qirirm(:)/icldm(:)
+         birim_incld(:) = birim(:)/icldm(:)
+         
       enddo substep_sedi_i
 
       prt_sol = prt_sol + prt_accum*inv_rhow*odt
