@@ -118,7 +118,7 @@ void Functions<S,D>
       }
 
       //Update _incld values with end-of-step cell-ave values
-      //No prob w/ div by rcldm because set to min of 1e-4 in interface.
+      //No prob w/ div by lcldm because set to min of 1e-4 in interface.
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, qc.extent(0)), [&] (int pk) {
 	  qc_incld(pk)=qc(pk)/lcldm(pk);
