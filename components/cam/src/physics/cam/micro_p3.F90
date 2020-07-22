@@ -3280,7 +3280,6 @@ subroutine cloud_sedimentation(kts,kte,ktop,kbot,kdir,   &
    integer, intent(in) :: kts, kte
    integer, intent(in) :: ktop, kbot, kdir
 
-   real(rtype), intent(in), dimension(kts:kte) :: qc_incld
    real(rtype), intent(in), dimension(kts:kte) :: rho
    real(rtype), intent(in), dimension(kts:kte) :: inv_rho
    real(rtype), intent(in), dimension(kts:kte) :: lcldm
@@ -3293,6 +3292,7 @@ subroutine cloud_sedimentation(kts,kte,ktop,kbot,kdir,   &
 
    real(rtype), intent(inout), dimension(kts:kte), target :: qc
    real(rtype), intent(inout), dimension(kts:kte), target :: nc
+   real(rtype), intent(inout), dimension(kts:kte) :: qc_incld
    real(rtype), intent(inout), dimension(kts:kte) :: nc_incld
    real(rtype), intent(inout), dimension(kts:kte) :: mu_c
    real(rtype), intent(inout), dimension(kts:kte) :: lamc
@@ -3376,6 +3376,8 @@ subroutine cloud_sedimentation(kts,kte,ktop,kbot,kdir,   &
             call generalized_sedimentation(kts, kte, kdir, k_qxtop, k_qxbot, kbot, Co_max, dt_left, prt_accum, inv_dzq, inv_rho, rho, num_arrays, vs, fluxes, qnr)
 
             !Update _incld values with end-of-step cell-ave values
+            !Note that lcldm is set in interface to have min of mincld=1e-4
+            !so dividing by it is fine.
             qc_incld(:) = qc(:)/lcldm(:)
             nc_incld(:) = nc(:)/lcldm(:)
 
@@ -3401,6 +3403,8 @@ subroutine cloud_sedimentation(kts,kte,ktop,kbot,kdir,   &
             call generalized_sedimentation(kts, kte, kdir, k_qxtop, k_qxbot, kbot, Co_max, dt_left, prt_accum, inv_dzq, inv_rho, rho, 1, vs, fluxes, qnr)
 
             !Update _incld values with end-of-step cell-ave values
+            !Note that lcldm is set in interface to have min of mincld=1e-4
+            !so dividing by it is fine.
             qc_incld(:) = qc(:)/lcldm(:)
             nc_incld(:) = nc(:)/lcldm(:)
             
@@ -3426,7 +3430,6 @@ subroutine rain_sedimentation(kts,kte,ktop,kbot,kdir,   &
    integer, intent(in) :: kts, kte
    integer, intent(in) :: ktop, kbot, kdir
 
-   real(rtype), intent(in), dimension(kts:kte) :: qr_incld
 
    real(rtype), intent(in), dimension(kts:kte) :: rho
    real(rtype), intent(in), dimension(kts:kte) :: inv_rho
@@ -3438,6 +3441,7 @@ subroutine rain_sedimentation(kts,kte,ktop,kbot,kdir,   &
 
    real(rtype), intent(inout), target, dimension(kts:kte) :: qr
    real(rtype), intent(inout), target, dimension(kts:kte) :: nr
+   real(rtype), intent(inout), dimension(kts:kte) :: qr_incld
    real(rtype), intent(inout), dimension(kts:kte) :: nr_incld
    real(rtype), intent(inout), dimension(kts:kte) :: mu_r
    real(rtype), intent(inout), dimension(kts:kte) :: lamr
@@ -3520,6 +3524,8 @@ subroutine rain_sedimentation(kts,kte,ktop,kbot,kdir,   &
          enddo
 
          !Update _incld values with end-of-step cell-ave values
+         !Note that rcldm is set in interface to have min of mincld=1e-4
+         !so dividing by it is fine.
          qr_incld(:) = qr(:)/rcldm(:)
          nr_incld(:) = nr(:)/rcldm(:)
          
@@ -3714,9 +3720,11 @@ subroutine ice_sedimentation(kts,kte,ktop,kbot,kdir,    &
          call generalized_sedimentation(kts, kte, kdir, k_qxtop, k_qxbot, kbot, Co_max, dt_left, prt_accum, inv_dzq, inv_rho, rho, num_arrays, vs, fluxes, qnr)
 
          !update _incld variables
-         qitot_incld(:) = qi(:)/icldm(:)
-         nitot_incld(:) = ni(:)/icldm(:)
-         qirim_incld(:) = qirirm(:)/icldm(:)
+         !Note that icldm is set in interface to have min of mincld=1e-4
+         !so dividing by it is fine.
+         qitot_incld(:) = qitot(:)/icldm(:)
+         nitot_incld(:) = nitot(:)/icldm(:)
+         qirim_incld(:) = qirim(:)/icldm(:)
          birim_incld(:) = birim(:)/icldm(:)
          
       enddo substep_sedi_i
