@@ -981,17 +981,17 @@ contains
    k_loop_final_diagnostics:  do k = kbot,ktop,kdir
 
       ! cloud:
-      if (qc(k).ge.qsmall) then
-         call get_cloud_dsd2(qc(k),nc(k),mu_c(k),rho(k),nu(k),dnu,lamc(k),  &
-              tmp1,tmp2,lcldm(k))
-         diag_effc(k) = 0.5_rtype*(mu_c(k)+3._rtype)/lamc(k)
-      else
-         qv(k) = qv(k)+qc(k)
-         th(k) = th(k)-exner(k)*qc(k)*xxlv(k)*inv_cp
-         vap_liq_exchange(k) = vap_liq_exchange(k) - qc(k)
-         qc(k) = 0._rtype
-         nc(k) = 0._rtype
-      endif
+      !if (qc(k).ge.qsmall) then
+      !   call get_cloud_dsd2(qc(k),nc(k),mu_c(k),rho(k),nu(k),dnu,lamc(k),  &
+      !        tmp1,tmp2,lcldm(k))
+      !   diag_effc(k) = 0.5_rtype*(mu_c(k)+3._rtype)/lamc(k)
+      !else
+      !   qv(k) = qv(k)+qc(k)
+      !   th(k) = th(k)-exner(k)*qc(k)*xxlv(k)*inv_cp
+      !   vap_liq_exchange(k) = vap_liq_exchange(k) - qc(k)
+      !   qc(k) = 0._rtype
+      !   nc(k) = 0._rtype
+      !endif
 
       ! rain:
       if (qr(k).ge.qsmall) then
