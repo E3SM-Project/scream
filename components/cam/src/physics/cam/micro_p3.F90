@@ -970,12 +970,14 @@ contains
    real(rtype)    :: f1pr15   ! mass-weighted mean diameter          See lines 1212 - 1279  dmm
    real(rtype)    :: f1pr16   ! mass-weighted mean particle density  See lines 1212 - 1279  rhomm
 
-   real(rtype), dimension(kts:kte) :: qvs,t,pres !for preventing supersaturation
+   real(rtype), dimension(kts:kte) :: qvs,t !for preventing supersaturation
+   real(rtype) :: dqc
    
    k_loop_final_diagnostics:  do k = kbot,ktop,kdir
 
        t(k) = th(k)/exner(k)
        qvs(k)     = qv_sat(t(k),pres(k),0)
+       dqc=0._rtype
        !Prevent Cell-Average Supersaturation
        if (qv(k).gt.qvs(k)) then
           !dqc is the change in qc after saturation adjustment. It accounts for condensation
