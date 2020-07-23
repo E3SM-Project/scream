@@ -6,7 +6,7 @@ module scream_zm_interface_mod
 
   use iso_c_binding, only: c_ptr, c_f_pointer, c_int, c_double, c_bool,C_NULL_CHAR, c_float
   use physics_utils, only: r8 => rtype, rtype8, itype, btype
-  use zm_conv,       only: zm_convr, zm_conv_evap, zm_convi
+  use zm_conv,       only: zm_convr, zm_conv_evap, zm_convi, convtran, momtran
  
   implicit none
 #include "scream_config.f"
@@ -34,7 +34,6 @@ module scream_zm_interface_mod
   real(kind=c_real) :: plevp = 0.0 
 
   real(kind=c_real) :: pverp = 0
-  real(kind=c_real) :: ncnst = 0
 
 contains
 
@@ -59,7 +58,7 @@ contains
                     cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star  , & 
                     dcape   ,q       ,tend_s  ,tend_q  ,cld     , &
                     snow    ,ntprprd ,ntsnprd , flxprec, flxsnow, &
-                    ztodt   , pguall , pgdall , icwu  ) bind(c)
+                    ztodt   , pguall , pgdall , icwu   , ncnst) bind(c)
    integer :: lchnk
    integer lengath
    integer :: i,ii,j,k
@@ -122,8 +121,8 @@ contains
    
 !   real(r8), pointer, dimension(:,:) :: rprd         ! rain production rate
 !Used for convtran exclusively 
-!   real(r8), pointer, dimension(:,:,:) :: fracis  
-!   real(r8) :: fake_dpdry(pcols,pver)       
+   real(r8), pointer, dimension(:,:,:) :: fracis  
+   real(r8) :: fake_dpdry(pcols,pver)       
    real(r8) :: fake_dqdt(pcols,pver,ncnst)  ! Tracer tendency array
 
    integer :: il1g
@@ -149,10 +148,10 @@ contains
    real(r8) :: icwu(pcols,pver, 2)
    real(r8) :: icwd(pcols,pver, 2)
    real(r8) :: seten(pcols, pver)
+   integer, intent(in) :: ncnst 
 
    logical :: domomtran(ncnst)
-   domomtran = .false.
-
+   logical :: doconvtran(ncnst)
    fake_dqdt(:,:,1) = 0._r8
 
 
@@ -176,17 +175,17 @@ contains
 
 !TODO: Replace dependecies in zm_conv.F90 in momtran/convtran so the funcs can
 !be implemented 
-!   call momtran(lchnk, ncol, &
-!                    domomtran,q       ,ncnst   ,mu      ,md    , &
-!                    du      ,eu      ,ed      ,dp      ,dsubcld , &
-!                    jt      ,mx      ,ideep   ,il1g    ,lengath    , &
-!                    nstep   ,fake_dqdt    ,pguall     ,pgdall, icwu, icwd, ztodt, seten    )
-!
-!   call convtran(lchnk   , &
-!                    doconvtran,q       ,ncnst   ,mu      ,md      , &
-!                    du      ,eu      ,ed      ,dp      ,dsubcld , &
-!                    jt      ,mx      ,ideep   ,il1g    , lengath    , &
-!                    1   ,fracis  ,fake_dqdt,  fake_dpdry   )
+  call momtran(lchnk, ncol, &
+                   domomtran,q       ,ncnst   ,mu      ,md    , &
+                   du      ,eu      ,ed      ,dp      ,dsubcld , &
+                   jt      ,mx      ,ideep   ,il1g    ,lengath    , &
+                   nstep   ,fake_dqdt    ,pguall     ,pgdall, icwu, icwd, ztodt, seten    )
+
+  call convtran(lchnk   , &
+                   doconvtran,q       ,ncnst   ,mu      ,md      , &
+                   du      ,eu      ,ed      ,dp      ,dsubcld , &
+                   jt      ,mx      ,ideep   ,il1g    , lengath    , &
+                   1   ,fracis  ,fake_dqdt,  fake_dpdry   )
 
    end subroutine zm_main_f90
   !====================================================================!
