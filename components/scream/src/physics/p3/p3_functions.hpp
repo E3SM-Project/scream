@@ -758,7 +758,7 @@ struct Functions
     view_1d_ptr_array<Spack, 35>& zero_init);
 
   KOKKOS_FUNCTION
-  static void p3_main_pre_main_loop(
+  static void p3_main_part1(
     const MemberType& team,
     const Int& nk,
     const bool& log_predictNc,
@@ -806,7 +806,7 @@ struct Functions
     bool& log_hydrometeorsPresent);
 
   KOKKOS_FUNCTION
-  static void p3_main_main_loop(
+  static void p3_main_part2(
     const MemberType& team,
     const Int& nk_pack,
     const bool& log_predictNc,
@@ -881,7 +881,7 @@ struct Functions
     bool& log_hydrometeorsPresent);
 
   KOKKOS_FUNCTION
-  static void p3_main_post_main_loop(
+  static void p3_main_part3(
     const MemberType& team,
     const Int& nk_pack,
     const view_dnu_table& dnu,

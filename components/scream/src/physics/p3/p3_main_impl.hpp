@@ -70,7 +70,7 @@ void Functions<S,D>
 template <typename S, typename D>
 KOKKOS_FUNCTION
 void Functions<S,D>
-::p3_main_pre_main_loop(
+::p3_main_part1(
   const MemberType& team,
   const Int& nk,
   const bool& predictNc,
@@ -229,7 +229,7 @@ void Functions<S,D>
 template <typename S, typename D>
 KOKKOS_FUNCTION
 void Functions<S,D>
-::p3_main_main_loop(
+::p3_main_part2(
   const MemberType& team,
   const Int& nk_pack,
   const bool& predictNc,
@@ -698,7 +698,7 @@ void Functions<S,D>
 template <typename S, typename D>
 KOKKOS_FUNCTION
 void Functions<S,D>
-::p3_main_post_main_loop(
+::p3_main_part3(
   const MemberType& team,
   const Int& nk_pack,
   const view_dnu_table& dnu,
@@ -1005,7 +1005,7 @@ void Functions<S,D>
       inv_rcldm, inv_exner, t, oqv, inv_dzq,
       diagnostic_outputs.prt_liq(i), diagnostic_outputs.prt_sol(i), zero_init);
 
-    p3_main_pre_main_loop(
+    p3_main_part1(
       team, nk, infrastructure.predictNc, infrastructure.dt,
       opres, opdel, odzq, oncnuc, oexner, inv_exner, inv_lcldm, inv_icldm,
       inv_rcldm, oxxlv, oxxls, oxlf, t, rho, inv_rho, qvs, qvi, supi, rhofacr,
@@ -1020,7 +1020,7 @@ void Functions<S,D>
 
     // ------------------------------------------------------------------------------------------
     // main k-loop (for processes):
-    p3_main_main_loop(
+    p3_main_part2(
       team, nk_pack, infrastructure.predictNc, infrastructure.dt, odt,
       dnu, itab, itabcol, revap_table, opres, opdel, odzq, oncnuc, oexner,
       inv_exner, inv_lcldm, inv_icldm, inv_rcldm, onaai, oqc_relvar, oicldm,
@@ -1076,7 +1076,7 @@ void Functions<S,D>
     // final checks to ensure consistency of mass/number
     // and compute diagnostic fields for output
     //
-    p3_main_post_main_loop(
+    p3_main_part3(
       team, nk_pack, dnu, itab, oexner, olcldm, orcldm,
       rho, inv_rho, rhofaci, oqv, oth, oqc, onc, oqr, onr, oqitot, onitot,
       oqirim, obirim, oxxlv, oxxls, omu_c, nu, lamc, mu_r, lamr,
