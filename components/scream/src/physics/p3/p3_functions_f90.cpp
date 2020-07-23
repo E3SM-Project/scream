@@ -2806,7 +2806,6 @@ void get_latent_heat_f(Int its, Int ite, Int kts, Int kte, Real* v, Real* s, Rea
 
   Int nk = (kte - kts) + 1;
   Int ni = (ite - its) + 1;
-  Int total = ni*nk;
 
   // Set up views
   view_2d v_d("v_d", ni, nk),
@@ -3305,10 +3304,9 @@ void p3_main_main_loop_f(
       pres_d, pdel_d, dzq_d, ncnuc_d, exner_d, inv_exner_d, inv_lcldm_d, inv_icldm_d, inv_rcldm_d, naai_d, qc_relvar_d, icldm_d, lcldm_d, rcldm_d,
       t_d, rho_d, inv_rho_d, qvs_d, qvi_d, supi_d, rhofacr_d, rhofaci_d, acn_d,
       qv_d, th_d, qc_d, nc_d, qr_d, nr_d, qitot_d, nitot_d, qirim_d, birim_d, xxlv_d, xxls_d, xlf_d, qc_incld_d, qr_incld_d,
-      qitot_incld_d, qirim_incld_d, nc_incld_d, nr_incld_d, nitot_incld_d, birim_incld_d, mu_c_d, nu_d, lamc_d, cdist_d, cdist1_d,
+      qitot_incld_d, qirim_incld_d, nc_incld_d, nr_incld_d, nitot_incld_d, birim_incld_d, mu_c_d, nu_d, cdist_d, cdist1_d,
       cdistr_d, mu_r_d, lamr_d, logn0r_d, cmeiout_d, prain_d, nevapr_d, prer_evap_d, vap_liq_exchange_d,
-      vap_ice_exchange_d, liq_ice_exchange_d, pratot_d, prctot_d,
-      bools_d(0));
+      vap_ice_exchange_d, liq_ice_exchange_d, bools_d(0));
   });
 
   // Sync back to host
@@ -3413,10 +3411,12 @@ void p3_main_post_main_loop_f(
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
 
     P3F::p3_main_post_main_loop(team, nk_pack, dnu, itab,
-                                exner_d, lcldm_d, rcldm_d,
-                                rho_d, inv_rho_d, rhofaci_d, qv_d, th_d, qc_d, nc_d, qr_d, nr_d, qitot_d, nitot_d, qirim_d, birim_d, xxlv_d, xxls_d,
-                                mu_c_d, nu_d, lamc_d, mu_r_d, lamr_d, vap_liq_exchange_d,
-                                ze_rain_d, ze_ice_d, diag_vmi_d, diag_effi_d, diag_di_d, diag_rhoi_d, diag_ze_d, diag_effc_d);
+                                exner_d, lcldm_d, rcldm_d, rho_d, inv_rho_d,
+                                rhofaci_d, qv_d, th_d, qc_d, nc_d, qr_d, nr_d,
+                                qitot_d, nitot_d, qirim_d, birim_d, xxlv_d,
+                                xxls_d, mu_c_d, nu_d, mu_r_d, lamr_d,
+                                vap_liq_exchange_d, ze_rain_d, ze_ice_d,
+                                diag_effi_d, diag_rhoi_d, diag_effc_d);
   });
 
   // Sync back to host
@@ -3517,6 +3517,7 @@ void p3_main_f(
     diag_di_d          (temp_d[counter++]),
     diag_rhoi_d        (temp_d[counter++]),
     mu_c_d             (temp_d[counter++]),
+    mu_r_d             (temp_d[counter++]),
     lamc_d             (temp_d[counter++]),
     cmeiout_d          (temp_d[counter++]),
     prain_d            (temp_d[counter++]),
@@ -3545,11 +3546,22 @@ void p3_main_f(
     }
   });
 
-  P3F::p3_main(pres_d, dzq_d, ncnuc_d, naai_d, qc_relvar_d, dt, ni, nk, it, log_predictNc, pdel_d, exner_d,
-               icldm_d, lcldm_d, rcldm_d, col_location_d, qc_d, nc_d, qr_d, nr_d, qitot_d, qirim_d, nitot_d,
-               birim_d, qv_d, th_d, prt_liq_d, prt_sol_d, diag_ze_d, diag_effc_d, diag_effi_d, diag_vmi_d, diag_di_d,
-               diag_rhoi_d, mu_c_d, lamc_d, cmeiout_d, prain_d, nevapr_d, prer_evap_d, rflx_d, sflx_d, pratot_d,
-               prctot_d, liq_ice_exchange_d, vap_liq_exchange_d, vap_ice_exchange_d);
+  // Pack our data into structs and ship it off to p3_main.
+  P3F::P3PrognosticState prog_state{qc_d, nc_d, qr_d, nr_d, qitot_d, qirim_d,
+                                    nitot_d, birim_d, qv_d, th_d};
+  P3F::P3DiagnosticInputs diag_inputs{ncnuc_d, naai_d, qc_relvar_d, icldm_d,
+                                      lcldm_d, rcldm_d, pres_d, dzq_d, pdel_d,
+                                      exner_d};
+  P3F::P3DiagnosticOutputs diag_outputs{mu_c_d, mu_r_d, cmeiout_d, prt_liq_d,
+                                        prt_sol_d, diag_effc_d, diag_effi_d,
+                                        diag_rhoi_d, prain_d, nevapr_d,
+                                        prer_evap_d, rflx_d, sflx_d};
+  P3F::P3Infrastructure infrastructure{dt, it, its, ite, kts, kte,
+                                       log_predictNc, col_location_d};
+  P3F::P3HistoryOnly history_only{liq_ice_exchange_d, vap_liq_exchange_d,
+                                  vap_ice_exchange_d};
+  P3F::p3_main(prog_state, diag_inputs, diag_outputs, infrastructure,
+               history_only, ni, nk);
 
   Kokkos::parallel_for(ni, KOKKOS_LAMBDA(const Int& i) {
     prt_liq_temp_d(0, i / Spack::n)[i % Spack::n] = prt_liq_d(i);

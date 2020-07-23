@@ -25,7 +25,6 @@ void Functions<S,D>
   const uview_1d<const Spack>& exner,
   const uview_1d<const Spack>& th,
   const uview_1d<const Spack>& dzq,
-  const uview_1d<Spack>& diag_ze,
   const uview_1d<Spack>& ze_ice,
   const uview_1d<Spack>& ze_rain,
   const uview_1d<Spack>& diag_effc,
@@ -39,7 +38,7 @@ void Functions<S,D>
   const uview_1d<Spack>& inv_dzq,
   Scalar& prt_liq,
   Scalar& prt_sol,
-  view_1d_ptr_array<Spack, 40>& zero_init)
+  view_1d_ptr_array<Spack, 35>& zero_init)
 {
   prt_liq = 0;
   prt_sol = 0;
@@ -47,7 +46,6 @@ void Functions<S,D>
   Kokkos::parallel_for(
     Kokkos::TeamThreadRange(team, nk_pack), [&] (Int k) {
 
-    diag_ze(k)      = -99;
     ze_ice(k)       = 1.e-22;
     ze_rain(k)      = 1.e-22;
     diag_effc(k)    = 10.e-6;
@@ -73,7 +71,7 @@ void Functions<S,D>
 ::p3_main_pre_main_loop(
   const MemberType& team,
   const Int& nk,
-  const bool& log_predictNc,
+  const bool& predictNc,
   const Scalar& dt,
   const uview_1d<const Spack>& pres,
   const uview_1d<const Spack>& pdel,
@@ -114,8 +112,8 @@ void Functions<S,D>
   const uview_1d<Spack>& nr_incld,
   const uview_1d<Spack>& nitot_incld,
   const uview_1d<Spack>& birim_incld,
-  bool& log_nucleationPossible,
-  bool& log_hydrometeorsPresent)
+  bool& nucleationPossible,
+  bool& hydrometeorsPresent)
 {
   // Get access to saturation functions
   using physics = scream::physics::Functions<Scalar, Device>;
@@ -130,8 +128,8 @@ void Functions<S,D>
   constexpr Scalar qsmall       = C::QSMALL;
   constexpr Scalar inv_cp       = C::INV_CP;
 
-  log_nucleationPossible = false;
-  log_hydrometeorsPresent = false;
+  nucleationPossible = false;
+  hydrometeorsPresent = false;
   team.team_barrier();
 
   const Int nk_pack = scream::pack::npack<Spack>(nk);
@@ -163,7 +161,7 @@ void Functions<S,D>
     acn(k)     = g * rhow / (18 * dum); // 'a' parameter for droplet fallspeed (Stokes' law)
 
     if ( (t(k) < zerodegc && supi(k) >= -0.05).any() ) {
-      log_nucleationPossible = true;
+      nucleationPossible = true;
     }
 
     // apply mass clipping if dry and mass is sufficiently small
@@ -175,11 +173,11 @@ void Functions<S,D>
     qc(k).set(drymass, 0);
     nc(k).set(drymass, 0);
     if ( not_drymass.any() ) {
-      log_hydrometeorsPresent = true; // updated further down
+      hydrometeorsPresent = true; // updated further down
       // Apply droplet activation here (before other microphysical processes) for consistency with qc increase by saturation
       // adjustment already applied in macrophysics. If prescribed drop number is used, this is also a good place to
       // prescribe that value
-      if (!log_predictNc) {
+      if (!predictNc) {
          nc(k).set(not_drymass, nccnst*inv_rho(k));
       } else {
          nc(k).set(not_drymass, pack::max(nc(k) + ncnuc(k) * dt, 0.0));
@@ -193,7 +191,7 @@ void Functions<S,D>
     qr(k).set(drymass, 0);
     nr(k).set(drymass, 0);
     if ( not_drymass.any() ) {
-      log_hydrometeorsPresent = true; // updated further down
+      hydrometeorsPresent = true; // updated further down
     }
 
     drymass = (qitot(k) < qsmall || (qitot(k) < 1.e-8 && supi(k) < -0.1));
@@ -205,7 +203,7 @@ void Functions<S,D>
     qirim(k).set(drymass, 0);
     birim(k).set(drymass, 0);
     if ( not_drymass.any() ) {
-      log_hydrometeorsPresent = true; // final update
+      hydrometeorsPresent = true; // final update
     }
 
     drymass = (qitot(k) >= qsmall && qitot(k) < 1.e-8 && t(k) >= zerodegc);
@@ -232,7 +230,7 @@ void Functions<S,D>
 ::p3_main_main_loop(
   const MemberType& team,
   const Int& nk_pack,
-  const bool& log_predictNc,
+  const bool& predictNc,
   const Scalar& dt,
   const Scalar& odt,
   const view_dnu_table& dnu,
@@ -285,7 +283,6 @@ void Functions<S,D>
   const uview_1d<Spack>& birim_incld,
   const uview_1d<Spack>& mu_c,
   const uview_1d<Spack>& nu,
-  const uview_1d<Spack>& lamc,
   const uview_1d<Spack>& cdist,
   const uview_1d<Spack>& cdist1,
   const uview_1d<Spack>& cdistr,
@@ -299,9 +296,7 @@ void Functions<S,D>
   const uview_1d<Spack>& vap_liq_exchange,
   const uview_1d<Spack>& vap_ice_exchange,
   const uview_1d<Spack>& liq_ice_exchange,
-  const uview_1d<Spack>& pratot,
-  const uview_1d<Spack>& prctot,
-  bool& log_hydrometeorsPresent)
+  bool& hydrometeorsPresent)
 {
   constexpr Scalar qsmall       = C::QSMALL;
   constexpr Scalar nsmall       = C::NSMALL;
@@ -313,7 +308,7 @@ void Functions<S,D>
   constexpr Scalar inv_cp       = C::INV_CP;
 
   team.team_barrier();
-  log_hydrometeorsPresent = false;
+  hydrometeorsPresent = false;
   team.team_barrier();
 
   Kokkos::parallel_for(
@@ -401,7 +396,7 @@ void Functions<S,D>
       epsc(0),        // TODO(doc)
       epsi_tot (0);   // inverse supersaturation relaxation timescale for combined ice categories
 
-    Smask log_wetgrowth(false);
+    Smask wetgrowth(false);
 
     // skip micro process calculations except nucleation/acvtivation if there no hydrometeors are present
     const auto skip_micro = skip_all || !(qc_incld(k) >= qsmall || qr_incld(k) >= qsmall || qitot_incld(k) >= qsmall);
@@ -413,7 +408,9 @@ void Functions<S,D>
         t(k), pres(k), rho(k), xxlv(k), xxls(k), qvs(k), qvi(k),
         mu, dv, sc, dqsdt, dqsidt, ab, abi, kap, eii, not_skip_micro);
 
-      get_cloud_dsd2(qc_incld(k), nc_incld(k), mu_c(k), rho(k), nu(k), dnu, lamc(k), cdist(k), cdist1(k), lcldm(k), not_skip_micro);
+      Spack lamc;
+      get_cloud_dsd2(qc_incld(k), nc_incld(k), mu_c(k), rho(k), nu(k), dnu,
+                     lamc, cdist(k), cdist1(k), lcldm(k), not_skip_micro);
       nc(k).set(not_skip_micro, nc_incld(k) * lcldm(k));
 
       get_rain_dsd2(qr_incld(k), nr_incld(k), mu_r(k), lamr(k), cdistr(k), logn0r(k), rcldm(k), not_skip_micro);
@@ -491,7 +488,7 @@ void Functions<S,D>
       // calculate wet growth
       ice_cldliq_wet_growth(
         rho(k), t(k), pres(k), rhofaci(k), f1pr05, f1pr14, xxlv(k), xlf(k), dv, kap, mu, sc, qv(k), qc_incld(k), qitot_incld(k), nitot_incld(k), qr_incld(k),
-        log_wetgrowth, qrcol, qccol, qwgrth, nrshdr, qcshd, not_skip_micro);
+        wetgrowth, qrcol, qccol, qwgrth, nrshdr, qcshd, not_skip_micro);
 
       // calcualte total inverse ice relaxation timescale combined for all ice categories
       // note 'f1pr' values are normalized, so we need to multiply by N
@@ -501,12 +498,12 @@ void Functions<S,D>
 
       // calculate rime density
       calc_rime_density(
-        t(k), rhofaci(k), f1pr02, acn(k), lamc(k), mu_c(k), qc_incld(k), qccol,
+        t(k), rhofaci(k), f1pr02, acn(k), lamc, mu_c(k), qc_incld(k), qccol,
         vtrmi1, rhorime_c, not_skip_micro);
 
       // contact and immersion freezing droplets
       cldliq_immersion_freezing(
-	t(k), lamc(k), mu_c(k), cdist1(k), qc_incld(k), qc_relvar(k),
+        t(k), lamc, mu_c(k), cdist1(k), qc_incld(k), qc_relvar(k),
         qcheti, ncheti, not_skip_micro);
 
       // for future: get rid of log statements below for rain freezing
@@ -539,7 +536,7 @@ void Functions<S,D>
 
     // deposition/condensation-freezing nucleation
     ice_nucleation(
-      t(k), inv_rho(k), nitot(k), naai(k), supi(k), odt, log_predictNc,
+      t(k), inv_rho(k), nitot(k), naai(k), supi(k), odt, predictNc,
       qinuc, ninuc, not_skip_all);
 
     // cloud water autoconversion
@@ -621,13 +618,17 @@ void Functions<S,D>
 
     //-- ice-phase dependent processes:
     update_prognostic_ice(
-      qcheti, qccol, qcshd, nccol, ncheti, ncshdc, qrcol, nrcol,  qrheti, nrheti, nrshdr, qimlt, nimlt, qisub, qidep, qinuc, ninuc, nislf, nisub, qiberg, exner(k), xxls(k), xlf(k), log_predictNc, log_wetgrowth, dt, nmltratio, rhorime_c,
-      th(k), qv(k), qitot(k), nitot(k), qirim(k), birim(k), qc(k), nc(k), qr(k), nr(k), not_skip_all);
+      qcheti, qccol, qcshd, nccol, ncheti, ncshdc, qrcol, nrcol,  qrheti,
+      nrheti, nrshdr, qimlt, nimlt, qisub, qidep, qinuc, ninuc, nislf, nisub,
+      qiberg, exner(k), xxls(k), xlf(k), predictNc, wetgrowth, dt, nmltratio,
+      rhorime_c, th(k), qv(k), qitot(k), nitot(k), qirim(k), birim(k), qc(k),
+      nc(k), qr(k), nr(k), not_skip_all);
 
     //-- warm-phase only processes:
     update_prognostic_liquid(
-      qcacc, ncacc, qcaut, ncautc, ncautr, ncslf, qrevp, nrevp, nrslf, log_predictNc, inv_rho(k), exner(k), xxlv(k), dt,
-      th(k), qv(k), qc(k), nc(k), qr(k), nr(k), not_skip_all);
+      qcacc, ncacc, qcaut, ncautc, ncautr, ncslf, qrevp, nrevp, nrslf,
+      predictNc, inv_rho(k), exner(k), xxlv(k), dt, th(k), qv(k), qc(k), nc(k),
+      qr(k), nr(k), not_skip_all);
 
     // AaronDonahue - Add extra variables needed from microphysics by E3SM:
     cmeiout(k)         .set(not_skip_all, qidep - qisub + qinuc);
@@ -653,7 +654,7 @@ void Functions<S,D>
     nc(k).set(qc_small, 0);
 
     if (qc_not_small.any()) {
-      log_hydrometeorsPresent = true;
+      hydrometeorsPresent = true;
     }
 
     qv(k).set(qr_small, qv(k) + qr(k));
@@ -662,7 +663,7 @@ void Functions<S,D>
     nr(k).set(qr_small, 0);
 
     if (qr_not_small.any()) {
-      log_hydrometeorsPresent = true;
+      hydrometeorsPresent = true;
     }
 
     qv(k).set(qitot_small, qv(k) + qitot(k));
@@ -673,14 +674,10 @@ void Functions<S,D>
     birim(k).set(qitot_small, 0);
 
     if (qitot_not_small.any()) {
-      log_hydrometeorsPresent = true;
+      hydrometeorsPresent = true;
     }
 
     impose_max_total_Ni(nitot(k), max_total_Ni, inv_rho(k), not_skip_all);
-
-    // Outputs associated with aerocom comparison:
-    pratot(k).set(not_skip_all, qcacc); // cloud drop accretion by rain
-    prctot(k).set(not_skip_all, qcaut); // cloud drop autoconversion to rain
 
     // Recalculate in-cloud values for sedimentation
     calculate_incloud_mixingratios(
@@ -718,17 +715,13 @@ void Functions<S,D>
   const uview_1d<Spack>& xxls,
   const uview_1d<Spack>& mu_c,
   const uview_1d<Spack>& nu,
-  const uview_1d<Spack>& lamc,
   const uview_1d<Spack>& mu_r,
   const uview_1d<Spack>& lamr,
   const uview_1d<Spack>& vap_liq_exchange,
   const uview_1d<Spack>& ze_rain,
   const uview_1d<Spack>& ze_ice,
-  const uview_1d<Spack>& diag_vmi,
   const uview_1d<Spack>& diag_effi,
-  const uview_1d<Spack>& diag_di,
   const uview_1d<Spack>& diag_rhoi,
-  const uview_1d<Spack>& diag_ze,
   const uview_1d<Spack>& diag_effc)
 {
   constexpr Scalar qsmall       = C::QSMALL;
@@ -754,9 +747,10 @@ void Functions<S,D>
     {
       const auto qc_gt_small = qc(k) >= qsmall;
       const auto qc_small    = !qc_gt_small;
-      get_cloud_dsd2(qc(k), nc(k), mu_c(k), rho(k), nu(k), dnu, lamc(k), ignore1, ignore2, lcldm(k), qc_gt_small);
+      Spack lamc;
+      get_cloud_dsd2(qc(k), nc(k), mu_c(k), rho(k), nu(k), dnu, lamc, ignore1, ignore2, lcldm(k), qc_gt_small);
 
-      diag_effc(k)       .set(qc_gt_small, sp(0.5) * (mu_c(k) + 3) / lamc(k));
+      diag_effc(k)       .set(qc_gt_small, sp(0.5) * (mu_c(k) + 3) / lamc);
       qv(k)              .set(qc_small, qv(k)+qc(k));
       th(k)              .set(qc_small, th(k)-exner(k)*qc(k)*xxlv(k)*inv_cp);
       vap_liq_exchange(k).set(qc_small, vap_liq_exchange(k) - qc(k));
@@ -817,9 +811,7 @@ void Functions<S,D>
       birim(k).set(qirim_small, 0);
 
       // note that reflectivity from lookup table is normalized, so we need to multiply by N
-      diag_vmi(k) .set(qi_gt_small, f1pr02 * rhofaci(k));
       diag_effi(k).set(qi_gt_small, f1pr06); // units are in m
-      diag_di(k)  .set(qi_gt_small, f1pr15);
       diag_rhoi(k).set(qi_gt_small, f1pr16);
 
       // note factor of air density below is to convert from m^6/kg to m^6/m^3
@@ -832,11 +824,7 @@ void Functions<S,D>
       nitot(k)  .set(qi_small, 0);
       qirim(k)  .set(qi_small, 0);
       birim(k)  .set(qi_small, 0);
-      diag_di(k).set(qi_small, 0);
     }
-
-    // sum ze components and convert to dBZ
-    diag_ze(k) = 10 * pack::log10((ze_rain(k) + ze_ice(k))*sp(1.e18));
 
     // if qr is very small then set Nr to 0 (needs to be done here after call
     // to ice lookup table because a minimum Nr of nsmall will be set otherwise even if qr=0)
@@ -848,62 +836,13 @@ void Functions<S,D>
 template <typename S, typename D>
 void Functions<S,D>
 ::p3_main(
-  // inputs
-  const view_2d<const Spack>& pres,          // pressure                             Pa
-  const view_2d<const Spack>& dzq,           // vertical grid spacing                m
-  const view_2d<const Spack>& ncnuc,         // IN ccn activated number tendency     kg-1 s-1
-  const view_2d<const Spack>& naai,          // IN actived ice nuclei concentration  1/kg
-  const view_2d<const Spack>& qc_relvar,     // Assumed SGS 1/(var(qc)/mean(qc))     kg2/kg2
-  const Real&                 dt,            // model time step                      s
-  const Int&                  ni,            // num columns
-  const Int&                  nk,            // column size
-  const Int&                  it,            // time step counter NOTE: starts at 1 for first time step
-  const bool&                 log_predictNc, // .T. (.F.) for prediction (specification) of Nc
-  const view_2d<const Spack>& pdel,          // pressure thickness                   Pa
-  const view_2d<const Spack>& exner,         // Exner expression
-
-  // inputs needed for PBUF variables used by other parameterizations
-  const view_2d<const Spack>& icldm,         // ice cloud fraction
-  const view_2d<const Spack>& lcldm,         // liquid cloud fraction
-  const view_2d<const Spack>& rcldm,         // rain cloud fraction
-  const view_2d<const Scalar>& col_location, // ni x 3
-
-  // input/output  arguments
-  const view_2d<Spack>& qc,    // cloud, mass mixing ratio         kg kg-1
-  const view_2d<Spack>& nc,    // cloud, number mixing ratio       #  kg-1
-  const view_2d<Spack>& qr,    // rain, mass mixing ratio          kg kg-1
-  const view_2d<Spack>& nr,    // rain, number mixing ratio        #  kg-1
-  const view_2d<Spack>& qitot, // ice, total mass mixing ratio     kg kg-1
-  const view_2d<Spack>& qirim, // ice, rime mass mixing ratio      kg kg-1
-  const view_2d<Spack>& nitot, // ice, total number mixing ratio   #  kg-1
-  const view_2d<Spack>& birim, // ice, rime volume mixing ratio    m3 kg-1
-  const view_2d<Spack>& qv,    // water vapor mixing ratio         kg kg-1
-  const view_2d<Spack>& th,    // potential temperature            K
-
-  // output arguments
-  const view_1d<Scalar>& prt_liq,  // precipitation rate, liquid       m s-1
-  const view_1d<Scalar>& prt_sol,  // precipitation rate, solid        m s-1
-  const view_2d<Spack>& diag_ze,   // equivalent reflectivity          dBZ
-  const view_2d<Spack>& diag_effc, // effective radius, cloud          m
-  const view_2d<Spack>& diag_effi, // effective radius, ice            m
-  const view_2d<Spack>& diag_vmi,  // mass-weighted fall speed of ice  m s-1
-  const view_2d<Spack>& diag_di,   // mean diameter of ice             m
-  const view_2d<Spack>& diag_rhoi, // bulk density of ice              kg m-3
-  const view_2d<Spack>& mu_c,      // Size distribution shape parameter for radiation
-  const view_2d<Spack>& lamc,      // Size distribution slope parameter for radiation
-
-  // outputs for PBUF variables used by other parameterizations
-  const view_2d<Spack>& cmeiout,          // qitend due to deposition/sublimation
-  const view_2d<Spack>& prain,            // Total precipitation (rain + snow)
-  const view_2d<Spack>& nevapr,           // evaporation of total precipitation (rain + snow)
-  const view_2d<Spack>& prer_evap,        // evaporation of rain
-  const view_2d<Spack>& rflx,             // grid-box average rain flux (kg m^-2 s^-1) pverp
-  const view_2d<Spack>& sflx,             // grid-box average ice/snow flux (kg m^-2 s^-1) pverp
-  const view_2d<Spack>& pratot,           // accretion of cloud by rain
-  const view_2d<Spack>& prctot,           // autoconversion of cloud to rain
-  const view_2d<Spack>& liq_ice_exchange, // sum of liq-ice phase change tendenices
-  const view_2d<Spack>& vap_liq_exchange, // sum of vap-liq phase change tendenices
-  const view_2d<Spack>& vap_ice_exchange) // sum of vap-ice phase change tendenices
+  const P3PrognosticState& prognostic_state,
+  const P3DiagnosticInputs& diagnostic_inputs,
+  const P3DiagnosticOutputs& diagnostic_outputs,
+  const P3Infrastructure& infrastructure,
+  const P3HistoryOnly& history_only,
+  Int ni,
+  Int nk)
 {
   using ExeSpace = typename KT::ExeSpace;
 
@@ -917,7 +856,7 @@ void Functions<S,D>
   WorkspaceManager<Spack, Device> workspace_mgr(nk_pack, 42, policy);
 
   // load constants into local vars
-  const     Scalar odt          = 1 / dt;
+  const     Scalar odt          = 1 / infrastructure.dt;
   constexpr Int    kdir         = -1;
   const     Int    ktop         = kdir == -1 ? 0    : nk-1;
   const     Int    kbot         = kdir == -1 ? nk-1 : 0;
@@ -953,7 +892,7 @@ void Functions<S,D>
       t,      // temperature at the beginning of the microhpysics step [K]
 
       // 2D size distribution and fallspeed parameters
-      lamr, logn0r, nu, cdist, cdist1, cdistr,
+      lamr, lamc, logn0r, nu, cdist, cdist1, cdistr,
 
       // Variables needed for in-cloud calculations
       inv_icldm, inv_lcldm, inv_rcldm, // Inverse cloud fractions (1/cld)
@@ -988,96 +927,97 @@ void Functions<S,D>
 
     // Get single-column subviews of all inputs, shouldn't need any i-indexing
     // after this.
-    const auto opres             = util::subview(pres, i);
-    const auto odzq              = util::subview(dzq, i);
-    const auto oncnuc            = util::subview(ncnuc, i);
-    const auto onaai             = util::subview(naai, i);
-    const auto oqc_relvar        = util::subview(qc_relvar, i);
-    const auto opdel             = util::subview(pdel, i);
-    const auto oexner            = util::subview(exner, i);
-    const auto oicldm            = util::subview(icldm, i);
-    const auto olcldm            = util::subview(lcldm, i);
-    const auto orcldm            = util::subview(rcldm, i);
-    const auto ocol_location     = util::subview(col_location, i);
-    const auto oqc               = util::subview(qc, i);
-    const auto onc               = util::subview(nc, i);
-    const auto oqr               = util::subview(qr, i);
-    const auto onr               = util::subview(nr, i);
-    const auto oqitot            = util::subview(qitot, i);
-    const auto oqirim            = util::subview(qirim, i);
-    const auto onitot            = util::subview(nitot, i);
-    const auto obirim            = util::subview(birim, i);
-    const auto oqv               = util::subview(qv, i);
-    const auto oth               = util::subview(th, i);
-    const auto odiag_ze          = util::subview(diag_ze, i);
-    const auto odiag_effc        = util::subview(diag_effc, i);
-    const auto odiag_effi        = util::subview(diag_effi, i);
-    const auto odiag_vmi         = util::subview(diag_vmi, i);
-    const auto odiag_di          = util::subview(diag_di, i);
-    const auto odiag_rhoi        = util::subview(diag_rhoi, i);
-    const auto omu_c             = util::subview(mu_c, i);
-    const auto olamc             = util::subview(lamc, i);
-    const auto ocmeiout          = util::subview(cmeiout, i);
-    const auto oprain            = util::subview(prain, i);
-    const auto onevapr           = util::subview(nevapr, i);
-    const auto oprer_evap        = util::subview(prer_evap, i);
-    const auto orflx             = util::subview(rflx, i);
-    const auto osflx             = util::subview(sflx, i);
-    const auto opratot           = util::subview(pratot, i);
-    const auto oprctot           = util::subview(prctot, i);
-    const auto oliq_ice_exchange = util::subview(liq_ice_exchange, i);
-    const auto ovap_liq_exchange = util::subview(vap_liq_exchange, i);
-    const auto ovap_ice_exchange = util::subview(vap_ice_exchange, i);
+    const auto opres             = util::subview(diagnostic_inputs.pres, i);
+    const auto odzq              = util::subview(diagnostic_inputs.dzq, i);
+    const auto oncnuc            = util::subview(diagnostic_inputs.ncnuc, i);
+    const auto onaai             = util::subview(diagnostic_inputs.naai, i);
+    const auto oqc_relvar        = util::subview(diagnostic_inputs.qc_relvar, i);
+    const auto opdel             = util::subview(diagnostic_inputs.pdel, i);
+    const auto oexner            = util::subview(diagnostic_inputs.exner, i);
+    const auto oicldm            = util::subview(diagnostic_inputs.icldm, i);
+    const auto olcldm            = util::subview(diagnostic_inputs.lcldm, i);
+    const auto orcldm            = util::subview(diagnostic_inputs.rcldm, i);
+    const auto ocol_location     = util::subview(infrastructure.col_location, i);
+    const auto oqc               = util::subview(prognostic_state.qc, i);
+    const auto onc               = util::subview(prognostic_state.nc, i);
+    const auto oqr               = util::subview(prognostic_state.qr, i);
+    const auto onr               = util::subview(prognostic_state.nr, i);
+    const auto oqitot            = util::subview(prognostic_state.qitot, i);
+    const auto oqirim            = util::subview(prognostic_state.qirim, i);
+    const auto onitot            = util::subview(prognostic_state.nitot, i);
+    const auto obirim            = util::subview(prognostic_state.birim, i);
+    const auto oqv               = util::subview(prognostic_state.qv, i);
+    const auto oth               = util::subview(prognostic_state.th, i);
+    const auto odiag_effc        = util::subview(diagnostic_outputs.diag_effc, i);
+    const auto odiag_effi        = util::subview(diagnostic_outputs.diag_effi, i);
+    const auto odiag_rhoi        = util::subview(diagnostic_outputs.diag_rhoi, i);
+    const auto omu_c             = util::subview(diagnostic_outputs.mu_c, i);
+    const auto ocmeiout          = util::subview(diagnostic_outputs.cmeiout, i);
+    const auto oprain            = util::subview(diagnostic_outputs.prain, i);
+    const auto onevapr           = util::subview(diagnostic_outputs.nevapr, i);
+    const auto oprer_evap        = util::subview(diagnostic_outputs.prer_evap, i);
+    const auto orflx             = util::subview(diagnostic_outputs.rflx, i);
+    const auto osflx             = util::subview(diagnostic_outputs.sflx, i);
+    const auto oliq_ice_exchange = util::subview(history_only.liq_ice_exchange, i);
+    const auto ovap_liq_exchange = util::subview(history_only.vap_liq_exchange, i);
+    const auto ovap_ice_exchange = util::subview(history_only.vap_ice_exchange, i);
     const auto oxxlv             = util::subview(xxlv, i);
     const auto oxxls             = util::subview(xxls, i);
     const auto oxlf              = util::subview(xlf, i);
 
     // Need to watch out for race conditions with these shared variables
-    bool &log_nucleationPossible  = bools(i, 0);
-    bool &log_hydrometeorsPresent = bools(i, 1);
+    bool &nucleationPossible  = bools(i, 0);
+    bool &hydrometeorsPresent = bools(i, 1);
 
-    view_1d_ptr_array<Spack, 40> zero_init = {
+    view_1d_ptr_array<Spack, 35> zero_init = {
       &mu_r, &lamr, &logn0r, &nu, &cdist, &cdist1, &cdistr,
       &qc_incld, &qr_incld, &qitot_incld, &qirim_incld,
       &nc_incld, &nr_incld, &nitot_incld, &birim_incld,
-      &inv_rho, &prec, &rho,
-      &rhofacr, &rhofaci, &acn, &qvs, &qvi, &sup, &supi,
+      &inv_rho, &prec, &rho, &rhofacr, &rhofaci, &acn, &qvs, &qvi, &sup, &supi,
       &tmparr1, &qtend_ignore, &ntend_ignore,
-      &opratot, &oprctot, &omu_c, &olamc, &odiag_vmi, &odiag_di, &odiag_rhoi, &ocmeiout, &oprain, &onevapr, &orflx, &osflx
+      &omu_c, &odiag_rhoi, &ocmeiout, &oprain, &onevapr, &orflx, &osflx
     };
 
     // initialize
     p3_main_init(
       team, nk_pack,
       oicldm, olcldm, orcldm, oexner, oth, odzq,
-      odiag_ze, ze_ice, ze_rain, odiag_effc, odiag_effi, inv_icldm, inv_lcldm, inv_rcldm, inv_exner, t, oqv, inv_dzq,
-      prt_liq(i), prt_sol(i), zero_init);
+      ze_ice, ze_rain, odiag_effc, odiag_effi, inv_icldm, inv_lcldm,
+      inv_rcldm, inv_exner, t, oqv, inv_dzq,
+      diagnostic_outputs.prt_liq(i), diagnostic_outputs.prt_sol(i), zero_init);
 
     p3_main_pre_main_loop(
-      team, nk, log_predictNc, dt,
-      opres, opdel, odzq, oncnuc, oexner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, oxxlv, oxxls, oxlf,
-      t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn, oqv, oth, oqc, onc, oqr, onr, oqitot, onitot, oqirim, obirim, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld, nr_incld, nitot_incld, birim_incld,
-      log_nucleationPossible, log_hydrometeorsPresent);
+      team, nk, infrastructure.predictNc, infrastructure.dt,
+      opres, opdel, odzq, oncnuc, oexner, inv_exner, inv_lcldm, inv_icldm,
+      inv_rcldm, oxxlv, oxxls, oxlf, t, rho, inv_rho, qvs, qvi, supi, rhofacr,
+      rhofaci, acn, oqv, oth, oqc, onc, oqr, onr, oqitot, onitot, oqirim,
+      obirim, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld, nr_incld,
+      nitot_incld, birim_incld, nucleationPossible, hydrometeorsPresent);
 
     // There might not be any work to do for this team
-    if (!(log_nucleationPossible || log_hydrometeorsPresent)) {
+    if (!(nucleationPossible || hydrometeorsPresent)) {
       return; // this is how you do a "continue" in a kokkos lambda
     }
 
     // ------------------------------------------------------------------------------------------
     // main k-loop (for processes):
     p3_main_main_loop(
-      team, nk_pack, log_predictNc, dt, odt,
-      dnu, itab, itabcol, revap_table,
-      opres, opdel, odzq, oncnuc, oexner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, onaai, oqc_relvar, oicldm, olcldm, orcldm,
-      t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn, oqv, oth, oqc, onc, oqr, onr, oqitot, onitot, oqirim, obirim, oxxlv, oxxls, oxlf, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld, nr_incld, nitot_incld, birim_incld, omu_c, nu, olamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, ocmeiout, oprain, onevapr, oprer_evap, ovap_liq_exchange, ovap_ice_exchange, oliq_ice_exchange, opratot, oprctot,
-      log_hydrometeorsPresent);
+      team, nk_pack, infrastructure.predictNc, infrastructure.dt, odt,
+      dnu, itab, itabcol, revap_table, opres, opdel, odzq, oncnuc, oexner,
+      inv_exner, inv_lcldm, inv_icldm, inv_rcldm, onaai, oqc_relvar, oicldm,
+      olcldm, orcldm, t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn,
+      oqv, oth, oqc, onc, oqr, onr, oqitot, onitot, oqirim, obirim, oxxlv,
+      oxxls, oxlf, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld,
+      nr_incld, nitot_incld, birim_incld, omu_c, nu, cdist, cdist1, cdistr,
+      mu_r, lamr, logn0r, ocmeiout, oprain, onevapr, oprer_evap,
+      ovap_liq_exchange, ovap_ice_exchange, oliq_ice_exchange,
+      hydrometeorsPresent);
 
     //NOTE: At this point, it is possible to have negative (but small) nc, nr, nitot.  This is not
     //      a problem; those values get clipped to zero in the sedimentation section (if necessary).
     //      (This is not done above simply for efficiency purposes.)
 
-    if (!log_hydrometeorsPresent) return;
+    if (!hydrometeorsPresent) return;
 
     // -----------------------------------------------------------------------------------------
     // End of main microphysical processes section
@@ -1090,34 +1030,38 @@ void Functions<S,D>
 
     cloud_sedimentation(
       qc_incld, rho, inv_rho, olcldm, acn, inv_dzq, dnu, team, workspace,
-      nk, ktop, kbot, kdir, dt, odt, log_predictNc,
-      oqc, onc, nc_incld, omu_c, olamc, qtend_ignore, ntend_ignore, prt_liq(i));
+      nk, ktop, kbot, kdir, infrastructure.dt, odt, infrastructure.predictNc,
+      oqc, onc, nc_incld, omu_c, lamc, qtend_ignore, ntend_ignore,
+      diagnostic_outputs.prt_liq(i));
 
     // Rain sedimentation:  (adaptive substepping)
     rain_sedimentation(
-      rho, inv_rho, rhofacr, orcldm, inv_dzq, qr_incld, team, workspace, vn_table, vm_table,
-      nk, ktop, kbot, kdir, dt, odt,
-      oqr, onr, nr_incld, mu_r, lamr, orflx, qtend_ignore, ntend_ignore, prt_liq(i));
+      rho, inv_rho, rhofacr, orcldm, inv_dzq, qr_incld, team, workspace,
+      vn_table, vm_table, nk, ktop, kbot, kdir, infrastructure.dt, odt, oqr,
+      onr, nr_incld, mu_r, lamr, orflx, qtend_ignore, ntend_ignore,
+      diagnostic_outputs.prt_liq(i));
 
     // Ice sedimentation:  (adaptive substepping)
     ice_sedimentation(
-      rho, inv_rho, rhofaci, oicldm, inv_dzq, team, workspace,
-      nk, ktop, kbot, kdir, dt, odt,
-      oqitot, qitot_incld, onitot, nitot_incld, oqirim, qirim_incld, obirim, birim_incld, qtend_ignore, ntend_ignore, itab, prt_sol(i));
+      rho, inv_rho, rhofaci, oicldm, inv_dzq, team, workspace, nk, ktop, kbot,
+      kdir, infrastructure.dt, odt, oqitot, qitot_incld, onitot, nitot_incld,
+      oqirim, qirim_incld, obirim, birim_incld, qtend_ignore, ntend_ignore,
+      itab, diagnostic_outputs.prt_sol(i));
 
     // homogeneous freezing of cloud and rain
     homogeneous_freezing(
-      t, oexner, oxlf, team, nk, ktop, kbot, kdir,
-      oqc, onc, oqr, onr, oqitot, onitot, oqirim, obirim, oth);
+      t, oexner, oxlf, team, nk, ktop, kbot, kdir, oqc, onc, oqr, onr, oqitot,
+      onitot, oqirim, obirim, oth);
 
     //
     // final checks to ensure consistency of mass/number
     // and compute diagnostic fields for output
     //
     p3_main_post_main_loop(
-      team, nk_pack, dnu, itab,
-      oexner, olcldm, orcldm,
-      rho, inv_rho, rhofaci, oqv, oth, oqc, onc, oqr, onr, oqitot, onitot, oqirim, obirim, oxxlv, oxxls, omu_c, nu, olamc, mu_r, lamr, ovap_liq_exchange, ze_rain, ze_ice, odiag_vmi, odiag_effi, odiag_di, odiag_rhoi, odiag_ze, odiag_effc);
+      team, nk_pack, dnu, itab, oexner, olcldm, orcldm,
+      rho, inv_rho, rhofaci, oqv, oth, oqc, onc, oqr, onr, oqitot, onitot,
+      oqirim, obirim, oxxlv, oxxls, omu_c, nu, mu_r, lamr, ovap_liq_exchange,
+      ze_rain, ze_ice, odiag_effi, odiag_rhoi, odiag_effc);
 
     //
     // merge ice categories with similar properties
@@ -1133,7 +1077,8 @@ void Functions<S,D>
         tmparr1(k) = oth(k) * inv_exner(k);
     });
 
-    check_values(oqv, tmparr1, ktop, kbot, it, debug_ABORT, 900, team, ocol_location);
+    check_values(oqv, tmparr1, ktop, kbot, infrastructure.it, debug_ABORT, 900,
+                 team, ocol_location);
 #endif
   });
 }
