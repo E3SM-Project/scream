@@ -748,7 +748,7 @@ contains
 
       call evaporate_precip_p3(qr_incld(k),qc_incld(k),nr_incld(k), &
            qitot_incld(k),  &
-           lcldm(k),rcldm(k),qv(k),qv(k),qvs(k),qvi(k),ab,abi,epsr,epsc,epsi_tot,t(k),t(k),xxls, &
+           lcldm(k),rcldm(k),qv(k),qv(k),qvs(k),qvi(k),ab,abi,epsr,epsc,epsi_tot,t(k),t(k),xxls(k), &
            dqsdt,odt,dt, &
            qrevp,nrevp)
 
@@ -3320,7 +3320,7 @@ subroutine evaporate_precip_p3(qr_incld,qc_incld,nr_incld,qitot_incld,          
     !   end if ! rcld>cld
     !   if (qr_incld.gt.qsmall)  nrevp = qrevp*(nr_incld/qr_incld)
        return
-    end subroutine evaporate_sublimate_precip
+    end subroutine evaporate_precip_p3
 
 
 
