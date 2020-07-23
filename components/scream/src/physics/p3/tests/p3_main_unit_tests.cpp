@@ -505,7 +505,7 @@ static void run_bfb_p3_main()
       d.prt_sol, d.its, d.ite, d.kts, d.kte, d.diag_effc, d.diag_effi,
       d.diag_rhoi, d.log_predictNc, d.pdel, d.exner, d.cmeiout, d.prain,
       d.nevapr, d.prer_evap, d.rflx, d.sflx, d.rcldm, d.lcldm, d.icldm, d.mu_c,
-      d.liq_ice_exchange, d.vap_liq_exchange, d.vap_ice_exchange);
+      d.mu_r, d.liq_ice_exchange, d.vap_liq_exchange, d.vap_ice_exchange);
     d.transpose<util::TransposeDirection::f2c>();
   }
 

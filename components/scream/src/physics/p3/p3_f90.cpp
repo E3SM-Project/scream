@@ -69,7 +69,8 @@ FortranData::FortranData (Int ncol_, Int nlev_)
   rcldm = Array2("Rain cloud fraction", ncol, nlev);
   lcldm = Array2("Liquid cloud fraction", ncol, nlev);
   icldm = Array2("Ice cloud fraction", ncol, nlev);
-  mu_c = Array2("Size distribution shape paramter", ncol, nlev);
+  mu_c = Array2("Cloud size distribution shape paramter", ncol, nlev);
+  mu_r = Array2("Rain size distribution shape paramter", ncol, nlev);
   liq_ice_exchange = Array2("sum of liq-ice phase change tendenices", ncol, nlev);
   vap_liq_exchange = Array2("sum of vap-liq phase change tendenices", ncol, nlev);
   vap_ice_exchange = Array2("sum of vap-ice phase change tendenices", ncol, nlev);
@@ -95,7 +96,7 @@ void FortranDataIterator::init (const FortranData::Ptr& dp) {
   fdipb(pdel); fdipb(exner); fdipb(cmeiout); fdipb(prain);
   fdipb(nevapr); fdipb(prer_evap); fdipb(rflx); fdipb(sflx);
   fdipb(rcldm); fdipb(lcldm); fdipb(icldm);
-  fdipb(mu_c); fdipb(liq_ice_exchange); fdipb(vap_liq_exchange);
+  fdipb(mu_c); fdipb(mu_r), fdipb(liq_ice_exchange); fdipb(vap_liq_exchange);
   fdipb(vap_ice_exchange);;
 #undef fdipb
 }
@@ -136,7 +137,9 @@ void p3_main (const FortranData& d, bool use_fortran) {
               d.log_predictNc, d.pdel.data(), d.exner.data(), d.cmeiout.data(),
               d.prain.data(), d.nevapr.data(), d.prer_evap.data(),
               d.rflx.data(), d.sflx.data(), d.rcldm.data(), d.lcldm.data(),
-              d.icldm.data(), d.mu_c.data(), d.liq_ice_exchange.data(),
+              d.icldm.data(), d.mu_c.data(),
+              // TODO: We don't currently get mu_r from Fortran.
+              d.liq_ice_exchange.data(),
               d.vap_liq_exchange.data(),d.vap_ice_exchange.data());
   }
   else {
@@ -149,7 +152,7 @@ void p3_main (const FortranData& d, bool use_fortran) {
               d.pdel.data(), d.exner.data(), d.cmeiout.data(), d.prain.data(),
               d.nevapr.data(), d.prer_evap.data(), d.rflx.data(), d.sflx.data(),
               d.rcldm.data(), d.lcldm.data(), d.icldm.data(), d.mu_c.data(),
-              d.liq_ice_exchange.data(), d.vap_liq_exchange.data(),
+              d.mu_r.data(), d.liq_ice_exchange.data(), d.vap_liq_exchange.data(),
               d.vap_ice_exchange.data());
   }
 }
