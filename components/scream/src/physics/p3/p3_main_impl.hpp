@@ -681,6 +681,10 @@ void Functions<S,D>
       hydrometeorsPresent = true;
     }
 
+    // Outputs associated with aerocom comparison:
+    pratot(k).set(not_skip_all, qcacc); // cloud drop accretion by rain
+    prctot(k).set(not_skip_all, qcaut); // cloud drop autoconversion to rain
+
     impose_max_total_Ni(nitot(k), max_total_Ni, inv_rho(k), not_skip_all);
 
     // Recalculate in-cloud values for sedimentation
@@ -818,7 +822,9 @@ void Functions<S,D>
       birim(k).set(qirim_small, 0);
 
       // note that reflectivity from lookup table is normalized, so we need to multiply by N
+      diag_vmi(k) .set(qi_gt_small, f1pr02 * rhofaci(k));
       diag_effi(k).set(qi_gt_small, f1pr06); // units are in m
+      diag_di(k)  .set(qi_gt_small, f1pr15);
       diag_rhoi(k).set(qi_gt_small, f1pr16);
 
       // note factor of air density below is to convert from m^6/kg to m^6/m^3
@@ -831,7 +837,11 @@ void Functions<S,D>
       nitot(k)  .set(qi_small, 0);
       qirim(k)  .set(qi_small, 0);
       birim(k)  .set(qi_small, 0);
+      diag_di(k).set(qi_small, 0);
     }
+
+    // sum ze components and convert to dBZ
+    diag_ze(k) = 10 * pack::log10((ze_rain(k) + ze_ice(k))*sp(1.e18));
 
     // if qr is very small then set Nr to 0 (needs to be done here after call
     // to ice lookup table because a minimum Nr of nsmall will be set otherwise even if qr=0)

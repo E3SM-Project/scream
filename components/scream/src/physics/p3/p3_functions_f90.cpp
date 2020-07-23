@@ -1171,7 +1171,7 @@ P3MainData::P3MainData(
     &qc_relvar, &qc, &nc, &qr, &nr, &qitot, &qirim, &nitot, &birim, &qv, &th,
     &diag_effc, &diag_effi, &diag_rhoi, &mu_c, &cmeiout, &prain, &nevapr,
     &prer_evap, &liq_ice_exchange, &vap_liq_exchange, &vap_ice_exchange, &rflx,
-    &sflx
+    &sflx, &prt_liq, &prt_sol
   };
 
   gen_random_data(ranges, ptrs, m_data.data(), m_nt);
@@ -1190,7 +1190,7 @@ P3MainData::P3MainData(const P3MainData& rhs) :
     &qc_relvar, &qc, &nc, &qr, &nr, &qitot, &qirim, &nitot, &birim, &qv, &th,
     &diag_effc, &diag_effi, &diag_rhoi, &mu_c, &cmeiout, &prain, &nevapr,
     &prer_evap, &liq_ice_exchange, &vap_liq_exchange, &vap_ice_exchange, &rflx,
-    &sflx
+    &sflx, &prt_liq, &prt_sol
   };
 
   for (size_t i = 0; i < NUM_ARRAYS; ++i) {
