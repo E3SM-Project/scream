@@ -741,6 +741,7 @@ struct Functions
     const uview_1d<const Spack>& exner,
     const uview_1d<const Spack>& th,
     const uview_1d<const Spack>& dzq,
+    const uview_1d<Spack>& diag_ze,
     const uview_1d<Spack>& ze_ice,
     const uview_1d<Spack>& ze_rain,
     const uview_1d<Spack>& diag_effc,
@@ -861,6 +862,7 @@ struct Functions
     const uview_1d<Spack>& birim_incld,
     const uview_1d<Spack>& omu_c,
     const uview_1d<Spack>& nu,
+    const uview_1d<Spack>& lamc,
     const uview_1d<Spack>& cdist,
     const uview_1d<Spack>& cdist1,
     const uview_1d<Spack>& cdistr,
@@ -874,6 +876,8 @@ struct Functions
     const uview_1d<Spack>& vap_liq_exchange,
     const uview_1d<Spack>& vap_ice_exchange,
     const uview_1d<Spack>& liq_ice_exchange,
+    const uview_1d<Spack>& pratot,
+    const uview_1d<Spack>& prctot,
     bool& log_hydrometeorsPresent);
 
   KOKKOS_FUNCTION
@@ -902,13 +906,17 @@ struct Functions
     const uview_1d<Spack>& xxls,
     const uview_1d<Spack>& mu_c,
     const uview_1d<Spack>& nu,
+    const uview_1d<Spack>& lamc,
     const uview_1d<Spack>& mu_r,
     const uview_1d<Spack>& lamr,
     const uview_1d<Spack>& vap_liq_exchange,
     const uview_1d<Spack>& ze_rain,
     const uview_1d<Spack>& ze_ice,
+    const uview_1d<Spack>& diag_vmi,
     const uview_1d<Spack>& diag_effi,
+    const uview_1d<Spack>& diag_di,
     const uview_1d<Spack>& diag_rhoi,
+    const uview_1d<Spack>& diag_ze,
     const uview_1d<Spack>& diag_effc);
 
   static void p3_main(

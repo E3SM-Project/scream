@@ -25,6 +25,7 @@ void Functions<S,D>
   const uview_1d<const Spack>& exner,
   const uview_1d<const Spack>& th,
   const uview_1d<const Spack>& dzq,
+  const uview_1d<Spack>& diag_ze,
   const uview_1d<Spack>& ze_ice,
   const uview_1d<Spack>& ze_rain,
   const uview_1d<Spack>& diag_effc,
@@ -46,6 +47,7 @@ void Functions<S,D>
   Kokkos::parallel_for(
     Kokkos::TeamThreadRange(team, nk_pack), [&] (Int k) {
 
+    diag_ze(k)      = -99;
     ze_ice(k)       = 1.e-22;
     ze_rain(k)      = 1.e-22;
     diag_effc(k)    = 10.e-6;
@@ -283,6 +285,7 @@ void Functions<S,D>
   const uview_1d<Spack>& birim_incld,
   const uview_1d<Spack>& mu_c,
   const uview_1d<Spack>& nu,
+  const uview_1d<Spack>& lamc,
   const uview_1d<Spack>& cdist,
   const uview_1d<Spack>& cdist1,
   const uview_1d<Spack>& cdistr,
@@ -296,6 +299,8 @@ void Functions<S,D>
   const uview_1d<Spack>& vap_liq_exchange,
   const uview_1d<Spack>& vap_ice_exchange,
   const uview_1d<Spack>& liq_ice_exchange,
+  const uview_1d<Spack>& pratot,
+  const uview_1d<Spack>& prctot,
   bool& hydrometeorsPresent)
 {
   constexpr Scalar qsmall       = C::QSMALL;
@@ -408,9 +413,8 @@ void Functions<S,D>
         t(k), pres(k), rho(k), xxlv(k), xxls(k), qvs(k), qvi(k),
         mu, dv, sc, dqsdt, dqsidt, ab, abi, kap, eii, not_skip_micro);
 
-      Spack lamc;
       get_cloud_dsd2(qc_incld(k), nc_incld(k), mu_c(k), rho(k), nu(k), dnu,
-                     lamc, cdist(k), cdist1(k), lcldm(k), not_skip_micro);
+                     lamc(k), cdist(k), cdist1(k), lcldm(k), not_skip_micro);
       nc(k).set(not_skip_micro, nc_incld(k) * lcldm(k));
 
       get_rain_dsd2(qr_incld(k), nr_incld(k), mu_r(k), lamr(k), cdistr(k), logn0r(k), rcldm(k), not_skip_micro);
@@ -498,12 +502,12 @@ void Functions<S,D>
 
       // calculate rime density
       calc_rime_density(
-        t(k), rhofaci(k), f1pr02, acn(k), lamc, mu_c(k), qc_incld(k), qccol,
+        t(k), rhofaci(k), f1pr02, acn(k), lamc(k), mu_c(k), qc_incld(k), qccol,
         vtrmi1, rhorime_c, not_skip_micro);
 
       // contact and immersion freezing droplets
       cldliq_immersion_freezing(
-        t(k), lamc, mu_c(k), cdist1(k), qc_incld(k), qc_relvar(k),
+        t(k), lamc(k), mu_c(k), cdist1(k), qc_incld(k), qc_relvar(k),
         qcheti, ncheti, not_skip_micro);
 
       // for future: get rid of log statements below for rain freezing
@@ -715,13 +719,17 @@ void Functions<S,D>
   const uview_1d<Spack>& xxls,
   const uview_1d<Spack>& mu_c,
   const uview_1d<Spack>& nu,
+  const uview_1d<Spack>& lamc,
   const uview_1d<Spack>& mu_r,
   const uview_1d<Spack>& lamr,
   const uview_1d<Spack>& vap_liq_exchange,
   const uview_1d<Spack>& ze_rain,
   const uview_1d<Spack>& ze_ice,
+  const uview_1d<Spack>& diag_vmi,
   const uview_1d<Spack>& diag_effi,
+  const uview_1d<Spack>& diag_di,
   const uview_1d<Spack>& diag_rhoi,
+  const uview_1d<Spack>& diag_ze,
   const uview_1d<Spack>& diag_effc)
 {
   constexpr Scalar qsmall       = C::QSMALL;
@@ -747,10 +755,9 @@ void Functions<S,D>
     {
       const auto qc_gt_small = qc(k) >= qsmall;
       const auto qc_small    = !qc_gt_small;
-      Spack lamc;
-      get_cloud_dsd2(qc(k), nc(k), mu_c(k), rho(k), nu(k), dnu, lamc, ignore1, ignore2, lcldm(k), qc_gt_small);
+      get_cloud_dsd2(qc(k), nc(k), mu_c(k), rho(k), nu(k), dnu, lamc(k), ignore1, ignore2, lcldm(k), qc_gt_small);
 
-      diag_effc(k)       .set(qc_gt_small, sp(0.5) * (mu_c(k) + 3) / lamc);
+      diag_effc(k)       .set(qc_gt_small, sp(0.5) * (mu_c(k) + 3) / lamc(k));
       qv(k)              .set(qc_small, qv(k)+qc(k));
       th(k)              .set(qc_small, th(k)-exner(k)*qc(k)*xxlv(k)*inv_cp);
       vap_liq_exchange(k).set(qc_small, vap_liq_exchange(k) - qc(k));
@@ -902,19 +909,20 @@ void Functions<S,D>
       // Other
       inv_dzq, inv_rho, ze_ice, ze_rain, prec, rho,
       rhofacr, rhofaci, acn, qvs, qvi, sup, supi,
-      tmparr1, inv_exner,
+      tmparr1, inv_exner, diag_ze, diag_vmi, diag_di, pratot, prctot,
 
       // p3_tend_out, may not need these
       qtend_ignore, ntend_ignore;
 
-    workspace.template take_many_and_reset<36>(
+    workspace.template take_many_and_reset<42>(
       {
         "mu_r", "t", "lamr", "logn0r", "nu", "cdist", "cdist1", "cdistr",
         "inv_icldm", "inv_lcldm", "inv_rcldm", "qc_incld", "qr_incld", "qitot_incld", "qirim_incld",
         "nc_incld", "nr_incld", "nitot_incld", "birim_incld",
         "inv_dzq", "inv_rho", "ze_ice", "ze_rain", "prec", "rho",
         "rhofacr", "rhofaci", "acn", "qvs", "qvi", "sup", "supi",
-        "tmparr1", "inv_exner", "qtend_ignore", "ntend_ignore"
+        "tmparr1", "inv_exner", "diag_ze", "diag_vmi", "diag_di", "lamc",
+        "pratot", "prctot", "qtend_ignore", "ntend_ignore"
       },
       {
         &mu_r, &t, &lamr, &logn0r, &nu, &cdist, &cdist1, &cdistr,
@@ -981,7 +989,7 @@ void Functions<S,D>
     // initialize
     p3_main_init(
       team, nk_pack,
-      oicldm, olcldm, orcldm, oexner, oth, odzq,
+      oicldm, olcldm, orcldm, oexner, oth, odzq, diag_ze,
       ze_ice, ze_rain, odiag_effc, odiag_effi, inv_icldm, inv_lcldm,
       inv_rcldm, inv_exner, t, oqv, inv_dzq,
       diagnostic_outputs.prt_liq(i), diagnostic_outputs.prt_sol(i), zero_init);
@@ -1008,10 +1016,10 @@ void Functions<S,D>
       olcldm, orcldm, t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn,
       oqv, oth, oqc, onc, oqr, onr, oqitot, onitot, oqirim, obirim, oxxlv,
       oxxls, oxlf, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld,
-      nr_incld, nitot_incld, birim_incld, omu_c, nu, cdist, cdist1, cdistr,
+      nr_incld, nitot_incld, birim_incld, omu_c, nu, lamc, cdist, cdist1, cdistr,
       mu_r, lamr, logn0r, ocmeiout, oprain, onevapr, oprer_evap,
       ovap_liq_exchange, ovap_ice_exchange, oliq_ice_exchange,
-      hydrometeorsPresent);
+      pratot, prctot, hydrometeorsPresent);
 
     //NOTE: At this point, it is possible to have negative (but small) nc, nr, nitot.  This is not
     //      a problem; those values get clipped to zero in the sedimentation section (if necessary).
@@ -1060,8 +1068,9 @@ void Functions<S,D>
     p3_main_post_main_loop(
       team, nk_pack, dnu, itab, oexner, olcldm, orcldm,
       rho, inv_rho, rhofaci, oqv, oth, oqc, onc, oqr, onr, oqitot, onitot,
-      oqirim, obirim, oxxlv, oxxls, omu_c, nu, mu_r, lamr, ovap_liq_exchange,
-      ze_rain, ze_ice, odiag_effi, odiag_rhoi, odiag_effc);
+      oqirim, obirim, oxxlv, oxxls, omu_c, nu, lamc, mu_r, lamr,
+      ovap_liq_exchange, ze_rain, ze_ice, diag_vmi, odiag_effi, diag_di,
+      odiag_rhoi, diag_ze, odiag_effc);
 
     //
     // merge ice categories with similar properties

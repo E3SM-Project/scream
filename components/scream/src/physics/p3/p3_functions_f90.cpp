@@ -213,12 +213,14 @@ void p3_main_post_main_loop_c(
   Real*  ze_rain, Real* ze_ice, Real* diag_vmi, Real* diag_effi, Real* diag_di, Real* diag_rhoi, Real* diag_ze, Real* diag_effc);
 
 void p3_main_c(
-  Real* qc, Real* nc, Real* qr, Real* nr, Real* th, Real* qv, Real dt, Real* qitot, Real* qirim, Real* nitot, Real* birim,
-  Real* pres, Real* dzq, Real* ncnuc, Real* naai, Real* qc_relvar, Int it, Real* prt_liq, Real* prt_sol, Int its, Int ite, Int kts, Int kte, Real* diag_ze, Real* diag_effc,
-  Real* diag_effi, Real* diag_vmi, Real* diag_di, Real* diag_rhoi, bool log_predictNc,
-  Real* pdel, Real* exner, Real* cmeiout, Real* prain, Real* nevapr, Real* prer_evap, Real* rflx, Real* sflx, Real* rcldm, Real* lcldm, Real* icldm,
-  Real* pratot, Real* prctot, Real* mu_c, Real* lamc, Real* liq_ice_exchange, Real* vap_liq_exchange,
-  Real* vap_ice_exchange);
+  Real* qc, Real* nc, Real* qr, Real* nr, Real* th, Real* qv, Real dt,
+  Real* qitot, Real* qirim, Real* nitot, Real* birim, Real* pres, Real* dzq,
+  Real* ncnuc, Real* naai, Real* qc_relvar, Int it, Real* prt_liq,
+  Real* prt_sol, Int its, Int ite, Int kts, Int kte, Real* diag_effc,
+  Real* diag_effi, Real* diag_rhoi, bool log_predictNc, Real* pdel, Real* exner,
+  Real* cmeiout, Real* prain, Real* nevapr, Real* prer_evap, Real* rflx,
+  Real* sflx, Real* rcldm, Real* lcldm, Real* icldm, Real* mu_c,
+  Real* liq_ice_exchange, Real* vap_liq_exchange, Real* vap_ice_exchange);
 
 }
 
@@ -1165,9 +1167,11 @@ P3MainData::P3MainData(
   m_data( NUM_ARRAYS * m_nt, 0.0)
 {
   std::array<Real**, NUM_ARRAYS> ptrs = {
-    &pres, &dzq, &ncnuc, &naai, &pdel, &exner, &icldm, &lcldm, &rcldm, &qc_relvar,
-    &qc, &nc, &qr, &nr, &qitot, &qirim, &nitot, &birim, &qv, &th,
-    &diag_ze, &diag_effc, &diag_effi, &diag_vmi, &diag_di, &diag_rhoi, &mu_c, &lamc, &cmeiout, &prain, &nevapr, &prer_evap, &pratot, &prctot, &liq_ice_exchange, &vap_liq_exchange, &vap_ice_exchange, &rflx, &sflx, &prt_liq, &prt_sol
+    &pres, &dzq, &ncnuc, &naai, &pdel, &exner, &icldm, &lcldm, &rcldm,
+    &qc_relvar, &qc, &nc, &qr, &nr, &qitot, &qirim, &nitot, &birim, &qv, &th,
+    &diag_effc, &diag_effi, &diag_rhoi, &mu_c, &cmeiout, &prain, &nevapr,
+    &prer_evap, &liq_ice_exchange, &vap_liq_exchange, &vap_ice_exchange, &rflx,
+    &sflx
   };
 
   gen_random_data(ranges, ptrs, m_data.data(), m_nt);
@@ -1182,9 +1186,11 @@ P3MainData::P3MainData(const P3MainData& rhs) :
   Real* data_begin = m_data.data();
 
   std::array<Real**, NUM_ARRAYS> ptrs = {
-    &pres, &dzq, &ncnuc, &naai, &pdel, &exner, &icldm, &lcldm, &rcldm, &qc_relvar,
-    &qc, &nc, &qr, &nr, &qitot, &qirim, &nitot, &birim, &qv, &th,
-    &diag_ze, &diag_effc, &diag_effi, &diag_vmi, &diag_di, &diag_rhoi, &mu_c, &lamc, &cmeiout, &prain, &nevapr, &prer_evap, &pratot, &prctot, &liq_ice_exchange, &vap_liq_exchange, &vap_ice_exchange, &rflx, &sflx, &prt_liq, &prt_sol
+    &pres, &dzq, &ncnuc, &naai, &pdel, &exner, &icldm, &lcldm, &rcldm,
+    &qc_relvar, &qc, &nc, &qr, &nr, &qitot, &qirim, &nitot, &birim, &qv, &th,
+    &diag_effc, &diag_effi, &diag_rhoi, &mu_c, &cmeiout, &prain, &nevapr,
+    &prer_evap, &liq_ice_exchange, &vap_liq_exchange, &vap_ice_exchange, &rflx,
+    &sflx
   };
 
   for (size_t i = 0; i < NUM_ARRAYS; ++i) {
@@ -1198,12 +1204,12 @@ void p3_main(P3MainData& d)
   p3_init();
   d.transpose<util::TransposeDirection::c2f>();
   p3_main_c(
-    d.qc, d.nc, d.qr, d.nr, d.th, d.qv, d.dt, d.qitot, d.qirim, d.nitot, d.birim,
-    d.pres, d.dzq, d.ncnuc, d.naai, d.qc_relvar, d.it, d.prt_liq, d.prt_sol, d.its, d.ite, d.kts, d.kte, d.diag_ze, d.diag_effc,
-    d.diag_effi, d.diag_vmi, d.diag_di, d.diag_rhoi, d.log_predictNc,
-    d.pdel, d.exner, d.cmeiout, d.prain, d.nevapr, d.prer_evap, d.rflx, d.sflx, d.rcldm, d.lcldm, d.icldm,
-    d.pratot, d.prctot, d.mu_c, d.lamc, d.liq_ice_exchange, d.vap_liq_exchange,
-    d.vap_ice_exchange);
+    d.qc, d.nc, d.qr, d.nr, d.th, d.qv, d.dt, d.qitot, d.qirim, d.nitot,
+    d.birim, d.pres, d.dzq, d.ncnuc, d.naai, d.qc_relvar, d.it, d.prt_liq,
+    d.prt_sol, d.its, d.ite, d.kts, d.kte, d.diag_effc, d.diag_effi,
+    d.diag_rhoi, d.log_predictNc, d.pdel, d.exner, d.cmeiout, d.prain, d.nevapr,
+    d.prer_evap, d.rflx, d.sflx, d.rcldm, d.lcldm, d.icldm, d.mu_c,
+    d.liq_ice_exchange, d.vap_liq_exchange, d.vap_ice_exchange);
   d.transpose<util::TransposeDirection::f2c>();
 }
 
@@ -3304,9 +3310,9 @@ void p3_main_main_loop_f(
       pres_d, pdel_d, dzq_d, ncnuc_d, exner_d, inv_exner_d, inv_lcldm_d, inv_icldm_d, inv_rcldm_d, naai_d, qc_relvar_d, icldm_d, lcldm_d, rcldm_d,
       t_d, rho_d, inv_rho_d, qvs_d, qvi_d, supi_d, rhofacr_d, rhofaci_d, acn_d,
       qv_d, th_d, qc_d, nc_d, qr_d, nr_d, qitot_d, nitot_d, qirim_d, birim_d, xxlv_d, xxls_d, xlf_d, qc_incld_d, qr_incld_d,
-      qitot_incld_d, qirim_incld_d, nc_incld_d, nr_incld_d, nitot_incld_d, birim_incld_d, mu_c_d, nu_d, cdist_d, cdist1_d,
+      qitot_incld_d, qirim_incld_d, nc_incld_d, nr_incld_d, nitot_incld_d, birim_incld_d, mu_c_d, nu_d, lamc_d, cdist_d, cdist1_d,
       cdistr_d, mu_r_d, lamr_d, logn0r_d, cmeiout_d, prain_d, nevapr_d, prer_evap_d, vap_liq_exchange_d,
-      vap_ice_exchange_d, liq_ice_exchange_d, bools_d(0));
+      vap_ice_exchange_d, liq_ice_exchange_d, pratot_d, prctot_d, bools_d(0));
   });
 
   // Sync back to host
@@ -3414,9 +3420,10 @@ void p3_main_post_main_loop_f(
                                 exner_d, lcldm_d, rcldm_d, rho_d, inv_rho_d,
                                 rhofaci_d, qv_d, th_d, qc_d, nc_d, qr_d, nr_d,
                                 qitot_d, nitot_d, qirim_d, birim_d, xxlv_d,
-                                xxls_d, mu_c_d, nu_d, mu_r_d, lamr_d,
+                                xxls_d, mu_c_d, nu_d, lamc_d, mu_r_d, lamr_d,
                                 vap_liq_exchange_d, ze_rain_d, ze_ice_d,
-                                diag_effi_d, diag_rhoi_d, diag_effc_d);
+                                diag_vmi_d, diag_effi_d, diag_di_d, diag_rhoi_d,
+                                diag_ze_d, diag_effc_d);
   });
 
   // Sync back to host
@@ -3435,11 +3442,14 @@ void p3_main_post_main_loop_f(
 }
 
 void p3_main_f(
-  Real* qc, Real* nc, Real* qr, Real* nr, Real* th, Real* qv, Real dt, Real* qitot, Real* qirim, Real* nitot, Real* birim,
-  Real* pres, Real* dzq, Real* ncnuc, Real* naai, Real* qc_relvar, Int it, Real* prt_liq, Real* prt_sol, Int its, Int ite, Int kts, Int kte, Real* diag_ze, Real* diag_effc,
-  Real* diag_effi, Real* diag_vmi, Real* diag_di, Real* diag_rhoi, bool log_predictNc,
-  Real* pdel, Real* exner, Real* cmeiout, Real* prain, Real* nevapr, Real* prer_evap, Real* rflx, Real* sflx, Real* rcldm, Real* lcldm, Real* icldm,
-  Real* pratot, Real* prctot, Real* mu_c, Real* lamc, Real* liq_ice_exchange, Real* vap_liq_exchange, Real* vap_ice_exchange)
+  Real* qc, Real* nc, Real* qr, Real* nr, Real* th, Real* qv, Real dt,
+  Real* qitot, Real* qirim, Real* nitot, Real* birim, Real* pres, Real* dzq,
+  Real* ncnuc, Real* naai, Real* qc_relvar, Int it, Real* prt_liq,
+  Real* prt_sol, Int its, Int ite, Int kts, Int kte, Real* diag_effc,
+  Real* diag_effi, Real* diag_rhoi, bool log_predictNc, Real* pdel, Real* exner,
+  Real* cmeiout, Real* prain, Real* nevapr, Real* prer_evap, Real* rflx,
+  Real* sflx, Real* rcldm, Real* lcldm, Real* icldm, Real* mu_c,
+  Real* liq_ice_exchange, Real* vap_liq_exchange, Real* vap_ice_exchange)
 {
   using P3F  = Functions<Real, DefaultDevice>;
 
@@ -3467,8 +3477,9 @@ void p3_main_f(
   Kokkos::Array<size_t,  P3MainData::NUM_ARRAYS> dim2_sizes;
   Kokkos::Array<const Real*, P3MainData::NUM_ARRAYS> ptr_array = {
     pres, dzq, ncnuc, naai, pdel, exner, icldm, lcldm, rcldm, qc_relvar,
-    qc, nc, qr, nr, qitot, qirim, nitot, birim, qv, th,
-    diag_ze, diag_effc, diag_effi, diag_vmi, diag_di, diag_rhoi, mu_c, lamc, cmeiout, prain, nevapr, prer_evap, pratot, prctot, liq_ice_exchange, vap_liq_exchange, vap_ice_exchange, rflx, sflx, prt_liq, prt_sol
+    qc, nc, qr, nr, qitot, qirim, nitot, birim, qv, th, diag_effc, diag_effi,
+    diag_rhoi, mu_c, cmeiout, prain, nevapr, prer_evap, liq_ice_exchange,
+    vap_liq_exchange, vap_ice_exchange, rflx, sflx, prt_liq, prt_sol
   };
 
   for (size_t i = 0; i < P3MainData::NUM_ARRAYS; ++i) dim1_sizes[i] = ni;
@@ -3571,7 +3582,9 @@ void p3_main_f(
   // Sync back to host
   Kokkos::Array<view_2d, P3MainData::NUM_ARRAYS - 10> inout_views = {
     qc_d, nc_d, qr_d, nr_d, qitot_d, qirim_d, nitot_d, birim_d, qv_d, th_d,
-    diag_ze_d, diag_effc_d, diag_effi_d, diag_vmi_d, diag_di_d, diag_rhoi_d, mu_c_d, lamc_d, cmeiout_d, prain_d, nevapr_d, prer_evap_d, pratot_d, prctot_d, liq_ice_exchange_d, vap_liq_exchange_d, vap_ice_exchange_d, rflx_d, sflx_d, prt_liq_temp_d, prt_sol_temp_d
+    diag_effc_d, diag_effi_d, diag_rhoi_d, mu_c_d, cmeiout_d, prain_d, nevapr_d,
+    prer_evap_d, liq_ice_exchange_d, vap_liq_exchange_d, vap_ice_exchange_d,
+    rflx_d, sflx_d, prt_liq_temp_d, prt_sol_temp_d
   };
   Kokkos::Array<size_t,  P3MainData::NUM_ARRAYS - 10> dim1_sizes_out;
   Kokkos::Array<size_t,  P3MainData::NUM_ARRAYS - 10> dim2_sizes_out;
@@ -3585,8 +3598,9 @@ void p3_main_f(
   dim1_sizes_out[30] = 1; dim2_sizes_out[30] = ni; // prt_sol
 
   pack::device_to_host({
-      qc, nc, qr, nr, qitot, qirim, nitot, birim, qv, th,
-      diag_ze, diag_effc, diag_effi, diag_vmi, diag_di, diag_rhoi, mu_c, lamc, cmeiout, prain, nevapr, prer_evap, pratot, prctot, liq_ice_exchange, vap_liq_exchange, vap_ice_exchange, rflx, sflx, prt_liq, prt_sol
+      qc, nc, qr, nr, qitot, qirim, nitot, birim, qv, th, diag_effc, diag_effi,
+      diag_rhoi, mu_c, cmeiout, prain, nevapr, prer_evap, liq_ice_exchange,
+      vap_liq_exchange, vap_ice_exchange, rflx, sflx, prt_liq, prt_sol
     },
     dim1_sizes_out, dim2_sizes_out, inout_views, true);
 }
