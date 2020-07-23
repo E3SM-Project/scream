@@ -3024,7 +3024,7 @@ subroutine update_prognostic_ice(pres,qcheti,qccol,qcshd,    &
    real(rtype), intent(inout) :: qirim
    real(rtype), intent(inout) :: birim
 
-   real(rtype) :: dum,dum_t,dum_qs
+   real(rtype) :: dum,dum_t,dum_qs,dum_ss
 
    qc = qc + (-qcheti-qccol-qcshd-qiberg)*dt
    if (log_predictNc) then
@@ -3081,8 +3081,9 @@ subroutine update_prognostic_ice(pres,qcheti,qccol,qcshd,    &
 
    dum_t = th/exner
    dum_qs=qv_sat(dum_t,pres,1)
-   if (qv/dum_qs .gt. 1.2) then
-      write(iulog,*)'Supersaturation greater than 20%'
+   dum_ss=qv/dum_qs
+   if (dum_ss .gt. 2.) then
+      write(iulog,*)'Supersaturation greater than 100%. Ratio is',dum_ss
    endif
 
 end subroutine update_prognostic_ice
@@ -3120,7 +3121,7 @@ subroutine update_prognostic_liquid(pres,qcacc,ncacc,qcaut,ncautc,ncautr,ncslf, 
    real(rtype), intent(inout) :: qr
    real(rtype), intent(inout) :: nr
 
-   real(rtype) :: dum_t,dum_qs
+   real(rtype) :: dum_t,dum_qs,dum_ss
 
    qc = qc + (-qcacc-qcaut)*dt
    qr = qr + (qcacc+qcaut-qrevp)*dt
@@ -3142,8 +3143,9 @@ subroutine update_prognostic_liquid(pres,qcacc,ncacc,qcaut,ncautc,ncautr,ncslf, 
 
    dum_t = th/exner
    dum_qs=qv_sat(dum_t,pres,0)
-   if (qv/dum_qs .gt. 1.1) then
-      write(iulog,*)'Supersaturation greater than 10%'
+   dum_ss=qv/dum_qs
+   if (dum_ss .gt. 1.5) then
+      write(iulog,*)'Supersaturation greater than 50%. Ratio is:',dum_ss
    endif
 
 end subroutine update_prognostic_liquid
