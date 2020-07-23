@@ -45,8 +45,8 @@ module zm_conv
   public zm_conv_evap             ! evaporation of precip from ZM schemea
 ! AaronDonahue - TODO Question: Are convtran and momtran going to be used?  Do
 ! not appear to be used by zm_convr
-!  public convtran                 ! convective transport
-!  public momtran                  ! convective momentum transport  
+  public convtran                 ! convective transport
+  public momtran                  ! convective momentum transport  
   public trigmem                  ! true if convective memory
   public trigdcape_ull            ! true if to use dcape-ULL trigger
   public is_first_step
@@ -1192,7 +1192,6 @@ subroutine zm_conv_evap(ncol,lchnk, &
 
 
 ! AaronDonahue - skip convtran and momtran for now
-#if 0
 subroutine convtran(lchnk   , &
                     doconvtran,q       ,ncnst   ,mu      ,md      , &
                     du      ,eu      ,ed      ,dp      ,dsubcld , &
@@ -1212,8 +1211,8 @@ subroutine convtran(lchnk   , &
 ! Author: P. Rasch
 ! 
 !-----------------------------------------------------------------------
-   use constituents,    only: cnst_get_type_byind
-   use ppgrid
+!   use constituents,    only: cnst_get_type_byind
+!   use ppgrid
    use scream_abortutils, only: endscreamrun
 
    implicit none
@@ -1300,7 +1299,10 @@ subroutine convtran(lchnk   , &
    do m = 2, ncnst
       if (doconvtran(m)) then
 
-         if (cnst_get_type_byind(m).eq.'dry') then
+!         TODO: Meredith Fossitt, find a way to sub dependency for
+!         cnst_get_type_blind       
+!         if (cnst_get_type_byind(m).eq.'dry') then
+          if (.true.) then
             do k = 1,pver
                do i =il1g,il2g
                   dptmp(i,k) = dpdry(i,k)
@@ -1509,8 +1511,8 @@ subroutine momtran(lchnk, ncol, &
 ! 
 !-----------------------------------------------------------------------
    use physics_utils, only: r8 => rtype, rtype8, itype, btype
-   use constituents,    only: cnst_get_type_byind
-   use ppgrid
+!   use constituents,    only: cnst_get_type_byind
+!   use ppgrid
    use scream_abortutils, only: endscreamrun
    implicit none
 !-----------------------------------------------------------------------
@@ -1900,7 +1902,7 @@ subroutine momtran(lchnk, ncol, &
 
    return
 end subroutine momtran
-#endif  
+!endif  
 ! AaronDonahue - skip convtran and momtran for now
 !=========================================================================================
 
