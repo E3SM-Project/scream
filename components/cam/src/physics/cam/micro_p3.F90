@@ -940,7 +940,7 @@ contains
  END SUBROUTINE p3_main_main_loop
 
  subroutine p3_main_post_main_loop(kts, kte, kbot, ktop, kdir, &
-      exner, lcldm, rcldm, &
+      exner, lcldm, rcldm, pres, &
       rho, inv_rho, rhofaci, qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, &
       mu_c, nu, lamc, mu_r, lamr, vap_liq_exchange, &
       ze_rain, ze_ice, diag_vmi, diag_effi, diag_di, diag_rhoi, diag_ze, diag_effc)
@@ -951,7 +951,7 @@ contains
 
    integer, intent(in) :: kts, kte, kbot, ktop, kdir
 
-   real(rtype), intent(in), dimension(kts:kte) :: exner, lcldm, rcldm
+   real(rtype), intent(in), dimension(kts:kte) :: exner, lcldm, rcldm, pres
 
    real(rtype), intent(inout), dimension(kts:kte) :: rho, inv_rho, rhofaci, &
         qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, &
@@ -970,9 +970,27 @@ contains
    real(rtype)    :: f1pr15   ! mass-weighted mean diameter          See lines 1212 - 1279  dmm
    real(rtype)    :: f1pr16   ! mass-weighted mean particle density  See lines 1212 - 1279  rhomm
 
-   !real(rtype), dimension(kts:kte) :: qvs,t !for preventing supersaturation
+   real(rtype), dimension(kts:kte) :: qvs,t,pres !for preventing supersaturation
    
    k_loop_final_diagnostics:  do k = kbot,ktop,kdir
+
+       t(k) = th(k)/exner(k)
+       qvs(k)     = qv_sat(t(k),pres(k),0)
+       !Prevent Cell-Average Supersaturation
+       if (qv(k).gt.qvs(k)) then
+          !dqc is the change in qc after saturation adjustment. It accounts for condensation
+          !heating causing qvs to rise, reducing qc change by linearizing
+          !              qvs(T_f) ~ qvs(T_i) + dqs/dT*(T_f - T_i)
+          !and noting T_f - T_i = L/cp*dqc for T_f and T_i are T before and after this
+          !condensational adjustment, respectively. Clausius-Clapyron=> dqvs/dT=L*qvs/(L*T^2). Thus
+          !              dqc = qv - qvs(T_f) = qv - qvs(T_i) - dqs/dT*L/cp*dqc.
+          !Solving for dqc yields the expression below.
+          dqc=(qv(k)-qvs(k))/(1._rtype+bfb_square(xxlv(k))*qvs(k)*inv_cp/(rv*bfb_square(T(k))) )
+          qc(k) = qc(k) + dqc
+          qv(k) = qv(k) - dqc
+          th(k) = th(k) + exner(k)*dqc*xxlv(k)*inv_cp
+          !not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
+       endif
 
       ! cloud:
       if (qc(k).ge.qsmall) then
@@ -1372,7 +1390,7 @@ contains
        ! final checks to ensure consistency of mass/number
        ! and compute diagnostic fields for output
        call p3_main_post_main_loop(kts, kte, kbot, ktop, kdir, &
-            exner(i,:), lcldm(i,:), rcldm(i,:), &
+            exner(i,:), lcldm(i,:), rcldm(i,:), pres(i,:), &
             rho(i,:), inv_rho(i,:), rhofaci(i,:), qv(i,:), th(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), qitot(i,:), nitot(i,:), &
             qirim(i,:), birim(i,:), xxlv(i,:), xxls(i,:), &
             mu_c(i,:), nu(i,:), lamc(i,:), mu_r(i,:), lamr(i,:), vap_liq_exchange(i,:), &

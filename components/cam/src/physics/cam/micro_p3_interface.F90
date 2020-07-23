@@ -467,7 +467,7 @@ end subroutine micro_p3_readnl
    call addfld('UMR', (/ 'lev' /), 'A',   'm/s', 'Mass-weighted rain  fallspeed'              )
 
    ! Record of inputs/outputs from p3_main
-   call add_hist_coord('P3_input_dim',  16, 'Input field dimension for p3_main subroutine',  'N/A', (/ 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16 /))
+   call add_hist_coord('P3_input_dim',  17, 'Input field dimension for p3_main subroutine',  'N/A', (/ 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17 /))
    call add_hist_coord('P3_output_dim', 32, 'Output field dimension for p3_main subroutine', 'N/A', (/ 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32 /))
    call addfld('P3_input',  (/ 'ilev         ', 'P3_input_dim ' /),  'I', 'N/A', 'Inputs for p3_main subroutine')
    call addfld('P3_output', (/ 'ilev         ', 'P3_output_dim' /), 'I', 'N/A', 'Outputs for p3_main subroutine')
@@ -976,27 +976,29 @@ end subroutine micro_p3_readnl
     call t_stopf('micro_p3_tend_init')
 
     p3_main_inputs(:,:,:) = -999._rtype
-    do k = 1,pver
-      p3_main_inputs(1,k,1)  = ast(1,k)
-      p3_main_inputs(1,k,2)  = naai(1,k)
-      p3_main_inputs(1,k,3)  = npccn(1,k)
-      p3_main_inputs(1,k,4)  = state%pmid(1,k)
-      p3_main_inputs(1,k,5)  = state%zi(1,k)
-      p3_main_inputs(1,k,6)  = state%T(1,k)
-      p3_main_inputs(1,k,7)  = qv(1,k)
-      p3_main_inputs(1,k,8)  = cldliq(1,k)
-      p3_main_inputs(1,k,9)  = ice(1,k)
-      p3_main_inputs(1,k,10) = numliq(1,k)
-      p3_main_inputs(1,k,11) = numice(1,k)
-      p3_main_inputs(1,k,12) = rain(1,k)
-      p3_main_inputs(1,k,13) = numrain(1,k)
-      p3_main_inputs(1,k,14) = qirim(1,k)
-      p3_main_inputs(1,k,15) = rimvol(1,k)
-      p3_main_inputs(1,k,16) = state%pdel(1,k)
-      p3_main_inputs(1,k,17) = relvar(1,k)
+    do icol = 1,ncol
+      do k = 1,pver
+        p3_main_inputs(icol,k,1)  = ast(icol,k)
+        p3_main_inputs(icol,k,2)  = naai(icol,k)
+        p3_main_inputs(icol,k,3)  = npccn(icol,k)
+        p3_main_inputs(icol,k,4)  = state%pmid(icol,k)
+        p3_main_inputs(icol,k,5)  = state%zi(icol,k)
+        p3_main_inputs(icol,k,6)  = state%T(icol,k)
+        p3_main_inputs(icol,k,7)  = qv(icol,k)
+        p3_main_inputs(icol,k,8)  = cldliq(icol,k)
+        p3_main_inputs(icol,k,9)  = ice(icol,k)
+        p3_main_inputs(icol,k,10) = numliq(icol,k)
+        p3_main_inputs(icol,k,11) = numice(icol,k)
+        p3_main_inputs(icol,k,12) = rain(icol,k)
+        p3_main_inputs(icol,k,13) = numrain(icol,k)
+        p3_main_inputs(icol,k,14) = qirim(icol,k)
+        p3_main_inputs(icol,k,15) = rimvol(icol,k)
+        p3_main_inputs(icol,k,16) = state%pdel(icol,k)
+        p3_main_inputs(icol,k,17) = relvar(icol,k)
+      end do
+      p3_main_inputs(icol,pver+1,5) = state%zi(icol,pver+1)
     end do
-    p3_main_inputs(1,pver+1,5) = state%zi(1,pver+1)
-
+ 
     ! CALL P3
     !==============
     ! TODO: get proper value for 'it' from time module
@@ -1061,38 +1063,40 @@ end subroutine micro_p3_readnl
          vap_ice_exchange(its:ite,kts:kte),& ! OUT sum of vap-ice phase change tendencies
          col_location(its:ite,:3)          & ! IN column locations
          )
-
-    p3_main_outputs(:,:,:) = -999._rtype
-    do k = 1,pver
-      p3_main_outputs(1,k, 1) = cldliq(1,k)
-      p3_main_outputs(1,k, 2) = numliq(1,k)
-      p3_main_outputs(1,k, 3) = rain(1,k)
-      p3_main_outputs(1,k, 4) = numrain(1,k)
-      p3_main_outputs(1,k, 5) = th(1,k)
-      p3_main_outputs(1,k, 6) = qv(1,k)
-      p3_main_outputs(1,k, 7) = ice(1,k)
-      p3_main_outputs(1,k, 8) = qirim(1,k)
-      p3_main_outputs(1,k, 9) = numice(1,k)
-      p3_main_outputs(1,k,10) = rimvol(1,k)
-      p3_main_outputs(1,k,14) = rel(1,k)
-      p3_main_outputs(1,k,15) = rei(1,k)
-      p3_main_outputs(1,k,18) = diag_rhoi(1,k)
-      p3_main_outputs(1,k,19) = cmeiout(1,k)
-      p3_main_outputs(1,k,20) = prain(1,k)
-      p3_main_outputs(1,k,21) = nevapr(1,k)
-      p3_main_outputs(1,k,22) = prer_evap(1,k)
-      p3_main_outputs(1,k,23) = rflx(1,k)
-      p3_main_outputs(1,k,24) = sflx(1,k)
-      p3_main_outputs(1,k,27) = mu(1,k)
-      p3_main_outputs(1,k,28) = lambdac(1,k)
-      p3_main_outputs(1,k,29) = liq_ice_exchange(1,k)
-      p3_main_outputs(1,k,30) = vap_liq_exchange(1,k)
-      p3_main_outputs(1,k,31) = vap_ice_exchange(1,k)
+    do icol = 1,ncol
+      p3_main_outputs(:,:,:) = -999._rtype
+      do k = 1,pver
+        p3_main_outputs(icol,k, 1) = cldliq(icol,k)
+        p3_main_outputs(icol,k, 2) = numliq(icol,k)
+        p3_main_outputs(icol,k, 3) = rain(icol,k)
+        p3_main_outputs(icol,k, 4) = numrain(icol,k)
+        p3_main_outputs(icol,k, 5) = th(icol,k)
+        p3_main_outputs(icol,k, 6) = qv(icol,k)
+        p3_main_outputs(icol,k, 7) = ice(icol,k)
+        p3_main_outputs(icol,k, 8) = qirim(icol,k)
+        p3_main_outputs(icol,k, 9) = numice(icol,k)
+        p3_main_outputs(icol,k,10) = rimvol(icol,k)
+        p3_main_outputs(icol,k,14) = rel(icol,k)
+        p3_main_outputs(icol,k,15) = rei(icol,k)
+        p3_main_outputs(icol,k,18) = diag_rhoi(icol,k)
+        p3_main_outputs(icol,k,19) = cmeiout(icol,k)
+        p3_main_outputs(icol,k,20) = prain(icol,k)
+        p3_main_outputs(icol,k,21) = nevapr(icol,k)
+        p3_main_outputs(icol,k,22) = prer_evap(icol,k)
+        p3_main_outputs(icol,k,23) = rflx(icol,k)
+        p3_main_outputs(icol,k,24) = sflx(icol,k)
+        p3_main_outputs(icol,k,27) = mu(icol,k)
+        p3_main_outputs(icol,k,28) = lambdac(icol,k)
+        p3_main_outputs(icol,k,29) = liq_ice_exchange(icol,k)
+        p3_main_outputs(icol,k,30) = vap_liq_exchange(icol,k)
+        p3_main_outputs(icol,k,31) = vap_ice_exchange(icol,k)
+      end do
+      p3_main_outputs(icol,1,11) = prt_liq(icol)
+      p3_main_outputs(icol,1,12) = prt_sol(icol)
+      p3_main_outputs(icol,pver+1,23) = rflx(icol,pver+1)
+      p3_main_outputs(icol,pver+1,24) = sflx(icol,pver+1)
     end do
-    p3_main_outputs(1,1,11) = prt_liq(1)
-    p3_main_outputs(1,1,12) = prt_sol(1)
-    p3_main_outputs(1,pver+1,23) = rflx(1,pver+1)
-    p3_main_outputs(1,pver+1,24) = sflx(1,pver+1)
+
     call outfld('P3_input',  p3_main_inputs,  pcols, lchnk)
     call outfld('P3_output', p3_main_outputs, pcols, lchnk)
 
