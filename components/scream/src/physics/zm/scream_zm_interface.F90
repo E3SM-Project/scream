@@ -6,7 +6,7 @@ module scream_zm_interface_mod
 
   use iso_c_binding, only: c_ptr, c_f_pointer, c_int, c_double, c_bool,C_NULL_CHAR, c_float
   use physics_utils, only: r8 => rtype, rtype8, itype, btype
-  use zm_conv,       only: zm_convr, zm_conv_evap
+  use zm_conv,       only: zm_convr, zm_conv_evap, zm_convi
  
   implicit none
 #include "scream_config.f"
@@ -40,15 +40,10 @@ contains
 
   !====================================================================!
 
-  subroutine zm_init_f90 (pref_edge) bind(c)
-    
-    implicit none
-    real(kind=c_real) :: pref_edge(plevp)  
-
-    logical :: no_deep_pbl
-
-
-    Print *, 'In zm_init_f90'
+  subroutine zm_init_f90 (limcnv_in, no_deep_pbl_in) bind(c)
+    integer, intent(in)                :: limcnv_in
+    logical, intent(in), optional      :: no_deep_pbl_in    
+    call zm_convi(limcnv_in, no_deep_pbl_in)
 
   end subroutine zm_init_f90
   !====================================================================!
