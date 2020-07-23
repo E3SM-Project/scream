@@ -834,7 +834,7 @@ contains
       !---------------------------------------------------------------------------------
 
       !-- ice-phase dependent processes:
-      call update_prognostic_ice(qcheti, qccol, qcshd, &
+      call update_prognostic_ice(pres(k),qcheti, qccol, qcshd, &
            nccol, ncheti, ncshdc, &
            qrcol, nrcol,  qrheti, nrheti, nrshdr, &
            qimlt, nimlt, qisub, qidep, qinuc, ninuc, nislf, nisub, qiberg, &
@@ -843,7 +843,7 @@ contains
            th(k), qv(k), qitot(k), nitot(k), qirim(k), birim(k), qc(k), nc(k), qr(k), nr(k) )
 
       !-- warm-phase only processes:
-      call update_prognostic_liquid(qcacc, ncacc, qcaut, ncautc, ncautr, ncslf,  &
+      call update_prognostic_liquid(pres(k), qcacc, ncacc, qcaut, ncautc, ncautr, ncslf,  &
            qrevp, nrevp, nrslf,                                                  &
            log_predictNc, inv_rho(k), exner(k), xxlv(k), dt,                     &
            th(k), qv(k), qc(k), nc(k), qr(k), nr(k))
@@ -2969,7 +2969,7 @@ subroutine ice_water_conservation(qitot,qidep,qinuc,qiberg,qrcol,qccol,qrheti,qc
 end subroutine ice_water_conservation
 
 
-subroutine update_prognostic_ice(qcheti,qccol,qcshd,    &
+subroutine update_prognostic_ice(pres,qcheti,qccol,qcshd,    &
    nccol,ncheti,ncshdc,    &
    qrcol,nrcol,qrheti,nrheti,nrshdr,    &
    qimlt,nimlt,qisub,qidep,qinuc,ninuc,nislf,nisub,qiberg,    &
@@ -3011,6 +3011,7 @@ subroutine update_prognostic_ice(qcheti,qccol,qcshd,    &
    real(rtype), intent(in) :: dt
    real(rtype), intent(in) :: nmltratio
    real(rtype), intent(in) :: rhorime_c
+   real(rtype), intent(in) :: pres
 
    real(rtype), intent(inout) :: th
    real(rtype), intent(inout) :: qv
@@ -3023,7 +3024,7 @@ subroutine update_prognostic_ice(qcheti,qccol,qcshd,    &
    real(rtype), intent(inout) :: qirim
    real(rtype), intent(inout) :: birim
 
-   real(rtype) :: dum
+   real(rtype) :: dum,dum_t,dum_qs
 
    qc = qc + (-qcheti-qccol-qcshd-qiberg)*dt
    if (log_predictNc) then
@@ -3077,9 +3078,16 @@ subroutine update_prognostic_ice(qcheti,qccol,qcshd,    &
 
    th = th + exner*((qidep-qisub+qinuc)*xxls*inv_cp +(qrcol+qccol+   &
        qcheti+qrheti-qimlt+qiberg)* xlf*inv_cp)*dt
+
+   dum_t = th/exner
+   dum_qs=qv_sat(dum_t,pres,1)
+   if (qv/dum_qs .gt. 1.2) then
+      write(iulog,*)'Supersaturation greater than 20%'
+   endif
+
 end subroutine update_prognostic_ice
 
-subroutine update_prognostic_liquid(qcacc,ncacc,qcaut,ncautc,ncautr,ncslf,    &
+subroutine update_prognostic_liquid(pres,qcacc,ncacc,qcaut,ncautc,ncautr,ncslf,    &
     qrevp,nrevp,nrslf,                                                        &
     log_predictNc,inv_rho,exner,xxlv,dt,                                      &
     th,qv,qc,nc,qr,nr)
@@ -3103,6 +3111,7 @@ subroutine update_prognostic_liquid(qcacc,ncacc,qcaut,ncautc,ncautr,ncslf,    &
    real(rtype), intent(in) :: exner
    real(rtype), intent(in) :: xxlv
    real(rtype), intent(in) :: dt
+   real(rtype), intent(in) :: pres
 
    real(rtype), intent(inout) :: th
    real(rtype), intent(inout) :: qv
@@ -3110,6 +3119,8 @@ subroutine update_prognostic_liquid(qcacc,ncacc,qcaut,ncautc,ncautr,ncslf,    &
    real(rtype), intent(inout) :: nc
    real(rtype), intent(inout) :: qr
    real(rtype), intent(inout) :: nr
+
+   real(rtype) :: dum_t,dum_qs
 
    qc = qc + (-qcacc-qcaut)*dt
    qr = qr + (qcacc+qcaut-qrevp)*dt
@@ -3128,6 +3139,12 @@ subroutine update_prognostic_liquid(qcacc,ncacc,qcaut,ncautc,ncautr,ncslf,    &
    qv = qv + qrevp*dt
    th = th + exner*(-qrevp*xxlv*    &
         inv_cp)*dt
+
+   dum_t = th/exner
+   dum_qs=qv_sat(dum_t,pres,0)
+   if (qv/dum_qs .gt. 1.1) then
+      write(iulog,*)'Supersaturation greater than 10%'
+   endif
 
 end subroutine update_prognostic_liquid
 
