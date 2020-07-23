@@ -3470,7 +3470,7 @@ void p3_main_f(
 
   const Int ni    = (ite - its) + 1;
   const Int nk    = (kte - kts) + 1;
-return;
+
   // Set up views, pretend all views are input views for the sake of initializing kokkos views
   Kokkos::Array<view_2d, P3MainData::NUM_ARRAYS> temp_d;
   Kokkos::Array<size_t,  P3MainData::NUM_ARRAYS> dim1_sizes;
