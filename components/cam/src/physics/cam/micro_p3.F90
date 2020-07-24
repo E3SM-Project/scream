@@ -987,10 +987,10 @@ contains
           !condensational adjustment, respectively. Clausius-Clapyron=> dqvs/dT=L*qvs/(L*T^2). Thus
           !              dqc = qv - qvs(T_f) = qv - qvs(T_i) - dqs/dT*L/cp*dqc.
           !Solving for dqc yields the expression below.
-          dqc=(qv(k)-qvs(k))/(1._rtype+bfb_square(xxlv(k))*qvs(k)*inv_cp/(rv*bfb_square(T(k))) )
-          qc(k) = qc(k) + dqc
-          qv(k) = qv(k) - dqc
-          th(k) = th(k) + exner(k)*dqc*xxlv(k)*inv_cp
+          !dqc=(qv(k)-qvs(k))/(1._rtype+bfb_square(xxlv(k))*qvs(k)*inv_cp/(rv*bfb_square(T(k))) )
+          !qc(k) = qc(k) + dqc
+          !qv(k) = qv(k) - dqc
+          !th(k) = th(k) + exner(k)*dqc*xxlv(k)*inv_cp
           !not changing nc(k) b/c macrophysics and drop activation handled separately in scream.
        endif
 
