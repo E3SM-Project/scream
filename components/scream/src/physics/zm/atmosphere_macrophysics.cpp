@@ -5,6 +5,74 @@
 namespace scream
 
 {
+
+
+const Real& lchnk = 0;
+const Real& ncol = 0;
+Real* t;
+Real* qh;
+Real* prec;
+Real* jctop; 
+Real* jcbot; 
+Real* pblh;
+Real *zm; 
+Real* geos; 
+Real* zi;
+			
+Real* qtnd; 
+Real* heat; 
+Real* pap; 
+Real* paph; 
+Real* dpp; 
+const Real &delt = 0;
+
+Real* mcon;
+Real* cme;
+Real* cape;
+Real* tpert;
+Real* dlf;
+Real* plfx;
+Real* zdu;
+Real* rprd; 
+Real* mu;
+Real* md; 
+Real* du;
+Real* eu; 
+Real* ed;
+Real* dp; 
+Real* dsubcld; 
+Real* jt; 
+Real* maxg; 
+Real* ideep;
+const Real& lengath = 0; 
+Real* ql; 
+Real* rliq; 
+Real* landfrac; 
+Real* hu_nm1;
+Real* cnv_nm1; 
+Real* tm1; 
+Real* qm1; 
+Real** t_star; 
+Real** q_star;
+Real *dcape; 
+Real* q; 
+Real** tend_s; 
+Real** tend_q; 
+Real** cld; 
+Real* snow; 
+Real* ntprprd; 
+Real* ntsnprd; 
+Real** flxprec; 
+Real** flxsnow;
+const Real& ztodt = 0; 
+Real* pguall; 
+Real* pgdall; 
+Real* icwu; 
+const Real& ncnst = 0; 
+const Real& limcnv_in = 0;
+const bool& no_deep_pbl_in = true;
+
+
 ZMMacrophysics::ZMMacrophysics (const Comm& comm,const ParameterList& /* params */)
   : m_zm_comm (comm)
 {
@@ -18,15 +86,36 @@ void ZMMacrophysics::initialize (const util::TimeStamp& t0)
 {
 //  std :: cout << "In ZMMacrophysics::initialize \n"<< std::endl;
   //zm_init_f90 (q_ptr);
-  zm_init_f90 ();
+  zm_init_f90 (limcnv_in, no_deep_pbl_in);
 
 }
 
 // =========================================================================================
 void ZMMacrophysics::run (const Real dt)
 {
- // std :: cout << "In ZMMAcrophysics::run\n"<< std::endl;
-  zm_main_f90 ();
+   
+//  zm_main_f90	(lchnk, ncol, t, qh, prec,
+//			jctop, jcbot, pblh, zm, geos, zi,
+//			qtnd, heat, pap, paph, dpp, delt,
+//			mcon, cme, cape, tpert, dlf, plfx,
+//			zdu, rprd, mu, md, du, eu, 
+//			ed, dp, dsubcld, jt, maxg, ideep,
+//			lengath, ql, rliq, landfrac, hu_nm1,
+//			cnv_nm1, tm1, qm1, t_star, q_star,
+//			dcape, q, tend_s, tend_q, cld, 
+//			snow, ntprprd, ntsnprd, flxprec,flxsnow,
+//			ztodt, pguall, pgdall, icwu, ncnst );
+   zm_main_f90(lchnk, ncol, t, qh, prec, jctop, jcbot, pblh, zm, geos, zi, qtnd, 
+		heat, pap, paph, dpp, delt,
+		mcon, cme, cape, tpert, dlf, plfx,
+		zdu, rprd, mu, md, du, eu, 
+		ed, dp, dsubcld, jt, maxg, ideep,
+		lengath, ql, rliq, landfrac, hu_nm1
+//		cnv_nm1, tm1, qm1, t_star, q_star
+); 
+//		snow, ntprprd, ntsnprd, flxprec,flxsnow,
+//		ztodt, pguall, pgdall, icwu, ncnst);
+   std :: cout << "In ZMMAcrophysics::run\n"<< std::endl;
   //zm_main_f90 (dt,q_ptr,fq_ptr);
 }
 // =========================================================================================
