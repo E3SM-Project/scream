@@ -110,8 +110,10 @@ void ZMMacrophysics::run (const Real dt)
 		mcon, cme, cape, tpert, dlf, plfx,
 		zdu, rprd, mu, md, du, eu, 
 		ed, dp, dsubcld, jt, maxg, ideep,
-		lengath, ql, rliq, landfrac, hu_nm1
-//		cnv_nm1, tm1, qm1, t_star, q_star
+		lengath, ql, rliq, landfrac, hu_nm1, cnv_nm1,
+		tm1, qm1, t_star, q_star, dcape, q, tend_s, tend_q, cld,
+		snow, ntprprd, ntsnprd, flxprec, flxsnow 
+//		tm1, qm1, t_star, q_star
 ); 
 //		snow, ntprprd, ntsnprd, flxprec,flxsnow,
 //		ztodt, pguall, pgdall, icwu, ncnst);

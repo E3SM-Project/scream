@@ -76,8 +76,11 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
                     tpert   ,dlf     ,pflx    ,zdu     ,rprd,     & 
                     mu      ,md      ,du      ,eu      ,ed      , &
                     dp      ,dsubcld ,jt      ,maxg    ,ideep   , &
-                    lengath ,ql      ,rliq    ,landfrac,hu_nm1 ) bind(c)
-!                    cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star  
+                    lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
+                    cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star  , &
+                    dcape   ,q       ,tend_s  ,tend_q  ,cld     , &
+                    snow    ,ntprprd ,ntsnprd ,flxprec ,flxsnow  ) bind(c)
+!t_star  ,q_star  
    integer :: lchnk
    integer lengath
    integer, intent(in) :: ncol
@@ -106,11 +109,14 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
    real(kind=c_real), intent(in) :: paph(pcols,pver+1)
    real(kind=c_real), intent(in) :: dpp(pcols,pver)        ! local sigma half-level thickness (i.e. dshj).
    real(kind=c_real), intent(in) :: tpert(pcols)
-!   real(kind=c_real), intent(in) :: tm1(pcols,pver)       ! grid slice of temperature at mid-layer.
-!   real(kind=c_real), intent(in) :: qm1(pcols,pver)       ! grid slice of specific humidity.
+   real(kind=c_real), intent(in) :: tm1(pcols,pver)       ! grid slice of temperature at mid-layer.
+   real(kind=c_real), intent(in) :: qm1(pcols,pver)       ! grid slice of specific humidity.
    real(kind=c_real), intent(in) :: landfrac(pcols) ! RBN Landfrac
-!   real(kind=c_real), intent(in), pointer, dimension(:,:) :: t_star ! intermediate T between n and n-1 time step
- !  real(kind=c_real), intent(in), pointer, dimension(:,:) :: q_star ! intermediate q between n and n-1 time step
+   
+
+ real(kind=c_real), intent(in), dimension(pcols,pver) :: t_star ! intermediate q between n and n-1 time step
+!   
+ real(kind=c_real), intent(in), dimension(pcols,pver) :: q_star ! intermediate q between n and n-1 time step
 !   
    real(kind=c_real), intent(out) :: qtnd(pcols,pver)           ! specific humidity tendency (kg/kg/s)
    real(kind=c_real), intent(out) :: heat(pcols,pver)           ! heating rate (dry static energy tendency, W/kg)
@@ -130,13 +136,13 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
    real(kind=c_real), intent(out) :: dsubcld(pcols)       ! wg layer thickness in mbs between lcl and maxi.
    real(kind=c_real), intent(out) :: ql(pcols,pver)
    real(kind=c_real), intent(out) :: rliq(pcols) ! reserved liquid (not yet in cldliq) for energy integrals
-!   real(kind=c_real), intent(out) :: dcape(pcols)           ! output dynamical CAPE
+   real(kind=c_real), intent(out) :: dcape(pcols)           ! output dynamical CAPE
 !   
    real(kind=c_real), intent(inout) :: hu_nm1 (pcols,pver)
-!   real(kind=c_real), intent(inout) :: cnv_nm1 (pcols,pver)
+   real(kind=c_real), intent(inout) :: cnv_nm1 (pcols,pver)
 !
 !
-!   real(kind=c_real) q(pcols,pver)              
+   real(kind=c_real) q(pcols,pver)              
 !   
 !!   real(r8), pointer, dimension(:,:) :: rprd         ! rain production rate
 !!Used for convtran exclusively 
@@ -153,12 +159,15 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
 !
 !   real(kind=c_real) :: tend_s_snwprd  (pcols,pver) ! Heating rate of snow production
 !   real(kind=c_real) :: tend_s_snwevmlt(pcols,pver) ! Heating rate of evap/melting of snow
-!   real(kind=c_real),intent(inout), dimension(pcols,pver) :: tend_s    ! heating rate (J/kg/s)
-!   real(kind=c_real),intent(inout), dimension(pcols,pver) :: tend_q    ! heating rate (J/kg/s)
-!   real(kind=c_real), pointer, dimension(:,:) :: cld
+   real(kind=c_real),intent(inout), dimension(pcols,pver) :: tend_s    ! heating rate (J/kg/s)
+   real(kind=c_real),intent(inout), dimension(pcols,pver) :: tend_q    ! heating rate (J/kg/s)
+   real(kind=c_real), intent(inout), dimension(pcols,pver) :: cld
+   real(kind=c_real), intent(inout), dimension(pcols)   :: snow         ! snow from ZM convection 
 !   real(kind=c_real), pointer, dimension(:)   :: snow         ! snow from ZM convection 
-!   real(kind=c_real) :: ntprprd(pcols,pver)    ! evap outfld: net precip production in layer
-!   real(kind=c_real) :: ntsnprd(pcols,pver)    ! evap outfld: net snow production in layer
+   real(kind=c_real) :: ntprprd(pcols,pver)    ! evap outfld: net precip production in layer
+   real(kind=c_real) :: ntsnprd(pcols,pver)    ! evap outfld: net snow production in layer
+   real(kind=c_real), intent(out), dimension(pcols,pver) :: flxprec      ! Convective-scale flux of precip at interfaces (kg/m2/s)
+   real(kind=c_real), intent(out), dimension(pcols,pver) :: flxsnow      ! Convective-scale flux of snow   at interfaces (kg/m2/s)
 !   real(kind=c_real), pointer, dimension(:,:) :: flxprec      ! Convective-scale flux of precip at interfaces (kg/m2/s)
 !   real(kind=c_real), pointer, dimension(:,:) :: flxsnow      ! Convective-scale flux of snow   at interfaces (kg/m2/s)
 !   real(kind=c_real), intent(in) :: ztodt                       ! 2 delta t (model time increment)
@@ -173,18 +182,19 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
 !   logical :: doconvtran(ncnst)
 !   fake_dqdt(:,:,1) = 0._r8
 !
-!   Print *, 'In zm_main_f90'
+   Print *, 'In zm_main_f90'
 !
-!   call zm_convr(lchnk   ,ncol    , &
-!                    t       ,qh      ,prec    ,jctop   ,jcbot   , &
-!                    pblh    ,zm      ,geos    ,zi      ,qtnd    , &
-!                    heat    ,pap     ,paph    ,dpp     , &
-!                    delt    ,mcon    ,cme     ,cape    , &
-!                    tpert   ,dlf     ,pflx    ,zdu     ,rprd    , &
-!                    mu      ,md      ,du      ,eu      ,ed      , &
-!                    dp      ,dsubcld ,jt      ,maxg    ,ideep   , &
-!                    lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
-!                    cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star, dcape)
+   
+   call zm_convr(lchnk   ,ncol    , &
+                    t       ,qh      ,prec    ,jctop   ,jcbot   , &
+                    pblh    ,zm      ,geos    ,zi      ,qtnd    , &
+                    heat    ,pap     ,paph    ,dpp     , &
+                    delt    ,mcon    ,cme     ,cape    , &
+                    tpert   ,dlf     ,pflx    ,zdu     ,rprd    , &
+                    mu      ,md      ,du      ,eu      ,ed      , &
+                    dp      ,dsubcld ,jt      ,maxg    ,ideep   , &
+                    lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
+                    cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star, dcape)
 !   call zm_conv_evap(ncol    ,lchnk, &
 !                     t       ,pap     ,dpp     ,q     , &
 !                     tend_s,     tend_s_snwprd ,tend_s_snwevmlt , &
