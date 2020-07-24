@@ -3307,28 +3307,35 @@ void p3_main_part2_f(
 
     P3F::p3_main_part2(
       team, nk_pack, log_predictNc, dt, odt, dnu, itab, itabcol, revap_table,
-      pres_d, pdel_d, dzq_d, ncnuc_d, exner_d, inv_exner_d, inv_lcldm_d, inv_icldm_d, inv_rcldm_d, naai_d, qc_relvar_d, icldm_d, lcldm_d, rcldm_d,
+      pres_d, pdel_d, dzq_d, ncnuc_d, exner_d, inv_exner_d, inv_lcldm_d,
+      inv_icldm_d, inv_rcldm_d, naai_d, qc_relvar_d, icldm_d, lcldm_d, rcldm_d,
       t_d, rho_d, inv_rho_d, qvs_d, qvi_d, supi_d, rhofacr_d, rhofaci_d, acn_d,
-      qv_d, th_d, qc_d, nc_d, qr_d, nr_d, qitot_d, nitot_d, qirim_d, birim_d, xxlv_d, xxls_d, xlf_d, qc_incld_d, qr_incld_d,
-      qitot_incld_d, qirim_incld_d, nc_incld_d, nr_incld_d, nitot_incld_d, birim_incld_d, mu_c_d, nu_d, lamc_d, cdist_d, cdist1_d,
-      cdistr_d, mu_r_d, lamr_d, logn0r_d, cmeiout_d, prain_d, nevapr_d, prer_evap_d, vap_liq_exchange_d,
+      qv_d, th_d, qc_d, nc_d, qr_d, nr_d, qitot_d, nitot_d, qirim_d, birim_d,
+      xxlv_d, xxls_d, xlf_d, qc_incld_d, qr_incld_d, qitot_incld_d,
+      qirim_incld_d, nc_incld_d, nr_incld_d, nitot_incld_d, birim_incld_d,
+      mu_c_d, nu_d, lamc_d, cdist_d, cdist1_d, cdistr_d, mu_r_d, lamr_d,
+      logn0r_d, cmeiout_d, prain_d, nevapr_d, prer_evap_d, vap_liq_exchange_d,
       vap_ice_exchange_d, liq_ice_exchange_d, pratot_d, prctot_d, bools_d(0));
   });
 
   // Sync back to host
   Kokkos::Array<view_1d, 48> inout_views = {
     t_d, rho_d, inv_rho_d, qvs_d, qvi_d, supi_d, rhofacr_d, rhofaci_d, acn_d,
-    qv_d, th_d, qc_d, nc_d, qr_d, nr_d, qitot_d, nitot_d, qirim_d, birim_d, xxlv_d, xxls_d, xlf_d, qc_incld_d, qr_incld_d,
-    qitot_incld_d, qirim_incld_d, nc_incld_d, nr_incld_d, nitot_incld_d, birim_incld_d, mu_c_d, nu_d, lamc_d, cdist_d, cdist1_d,
-    cdistr_d, mu_r_d, lamr_d, logn0r_d, cmeiout_d, prain_d, nevapr_d, prer_evap_d, vap_liq_exchange_d,
-    vap_ice_exchange_d, liq_ice_exchange_d, pratot_d, prctot_d
+    qv_d, th_d, qc_d, nc_d, qr_d, nr_d, qitot_d, nitot_d, qirim_d, birim_d,
+    xxlv_d, xxls_d, xlf_d, qc_incld_d, qr_incld_d, qitot_incld_d, qirim_incld_d,
+    nc_incld_d, nr_incld_d, nitot_incld_d, birim_incld_d, mu_c_d, nu_d, lamc_d,
+    cdist_d, cdist1_d, cdistr_d, mu_r_d, lamr_d, logn0r_d, cmeiout_d, prain_d,
+    nevapr_d, prer_evap_d, vap_liq_exchange_d, vap_ice_exchange_d,
+    liq_ice_exchange_d, pratot_d, prctot_d
   };
 
-  pack::device_to_host({t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn,
-        qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, xlf, qc_incld, qr_incld,
-        qitot_incld, qirim_incld, nc_incld, nr_incld, nitot_incld, birim_incld, mu_c, nu, lamc, cdist, cdist1,
-        cdistr, mu_r, lamr, logn0r, cmeiout, prain, nevapr, prer_evap, vap_liq_exchange,
-        vap_ice_exchange, liq_ice_exchange, pratot, prctot},
+  pack::device_to_host({
+      t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn, qv, th, qc, nc,
+      qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, xlf, qc_incld, qr_incld,
+      qitot_incld, qirim_incld, nc_incld, nr_incld, nitot_incld, birim_incld,
+      mu_c, nu, lamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, cmeiout, prain,
+      nevapr, prer_evap, vap_liq_exchange, vap_ice_exchange, liq_ice_exchange,
+      pratot, prctot},
     nk, inout_views);
 
   const auto bools_h = Kokkos::create_mirror_view(bools_d);
@@ -3340,9 +3347,12 @@ void p3_main_part2_f(
 void p3_main_part3_f(
   Int kts, Int kte, Int kbot, Int ktop, Int kdir,
   Real* exner, Real* lcldm, Real* rcldm,
-  Real* rho, Real* inv_rho, Real* rhofaci, Real* qv, Real* th, Real* qc, Real* nc, Real* qr, Real* nr, Real* qitot, Real* nitot, Real* qirim, Real* birim, Real* xxlv, Real* xxls,
-  Real* mu_c, Real* nu, Real* lamc, Real* mu_r, Real* lamr, Real* vap_liq_exchange,
-  Real*  ze_rain, Real* ze_ice, Real* diag_vmi, Real* diag_effi, Real* diag_di, Real* diag_rhoi, Real* diag_ze, Real* diag_effc)
+  Real* rho, Real* inv_rho, Real* rhofaci, Real* qv, Real* th, Real* qc,
+  Real* nc, Real* qr, Real* nr, Real* qitot, Real* nitot, Real* qirim,
+  Real* birim, Real* xxlv, Real* xxls, Real* mu_c, Real* nu, Real* lamc,
+  Real* mu_r, Real* lamr, Real* vap_liq_exchange, Real* ze_rain, Real* ze_ice,
+  Real* diag_vmi, Real* diag_effi, Real* diag_di, Real* diag_rhoi,
+  Real* diag_ze, Real* diag_effc)
 {
   using P3F  = Functions<Real, DefaultDevice>;
 
@@ -3367,13 +3377,10 @@ void p3_main_part3_f(
   Kokkos::Array<view_1d, P3MainPart3Data::NUM_ARRAYS> temp_d;
 
   pack::host_to_device({
-      exner, lcldm, rcldm,
-      rho, inv_rho, rhofaci,
-      qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls,
-      mu_c, nu, lamc, mu_r,
-      lamr, vap_liq_exchange,
-      ze_rain, ze_ice, diag_vmi, diag_effi, diag_di, diag_rhoi, diag_ze, diag_effc
-    },
+      exner, lcldm, rcldm, rho, inv_rho, rhofaci, qv, th, qc,
+      nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, mu_c, nu, lamc, mu_r,
+      lamr, vap_liq_exchange, ze_rain, ze_ice, diag_vmi, diag_effi, diag_di,
+      diag_rhoi, diag_ze, diag_effc},
     nk, temp_d);
 
   view_1d
@@ -3428,15 +3435,16 @@ void p3_main_part3_f(
 
   // Sync back to host
   Kokkos::Array<view_1d, 29> inout_views = {
-    rho_d, inv_rho_d, rhofaci_d, qv_d, th_d, qc_d, nc_d, qr_d, nr_d, qitot_d, nitot_d, qirim_d, birim_d, xxlv_d, xxls_d,
-    mu_c_d, nu_d, lamc_d, mu_r_d, lamr_d, vap_liq_exchange_d,
-    ze_rain_d, ze_ice_d, diag_vmi_d, diag_effi_d, diag_di_d, diag_rhoi_d, diag_ze_d, diag_effc_d
+    rho_d, inv_rho_d, rhofaci_d, qv_d, th_d, qc_d, nc_d, qr_d, nr_d, qitot_d,
+    nitot_d, qirim_d, birim_d, xxlv_d, xxls_d, mu_c_d, nu_d, lamc_d, mu_r_d,
+    lamr_d, vap_liq_exchange_d, ze_rain_d, ze_ice_d, diag_vmi_d, diag_effi_d,
+    diag_di_d, diag_rhoi_d, diag_ze_d, diag_effc_d
   };
 
   pack::device_to_host({
-      rho, inv_rho, rhofaci, qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls,
-      mu_c, nu, lamc, mu_r, lamr, vap_liq_exchange,
-      ze_rain, ze_ice, diag_vmi, diag_effi, diag_di, diag_rhoi, diag_ze, diag_effc
+      rho, inv_rho, rhofaci, qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim,
+      xxlv, xxls, mu_c, nu, lamc, mu_r, lamr, vap_liq_exchange, ze_rain, ze_ice,
+      diag_vmi, diag_effi, diag_di, diag_rhoi, diag_ze, diag_effc
     },
     nk, inout_views);
 }
@@ -3586,10 +3594,10 @@ void p3_main_f(
   for (size_t i = 0; i < P3MainData::NUM_ARRAYS - 10; ++i) dim2_sizes_out[i] = nk;
 
 
-  dim2_sizes_out[21] = nk+1; // rflx
-  dim2_sizes_out[22] = nk+1; // sflx
-  dim1_sizes_out[23] = 1; dim2_sizes_out[23] = ni; // prt_liq
-  dim1_sizes_out[24] = 1; dim2_sizes_out[24] = ni; // prt_sol
+  dim2_sizes_out[22] = nk+1; // rflx
+  dim2_sizes_out[23] = nk+1; // sflx
+  dim1_sizes_out[24] = 1; dim2_sizes_out[24] = ni; // prt_liq
+  dim1_sizes_out[25] = 1; dim2_sizes_out[25] = ni; // prt_sol
 
   pack::device_to_host({
       qc, nc, qr, nr, qitot, qirim, nitot, birim, qv, th, diag_effc, diag_effi,
