@@ -79,7 +79,8 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
                     lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
                     cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star  , &
                     dcape   ,q       ,tend_s  ,tend_q  ,cld     , &
-                    snow    ,ntprprd ,ntsnprd ,flxprec ,flxsnow  ) bind(c)
+                    snow    ,ntprprd ,ntsnprd ,flxprec ,flxsnow, &
+                    ztodt   , pguall , pgdall , icwu   , ncnst) bind(c)
 !t_star  ,q_star  
    integer :: lchnk
    integer lengath
@@ -95,7 +96,7 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
    integer jt(pcols)                          ! wg top  level index of deep cumulus convection.
    integer maxg(pcols)                        ! wg gathered values of maxi.
    integer ideep(pcols)                       ! w holds position of gathered points vs longitude index.
-!   integer mx(pcols) 
+   integer mx(pcols) 
 !   
 !   real(r8) landfracg(pcols)            ! wg grid slice of landfrac  
    real(r8) delt                     ! length of model time-step in seconds.
@@ -147,18 +148,15 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
 !!   real(r8), pointer, dimension(:,:) :: rprd         ! rain production rate
 !!Used for convtran exclusively 
 !   real(kind=c_real), pointer, dimension(:,:,:) :: fracis  
-!   real(kind=c_real) :: fake_dpdry(pcols,pver)       
-!   real(kind=c_real) :: fake_dqdt(pcols,pver,ncnst)  ! Tracer tendency array
+   real(kind=c_real) :: fake_dpdry(pcols,pver)       
+   real(kind=c_real) :: fake_dqdt(pcols,pver,ncnst)  ! Tracer tendency array
 !
-!   integer :: il1g
-!   integer :: nstep             
+   integer :: il1g
+   integer :: nstep             
 !!
-!!   fake_dpdry(:,:) = 0._r8!
 !
-!!   il1g = 1
-!
-!   real(kind=c_real) :: tend_s_snwprd  (pcols,pver) ! Heating rate of snow production
-!   real(kind=c_real) :: tend_s_snwevmlt(pcols,pver) ! Heating rate of evap/melting of snow
+   real(kind=c_real) :: tend_s_snwprd  (pcols,pver) ! Heating rate of snow production
+   real(kind=c_real) :: tend_s_snwevmlt(pcols,pver) ! Heating rate of evap/melting of snow
    real(kind=c_real),intent(inout), dimension(pcols,pver) :: tend_s    ! heating rate (J/kg/s)
    real(kind=c_real),intent(inout), dimension(pcols,pver) :: tend_q    ! heating rate (J/kg/s)
    real(kind=c_real), intent(inout), dimension(pcols,pver) :: cld
@@ -170,44 +168,47 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
    real(kind=c_real), intent(out), dimension(pcols,pver) :: flxsnow      ! Convective-scale flux of snow   at interfaces (kg/m2/s)
 !   real(kind=c_real), pointer, dimension(:,:) :: flxprec      ! Convective-scale flux of precip at interfaces (kg/m2/s)
 !   real(kind=c_real), pointer, dimension(:,:) :: flxsnow      ! Convective-scale flux of snow   at interfaces (kg/m2/s)
-!   real(kind=c_real), intent(in) :: ztodt                       ! 2 delta t (model time increment)
-!   real(kind=c_real) :: pguall(pcols, pver, 2)
-!   real(kind=c_real) :: pgdall(pcols, pver, 2)
-!   real(kind=c_real) :: icwu(pcols,pver, 2)
-!   real(kind=c_real) :: icwd(pcols,pver, 2)
-!   real(kind=c_real) :: seten(pcols, pver)
-!   integer, intent(in) :: ncnst 
+   real(kind=c_real), intent(in) :: ztodt                       ! 2 delta t (model time increment)
+   real(kind=c_real) :: pguall(pcols, pver, 2)
+   real(kind=c_real) :: pgdall(pcols, pver, 2)
+   real(kind=c_real) :: icwu(pcols,pver, 2)
+   real(kind=c_real) :: icwd(pcols,pver, 2)
+   real(kind=c_real) :: seten(pcols, pver)
+   integer, intent(in) :: ncnst 
 !
-!   logical :: domomtran(ncnst)
-!   logical :: doconvtran(ncnst)
+   logical :: domomtran(ncnst)
+   logical :: doconvtran(ncnst)
 !   fake_dqdt(:,:,1) = 0._r8
 !
    Print *, 'In zm_main_f90'
 !
+   fake_dpdry(:,:) = 0._r8!
+!
+   il1g = 1
    
-   call zm_convr(lchnk   ,ncol    , &
-                    t       ,qh      ,prec    ,jctop   ,jcbot   , &
-                    pblh    ,zm      ,geos    ,zi      ,qtnd    , &
-                    heat    ,pap     ,paph    ,dpp     , &
-                    delt    ,mcon    ,cme     ,cape    , &
-                    tpert   ,dlf     ,pflx    ,zdu     ,rprd    , &
-                    mu      ,md      ,du      ,eu      ,ed      , &
-                    dp      ,dsubcld ,jt      ,maxg    ,ideep   , &
-                    lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
-                    cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star, dcape)
-!   call zm_conv_evap(ncol    ,lchnk, &
-!                     t       ,pap     ,dpp     ,q     , &
-!                     tend_s,     tend_s_snwprd ,tend_s_snwevmlt , &
-!                     tend_q   ,rprd,       cld ,ztodt            , &
-!                     prec, snow, ntprprd, ntsnprd, flxprec, flxsnow )
-!
-!
-!
-!  call momtran(lchnk, ncol, &
-!                   domomtran,q       ,ncnst   ,mu      ,md    , &
-!                   du      ,eu      ,ed      ,dp      ,dsubcld , &
-!                   jt      ,mx      ,ideep   ,il1g    ,lengath    , &
-!                   nstep   ,fake_dqdt    ,pguall     ,pgdall, icwu, icwd, ztodt, seten    )
+!   call zm_convr(lchnk   ,ncol    , &
+!                    t       ,qh      ,prec    ,jctop   ,jcbot   , &
+!                    pblh    ,zm      ,geos    ,zi      ,qtnd    , &
+!                    heat    ,pap     ,paph    ,dpp     , &
+!                    delt    ,mcon    ,cme     ,cape    , &
+!                    tpert   ,dlf     ,pflx    ,zdu     ,rprd    , &
+!                    mu      ,md      ,du      ,eu      ,ed      , &
+!                    dp      ,dsubcld ,jt      ,maxg    ,ideep   , &
+!                    lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
+!                    cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star, dcape)
+   call zm_conv_evap(ncol    ,lchnk, &
+                     t       ,pap     ,dpp     ,q     , &
+                     tend_s,     tend_s_snwprd ,tend_s_snwevmlt , &
+                     tend_q   ,rprd,       cld ,ztodt            , &
+                     prec, snow, ntprprd, ntsnprd, flxprec, flxsnow )
+
+
+
+  call momtran(lchnk, ncol, &
+                   domomtran,q       ,ncnst   ,mu      ,md    , &
+                   du      ,eu      ,ed      ,dp      ,dsubcld , &
+                   jt      ,mx      ,ideep   ,il1g    ,lengath    , &
+                   nstep   ,fake_dqdt    ,pguall     ,pgdall, icwu, icwd, ztodt, seten    )
 !
 !  call convtran(lchnk   , &
 !                   doconvtran,q       ,ncnst   ,mu      ,md      , &

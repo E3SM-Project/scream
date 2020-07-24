@@ -404,8 +404,8 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !>songxl 2014-05-20------------------
 
 !DCAPE-ULL
-   real(r8), intent(in), pointer, dimension(:,:) :: t_star ! intermediate T between n and n-1 time step
-   real(r8), intent(in), pointer, dimension(:,:) :: q_star ! intermediate q between n and n-1 time step
+   real(r8), intent(in), dimension(pcols,pver) :: t_star ! intermediate T between n and n-1 time step
+   real(r8), intent(in), dimension(pcols,pver) :: q_star ! intermediate q between n and n-1 time step
 
 
 !
