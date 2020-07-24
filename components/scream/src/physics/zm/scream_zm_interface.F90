@@ -46,28 +46,7 @@ contains
     Print *, 'In zm_init_f90'
 
   end subroutine zm_init_f90
-!  subroutine zm_init_f90 () bind(c)
-!    Print *, 'In zm_init_f90'
-!
-!  end subroutine zm_init_f90
-
-!   subroutine zm_main_f90() bind(c)
-!     Print *, 'In zm_main_f90'
-!   end subroutine zm_main_f90
   !====================================================================!
-!  subroutine zm_main_f90 (lchnk   ,ncol    , &
-!                    t       ,qh      ,prec    ,jctop   ,jcbot   , &
-!                    pblh    ,zm      ,geos    ,zi      ,qtnd    , &
-!                    heat    ,pap     ,paph    ,dpp     , &
-!                    delt    ,mcon    ,cme     ,cape    , &
-!                    tpert   ,dlf     ,pflx    ,zdu     ,rprd    , &
-!                    mu      ,md      ,du      ,eu      ,ed      , &
-!                    dp      ,dsubcld ,jt      ,maxg    ,ideep   , &
-!                    lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
-!                    cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star  , & 
-!                    dcape   ,q       ,tend_s  ,tend_q  ,cld     , &
-!                    snow    ,ntprprd ,ntsnprd , flxprec, flxsnow, &
-!                    ztodt   , pguall , pgdall , icwu   , ncnst) bind(c)
 subroutine zm_main_f90(lchnk   ,ncol    , &
                     t       ,qh      ,prec    ,jctop   ,jcbot   , &
                     pblh    ,zm      ,geos    ,zi      ,qtnd    , &
@@ -80,8 +59,7 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
                     cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star  , &
                     dcape   ,q       ,tend_s  ,tend_q  ,cld     , &
                     snow    ,ntprprd ,ntsnprd ,flxprec ,flxsnow, &
-                    ztodt   , pguall , pgdall , icwu   , ncnst) bind(c)
-!t_star  ,q_star  
+                    ztodt   , pguall , pgdall , icwu   , ncnst, fracis) bind(c)
    integer :: lchnk
    integer lengath
    integer, intent(in) :: ncol
@@ -90,9 +68,6 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
    real(kind=c_real), intent(out) :: prec(pcols)
    real(kind=c_real), intent(out) :: jctop(pcols)  ! o row of top-of-deep-convection indices passed out.
    real(kind=c_real), intent(out) :: jcbot(pcols)  ! o row of base of cloud indices passed out.
-!   integer :: i,ii,j,k
-!   
-!   
    integer jt(pcols)                          ! wg top  level index of deep cumulus convection.
    integer maxg(pcols)                        ! wg gathered values of maxi.
    integer ideep(pcols)                       ! w holds position of gathered points vs longitude index.
@@ -115,10 +90,9 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
    real(kind=c_real), intent(in) :: landfrac(pcols) ! RBN Landfrac
    
 
- real(kind=c_real), intent(in), dimension(pcols,pver) :: t_star ! intermediate q between n and n-1 time step
-!   
- real(kind=c_real), intent(in), dimension(pcols,pver) :: q_star ! intermediate q between n and n-1 time step
-!   
+   real(r8), intent(in), dimension(pcols,pver) :: t_star ! intermediate T between n and n-1 time step
+   real(r8), intent(in), dimension(pcols,pver) :: q_star ! intermediate q between n and n-1 time step
+   
    real(kind=c_real), intent(out) :: qtnd(pcols,pver)           ! specific humidity tendency (kg/kg/s)
    real(kind=c_real), intent(out) :: heat(pcols,pver)           ! heating rate (dry static energy tendency, W/kg)
    real(kind=c_real), intent(out) :: mcon(pcols,pverp)
@@ -147,7 +121,7 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
 !   
 !!   real(r8), pointer, dimension(:,:) :: rprd         ! rain production rate
 !!Used for convtran exclusively 
-!   real(kind=c_real), pointer, dimension(:,:,:) :: fracis  
+   real(kind=c_real), intent(in) :: fracis(pcols,pver,ncnst)  
    real(kind=c_real) :: fake_dpdry(pcols,pver)       
    real(kind=c_real) :: fake_dqdt(pcols,pver,ncnst)  ! Tracer tendency array
 !
@@ -161,13 +135,10 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
    real(kind=c_real),intent(inout), dimension(pcols,pver) :: tend_q    ! heating rate (J/kg/s)
    real(kind=c_real), intent(inout), dimension(pcols,pver) :: cld
    real(kind=c_real), intent(inout), dimension(pcols)   :: snow         ! snow from ZM convection 
-!   real(kind=c_real), pointer, dimension(:)   :: snow         ! snow from ZM convection 
    real(kind=c_real) :: ntprprd(pcols,pver)    ! evap outfld: net precip production in layer
    real(kind=c_real) :: ntsnprd(pcols,pver)    ! evap outfld: net snow production in layer
    real(kind=c_real), intent(out), dimension(pcols,pver) :: flxprec      ! Convective-scale flux of precip at interfaces (kg/m2/s)
    real(kind=c_real), intent(out), dimension(pcols,pver) :: flxsnow      ! Convective-scale flux of snow   at interfaces (kg/m2/s)
-!   real(kind=c_real), pointer, dimension(:,:) :: flxprec      ! Convective-scale flux of precip at interfaces (kg/m2/s)
-!   real(kind=c_real), pointer, dimension(:,:) :: flxsnow      ! Convective-scale flux of snow   at interfaces (kg/m2/s)
    real(kind=c_real), intent(in) :: ztodt                       ! 2 delta t (model time increment)
    real(kind=c_real) :: pguall(pcols, pver, 2)
    real(kind=c_real) :: pgdall(pcols, pver, 2)
@@ -178,24 +149,20 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
 !
    logical :: domomtran(ncnst)
    logical :: doconvtran(ncnst)
-!   fake_dqdt(:,:,1) = 0._r8
-!
    Print *, 'In zm_main_f90'
-!
    fake_dpdry(:,:) = 0._r8!
-!
    il1g = 1
    
-!   call zm_convr(lchnk   ,ncol    , &
-!                    t       ,qh      ,prec    ,jctop   ,jcbot   , &
-!                    pblh    ,zm      ,geos    ,zi      ,qtnd    , &
-!                    heat    ,pap     ,paph    ,dpp     , &
-!                    delt    ,mcon    ,cme     ,cape    , &
-!                    tpert   ,dlf     ,pflx    ,zdu     ,rprd    , &
-!                    mu      ,md      ,du      ,eu      ,ed      , &
-!                    dp      ,dsubcld ,jt      ,maxg    ,ideep   , &
-!                    lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
-!                    cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star, dcape)
+   !call zm_convr(lchnk   ,ncol    , &
+   !                 t       ,qh      ,prec    ,jctop   ,jcbot   , &
+   !                 pblh    ,zm      ,geos    ,zi      ,qtnd    , &
+   !                 heat    ,pap     ,paph    ,dpp     , &
+   !                 delt    ,mcon    ,cme     ,cape    , &
+   !                 tpert   ,dlf     ,pflx    ,zdu     ,rprd    , &
+   !                 mu      ,md      ,du      ,eu      ,ed      , &
+   !                 dp      ,dsubcld ,jt      ,maxg    ,ideep   , &
+   !                 lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
+   !                 cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star, dcape)
    call zm_conv_evap(ncol    ,lchnk, &
                      t       ,pap     ,dpp     ,q     , &
                      tend_s,     tend_s_snwprd ,tend_s_snwevmlt , &
@@ -209,13 +176,13 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
                    du      ,eu      ,ed      ,dp      ,dsubcld , &
                    jt      ,mx      ,ideep   ,il1g    ,lengath    , &
                    nstep   ,fake_dqdt    ,pguall     ,pgdall, icwu, icwd, ztodt, seten    )
-!
-!  call convtran(lchnk   , &
-!                   doconvtran,q       ,ncnst   ,mu      ,md      , &
-!                   du      ,eu      ,ed      ,dp      ,dsubcld , &
-!                   jt      ,mx      ,ideep   ,il1g    , lengath    , &
-!                   1   ,fracis  ,fake_dqdt,  fake_dpdry   )
-!
+
+  call convtran(lchnk   , &
+                   doconvtran,q       ,ncnst   ,mu      ,md      , &
+                   du      ,eu      ,ed      ,dp      ,dsubcld , &
+                   jt      ,mx      ,ideep   ,il1g    , lengath    , &
+                   1   ,fracis  ,fake_dqdt,  fake_dpdry   )
+
    end subroutine zm_main_f90
   !====================================================================!
   subroutine zm_finalize_f90 () bind(c)
