@@ -935,13 +935,13 @@ void Functions<S,D>
         "pratot", "prctot", "qtend_ignore", "ntend_ignore"
       },
       {
-        &mu_r, &t, &lamr, &logn0r, &nu, &cdist, &cdist1, &cdistr,
+        &mu_r, &t, &lamr, &lamc, &logn0r, &nu, &cdist, &cdist1, &cdistr,
         &inv_icldm, &inv_lcldm, &inv_rcldm, &qc_incld, &qr_incld, &qitot_incld, &qirim_incld,
         &nc_incld, &nr_incld, &nitot_incld, &birim_incld,
         &inv_dzq, &inv_rho, &ze_ice, &ze_rain, &prec, &rho,
         &rhofacr, &rhofaci, &acn, &qvs, &qvi, &sup, &supi,
-        &tmparr1, &inv_exner, &diag_ze, &diag_vmi, &diag_di, &lamc,
-        &pratot, &prctot, &qtend_ignore, &ntend_ignore,
+        &tmparr1, &inv_exner, &diag_ze, &diag_vmi, &diag_di,
+        &pratot, &prctot, &qtend_ignore, &ntend_ignore
       });
 
     // Get single-column subviews of all inputs, shouldn't need any i-indexing
