@@ -144,8 +144,8 @@ struct Functions
   struct P3DiagnosticOutputs {
     // Size distribution shape parameter for radiation
     view_2d<Spack> mu_c;
-    // Size distribution shape parameter for rain
-    view_2d<Spack> mu_r;
+    // Size distribution slope parameter for radiation
+    view_2d<Spack> lamc;
     // qitend due to deposition/sublimation
     view_2d<Spack> cmeiout;
     // Precipitation rate, liquid [m s-1]
@@ -755,7 +755,7 @@ struct Functions
     const uview_1d<Spack>& inv_dzq,
     Scalar& prt_liq,
     Scalar& prt_sol,
-    view_1d_ptr_array<Spack, 35>& zero_init);
+    view_1d_ptr_array<Spack, 36>& zero_init);
 
   KOKKOS_FUNCTION
   static void p3_main_part1(
@@ -860,7 +860,7 @@ struct Functions
     const uview_1d<Spack>& nr_incld,
     const uview_1d<Spack>& nitot_incld,
     const uview_1d<Spack>& birim_incld,
-    const uview_1d<Spack>& omu_c,
+    const uview_1d<Spack>& mu_c,
     const uview_1d<Spack>& nu,
     const uview_1d<Spack>& lamc,
     const uview_1d<Spack>& cdist,

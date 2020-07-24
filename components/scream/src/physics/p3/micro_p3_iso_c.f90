@@ -102,7 +102,7 @@ contains
   subroutine p3_main_c(qc,nc,qr,nr,th,qv,dt,qitot,qirim,nitot,birim,   &
        pres,dzq,ncnuc,naai,qc_relvar,it,prt_liq,prt_sol,its,ite,kts,kte,diag_effc,     &
        diag_effi,diag_rhoi,log_predictNc, pdel,exner,cmeiout,prain,nevapr, &
-       prer_evap,rflx,sflx,rcldm,lcldm,icldm,mu_c,liq_ice_exchange, &
+       prer_evap,rflx,sflx,rcldm,lcldm,icldm,mu_c,lamc,liq_ice_exchange, &
        vap_liq_exchange, vap_ice_exchange) bind(C)
     use micro_p3, only : p3_main
 
@@ -127,7 +127,7 @@ contains
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte+1)    :: rflx
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte+1)    :: sflx
     real(kind=c_real), intent(in),    dimension(its:ite,kts:kte)      :: icldm, lcldm, rcldm
-    real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: mu_c
+    real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: mu_c, lamc
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: liq_ice_exchange
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: vap_liq_exchange
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: vap_ice_exchange
@@ -142,7 +142,7 @@ contains
     call p3_main(qc,nc,qr,nr,th,qv,dt,qitot,qirim,nitot,birim,   &
          pres,dzq,ncnuc,naai,qc_relvar,it,prt_liq,prt_sol,its,ite,kts,kte,diag_effc, &
          diag_effi,diag_rhoi,log_predictNc,pdel,exner,cmeiout,prain,nevapr, &
-         prer_evap,rflx,sflx,rcldm,lcldm,icldm,p3_tend_out,mu_c,liq_ice_exchange,&
+         prer_evap,rflx,sflx,rcldm,lcldm,icldm,p3_tend_out,mu_c,lamc,liq_ice_exchange,&
          vap_liq_exchange, vap_ice_exchange, col_location)
   end subroutine p3_main_c
 

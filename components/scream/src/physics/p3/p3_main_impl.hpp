@@ -39,7 +39,7 @@ void Functions<S,D>
   const uview_1d<Spack>& inv_dzq,
   Scalar& prt_liq,
   Scalar& prt_sol,
-  view_1d_ptr_array<Spack, 35>& zero_init)
+  view_1d_ptr_array<Spack, 36>& zero_init)
 {
   prt_liq = 0;
   prt_sol = 0;
@@ -909,7 +909,7 @@ void Functions<S,D>
       t,      // temperature at the beginning of the microhpysics step [K]
 
       // 2D size distribution and fallspeed parameters
-      lamr, lamc, logn0r, nu, cdist, cdist1, cdistr,
+      lamr, logn0r, nu, cdist, cdist1, cdistr,
 
       // Variables needed for in-cloud calculations
       inv_icldm, inv_lcldm, inv_rcldm, // Inverse cloud fractions (1/cld)
@@ -924,9 +924,9 @@ void Functions<S,D>
       // p3_tend_out, may not need these
       qtend_ignore, ntend_ignore;
 
-    workspace.template take_many_and_reset<42>(
+    workspace.template take_many_and_reset<41>(
       {
-        "mu_r", "t", "lamr", "lamc", "logn0r", "nu", "cdist", "cdist1", "cdistr",
+        "mu_r", "t", "lamr", "logn0r", "nu", "cdist", "cdist1", "cdistr",
         "inv_icldm", "inv_lcldm", "inv_rcldm", "qc_incld", "qr_incld", "qitot_incld", "qirim_incld",
         "nc_incld", "nr_incld", "nitot_incld", "birim_incld",
         "inv_dzq", "inv_rho", "ze_ice", "ze_rain", "prec", "rho",
@@ -935,7 +935,7 @@ void Functions<S,D>
         "pratot", "prctot", "qtend_ignore", "ntend_ignore"
       },
       {
-        &mu_r, &t, &lamr, &lamc, &logn0r, &nu, &cdist, &cdist1, &cdistr,
+        &mu_r, &t, &lamr, &logn0r, &nu, &cdist, &cdist1, &cdistr,
         &inv_icldm, &inv_lcldm, &inv_rcldm, &qc_incld, &qr_incld, &qitot_incld, &qirim_incld,
         &nc_incld, &nr_incld, &nitot_incld, &birim_incld,
         &inv_dzq, &inv_rho, &ze_ice, &ze_rain, &prec, &rho,
@@ -971,6 +971,7 @@ void Functions<S,D>
     const auto odiag_effi        = util::subview(diagnostic_outputs.diag_effi, i);
     const auto odiag_rhoi        = util::subview(diagnostic_outputs.diag_rhoi, i);
     const auto omu_c             = util::subview(diagnostic_outputs.mu_c, i);
+    const auto olamc             = util::subview(diagnostic_outputs.lamc, i);
     const auto ocmeiout          = util::subview(diagnostic_outputs.cmeiout, i);
     const auto oprain            = util::subview(diagnostic_outputs.prain, i);
     const auto onevapr           = util::subview(diagnostic_outputs.nevapr, i);
@@ -988,13 +989,13 @@ void Functions<S,D>
     bool &nucleationPossible  = bools(i, 0);
     bool &hydrometeorsPresent = bools(i, 1);
 
-    view_1d_ptr_array<Spack, 35> zero_init = {
+    view_1d_ptr_array<Spack, 36> zero_init = {
       &mu_r, &lamr, &logn0r, &nu, &cdist, &cdist1, &cdistr,
       &qc_incld, &qr_incld, &qitot_incld, &qirim_incld,
       &nc_incld, &nr_incld, &nitot_incld, &birim_incld,
       &inv_rho, &prec, &rho, &rhofacr, &rhofaci, &acn, &qvs, &qvi, &sup, &supi,
       &tmparr1, &qtend_ignore, &ntend_ignore,
-      &omu_c, &odiag_rhoi, &ocmeiout, &oprain, &onevapr, &orflx, &osflx
+      &omu_c, &olamc, &odiag_rhoi, &ocmeiout, &oprain, &onevapr, &orflx, &osflx
     };
 
     // initialize
@@ -1026,7 +1027,7 @@ void Functions<S,D>
       olcldm, orcldm, t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn,
       oqv, oth, oqc, onc, oqr, onr, oqitot, onitot, oqirim, obirim, oxxlv,
       oxxls, oxlf, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld,
-      nr_incld, nitot_incld, birim_incld, omu_c, nu, lamc, cdist, cdist1, cdistr,
+      nr_incld, nitot_incld, birim_incld, omu_c, nu, olamc, cdist, cdist1, cdistr,
       mu_r, lamr, logn0r, ocmeiout, oprain, onevapr, oprer_evap,
       ovap_liq_exchange, ovap_ice_exchange, oliq_ice_exchange,
       pratot, prctot, hydrometeorsPresent);
@@ -1049,7 +1050,7 @@ void Functions<S,D>
     cloud_sedimentation(
       qc_incld, rho, inv_rho, olcldm, acn, inv_dzq, dnu, team, workspace,
       nk, ktop, kbot, kdir, infrastructure.dt, odt, infrastructure.predictNc,
-      oqc, onc, nc_incld, omu_c, lamc, qtend_ignore, ntend_ignore,
+      oqc, onc, nc_incld, omu_c, olamc, qtend_ignore, ntend_ignore,
       diagnostic_outputs.prt_liq(i));
 
     // Rain sedimentation:  (adaptive substepping)
@@ -1078,7 +1079,7 @@ void Functions<S,D>
     p3_main_part3(
       team, nk_pack, dnu, itab, oexner, olcldm, orcldm,
       rho, inv_rho, rhofaci, oqv, oth, oqc, onc, oqr, onr, oqitot, onitot,
-      oqirim, obirim, oxxlv, oxxls, omu_c, nu, lamc, mu_r, lamr,
+      oqirim, obirim, oxxlv, oxxls, omu_c, nu, olamc, mu_r, lamr,
       ovap_liq_exchange, ze_rain, ze_ice, diag_vmi, odiag_effi, diag_di,
       odiag_rhoi, diag_ze, odiag_effc);
 

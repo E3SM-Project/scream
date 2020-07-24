@@ -219,7 +219,7 @@ void p3_main_c(
   Real* prt_sol, Int its, Int ite, Int kts, Int kte, Real* diag_effc,
   Real* diag_effi, Real* diag_rhoi, bool log_predictNc, Real* pdel, Real* exner,
   Real* cmeiout, Real* prain, Real* nevapr, Real* prer_evap, Real* rflx,
-  Real* sflx, Real* rcldm, Real* lcldm, Real* icldm, Real* mu_c,
+  Real* sflx, Real* rcldm, Real* lcldm, Real* icldm, Real* mu_c, Real* lamc,
   Real* liq_ice_exchange, Real* vap_liq_exchange, Real* vap_ice_exchange);
 
 }
@@ -1169,7 +1169,7 @@ P3MainData::P3MainData(
   std::array<Real**, NUM_ARRAYS> ptrs = {
     &pres, &dzq, &ncnuc, &naai, &pdel, &exner, &icldm, &lcldm, &rcldm,
     &qc_relvar, &qc, &nc, &qr, &nr, &qitot, &qirim, &nitot, &birim, &qv, &th,
-    &diag_effc, &diag_effi, &diag_rhoi, &mu_c, &mu_r, &cmeiout, &prain, &nevapr,
+    &diag_effc, &diag_effi, &diag_rhoi, &mu_c, &lamc, &cmeiout, &prain, &nevapr,
     &prer_evap, &liq_ice_exchange, &vap_liq_exchange, &vap_ice_exchange, &rflx,
     &sflx, &prt_liq, &prt_sol
   };
@@ -1188,7 +1188,7 @@ P3MainData::P3MainData(const P3MainData& rhs) :
   std::array<Real**, NUM_ARRAYS> ptrs = {
     &pres, &dzq, &ncnuc, &naai, &pdel, &exner, &icldm, &lcldm, &rcldm,
     &qc_relvar, &qc, &nc, &qr, &nr, &qitot, &qirim, &nitot, &birim, &qv, &th,
-    &diag_effc, &diag_effi, &diag_rhoi, &mu_c, &mu_r, &cmeiout, &prain, &nevapr,
+    &diag_effc, &diag_effi, &diag_rhoi, &mu_c, &lamc, &cmeiout, &prain, &nevapr,
     &prer_evap, &liq_ice_exchange, &vap_liq_exchange, &vap_ice_exchange, &rflx,
     &sflx, &prt_liq, &prt_sol
   };
@@ -1208,7 +1208,7 @@ void p3_main(P3MainData& d)
     d.birim, d.pres, d.dzq, d.ncnuc, d.naai, d.qc_relvar, d.it, d.prt_liq,
     d.prt_sol, d.its, d.ite, d.kts, d.kte, d.diag_effc, d.diag_effi,
     d.diag_rhoi, d.log_predictNc, d.pdel, d.exner, d.cmeiout, d.prain, d.nevapr,
-    d.prer_evap, d.rflx, d.sflx, d.rcldm, d.lcldm, d.icldm, d.mu_c,
+    d.prer_evap, d.rflx, d.sflx, d.rcldm, d.lcldm, d.icldm, d.mu_c, d.lamc,
     d.liq_ice_exchange, d.vap_liq_exchange, d.vap_ice_exchange);
   d.transpose<util::TransposeDirection::f2c>();
 }
@@ -3448,7 +3448,7 @@ void p3_main_f(
   Real* prt_sol, Int its, Int ite, Int kts, Int kte, Real* diag_effc,
   Real* diag_effi, Real* diag_rhoi, bool log_predictNc, Real* pdel, Real* exner,
   Real* cmeiout, Real* prain, Real* nevapr, Real* prer_evap, Real* rflx,
-  Real* sflx, Real* rcldm, Real* lcldm, Real* icldm, Real* mu_c, Real* mu_r,
+  Real* sflx, Real* rcldm, Real* lcldm, Real* icldm, Real* mu_c, Real* lamc,
   Real* liq_ice_exchange, Real* vap_liq_exchange, Real* vap_ice_exchange)
 {
   using P3F  = Functions<Real, DefaultDevice>;
@@ -3478,7 +3478,7 @@ void p3_main_f(
   Kokkos::Array<const Real*, P3MainData::NUM_ARRAYS> ptr_array = {
     pres, dzq, ncnuc, naai, pdel, exner, icldm, lcldm, rcldm, qc_relvar,
     qc, nc, qr, nr, qitot, qirim, nitot, birim, qv, th, diag_effc, diag_effi,
-    diag_rhoi, mu_c, mu_r, cmeiout, prain, nevapr, prer_evap, liq_ice_exchange,
+    diag_rhoi, mu_c, lamc, cmeiout, prain, nevapr, prer_evap, liq_ice_exchange,
     vap_liq_exchange, vap_ice_exchange, rflx, sflx, prt_liq, prt_sol
   };
 
@@ -3525,7 +3525,7 @@ void p3_main_f(
     diag_effi_d        (temp_d[counter++]),
     diag_rhoi_d        (temp_d[counter++]),
     mu_c_d             (temp_d[counter++]),
-    mu_r_d             (temp_d[counter++]),
+    lamc_d             (temp_d[counter++]),
     cmeiout_d          (temp_d[counter++]),
     prain_d            (temp_d[counter++]),
     nevapr_d           (temp_d[counter++]),
@@ -3557,7 +3557,7 @@ void p3_main_f(
   P3F::P3DiagnosticInputs diag_inputs{ncnuc_d, naai_d, qc_relvar_d, icldm_d,
                                       lcldm_d, rcldm_d, pres_d, dzq_d, pdel_d,
                                       exner_d};
-  P3F::P3DiagnosticOutputs diag_outputs{mu_c_d, mu_r_d, cmeiout_d, prt_liq_d,
+  P3F::P3DiagnosticOutputs diag_outputs{mu_c_d, lamc_d, cmeiout_d, prt_liq_d,
                                         prt_sol_d, diag_effc_d, diag_effi_d,
                                         diag_rhoi_d, prain_d, nevapr_d,
                                         prer_evap_d, rflx_d, sflx_d};
@@ -3576,7 +3576,7 @@ void p3_main_f(
   // Sync back to host
   Kokkos::Array<view_2d, P3MainData::NUM_ARRAYS - 10> inout_views = {
     qc_d, nc_d, qr_d, nr_d, qitot_d, qirim_d, nitot_d, birim_d, qv_d, th_d,
-    diag_effc_d, diag_effi_d, diag_rhoi_d, mu_c_d, mu_r_d, cmeiout_d, prain_d,
+    diag_effc_d, diag_effi_d, diag_rhoi_d, mu_c_d, lamc_d, cmeiout_d, prain_d,
     nevapr_d, prer_evap_d, liq_ice_exchange_d, vap_liq_exchange_d,
     vap_ice_exchange_d, rflx_d, sflx_d, prt_liq_temp_d, prt_sol_temp_d
   };
@@ -3593,7 +3593,7 @@ void p3_main_f(
 
   pack::device_to_host({
       qc, nc, qr, nr, qitot, qirim, nitot, birim, qv, th, diag_effc, diag_effi,
-      diag_rhoi, mu_c, mu_r, cmeiout, prain, nevapr, prer_evap, liq_ice_exchange,
+      diag_rhoi, mu_c, lamc, cmeiout, prain, nevapr, prer_evap, liq_ice_exchange,
       vap_liq_exchange, vap_ice_exchange, rflx, sflx, prt_liq, prt_sol
     },
     dim1_sizes_out, dim2_sizes_out, inout_views, true);

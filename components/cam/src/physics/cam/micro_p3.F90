@@ -1063,7 +1063,7 @@ contains
        pres,dzq,ncnuc,naai,qc_relvar,it,prt_liq,prt_sol,its,ite,kts,kte,diag_effc,     &
        diag_effi,diag_rhoi,log_predictNc, &
        pdel,exner,cmeiout,prain,nevapr,prer_evap,rflx,sflx,rcldm,lcldm,icldm,  &
-       p3_tend_out,mu_c,liq_ice_exchange,vap_liq_exchange, &
+       p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
        vap_ice_exchange,col_location)
 
     !----------------------------------------------------------------------------------------!
@@ -1109,6 +1109,7 @@ contains
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: diag_effi  ! effective radius, ice            m
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: diag_rhoi  ! bulk density of ice              kg m-3
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: mu_c       ! Size distribution shape parameter for radiation
+    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: lamc       ! Size distribution slope parameter for radiation
 
     integer, intent(in)                                  :: its,ite    ! array bounds (horizontal)
     integer, intent(in)                                  :: kts,kte    ! array bounds (vertical)
@@ -1147,7 +1148,6 @@ contains
     real(rtype), dimension(its:ite,kts:kte) :: diag_ze  ! equivalent reflectivity          dBZ
     real(rtype), dimension(its:ite,kts:kte) :: diag_vmi ! mass-weighted fall speed of ice  m s-1
     real(rtype), dimension(its:ite,kts:kte) :: diag_di  ! mean diameter of ice             m
-    real(rtype), dimension(its:ite,kts:kte) :: lamc     ! Size distribution slope parameter for radiation
     real(rtype), dimension(its:ite,kts:kte) :: pratot   ! accretion of cloud by rain
     real(rtype), dimension(its:ite,kts:kte) :: prctot   ! autoconversion of cloud to rain
 

@@ -505,7 +505,7 @@ static void run_bfb_p3_main()
       d.prt_sol, d.its, d.ite, d.kts, d.kte, d.diag_effc, d.diag_effi,
       d.diag_rhoi, d.log_predictNc, d.pdel, d.exner, d.cmeiout, d.prain,
       d.nevapr, d.prer_evap, d.rflx, d.sflx, d.rcldm, d.lcldm, d.icldm, d.mu_c,
-      d.mu_r, d.liq_ice_exchange, d.vap_liq_exchange, d.vap_ice_exchange);
+      d.lamc, d.liq_ice_exchange, d.vap_liq_exchange, d.vap_ice_exchange);
     d.transpose<util::TransposeDirection::f2c>();
   }
 
@@ -525,6 +525,7 @@ static void run_bfb_p3_main()
       REQUIRE(isds_fortran[i].diag_effi[t]        == isds_cxx[i].diag_effi[t]);
       REQUIRE(isds_fortran[i].diag_rhoi[t]        == isds_cxx[i].diag_rhoi[t]);
       REQUIRE(isds_fortran[i].mu_c[t]             == isds_cxx[i].mu_c[t]);
+      REQUIRE(isds_fortran[i].lamc[t]             == isds_cxx[i].lamc[t]);
       REQUIRE(isds_fortran[i].cmeiout[t]          == isds_cxx[i].cmeiout[t]);
       REQUIRE(isds_fortran[i].prain[t]            == isds_cxx[i].prain[t]);
       REQUIRE(isds_fortran[i].nevapr[t]           == isds_cxx[i].nevapr[t]);

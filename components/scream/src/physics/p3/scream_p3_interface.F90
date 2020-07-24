@@ -294,6 +294,7 @@ contains
          icldm(its:ite,kts:kte),      & ! IN ice cloud fraction
          tend_out(its:ite,kts:kte,:), & ! OUT p3 microphysics tendencies
          mu(its:ite,kts:kte),         & ! OUT Size distribution shape parameter for radiation
+         lambdac(its:ite,kts:kte),     & ! OUT Size distribution slope parameter for radiation
          liq_ice_exchange(its:ite,kts:kte),& ! OUT sum of liq-ice phase change tendenices
          vap_liq_exchange(its:ite,kts:kte),& ! OUT sun of vap-liq phase change tendencies
          vap_ice_exchange(its:ite,kts:kte),& ! OUT sum of vap-ice phase change tendencies
