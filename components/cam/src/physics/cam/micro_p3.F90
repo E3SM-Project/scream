@@ -3602,8 +3602,13 @@ subroutine rain_sedimentation(kts,kte,ktop,kbot,kdir,   &
 
             qr_notsmall_r1: if (qr_incld(k)>qsmall) then
 
-               call compute_rain_fall_velocity(qr_incld(k), rcldm(k), rhofacr(k), nr(k), nr_incld(k), &
+               call compute_rain_fall_velocity(qr_incld(k), rcldm(k), rhofacr(k), nr_incld(k), &
                     mu_r(k), lamr(k), V_qr(k), V_nr(k))
+
+               !in compute_rain_fall_velocity, get_rain_dsd2 keeps the drop-size
+               !distribution within reasonable bounds by modifying nr_incld. 
+               !The next line maintains consistency between nr_incld and nr.
+               nr = nr_incld*rcldm 
 
             endif qr_notsmall_r1
 
@@ -3636,12 +3641,11 @@ subroutine rain_sedimentation(kts,kte,ktop,kbot,kdir,   &
 
 end subroutine rain_sedimentation
 
-subroutine compute_rain_fall_velocity(qr_incld, rcldm, rhofacr, nr, nr_incld, mu_r, lamr, V_qr, V_nr)
+subroutine compute_rain_fall_velocity(qr_incld, rcldm, rhofacr, nr_incld, mu_r, lamr, V_qr, V_nr)
 
    real(rtype), intent(in) :: qr_incld
    real(rtype), intent(in) :: rcldm
    real(rtype), intent(in) :: rhofacr
-   real(rtype), intent(inout) :: nr
    real(rtype), intent(inout) :: nr_incld
    real(rtype), intent(out) :: mu_r
    real(rtype), intent(out) :: lamr
@@ -3656,11 +3660,6 @@ subroutine compute_rain_fall_velocity(qr_incld, rcldm, rhofacr, nr, nr_incld, mu
    call get_rain_dsd2(qr_incld,nr_incld,mu_r,lamr,tmp1,tmp2,rcldm)
 
    call find_lookupTable_indices_3(dumii,dumjj,dum1,rdumii,rdumjj,inv_dum3,mu_r,lamr)
-
-   !get_rain_dsd2 keeps the drop-size distribution within reasonable
-   !bounds by modifying nr_incld. The next line maintains consistency
-   !between nr_incld and nr
-   nr = nr_incld*rcldm 
 
    !mass-weighted fall speed:
 
