@@ -24,8 +24,10 @@ void Functions<S,D>
   Spack tmp1, tmp2; //ignore
   get_rain_dsd2(qr_incld, nr_incld, mu_r, lamr, tmp1, tmp2, rcldm, context);
 
-  //PMC - nr isn't used in this fn and is already updated in generalized_sed.
-  //nr.set(context, nr_incld*rcldm);
+  //get_rain_dsd2 keeps the drop-size distribution within reasonable
+  //bounds by modifying nr_incld. The next line maintains consistency
+  //between nr_incld and nr
+  nr.set(context, nr_incld*rcldm);
 
   if (context.any()) {
     lookup(mu_r, lamr, table, context);
