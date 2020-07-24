@@ -926,12 +926,12 @@ void Functions<S,D>
 
     workspace.template take_many_and_reset<42>(
       {
-        "mu_r", "t", "lamr", "logn0r", "nu", "cdist", "cdist1", "cdistr",
+        "mu_r", "t", "lamr", "lamc", "logn0r", "nu", "cdist", "cdist1", "cdistr",
         "inv_icldm", "inv_lcldm", "inv_rcldm", "qc_incld", "qr_incld", "qitot_incld", "qirim_incld",
         "nc_incld", "nr_incld", "nitot_incld", "birim_incld",
         "inv_dzq", "inv_rho", "ze_ice", "ze_rain", "prec", "rho",
         "rhofacr", "rhofaci", "acn", "qvs", "qvi", "sup", "supi",
-        "tmparr1", "inv_exner", "diag_ze", "diag_vmi", "diag_di", "lamc",
+        "tmparr1", "inv_exner", "diag_ze", "diag_vmi", "diag_di",
         "pratot", "prctot", "qtend_ignore", "ntend_ignore"
       },
       {
@@ -1004,7 +1004,6 @@ void Functions<S,D>
       ze_ice, ze_rain, odiag_effc, odiag_effi, inv_icldm, inv_lcldm,
       inv_rcldm, inv_exner, t, oqv, inv_dzq,
       diagnostic_outputs.prt_liq(i), diagnostic_outputs.prt_sol(i), zero_init);
-
     p3_main_part1(
       team, nk, infrastructure.predictNc, infrastructure.dt,
       opres, opdel, odzq, oncnuc, oexner, inv_exner, inv_lcldm, inv_icldm,

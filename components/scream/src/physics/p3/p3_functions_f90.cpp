@@ -3485,10 +3485,10 @@ void p3_main_f(
   for (size_t i = 0; i < P3MainData::NUM_ARRAYS; ++i) dim1_sizes[i] = ni;
   for (size_t i = 0; i < P3MainData::NUM_ARRAYS; ++i) dim2_sizes[i] = nk;
 
-  dim2_sizes[31] = nk+1; // rflx
-  dim2_sizes[32] = nk+1; // sflx
-  dim1_sizes[33] = 1; dim2_sizes[33] = ni; // prt_liq
-  dim1_sizes[34] = 1; dim2_sizes[34] = ni; // prt_sol
+  dim2_sizes[32] = nk+1; // rflx
+  dim2_sizes[33] = nk+1; // sflx
+  dim1_sizes[34] = 1; dim2_sizes[34] = ni; // prt_liq
+  dim1_sizes[35] = 1; dim2_sizes[35] = ni; // prt_sol
 
   // Initialize outputs to avoid uninitialized read warnings in memory checkers
   for (size_t i = P3MainData::NUM_INPUT_ARRAYS; i < P3MainData::NUM_ARRAYS; ++i) {
