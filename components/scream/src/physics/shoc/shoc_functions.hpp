@@ -67,6 +67,10 @@ struct Functions
   //
   // --------- Functions ---------
   //
+
+  KOKKOS_FUNCTION
+  static void shoc_grid();
+
 }; // struct Functions
 
 } // namespace shoc
