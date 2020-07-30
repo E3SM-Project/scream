@@ -473,7 +473,7 @@ contains
        qirim, birim, xxlv, xxls, xlf, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld, nr_incld, &
        nitot_incld, birim_incld, mu_c, nu, lamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, cmeiout, prain, &
        nevapr, prer_evap, vap_liq_exchange, vap_ice_exchange, liq_ice_exchange, pratot, &
-       prctot, p3_tend_out, log_hydrometeorsPresent,epsc,epsr,epsitot)
+       prctot, p3_tend_out, log_hydrometeorsPresent,p3_epsc,p3_epsr,p3_epsitot)
 
     implicit none
 
@@ -494,7 +494,7 @@ contains
 
     real(rtype), intent(inout), dimension(kts:kte,49) :: p3_tend_out ! micro physics tendencies
 
-    real(rtype), intent(out), dimension(kts:kte) :: epsr,epsc,epsitot
+    real(rtype), intent(out), dimension(kts:kte) :: p3_epsr,p3_epsc,p3_epsitot
 
     logical(btype), intent(out) :: log_hydrometeorsPresent
 
@@ -557,7 +557,7 @@ contains
     real(rtype)    :: f1pr10   ! maximum ice number (lambda limiter)  See lines  704 -  705  nsmall
     real(rtype)    :: f1pr14   ! melting (ventilation term)           See lines 1212 - 1279  vdep1
 
-    real(rtype)    :: mu,dv,sc,dqsdt,ab,kap,epsi, &
+    real(rtype)    :: mu,dv,sc,dqsdt,ab,kap,epsc,epsr,epsi,epsi_tot, &
          dum1,dum3,dum4,dum5,dum6,dqsidt,abi,rhop,vtrmi1,eii
 
     integer :: dumi,k,dumj,dumii,dumjj,dumzz
@@ -567,9 +567,12 @@ contains
    rhorime_c = 400._rtype
    log_hydrometeorsPresent = .false.
    ! CRT initialize epsc
-   epsitot = 0._rtype
-   epsc    = 0._rtype
-   epsr    = 0._rtype  
+   p3_epsc    = 0._rtype
+   p3_epsr    = 0._rtype
+   p3_epsitot = 0._rtype
+   epsi_tot  = 0._rtype
+   epsc      = 0._rtype
+   epsr      = 0._rtype  
 
    !------------------------------------------------------------------------------------------!
    !   main k-loop (for processes):
@@ -864,6 +867,12 @@ contains
       vap_liq_exchange(k) = - qrevp
       liq_ice_exchange(k) = qcheti + qrheti - qimlt + qiberg + qccol + qrcol
 
+      !==
+      ! CRT: Save epsc, epsr, epsitot for output
+      p3_epsc(k)    = epsc
+      p3_epsr(k)    = epsr
+      p3_epsitot(k) = epsi_tot
+
       ! clipping for small hydrometeor values
       if (qc(k).lt.qsmall) then
          qv(k) = qv(k) + qc(k)
@@ -1109,7 +1118,7 @@ contains
        diag_effi,diag_vmi,diag_di,diag_rhoi,log_predictNc, &
        pdel,exner,cmeiout,prain,nevapr,prer_evap,rflx,sflx,rcldm,lcldm,icldm,  &
        pratot,prctot,p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-       vap_ice_exchange,epsc,epsr,epsitot,col_location)
+       vap_ice_exchange,p3_epsc,p3_epsr,p3_epsitot,col_location)
 
     !----------------------------------------------------------------------------------------!
     !                                                                                        !
@@ -1181,9 +1190,9 @@ contains
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: vap_liq_exchange ! sum of vap-liq phase change tendenices
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: vap_ice_exchange ! sum of vap-ice phase change tendenices
 
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: epsc       ! timescale for cloud water
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: epsr       ! timescale for rain
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: epsitot    ! timescale for ice
+    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: p3_epsc       ! timescale for cloud water
+    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: p3_epsr       ! timescale for rain
+    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: p3_epsitot    ! timescale for ice
     ! INPUT needed for PBUF variables used by other parameterizations
 
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: icldm, lcldm, rcldm ! Ice, Liquid and Rain cloud fraction
@@ -1276,9 +1285,9 @@ contains
     sflx    = 0._rtype
     p3_tend_out = 0._rtype
 
-    epsc    = 0._rtype
-    epsr    = 0._rtype
-    epsitot = 0._rtype
+    p3_epsc    = 0._rtype
+    p3_epsr    = 0._rtype
+    p3_epsitot = 0._rtype
 
     inv_icldm = 1.0_rtype/icldm
     inv_lcldm = 1.0_rtype/lcldm
@@ -1338,7 +1347,7 @@ contains
             qirim(i,:), birim(i,:), xxlv(i,:), xxls(i,:), xlf(i,:), qc_incld(i,:), qr_incld(i,:), qitot_incld(i,:), qirim_incld(i,:), nc_incld(i,:), nr_incld(i,:), &
             nitot_incld(i,:), birim_incld(i,:), mu_c(i,:), nu(i,:), lamc(i,:), cdist(i,:), cdist1(i,:), cdistr(i,:), mu_r(i,:), lamr(i,:), logn0r(i,:), cmeiout(i,:), prain(i,:), &
             nevapr(i,:), prer_evap(i,:), vap_liq_exchange(i,:), vap_ice_exchange(i,:), liq_ice_exchange(i,:), pratot(i,:), &
-            prctot(i,:), p3_tend_out(i,:,:), log_hydrometeorsPresent, ,epsc(i,:),epsr(i,:),epsitot(i,:))
+            prctot(i,:), p3_tend_out(i,:,:), log_hydrometeorsPresent, p3_epsc(i,:), p3_epsr(i,:), p3_epsitot(i,:))
 
        ! measure microphysics processes tendency output
        p3_tend_out(i,:,42) = ( qc(i,:)    - qc_old(i,:) ) * odt    ! Liq. microphysics tendency, measure
