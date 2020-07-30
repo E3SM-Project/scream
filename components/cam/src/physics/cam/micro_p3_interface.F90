@@ -529,6 +529,11 @@ end subroutine micro_p3_readnl
    call addfld('vap_ice_exchange',  (/ 'lev' /), 'A', 'kg/kg/s', 'Tendency for conversion from/to vapor phase to/from frozen phase')
    call addfld('liq_ice_exchange',  (/ 'lev' /), 'A', 'kg/kg/s', 'Tendency for conversion from/to liquid phase to/from frozen phase')
 
+   ! Inverse timescale for rate of diffusion
+   call addfld('P3_epsc',  (/ 'lev' /), 'A', '1/s', 'Inverse timescale for rate of diffusion of cloud drops')
+   call addfld('P3_epsr',  (/ 'lev' /), 'A', '1/s', 'Inverse timescale for rate of diffusion of rain drops')
+   call addfld('P3_epsitot',  (/ 'lev' /), 'A', '1/s', 'Inverse timescale for rate of diffusion of ice particles')
+
    ! determine the add_default fields
    call phys_getopts(history_amwg_out           = history_amwg         , &
                      history_verbose_out        = history_verbose      , &
@@ -604,6 +609,9 @@ end subroutine micro_p3_readnl
          call add_default('P3_nrshdr', 1, ' ')
          call add_default('P3_qcshd',  1, ' ')
          call add_default('P3_ncshdc', 1, ' ')
+         call add_default('P3_epsc', 1, ' ')
+         call add_default('P3_epsr', 1, ' ')
+         call add_default('P3_epsitot', 1, ' ')
          ! Sedimentation
          call add_default('P3_sed_CLDLIQ',  1, ' ')
          call add_default('P3_sed_NUMLIQ',  1, ' ')
@@ -750,6 +758,9 @@ end subroutine micro_p3_readnl
     real(rtype), dimension(pcols,pver) :: liq_ice_exchange ! sum of liq-ice phase change tendenices
     real(rtype), dimension(pcols,pver) :: vap_liq_exchange ! sum of vap-liq phase change tendenices
     real(rtype), dimension(pcols,pver) :: vap_ice_exchange ! sum of vap-ice phase change tendenices
+    real(rtype), dimension(pcols,pver) :: epsc    ! Inverse timescale for rate of diffusion of cloud drops 
+    real(rtype), dimension(pcols,pver) :: epsr    ! Inverse timescale for rate of diffusion of rain drops
+    real(rtype), dimension(pcols,pver) :: epsitot ! Inverse timescale for rate of diffusion of ice particles
     real(rtype) :: dummy_out(pcols,pver)    ! dummy_output variable for p3_main to replace unused variables.
 
     ! PBUF Variables
@@ -1008,6 +1019,9 @@ end subroutine micro_p3_readnl
     prec_pcw = 0.0_rtype
     snow_pcw = 0.0_rtype
     vap_liq_exchange = 0.0_rtype
+    epsc = 0.0_rtype
+    epsr = 0.0_rtype
+    epsitot = 0.0_rtype
 
     call t_startf('micro_p3_tend_loop')
     call p3_main( &
@@ -1061,6 +1075,9 @@ end subroutine micro_p3_readnl
          liq_ice_exchange(its:ite,kts:kte),& ! OUT sum of liq-ice phase change tendenices   
          vap_liq_exchange(its:ite,kts:kte),& ! OUT sun of vap-liq phase change tendencies
          vap_ice_exchange(its:ite,kts:kte),& ! OUT sum of vap-ice phase change tendencies
+         epsc(its:ite,kts:kte),       & ! OUT inverse timescale of cloud water diffusion   
+         epsr(its:ite,kts:kte),       & ! OUT inverse timescale of rain water diffusion
+         epsitot(its:ite,kts:kte),    & ! OUT inverse timescale of ice water diffusion
          col_location(its:ite,:3)          & ! IN column locations
          )
     do icol = 1,ncol
@@ -1380,6 +1397,11 @@ end subroutine micro_p3_readnl
    call outfld('vap_ice_exchange',      vap_ice_exchange,      pcols, lchnk)
    call outfld('vap_liq_exchange',      vap_liq_exchange,      pcols, lchnk)
    call outfld('liq_ice_exchange',      liq_ice_exchange,      pcols, lchnk)
+   ! Rate of diffusion 
+   call outfld('P3_espc',          epsc,      pcols, lchnk)
+   call outfld('P3_espr',          epsr,      pcols, lchnk)
+   call outfld('P3_espitot',       epsitot,   pcols, lchnk)
+   
 
    call t_stopf('micro_p3_tend_finish')
   end subroutine micro_p3_tend
