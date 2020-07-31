@@ -74,7 +74,7 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
    integer mx(pcols) 
 !   
 !   real(r8) landfracg(pcols)            ! wg grid slice of landfrac  
-   real(r8) delt                     ! length of model time-step in seconds.
+   real(kind=c_real) delt                     ! length of model time-step in seconds.
 !   real(r8) :: pcont(pcols), pconb(pcols), freqzm(pcols)
 !   
    real(kind=c_real), intent(in) :: pblh(pcols)
@@ -90,8 +90,8 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
    real(kind=c_real), intent(in) :: landfrac(pcols) ! RBN Landfrac
    
 
-   real(r8), intent(in), dimension(pcols,pver) :: t_star ! intermediate T between n and n-1 time step
-   real(r8), intent(in), dimension(pcols,pver) :: q_star ! intermediate q between n and n-1 time step
+   real(kind=c_real), intent(in) :: t_star(pcols,pver) ! intermediate T between n and n-1 time step
+   real(kind=c_real), intent(in) :: q_star(pcols,pver) ! intermediate q between n and n-1 time step
    
    real(kind=c_real), intent(out) :: qtnd(pcols,pver)           ! specific humidity tendency (kg/kg/s)
    real(kind=c_real), intent(out) :: heat(pcols,pver)           ! heating rate (dry static energy tendency, W/kg)
@@ -150,7 +150,7 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
    logical :: domomtran(ncnst)
    logical :: doconvtran(ncnst)
    Print *, 'In zm_main_f90'
-   fake_dpdry(:,:) = 0._r8!
+   fake_dpdry(:,:) = 0._r8
    il1g = 1
    
    !call zm_convr(lchnk   ,ncol    , &
@@ -163,6 +163,7 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
    !                 dp      ,dsubcld ,jt      ,maxg    ,ideep   , &
    !                 lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
    !                 cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star, dcape)
+   
    call zm_conv_evap(ncol    ,lchnk, &
                      t       ,pap     ,dpp     ,q     , &
                      tend_s,     tend_s_snwprd ,tend_s_snwevmlt , &

@@ -73,7 +73,6 @@ void P3Microphysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
 // =========================================================================================
 void P3Microphysics::initialize (const util::TimeStamp& t0)
 {
-  std :: cout << "please for the love of god work\n"; 
   m_current_ts = t0;
 
   // Call f90 routine
