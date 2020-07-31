@@ -558,6 +558,8 @@ subroutine zm_convr(lchnk   ,ncol    , &
    real(r8) sdifr
 
    logical :: is_first_step
+
+
 !
 !--------------------------Data statements------------------------------
 !
@@ -569,10 +571,11 @@ subroutine zm_convr(lchnk   ,ncol    , &
 ! initialize necessary arrays.
 ! zero out variables not used in cam
 !
-   qtnd(:,:) = 0._r8
-   heat(:,:) = 0._r8
-   mcon(:,:) = 0._r8
-   rliq(:ncol)   = 0._r8
+   qtnd(:,:) = 0.0_r8
+   heat(:,:) = 0.0_r8
+   mcon(:,:) = 0.0_r8
+   rliq(:ncol)   = 0.0_r8
+
 !
 ! initialize convective tendencies
 !
@@ -607,6 +610,8 @@ subroutine zm_convr(lchnk   ,ncol    , &
       jcbot(i) = 1
       if(trigmem)dcape(i) = 0._r8               !songxl 2014-05-20   
    end do
+   
+
 !
 ! calculate local pressure (mbs) and height (m) for both interface
 ! and mid-layer locations.
