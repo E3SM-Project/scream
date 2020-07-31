@@ -1,10 +1,12 @@
 #include "ekat/scream_assert.hpp"
+#include "physics/zm/zm_inputs_initializer.hpp"
 #include "physics/zm/scream_zm_interface.hpp"
 #include "physics/zm/atmosphere_macrophysics.hpp"
 #include <iostream>
 namespace scream
 
 {
+std::vector<std::string> zm_inputs = {"t"};
 
 
 const Int& lchnk = 0;
@@ -78,6 +80,8 @@ Real*** fracis;
 ZMMacrophysics::ZMMacrophysics (const Comm& comm,const ParameterList& /* params */)
   : m_zm_comm (comm)
 {
+  m_initializer = create_field_initializer<ZMInputsInitializer>();
+    
 }
 void ZMMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
 {
@@ -103,91 +107,68 @@ void ZMMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
   FieldLayout q_forcing_layout  { {CO,VR,VL}, {nc,QSZ,NVL} };
   auto nondim = m/m;
 
-//  m_required_fields.emplace("t",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("t",  vector3d_layout_mid, Q, grid->name()); // in/out??
-// 
-//
   m_required_fields.emplace("t",  vector3d_layout, Q, grid->name()); // in/out??
   m_computed_fields.emplace("t",  vector3d_layout, Q, grid->name()); // in/out??
 
+  // We may have to init some fields from within P3. This can be the case in a P3 standalone run.
+  // Some options:
+  //  - we can tell P3 it can init all inputs or specify which ones it can init. We call the
+  //    resulting list of inputs the 'initializaable' (or initable) inputs. The default is
+  //    that no inputs can be inited.
+  //  - we can request that P3 either inits no inputs or all of the initable ones (as specified
+  //    at the previous point). The default is that P3 must be in charge of init ing ALL or NONE
+  //    of its initable inputs.
+  // Recall that:
+  //  - initable fields may not need initialization (e.g., some other atm proc that
+  //    appears earlier in the atm dag might provide them).
 
-//  m_required_fields.emplace("qh",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("prec",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("jctop",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("jcbot",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("pblh",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("zm",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("geos",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("zi",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("gtnd",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("heat",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("pap",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("paph",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("dpp",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("delt",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("mcon",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("cme",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("cape",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("tpert",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("dlf",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("pflx",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("zdu",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("rprd",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("mu",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("md",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("du",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("eu",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("ed",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("dp",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("dsubcld",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("jt",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("maxg",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("ideep",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("lengath",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("ql",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("rliq",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("landfrac",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("hu_nm1",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("cnv_nm1",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("tm1",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("qm1",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("t_star",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("q_star",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("dcape",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("q",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("tend_s",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("tend_q",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("cld",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("snow",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("ntprprd",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("ntsnprd",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("flxprec",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("flxsnow",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("ztodt",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("pguall",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("pgdall",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("icwu",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("ncnst",  vector3d_layout_mid, Q, grid->name()); // in/out??
-//  m_required_fields.emplace("fracis",  vector3d_layout_mid, Q, grid->name()); // in/out??
+  using strvec = std::vector<std::string>;
+//  const strvec& allowed_to_init = m_zm_params.get<strvec>("Initializable Inputs",strvec(0));
+//  const bool can_init_all = m_zm_params.get<bool>("Can Initialize All Inputs", false);
+//  const bool init_all_or_none = m_zm_params.get<bool>("Must Init All Inputs Or None", true);
 //  
+//  const strvec& initable = can_init_all ? zm_inputs : allowed_to_init;
+  if (zm_inputs.size()>0) {
+    bool all_inited = true, all_uninited = true;
+    for (const auto& name : zm_inputs) {
+      const auto& f = m_zm_fields_in.at(name);
+      const auto& track = f.get_header().get_tracking();
+      if (track.get_init_type()==InitType::None) {
+        // Nobody claimed to init this field. P3InputsInitializer will take care of it
+        m_initializer->add_me_as_initializer(f);
+        all_uninited &= true;
+        all_inited &= false;
+      } else {
+        all_uninited &= false;
+        all_inited &= true;
+      }
+    }
+
+    // In order to gurantee some consistency between inputs, it is best if P3
+    // initializes either none or all of the inputs.
+   // scream_require_msg (!init_all_or_none || all_inited || all_uninited,
+   //                     "Error! Some zm inputs were marked to be inited by P3, while others weren't.\n"
+   //                     "       P3 was requested to init either all or none of the inputs.\n");
+  }//
+
 }
+
+//void add_field_ptr(string input){
+//  auto dev = m_zm_fields_out.at(input).get_view();
+//  auto host = Kokkos::create_mirror_view(q_dev);
+//  Kokkos::deep_copy(q_host,q_dev);
+//  auto ptr = q_host.data();
+//  return ptr
+//
+//}
+
 
 // =========================================================================================
 void ZMMacrophysics::initialize (const util::TimeStamp& t0)
 {
-//  std::vector<std::string> zm_inputs = {"t, qh, prec, jctop, jcbot, pblh, zm, geos, zi, qtnd"
-//					"heat, pap, paph, dpp, delt, mcon, cme, cape, tpert"
-//					"dlf, pflx, zdu, rprd, mu, md, du, eu, ed, dp, dsubcld"
-//					"jt, maxg, ideep, lengath, ql, rliq, landfrac, hu_nm1"
-//					"cnv_nm1, tm1, qm1, t_star, q_star, dcape, q, tend_s"
-//					"tend_q, cld, snow, ntprprd, ntsnprd, flxprec, flxsnow"
-//					"ztodt, pguall, pgdall, icwu, ncnst, fracis"};
   std::vector<std::string> zm_inputs = {"t"};
-  auto q_dev = m_zm_fields_out.at("t").get_view();
+  
   zm_init_f90 (limcnv_in, no_deep_pbl_in);
-  auto q_host = Kokkos::create_mirror_view(q_dev);
-  Kokkos::deep_copy(q_host,q_dev);
-  auto q_ptr = q_host.data();
 
 }
 
@@ -205,7 +186,6 @@ void ZMMacrophysics::run (const Real dt)
 		tm1, qm1, t_star, q_star, dcape, q, tend_s, tend_q, cld,
 		snow, ntprprd, ntsnprd, flxprec, flxsnow,
 		ztodt, pguall, pgdall, icwu, ncnst, fracis); 
-   std :: cout << "In ZMMAcrophysics::run\n"<< std::endl;
 }
 // =========================================================================================
 void ZMMacrophysics::finalize()
@@ -229,11 +209,10 @@ void ZMMacrophysics::set_required_field_impl (const Field<const Real, device_typ
   // in the Homme's view, and be done with it.
   const auto& name = f.get_header().get_identifier().name();
   m_zm_fields_in.emplace(name,f);
-  m_zm_host_views_in[name] = Kokkos::create_mirror_view(f.get_view());
-  m_zm_raw_ptrs_in[name] = m_zm_host_views_in[name].data();
-//
-//  // Add myself as customer to the field
-//  add_me_as_customer(f);
+
+  // Add myself as customer to the field
+  // @Meredith: Diff between add_me_as_a_customer and get_tracking().add_customer? 
+  add_me_as_customer(f);
 }
 
 void ZMMacrophysics::set_computed_field_impl (const Field<      Real, device_type>& f) {
@@ -243,10 +222,7 @@ void ZMMacrophysics::set_computed_field_impl (const Field<      Real, device_typ
   // in the Homme's view, and be done with it.
   const auto& name = f.get_header().get_identifier().name();
   m_zm_fields_out.emplace(name,f);
-  m_zm_host_views_out[name] = Kokkos::create_mirror_view(f.get_view());
-  m_raw_ptrs_out[name] = m_zm_host_views_out[name].data();
-//
-//  // Add myself as provider for the field
+  // Add myself as provider for the field
   add_me_as_provider(f);
 }
 } // namespace scream
