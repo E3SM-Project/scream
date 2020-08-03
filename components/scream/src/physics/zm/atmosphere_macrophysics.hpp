@@ -70,6 +70,10 @@ protected:
   std::map<std::string,const_field_type>  m_zm_fields_in;
   std::map<std::string,field_type>        m_zm_fields_out;
 
+  std::map<std::string,const_field_type::view_type::HostMirror>  m_zm_host_views_in;
+  std::map<std::string,field_type::view_type::HostMirror>        m_zm_host_views_out;
+
+
   util::TimeStamp   m_current_ts;
   Comm              m_zm_comm;
   
