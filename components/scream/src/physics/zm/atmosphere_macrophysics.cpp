@@ -125,8 +125,16 @@ void ZMMacrophysics::initialize (const util::TimeStamp& t0)
 {
   
   zm_init_f90 (limcnv_in, no_deep_pbl_in);
-  m_initializer->add_me_as_initializer(f);
-
+//  using strvec = std::vector<std::string>;
+//  const strvec& initable = zm_inputs;
+//  for (const auto& name : initable) {
+//    const auto& f = m_zm_fields_in.at(name);
+//    const auto& track = f.get_header().get_tracking();
+//    if (track.get_init_type()==InitType::None) {
+//      // Nobody claimed to init this field. P3InputsInitializer will take care of it
+//      m_initializer->add_me_as_initializer(f);
+//    }
+//   }
 }
 
 // =========================================================================================
