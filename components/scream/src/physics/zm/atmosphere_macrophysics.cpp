@@ -6,18 +6,6 @@
 namespace scream
 
 {
-//std::vector<std::string> zm_inputs = {"t", "qh," "prec", "jctop", "jcbot", "pblh", "zm",
-//				"geos", "zi", "qtnd", "heat", "pap", "paph", "dpp", "delt", 
-//				"mcon", "cme", "cape", "tpert", "dlf", "pflx", "zdu", "rprd",
-//				"mu", "md", "du", "eu", "ed", "dp", "dsubcld", "jt", "maxg",
-//				"ideep", "lengath", "ql", "rliq", "landfrac", "hu_nm1",
-//      				"cnv_nm1", "tm1", "qm1", "t_star", "q_star", "dcape", "q",
-//				"tend_s", "tend_q", "cld", "snow", "ntprprd", "ntsnprd",
-//				"flxprec", "flxsnow", "ztodt", "pguall", "pgdall", "icwu",
-//				 "ncnst", "fracis"};
-//
-//
-
 const Int& lchnk = 0;
 const Int& ncol = 0;
 Real* t;
@@ -118,6 +106,42 @@ void ZMMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
   m_required_fields.emplace("t",  scalar3d_layout_int, Q, grid->name()); // in/out??
   m_computed_fields.emplace("t",  scalar3d_layout_int, Q, grid->name()); // in/out??
 
+  m_required_fields.emplace("qh",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("qh",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("prec",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("prec",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("jctop",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("jctop",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("jcbot",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("jcbot",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+//  m_required_fields.emplace("pblh",  scalar3d_layout_int, Q, grid->name()); // in/out??
+//  m_computed_fields.emplace("pblh",  scalar3d_layout_int, Q, grid->name()); // in/out??
+//
+//  m_required_fields.emplace("zm",  scalar3d_layout_int, Q, grid->name()); // in/out??
+//  m_computed_fields.emplace("zm",  scalar3d_layout_int, Q, grid->name()); // in/out??
+//  
+//  m_required_fields.emplace("geos",  scalar3d_layout_int, Q, grid->name()); // in/out??
+//  m_computed_fields.emplace("geos",  scalar3d_layout_int, Q, grid->name()); // in/out??
+//
+//  m_required_fields.emplace("zi",  scalar3d_layout_int, Q, grid->name()); // in/out??
+//  m_computed_fields.emplace("zi",  scalar3d_layout_int, Q, grid->name()); // in/out??
+//  
+//  m_required_fields.emplace("qtnd",  scalar3d_layout_int, Q, grid->name()); // in/out??
+//  m_computed_fields.emplace("qtnd",  scalar3d_layout_int, Q, grid->name()); // in/out??
+//
+//  m_required_fields.emplace("heat",  scalar3d_layout_int, Q, grid->name()); // in/out??
+//  m_computed_fields.emplace("heat",  scalar3d_layout_int, Q, grid->name()); // in/out??
+//
+//  m_required_fields.emplace("pap",  scalar3d_layout_int, Q, grid->name()); // in/out??
+//  m_computed_fields.emplace("pap",  scalar3d_layout_int, Q, grid->name()); // in/out??
+//  
+//  m_required_fields.emplace("paph",  scalar3d_layout_int, Q, grid->name()); // in/out??
+//  m_computed_fields.emplace("paph",  scalar3d_layout_int, Q, grid->name()); // in/out??
+//
 }
 
 // =========================================================================================
@@ -154,7 +178,8 @@ void ZMMacrophysics::run (const Real dt)
   }
 
    
-  zm_main_f90(lchnk, ncol, m_raw_ptrs_out["t"], qh, prec, jctop, jcbot, 
+  zm_main_f90(lchnk, ncol, m_raw_ptrs_out["t"], m_raw_ptrs_out["qh"], m_raw_ptrs_out["prec"],
+              m_raw_ptrs_out["jctop"], m_raw_ptrs_out["jcbot"], 
                 pblh, zm, geos, zi, qtnd, heat, pap, paph, dpp, delt,
 		mcon, cme, cape, tpert, dlf, plfx,
 		zdu, rprd, mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep,
@@ -163,8 +188,9 @@ void ZMMacrophysics::run (const Real dt)
 		snow, ntprprd, ntsnprd, flxprec, flxsnow,
 		ztodt, pguall, pgdall, icwu, ncnst, fracis); 
   m_current_ts += dt;
-  m_zm_fields_out.at("t").get_header().get_tracking().update_time_stamp(m_current_ts);
-
+  for (int i = 0; i < zm_inputs.size(); i++){
+  	m_zm_fields_out.at(zm_inputs[i]).get_header().get_tracking().update_time_stamp(m_current_ts);
+  }
 }
 // =========================================================================================
 void ZMMacrophysics::finalize()
