@@ -43,7 +43,6 @@ contains
     integer, intent(in)                :: limcnv_in
     logical, intent(in), optional      :: no_deep_pbl_in    
     call zm_convi(limcnv_in, no_deep_pbl_in)
-    Print *, 'In zm_init_f90'
 
   end subroutine zm_init_f90
   !====================================================================!
@@ -149,7 +148,6 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
 !
    logical :: domomtran(ncnst)
    logical :: doconvtran(ncnst)
-   Print *, 'In zm_main_f90'
    fake_dpdry(:,:) = 0._r8
    il1g = 1
    
@@ -188,7 +186,6 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
   !====================================================================!
   subroutine zm_finalize_f90 () bind(c)
 
-    Print *, 'In zm_finalize_f90'
 
   end subroutine zm_finalize_f90
   !====================================================================!
