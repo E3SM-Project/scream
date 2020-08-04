@@ -4,6 +4,7 @@
 #include <array>
 #include <string>
 #include <iostream>
+#include <typeinfo>
 #include <unordered_map>
 
 namespace scream
@@ -11,19 +12,9 @@ namespace scream
 
 using namespace std;
 
+const int INPUT_SIZE = 1;
 
-std::vector<std::string> zm_inputs = {"t", "qh," "prec", "jctop", "jcbot", "pblh", "zm",
-				"geos", "zi", "qtnd", "heat", "pap", "paph", "dpp", "delt", 
-				"mcon", "cme", "cape", "tpert", "dlf", "pflx", "zdu", "rprd",
-				"mu", "md", "du", "eu", "ed", "dp", "dsubcld", "jt", "maxg",
-				"ideep", "lengath", "ql", "rliq", "landfrac", "hu_nm1",
-      				"cnv_nm1", "tm1", "qm1", "t_star", "q_star", "dcape", "q",
-				"tend_s", "tend_q", "cld", "snow", "ntprprd", "ntsnprd",
-				"flxprec", "flxsnow", "ztodt", "pguall", "pgdall", "icwu",
-				 "ncnst", "fracis"};
-
-//template<typename T>
-
+std::vector<std::string> zm_inputs = {"t"};
 
 struct FieldInput{
   string name;
@@ -43,115 +34,61 @@ void ZMInputsInitializer::add_field (const field_type &f)
   m_fields_id.insert(id);
 }
 
-//unordered_map<std::string, FieldInput map;
+unordered_map<std::string, FieldInput> map;
 
 void ZMInputsInitializer :: initialize_fields(){
-  std :: cout << "here i am!\n";
+
+
   int count = 0;
-  for (int i = 0 ; i < zm_inputs.size(); i++ ){
-    count += m_fields.count(zm_inputs[i]);
+  for (int j = 0; j < zm_inputs.size(); j++){
+    count += m_fields.count(zm_inputs[j]);
+  if (count==0){
+    return;
   }
-  std :: cout << "count is " + count;
-  vector<FieldInput> fields;
-    FieldInput t;
-//  FieldInput qh;
-//  FieldInput prec;
-//  FieldInput jctop;
-//  FieldInput jcbot;
-//  FieldInput pblh;
-    fields.push_back(t);
-//  fields.push_back(qh);
-//  fields.push_back(prec);
-//  fields.push_back(jctop);
-//  fields.push_back(jcbot);
-//  fields.push_back(pblh);
-  for (int i = 0; i < fields.size(); i++){
+ } 
+  scream_require_msg (count==INPUT_SIZE,
+    "Error! ZMInputsInitializer is expected to init _______________.\n"
+    "Only " + std::to_string(count) + " of those have been found.\n"
+    "Please, check the atmosphere processes you are using,"
+    "and make sure they agree on who's initializing each field.\n");
+
+
+
+  for (int i = 0; i < zm_inputs.size(); i++){
+    FieldInput field;
+    field.name = zm_inputs[i];
     //Get and store device view using input name
-    Kokkos::View<Real*, Kokkos::LayoutRight, HostDevice> d_v = m_fields.at(fields[i].name).get_view();
-    fields[i].device_view = d_v;
+    Kokkos::View<Real*, Kokkos::LayoutRight, HostDevice> d_v = m_fields.at(field.name).get_view();
+
     //Create and store host mirrors using device views
-    Kokkos::View<scream::Real*, Kokkos::LayoutRight, HostDevice> m = Kokkos::create_mirror_view(d_v);
-    fields[i].mirror = m;
+    Kokkos::View<scream::Real*, Kokkos::LayoutRight, HostDevice> h_m = Kokkos::create_mirror_view(d_v);
+
     //Create and store host mirrors raw pointers
-    Real* r_p = fields[i].mirror.data();
-    fields[i].raw_ptr = r_p;
-    //Kokkos::deep_copy(d_v, r_p);
+    Real* r_p = field.mirror.data();
+    Kokkos::deep_copy(d_v, h_m);
+    map[zm_inputs[i]] = field;
+  }
 }
 
 
-}
-
-vector<FieldInput> create_fields(){
-  vector<FieldInput> fields;
-  FieldInput t;
-  FieldInput qh;
-  FieldInput prec;
-  FieldInput jctop;
-  FieldInput jcbot;
-  FieldInput pblh;
-  fields.push_back(t);
-  fields.push_back(qh);
-  fields.push_back(prec);
-  fields.push_back(jctop);
-  fields.push_back(jcbot);
-  fields.push_back(pblh);
-  return fields;
-}
-
-//void do_everything(){
-//  vector<FieldInput> fields = create_fields();
-//  for (int i = 0; i < fields.size(); i++){
-//    auto d_v = m_fields.at(fields[i].name).get_view();
-//    auto p = fields[i].
-//    auto m = Kokkos::create_mirror_view(fields[i].device_view);
-//    fields[i].name = zm_inputs[i];
-//    fields[i].device_view = d_v;
-//    fields[i].mirror = m;
-//    fields[i].raw_ptr = i;
-//    Kokkos::deep_copy(fields[i].device_view, fields[i].raw_ptr);
-//  return fields; 
-//}
-//
-//void assignNames(vector<FieldInput> fields){
-//  for (int i = 0; i < fields.size(); i++){
-//    fields[i].name = zm_inputs[i];
-//  }
-//}
-//
-//void get_device_views(vector<FieldInput> fields){
-//  for (int i = 0; i < fields.size(); i++){
-//    auto d_v = m_fields.at(fields[i].name.get_view());
-//    fields[i].device_view = d_v;
-//  }
-//}
-//
-//void make_mirror(vector<FieldInput> fields){
-//  for (int i = 0; i < fields.size(); i++){
-//    auto m = Kokkos::create_mirror_view(fields[i].device_view);
-//    fields[i].mirror = m;
-//  }
-//}
-//
-//// Get host mirros' raw pointers
-//void get_ptrs(vector<FieldInput> fields){
-//  for (int i = 0; i < fields.size(); i++){
-//    auto p = fields[i].
-//    fields[i].raw_ptr = i;
-//  }
-//}
-//
-//// Deep copy back to device
-//Kokkos::deep_copy(d_q,h_q);
-//void copy_to_device(vector<FieldInput> fields){
-//  for (int i = 0; i < fields.size(); i++){
-//    Kokkos::deep_copy(fields[i].device_view, fields[i].raw_ptr);
-//  }
-//}
-//
+//std::vector<std::string> zm_inputs = {"t", "qh," "prec", "jctop", "jcbot", "pblh", "zm",
+//				"geos", "zi", "qtnd", "heat", "pap", "paph", "dpp", "delt", 
+//				"mcon", "cme", "cape", "tpert", "dlf", "pflx", "zdu", "rprd",
+//				"mu", "md", "du", "eu", "ed", "dp", "dsubcld", "jt", "maxg",
+//				"ideep", "lengath", "ql", "rliq", "landfrac", "hu_nm1",
+//      				"cnv_nm1", "tm1", "qm1", "t_star", "q_star", "dcape", "q",
+//				"tend_s", "tend_q", "cld", "snow", "ntprprd", "ntsnprd",
+//				"flxprec", "flxsnow", "ztodt", "pguall", "pgdall", "icwu",
+//				 "ncnst", "fracis"};
 
 
 
-//Make structs and put them in an array
+
+
+
+
+
+
 
 // =========================================================================================
 //void ZMInputsInitializer::initialize_fields ()
@@ -237,5 +174,24 @@ vector<FieldInput> create_fields(){
 //    Kokkos::deep_copy(d_FQ,Real(0));
 //  }
 //}
+//  for (int i = 0; i < zm_inputs.size(); i++){
+//    FieldInput field;
+//    field.name = zm_inputs[i];
+//    //Get and store device view using input name
+//    Kokkos::View<Real*, Kokkos::LayoutRight, HostDevice> d_v = m_fields.at(field.name).get_view();
+// //   field.device_view = d_v;
+//
+//    //Create and store host mirrors using device views
+//    Kokkos::View<scream::Real*, Kokkos::LayoutRight, HostDevice> h_m = Kokkos::create_mirror_view(d_v);
+// //   field.mirror = h_m;
+//
+//    //Create and store host mirrors raw pointers
+//    Real* r_p = field.mirror.data();
+// //   field.raw_ptr = r_p;
+//    Kokkos::deep_copy(d_v, h_m);
+//    map[zm_inputs[i]] = field;
+//  }
+//}
+
 
 } // namespace scream
