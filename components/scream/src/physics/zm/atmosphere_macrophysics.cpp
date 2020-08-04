@@ -123,18 +123,20 @@ void ZMMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
 // =========================================================================================
 void ZMMacrophysics::initialize (const util::TimeStamp& t0)
 {
+  m_current_ts = t0;
   
   zm_init_f90 (limcnv_in, no_deep_pbl_in);
-//  using strvec = std::vector<std::string>;
-//  const strvec& initable = zm_inputs;
-//  for (const auto& name : initable) {
-//    const auto& f = m_zm_fields_in.at(name);
-//    const auto& track = f.get_header().get_tracking();
-//    if (track.get_init_type()==InitType::None) {
-//      // Nobody claimed to init this field. P3InputsInitializer will take care of it
-//      m_initializer->add_me_as_initializer(f);
-//    }
-//   }
+  
+  using strvec = std::vector<std::string>;
+  const strvec& initable = zm_inputs;
+  for (const auto& name : initable) {
+    const auto& f = m_zm_fields_in.at(name);
+    const auto& track = f.get_header().get_tracking();
+    if (track.get_init_type()==InitType::None) {
+      // Nobody claimed to init this field. P3InputsInitializer will take care of it
+      m_initializer->add_me_as_initializer(f);
+    }
+   }
 }
 
 // =========================================================================================
@@ -152,7 +154,7 @@ void ZMMacrophysics::run (const Real dt)
   }
 
    
-   zm_main_f90(lchnk, ncol, m_raw_ptrs_out["t"], qh, prec, jctop, jcbot, 
+  zm_main_f90(lchnk, ncol, m_raw_ptrs_out["t"], qh, prec, jctop, jcbot, 
                 pblh, zm, geos, zi, qtnd, heat, pap, paph, dpp, delt,
 		mcon, cme, cape, tpert, dlf, plfx,
 		zdu, rprd, mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep,
@@ -160,6 +162,9 @@ void ZMMacrophysics::run (const Real dt)
 		tm1, qm1, t_star, q_star, dcape, q, tend_s, tend_q, cld,
 		snow, ntprprd, ntsnprd, flxprec, flxsnow,
 		ztodt, pguall, pgdall, icwu, ncnst, fracis); 
+  m_current_ts += dt;
+  m_zm_fields_out.at("t").get_header().get_tracking().update_time_stamp(m_current_ts);
+
 }
 // =========================================================================================
 void ZMMacrophysics::finalize()
