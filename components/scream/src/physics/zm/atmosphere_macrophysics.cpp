@@ -8,31 +8,8 @@ namespace scream
 {
 const Int& lchnk = 0;
 const Int& ncol = 0;
-Real* t;
-Real* qh;
-Real* prec;
-Real* jctop; 
-Real* jcbot; 
-Real* pblh;
-Real *zm; 
-Real* geos; 
-Real* zi;
-			
-Real* qtnd; 
-Real* heat; 
-Real* pap; 
-Real* paph; 
-Real* dpp; 
 const Real &delt = 0;
 
-Real* mcon;
-Real* cme;
-Real* cape;
-Real* tpert;
-Real* dlf;
-Real* plfx;
-Real* zdu;
-Real* rprd; 
 Real* mu;
 Real* md; 
 Real* du;
@@ -118,30 +95,58 @@ void ZMMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
   m_required_fields.emplace("jcbot",  scalar3d_layout_int, Q, grid->name()); // in/out??
   m_computed_fields.emplace("jcbot",  scalar3d_layout_int, Q, grid->name()); // in/out??
   
-//  m_required_fields.emplace("pblh",  scalar3d_layout_int, Q, grid->name()); // in/out??
-//  m_computed_fields.emplace("pblh",  scalar3d_layout_int, Q, grid->name()); // in/out??
-//
-//  m_required_fields.emplace("zm",  scalar3d_layout_int, Q, grid->name()); // in/out??
-//  m_computed_fields.emplace("zm",  scalar3d_layout_int, Q, grid->name()); // in/out??
-//  
-//  m_required_fields.emplace("geos",  scalar3d_layout_int, Q, grid->name()); // in/out??
-//  m_computed_fields.emplace("geos",  scalar3d_layout_int, Q, grid->name()); // in/out??
-//
-//  m_required_fields.emplace("zi",  scalar3d_layout_int, Q, grid->name()); // in/out??
-//  m_computed_fields.emplace("zi",  scalar3d_layout_int, Q, grid->name()); // in/out??
-//  
-//  m_required_fields.emplace("qtnd",  scalar3d_layout_int, Q, grid->name()); // in/out??
-//  m_computed_fields.emplace("qtnd",  scalar3d_layout_int, Q, grid->name()); // in/out??
-//
-//  m_required_fields.emplace("heat",  scalar3d_layout_int, Q, grid->name()); // in/out??
-//  m_computed_fields.emplace("heat",  scalar3d_layout_int, Q, grid->name()); // in/out??
-//
-//  m_required_fields.emplace("pap",  scalar3d_layout_int, Q, grid->name()); // in/out??
-//  m_computed_fields.emplace("pap",  scalar3d_layout_int, Q, grid->name()); // in/out??
-//  
-//  m_required_fields.emplace("paph",  scalar3d_layout_int, Q, grid->name()); // in/out??
-//  m_computed_fields.emplace("paph",  scalar3d_layout_int, Q, grid->name()); // in/out??
-//
+  m_required_fields.emplace("pblh",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("pblh",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("zm",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("zm",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("geos",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("geos",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("zi",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("zi",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("qtnd",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("qtnd",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("heat",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("heat",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("pap",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("pap",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("paph",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("paph",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("dpp",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("dpp",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("mcon",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("mcon",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("cme",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("cme",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("cape",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("cape",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("tpert",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("tpert",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("dlf",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("dlf",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("pflx",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("pflx",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("zdu",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("zdu",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("rprd",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("rprd",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  
 }
 
 // =========================================================================================
@@ -179,10 +184,13 @@ void ZMMacrophysics::run (const Real dt)
 
    
   zm_main_f90(lchnk, ncol, m_raw_ptrs_out["t"], m_raw_ptrs_out["qh"], m_raw_ptrs_out["prec"],
-              m_raw_ptrs_out["jctop"], m_raw_ptrs_out["jcbot"], 
-                pblh, zm, geos, zi, qtnd, heat, pap, paph, dpp, delt,
-		mcon, cme, cape, tpert, dlf, plfx,
-		zdu, rprd, mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep,
+              m_raw_ptrs_out["jctop"], m_raw_ptrs_out["jcbot"], m_raw_ptrs_out["pblh"], 
+              m_raw_ptrs_out["zm"], m_raw_ptrs_out["geos"], m_raw_ptrs_out["zi"], 
+	      m_raw_ptrs_out["qtnd"], m_raw_ptrs_out["heat"], m_raw_ptrs_out["pap"], 
+	      m_raw_ptrs_out["paph"], m_raw_ptrs_out["dpp"], delt, m_raw_ptrs_out["mcon"], 
+	      m_raw_ptrs_out["cme"], m_raw_ptrs_out["cape"], m_raw_ptrs_out["tpert"], 
+              m_raw_ptrs_out["dlf"], m_raw_ptrs_out["plfx"], m_raw_ptrs_out["zdu"], 
+	      m_raw_ptrs_out["rprd"], mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep,
 		lengath, ql, rliq, landfrac, hu_nm1, cnv_nm1,
 		tm1, qm1, t_star, q_star, dcape, q, tend_s, tend_q, cld,
 		snow, ntprprd, ntsnprd, flxprec, flxsnow,
@@ -237,4 +245,8 @@ void ZMMacrophysics::set_computed_field_impl (const Field<      Real, device_typ
   // Add myself as provider for the field
   add_me_as_provider(f);
   }
+
+
+
+
 } // namespace scream

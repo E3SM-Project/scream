@@ -12,11 +12,11 @@ namespace scream
 
 using namespace std;
 
-const int INPUT_SIZE = 5;
+const int INPUT_SIZE = 22;
 
-std::vector<std::string> zm_inputs = {"t", "qh", "prec", "jctop", "jcbot"};//, "pblh", "zm",
-//				"geos", "zi", "qtnd", "heat", "pap", "paph", "dpp", "delt"} 
-//				"mcon", "cme", "cape", "tpert", "dlf", "pflx", "zdu", "rprd",
+std::vector<std::string> zm_inputs = {"t", "qh", "prec", "jctop", "jcbot", "pblh", "zm",
+				"geos", "zi", "qtnd", "heat", "pap", "paph", "dpp",// ,"delt"
+				"mcon", "cme", "cape", "tpert", "dlf", "pflx", "zdu", "rprd"};
 //				"mu", "md", "du", "eu", "ed", "dp", "dsubcld", "jt", "maxg",
 //				"ideep", "lengath", "ql", "rliq", "landfrac", "hu_nm1",
 //      				"cnv_nm1", "tm1", "qm1", "t_star", "q_star", "dcape", "q",
