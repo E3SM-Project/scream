@@ -10,40 +10,16 @@ const Int& lchnk = 0;
 const Int& ncol = 0;
 const Real &delt = 0;
 
-Real* mu;
-Real* md; 
-Real* du;
-Real* eu; 
-Real* ed;
-Real* dp; 
-Real* dsubcld; 
-Real* jt; 
-Real* maxg; 
-Real* ideep;
 const Real& lengath = 0; 
-Real* ql; 
-Real* rliq; 
-Real* landfrac; 
-Real* hu_nm1;
-Real* cnv_nm1; 
-Real* tm1; 
-Real* qm1; 
 Real** t_star; 
 Real** q_star;
-Real *dcape; 
-Real* q; 
 Real** tend_s; 
 Real** tend_q; 
+
 Real** cld; 
-Real* snow; 
-Real* ntprprd; 
-Real* ntsnprd; 
 Real** flxprec; 
 Real** flxsnow;
 const Real& ztodt = 0; 
-Real* pguall; 
-Real* pgdall; 
-Real* icwu; 
 const Real& ncnst = 0; 
 const Real& limcnv_in = 0;
 const bool& no_deep_pbl_in = true;
@@ -146,6 +122,84 @@ void ZMMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
   m_required_fields.emplace("rprd",  scalar3d_layout_int, Q, grid->name()); // in/out??
   m_computed_fields.emplace("rprd",  scalar3d_layout_int, Q, grid->name()); // in/out??
   
+  m_required_fields.emplace("mu",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("mu",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("md",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("md",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("du",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("du",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("eu",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("eu",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("ed",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("ed",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("dp",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("dp",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("dsubcld",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("dsubcld",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("jt",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("jt",  scalar3d_layout_int, Q, grid->name()); // in/out??
+ 
+  m_required_fields.emplace("maxg",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("maxg",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("ideep",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("ideep",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  m_required_fields.emplace("ql",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("ql",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("rliq",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("rliq",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("landfrac",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("landfrac",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("hu_nm1",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("hu_nm1",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("cnv_nm1",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("cnv_nm1",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("tm1",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("tm1",  scalar3d_layout_int, Q, grid->name()); // in/out??
+   
+  m_required_fields.emplace("qm1",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("qm1",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("dcape",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("dcape",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("q",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("q",  scalar3d_layout_int, Q, grid->name()); // in/out??
+ 
+  
+  m_required_fields.emplace("snow",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("snow",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("ntprprd",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("ntprprd",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("ntsnprd",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("ntsnprd",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
+  m_required_fields.emplace("pguall",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("pguall",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  
+  m_required_fields.emplace("pgdall",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("pgdall",  scalar3d_layout_int, Q, grid->name()); // in/out??
+
+  
+  m_required_fields.emplace("icwu",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  m_computed_fields.emplace("icwu",  scalar3d_layout_int, Q, grid->name()); // in/out??
+  
   
 }
 
@@ -190,11 +244,16 @@ void ZMMacrophysics::run (const Real dt)
 	      m_raw_ptrs_out["paph"], m_raw_ptrs_out["dpp"], delt, m_raw_ptrs_out["mcon"], 
 	      m_raw_ptrs_out["cme"], m_raw_ptrs_out["cape"], m_raw_ptrs_out["tpert"], 
               m_raw_ptrs_out["dlf"], m_raw_ptrs_out["plfx"], m_raw_ptrs_out["zdu"], 
-	      m_raw_ptrs_out["rprd"], mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep,
-		lengath, ql, rliq, landfrac, hu_nm1, cnv_nm1,
-		tm1, qm1, t_star, q_star, dcape, q, tend_s, tend_q, cld,
-		snow, ntprprd, ntsnprd, flxprec, flxsnow,
-		ztodt, pguall, pgdall, icwu, ncnst, fracis); 
+	      m_raw_ptrs_out["rprd"], m_raw_ptrs_out["mu"], m_raw_ptrs_out["md"], 
+              m_raw_ptrs_out["du"], m_raw_ptrs_out["eu"], m_raw_ptrs_out["ed"], 
+	      m_raw_ptrs_out["dp"], m_raw_ptrs_out["dsubcld"], m_raw_ptrs_out["jt"], 
+	      m_raw_ptrs_out["maxg"], m_raw_ptrs_out["ideep"], lengath, m_raw_ptrs_out["ql"],
+              m_raw_ptrs_out["rliq"], m_raw_ptrs_out["landfrac"], m_raw_ptrs_out["hu_nm1"], 
+              m_raw_ptrs_out["cnv_nm1"], m_raw_ptrs_out["tm1"], m_raw_ptrs_out["qm1"], 
+              t_star, q_star, m_raw_ptrs_out["dcape"], m_raw_ptrs_out["q"], 
+              tend_s, tend_q, cld, m_raw_ptrs_out["snow"], m_raw_ptrs_out["ntprprd"], 
+              m_raw_ptrs_out["ntsnprd"], flxprec, flxsnow, ztodt, m_raw_ptrs_out["pguall"], 
+	      m_raw_ptrs_out["pgdall"], m_raw_ptrs_out["icwu"], ncnst, fracis); 
   m_current_ts += dt;
   for (int i = 0; i < zm_inputs.size(); i++){
   	m_zm_fields_out.at(zm_inputs[i]).get_header().get_tracking().update_time_stamp(m_current_ts);
