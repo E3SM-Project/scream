@@ -1,5 +1,5 @@
-#ifndef SCREAM_ZM_MACROPHYSICS_HPP
-#define SCREAM_ZM_MACROPHYSICS_HPP
+#ifndef SCREAM_ZM_DEEPCONVECTION_HPP
+#define SCREAM_ZM_DEEPCONVECTION_HPP
 
 #include "share/atm_process/atmosphere_process.hpp"
 #include "ekat/scream_parameter_list.hpp"
@@ -15,23 +15,22 @@ namespace scream
  * The AD should store exactly ONE instance of this class stored
  * in its list of subcomponents (the AD should make sure of this).
  *
- *  Note: for now, scream is only going to accommodate ZM as macrophysics
 */
 
-class ZMMacrophysics : public AtmosphereProcess
+class ZMDeepConvection : public AtmosphereProcess
 {
 public:
   using field_type       = Field<      Real,device_type>;
   using const_field_type = Field<const Real,device_type>;
 
   // Constructors
-  ZMMacrophysics (const Comm& comm, const ParameterList& params);
+  ZMDeepConvection (const Comm& comm, const ParameterList& params);
 
   // The type of subcomponent
   AtmosphereProcessType type () const { return AtmosphereProcessType::Physics; }
 
   // The name of the subcomponent
-  std::string name () const { return "Macrophysics"; }
+  std::string name () const { return "DeepConvection"; }
 
   // The communicator used by subcomponent
   const Comm& get_comm () const { return m_zm_comm; }
@@ -87,8 +86,8 @@ protected:
  
 
 
-}; // class ZMMacrophysics
+}; // class ZMDeepConvection
 
 } // namespace scream
 
-#endif // SCREAM_ZM_MACROPHYSICS_HPP
+#endif // SCREAM_ZM_DEEPCONVECTION_HPP

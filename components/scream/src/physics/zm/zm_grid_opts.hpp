@@ -13,7 +13,7 @@ using namespace std;
 struct GridOpts{
   string name;
   bool isOut;
-//auto unit
+//  Scream::Units unit;
 //FieldLayout field
 };
 
@@ -29,7 +29,7 @@ void set_grid_opts_helper(GridOpts O, string n, bool out //auto unit, FieldLayou
 void set_grid_opts(){
   	
   GridOpts t;
-  set_grid_opts_helper(t, "t", true);
+  set_grid_opts_helper(t, "t", true); //temperature(K)
 
   GridOpts qh;
   set_grid_opts_helper(qh, "qh", true);

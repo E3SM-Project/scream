@@ -10,14 +10,14 @@ set(ZM_SRCS
   ${SCREAM_BASE_DIR}/../cam/src/physics/cam/physics_utils.F90
   ${SCREAM_BASE_DIR}/../cam/src/physics/cam/scream_abortutils.F90
   zm_conv.F90
-  atmosphere_macrophysics.cpp
+  atmosphere_deepconvection.cpp
   scream_zm_interface.F90
   zm_inputs_initializer.cpp
 )
 
 set(ZM_HEADERS
   zm.hpp
-  atmosphere_macrophysics.hpp
+  atmosphere_deepconvection.hpp
   scream_zm_interface.hpp
   zm_grid_opts.hpp
 )
