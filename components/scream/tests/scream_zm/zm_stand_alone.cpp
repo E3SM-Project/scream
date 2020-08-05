@@ -6,7 +6,7 @@
 #include "share/grid/se_grid.hpp"
 #include "control/atmosphere_driver.hpp"
 
-#include "physics/zm/atmosphere_macrophysics.hpp"
+#include "physics/zm/atmosphere_deepconvection.hpp"
 #include "physics/zm/scream_zm_interface.hpp"
 
 #include <iostream>
@@ -43,7 +43,7 @@ TEST_CASE("zm-standalone", "") {
   // which rely on factory for process creation. The initialize method of the AD does that.
   // While we're at it, check that the case insensitive key of the factory works.
   auto& proc_factory = AtmosphereProcessFactory::instance();
-  proc_factory.register_product("ZM",&create_atmosphere_process<ZMMacrophysics>);
+  proc_factory.register_product("ZM",&create_atmosphere_process<ZMDeepConvection>);
 
   // Need to register grids managers before we create the driver
   auto& gm_factory = GridsManagerFactory::instance();

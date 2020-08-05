@@ -1,6 +1,6 @@
 #include "ekat/scream_assert.hpp"
 #include "physics/zm/scream_zm_interface.hpp"
-#include "physics/zm/atmosphere_macrophysics.hpp"
+#include "physics/zm/atmosphere_deepconvection.hpp"
 #include "physics/zm/zm_inputs_initializer.cpp"
 #include "physics/zm/zm_grid_opts.hpp"
 #include <iostream>
@@ -33,7 +33,7 @@ const bool& no_deep_pbl_in = true;
 Real*** fracis;
 
 
-ZMMacrophysics::ZMMacrophysics (const Comm& comm,const ParameterList& /* params */)
+ZMDeepConvection::ZMDeepConvection (const Comm& comm,const ParameterList& /* params */)
   : m_zm_comm (comm)
 {
   m_initializer = create_field_initializer<ZMInputsInitializer>();
@@ -41,7 +41,7 @@ ZMMacrophysics::ZMMacrophysics (const Comm& comm,const ParameterList& /* params 
 }
 
 
-void ZMMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
+void ZMDeepConvection::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
 {
   using namespace std;
 
@@ -50,7 +50,10 @@ void ZMMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
   auto Q = kg/kg;
   auto nondim = m/m;
   Q.set_string("kg/kg");
-  
+
+  std :: cout << "type is " << typeid(Q).name() << std :: endl; 
+
+ 
   constexpr int NVL = 72;  /* TODO THIS NEEDS TO BE CHANGED TO A CONFIGURABLE */
   constexpr int QSZ =  35;  /* TODO THIS NEEDS TO BE CHANGED TO A CONFIGURABLE */
   auto grid = grids_manager->get_grid("Physics");
@@ -78,7 +81,7 @@ void ZMMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
 }
 
 // =========================================================================================
-void ZMMacrophysics::initialize (const util::TimeStamp& t0)
+void ZMDeepConvection::initialize (const util::TimeStamp& t0)
 {
   m_current_ts = t0;
   
@@ -97,7 +100,7 @@ void ZMMacrophysics::initialize (const util::TimeStamp& t0)
 }
 
 // =========================================================================================
-void ZMMacrophysics::run (const Real dt)
+void ZMDeepConvection::run (const Real dt)
 {
   std::vector<const Real*> in;
   std::vector<Real*> out;
@@ -135,12 +138,12 @@ void ZMMacrophysics::run (const Real dt)
   }
 }
 // =========================================================================================
-void ZMMacrophysics::finalize()
+void ZMDeepConvection::finalize()
 {
   zm_finalize_f90 ();
 }
 // =========================================================================================
-void ZMMacrophysics::register_fields (FieldRepository<Real, device_type>& field_repo) const {
+void ZMDeepConvection::register_fields (FieldRepository<Real, device_type>& field_repo) const {
      for (auto& fid : m_required_fields) {
      field_repo.register_field(fid);
    }
@@ -149,7 +152,7 @@ void ZMMacrophysics::register_fields (FieldRepository<Real, device_type>& field_
    }
  }
 
-void ZMMacrophysics::set_required_field_impl (const Field<const Real, device_type>& f) {
+void ZMDeepConvection::set_required_field_impl (const Field<const Real, device_type>& f) {
   // @Meredith: Diff between add_me_as_a_customer and get_tracking().add_customer? 
   
   // Store a copy of the field. We need this in order to do some tracking checks
@@ -166,7 +169,7 @@ void ZMMacrophysics::set_required_field_impl (const Field<const Real, device_typ
 
 }
 
-void ZMMacrophysics::set_computed_field_impl (const Field<      Real, device_type>& f) {
+void ZMDeepConvection::set_computed_field_impl (const Field<      Real, device_type>& f) {
   // Store a copy of the field. We need this in order to do some tracking updates
   // at the end of the run call. Other than that, there would be really
   // no need to store a scream field here; we could simply set the view ptr
