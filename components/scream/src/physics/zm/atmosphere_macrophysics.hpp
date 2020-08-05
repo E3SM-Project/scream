@@ -84,6 +84,14 @@ protected:
   std::shared_ptr<FieldInitializer>  m_initializer;
 
   ParameterList     m_zm_params;
+ 
+
+  struct GridOpts{
+    std::string name;
+    Real unit;
+    bool isOut;
+  };
+
 
 }; // class ZMMacrophysics
 
