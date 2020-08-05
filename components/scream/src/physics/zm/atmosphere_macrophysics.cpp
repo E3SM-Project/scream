@@ -38,6 +38,8 @@ ZMMacrophysics::ZMMacrophysics (const Comm& comm,const ParameterList& /* params 
   m_initializer = create_field_initializer<ZMInputsInitializer>();
   
 }
+
+
 void ZMMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
 {
   using namespace std;
@@ -64,6 +66,7 @@ void ZMMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
   
   unordered_map<string, GridOpts> map;
 
+  	
   GridOpts t;
   t.name = "t";
   t.isOut = true;  
@@ -74,158 +77,242 @@ void ZMMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
   qh.isOut = true;  
   map.insert({qh.name, qh});
 
+  GridOpts prec;
+  prec.name = "prec";
+  prec.isOut = true;  
+  map.insert({prec.name, prec});
+
+  GridOpts jctop;
+  jctop.name = "jctop";
+  jctop.isOut = true;  
+  map.insert({jctop.name, jctop});
+
+  GridOpts jcbot;
+  jcbot.name = "jcbot";
+  jcbot.isOut = true;  
+  map.insert({jcbot.name, jcbot});
+
+  GridOpts pblh;
+  pblh.name = "pblh";
+  pblh.isOut = true;  
+  map.insert({pblh.name, pblh});
+
+  GridOpts zm;
+  zm.name = "zm";
+  zm.isOut = true;  
+  map.insert({zm.name, zm});
+
+  GridOpts geos;
+  geos.name = "geos";
+  geos.isOut = true;  
+  map.insert({geos.name, geos});
+
+  GridOpts zi;
+  zi.name = "zi";
+  zi.isOut = true;  
+  map.insert({zi.name, zi});
+
+  GridOpts qtnd;
+  qtnd.name = "qtnd";
+  qtnd.isOut = true;  
+  map.insert({qtnd.name, qtnd});
+
+  GridOpts heat;
+  heat.name = "heat";
+  heat.isOut = true;  
+  map.insert({heat.name, heat});
+
+  GridOpts pap;
+  pap.name = "pap";
+  pap.isOut = true;  
+  map.insert({pap.name, pap});
+
+  GridOpts paph;
+  paph.name = "paph";
+  paph.isOut = true;  
+  map.insert({paph.name, paph});
+
+  GridOpts dpp;
+  dpp.name = "dpp";
+  dpp.isOut = true;  
+  map.insert({dpp.name, dpp});
+
+  GridOpts mcon;
+  mcon.name = "mcon";
+  mcon.isOut = true;  
+  map.insert({mcon.name, mcon});
+
+  GridOpts cme;
+  cme.name = "cme";
+  cme.isOut = true;  
+  map.insert({cme.name, cme});
+
+  GridOpts cape;
+  cape.name = "cape";
+  cape.isOut = true;  
+  map.insert({cape.name, cape});
+
+  GridOpts tpert;
+  tpert.name = "tpert";
+  tpert.isOut = true;  
+  map.insert({tpert.name, tpert});
+
+  GridOpts dlf;
+  dlf.name = "dlf";
+  dlf.isOut = true;  
+  map.insert({dlf.name, dlf});
+
+  GridOpts pflx;
+  pflx.name = "pflx";
+  pflx.isOut = true;  
+  map.insert({pflx.name, pflx});
+
+  GridOpts zdu;
+  zdu.name = "zdu";
+  zdu.isOut = true;  
+  map.insert({zdu.name, zdu});
+
+  GridOpts rprd;
+  rprd.name = "rprd";
+  rprd.isOut = true;  
+  map.insert({rprd.name, rprd});
+  
+  GridOpts mu;
+  mu.name = "mu";
+  mu.isOut = true;  
+  map.insert({mu.name, mu});
+  
+  GridOpts md;
+  md.name = "md";
+  md.isOut = true;  
+  map.insert({md.name, md});
+ // 
+  GridOpts du;
+  du.name = "du";
+  du.isOut = true;  
+  map.insert({du.name, du});
+  
+  GridOpts eu;
+  eu.name = "eu";
+  eu.isOut = true;  
+  map.insert({eu.name, eu});
+  
+  
+  GridOpts ed;
+  ed.name = "ed";
+  ed.isOut = true;  
+  map.insert({ed.name, ed});
+  
+  GridOpts dp;
+  dp.name = "dp";
+  dp.isOut = true;  
+  map.insert({dp.name, dp});
+  
+  GridOpts dsubcld;
+  dsubcld.name = "dsubcld";
+  dsubcld.isOut = true;  
+  map.insert({dsubcld.name, dsubcld});
+  
+  GridOpts jt;
+  jt.name = "jt";
+  jt.isOut = true;  
+  map.insert({jt.name, jt});
+  
+  GridOpts maxg;
+  maxg.name = "maxg";
+  maxg.isOut = true;  
+  map.insert({maxg.name, maxg});
+  
+  GridOpts ideep;
+  ideep.name = "ideep";
+  ideep.isOut = true;  
+  map.insert({ideep.name, ideep});
+  
+  GridOpts ql;
+  ql.name = "ql";
+  ql.isOut = true;  
+  map.insert({ql.name, ql});
+  
+  GridOpts rliq;
+  rliq.name = "rliq";
+  rliq.isOut = true;  
+  map.insert({rliq.name, rliq});
+  
+  GridOpts landfrac;
+  landfrac.name = "landfrac";
+  landfrac.isOut = true;  
+  map.insert({landfrac.name, landfrac});
+  
+  GridOpts hu_nm1;
+  hu_nm1.name = "hu_nm1";
+  hu_nm1.isOut = true;  
+  map.insert({hu_nm1.name, hu_nm1});
+  
+  GridOpts cnv_nm1;
+  cnv_nm1.name = "cnv_nm1";
+  cnv_nm1.isOut = true;  
+  map.insert({cnv_nm1.name, cnv_nm1});
+  
+  GridOpts tm1;
+  tm1.name = "tm1";
+  tm1.isOut = true;  
+  map.insert({tm1.name, tm1});
+  
+  GridOpts qm1;
+  qm1.name = "qm1";
+  qm1.isOut = true;  
+  map.insert({qm1.name, qm1});
+  
+  GridOpts dcape;
+  dcape.name = "dcape";
+  dcape.isOut = true;  
+  map.insert({dcape.name, dcape});
+  
+  GridOpts q;
+  q.name = "q";
+  q.isOut = true;  
+  map.insert({q.name, q});
+  
+  GridOpts snow;
+  snow.name = "snow";
+  snow.isOut = true;  
+  map.insert({snow.name, snow});
+  
+  GridOpts ntprprd;
+  ntprprd.name = "ntprprd";
+  ntprprd.isOut = true;  
+  map.insert({ntprprd.name, ntprprd});
+  
+  GridOpts ntsnprd;
+  ntsnprd.name = "ntsnprd";
+  ntsnprd.isOut = true;  
+  map.insert({ntsnprd.name, ntsnprd});
+  
+  GridOpts pguall;
+  pguall.name = "pguall";
+  pguall.isOut = true;  
+  map.insert({pguall.name, pguall});
+  
+  GridOpts pgdall;
+  pgdall.name = "pgdall";
+  pgdall.isOut = true;  
+  map.insert({pgdall.name, pgdall});
+  
+  GridOpts icwu;
+  icwu.name = "icwu";
+  icwu.isOut = true;  
+  map.insert({icwu.name, icwu});
+  
   for ( auto i = map.begin(); i != map.end(); ++i){
+    cout << "the name is " << (i->second).name << "\n";
     m_required_fields.emplace((i->second).name, scalar3d_layout_int, Q, grid->name());
     if ( (i->second).isOut == true ) {
+      cout << "the name is " << (i->second).name << "\n";
       m_computed_fields.emplace((i->second).name, scalar3d_layout_int, Q, grid->name());
     }
   }
-    
-
-  m_required_fields.emplace("t",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("t",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("qh",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("qh",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("prec",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("prec",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("jctop",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("jctop",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("jcbot",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("jcbot",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("pblh",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("pblh",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("zm",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("zm",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("geos",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("geos",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("zi",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("zi",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("qtnd",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("qtnd",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("heat",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("heat",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("pap",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("pap",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("paph",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("paph",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("dpp",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("dpp",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("mcon",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("mcon",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("cme",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("cme",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("cape",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("cape",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("tpert",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("tpert",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("dlf",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("dlf",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("pflx",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("pflx",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("zdu",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("zdu",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("rprd",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("rprd",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("mu",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("mu",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("md",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("md",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("du",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("du",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("eu",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("eu",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("ed",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("ed",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("dp",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("dp",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("dsubcld",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("dsubcld",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("jt",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("jt",  scalar3d_layout_int, Q, grid->name()); // in/out??
  
-  m_required_fields.emplace("maxg",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("maxg",  scalar3d_layout_int, Q, grid->name()); // in/out??
 
-  m_required_fields.emplace("ideep",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("ideep",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  m_required_fields.emplace("ql",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("ql",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("rliq",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("rliq",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("landfrac",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("landfrac",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("hu_nm1",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("hu_nm1",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("cnv_nm1",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("cnv_nm1",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("tm1",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("tm1",  scalar3d_layout_int, Q, grid->name()); // in/out??
-   
-  m_required_fields.emplace("qm1",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("qm1",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("dcape",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("dcape",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("q",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("q",  scalar3d_layout_int, Q, grid->name()); // in/out??
- 
-  
-  m_required_fields.emplace("snow",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("snow",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("ntprprd",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("ntprprd",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("ntsnprd",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("ntsnprd",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
-  m_required_fields.emplace("pguall",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("pguall",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  
-  m_required_fields.emplace("pgdall",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("pgdall",  scalar3d_layout_int, Q, grid->name()); // in/out??
-
-  
-  m_required_fields.emplace("icwu",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  m_computed_fields.emplace("icwu",  scalar3d_layout_int, Q, grid->name()); // in/out??
-  
   
 }
 
