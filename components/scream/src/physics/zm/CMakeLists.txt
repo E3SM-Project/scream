@@ -13,6 +13,7 @@ set(ZM_SRCS
   atmosphere_macrophysics.cpp
   scream_zm_interface.F90
   zm_inputs_initializer.cpp
+  #zm_field_dict.cpp
 )
 
 set(ZM_HEADERS

@@ -3,9 +3,14 @@
 #include "physics/zm/atmosphere_macrophysics.hpp"
 #include "physics/zm/zm_inputs_initializer.cpp"
 #include <iostream>
+#include <unordered_map>
+#include <typeinfo>
+
 namespace scream
 
 {
+
+
 const Int& lchnk = 0;
 const Int& ncol = 0;
 const Real &delt = 0;
@@ -31,14 +36,16 @@ ZMMacrophysics::ZMMacrophysics (const Comm& comm,const ParameterList& /* params 
   : m_zm_comm (comm)
 {
   m_initializer = create_field_initializer<ZMInputsInitializer>();
-    
+  
 }
 void ZMMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
 {
+  using namespace std;
 
 
   using namespace units;
   auto Q = kg/kg;
+  auto nondim = m/m;
   Q.set_string("kg/kg");
   
   constexpr int NVL = 72;  /* TODO THIS NEEDS TO BE CHANGED TO A CONFIGURABLE */
@@ -49,12 +56,31 @@ void ZMMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
 
   using namespace ShortFieldTagsNames;
  
+
   FieldLayout scalar3d_layout_mid { {COL,VL}, {nc,NVL} }; // Note that C++ and Fortran read array dimensions in reverse
   FieldLayout scalar3d_layout_int { {COL,VL}, {nc,NVL+1} }; // Note that C++ and Fortran read array dimensions in reverse
   FieldLayout vector3d_layout_mid{ {COL,CMP,VL}, {nc,QSZ,NVL} };
   FieldLayout tracers_layout { {COL,VAR,VL}, {nc,QSZ,NVL} };
   
-  auto nondim = m/m;
+  unordered_map<string, GridOpts> map;
+
+  GridOpts t;
+  t.name = "t";
+  t.isOut = true;  
+  map.insert({t.name, t});
+
+  GridOpts qh;
+  qh.name = "qh";
+  qh.isOut = true;  
+  map.insert({qh.name, qh});
+
+  for ( auto i = map.begin(); i != map.end(); ++i){
+    m_required_fields.emplace((i->second).name, scalar3d_layout_int, Q, grid->name());
+    if ( (i->second).isOut == true ) {
+      m_computed_fields.emplace((i->second).name, scalar3d_layout_int, Q, grid->name());
+    }
+  }
+    
 
   m_required_fields.emplace("t",  scalar3d_layout_int, Q, grid->name()); // in/out??
   m_computed_fields.emplace("t",  scalar3d_layout_int, Q, grid->name()); // in/out??
