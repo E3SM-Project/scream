@@ -3315,11 +3315,12 @@ qrevp,nrevp)
       !       we haven't seen the following line to crash the code, so leaving as-is
       !       with limiters to prevent evap from getting too out of control. A real fix
       !       may require a completely different approach to rain evaporation.
-      qclr = qv ! CRT - see if just this one change fixes things
-      !CRT Following 3 lines commented out July 28 2020
-      !qclr = (qv-cld*qvs)/(1._rtype-cld)
-      !qclr = max(0._rtype, qclr) !as cld approaches 1, qclr goes negative.
-      !qclr = min(qclr,qv) !qv<qvs check above should prevent this, but just in case...
+
+      !qclr = qv ! CRT - see if just this one change fixes things
+      
+      qclr = (qv-cld*qvs)/(1._rtype-cld)
+      qclr = max(0._rtype, qclr) !as cld approaches 1, qclr goes negative.
+      qclr = min(qclr,qv) !qv<qvs check above should prevent this, but just in case...
       
 
       ! compute in-evaporating-region evap rate
