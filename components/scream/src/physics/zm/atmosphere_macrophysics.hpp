@@ -86,12 +86,6 @@ protected:
   ParameterList     m_zm_params;
  
 
-  struct GridOpts{
-    std::string name;
-    Real unit;
-    bool isOut;
-  };
-
 
 }; // class ZMMacrophysics
 

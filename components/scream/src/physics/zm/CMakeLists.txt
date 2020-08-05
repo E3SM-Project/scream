@@ -13,13 +13,13 @@ set(ZM_SRCS
   atmosphere_macrophysics.cpp
   scream_zm_interface.F90
   zm_inputs_initializer.cpp
-  #zm_field_dict.cpp
 )
 
 set(ZM_HEADERS
   zm.hpp
   atmosphere_macrophysics.hpp
   scream_zm_interface.hpp
+  zm_grid_opts.hpp
 )
 
 # Add ETI source files if not on CUDA
