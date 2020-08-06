@@ -5,7 +5,6 @@
 #include <string>
 #include <iostream>
 #include <typeinfo>
-#include <unordered_map>
 
 namespace scream
 {
@@ -31,7 +30,10 @@ void ZMInputsInitializer::add_field (const field_type &f)
   m_fields_id.insert(id);
 }
 
+
+
 void ZMInputsInitializer :: initialize_fields(){
+
 
   int count = 0;
   for (int j = 0; j < zm_inputs.size(); j++){
