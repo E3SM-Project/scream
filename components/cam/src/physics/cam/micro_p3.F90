@@ -760,6 +760,16 @@ contains
            lcldm(k),rcldm(k),qvs(k),ab,epsr,qv(k), &
            qrevp,nrevp)
 
+      !if (exner(k)*(-qrevp*rcldm(k)*xxlv(k)*inv_cp)*dt < -20) then
+      !   write(0,'(a51,f8.6,a2,f8.6,a2,f10.2,a2,f8.6,a2,f8.6,a2,f8.6,a2,f8.6,a2,f8.6,a2,f8.5,a2,f8.4)') &
+      !        'Cooling-- qr,qc,nr,qitot,cf,rf,qvs,ab,epsr,qv ',qr_incld(k)*1000._rtype,', ', &
+      !        qc_incld(k)*1000._rtype,', ', &
+      !        nr_incld(k)*0.001_rtype,', ',qitot_incld(k)*1000._rtype,', ',lcldm(k),', ',rcldm(k), &
+      !        ', ',qvs(k)*1000._rtype,', ',ab,', ', epsr,', ',qv(k)*1000._rtype
+      !   write(0,'(a30,f8.6,a2,f8.6,a2,f8.2)') 'Continued qv,qrevp,nrevp ',qv(k)*1000._rtype,', ', &
+      !        qrevp*1000._rtype,', ',nrevp*0.001_rtype
+      !endif
+      
       call ice_deposition_sublimation(qitot_incld(k), nitot_incld(k), t(k), &
            qvs(k),qvi(k),epsi,abi,qv(k), &
            qidep,qisub,nisub,qiberg)
@@ -860,6 +870,19 @@ contains
 
       if (exner(k)*(-qrevp*xxlv(k)*inv_cp)*dt < -20) then
          call report_error_info('Strong cooling', 'precip evap',klev=k,prnt_macmic=.true.)
+         write(0,'(a51,f8.6,a2,f8.6,a2,f10.2,a2,f8.6,a2,f8.4,a2,f8.6,a2,f8.4,a2,f8.6,a2,f8.5,a2,f8.4)') &
+              'Cooling-- qr,qc,nr,qitot,cf,rf,qvs,ab,epsr,qv: ',qr_incld(k)*1000._rtype,', ', &
+              qc_incld(k)*1000._rtype,', ', &
+              nr_incld(k)*0.001_rtype,', ',qitot_incld(k)*1000._rtype,', ',lcldm(k),', ',rcldm(k), &
+              ', ',qvs(k)*1000._rtype,', ',ab,', ', epsr,', ',qv(k)*1000._rtype
+         write(0,'(a51,f8.4,a2,f8.6,a2,f8.2,a2,f6.2)') 'Continued qv,qrevp,nrevp,dt: ',qv(k)*1000._rtype,', ', &
+              qrevp/rcldm(k)*1000._rtype,', ',nrevp/rcldm(k)*0.001_rtype,', ',dt
+         write(0,'(a51,f8.4,a2,f8.4,a2,f8.5,a2,f8.5,a2,f8.4,a2,f9.1,a2,f8.4,a2,f8.4)') &
+              'WRFP3 qvi,abi,epsc,epsi_tot,t,xxls,dqsdt,odt: ',qvi(k)*1000._rtype,', ',abi,', ',epsc,', ', &
+              epsi_tot,', ',t(k),' ,',xxls(k),', ',dqsdt*1000._rtype,', ',odt
+         write(0,'(a51,f8.4,a2,f8.6,a2,f8.6,a2,f8.6,a2,f10.2,a2,f10.2)') &
+              'MG2 rho, dv, mu_r, sc, lamr, cdistr: ',rho(k),', ',dv,', ',mu_r(k),', ', &
+              sc,', ',lamr(k),', ',cdistr(k)
       endif
       !==
       ! AaronDonahue - Add extra variables needed from microphysics by E3SM:
@@ -3129,9 +3152,9 @@ subroutine update_prognostic_ice(pres,qcheti,qccol,qcshd,    &
    dum_t = th/exner
    dum_qs=qv_sat(dum_t,pres,1)
    dum_ss=qv/dum_qs
-   if (dum_ss .gt. 2.5) then
-      write(iulog,*)'Supersaturation greater than 150%. Ratio is',dum_ss
-   endif
+   !if (dum_ss .gt. 2.5) then
+   !   write(iulog,*)'Supersaturation greater than 150%. Ratio is',dum_ss
+   !endif
 
 end subroutine update_prognostic_ice
 
@@ -3191,9 +3214,9 @@ subroutine update_prognostic_liquid(pres,qcacc,ncacc,qcaut,ncautc,ncautr,ncslf, 
    dum_t = th/exner
    dum_qs=qv_sat(dum_t,pres,0)
    dum_ss=qv/dum_qs
-   if (dum_ss .gt. 1.5) then
-      write(iulog,*)'Supersaturation greater than 50%. Ratio is:',dum_ss
-   endif
+   !if (dum_ss .gt. 1.5) then
+   !   write(iulog,*)'Supersaturation greater than 50%. Ratio is:',dum_ss,' T is',dum_t
+   !endif
 
 end subroutine update_prognostic_liquid
 
