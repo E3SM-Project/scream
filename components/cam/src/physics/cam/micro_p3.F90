@@ -734,6 +734,24 @@ contains
            lcldm(k),rcldm(k),qvs(k),ab,epsr,qv(k), &
            qrevp,nrevp)
 
+      !call evaporate_precip_wrfp3(qr_incld(k),qc_incld(k),nr_incld(k), &
+      !     qitot_incld(k),  &
+      !     lcldm(k),rcldm(k),qv(k),qv_old(k),qvs(k),qvi(k),ab,abi,epsr,epsc,epsi_tot,t(k),t_old(k),xxls(k), &
+      !     dqsdt,odt,dt, &
+      !     qrevp,nrevp)
+
+      
+      !call evaporate_sublimate_precip_mg2(t(k), rho(k), &
+      !    dv, mu_r(k), sc, qv(k), qvs(k), qvi(k), &
+      !    lcldm(k), rcldm(k), arn, asn, qc_incld(k), qitot_incld(k), &
+      !    qr_incld(k), qitot_incld(k), lamr(k), cdistr(k), lams(k), cdist(k), &
+      !    qrevp, prds)
+
+      ! b/c it doesn't look like p3 calculation of epsr takes into account arn,
+      ! set arn = 1._rtype, asn = 1._rtype
+      ! Also b/c we aren't interested in snow, set qitot_incld = 0, lams = 0, cdist = 0, 
+      
+
       call ice_deposition_sublimation(qitot_incld(k), nitot_incld(k), t(k), &
            qvs(k),qvi(k),epsi,abi,qv(k), &
            qidep,qisub,nisub,qiberg)
@@ -3304,24 +3322,206 @@ qrevp,nrevp)
 
    ! Only calculate if there is some rain fraction > cloud fraction
    qrevp = 0.0_rtype
-   if (rcldm > cld) then
+   nrevp = 0.0_rtype
+   if (rcldm > cld .and. qr_incld.ge.qsmall) then
       ! calculate q for out-of-cloud region
       qclr = (qv-cld*qvs)/(1._rtype-cld)
+      qclr = max(0._rtype, qclr) !as cld approaches 1, qclr goes negative.
+      qclr = min(qclr,qv) !qv<qvs check above should prevent this, but just in case...
 
       ! rain evaporation
-      if (qr_incld.ge.qsmall) then
-         qrevp = epsr * (qclr-qvs)/ab
-      end if
-
+      
+      qrevp = epsr * (qclr-qvs)/ab
+      
       ! only evap in out-of-cloud region
       qrevp = -min(qrevp*(rcldm-cld),0._rtype)
       qrevp = qrevp/rcldm
    end if ! rcld>cld
-   if (qr_incld.gt.qsmall)  nrevp = qrevp*(nr_incld/qr_incld)
+   nrevp = qrevp*(nr_incld/qr_incld)
 
    return
 
 end subroutine evaporate_sublimate_precip
+
+subroutine evaporate_precip_wrfp3(qr_incld,qc_incld,nr_incld,qitot_incld,           &
+    lcldm,rcldm,qv,qv_old,qvs,qvi,ab,abi,epsr,epsi_tot,t,t_old,xxls,dqsdt,odt,dt,      &
+    qrevp,nrevp)
+    
+       implicit none
+    
+       real(rtype), intent(in)  :: qr_incld
+       real(rtype), intent(in)  :: qc_incld
+       real(rtype), intent(in)  :: nr_incld
+       real(rtype), intent(in)  :: qitot_incld
+       real(rtype), intent(in)  :: lcldm
+       real(rtype), intent(in)  :: rcldm
+       real(rtype), intent(in)  :: qvs,qvi
+       real(rtype), intent(in)  :: ab,abi
+       real(rtype), intent(in)  :: epsr,epsi_tot
+       real(rtype), intent(in)  :: qv,qv_old
+       real(rtype), intent(in)  :: t,t_old,xxls,dqsdt,odt,dt
+       real(rtype), intent(inout) :: qrevp
+       real(rtype), intent(inout) :: nrevp
+       real(rtype) :: qclr, cld, xx, ssat_r, SPF, hlp_w, oxx, qrcon, oabi, aaa, sup_r, qrevp_incld     
+    
+    ! +++++++++++++++++++++++++++++++++++++++++++++++ JS:
+    ! Local stuff (generalize it when done):
+    
+       if (qc_incld + qitot_incld < 1.e-6_rtype) then
+             cld = 0._rtype
+       else
+             cld = lcldm
+       end if
+          
+       ! Only calculate if there is some rain fraction > cloud fraction
+       qrevp = 0.0_rtype
+       nrevp = 0.0_rtype
+       if (rcldm > cld) then
+    
+          ssat_r = qv - qvs
+          sup_r = qv / qvs - 1.0_rtype
+          SPF = 1.0_rtype   
+    
+          if (t < 273.15_rtype) then
+             oabi = 1.0_rtype/abi
+             xx   = epsr + epsi_tot*(1.0_rtype + xxls*inv_cp*dqsdt)*oabi
+          else
+             xx   = epsr
+          endif
+    
+          ! hlp_qvi = qvi   !no modification due to latent heating
+          hlp_w = -cp/g*(t - t_old)*odt
+    
+          if (t < 273.15_rtype) then
+             aaa = (qv - qv_old)*odt - dqsdt*(-hlp_w*g*inv_cp)-(qvs - qvi)*     &
+                   (1.0_rtype + xxls*inv_cp*dqsdt)*oabi*epsi_tot
+          else
+             aaa = (qv - qv_old)*odt - dqsdt*(-hlp_w*g*inv_cp)
+          endif
+    
+          xx  = max(1.e-20_rtype,xx)   ! set lower bound on xx to prevent division by zero
+          oxx = 1.0_rtype/xx
+    
+          qrcon = 0.0
+          if (qr_incld > qsmall) qrcon = (aaa*epsr*oxx + (ssat_r*SPF-aaa*oxx)*odt*epsr*oxx*(1.0_rtype-dexp(-dble(xx*dt))))/ab
+    
+          if (sup_r < -0.001_rtype .and. qr_incld < 1.e-12_rtype)  qrcon = -qr_incld*odt
+          
+          if (qrcon < 0.0_rtype) then
+             qrevp_incld = -qrcon/rcldm
+             qrevp = qrevp_incld      ! per rain fraction
+             nrevp = qrevp*(nr_incld/qr_incld)
+             qrcon = 0.0_rtype
+          endif
+    
+       endif
+     
+       return
+       
+end subroutine evaporate_precip_wrfp3
+
+subroutine evaporate_sublimate_precip_mg2(t, rho, dv, mu, sc, q, qvl, qvi, &
+     lcldm, precip_frac, arn, asn, qcic, qiic, qric, qsic, lamr, n0r, lams, n0s, &
+     qrevp, prds)
+
+  real(r8), intent(in) :: t    ! temperature
+  real(r8), intent(in) :: rho  ! air density
+  real(r8), intent(in) :: dv   ! water vapor diffusivity
+  real(r8), intent(in) :: mu   ! viscosity
+  real(r8), intent(in) :: sc   ! schmidt number
+  real(r8), intent(in) :: q    ! humidity
+  real(r8), intent(in) :: qvl  ! saturation humidity (water)
+  real(r8), intent(in) :: qvi  ! saturation humidity (ice)
+  real(r8), intent(in) :: lcldm  ! liquid cloud fraction
+  real(r8), intent(in) :: precip_frac ! precipitation fraction (maximum overlap)
+
+  ! fallspeed parameters
+  real(r8), intent(in) :: arn  ! rain
+  real(r8), intent(in) :: asn  ! snow
+
+  ! In-cloud MMRs
+  real(r8), intent(in) :: qcic ! cloud liquid
+  real(r8), intent(in) :: qiic ! cloud ice
+  real(r8), intent(in) :: qric ! rain
+  real(r8), intent(in) :: qsic ! snow
+
+  ! Size parameters
+  ! rain
+  real(r8), intent(in) :: lamr
+  real(r8), intent(in) :: n0r
+  ! snow
+  real(r8), intent(in) :: lams
+  real(r8), intent(in) :: n0s
+
+  ! Output tendencies
+  real(r8), intent(out) :: qrevp
+  real(r8), intent(out) :: prds
+
+  real(r8) :: qclr   ! water vapor mixing ratio in clear air
+  real(r8) :: ab     ! correction to account for latent heat
+  real(r8) :: eps    ! 1/ sat relaxation timescale
+
+  real(r8) :: dum
+
+  ! set temporary cloud fraction to zero if cloud water + ice is very small
+  ! this will ensure that evaporation/sublimation of precip occurs over
+  ! entire grid cell, since min cloud fraction is specified otherwise
+  if (qcic+qiic < 1.e-6_r8) then
+     dum = 0._r8
+  else
+     dum = lcldm
+  end if
+
+  ! only calculate if there is some precip fraction > cloud fraction
+
+  if (precip_frac > dum) then
+
+     ! calculate q for out-of-cloud region
+     qclr=(q-dum*qvl)/(1._r8-dum)
+
+     ! evaporation of rain
+     if (qric >= qsmall) then
+
+        ab = calc_ab(t, qvl, xxlv)
+        eps = 2._r8*pi*n0r*rho*Dv* &
+             (f1r/(lamr*lamr)+ &
+             f2r*(arn*rho/mu)**0.5_r8* &
+             sc**(1._r8/3._r8)*gamma_half_br_plus5/ &
+             (lamr**(5._r8/2._r8+br/2._r8)))
+
+        qrevp = eps*(qclr-qvl)/ab
+
+        ! only evaporate in out-of-cloud region
+        ! and distribute across precip_frac
+        qrevp=min(qrevp*(precip_frac-dum),0._r8)
+        qrevp=qrevp/precip_frac
+     else
+        qrevp = 0._r8
+     end if
+
+     ! sublimation of snow
+     if (qsic >= qsmall) then
+        ab = calc_ab(t, qvi, xxls)
+        eps = 2._r8*pi*n0s*rho*Dv* &
+             (f1s/(lams*lams)+ &
+             f2s*(asn*rho/mu)**0.5_r8* &
+             sc**(1._r8/3._r8)*gamma_half_bs_plus5/ &
+             (lams**(5._r8/2._r8+bs/2._r8)))
+        prds = eps*(qclr-qvi)/ab
+
+        ! only sublimate in out-of-cloud region and distribute over precip_frac
+        prds=min(prds*(precip_frac-dum),0._r8)
+        prds=prds/precip_frac
+     else
+        prds = 0._r8
+     end if
+
+  else
+     prds = 0._r8
+     qrevp = 0._r8
+  end if
+
+end subroutine evaporate_sublimate_precip_mg2
 
 subroutine get_time_space_phys_variables( &
 t,pres,rho,xxlv,xxls,qvs,qvi, &

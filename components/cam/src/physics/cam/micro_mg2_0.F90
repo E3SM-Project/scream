@@ -451,6 +451,8 @@ subroutine micro_mg_tend ( &
        evaporate_sublimate_precip, &
        bergeron_process_snow
 
+  use micro_p3_utils, only: iulog=>iulog_e3sm !CRT - for error message writing
+  
   !Authors: Hugh Morrison, Andrew Gettelman, NCAR, Peter Caldwell, LLNL
   ! e-mail: morrison@ucar.edu, andrew@ucar.edu
 
@@ -723,6 +725,7 @@ subroutine micro_mg_tend ( &
   real(r8) :: nprai(mgncol,nlev)  ! number concentration
   ! evaporation of rain
   real(r8) :: pre(mgncol,nlev)    ! mass mixing ratio
+  real(r8) :: eps(mgncol,nlev)    ! EPS for mixing ratio
   ! sublimation of snow
   real(r8) :: prds(mgncol,nlev)   ! mass mixing ratio
   ! number evaporation
@@ -1543,7 +1546,7 @@ subroutine micro_mg_tend ( &
           dv(:,k), mu(:,k), sc(:,k), q(:,k), qvl(:,k), qvi(:,k), &
           lcldm(:,k), precip_frac(:,k), arn(:,k), asn(:,k), qcic(:,k), qiic(:,k), &
           qric(:,k), qsic(:,k), lamr(:,k), n0r(:,k), lams(:,k), n0s(:,k), &
-          pre(:,k), prds(:,k))
+          pre(:,k), prds(:,k),eps(:,k))
 
      call bergeron_process_snow(t(:,k), rho(:,k), dv(:,k), mu(:,k), sc(:,k), &
           qvl(:,k), qvi(:,k), asn(:,k), qcic(:,k), qsic(:,k), lams(:,k), n0s(:,k), &
@@ -1844,6 +1847,9 @@ subroutine micro_mg_tend ( &
 
            ! modify ice/precip evaporation rate if q > qsat
            if (qtmp > qvn) then
+              !CRT - Include message here to see how often this is enacted
+              dum = qtmp/qvn
+              write(iulog,*)'Supersaturated in MG2',dum
 
               dum1=pre(i,k)*precip_frac(i,k)/((pre(i,k)+prds(i,k))*precip_frac(i,k)+ice_sublim(i,k))
               dum2=prds(i,k)*precip_frac(i,k)/((pre(i,k)+prds(i,k))*precip_frac(i,k)+ice_sublim(i,k))

@@ -1248,7 +1248,7 @@ end subroutine accrete_cloud_ice_snow
 
 elemental subroutine evaporate_sublimate_precip(t, rho, dv, mu, sc, q, qvl, qvi, &
      lcldm, precip_frac, arn, asn, qcic, qiic, qric, qsic, lamr, n0r, lams, n0s, &
-     pre, prds)
+     pre, prds, eps)
 
   real(r8), intent(in) :: t    ! temperature
   real(r8), intent(in) :: rho  ! air density
@@ -1282,13 +1282,14 @@ elemental subroutine evaporate_sublimate_precip(t, rho, dv, mu, sc, q, qvl, qvi,
   ! Output tendencies
   real(r8), intent(out) :: pre
   real(r8), intent(out) :: prds
+  real(r8), intent(out) :: eps !1/ sat relaxation timescale
 
   real(r8) :: qclr   ! water vapor mixing ratio in clear air
   real(r8) :: ab     ! correction to account for latent heat
-  real(r8) :: eps    ! 1/ sat relaxation timescale
+  !real(r8) :: eps    ! 1/ sat relaxation timescale
 
   real(r8) :: dum
-
+  eps = 0._r8
   ! set temporary cloud fraction to zero if cloud water + ice is very small
   ! this will ensure that evaporation/sublimation of precip occurs over
   ! entire grid cell, since min cloud fraction is specified otherwise
