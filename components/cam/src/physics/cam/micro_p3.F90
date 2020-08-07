@@ -475,6 +475,7 @@ contains
        nevapr, prer_evap, vap_liq_exchange, vap_ice_exchange, liq_ice_exchange, pratot, &
        prctot, p3_tend_out, log_hydrometeorsPresent,p3_epsc,p3_epsr,p3_epsitot)
 
+    use debug_info, only: report_error_info
     implicit none
 
     ! args
@@ -857,6 +858,9 @@ contains
            log_predictNc, inv_rho(k), exner(k), xxlv(k), dt,                     &
            th(k), qv(k), qc(k), nc(k), qr(k), nr(k))
 
+      if (exner(k)*(-qrevp*xxlv(k)*inv_cp)*dt < -20) then
+         call report_error_info('Strong cooling', 'precip evap',klev=k,prnt_macmic=.true.)
+      endif
       !==
       ! AaronDonahue - Add extra variables needed from microphysics by E3SM:
       cmeiout(k) = qidep - qisub + qinuc
@@ -3125,8 +3129,8 @@ subroutine update_prognostic_ice(pres,qcheti,qccol,qcshd,    &
    dum_t = th/exner
    dum_qs=qv_sat(dum_t,pres,1)
    dum_ss=qv/dum_qs
-   if (dum_ss .gt. 2.) then
-      write(iulog,*)'Supersaturation greater than 100%. Ratio is',dum_ss
+   if (dum_ss .gt. 2.5) then
+      write(iulog,*)'Supersaturation greater than 150%. Ratio is',dum_ss
    endif
 
 end subroutine update_prognostic_ice
