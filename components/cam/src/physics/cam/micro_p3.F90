@@ -473,7 +473,7 @@ contains
        qirim, birim, xxlv, xxls, xlf, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld, nr_incld, &
        nitot_incld, birim_incld, mu_c, nu, lamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, cmeiout, prain, &
        nevapr, prer_evap, vap_liq_exchange, vap_ice_exchange, liq_ice_exchange, pratot, &
-       prctot, p3_tend_out, log_hydrometeorsPresent,p3_epsc,p3_epsr,p3_epsitot)
+       prctot, p3_tend_out, log_hydrometeorsPresent,p3_epsc,p3_epsr,p3_epsitot,qv_prev,t_prev)
 
     use debug_info, only: report_error_info
     implicit none
@@ -485,7 +485,7 @@ contains
     real(rtype), intent(in) :: dt, odt
 
     real(rtype), intent(in), dimension(kts:kte) :: pres, pdel, dzq, ncnuc, exner, inv_exner, inv_lcldm, inv_icldm,   &
-         inv_rcldm, naai, qc_relvar, icldm, lcldm, rcldm
+         inv_rcldm, naai, qc_relvar, icldm, lcldm, rcldm, qv_prev, t_prev
 
     real(rtype), intent(inout), dimension(kts:kte) :: t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn,        &
          qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, xlf, qc_incld, qr_incld,                    &
@@ -853,6 +853,26 @@ contains
       ! update prognostic microphysics and thermodynamics variables
       !---------------------------------------------------------------------------------
 
+
+      if (exner(k)*(-qrevp*xxlv(k)*inv_cp)*dt < -20) then
+         call report_error_info('Strong cooling', 'precip evap',klev=k,prnt_macmic=.true.)
+         write(0,'(a51,f8.6,a2,f8.6,a2,f10.2,a2,f8.6,a2,f8.4,a2,f8.6,a2,f8.4,a2,f8.6,a2,f8.5,a2,f8.4)') &
+              'Cooling-- qr,qc,nr,qitot,cf,rf,qvs,ab,epsr,qv: ',qr_incld(k)*1000._rtype,', ', &
+              qc_incld(k)*1000._rtype,', ', &
+              nr_incld(k)*0.001_rtype,', ',qitot_incld(k)*1000._rtype,', ',lcldm(k),', ',rcldm(k), &
+              ', ',qvs(k)*1000._rtype,', ',ab,', ', epsr,', ',qv(k)*1000._rtype
+         write(0,'(a51,f8.4,a2,f8.6,a2,f8.2,a2,f6.2)') 'Continued qv,qrevp,nrevp,dt: ',qv(k)*1000._rtype,', ', &
+              qrevp/rcldm(k)*1000._rtype,', ',nrevp/rcldm(k)*0.001_rtype,', ',dt
+         write(0,'(a51,f8.4,a2,f8.4,a2,f8.5,a2,f8.5,a2,f8.4,a2,f9.1,a2,f8.4,a2,f8.4)') &
+              'WRFP3 qvi,abi,epsc,epsi_tot,t,xxls,dqsdt,odt: ',qvi(k)*1000._rtype,', ',abi,', ',epsc,', ', &
+              epsi_tot,', ',t(k),' ,',xxls(k),', ',dqsdt*1000._rtype,', ',odt
+         write(0,'(a51,f8.4,a2,f8.4,a2,f8.2)') 'WRFP3 cont. qv_old, t_old, pres :',qv_prev(k)*1000._rtype,', ', &
+              t_prev(k),', ',pres(k)
+         write(0,'(a51,f8.4,a2,f8.6,a2,f8.6,a2,f8.6,a2,f10.2,a2,f10.2)') &
+              'MG2 rho, dv, mu_r, sc, lamr, cdistr: ',rho(k),', ',dv,', ',mu_r(k),', ', &
+              sc,', ',lamr(k),', ',cdistr(k)
+      endif
+
       !-- ice-phase dependent processes:
       call update_prognostic_ice(pres(k),qcheti, qccol, qcshd, &
            nccol, ncheti, ncshdc, &
@@ -868,22 +888,6 @@ contains
            log_predictNc, inv_rho(k), exner(k), xxlv(k), dt,                     &
            th(k), qv(k), qc(k), nc(k), qr(k), nr(k))
 
-      if (exner(k)*(-qrevp*xxlv(k)*inv_cp)*dt < -20) then
-         call report_error_info('Strong cooling', 'precip evap',klev=k,prnt_macmic=.true.)
-         write(0,'(a51,f8.6,a2,f8.6,a2,f10.2,a2,f8.6,a2,f8.4,a2,f8.6,a2,f8.4,a2,f8.6,a2,f8.5,a2,f8.4)') &
-              'Cooling-- qr,qc,nr,qitot,cf,rf,qvs,ab,epsr,qv: ',qr_incld(k)*1000._rtype,', ', &
-              qc_incld(k)*1000._rtype,', ', &
-              nr_incld(k)*0.001_rtype,', ',qitot_incld(k)*1000._rtype,', ',lcldm(k),', ',rcldm(k), &
-              ', ',qvs(k)*1000._rtype,', ',ab,', ', epsr,', ',qv(k)*1000._rtype
-         write(0,'(a51,f8.4,a2,f8.6,a2,f8.2,a2,f6.2)') 'Continued qv,qrevp,nrevp,dt: ',qv(k)*1000._rtype,', ', &
-              qrevp/rcldm(k)*1000._rtype,', ',nrevp/rcldm(k)*0.001_rtype,', ',dt
-         write(0,'(a51,f8.4,a2,f8.4,a2,f8.5,a2,f8.5,a2,f8.4,a2,f9.1,a2,f8.4,a2,f8.4)') &
-              'WRFP3 qvi,abi,epsc,epsi_tot,t,xxls,dqsdt,odt: ',qvi(k)*1000._rtype,', ',abi,', ',epsc,', ', &
-              epsi_tot,', ',t(k),' ,',xxls(k),', ',dqsdt*1000._rtype,', ',odt
-         write(0,'(a51,f8.4,a2,f8.6,a2,f8.6,a2,f8.6,a2,f10.2,a2,f10.2)') &
-              'MG2 rho, dv, mu_r, sc, lamr, cdistr: ',rho(k),', ',dv,', ',mu_r(k),', ', &
-              sc,', ',lamr(k),', ',cdistr(k)
-      endif
       !==
       ! AaronDonahue - Add extra variables needed from microphysics by E3SM:
       cmeiout(k) = qidep - qisub + qinuc
@@ -1145,7 +1149,7 @@ contains
        diag_effi,diag_vmi,diag_di,diag_rhoi,log_predictNc, &
        pdel,exner,cmeiout,prain,nevapr,prer_evap,rflx,sflx,rcldm,lcldm,icldm,  &
        pratot,prctot,p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-       vap_ice_exchange,p3_epsc,p3_epsr,p3_epsitot,col_location)
+       vap_ice_exchange,p3_epsc,p3_epsr,p3_epsitot,col_location,qv_prev,t_prev)
 
     !----------------------------------------------------------------------------------------!
     !                                                                                        !
@@ -1203,6 +1207,9 @@ contains
 
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: pdel       ! pressure thickness               Pa
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: exner      ! Exner expression
+
+    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: qv_prev     ! qv from previous time p3_main was called
+    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: t_prev      ! temperature from prev p3_main call
 
     ! OUTPUT for PBUF variables used by other parameterizations
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: cmeiout    ! qitend due to deposition/sublimation
@@ -1374,7 +1381,7 @@ contains
             qirim(i,:), birim(i,:), xxlv(i,:), xxls(i,:), xlf(i,:), qc_incld(i,:), qr_incld(i,:), qitot_incld(i,:), qirim_incld(i,:), nc_incld(i,:), nr_incld(i,:), &
             nitot_incld(i,:), birim_incld(i,:), mu_c(i,:), nu(i,:), lamc(i,:), cdist(i,:), cdist1(i,:), cdistr(i,:), mu_r(i,:), lamr(i,:), logn0r(i,:), cmeiout(i,:), prain(i,:), &
             nevapr(i,:), prer_evap(i,:), vap_liq_exchange(i,:), vap_ice_exchange(i,:), liq_ice_exchange(i,:), pratot(i,:), &
-            prctot(i,:), p3_tend_out(i,:,:), log_hydrometeorsPresent, p3_epsc(i,:), p3_epsr(i,:), p3_epsitot(i,:))
+            prctot(i,:), p3_tend_out(i,:,:), log_hydrometeorsPresent, p3_epsc(i,:), p3_epsr(i,:), p3_epsitot(i,:), qv_prev(i,:), t_prev(i,:))
 
        ! measure microphysics processes tendency output
        p3_tend_out(i,:,42) = ( qc(i,:)    - qc_old(i,:) ) * odt    ! Liq. microphysics tendency, measure

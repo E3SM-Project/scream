@@ -85,7 +85,9 @@ module physics_types
           lnpmid,  &! ln(pmid)
           lnpmiddry,&! log midpoint pressure dry (Pa) 
           exner,   &! inverse exner function w.r.t. surface pressure (ps/p)^(R/cp)
-          zm        ! geopotential height above surface at midpoints (m)
+          zm,      & ! geopotential height above surface at midpoints (m)
+          t_old,   & ! t after p3
+          qv_old   ! qv after p3
 
      real(r8), dimension(:,:,:),allocatable      :: &
           q         ! constituent mixing ratio (kg/kg moist or dry air depending on type)
@@ -597,6 +599,11 @@ contains
          varname="state%exner",     msg=msg)
     call shr_assert_in_domain(state%zm(:ncol,:),        is_nan=.false., &
          varname="state%zm",        msg=msg)
+    call shr_assert_in_domain(state%t_old(:ncol,:),     is_nan=.false., &
+         varname="state%t_old",        msg=msg)
+    call shr_assert_in_domain(state%qv_old(:ncol,:),    is_nan=.false., &
+         varname="state%qv_old",        msg=msg)
+    
 
     ! 2-D variables (at interfaces)
     call shr_assert_in_domain(state%pint(:ncol,:),      is_nan=.false., &
@@ -671,6 +678,10 @@ contains
          varname="state%exner",     msg=msg)
     call shr_assert_in_domain(state%zm(:ncol,:),        lt=posinf_r8, gt=neginf_r8, &
          varname="state%zm",        msg=msg)
+    call shr_assert_in_domain(state%t_old(:ncol,:),         lt=posinf_r8, gt=0._r8, &
+         varname="state%t_old",         msg=msg)
+    call shr_assert_in_domain(state%qv_old(:ncol,:),        lt=posinf_r8, gt=0._r8, &
+         varname="state%qv_old",        msg=msg)
 
     ! 2-D variables (at interfaces)
     call shr_assert_in_domain(state%pint(:ncol,:),      lt=posinf_r8, gt=0._r8, &
@@ -1332,6 +1343,8 @@ end subroutine physics_ptend_copy
           state_out%lnpmid(i,k)    = state_in%lnpmid(i,k) 
           state_out%exner(i,k)     = state_in%exner(i,k) 
           state_out%zm(i,k)        = state_in%zm(i,k)
+          state_out%t_old(i,k)     = state_in%t_old(i,k)
+          state_out%qv_old(i,k)    = state_in%qv_old(i,k)
        end do
     end do
 
@@ -1618,6 +1631,12 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
   
   allocate(state%zm(psetcols,pver), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%zm')
+
+  allocate(state%t_old(psetcols,pver), stat=ierr)
+  if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%t_old')
+
+  allocate(state%qv_old(psetcols,pver), stat=ierr)
+  if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%qv_old')
   
   allocate(state%q(psetcols,pver,pcnst), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%q')
@@ -1680,6 +1699,8 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
   state%lnpmiddry(:,:) = inf
   state%exner(:,:) = inf
   state%zm(:,:) = inf
+  state%t_old(:,:) = inf
+  state%qv_old(:,:) = inf
   state%q(:,:,:) = inf
       
   state%pint(:,:) = inf
@@ -1769,6 +1790,12 @@ subroutine physics_state_dealloc(state)
   
   deallocate(state%zm, stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%zm')
+
+  deallocate(state%t_old, stat=ierr)
+  if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%t_old')
+
+  deallocate(state%qv_old, stat=ierr)
+  if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%qv_old')
   
   deallocate(state%q, stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%q')

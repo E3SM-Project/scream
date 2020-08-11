@@ -723,7 +723,7 @@ end subroutine micro_p3_readnl
                               inv_cp 
 
     !INPUT/OUTPUT VARIABLES
-    type(physics_state),         intent(in)    :: state
+    type(physics_state),         intent(inout)    :: state
     type(physics_ptend),         intent(out)   :: ptend
     real(rtype),                 intent(in)    :: dtime
     type(physics_buffer_desc),   pointer       :: pbuf(:)
@@ -1078,7 +1078,9 @@ end subroutine micro_p3_readnl
          p3_epsc(its:ite,kts:kte),       & ! OUT inverse timescale of cloud water diffusion   
          p3_epsr(its:ite,kts:kte),       & ! OUT inverse timescale of rain water diffusion
          p3_epsitot(its:ite,kts:kte),    & ! OUT inverse timescale of ice water diffusion
-         col_location(its:ite,:3)          & ! IN column locations
+         col_location(its:ite,:3),          & ! IN column locations
+         state%qv_old(its:ite,kts:kte),   & ! IN qv from previous timestep
+         state%t_old(its:ite,kts:kte)     &! IN temperature from previous timestep
          )
     do icol = 1,ncol
       p3_main_outputs(:,:,:) = -999._rtype
@@ -1129,7 +1131,9 @@ end subroutine micro_p3_readnl
 
     !BACK OUT TENDENCIES FROM STATE CHANGES
     !=============
-    temp(:ncol,:pver) = th(:ncol,:pver)/exner(:ncol,:pver) 
+    state%qv_old(:ncol,:pver)   = qv(:ncol,:pver)     ! Save post-p3 qv
+    temp(:ncol,:pver) = th(:ncol,:pver)/exner(:ncol,:pver)
+    state%t_old(:ncol,:pver)    = temp(:ncol,:pver)   ! Save post-p3 t
     ptend%s(:ncol,:pver)           = cpair*( temp(:ncol,:pver) - state%t(:ncol,:pver) )/dtime 
     ptend%q(:ncol,:pver,1)         = ( max(0._rtype,qv(:ncol,:pver)     ) - state%q(:ncol,:pver,1)         )/dtime
     ptend%q(:ncol,:pver,ixcldliq)  = ( max(0._rtype,cldliq(:ncol,:pver) ) - state%q(:ncol,:pver,ixcldliq)  )/dtime
