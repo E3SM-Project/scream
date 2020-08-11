@@ -6,6 +6,8 @@
 #include <iostream>
 #include <unordered_map>
 #include <typeinfo>
+#include "share/field/field_tag.hpp"
+
 
 namespace scream
 
@@ -13,7 +15,7 @@ namespace scream
 
 
 const Int& lchnk = 0;
-const Int& ncol = 0;
+const Int& ncol = 70;
 const Real &delt = 0;
 
 const Real& lengath = 0; 
@@ -51,7 +53,6 @@ void ZMDeepConvection::set_grids(const std::shared_ptr<const GridsManager> grids
   auto nondim = m/m;
   Q.set_string("kg/kg");
 
-  std :: cout << "type is " << typeid(Q).name() << std :: endl; 
 
  
   constexpr int NVL = 72;  /* TODO THIS NEEDS TO BE CHANGED TO A CONFIGURABLE */
@@ -62,15 +63,21 @@ void ZMDeepConvection::set_grids(const std::shared_ptr<const GridsManager> grids
 
   using namespace ShortFieldTagsNames;
  
+//  std :: cout << "type is " << typeid(ShortFieldTagsNames).name() << std :: endl; 
 
   FieldLayout scalar3d_layout_mid { {COL,VL}, {nc,NVL} }; // Note that C++ and Fortran read array dimensions in reverse
   FieldLayout scalar3d_layout_int { {COL,VL}, {nc,NVL+1} }; // Note that C++ and Fortran read array dimensions in reverse
   FieldLayout vector3d_layout_mid{ {COL,CMP,VL}, {nc,QSZ,NVL} };
   FieldLayout tracers_layout { {COL,VAR,VL}, {nc,QSZ,NVL} };
-  
+  FieldLayout linear_layout{ {COL}, {nc} };
+
+ 
+  std::vector<FieldLayout> layout_opts = {scalar3d_layout_mid, scalar3d_layout_int,
+					vector3d_layout_mid, tracers_layout, linear_layout};
+ 
   set_grid_opts();
   for ( auto i = opt_map.begin(); i != opt_map.end(); ++i){
-    m_required_fields.emplace((i->second).name, scalar3d_layout_int, Q, grid->name());
+    m_required_fields.emplace((i->second).name, layout_opts[((i->second).field_idx)], Q, grid->name());
     if ( (i->second).isOut == true ) {
       m_computed_fields.emplace((i->second).name, scalar3d_layout_int, Q, grid->name());
     }
