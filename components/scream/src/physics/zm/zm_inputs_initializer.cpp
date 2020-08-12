@@ -11,15 +11,17 @@ namespace scream
 
 using namespace std;
 
-const int INPUT_SIZE = 47;
+const int INPUT_SIZE = 63;
 
-vector<string> zm_inputs = {"t", "qh", "prec", "jctop", "jcbot", "pblh", "zm",
-				"geos", "zi", "qtnd", "heat", "pap", "paph", "dpp",
-				"mcon", "cme", "cape", "tpert", "dlf", "pflx", "zdu", "rprd",
-				"mu", "md", "du", "eu", "ed", "dp", "dsubcld", "jt", "maxg",
-				"ideep", "ql", "rliq", "landfrac", "hu_nm1", "cnv_nm1", "tm1", 
-                                "qm1", "dcape", "q", "snow", "ntprprd", "ntsnprd",	
-				"pguall", "pgdall", "icwu"};
+vector<string> zm_inputs = {"limcnv_in", "no_deep_pbl_in","lchnk", "ncol", "t", "qh", "prec", 
+				"jctop", "jcbot", "pblh", "zm", "geos", "zi", "qtnd", "heat", 
+				"pap", "paph", "dpp", "delt", "mcon", "cme", "cape", "tpert",
+				"dlf", "pflx", "zdu", "rprd", "mu", "md", "du", "eu", "ed", 
+				"dp", "dsubcld", "jt", "maxg", "ideep", "lengath", "ql", 
+				"rliq", "landfrac", "hu_nm1", "cnv_nm1", "tm1", "qm1", "t_star", 
+				"q_star", "dcape", "q", "tend_s", "tend_q", "cld", "snow", 
+				"ntprprd", "ztodt", "ntsnprd", "flxprec", "flxsnow", "pguall", 
+				"pgdall", "icwu", "ncnst", "fracis"};
 
 
 void ZMInputsInitializer::add_field (const field_type &f)
@@ -33,7 +35,6 @@ void ZMInputsInitializer::add_field (const field_type &f)
 
 
 void ZMInputsInitializer :: initialize_fields(){
-
 
   int count = 0;
   for (int j = 0; j < zm_inputs.size(); j++){

@@ -38,7 +38,19 @@ void set_grid_opts_helper(GridOpts O, string n, bool out, const scream::units::U
 }
 
 void set_grid_opts(){
+  
+  GridOpts limcnv_in;
+  set_grid_opts_helper(limcnv_in, "limcnv_in", true, NULL, VECTOR_3D_MID);
+  
+  GridOpts no_deep_pbl_in;
+  set_grid_opts_helper(no_deep_pbl_in, "no_deep_pbl_in", true, NULL, VECTOR_3D_MID);
+
+  GridOpts lchnk;
+  set_grid_opts_helper(lchnk, "lchnk", true, &Pa, SCALAR_3D_MID); //temperature(K)
   	
+  GridOpts ncol;
+  set_grid_opts_helper(ncol, "ncol", true, &Pa, SCALAR_3D_MID); //temperature(K)
+  
   //t(pcols,pver)  
   GridOpts t;
   set_grid_opts_helper(t, "t", true, &Pa, SCALAR_3D_MID); //temperature(K)
@@ -84,6 +96,9 @@ void set_grid_opts(){
   GridOpts dpp;
   set_grid_opts_helper(dpp, "dpp", true, NULL, SCALAR_3D_MID);
 
+  GridOpts delt;
+  set_grid_opts_helper(delt, "delt", true, NULL, SCALAR_3D_MID);
+  
   GridOpts mcon;
   set_grid_opts_helper(mcon, "mcon", true, NULL, SCALAR_3D_MID);
 
@@ -138,6 +153,9 @@ void set_grid_opts(){
   GridOpts ideep;
   set_grid_opts_helper(ideep, "ideep", true, NULL, LINEAR);
   
+  GridOpts lengath;
+  set_grid_opts_helper(lengath, "lengath", true, NULL, SCALAR_3D_MID);
+  
   GridOpts ql;
   set_grid_opts_helper(ql, "ql", true, NULL, SCALAR_3D_MID);
   
@@ -159,11 +177,26 @@ void set_grid_opts(){
   GridOpts qm1;
   set_grid_opts_helper(qm1, "qm1", true, NULL, SCALAR_3D_MID);
   
+  GridOpts t_star;
+  set_grid_opts_helper(t_star, "t_star", true, NULL, SCALAR_3D_MID);
+  
+  GridOpts q_star;
+  set_grid_opts_helper(q_star, "q_star", true, NULL, SCALAR_3D_MID);
+  
   GridOpts dcape;
   set_grid_opts_helper(dcape, "dcape", true, NULL, LINEAR);
   
   GridOpts q;
   set_grid_opts_helper(q, "q", true, NULL, SCALAR_3D_MID);
+  
+  GridOpts tend_s;
+  set_grid_opts_helper(tend_s, "tend_s", true, NULL, LINEAR);
+  
+  GridOpts tend_q;
+  set_grid_opts_helper(tend_q, "tend_q", true, NULL, LINEAR);
+  
+  GridOpts cld;
+  set_grid_opts_helper(cld, "cld", true, NULL, LINEAR);
   
   GridOpts snow;
   set_grid_opts_helper(snow, "snow", true, NULL, LINEAR);
@@ -173,6 +206,15 @@ void set_grid_opts(){
   
   GridOpts ntsnprd;
   set_grid_opts_helper(ntsnprd, "ntsnprd", true, NULL, SCALAR_3D_MID);
+  
+  GridOpts flxprec;
+  set_grid_opts_helper(flxprec, "flxprec", true, NULL, SCALAR_3D_MID);
+  
+  GridOpts flxsnow;
+  set_grid_opts_helper(flxsnow, "flxsnow", true, NULL, SCALAR_3D_MID);
+  
+  GridOpts ztodt;
+  set_grid_opts_helper(ztodt, "ztodt", true, NULL, SCALAR_3D_MID);
   
   //@Aaron: Is vector 3d layout right for pguall(pcols,pver,2)?
   GridOpts pguall;
@@ -184,6 +226,10 @@ void set_grid_opts(){
   GridOpts icwu;
   set_grid_opts_helper(icwu, "icwu", true, NULL, VECTOR_3D_MID);
   
+  GridOpts ncnst;
+  set_grid_opts_helper(ncnst, "ncnst", true, NULL, VECTOR_3D_MID);
 
+  GridOpts fracis;
+  set_grid_opts_helper(fracis, "fracis", true, NULL, VECTOR_3D_MID);
 } 
 #endif

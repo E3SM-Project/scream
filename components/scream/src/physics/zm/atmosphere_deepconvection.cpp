@@ -13,25 +13,6 @@ namespace scream
 
 {
 
-
-const Int& lchnk = 0;
-const Int& ncol = 70;
-const Real &delt = 0;
-
-const Real& lengath = 0; 
-Real** t_star; 
-Real** q_star;
-Real** tend_s; 
-Real** tend_q; 
-
-Real** cld; 
-Real** flxprec; 
-Real** flxsnow;
-const Real& ztodt = 0; 
-const Real& ncnst = 0; 
-const Real& limcnv_in = 0;
-const bool& no_deep_pbl_in = true;
-
 Real*** fracis;
 
 
@@ -92,7 +73,7 @@ void ZMDeepConvection::initialize (const util::TimeStamp& t0)
 {
   m_current_ts = t0;
   
-  zm_init_f90 (limcnv_in, no_deep_pbl_in);
+  zm_init_f90 (*m_raw_ptrs_in["limcnv_in"], m_raw_ptrs_in["no_deep_pbl_in"]);
   
   using strvec = std::vector<std::string>;
   const strvec& initable = zm_inputs;
@@ -100,7 +81,7 @@ void ZMDeepConvection::initialize (const util::TimeStamp& t0)
     const auto& f = m_zm_fields_in.at(name);
     const auto& track = f.get_header().get_tracking();
     if (track.get_init_type()==InitType::None) {
-      // Nobody claimed to init this field. P3InputsInitializer will take care of it
+      // Nobody claimed to init this field. ZMInputsInitializer will take care of it
       m_initializer->add_me_as_initializer(f);
     }
    }
@@ -120,26 +101,31 @@ void ZMDeepConvection::run (const Real dt)
     Kokkos::deep_copy(m_zm_host_views_out.at(it.first),it.second.get_view());
   }
 
-   
-  zm_main_f90(lchnk, ncol, m_raw_ptrs_out["t"], m_raw_ptrs_out["qh"], m_raw_ptrs_out["prec"],
-              m_raw_ptrs_out["jctop"], m_raw_ptrs_out["jcbot"], m_raw_ptrs_out["pblh"], 
-              m_raw_ptrs_out["zm"], m_raw_ptrs_out["geos"], m_raw_ptrs_out["zi"], 
-	      m_raw_ptrs_out["qtnd"], m_raw_ptrs_out["heat"], m_raw_ptrs_out["pap"], 
-	      m_raw_ptrs_out["paph"], m_raw_ptrs_out["dpp"], delt, m_raw_ptrs_out["mcon"], 
+  Real** temp = &m_raw_ptrs_out["fracis"];
+  Real*** fracis = &temp;
+ 
+  zm_main_f90(*m_raw_ptrs_out["lchnk"], *m_raw_ptrs_out["ncol"], m_raw_ptrs_out["t"], 
+  	      m_raw_ptrs_out["qh"], m_raw_ptrs_out["prec"], m_raw_ptrs_out["jctop"], 
+              m_raw_ptrs_out["jcbot"], m_raw_ptrs_out["pblh"], m_raw_ptrs_out["zm"], 
+              m_raw_ptrs_out["geos"], m_raw_ptrs_out["zi"], m_raw_ptrs_out["qtnd"], 
+              m_raw_ptrs_out["heat"], m_raw_ptrs_out["pap"], m_raw_ptrs_out["paph"], 
+              m_raw_ptrs_out["dpp"], *m_raw_ptrs_out["delt"], m_raw_ptrs_out["mcon"], 
 	      m_raw_ptrs_out["cme"], m_raw_ptrs_out["cape"], m_raw_ptrs_out["tpert"], 
               m_raw_ptrs_out["dlf"], m_raw_ptrs_out["plfx"], m_raw_ptrs_out["zdu"], 
 	      m_raw_ptrs_out["rprd"], m_raw_ptrs_out["mu"], m_raw_ptrs_out["md"], 
               m_raw_ptrs_out["du"], m_raw_ptrs_out["eu"], m_raw_ptrs_out["ed"], 
 	      m_raw_ptrs_out["dp"], m_raw_ptrs_out["dsubcld"], m_raw_ptrs_out["jt"], 
-	      m_raw_ptrs_out["maxg"], m_raw_ptrs_out["ideep"], lengath, m_raw_ptrs_out["ql"],
-              m_raw_ptrs_out["rliq"], m_raw_ptrs_out["landfrac"], m_raw_ptrs_out["hu_nm1"], 
-              m_raw_ptrs_out["cnv_nm1"], m_raw_ptrs_out["tm1"], m_raw_ptrs_out["qm1"], 
-              t_star, q_star, m_raw_ptrs_out["dcape"], m_raw_ptrs_out["q"], 
-              tend_s, tend_q, cld, m_raw_ptrs_out["snow"], m_raw_ptrs_out["ntprprd"], 
-              m_raw_ptrs_out["ntsnprd"], flxprec, flxsnow, ztodt, m_raw_ptrs_out["pguall"], 
-	      m_raw_ptrs_out["pgdall"], m_raw_ptrs_out["icwu"], ncnst, fracis); 
- 
-   m_current_ts += dt;
+	      m_raw_ptrs_out["maxg"], m_raw_ptrs_out["ideep"], *m_raw_ptrs_out["lengath"], 
+              m_raw_ptrs_out["ql"], m_raw_ptrs_out["rliq"], m_raw_ptrs_out["landfrac"], 
+              m_raw_ptrs_out["hu_nm1"], m_raw_ptrs_out["cnv_nm1"], m_raw_ptrs_out["tm1"], 
+              m_raw_ptrs_out["qm1"], &m_raw_ptrs_out["t_star"], &m_raw_ptrs_out["q_star"], 
+              m_raw_ptrs_out["dcape"], m_raw_ptrs_out["q"], &m_raw_ptrs_out["tend_s"], 
+              &m_raw_ptrs_out["tend_q"], &m_raw_ptrs_out["cld"], m_raw_ptrs_out["snow"], 
+              m_raw_ptrs_out["ntprprd"], m_raw_ptrs_out["ntsnprd"], 
+              &m_raw_ptrs_out["flxprec"], &m_raw_ptrs_out["flxsnow"], 
+              *m_raw_ptrs_out["ztodt"], m_raw_ptrs_out["pguall"], m_raw_ptrs_out["pgdall"], 
+              m_raw_ptrs_out["icwu"], *m_raw_ptrs_out["ncnst"], fracis); 
+  m_current_ts += dt;
   for (int i = 0; i < zm_inputs.size(); i++){
   	m_zm_fields_out.at(zm_inputs[i]).get_header().get_tracking().update_time_stamp(m_current_ts);
   }
@@ -151,7 +137,7 @@ void ZMDeepConvection::finalize()
 }
 // =========================================================================================
 void ZMDeepConvection::register_fields (FieldRepository<Real, device_type>& field_repo) const {
-     for (auto& fid : m_required_fields) {
+   for (auto& fid : m_required_fields) {
      field_repo.register_field(fid);
    }
    for (auto& fid : m_computed_fields) {
@@ -170,7 +156,6 @@ void ZMDeepConvection::set_required_field_impl (const Field<const Real, device_t
   m_zm_fields_in.emplace(name,f);
   m_zm_host_views_in[name] = Kokkos::create_mirror_view(f.get_view());
   m_raw_ptrs_in[name] = m_zm_host_views_in[name].data();
-
   // Add myself as customer to the field
   add_me_as_customer(f);
 
