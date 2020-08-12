@@ -559,7 +559,6 @@ subroutine zm_convr(lchnk   ,ncol    , &
 
    logical :: is_first_step
 
-
 !
 !--------------------------Data statements------------------------------
 !
@@ -573,7 +572,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !
    qtnd(:,:) = 0.0_r8
    heat(:,:) = 0.0_r8
-   mcon(:,:) = 0.0_r8
+   !mcon(:,:) = 0.0_r8  !Meredith - This is the line that when uncommented causes issues.
    rliq(:ncol)   = 0.0_r8
 
 !

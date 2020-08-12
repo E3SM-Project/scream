@@ -6,7 +6,7 @@ module scream_zm_interface_mod
 
   use iso_c_binding, only: c_ptr, c_f_pointer, c_int, c_double, c_bool,C_NULL_CHAR, c_float
   use physics_utils, only: r8 => rtype, rtype8, itype, btype
-  use zm_conv,       only: zm_convr, zm_conv_evap, zm_convi, convtran, momtran
+  use zm_conv,       only: zm_convr, zm_conv_evap, zm_convi, convtran, momtran,zmconv_readnl
  
   implicit none
 #include "scream_config.f"
@@ -43,6 +43,7 @@ contains
     integer, intent(in)                :: limcnv_in
     logical, intent(in), optional      :: no_deep_pbl_in    
     call zm_convi(limcnv_in, no_deep_pbl_in)
+    call zmconv_readnl()
 
   end subroutine zm_init_f90
   !====================================================================!
@@ -151,16 +152,16 @@ subroutine zm_main_f90(lchnk   ,ncol    , &
    fake_dpdry(:,:) = 0._r8
    il1g = 1
    
-   !call zm_convr(lchnk   ,ncol    , &
-   !                 t       ,qh      ,prec    ,jctop   ,jcbot   , &
-   !                 pblh    ,zm      ,geos    ,zi      ,qtnd    , &
-   !                 heat    ,pap     ,paph    ,dpp     , &
-   !                 delt    ,mcon    ,cme     ,cape    , &
-   !                 tpert   ,dlf     ,pflx    ,zdu     ,rprd    , &
-   !                 mu      ,md      ,du      ,eu      ,ed      , &
-   !                 dp      ,dsubcld ,jt      ,maxg    ,ideep   , &
-   !                 lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
-   !                 cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star, dcape)
+   call zm_convr(lchnk   ,ncol    , &
+                    t       ,qh      ,prec    ,jctop   ,jcbot   , &
+                    pblh    ,zm      ,geos    ,zi      ,qtnd    , &
+                    heat    ,pap     ,paph    ,dpp     , &
+                    delt    ,mcon    ,cme     ,cape    , &
+                    tpert   ,dlf     ,pflx    ,zdu     ,rprd    , &
+                    mu      ,md      ,du      ,eu      ,ed      , &
+                    dp      ,dsubcld ,jt      ,maxg    ,ideep   , &
+                    lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
+                    cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star, dcape)
    
    call zm_conv_evap(ncol    ,lchnk, &
                      t       ,pap     ,dpp     ,q     , &
