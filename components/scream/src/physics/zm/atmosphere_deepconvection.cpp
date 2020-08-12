@@ -60,7 +60,7 @@ void ZMDeepConvection::set_grids(const std::shared_ptr<const GridsManager> grids
   for ( auto i = opt_map.begin(); i != opt_map.end(); ++i){
     m_required_fields.emplace((i->second).name, layout_opts[((i->second).field_idx)], Q, grid->name());
     if ( (i->second).isOut == true ) {
-      m_computed_fields.emplace((i->second).name, scalar3d_layout_int, Q, grid->name());
+      m_computed_fields.emplace((i->second).name, layout_opts[((i->second).field_idx)], Q, grid->name());
     }
   }
  
@@ -107,7 +107,7 @@ void ZMDeepConvection::run (const Real dt)
   zm_main_f90(*m_raw_ptrs_out["lchnk"], *m_raw_ptrs_out["ncol"], m_raw_ptrs_out["t"], 
   	      m_raw_ptrs_out["qh"], m_raw_ptrs_out["prec"], m_raw_ptrs_out["jctop"], 
               m_raw_ptrs_out["jcbot"], m_raw_ptrs_out["pblh"], m_raw_ptrs_out["zm"], 
-              m_raw_ptrs_out["geos"], m_raw_ptrs_out["zi"], m_raw_ptrs_out["qtnd"], 
+              m_raw_ptrs_out["geos"], m_raw_ptrs_in["zi"], m_raw_ptrs_out["qtnd"], 
               m_raw_ptrs_out["heat"], m_raw_ptrs_out["pap"], m_raw_ptrs_out["paph"], 
               m_raw_ptrs_out["dpp"], *m_raw_ptrs_out["delt"], m_raw_ptrs_out["mcon"], 
 	      m_raw_ptrs_out["cme"], m_raw_ptrs_out["cape"], m_raw_ptrs_out["tpert"], 
