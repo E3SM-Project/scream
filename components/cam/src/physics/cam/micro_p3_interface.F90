@@ -85,6 +85,8 @@ module micro_p3_interface
       prer_evap_idx,      &
       cmeliq_idx,         &
       relvar_idx,         &
+      qv_prev_idx,        &
+      t_prev_idx,         &
       accre_enhan_idx     
 
 ! Physics buffer indices for fields registered by other modules
@@ -280,6 +282,9 @@ end subroutine micro_p3_readnl
    call pbuf_add_field('RELVAR',     'global',dtype_r8,(/pcols,pver/),   relvar_idx)
    call pbuf_add_field('ACCRE_ENHAN','global',dtype_r8,(/pcols,pver/), accre_enhan_idx)
 
+   call pbuf_add_field('QV_PREV',     'global',dtype_r8,(/pcols,pver/),   qv_prev_idx)
+   call pbuf_add_field('T_PREV',      'global',dtype_r8,(/pcols,pver/),   t_prev_idx)
+
    if (masterproc) write(iulog,'(A20)') '    P3 register finished'
   end subroutine micro_p3_register
 
@@ -362,6 +367,8 @@ end subroutine micro_p3_readnl
        call pbuf_set_field(pbuf2d, relvar_idx, 2._rtype)
        call pbuf_set_field(pbuf2d, accre_enhan_idx, micro_mg_accre_enhan_fac)
        call pbuf_set_field(pbuf2d, prer_evap_idx,  0._rtype)
+       call pbuf_set_field(pbuf2d, qv_prev_idx, 0._rtype)
+       call pbuf_set_field(pbuf2d, t_prev_idx,  0._rtype)
  
     end if
 
@@ -766,7 +773,9 @@ end subroutine micro_p3_readnl
     real(rtype), pointer :: snow_sed(:)    ! Surface flux of cloud ice from sedimentation
     real(rtype), pointer :: relvar(:,:)    ! cloud liquid relative variance [-]
     real(rtype), pointer :: cldo(:,:)      ! Old cloud fraction
-    real(rtype), pointer :: prer_evap(:,:) ! precipitation evaporation rate 
+    real(rtype), pointer :: prer_evap(:,:) ! precipitation evaporation rate
+    real(rtype), pointer :: qv_prev(:,:)   ! qv from previous p3_main call
+    real(rtype), pointer :: t_prev(:,:)    ! t from previous p3_main call
     !! wetdep 
     real(rtype), pointer :: qme(:,:)
     real(rtype), pointer :: prain(:,:)        ! Total precipitation (rain + snow)
@@ -1054,6 +1063,8 @@ end subroutine micro_p3_readnl
          liq_ice_exchange(its:ite,kts:kte),& ! OUT sum of liq-ice phase change tendenices   
          vap_liq_exchange(its:ite,kts:kte),& ! OUT sun of vap-liq phase change tendencies
          vap_ice_exchange(its:ite,kts:kte),& ! OUT sum of vap-ice phase change tendencies
+         qv_prev(its:ite,kts:kte),         & ! IN  qv at end of prev p3_main call   kg kg-1
+         t_prev(its:ite,kts:kte),          & ! IN  t at end of prev p3_main call    K
          col_location(its:ite,:3)          & ! IN column locations
          )
 
@@ -1103,7 +1114,7 @@ end subroutine micro_p3_readnl
 
     !BACK OUT TENDENCIES FROM STATE CHANGES
     !=============
-    temp(:ncol,:pver) = th(:ncol,:pver)/exner(:ncol,:pver) 
+    temp(:ncol,:pver) = th(:ncol,:pver)/exner(:ncol,:pver)
     ptend%s(:ncol,:pver)           = cpair*( temp(:ncol,:pver) - state%t(:ncol,:pver) )/dtime 
     ptend%q(:ncol,:pver,1)         = ( max(0._rtype,qv(:ncol,:pver)     ) - state%q(:ncol,:pver,1)         )/dtime
     ptend%q(:ncol,:pver,ixcldliq)  = ( max(0._rtype,cldliq(:ncol,:pver) ) - state%q(:ncol,:pver,ixcldliq)  )/dtime
@@ -1114,6 +1125,10 @@ end subroutine micro_p3_readnl
     ptend%q(:ncol,:pver,ixnumice)  = ( max(0._rtype,numice(:ncol,:pver) ) - state%q(:ncol,:pver,ixnumice)  )/dtime
     ptend%q(:ncol,:pver,ixcldrim)  = ( max(0._rtype,qirim(:ncol,:pver)  ) - state%q(:ncol,:pver,ixcldrim)  )/dtime
     ptend%q(:ncol,:pver,ixrimvol)  = ( max(0._rtype,rimvol(:ncol,:pver) ) - state%q(:ncol,:pver,ixrimvol)  )/dtime
+
+    ! Update t_prev and qv_prev
+    t_prev(:ncol,:pver) = temp(:ncol,:pver)
+    qv_prev(:ncol,:pver) = qv(:ncol,:pver)
 
     call t_stopf('micro_p3_tend_loop')
     call t_startf('micro_p3_tend_finish')

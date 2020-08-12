@@ -453,6 +453,7 @@ contains
 
   SUBROUTINE p3_main_part2(kts, kte, kbot, ktop, kdir, log_predictNc, dt, odt, &
        pres, pdel, dzq, ncnuc, exner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, naai, qc_relvar, icldm, lcldm, rcldm,&
+       qv_prev, t_prev, &
        t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, qitot, nitot, &
        qirim, birim, xxlv, xxls, xlf, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld, nr_incld, &
        nitot_incld, birim_incld, mu_c, nu, lamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, cmeiout, prain, &
@@ -468,7 +469,7 @@ contains
     real(rtype), intent(in) :: dt, odt
 
     real(rtype), intent(in), dimension(kts:kte) :: pres, pdel, dzq, ncnuc, exner, inv_exner, inv_lcldm, inv_icldm,   &
-         inv_rcldm, naai, qc_relvar, icldm, lcldm, rcldm
+         inv_rcldm, naai, qc_relvar, icldm, lcldm, rcldm, qv_prev, t_prev 
 
     real(rtype), intent(inout), dimension(kts:kte) :: t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn,        &
          qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, xxlv, xxls, xlf, qc_incld, qr_incld,                    &
@@ -730,12 +731,16 @@ contains
            dv,mu,sc,mu_r(k),lamr(k),cdistr(k),cdist(k),qr_incld(k),qc_incld(k), &
            epsr,epsc)
 
-      call evaporate_sublimate_precip(qr_incld(k),qc_incld(k),nr_incld(k),qitot_incld(k), &
-           lcldm(k),rcldm(k),qvs(k),ab,epsr,qv(k), &
-           qrevp,nrevp)
+      !call evaporate_sublimate_precip(qr_incld(k),qc_incld(k),nr_incld(k),qitot_incld(k), &
+      !     lcldm(k),rcldm(k),qvs(k),ab,epsr,qv(k), &
+      !     qrevp,nrevp)
+      ! Change evaporate_sublimate_precip with evaporate_precip
+      call evaporate_precip(qr_incld(k),qc_incld(k),nr_incld(k), qitot_incld(k),  &
+           lcldm(k),rcldm(k),qv(k),qv_prev(k),qvs(k),qvi(k),ab,abi,epsr,epsi_tot, &
+           t(k),t_prev(k),xxls(k),dqsdt,odt,dt,qrevp,nrevp)
 
       call ice_deposition_sublimation(qitot_incld(k), nitot_incld(k), t(k), &
-           qvs(k),qvi(k),epsi,abi,qv(k), &
+           qvs(k),qvi(k),epsi,abi,qv(k),odt, &
            qidep,qisub,nisub,qiberg)
 
 444   continue
@@ -1065,7 +1070,7 @@ contains
        diag_effi,diag_rhoi,log_predictNc, &
        pdel,exner,cmeiout,prain,nevapr,prer_evap,rflx,sflx,rcldm,lcldm,icldm,  &
        p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-       vap_ice_exchange,col_location)
+       vap_ice_exchange,qv_prev,t_prev,col_location)
 
     !----------------------------------------------------------------------------------------!
     !                                                                                        !
@@ -1134,6 +1139,7 @@ contains
     ! INPUT needed for PBUF variables used by other parameterizations
 
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: icldm, lcldm, rcldm ! Ice, Liquid and Rain cloud fraction
+    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: qv_prev, t_prev     ! qv and temp from prev p3_main call
     ! AaronDonahue, the following variable (p3_tend_out) is a catch-all for passing P3-specific variables outside of p3_main
     ! so that they can be written as ouput.  NOTE TO C++ PORT: This variable is entirely optional and doesn't need to be
     ! included in the port to C++, or can be changed if desired.
@@ -1288,7 +1294,8 @@ contains
        call p3_main_part2(kts, kte, kbot, ktop, kdir, log_predictNc, dt, odt, &
             pres(i,:), pdel(i,:), dzq(i,:), ncnuc(i,:), exner(i,:), inv_exner(i,:), &
             inv_lcldm(i,:), inv_icldm(i,:), inv_rcldm(i,:), naai(i,:), qc_relvar(i,:), &
-            icldm(i,:), lcldm(i,:), rcldm(i,:), t(i,:), rho(i,:), inv_rho(i,:), qvs(i,:), &
+            icldm(i,:), lcldm(i,:), rcldm(i,:), qv_prev(i,:), t_prev(i,:), &
+            t(i,:), rho(i,:), inv_rho(i,:), qvs(i,:), &
             qvi(i,:), supi(i,:), rhofacr(i,:), rhofaci(i,:), acn(i,:), qv(i,:), th(i,:), &
             qc(i,:), nc(i,:), qr(i,:), nr(i,:), qitot(i,:), nitot(i,:), qirim(i,:), &
             birim(i,:), xxlv(i,:), xxls(i,:), xlf(i,:), qc_incld(i,:), qr_incld(i,:), &
@@ -3216,7 +3223,7 @@ end subroutine update_prognostic_liquid
 
 
 subroutine ice_deposition_sublimation(qitot_incld,nitot_incld,t,    &
-qvs,qvi,epsi,abi,qv,    &
+qvs,qvi,epsi,abi,qv,odt,    &
 qidep,qisub,nisub,qiberg)
 
    implicit none
@@ -3229,6 +3236,7 @@ qidep,qisub,nisub,qiberg)
    real(rtype), intent(in)  :: epsi
    real(rtype), intent(in)  :: abi
    real(rtype), intent(in)  :: qv
+   real(rtype), intent(in)  :: odt
    real(rtype), intent(out) :: qidep
    real(rtype), intent(out) :: qisub
    real(rtype), intent(out) :: nisub
@@ -3240,6 +3248,14 @@ qidep,qisub,nisub,qiberg)
    if (qitot_incld>=qsmall) then
       !Compute deposition/sublimation
       qidep = epsi * oabi * (qv - qvi)
+      !Ensure deposition does not lead to subsaturated condition
+      if (qidep>0._rtype) then
+         qidep=min(qidep,(qv - qvi) * oabi * odt)
+      endif
+      !Ensure sublimation does not lead to supersaturated condition
+      if (qidep<0._rtype) then
+         qidep=max(qidep,(qv - qvi) * oabi * odt)
+      endif
       !Split into deposition or sublimation.
       if (t < zerodegc .and. qidep>0._rtype) then
          qisub=0._rtype
@@ -3322,6 +3338,84 @@ qrevp,nrevp)
    return
 
 end subroutine evaporate_sublimate_precip
+
+subroutine evaporate_precip(qr_incld,qc_incld,nr_incld,qitot_incld,           &
+    lcldm,rcldm,qv,qv_old,qvs,qvi,ab,abi,epsr,epsi_tot,t,t_old,xxls,dqsdt,odt,dt,      &
+    qrevp,nrevp)
+    
+       implicit none
+    
+       real(rtype), intent(in)  :: qr_incld
+       real(rtype), intent(in)  :: qc_incld
+       real(rtype), intent(in)  :: nr_incld
+       real(rtype), intent(in)  :: qitot_incld
+       real(rtype), intent(in)  :: lcldm
+       real(rtype), intent(in)  :: rcldm
+       real(rtype), intent(in)  :: qvs,qvi
+       real(rtype), intent(in)  :: ab,abi
+       real(rtype), intent(in)  :: epsr,epsi_tot
+       real(rtype), intent(in)  :: qv,qv_old
+       real(rtype), intent(in)  :: t,t_old,xxls,dqsdt,odt,dt
+       real(rtype), intent(inout) :: qrevp
+       real(rtype), intent(inout) :: nrevp
+       real(rtype) :: qclr, cld, xx, ssat_r, SPF, hlp_w, oxx, qrcon, oabi, aaa, sup_r, qrevp_incld     
+    
+    ! +++++++++++++++++++++++++++++++++++++++++++++++ JS:
+    ! Local stuff (generalize it when done):
+    
+       if (qc_incld + qitot_incld < 1.e-6_rtype) then
+             cld = 0._rtype
+       else
+             cld = lcldm
+       end if
+          
+       ! Only calculate if there is some rain fraction > cloud fraction
+       qrevp = 0.0_rtype
+       nrevp = 0.0_rtype
+       if (rcldm > cld) then
+    
+          ssat_r = qv - qvs
+          sup_r = qv / qvs - 1.0_rtype
+          SPF = 1.0_rtype   
+    
+          if (t < 273.15_rtype) then
+             oabi = 1.0_rtype/abi
+             xx   = epsr + epsi_tot*(1.0_rtype + xxls*inv_cp*dqsdt)*oabi
+          else
+             xx   = epsr
+          endif
+    
+          ! hlp_qvi = qvi   !no modification due to latent heating
+          hlp_w = -cp/g*(t - t_old)*odt
+    
+          if (t < 273.15_rtype) then
+             aaa = (qv - qv_old)*odt - dqsdt*(-hlp_w*g*inv_cp)-(qvs - qvi)*     &
+                   (1.0_rtype + xxls*inv_cp*dqsdt)*oabi*epsi_tot
+          else
+             aaa = (qv - qv_old)*odt - dqsdt*(-hlp_w*g*inv_cp)
+          endif
+    
+          xx  = max(1.e-20_rtype,xx)   ! set lower bound on xx to prevent division by zero
+          oxx = 1.0_rtype/xx
+    
+          qrcon = 0.0
+          if (qr_incld > qsmall) qrcon = (aaa*epsr*oxx + (ssat_r*SPF-aaa*oxx)*odt*epsr*oxx*(1.0_rtype-dexp(-dble(xx*dt))))/ab
+    
+          if (sup_r < -0.001_rtype .and. qr_incld < 1.e-12_rtype)  qrcon = -qr_incld*odt
+          
+          if (qrcon < 0.0_rtype) then
+             qrcon = max(qrcon,(qv-qvs)*odt) ! Do not allow qrcon*dt from exceeding saturation deficit
+             qrevp_incld = -qrcon*(rcldm-cld)/rcldm !qrevp occurs where there's rain but no cloud and scale by rain fraction
+             qrevp = qrevp_incld      ! per rain fraction
+             nrevp = qrevp*(nr_incld/qr_incld)
+             qrcon = 0.0_rtype
+          endif
+    
+       endif
+     
+       return
+       
+end subroutine evaporate_precip
 
 subroutine get_time_space_phys_variables( &
 t,pres,rho,xxlv,xxls,qvs,qvi, &
