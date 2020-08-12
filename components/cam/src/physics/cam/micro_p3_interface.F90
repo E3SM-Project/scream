@@ -865,6 +865,8 @@ end subroutine micro_p3_readnl
     ! All internal PBUF variables
     ! INPUTS
     call pbuf_get_field(pbuf,      relvar_idx,    relvar                                                   )
+    call pbuf_get_field(pbuf,      t_prev_idx,    t_prev                                                   )
+    call pbuf_get_field(pbuf,     qv_prev_idx,    qv_prev                                                  )
     ! OUTPUTS
     call pbuf_get_field(pbuf,        cldo_idx,      cldo, start=(/1,1,itim_old/), kount=(/psetcols,pver,1/))
     call pbuf_get_field(pbuf,         qme_idx,       qme                                                   )
