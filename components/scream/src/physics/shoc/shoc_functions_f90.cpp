@@ -46,10 +46,42 @@ void eddy_diffusivities_c(Int nlev, Int shcol, Real *obklen, Real *pblh,
 
 void calc_shoc_vertflux_c(Int shcol, Int nlev, Int nlevi, Real *tkh_zi,
 			  Real *dz_zi, Real *invar, Real *vertflux);
+
+void shoc_diag_second_moments_srf_c(Int shcol, Real* wthl, Real* uw, Real* vw, Real* ustar2, Real* wstar);
+
 }
 
 namespace scream {
 namespace shoc {
+
+namespace {
+
+template <size_t N, size_t M>
+void gen_random_data(const std::array<std::pair<Real, Real>, N>& ranges,
+                     const std::array<Real**, M>& ptrs,
+                     Real* data, Int nk)
+{
+  static_assert(N <= M, "Require at least as many ptrs as ranges");
+
+  Int offset = 0;
+  std::default_random_engine generator;
+
+  for (size_t i = 0; i < N; ++i) {
+    std::uniform_real_distribution<Real> data_dist(ranges[i].first, ranges[i].second);
+    *ptrs[i] = data + offset;
+    offset += nk;
+    for(Int k = 0; k < nk; ++k) {
+      (*ptrs[i])[k] = data_dist(generator);
+    }
+  }
+
+  for (size_t i = N; i < M; ++i) {
+    *ptrs[i] = data + offset;
+    offset += nk;
+  }
+}
+
+}
 
 //
 // Data struct
@@ -130,6 +162,33 @@ void SHOCDataBase::randomize()
   }
 }
 
+MomSrfData::MomSrfData(
+  Int shcol_,
+  const std::array< std::pair<Real, Real>, NUM_ARRAYS >& ranges) :
+  shcol(shcol_),
+  m_nk(shcol_),
+  m_data(NUM_ARRAYS*m_nk, 1.0)
+{
+  std::array<Real**, NUM_ARRAYS> ptrs = {&wthl, &uw, &vw, &ustar2, &wstar};
+  gen_random_data(ranges, ptrs, m_data.data(), m_nk);
+}
+
+MomSrfData::MomSrfData(const MomSrfData& rhs) :
+  shcol(rhs.shcol),
+  m_nk(rhs.m_nk),
+  m_data(rhs.m_data)
+{
+  Int offset = 0;
+  Real* data_begin = m_data.data();
+
+  Real** ptrs[NUM_ARRAYS] = {&wthl, &uw, &vw, &ustar2, &wstar};
+
+  for (size_t i = 0; i < NUM_ARRAYS; ++i) {
+    *ptrs[i] = data_begin + offset;
+    offset += m_nk;
+  }
+}
+
 //
 // Glue functions to call fortran from from C++ with the Data struct
 //
@@ -207,6 +266,13 @@ void eddy_diffusivities(SHOCEddydiffData &d) {
   d.transpose<util::TransposeDirection::f2c>();
 }
 
+void shoc_diag_second_moments_srf(MomSrfData& d)
+{
+  Int nlev = 128;
+  shoc_init(nlev, true);
+  shoc_diag_second_moments_srf_c(d.shcol, d.wthl, d.uw, d.vw, d.ustar2, d.wstar);
+}
+
 //
 // _f function definitions. These expect data in C layout
 //
@@ -255,6 +321,40 @@ void calc_shoc_vertflux_f(Int shcol, Int nlev, Int nlevi, Real *tkh_zi,
   Kokkos::Array<view_2d, 1> inout_views = {vertflux_d};
   pack::device_to_host({vertflux}, {shcol}, {nlevi}, inout_views, true);
 }
+
+void shoc_diag_second_moments_srf_f(Int shcol, Real* wthl, Real* uw, Real* vw, Real* ustar2, Real* wstar)
+{
+  using SHOC       = Functions<Real, DefaultDevice>;
+  using Spack      = typename SHOC::Spack;
+  using view_1d    = typename SHOC::view_1d<Spack>;
+  using KT         = typename SHOC::KT;
+  using ExeSpace   = typename KT::ExeSpace;
+  using MemberType = typename SHOC::MemberType;
+
+  const Int nshcol_pack = scream::pack::npack<Spack>(shcol);
+  Kokkos::Array<view_1d, MomSrfData::NUM_ARRAYS> mom_d;
+
+  pack::host_to_device({wthl, uw, vw, ustar2, wstar}, shcol, mom_d);
+
+  view_1d wthl_d(mom_d[0]),
+          uw_d(mom_d[1]),
+          vw_d(mom_d[2]),
+          ustar2_d(mom_d[3]),
+          wstar_d(mom_d[4]);
+
+  auto policy = util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, nshcol_pack);
+  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+
+    SHOC::shoc_diag_second_moments_srf(team, shcol, wthl_d, uw_d, vw_d, ustar2_d, wstar_d);
+  });
+
+  // back to host
+  Kokkos::Array<view_1d, 2> host_views = {ustar2_d, wstar_d};
+
+  pack::device_to_host({ustar2, wstar}, shcol, host_views);
+
+}
+
 
 } // namespace shoc
 } // namespace scream
