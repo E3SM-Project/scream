@@ -3344,7 +3344,7 @@ qrevp,nrevp)
 end subroutine evaporate_sublimate_precip
 
 subroutine evaporate_precip_wrfp3(qr_incld,qc_incld,nr_incld,qitot_incld,           &
-    lcldm,rcldm,qv,qv_old,qvs,qvi,ab,abi,epsr,epsi_tot,t,t_old,xxls,dqsdt,odt,dt,      &
+    lcldm,rcldm,qv,qv_old,qvs,qvi,ab,abi,epsr,epsc,epsi_tot,t,t_old,xxls,dqsdt,odt,dt,      &
     qrevp,nrevp)
     
        implicit none
@@ -3357,7 +3357,7 @@ subroutine evaporate_precip_wrfp3(qr_incld,qc_incld,nr_incld,qitot_incld,       
        real(rtype), intent(in)  :: rcldm
        real(rtype), intent(in)  :: qvs,qvi
        real(rtype), intent(in)  :: ab,abi
-       real(rtype), intent(in)  :: epsr,epsi_tot
+       real(rtype), intent(in)  :: epsr,epsc,epsi_tot
        real(rtype), intent(in)  :: qv,qv_old
        real(rtype), intent(in)  :: t,t_old,xxls,dqsdt,odt,dt
        real(rtype), intent(inout) :: qrevp
@@ -3384,9 +3384,9 @@ subroutine evaporate_precip_wrfp3(qr_incld,qc_incld,nr_incld,qitot_incld,       
     
           if (t < 273.15_rtype) then
              oabi = 1.0_rtype/abi
-             xx   = epsr + epsi_tot*(1.0_rtype + xxls*inv_cp*dqsdt)*oabi
+             xx   = epsc + epsr + epsi_tot*(1.0_rtype + xxls*inv_cp*dqsdt)*oabi
           else
-             xx   = epsr
+             xx   = epsc + epsr
           endif
     
           ! hlp_qvi = qvi   !no modification due to latent heating
