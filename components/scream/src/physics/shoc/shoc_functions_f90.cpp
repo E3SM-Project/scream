@@ -49,6 +49,9 @@ void calc_shoc_vertflux_c(Int shcol, Int nlev, Int nlevi, Real *tkh_zi,
 
 void shoc_diag_second_moments_srf_c(Int shcol, Real* wthl, Real* uw, Real* vw, Real* ustar2, Real* wstar);
 
+void shoc_diag_second_moments_ubycond_c(Int shcol, Int num_tracer, Real* thl, Real* qw, Real* wthl, Real* wqw, Real* qwthl, Real* uw, Real* vw,
+      Real* wtke, Real* wtracer);
+
 }
 
 namespace scream {
@@ -189,6 +192,50 @@ MomSrfData::MomSrfData(const MomSrfData& rhs) :
   }
 }
 
+MomUbycondData::MomUbycondData(
+  Int shcol_,
+  Int num_tracer_,
+  const std::array< std::pair<Real, Real>, NUM_ARRAYS >& ranges) :
+  shcol(shcol_),
+  num_tracer(num_tracer_),
+  m_nk(shcol_),
+  m_data((NUM_ARRAYS+num_tracer)*m_nk, 1.0)
+{
+  std::array<Real**, NUM_ARRAYS> ptrs = {&thl, &qw, &qwthl, &wthl, &wqw, &uw, &vw, &wtke};
+  gen_random_data(ranges, ptrs, m_data.data(), m_nk);
+
+  Real* data_begin = m_data.data();
+  Int offset = m_nk*NUM_ARRAYS;
+  const std::array< std::pair<Real, Real>, 1 > range2 = { std::make_pair(0, 1) };
+  std::array<Real**, 1> ptrs_2d = {&wtracer};
+  gen_random_data(range2, ptrs_2d, data_begin+offset, m_nk*num_tracer);
+}
+
+MomUbycondData::MomUbycondData(const MomUbycondData& rhs) :
+  shcol(rhs.shcol),
+  num_tracer(rhs.num_tracer),
+  m_nk(rhs.m_nk),
+  m_data(rhs.m_data)
+{
+  Int offset = 0;
+  Real* data_begin = m_data.data();
+
+  Real** ptrs[NUM_ARRAYS+1] = {&thl, &qw, &qwthl, &wthl, &wqw, &uw, &vw, &wtke, &wtracer};
+
+  for (size_t i = 0; i < NUM_ARRAYS+1; ++i) {
+    *ptrs[i] = data_begin + offset;
+    offset += m_nk;
+  }
+}
+
+void MomUbycondData::transpose()
+{
+  std::vector<Real> data(m_data.size());
+  // Transpose on the wtracer
+  util::transpose<util::TransposeDirection::f2c>(wtracer, data.data()+NUM_ARRAYS*shcol, shcol, num_tracer);
+  m_data = data;
+}
+
 //
 // Glue functions to call fortran from from C++ with the Data struct
 //
@@ -273,6 +320,14 @@ void shoc_diag_second_moments_srf(MomSrfData& d)
   shoc_diag_second_moments_srf_c(d.shcol, d.wthl, d.uw, d.vw, d.ustar2, d.wstar);
 }
 
+void shoc_diag_second_moments_ubycond(MomUbycondData& d)
+{
+  Int nlev = 128;
+  shoc_init(nlev, true);
+  shoc_diag_second_moments_ubycond_c(d.shcol, d.num_tracer, d.thl, d.qw, d.wthl, d.wqw, d.qwthl, d.uw, d.vw, d.wtke, d.wtracer);
+  d.transpose();
+}
+
 //
 // _f function definitions. These expect data in C layout
 //
@@ -355,6 +410,48 @@ void shoc_diag_second_moments_srf_f(Int shcol, Real* wthl, Real* uw, Real* vw, R
 
 }
 
+void shoc_diag_second_moments_ubycond_f(Int shcol, Int num_tracer, Real* thl, Real* qw, Real* wthl, Real* wqw, Real* qwthl, Real* uw, Real* vw,
+      Real* wtke, Real* wtracer)
+{
+  using SHOC       = Functions<Real, DefaultDevice>;
+  using Spack      = typename SHOC::Spack;
+  using view_1d    = typename SHOC::view_1d<Spack>;
+  using view_2d    = typename SHOC::view_2d<Spack>;
+  using KT         = typename SHOC::KT;
+  using ExeSpace   = typename KT::ExeSpace;
+  using MemberType = typename SHOC::MemberType;
+
+  Kokkos::Array<view_1d, MomUbycondData::NUM_ARRAYS> uby_1d;
+  Kokkos::Array<view_2d, 1> uby_2d;
+
+  pack::host_to_device({thl, qw, qwthl, wthl, wqw, uw, vw, wtke}, shcol, uby_1d);
+  pack::host_to_device({wtracer}, shcol, num_tracer, uby_2d, true);
+
+  view_1d thl_d(uby_1d[0]),
+          qw_d(uby_1d[1]),
+          qwthl_d(uby_1d[2]),
+          wthl_d(uby_1d[3]),
+          wqw_d(uby_1d[4]),
+          uw_d(uby_1d[5]),
+          vw_d(uby_1d[6]),
+          wtke_d(uby_1d[7]);
+
+  view_2d wtracer_d(uby_2d[0]);
+
+  auto policy = util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, shcol);
+  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+
+    SHOC::shoc_diag_second_moments_ubycond(team, shcol, num_tracer, thl_d, qw_d, wthl_d, wqw_d, qwthl_d, uw_d, vw_d, wtke_d, wtracer_d);
+
+  });
+
+  // back to host
+  Kokkos::Array<view_1d, 8> host_views = {thl_d, qw_d, qwthl_d, wthl_d, wqw_d, uw_d, vw_d, wtke_d};
+  Kokkos::Array<view_2d, 1> host_2d_views = {wtracer_d};
+
+  pack::device_to_host({thl, qw, qwthl, wthl, wqw, uw, vw, wtke}, shcol, host_views);
+  pack::device_to_host({wtracer}, shcol, num_tracer, host_2d_views, true);
+}
 
 } // namespace shoc
 } // namespace scream

@@ -27,8 +27,10 @@ void Functions<S,D>
  const auto ggr      = C::gravit;
  const auto basetemp = C::basetemp;
 
+ const Int nshcol_pack = scream::pack::npack<Spack>(shcol);
+
  Kokkos::parallel_for(
-    Kokkos::TeamThreadRange(team, shcol), [&] (Int k) {
+    Kokkos::TeamThreadRange(team, nshcol_pack), [&] (Int k) {
 
     ustar2(k) = pack::sqrt(uw_sfc(k)*uw_sfc(k)+vw_sfc(k)*vw_sfc(k));
 

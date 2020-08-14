@@ -199,6 +199,28 @@ struct MomSrfData {
   std::vector<Real> m_data;
 };
 
+struct MomUbycondData {
+  static constexpr size_t NUM_ARRAYS = 8;
+
+  Int shcol, num_tracer;
+
+  Real *thl, *qw, *wthl, *wqw, *qwthl, *uw, *vw, *wtke;
+  Real *wtracer;
+
+  MomUbycondData(Int shcol_, Int num_tracer_, const std::array< std::pair<Real, Real>, NUM_ARRAYS >& ranges);
+
+  MomUbycondData(const MomUbycondData& rhs);
+
+  Int nk() const { return m_nk; }
+
+  void transpose();
+
+  private:
+  // data
+  Int m_nk;
+  std::vector<Real> m_data;
+};
+
 //
 // Glue functions to call fortran from from C++ with the Data struct
 //
@@ -216,6 +238,7 @@ void isotropic_ts(SHOCIsotropicData &d);
 void adv_sgs_tke(SHOCAdvsgstkeData &d);
 void eddy_diffusivities(SHOCEddydiffData &d);
 void shoc_diag_second_moments_srf(MomSrfData& d);
+void shoc_diag_second_moments_ubycond(MomUbycondData& d);
 
 //
 // _f functions decls
@@ -226,6 +249,9 @@ void calc_shoc_vertflux_f(Int shcol, Int nlev, Int nlevi, Real *tkh_zi,
 			  Real *dz_zi, Real *invar, Real *vertflux);
 
 void shoc_diag_second_moments_srf_f(Int shcol, Real* wthl, Real* uw, Real* vw, Real* ustar2, Real* wstar);
+
+void shoc_diag_second_moments_ubycond_f(Int shcol, Int num_tracer, Real* thl, Real* qw, Real* wthl, Real* wqw, Real* qwthl, Real* uw, Real* vw,
+      Real* wtke, Real* wtracer);
 
 }
 
