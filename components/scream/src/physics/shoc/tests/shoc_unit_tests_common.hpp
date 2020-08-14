@@ -53,7 +53,8 @@ struct UnitWrap {
     static constexpr Int num_test_itrs = max_pack_size / Spack::n;
 
     // Put struct decls here
-    struct TestCalcShocVertflux;
+    struct TestCalcShocVertflux; 
+    struct TestSecondMomSrf;
   };
 
 };

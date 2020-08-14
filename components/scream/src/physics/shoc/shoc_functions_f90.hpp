@@ -180,6 +180,25 @@ struct SHOCVarorcovarData : public SHOCDataBase {
   { SHOCDataBase::operator=(rhs); tunefac = rhs.tunefac; return *this; }
 };//SHOCVarorcovarData
 
+struct MomSrfData {
+  static constexpr size_t NUM_ARRAYS = 5;
+
+  Int shcol;
+
+  Real *wthl, *uw, *vw, *ustar2, *wstar;
+
+  MomSrfData(Int shcol_, const std::array< std::pair<Real, Real>, NUM_ARRAYS >& ranges);
+
+  MomSrfData(const MomSrfData& rhs);
+
+  Int nk() const { return m_nk; }
+
+  private:
+  // data
+  Int m_nk;
+  std::vector<Real> m_data;
+};
+
 //
 // Glue functions to call fortran from from C++ with the Data struct
 //
@@ -196,6 +215,7 @@ void compute_shr_prod(SHOCTkeshearData &d);
 void isotropic_ts(SHOCIsotropicData &d);
 void adv_sgs_tke(SHOCAdvsgstkeData &d);
 void eddy_diffusivities(SHOCEddydiffData &d);
+void shoc_diag_second_moments_srf(MomSrfData& d);
 
 //
 // _f functions decls
@@ -204,6 +224,8 @@ extern "C" {
 
 void calc_shoc_vertflux_f(Int shcol, Int nlev, Int nlevi, Real *tkh_zi,
 			  Real *dz_zi, Real *invar, Real *vertflux);
+
+void shoc_diag_second_moments_srf_f(Int shcol, Real* wthl, Real* uw, Real* vw, Real* ustar2, Real* wstar);
 
 }
 
