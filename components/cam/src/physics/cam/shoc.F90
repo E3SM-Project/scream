@@ -1053,9 +1053,9 @@ subroutine diag_second_moments_srf(&
   do i=1,shcol
 
     ! Parameterize thermodyanmics variances via Andre et al. 1978
-    ustar2(i) = cxx_sqrt(uw_sfc(i) * uw_sfc(i) + vw_sfc(i) * vw_sfc(i))
+    ustar2(i) = bfb_sqrt(uw_sfc(i) * uw_sfc(i) + vw_sfc(i) * vw_sfc(i))
     if (wthl_sfc(i) > 0._rtype) then
-      wstar(i) = cxx_pow((1._rtype/basetemp * ggr * wthl_sfc(i) * z_const), (1._rtype/3._rtype))
+      wstar(i) = bfb_pow((1._rtype/basetemp * ggr * wthl_sfc(i) * z_const), (1._rtype/3._rtype))
     else
       wstar(i) = 0._rtype
     endif
