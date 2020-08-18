@@ -95,8 +95,8 @@
 <theta_hydrostatic_mode>.false.</theta_hydrostatic_mode>
 <tstep_type>10</tstep_type>
 
-<!-- Use se_ftype = 1 to improve dynamics/physics coupling -->
-<se_ftype>1</se_ftype>
+<!-- Dynamics/physics coupling; should be the default, but set to make sure -->
+<se_ftype>2</se_ftype>
 
 <!-- Use the less sensitive advection scheme -->
 <semi_lagrange_cdr_alg>3</semi_lagrange_cdr_alg>

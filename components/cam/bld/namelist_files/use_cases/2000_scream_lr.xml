@@ -96,7 +96,7 @@
 <iradsw hgrid="ne1024np4"> 4 </iradsw>
 <iradlw hgrid="ne1024np4"> 4 </iradlw>
 
-<!-- Use se_ftype = 1 to improve dynamics/physics coupling -->
+<!-- Dynamics/physics coupling; should be the default, but set to make sure -->
 <se_ftype>2</se_ftype>
 
 <!-- Use the less sensitive advection scheme -->
