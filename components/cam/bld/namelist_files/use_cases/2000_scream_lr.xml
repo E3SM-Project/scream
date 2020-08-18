@@ -96,6 +96,9 @@
 <iradsw hgrid="ne1024np4"> 4 </iradsw>
 <iradlw hgrid="ne1024np4"> 4 </iradlw>
 
+<!-- Set IMEX scheme -->
+<tstep_type>5</tstep_type>
+
 <!-- Dynamics/physics coupling; should be the default, but set to make sure -->
 <se_ftype>2</se_ftype>
 
