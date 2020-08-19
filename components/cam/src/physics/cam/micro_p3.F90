@@ -3404,7 +3404,7 @@ subroutine evaporate_precip(qr_incld,qc_incld,nr_incld,qitot_incld,           &
           if (sup_r < -0.001_rtype .and. qr_incld < 1.e-12_rtype)  qrcon = -qr_incld*odt
           
           if (qrcon < 0.0_rtype) then
-             qrcon = max(qrcon,(qv-qvs)*odt) ! Do not allow qrcon*dt from exceeding saturation deficit
+             qrcon = max(qrcon,(qv-qvs)*odt/ab) ! Do not allow qrcon*dt from exceeding saturation deficit
              qrevp_incld = -qrcon*(rcldm-cld)/rcldm !qrevp occurs where there's rain but no cloud and scale by rain fraction
              qrevp = qrevp_incld      ! per rain fraction
              nrevp = qrevp*(nr_incld/qr_incld)
