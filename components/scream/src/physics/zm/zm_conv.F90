@@ -572,7 +572,11 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !
    qtnd(:,:) = 0.0_r8
    heat(:,:) = 0.0_r8
-   !mcon(:,:) = 0.0_r8  !Meredith - This is the line that when uncommented causes issues.
+   !real(r8), intent(out) :: mcon(pcols,pverp)
+   print *, 'pver is ', pver
+   print *, 'pverp is ', pverp
+   print *, 'pcols is ', pcols
+!   mcon( :, :(pver+1) ) =   !Meredith - This is the line that when uncommented causes issues.
    rliq(:ncol)   = 0.0_r8
 
 !
@@ -599,6 +603,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
    do i = 1,ncol
       pflx(i,pverp) = 0
       pflxg(i,pverp) = 0
+      mcon(i, pverp) = 0
    end do
 !
    do i = 1,ncol

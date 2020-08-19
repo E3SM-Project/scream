@@ -1,13 +1,6 @@
-#include "ekat/scream_assert.hpp"
 #include "physics/zm/scream_zm_interface.hpp"
 #include "physics/zm/atmosphere_deepconvection.hpp"
 #include "physics/zm/zm_inputs_initializer.cpp"
-#include "physics/zm/zm_grid_opts.hpp"
-#include <iostream>
-#include <unordered_map>
-#include <typeinfo>
-#include "share/field/field_tag.hpp"
-
 
 namespace scream
 
@@ -44,17 +37,16 @@ void ZMDeepConvection::set_grids(const std::shared_ptr<const GridsManager> grids
 
   using namespace ShortFieldTagsNames;
  
-//  std :: cout << "type is " << typeid(ShortFieldTagsNames).name() << std :: endl; 
 
   FieldLayout scalar3d_layout_mid { {COL,VL}, {nc,NVL} }; // Note that C++ and Fortran read array dimensions in reverse
   FieldLayout scalar3d_layout_int { {COL,VL}, {nc,NVL+1} }; // Note that C++ and Fortran read array dimensions in reverse
   FieldLayout vector3d_layout_mid{ {COL,CMP,VL}, {nc,QSZ,NVL} };
   FieldLayout tracers_layout { {COL,VAR,VL}, {nc,QSZ,NVL} };
-  FieldLayout linear_layout{ {COL}, {nc} };
+  FieldLayout scalar2d_layout{ {COL}, {nc} };
 
  
   std::vector<FieldLayout> layout_opts = {scalar3d_layout_mid, scalar3d_layout_int,
-					vector3d_layout_mid, tracers_layout, linear_layout};
+					vector3d_layout_mid, tracers_layout, scalar2d_layout};
  
   set_grid_opts();
   for ( auto i = opt_map.begin(); i != opt_map.end(); ++i){

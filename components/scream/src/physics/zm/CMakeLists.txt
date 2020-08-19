@@ -19,7 +19,6 @@ set(ZM_HEADERS
   zm.hpp
   atmosphere_deepconvection.hpp
   scream_zm_interface.hpp
-  zm_grid_opts.hpp
 )
 
 # Add ETI source files if not on CUDA

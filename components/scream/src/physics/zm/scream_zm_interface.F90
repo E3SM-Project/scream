@@ -26,14 +26,18 @@ module scream_zm_interface_mod
 
   real   :: test
   
-  real(kind=c_real) :: pcols = 32
-  real(kind=c_real) :: pver = 72
+  integer(kind=c_int) :: pcols  = 32
+  integer(kind=c_int) :: pver   = 73
+  integer(kind=c_int) :: pverp  = 75
+  
+ ! real(kind=c_real) :: pcols = 32
+ ! real(kind=c_real) :: pver = 75
   real(kind=c_real) :: cpair  !=    1004.64000000000
   real(kind=c_real) :: gravit !=    9.80616000000000
   real(kind=c_real) :: latvap !=    2501000.00000000
   real(kind=c_real) :: plevp = 0.0 
 
-  real(kind=c_real) :: pverp = 0
+!  real(kind=c_real) :: pverp = 0
 
 contains
 
