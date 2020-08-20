@@ -778,36 +778,35 @@ subroutine update_prognostics_implicit( &
 
   ! Call decomp for momentum variables
   call vd_shoc_decomp(shcol,nlev,nlevi,tk_zi,tmpi,rdp_zt,dtime,&
-     ksrf,ca,cc,denom,ze,.false.,s_ae,s_aw,tmpi3)
+     ksrf,.false.,s_ae,s_aw,tmpi3,ca,cc,denom,ze)
 
   ! march u_wind one step forward using implicit solver
-  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,u_wind,.false.,s_awu,tmpi3,rdp_zt)
+  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,.false.,s_awu,tmpi3,rdp_zt,u_wind)
 
   ! march v_wind one step forward using implicit solver
-  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,v_wind,.false.,s_awv,tmpi3,rdp_zt)
+  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,.false.,s_awv,tmpi3,rdp_zt,v_wind)
 
 ! Call decomp for thermo variables
   flux_dummy(:) = 0._rtype ! fluxes applied explicitly, so zero fluxes out
                            ! for implicit solver decomposition
   call vd_shoc_decomp(shcol,nlev,nlevi,tkh_zi,tmpi,rdp_zt,dtime,&
-     flux_dummy,ca,cc,denom,ze,do_mf,s_ae,s_aw,tmpi3)
+     flux_dummy,do_mf,s_ae,s_aw,tmpi3,ca,cc,denom,ze)
 
   ! march temperature one step forward using implicit solver
-  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,thetal,do_mf,s_awthl,tmpi3,rdp_zt)
+  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,do_mf,s_awthl,tmpi3,rdp_zt,thetal)
 
   ! march total water one step forward using implicit solver
-  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,qw,do_mf,s_awqt,tmpi3,rdp_zt)
+  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,do_mf,s_awqt,tmpi3,rdp_zt,qw)
 
   ! MKW: Call decomp one more time for TKE and tracers so they don't "see" MF plumes
   call vd_shoc_decomp(shcol,nlev,nlevi,tkh_zi,tmpi,rdp_zt,dtime,&
-          flux_dummy,ca,cc,denom,ze,.false.,s_ae,s_aw,tmpi3)
+          flux_dummy,.false.,s_ae,s_aw,tmpi3,ca,cc,denom,ze)
   ! march tke one step forward using implicit solver
-  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,tke,.false.,s_aw,tmpi3,rdp_zt)
+  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,.false.,s_aw,tmpi3,rdp_zt,tke)
 
   ! march tracers one step forward using implicit solver
   do p=1,num_tracer
-    call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,tracer(:shcol,:nlev,p),&
-            .false.,s_aw,tmpi3,rdp_zt)
+    call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,.false.,s_aw,tmpi3,rdp_zt,tracer(:shcol,:nlev,p))
   enddo
 
   return
