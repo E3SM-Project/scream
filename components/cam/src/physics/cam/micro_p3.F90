@@ -3288,8 +3288,8 @@ dt,qr2qv_evap_tend,nr_evap_tend)
    real(rtype), intent(in)  :: qv_sat_l,qv_sat_i
    real(rtype), intent(in)  :: ab,abi
    real(rtype), intent(in)  :: epsr,epsi_tot
-   real(rtype), intent(in)  :: qv,qv_old
-   real(rtype), intent(in)  :: t,t_old,latent_heat_sublim,dqsdt,inv_dt,dt
+   real(rtype), intent(in)  :: qv,qv_prev
+   real(rtype), intent(in)  :: t,t_prev,latent_heat_sublim,dqsdt,inv_dt,dt
    real(rtype), intent(inout) :: qr2qv_evap_tend
    real(rtype), intent(inout) :: nr_evap_tend
    real(rtype) :: cld, xx, ssat_r, SPF, hlp_w, inv_xx, qrcon, inv_abi, aaa, sup_r 
@@ -3320,13 +3320,13 @@ dt,qr2qv_evap_tend,nr_evap_tend)
       endif
 
       ! hlp_qv_sat_i = qv_sat_i   !no modification due to latent heating
-      hlp_w = -cp/g*(t - t_old)*inv_dt
+      hlp_w = -cp/g*(t - t_prev)*inv_dt
 
       if (t < 273.15_rtype) then
-         aaa = (qv - qv_old)*inv_dt - dqsdt*(-hlp_w*g*inv_cp)-(qv_sat_l - qv_sat_i)*     &
+         aaa = (qv - qv_prev)*inv_dt - dqsdt*(-hlp_w*g*inv_cp)-(qv_sat_l - qv_sat_i)*     &
                (1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi*epsi_tot
       else
-         aaa = (qv - qv_old)*inv_dt - dqsdt*(-hlp_w*g*inv_cp)
+         aaa = (qv - qv_prev)*inv_dt - dqsdt*(-hlp_w*g*inv_cp)
       endif
 
       xx  = max(1.e-20_rtype,xx)   ! set lower bound on xx to prevent division by zero
