@@ -515,7 +515,7 @@ subroutine shoc_main ( &
        qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Output
        wtracer_sec,&                          ! Output
        w_sec,&                                ! Output
-       mf_thlflx, mf_qtflx)                   ! EDMF output - diagnostic MF fluxes
+       mf_thlflx, mf_qtflx)                   ! EDMF Output - diagnostic MF fluxes
 
     ! Diagnose the third moment of vertical velocity,
     !  needed for the PDF closure
@@ -1132,7 +1132,7 @@ subroutine diag_second_shoc_moments(&
      qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Input/Output
      wtracer_sec,&                          ! Input/Output
      w_sec,&                                ! Output
-     mf_thlflx, mf_qtflx )                  ! EDMF Output
+     mf_thlflx, mf_qtflx)                   ! EDMF Output
 
   ! Diagnose the second order moments,
   !  calculate the upper boundary conditions
@@ -1310,10 +1310,12 @@ subroutine diag_second_moments(&
          u_wind,v_wind,tracer,tke, &            ! Input
          isotropy,tkh,tk,&                      ! Input
          dz_zi,zt_grid,zi_grid,shoc_mix, &      ! Input
+         ae, aw, awthl, awqt, &                 ! Input - EDMF
          thl_sec,qw_sec,wthl_sec,wqw_sec,&      ! Input/Output
          qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Input/Output
          wtracer_sec,&                          ! Input/Output
-         w_sec)                                 ! Output
+         w_sec,&                                ! Output
+         mf_thlflx, mf_qtflx)                   ! Output - EDMF
 
   ! Purpose of this subroutine is to diagnose the second
   !  order moments needed for the SHOC parameterization.
@@ -1360,6 +1362,12 @@ subroutine diag_second_moments(&
   real(rtype), intent(in) :: dz_zi(shcol,nlevi)
   ! Mixing length [m]
   real(rtype), intent(in) :: shoc_mix(shcol,nlev)
+
+  !EDMF inputs
+  real(rtype), intent(in) :: ae(shcol,nlevi)
+  real(rtype), intent(in) :: aw(shcol,nlevi)
+  real(rtype), intent(in) :: awthl(shcol,nlevi)
+  real(rtype), intent(in) :: awqt(shcol,nlevi)
 
 ! INPUT/OUTPUT VARIABLES
   ! second order liquid wat. potential temp. [K^2]
