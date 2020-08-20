@@ -514,7 +514,7 @@ subroutine shoc_main ( &
        thl_sec, qw_sec,wthl_sec,wqw_sec,&     ! Output
        qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Output
        wtracer_sec,&                          ! Output
-       w_sec,                                 ! Output
+       w_sec,&                                ! Output
        mf_thlflx, mf_qtflx)                   ! EDMF output - diagnostic MF fluxes
 
     ! Diagnose the third moment of vertical velocity,
@@ -3423,7 +3423,7 @@ subroutine vd_shoc_decomp( &
     do i=1,shcol
       if ( do_mf ) then
         denom(i,k) = 1._rtype/ &
-          (1._rtype + ca(i,k) + cc(i,k) -
+          (1._rtype + ca(i,k) + cc(i,k) - &
           ca(i,k)*ze(i,k+1) - &
           (tmpi3(i,k)*s_aw(i,k) - tmpi3(i,k+1)*s_aw(i,k+1))*rdp_zt(i,k))
       else
@@ -3502,13 +3502,6 @@ subroutine vd_shoc_solve(&
   real(rtype), intent(in) :: ze(shcol,nlev)
 
   ! EDMF inputs
-  logical,  intent(in)  :: do_mf
-  ! Sum of environment area, i.e. 1-sum(a_i) [-]
-  real(rtype), intent(in)  :: s_ae(shcol,nlevi)
-  ! Sum (a_i*w_i) [m/s]
-  real(rtype), intent(in)  :: s_aw(shcol,nlevi)
-  real(rtype), intent(in)  :: tmpi3(shcol,nlevi)
-
   ! Include mass flux contribution?
   logical,  intent(in)    :: do_mf
   ! Sum of plume (a_i*w_i*var_i)

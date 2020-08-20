@@ -2,6 +2,9 @@ module edmf
 
   use physics_utils, only: rtype, rtype8, itype!, btype ! MKW: btype not currently used
 
+  use physconst,     only: rgas => rair, cp => cpair, ggr => gravit, &
+                           lcond => latvap, lice => latice, eps => zvir
+
   implicit none
 
   public :: integrate_mf, init_random_seed, mf_calc_vertflux
@@ -13,8 +16,8 @@ module edmf
   !=========================================================
 
   !! MKW: is it easier to inherit these from SHOC for now?
-  use physconst,     only: rair => rgas, cpair => cp, gravit => ggr, &
-                           latvap => lcond, latice => lice, zvir => eps
+  !use physconst,     only: rair => rgas, cpair => cp, gravit => ggr, &
+  !                         latvap => lcond, latice => lice, zvir => eps
   !! MKW: this is how these variables are initialized in module shoc - values are set in shoc_init which is called from shoc_init_e3sm
   ! ! These are set in initialization and should be set to
   ! !  to the values used in whatever host model SHOC is
@@ -49,8 +52,8 @@ contains
                  ae_out, aw_out,                                   & ! output: variables needed for  diffusion solver
                  awthl_out, awqt_out,                              & ! output: variables needed for  diffusion solver
                  awql_out, awqi_out,                               & ! output: variables needed for  diffusion solver
-                 awu_out, awv_out,                                 & ! output: variables needed for  diffusion solver
-                 thlflx_out, qtflx_out )                             ! output: MF turbulent flux diagnostics
+                 awu_out, awv_out)                                   ! output: variables needed for  diffusion solver
+                 !thlflx_out, qtflx_out )                             ! output: MF turbulent flux diagnostics
 
   ! Original author: Marcin Kurowski, JPL
   ! Modified heavily by Mikael Witte and Maria Chinita Candeias, UCLA/JPL for implementation in E3SM
@@ -88,7 +91,7 @@ contains
        real(rtype),dimension(shcol,nzi), intent(out) :: &
               ae_out,aw_out,awthl_out,awqt_out,awql_out,awqi_out,awu_out,awv_out
   ! outputs - flux diagnostics
-       real(rtype),dimension(shcol,nzi), intent(out) :: thlflx_out, qtflx_out
+       !real(rtype),dimension(shcol,nzi), intent(out) :: thlflx_out, qtflx_out
 
   ! INTERNAL VARIABLES
   ! flipped variables (i.e. index 1 is at surface)
@@ -100,7 +103,8 @@ contains
                                    dry_qt, moist_qt, dry_thl, moist_thl, &
                                    dry_u, moist_u, dry_v, moist_v, moist_qc
        real(rtype), dimension(shcol,nzi) :: ae, aw, awthl, awqt, awql, awqi, awu, awv
-       real(rtype), dimension(shcol,nzi) :: thlflx, qtflx
+       !real(rtype), dimension(shcol,nzi) :: thlflx, qtflx
+
   ! sums over all plumes
        real(rtype), dimension(shcol,nz) :: moist_th, dry_th, awqv, awth
 
@@ -209,8 +213,8 @@ contains
      awu       = 0._rtype
      awv       = 0._rtype
   ! outputs - diagnostics
-     thlflx    = 0._rtype
-     qtflx     = 0._rtype
+     !thlflx    = 0._rtype
+     !qtflx     = 0._rtype
 
   ! this is the environmental area - by default 1.
      ae = 1._rtype
@@ -425,16 +429,17 @@ contains
            enddo
          enddo
 
-         do k=2,nzi
-           thlflx(j,k)= awthl(j,k) - aw(j,k)*thl(k-1) ! MKW NOTE: used to be slflx, but CLUBB works on thl
-           !sflx( k)= (awth(k) - aw(k)*0.5*(th(k-1)+th(k)) )*cpair/iexh ! not using this since all s/sl stuff is handled in clubb_cam_tend
-           qtflx(j,k)= awqt(j,k)  - aw(j,k)*qt(k-1)
-         enddo
-         thlflx(j,1) = 0._rtype
-         !sflx(kts)  = 0.
-         qtflx(j,1) = 0._rtype
+         ! MKW: not diagnosing fluxes here at present, comment all this out 
+         !do k=2,nzi
+         !  thlflx(j,k)= awthl(j,k) - aw(j,k)*thl(j,k-1) ! MKW NOTE: used to be slflx, but CLUBB works on thl
+         !  !sflx( k)= (awth(k) - aw(k)*0.5*(th(k-1)+th(k)) )*cpair/iexh ! not using this since all s/sl stuff is handled in clubb_cam_tend
+         !  qtflx(j,k)= awqt(j,k)  - aw(j,k)*qt(j,k-1)
+         !enddo
+         !thlflx(j,1) = 0._rtype
+         !!sflx(kts)  = 0.
+         !qtflx(j,1) = 0._rtype
 
-         print*,'max(1-ae)=',maxval(1._rtype-ae(j,:))
+         !print*,'max(1-ae)=',maxval(1._rtype-ae(j,:))
 
        end if  ! ( wthv > 0.0 )
      end do ! j=1,shcol
@@ -465,8 +470,8 @@ contains
        awu_out(:,nzi-k+1) = awu(:,k)
        awv_out(:,nzi-k+1) = awv(:,k)
 
-       thlflx_out(:,nzi-k+1) = thlflx(:,k)
-       qtflx_out(:,nzi-k+1) = qtflx(:,k)
+       !thlflx_out(:,nzi-k+1) = thlflx(:,k)
+       !qtflx_out(:,nzi-k+1) = qtflx(:,k)
      end do
 
 
