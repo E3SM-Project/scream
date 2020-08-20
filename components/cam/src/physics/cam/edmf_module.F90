@@ -7,7 +7,7 @@ module edmf
 
   implicit none
 
-  public :: integrate_mf, init_random_seed, mf_calc_vertflux
+  public :: integrate_mf, init_random_seed, mf_calc_vertflux, calculate_tmpi3
 
   private
 
@@ -429,7 +429,7 @@ contains
            enddo
          enddo
 
-         ! MKW: not diagnosing fluxes here at present, comment all this out 
+         ! MKW: not diagnosing fluxes here at present, comment all this out
          !do k=2,nzi
          !  thlflx(j,k)= awthl(j,k) - aw(j,k)*thl(j,k-1) ! MKW NOTE: used to be slflx, but CLUBB works on thl
          !  !sflx( k)= (awth(k) - aw(k)*0.5*(th(k-1)+th(k)) )*cpair/iexh ! not using this since all s/sl stuff is handled in clubb_cam_tend
@@ -562,6 +562,31 @@ contains
   subroutine mf_calc_vertflux
     ! placeholder
   end subroutine mf_calc_vertflux
+
+  subroutine compute_tmpi3(nlevi, shcol, dtime, rho_zi, tmpi3)
+
+    !intent-ins
+    integer,     intent(in) :: nlevi, shcol
+    !time step [s]
+    real(rtype), intent(in) :: dtime
+    !air density at interfaces [kg/m3]
+    real(rtype), intent(in) :: rho_zi(shcol,nlevi)
+
+    !intent-out
+    real(rtype), intent(out) :: tmpi3(shcol,nlevi)
+
+    !local vars
+    integer :: i, k
+
+    tmpi3(:,1) = 0._rtype
+    ! eqn: tmpi3 = dt*g*rho
+    do k = 2, nlevi
+      do i = 1, shcol
+         tmpi3(i,k) = dtime *  ggr*rho_zi(i,k)
+      enddo
+    enddo
+
+  end subroutine compute_tmpi
 
   subroutine Poisson(istart,iend,jstart,jend,mu,poi)
          ! Variable(s)

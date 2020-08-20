@@ -14,7 +14,7 @@ module shoc
 
   use physics_utils, only: rtype, rtype8, itype, btype
   use scream_abortutils, only: endscreamrun
-  use edmf, only: integrate_mf, init_random_seed, mf_calc_vertflux
+  use edmf, only: integrate_mf, init_random_seed, mf_calc_vertflux, calculate_tmpi3
 
 ! Bit-for-bit math functions.
 #ifdef SCREAM_CONFIG_IS_CMAKE
@@ -759,7 +759,8 @@ subroutine update_prognostics_implicit( &
   ! Define the tmpi variable, which is really dt*(g*rho)**2/dp
   !  at interfaces. Substitue dp = g*rho*dz in the above equation
   call compute_tmpi(nlevi, shcol, dtime, rho_zi, dz_zi, tmpi)
-  ! MKW TODO: add compute_tmpi3 subroutine using compute_tmpi as a template
+  ! MKW added 20200820
+  call compute_tmpi3(nlevi, shcol, dtime, rho_zi, tmpi3)
 
   ! compute 1/dp term, needed in diffusion solver
   call dp_inverse(nlev, nlevi, shcol, rho_zt, dz_zt, rdp_zt)
