@@ -452,7 +452,8 @@ contains
   END SUBROUTINE p3_main_part1
 
   SUBROUTINE p3_main_part2(kts, kte, kbot, ktop, kdir, do_predict_nc, dt, inv_dt, &
-       pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, inv_cld_frac_l, inv_cld_frac_i, inv_cld_frac_r, ni_activated, inv_qc_relvar, cld_frac_i, cld_frac_l, cld_frac_r,&
+       pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, inv_cld_frac_l, inv_cld_frac_i, inv_cld_frac_r, ni_activated, &
+       inv_qc_relvar, cld_frac_i, cld_frac_l, cld_frac_r, qv_prev, t_prev, &
        t, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, qi, ni, &
        qm, bm, latent_heat_vapor, latent_heat_sublim, xlf, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld, nr_incld, &
        ni_incld, bm_incld, mu_c, nu, lamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, cmeiout, precip_total_tend, &
@@ -468,7 +469,7 @@ contains
     real(rtype), intent(in) :: dt, inv_dt
 
     real(rtype), intent(in), dimension(kts:kte) :: pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, inv_cld_frac_l, inv_cld_frac_i,   &
-         inv_cld_frac_r, ni_activated, inv_qc_relvar, cld_frac_i, cld_frac_l, cld_frac_r
+         inv_cld_frac_r, ni_activated, inv_qc_relvar, cld_frac_i, cld_frac_l, cld_frac_r, qv_prev, t_prev
 
     real(rtype), intent(inout), dimension(kts:kte) :: t, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn,        &
          qv, th, qc, nc, qr, nr, qi, ni, qm, bm, latent_heat_vapor, latent_heat_sublim, xlf, qc_incld, qr_incld,                    &
@@ -730,9 +731,10 @@ contains
            dv,mu,sc,mu_r(k),lamr(k),cdistr(k),cdist(k),qr_incld(k),qc_incld(k), &
            epsr,epsc)
 
-      call evaporate_sublimate_precip(qr_incld(k),qc_incld(k),nr_incld(k),qi_incld(k), &
-           cld_frac_l(k),cld_frac_r(k),qv_sat_l(k),ab,epsr,qv(k), &
-           qr2qv_evap_tend,nr_evap_tend)
+      call evaporate_precip(qr_incld(k),qc_incld(k),nr_incld(k),qi_incld(k), &
+           cld_frac_l(k),cld_frac_r(k),qv(k),qv_prev(k),qv_sat_l(k),qv_sat_i(k), &
+           ab,abi,epsr,epsi_tot,t(k),t_prev(k),latent_heat_sublim(k),dqsdt,inv_dt,&
+           dt,qr2qv_evap_tend,nr_evap_tend)
 
       call ice_deposition_sublimation(qi_incld(k), ni_incld(k), t(k), &
            qv_sat_l(k),qv_sat_i(k),epsi,abi,qv(k), &
@@ -1065,7 +1067,7 @@ contains
        diag_effi,rho_qi,do_predict_nc, &
        dpres,exner,cmeiout,precip_total_tend,nevapr,qr_evap_tend,precip_liq_flux,precip_ice_flux,cld_frac_r,cld_frac_l,cld_frac_i,  &
        p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-       vap_ice_exchange,col_location)
+       vap_ice_exchange,qv_prev,t_prev,col_location)
 
     !----------------------------------------------------------------------------------------!
     !                                                                                        !
@@ -1134,6 +1136,7 @@ contains
     ! INPUT needed for PBUF variables used by other parameterizations
 
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: cld_frac_i, cld_frac_l, cld_frac_r ! Ice, Liquid and Rain cloud fraction
+    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: qv_prev, t_prev                    ! qv and t from previous p3_main call
     ! AaronDonahue, the following variable (p3_tend_out) is a catch-all for passing P3-specific variables outside of p3_main
     ! so that they can be written as ouput.  NOTE TO C++ PORT: This variable is entirely optional and doesn't need to be
     ! included in the port to C++, or can be changed if desired.
@@ -1288,7 +1291,8 @@ contains
        call p3_main_part2(kts, kte, kbot, ktop, kdir, do_predict_nc, dt, inv_dt, &
             pres(i,:), dpres(i,:), dz(i,:), nc_nuceat_tend(i,:), exner(i,:), inv_exner(i,:), &
             inv_cld_frac_l(i,:), inv_cld_frac_i(i,:), inv_cld_frac_r(i,:), ni_activated(i,:), inv_qc_relvar(i,:), &
-            cld_frac_i(i,:), cld_frac_l(i,:), cld_frac_r(i,:), t(i,:), rho(i,:), inv_rho(i,:), qv_sat_l(i,:), &
+            cld_frac_i(i,:), cld_frac_l(i,:), cld_frac_r(i,:), qv_prev(i,:), t_prev(i,:), &
+            t(i,:), rho(i,:), inv_rho(i,:), qv_sat_l(i,:), &
             qv_sat_i(i,:), qv_supersat_i(i,:), rhofacr(i,:), rhofaci(i,:), acn(i,:), qv(i,:), th(i,:), &
             qc(i,:), nc(i,:), qr(i,:), nr(i,:), qi(i,:), ni(i,:), qm(i,:), &
             bm(i,:), latent_heat_vapor(i,:), latent_heat_sublim(i,:), xlf(i,:), qc_incld(i,:), qr_incld(i,:), &
@@ -3268,9 +3272,10 @@ qidep,qi2qv_sublim_tend,ni_sublim_tend,qiberg)
 end subroutine ice_deposition_sublimation
 
 
-subroutine evaporate_sublimate_precip(qr_incld,qc_incld,nr_incld,qi_incld,    &
-cld_frac_l,cld_frac_r,qv_sat_l,ab,epsr,qv,    &
-qr2qv_evap_tend,nr_evap_tend)
+subroutine evaporate_precip(qr_incld,qc_incld,nr_incld,qi_incld, &
+cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i, &
+ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,inv_dt, &
+dt,qr2qv_evap_tend,nr_evap_tend)
 
    implicit none
 
@@ -3280,48 +3285,70 @@ qr2qv_evap_tend,nr_evap_tend)
    real(rtype), intent(in)  :: qi_incld
    real(rtype), intent(in)  :: cld_frac_l
    real(rtype), intent(in)  :: cld_frac_r
-   real(rtype), intent(in)  :: qv_sat_l
-   real(rtype), intent(in)  :: ab
-   real(rtype), intent(in)  :: epsr
-   real(rtype), intent(in)  :: qv
-   real(rtype), intent(out) :: qr2qv_evap_tend
-   real(rtype), intent(out) :: nr_evap_tend
+   real(rtype), intent(in)  :: qv_sat_l,qv_sat_i
+   real(rtype), intent(in)  :: ab,abi
+   real(rtype), intent(in)  :: epsr,epsi_tot
+   real(rtype), intent(in)  :: qv,qv_old
+   real(rtype), intent(in)  :: t,t_old,latent_heat_sublim,dqsdt,inv_dt,dt
+   real(rtype), intent(inout) :: qr2qv_evap_tend
+   real(rtype), intent(inout) :: nr_evap_tend
+   real(rtype) :: cld, xx, ssat_r, SPF, hlp_w, inv_xx, qrcon, inv_abi, aaa, sup_r 
 
-   real(rtype) :: qclr, cld
+   ! +++++++++++++++++++++++++++++++++++++++++++++++ JS:
+   ! Local stuff (generalize when done):
 
-   ! It is assumed that macrophysics handles condensation/evaporation of qc and
-   ! that there is no condensation of rain. Thus qccon, qrcon and qcevp have
-   ! been removed from the original P3-WRF.
-
-   ! Determine temporary cloud fraction, set to zero if cloud water + ice is
-   ! very small.  This will ensure that evap/subl of precip occurs over entire
-   ! grid cell, since min cloud fraction is specified otherwise.
    if (qc_incld + qi_incld < 1.e-6_rtype) then
-      cld = 0._rtype
+         cld = 0._rtype
    else
-      cld = cld_frac_l
+         cld = cld_frac_l
    end if
 
    ! Only calculate if there is some rain fraction > cloud fraction
    qr2qv_evap_tend = 0.0_rtype
+   nr_evap_tend = 0.0_rtype
    if (cld_frac_r > cld) then
-      ! calculate q for out-of-cloud region
-      qclr = (qv-cld*qv_sat_l)/(1._rtype-cld)
 
-      ! rain evaporation
-      if (qr_incld.ge.qsmall) then
-         qr2qv_evap_tend = epsr * (qclr-qv_sat_l)/ab
-      end if
+      ssat_r = qv - qv_sat_l
+      sup_r = qv / qv_sat_l - 1.0_rtype
+      SPF = 1.0_rtype   
 
-      ! only evap in out-of-cloud region
-      qr2qv_evap_tend = -min(qr2qv_evap_tend*(cld_frac_r-cld),0._rtype)
-      qr2qv_evap_tend = qr2qv_evap_tend/cld_frac_r
-   end if ! rcld>cld
-   if (qr_incld.gt.qsmall)  nr_evap_tend = qr2qv_evap_tend*(nr_incld/qr_incld)
+      if (t < 273.15_rtype) then
+         inv_abi = 1.0_rtype/abi
+         xx   = epsr + epsi_tot*(1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi
+      else
+         xx   = epsr
+      endif
+
+      ! hlp_qv_sat_i = qv_sat_i   !no modification due to latent heating
+      hlp_w = -cp/g*(t - t_old)*inv_dt
+
+      if (t < 273.15_rtype) then
+         aaa = (qv - qv_old)*inv_dt - dqsdt*(-hlp_w*g*inv_cp)-(qv_sat_l - qv_sat_i)*     &
+               (1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi*epsi_tot
+      else
+         aaa = (qv - qv_old)*inv_dt - dqsdt*(-hlp_w*g*inv_cp)
+      endif
+
+      xx  = max(1.e-20_rtype,xx)   ! set lower bound on xx to prevent division by zero
+      inv_xx = 1.0_rtype/xx
+
+      qrcon = 0.0  !condensation rate, so rain evaporation will be < 0
+      if (qr_incld > qsmall) qrcon = (aaa*epsr*inv_xx + (ssat_r*SPF-aaa*inv_xx)*inv_dt*epsr*inv_xx*(1.0_rtype-dexp(-dble(xx*dt))))/ab
+
+      if (sup_r < -0.001_rtype .and. qr_incld < 1.e-12_rtype)  qrcon = -qr_incld*inv_dt
+
+      if (qrcon < 0.0_rtype) then
+         qrcon = max(qrcon,(qv-qv_sat_l)*inv_dt/ab) ! Do not allow qrcon*dt from exceeding saturation deficit
+         qr2qv_evap_tend = -qrcon*(cld_frac_r-cld)/cld_frac_r !qr2qv_evap_tend occurs where there's rain but no cloud and scale by rain fraction
+         nr_evap_tend = qr2qv_evap_tend*(nr_incld/qr_incld)
+         qrcon = 0.0_rtype
+      endif
+
+   endif
 
    return
 
-end subroutine evaporate_sublimate_precip
+end subroutine evaporate_precip
 
 subroutine get_time_space_phys_variables( &
 t,pres,rho,latent_heat_vapor,latent_heat_sublim,qv_sat_l,qv_sat_i, &
