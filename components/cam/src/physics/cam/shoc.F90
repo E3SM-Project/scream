@@ -14,6 +14,7 @@ module shoc
 
   use physics_utils, only: rtype, rtype8, itype, btype
   use scream_abortutils, only: endscreamrun
+  use edmf, only: integrate_mf, init_random_seed, mf_calc_vertflux
 
 ! Bit-for-bit math functions.
 #ifdef SCREAM_CONFIG_IS_CMAKE
@@ -75,6 +76,11 @@ real(rtype), parameter :: c_diag_3rd_mom = 7.0_rtype
 ! Allow temperature skewness to be independent of moisture
 !  variance
 logical, parameter :: dothetal_skew = .false.
+
+! Use EDMF approach (SHOC+MF)
+!  In the long run, set this as a namelist variable.
+!  May even want to put this in shoc_intr?
+logical, parameter :: do_edmf = .true.
 
 ! ========
 ! Below define some parameters for SHOC
@@ -191,7 +197,13 @@ subroutine shoc_main ( &
      w_sec, thl_sec, qw_sec, qwthl_sec,&  ! Output (diagnostic)
      wthl_sec, wqw_sec, wtke_sec,&        ! Output (diagnostic)
      uw_sec, vw_sec, w3,&                 ! Output (diagnostic)
-     wqls_sec, brunt, shoc_ql2)           ! Output (diagnostic)
+     wqls_sec, brunt, shoc_ql2,&          ! Output (diagnostic)
+     mf_dry_a, mf_moist_a, mf_dry_w, mf_moist_w,&        ! EDMF input/output
+     mf_dry_qt, mf_moist_qt, mf_dry_thl, mf_moist_thl,&  ! EDMF input/output
+     mf_dry_u, mf_moist_u, mf_dry_v, mf_moist_v,&        ! EDMF input/output
+     mf_moist_qc, mf_thlflx, mf_qtflx,&                  ! EDMF input/output
+     s_ae, s_aw, s_awthl, s_awqt,&                       ! EDMF input/output
+     s_awql, s_awqi, s_awu, s_awv)                       ! EDMF input/output
 
   implicit none
 
@@ -270,6 +282,27 @@ subroutine shoc_main ( &
   ! cloud liquid mixing ratio [kg/kg]
   real(rtype), intent(inout) :: shoc_ql(shcol,nlev)
 
+  ! EDMF variables
+  ! mf_* are diagnostic variables
+  ! s_* are integrated plume fluxes for calculating MF contribution to total tendencies
+  real(rtype), intent(inout), dimension(shcol,nlevi) :: &
+      mf_dry_a,   mf_moist_a,   & ! dry and moist plume area, respectively [-]
+      mf_dry_w,   mf_moist_w,   & ! dry and moist plume mean vertical velocity, respectively [m/s]
+      mf_dry_qt,  mf_moist_qt,  & ! dry and moist plume mean qt, respectively [kg/kg]
+      mf_dry_thl, mf_moist_thl, & ! dry and moist plume mean thl, respectively [K]
+      mf_dry_u,   mf_moist_u,   & ! dry and moist plume mean u, respectively [m/s]
+      mf_dry_v,   mf_moist_v,   & ! dry and moist plume mean v, respectively [m/s]
+                  mf_moist_qc,  & ! moist plume mean qc [kg/kg]
+      mf_thlflx,  mf_qtflx,     & ! total MF turbulent flux of theta_l [K m/s], q_t [(kg/kg) m/s]
+      s_ae,    & ! environmental area; by default ae=1 (set constant for now) [-]
+      s_aw,    & ! sum(a_i * w_i) [m/s]
+      s_awthl, & ! sum(a_i * w_i * thl_i) [K m/s]
+      s_awqt,  & ! sum(a_i * w_i * qt_i)  [(kg/kg) m/s]
+      s_awql,  & ! sum(a_i * w_i * ql_i) [(kg/kg) m/s]
+      s_awqi,  & ! sum(a_i * w_i * qi_i) [(kg/kg) m/s]
+      s_awu,   & ! sum(a_i * w_i * u_i) [m^2/s^2]
+      s_awv      ! sum(a_i * w_i * v_i) [m^2/s^2]
+
   ! OUTPUT VARIABLES
 
   ! planetary boundary layer depth [m]
@@ -338,6 +371,14 @@ subroutine shoc_main ( &
               se_a(shcol),ke_a(shcol),&
               wv_a(shcol),wl_a(shcol)
 
+  ! EDMF local variables
+  ! number of updraft plumes [-]
+  integer :: nup
+  ! flag to include MF plumes in diffusion solver
+  !   when we get to the final implementation, remove this as it will all be handled by do_edmf
+  logical :: do_mfdif
+
+
   ! Compute integrals of static energy, kinetic energy, water vapor, and liquid water
   ! for the computation of total energy before SHOC is called.  This is for an
   ! effort to conserve energy since liquid water potential temperature (which SHOC
@@ -386,7 +427,58 @@ subroutine shoc_main ( &
        thetal,wthv_sec,thv,&                ! Input
        brunt,shoc_mix)                      ! Output
 
+    ! If using EDMF plumes, diagnose plume properties here
+    nup = 100
+    if (do_edmf) then
+       do_mfdif = .true.
+       call init_random_seed
+       call integrate_mf(&
+               shcol, nlev, nlevi, dtime,&               ! Input
+               zt_grid, zi_grid, dz_zt, pres,&           ! Input
+               nup, u_wind, v_wind, thetal, thv, qw,&    ! Input
+               ustar, wthl_sfc, wqw_sfc, pblh, shoc_ql,& ! Input
+               mf_dry_a,   mf_moist_a, &                 ! Output - updraft diagnostics
+               mf_dry_w,   mf_moist_w, &                 ! Output - updraft diagnostics
+               mf_dry_qt,  mf_moist_qt, &                ! Output - updraft diagnostics
+               mf_dry_thl, mf_moist_thl, &               ! Output - updraft diagnostics
+               mf_dry_u,   mf_moist_u,  &                ! Output - updraft diagnostics
+               mf_dry_v,   mf_moist_v, &                 ! Output - updraft diagnostics
+                           mf_moist_qc, &                ! Output - updraft diagnostics
+               s_ae,       s_aw, &                       ! Output - for diffusion solver
+               s_awthl,    s_awqt, &                     ! Output - for diffusion solver
+               s_awql,     s_awqi, &                     ! Output - for diffusion solver/PDF closure but not coupled yet
+               s_awu,      s_awv )                       ! Output - for diffusion solver/PDF closure but not coupled yet
+               ! MKW NOTE: mf_thlflx and mf_qtflx are no longer calculated here
+    else
+       do_mfdif = .false.
+
+       mf_dry_a = 0.
+       mf_dry_w = 0.
+       mf_dry_qt = 0.
+       mf_dry_thl = 0.
+       mf_dry_u = 0.
+       mf_dry_v = 0.
+
+       mf_moist_a = 0.
+       mf_moist_w = 0.
+       mf_moist_qt = 0.
+       mf_moist_thl = 0.
+       mf_moist_u = 0.
+       mf_moist_v = 0.
+       mf_moist_qc = 0.
+
+       s_ae = 1.
+       s_aw = 0.
+       s_awthl = 0.
+       s_awqt = 0.
+       s_awql = 0.
+       s_awqi = 0.
+       s_awu = 0.
+       s_awv = 0.
+    endif
+
     ! Advance the SGS TKE equation
+    ! MKW TODO: add MF buoyancy flux to inputs
     call shoc_tke(&
        shcol,nlev,nlevi,dtime,&             ! Input
        wthv_sec,shoc_mix,&                  ! Input
@@ -403,6 +495,8 @@ subroutine shoc_main ( &
        dtime,dz_zt,dz_zi,rho_zt,&           ! Input
        zt_grid,zi_grid,tk,tkh,&             ! Input
        uw_sfc,vw_sfc,wthl_sfc,wqw_sfc,&     ! Input
+       do_mfdif,s_ae,s_aw,s_awu,s_awv,&     ! EDMF Input
+       s_awthl,s_awqt,&                     ! EDMF Input
        thetal,qw,qtracers,tke,&             ! Input/Output
        u_wind,v_wind)                       ! Input/Output
 
@@ -415,10 +509,13 @@ subroutine shoc_main ( &
        dz_zi,zt_grid,zi_grid,shoc_mix, &      ! Input
        wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &   ! Input
        wtracer_sfc, &                         ! Input
+       s_ae,       s_aw, &                    ! EDMF Input
+       s_awthl,    s_awqt, &                  ! EDMF Input
        thl_sec, qw_sec,wthl_sec,wqw_sec,&     ! Output
        qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Output
        wtracer_sec,&                          ! Output
-       w_sec)                                 ! Output
+       w_sec,                                 ! Output
+       mf_thlflx, mf_qtflx)                   ! EDMF output - diagnostic MF fluxes
 
     ! Diagnose the third moment of vertical velocity,
     !  needed for the PDF closure
@@ -565,6 +662,8 @@ subroutine update_prognostics_implicit( &
          dtime,dz_zt,dz_zi,rho_zt,&       ! Input
          zt_grid,zi_grid,tk,tkh,&         ! Input
          uw_sfc,vw_sfc,wthl_sfc,wqw_sfc,& ! Input
+         do_mf,s_ae,s_aw,s_awu,s_awv,&    ! EDMF Input
+         s_awthl,s_awqt,&                 ! EDMF Input
          thetal,qw,tracer,tke,&           ! Input/Output
          u_wind,v_wind)                   ! Input/Output
 
@@ -605,6 +704,22 @@ subroutine update_prognostics_implicit( &
   ! heights at interfaces [m]
   real(rtype), intent(in) :: zi_grid(shcol,nlevi)
 
+  ! EDMF inputs
+  ! If .true., diagnose MF plumes and include in vertical diffusion solver
+  logical, intent(in) ::  do_mf
+  ! Fractional area of of nonconvective environment
+  real(rtype), intent(in) :: s_ae(shcol,nlevi)
+  ! MF plume sum(a_i*w_i)
+  real(rtype), intent(in) :: s_aw(shcol,nlevi)
+  ! Total MF plume u turbulent flux
+  real(rtype), intent(in) :: s_awu(shcol,nlevi)
+  ! Total MF plume v turbulent flux
+  real(rtype), intent(in) :: s_awv(shcol,nlevi)
+  ! Total MF plume theta_l turbulent flux
+  real(rtype), intent(in) :: s_awthl(shcol,nlevi)
+  ! Total MF plume q_t turbulent flux
+  real(rtype), intent(in) :: s_awqt(shcol,nlevi)
+
 ! IN/OUT VARIABLES
   ! liquid water potential temperature [K]
   real(rtype), intent(inout) :: thetal(shcol,nlev)
@@ -644,6 +759,7 @@ subroutine update_prognostics_implicit( &
   ! Define the tmpi variable, which is really dt*(g*rho)**2/dp
   !  at interfaces. Substitue dp = g*rho*dz in the above equation
   call compute_tmpi(nlevi, shcol, dtime, rho_zi, dz_zi, tmpi)
+  ! MKW TODO: add compute_tmpi3 subroutine using compute_tmpi as a template
 
   ! compute 1/dp term, needed in diffusion solver
   call dp_inverse(nlev, nlevi, shcol, rho_zt, dz_zt, rdp_zt)
@@ -662,32 +778,36 @@ subroutine update_prognostics_implicit( &
 
   ! Call decomp for momentum variables
   call vd_shoc_decomp(shcol,nlev,nlevi,tk_zi,tmpi,rdp_zt,dtime,&
-     ksrf,ca,cc,denom,ze)
+     ksrf,ca,cc,denom,ze,.false.,s_ae,s_aw,tmpi3)
 
   ! march u_wind one step forward using implicit solver
-  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,u_wind)
+  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,u_wind,.false.,s_awu,tmpi3,rdp_zt)
 
   ! march v_wind one step forward using implicit solver
-  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,v_wind)
+  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,v_wind,.false.,s_awv,tmpi3,rdp_zt)
 
 ! Call decomp for thermo variables
   flux_dummy(:) = 0._rtype ! fluxes applied explicitly, so zero fluxes out
                            ! for implicit solver decomposition
   call vd_shoc_decomp(shcol,nlev,nlevi,tkh_zi,tmpi,rdp_zt,dtime,&
-     flux_dummy,ca,cc,denom,ze)
+     flux_dummy,ca,cc,denom,ze,do_mf,s_ae,s_aw,tmpi3)
 
   ! march temperature one step forward using implicit solver
-  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,thetal)
+  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,thetal,do_mf,s_awthl,tmpi3,rdp_zt)
 
   ! march total water one step forward using implicit solver
-  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,qw)
+  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,qw,do_mf,s_awqt,tmpi3,rdp_zt)
 
+  ! MKW: Call decomp one more time for TKE and tracers so they don't "see" MF plumes
+  call vd_shoc_decomp(shcol,nlev,nlevi,tkh_zi,tmpi,rdp_zt,dtime,&
+          flux_dummy,ca,cc,denom,ze,.false.,s_ae,s_aw,tmpi3)
   ! march tke one step forward using implicit solver
-  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,tke)
+  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,tke,.false.,s_aw,tmpi3,rdp_zt)
 
   ! march tracers one step forward using implicit solver
   do p=1,num_tracer
-    call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,tracer(:shcol,:nlev,p))
+    call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,tracer(:shcol,:nlev,p),&
+            .false.,s_aw,tmpi3,rdp_zt)
   enddo
 
   return
@@ -880,10 +1000,12 @@ subroutine diag_second_shoc_moments(&
          dz_zi,zt_grid,zi_grid,shoc_mix, &      ! Input
          wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &   ! Input
          wtracer_sfc, &                         ! Input
+         ae, aw, awthl, awqt, &                 ! EDMF Input
          thl_sec,qw_sec,wthl_sec,wqw_sec,&      ! Output
          qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Output
          wtracer_sec,&                          ! Output
-         w_sec)                                 ! Output
+         w_sec,&                                ! Output
+         mf_thlflx, mf_qtflx )                  ! EDMF Output
 
   ! This is the main routine to compute the second
   !   order moments in SHOC.
@@ -936,6 +1058,15 @@ subroutine diag_second_shoc_moments(&
   real(rtype), intent(in) :: vw_sfc(shcol)
   ! Tracer flux [varies m/s]
   real(rtype), intent(in) :: wtracer_sfc(shcol,num_tracer)
+  ! Begin EDMF-specific inputs
+  ! EDMF environment area [-]
+  real(rtype), intent(in) :: ae(shcol,nlevi)
+  ! EDMF area-weighted plume mean updraft speed [m/s]
+  real(rtype), intent(in) :: aw(shcol,nlevi)
+  ! EDMF area-weighted plume temperature transport [Km/s]
+  real(rtype), intent(in) :: awthl(shcol,nlevi)
+  ! EDMF area_weighted plume moisture transport [kgm/kgs]
+  real(rtype), intent(in) :: awqt(shcol,nlevi)
 
 ! OUTPUT VARIABLES
   ! second order liquid wat. potential temp. [K^2]
@@ -958,6 +1089,11 @@ subroutine diag_second_shoc_moments(&
   real(rtype), intent(out) :: wtracer_sec(shcol,nlevi,num_tracer)
   ! second order vertical velocity [m2/s2]
   real(rtype), intent(out) :: w_sec(shcol,nlev)
+  ! Begin EDMF-specific outputs
+  ! MF temperature turbulent flux [Km/s]
+  real(rtype), intent(out) :: mf_thlflx(shcol,nlevi)
+  ! MF moisture turbulent flux [kgm/kgs]
+  real(rtype), intent(out) :: mf_qtflx(shcol,nlevi)
 
 ! LOCAL VARIABLES
   real(rtype) :: wstar(shcol)
@@ -991,10 +1127,12 @@ subroutine diag_second_shoc_moments(&
      u_wind,v_wind,tracer,tke, &            ! Input
      isotropy,tkh,tk,&                      ! Input
      dz_zi,zt_grid,zi_grid,shoc_mix, &      ! Input
+     ae, aw, awthl, awqt, &                 ! EDMF Input
      thl_sec, qw_sec,wthl_sec,wqw_sec,&     ! Input/Output
      qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Input/Output
      wtracer_sec,&                          ! Input/Output
-     w_sec)                                 ! Output
+     w_sec,&                                ! Output
+     mf_thlflx, mf_qtflx )                  ! EDMF Output
 
   ! Diagnose the second order moments,
   !  calculate the upper boundary conditions
@@ -1285,10 +1423,14 @@ subroutine diag_second_moments(&
          shcol,nlev,nlevi,tkh_zi,dz_zi,thetal,&   ! Input
          wthl_sec)                                ! Input/Output
 
+  ! MKW TODO: add subroutine mf_calc_vertflux in edmf_module, call here for thetal
+
   ! Calculate vertical flux for moisture
   call calc_shoc_vertflux(&
          shcol,nlev,nlevi,tkh_zi,dz_zi,qw,&       ! Input
          wqw_sec)                                 ! Input/Output
+
+  ! MKW TODO: call mf_calc_vertflux for qw
 
   ! Calculate vertical flux for TKE
   call calc_shoc_vertflux(&
@@ -3191,6 +3333,7 @@ subroutine vd_shoc_decomp( &
          shcol,nlev,nlevi,&          ! Input
          kv_term,tmpi,rdp_zt,dtime,& ! Input
          flux, &                     ! Input
+         do_mf,s_ae,s_aw,tmpi3,&     ! EDMF input
          ca,cc,denom,ze)             ! Output
 
   implicit none
@@ -3214,6 +3357,16 @@ subroutine vd_shoc_decomp( &
   ! surface flux [varies]
   real(rtype), intent(in) :: flux(shcol)
 
+  ! EDMF inputs
+  ! Include mass flux contribution?
+  logical,  intent(in)  :: do_mf
+  ! Sum of environment area, i.e. 1-sum(a_i) [-]
+  real(rtype), intent(in)  :: s_ae(shcol,nlevi)
+  ! Sum (a_i*w_i) [m/s]
+  real(rtype), intent(in)  :: s_aw(shcol,nlevi)
+  ! dt*g*rho on interfaces
+  real(rtype), intent(in)  :: tmpi3(shcol,nlevi)
+
 ! OUTPUT VARIABLES
   ! superdiagonal
   real(rtype), intent(out) :: ca(shcol,nlev)
@@ -3233,8 +3386,15 @@ subroutine vd_shoc_decomp( &
 
   do k=nlev-1,1,-1
     do i=1,shcol
-      ca(i,k) = kv_term(i,k+1) * tmpi(i,k+1) * rdp_zt(i,k)
-      cc(i,k+1) = kv_term(i,k+1) * tmpi(i,k+1) * rdp_zt(i,k+1)
+      if ( do_mf ) then
+         ca(i,k  ) = (s_ae(i,k+1)*kv_term(i,k+1)*tmpi(i,k+1) &
+              - 0.5_rtype*tmpi3(i,k+1)*s_aw(i,k+1))*rdp_zt(i,k  )
+         cc(i,k+1) = (s_ae(i,k+1)*kv_term(i,k+1)*tmpi(i,k+1) &
+              + 0.5_rtype*tmpi3(i,k+1)*s_aw(i,k+1))*rdp_zt(i,k+1)
+      else
+        ca(i,k) = kv_term(i,k+1) * tmpi(i,k+1) * rdp_zt(i,k)
+        cc(i,k+1) = kv_term(i,k+1) * tmpi(i,k+1) * rdp_zt(i,k+1)
+      endif
     enddo
   enddo
 
@@ -3247,23 +3407,43 @@ subroutine vd_shoc_decomp( &
   ! tridiagonal matrix as defined by the implicit diffusion equation.
 
   do i=1,shcol
-    denom(i,nlev) = 1._rtype/ &
-      (1._rtype + cc(i,nlev) + flux(i)*dtime*ggr*rdp_zt(i,nlev))
+    if ( do_mf ) then
+      denom(i,nlev) = 1._rtype/ &
+        (1._rtype + cc(i,nlev) - &
+        tmpi3(i,nlev)*s_aw(i,nlev)*rdp_zt(i,nlev) + &
+        flux(i)*dtime*ggr*rdp_zt(i,nlev))
+    else
+      denom(i,nlev) = 1._rtype/ &
+        (1._rtype + cc(i,nlev) + flux(i)*dtime*ggr*rdp_zt(i,nlev))
+    endif
     ze(i,nlev) = cc(i,nlev) * denom(i,nlev)
   enddo
 
   do k=nlev-1,2,-1
     do i=1,shcol
-      denom(i,k) = 1._rtype/ &
-        (1._rtype + ca(i,k) + cc(i,k) - &
-    ca(i,k) * ze(i,k+1))
+      if ( do_mf ) then
+        denom(i,k) = 1._rtype/ &
+          (1._rtype + ca(i,k) + cc(i,k) -
+          ca(i,k)*ze(i,k+1) - &
+          (tmpi3(i,k)*s_aw(i,k) - tmpi3(i,k+1)*s_aw(i,k+1))*rdp_zt(i,k))
+      else
+        denom(i,k) = 1._rtype/ &
+          (1._rtype + ca(i,k) + cc(i,k) - &
+          ca(i,k) * ze(i,k+1))
+      endif
       ze(i,k) = cc(i,k) * denom(i,k)
     enddo
   enddo
 
   do i=1,shcol
-    denom(i,1) = 1._rtype/ &
-      (1._rtype + ca(i,1) - ca(i,1) * ze(i,2))
+    if ( do_mf ) then
+      denom(i,1) = 1._rtype/ &
+        (1._rtype + ca(i,1) - ca(i,1)*ze(i,2) - &
+        (tmpi3(i,1)*s_aw(i,1) - tmpi3(i,2)*s_aw(i,2))*rdp_zt(i,1))
+    else
+      denom(i,1) = 1._rtype/ &
+        (1._rtype + ca(i,1) - ca(i,1) * ze(i,2))
+    endif
   enddo
 
   return
@@ -3299,6 +3479,8 @@ end subroutine vd_shoc_decomp
 subroutine vd_shoc_solve(&
          shcol,nlev,nlevi,&   ! Input
          ca,cc,denom,ze,&     ! Input
+         do_mf,s_awvar,&      ! EDMF Input
+         tmpi3,rdp_zt,&       ! EDMF Input
          var)                 ! Input/Output
 
   implicit none
@@ -3319,6 +3501,23 @@ subroutine vd_shoc_solve(&
   ! Term in tri-diag. matrix system
   real(rtype), intent(in) :: ze(shcol,nlev)
 
+  ! EDMF inputs
+  logical,  intent(in)  :: do_mf
+  ! Sum of environment area, i.e. 1-sum(a_i) [-]
+  real(rtype), intent(in)  :: s_ae(shcol,nlevi)
+  ! Sum (a_i*w_i) [m/s]
+  real(rtype), intent(in)  :: s_aw(shcol,nlevi)
+  real(rtype), intent(in)  :: tmpi3(shcol,nlevi)
+
+  ! Include mass flux contribution?
+  logical,  intent(in)    :: do_mf
+  ! Sum of plume (a_i*w_i*var_i)
+  real(rtype), intent(in)    :: s_awvar(shcol,nlevi)
+  ! dt*g*rho on interfaces
+  real(rtype), intent(in)    :: tmpi3(shcol,nlevi)
+  ! 1/dp
+  real(rtype), intent(in)    :: rdp_zt(shcol,nlev)
+
 ! IN/OUT VARIABLES
   real(rtype), intent(inout) :: var(shcol,nlev)
 
@@ -3333,12 +3532,23 @@ subroutine vd_shoc_solve(&
   ! Note that only levels ntop through nbot need be solved for.
 
   do i=1,shcol
-    zf(i,nlev) = var(i,nlev) * denom(i,nlev)
+    if (do_mf) then
+      zf(i,nlev) = (var(i,nlev) - &
+        tmpi3(i,nlev)*s_awvar(i,nlev)*rdp_zt(i,nlev))*denom(i,nlev)
+    else
+      zf(i,nlev) = var(i,nlev) * denom(i,nlev)
+    endif
   enddo
 
   do k=nlev-1,1,-1
     do i=1,shcol
-      zf(i,k) = (var(i,k) + ca(i,k) * zf(i,k+1)) * denom(i,k)
+      if (do_mf) then
+        zf(i,k) = (var(i,k) + &
+          (tmpi3(i,k+1)*s_awvar(i,k+1) - tmpi3(i,k)*s_awvar(i,k))*rdp_zt(i,k) + &
+          ca(i,k)*zf(i,k+1))*denom(i,k)
+      else
+        zf(i,k) = (var(i,k) + ca(i,k) * zf(i,k+1)) * denom(i,k)
+      endif
     enddo
   enddo
 

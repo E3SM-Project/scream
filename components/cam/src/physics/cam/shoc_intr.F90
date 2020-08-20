@@ -6,12 +6,12 @@ module shoc_intr
   !    by Peter Bogenschutz (Bogenschutz and Krueger 2013).            !
   !                                                                    !
   ! SHOC replaces the exisiting turbulence, shallow convection, and    !
-  !   macrophysics in E3SM                                             !  
-  !                                                                    ! 
+  !   macrophysics in E3SM                                             !
+  !                                                                    !
   !                                                                    !
   !---------------------------Code history---------------------------- !
-  ! Authors:  P. Bogenschutz                                           ! 
-  !                                                                    ! 
+  ! Authors:  P. Bogenschutz                                           !
+  !                                                                    !
   !------------------------------------------------------------------- !
 
   use shr_kind_mod,  only: r8=>shr_kind_r8
@@ -19,18 +19,18 @@ module shoc_intr
   use ppgrid,        only: pver, pverp
   use phys_control,  only: phys_getopts
   use physconst,     only: rair, cpair, gravit, latvap, latice, zvir, &
-                           rh2o, karman, tms_orocnst, tms_z0fac  
+                           rh2o, karman, tms_orocnst, tms_z0fac
   use constituents,  only: pcnst, cnst_add
   use pbl_utils,     only: calc_ustar, calc_obklen
   use perf_mod,      only: t_startf, t_stopf
   use spmd_utils,    only: masterproc
-  use cam_logfile,   only: iulog 
-  use shoc,          only: linear_interp, largeneg 
+  use cam_logfile,   only: iulog
+  use shoc,          only: linear_interp, largeneg
   use spmd_utils,    only: masterproc
- 
-  implicit none	
 
-  public :: shoc_init_cnst, shoc_implements_cnst		   
+  implicit none
+
+  public :: shoc_init_cnst, shoc_implements_cnst
 
   ! define physics buffer indicies here
   integer :: tke_idx, &     ! turbulent kinetic energy
@@ -59,13 +59,13 @@ module shoc_intr
              radf_idx, &
              tpert_idx, &
              fice_idx, &
-	     vmag_gust_idx 	     	     
-  
+	     vmag_gust_idx
+
   integer, public :: &
     ixtke = 0
 
   integer :: cmfmc_sh_idx = 0
-    
+
   real(r8), parameter :: tke_tol = 0.0004_r8
 
   real(r8), parameter :: &
@@ -77,64 +77,64 @@ module shoc_intr
       shoc_liq_deep = 8.e-6, &
       shoc_liq_sh = 10.e-6, &
       shoc_ice_deep = 25.e-6, &
-      shoc_ice_sh = 50.e-6  
-         
+      shoc_ice_sh = 50.e-6
+
   logical      :: lq(pcnst)
   logical      :: lq2(pcnst)
- 
+
   logical            :: history_budget
-  integer            :: history_budget_histfile_num  
+  integer            :: history_budget_histfile_num
   logical            :: micro_do_icesupersat
-  
+
   character(len=16)  :: eddy_scheme      ! Default set in phys_control.F90
-  character(len=16)  :: deep_scheme      ! Default set in phys_control.F90 
-  
+  character(len=16)  :: deep_scheme      ! Default set in phys_control.F90
+
   real(r8), parameter :: unset_r8 = huge(1.0_r8)
-  
+
   real(r8) :: shoc_timestep = unset_r8  ! Default SHOC timestep set in namelist
   real(r8) :: dp1
-  
+
   integer :: edsclr_dim
-  
+
   logical      :: prog_modal_aero
   real(r8) :: micro_mg_accre_enhan_fac = huge(1.0_r8) !Accretion enhancement factor from namelist
- 
+
   integer, parameter :: ncnst=1
   character(len=8) :: cnst_names(ncnst)
   logical :: do_cnst=.true.
- 
+
   logical :: liqcf_fix = .FALSE.  ! HW for liquid cloud fraction fix
-  logical :: relvar_fix = .FALSE. !PMA for relvar fix  
-  
+  logical :: relvar_fix = .FALSE. !PMA for relvar fix
+
   contains
-  
+
   ! =============================================================================== !
   !                                                                                 !
   ! =============================================================================== !
-  
+
   subroutine shoc_register_e3sm()
 
 #ifdef SHOC_SGS
     ! Add SHOC fields to pbuf
     use physics_buffer,  only: pbuf_add_field, dtype_r8, dyn_time_lvls
-    use ppgrid,          only: pver, pverp, pcols  
-    
+    use ppgrid,          only: pver, pverp, pcols
+
     call phys_getopts( eddy_scheme_out                 = eddy_scheme, &
-                       deep_scheme_out                 = deep_scheme, & 
+                       deep_scheme_out                 = deep_scheme, &
                        history_budget_out              = history_budget, &
                        history_budget_histfile_num_out = history_budget_histfile_num, &
                        micro_do_icesupersat_out        = micro_do_icesupersat, &
-                       micro_mg_accre_enhan_fac_out    = micro_mg_accre_enhan_fac)    
- 
-    cnst_names=(/'TKE   '/)    
- 
+                       micro_mg_accre_enhan_fac_out    = micro_mg_accre_enhan_fac)
+
+    cnst_names=(/'TKE   '/)
+
     ! TKE is prognostic in SHOC and should be advected by dynamics
     call cnst_add('SHOC_TKE',0._r8,0._r8,0._r8,ixtke,longname='turbulent kinetic energy',cam_outfld=.false.)
-  
+
     ! Fields that are not prognostic should be added to PBUF
     call pbuf_add_field('WTHV', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), wthv_idx)
-    call pbuf_add_field('TKH', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), tkh_idx) 
-    call pbuf_add_field('TK', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), tk_idx) 
+    call pbuf_add_field('TKH', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), tkh_idx)
+    call pbuf_add_field('TK', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), tk_idx)
 
     call pbuf_add_field('pblh',       'global', dtype_r8, (/pcols/), pblh_idx)
     call pbuf_add_field('tke',        'global', dtype_r8, (/pcols, pverp/), tke_idx)
@@ -151,55 +151,55 @@ module shoc_intr
     call pbuf_add_field('FICE',       'physpkg',dtype_r8, (/pcols,pver/), fice_idx)
     call pbuf_add_field('RAD_CLUBB',  'global', dtype_r8, (/pcols,pver/), radf_idx)
     call pbuf_add_field('CMELIQ',     'physpkg',dtype_r8, (/pcols,pver/), cmeliq_idx)
-    
+
     call pbuf_add_field('vmag_gust',  'global', dtype_r8, (/pcols/),      vmag_gust_idx)
-  
+
 #endif
-  
+
   end subroutine shoc_register_e3sm
   ! =============================================================================== !
   !                                                                                 !
   ! =============================================================================== !
- 
+
 function shoc_implements_cnst(name)
 
   !--------------------------------------------------------------------
   ! Return true if specified constituent is implemented by this package
   !--------------------------------------------------------------------
 
-  character(len=*), intent(in) :: name 
+  character(len=*), intent(in) :: name
   logical :: shoc_implements_cnst
 
   shoc_implements_cnst = (do_cnst .and. any(name == cnst_names))
 
 end function shoc_implements_cnst
- 
+
   subroutine shoc_init_cnst(name, q, gcid)
-  
+
   !------------------------------------------------------------------- !
   ! Initialize the state for SHOC's prognostic variable                !
   !------------------------------------------------------------------- !
-  
+
     character(len=*), intent(in)  :: name     ! constituent name
     real(r8),         intent(out) :: q(:,:)   ! mass mixing ratio (gcol, plev)
     integer,          intent(in)  :: gcid(:)  ! global column id
-    
+
 #ifdef SHOC_SGS
     if (trim(name) == trim('SHOC_TKE')) q = tke_tol
-#endif  
+#endif
 
   end subroutine shoc_init_cnst
-  
+
   ! =============================================================================== !
   !                                                                                 !
   ! =============================================================================== !
-  
+
   subroutine shoc_readnl(nlfile)
-  
+
   !------------------------------------------------------------------- !
   ! Read in any namelist parameters here                               !
   !   (currently none)                                                 !
-  !------------------------------------------------------------------- !  
+  !------------------------------------------------------------------- !
 
     use units,           only: getunit, freeunit
     use namelist_utils,  only: find_group_name
@@ -207,11 +207,11 @@ end function shoc_implements_cnst
     use mpishorthand
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
-    
+
     integer :: iunit, read_status
-    
+
     namelist /shocpbl_diff_nl/ shoc_timestep
-    
+
     !  Read namelist to determine if SHOC history should be called
     if (masterproc) then
       iunit = getunit()
@@ -227,24 +227,24 @@ end function shoc_implements_cnst
 
       close(unit=iunit)
       call freeunit(iunit)
-    end if    
-    
+    end if
+
 #ifdef SPMD
 ! Broadcast namelist variables
       call mpibcast(shoc_timestep,           1,   mpir8,   0, mpicom)
 #endif
-  
-  end subroutine shoc_readnl   
-  
+
+  end subroutine shoc_readnl
+
   ! =============================================================================== !
   !                                                                                 !
   ! =============================================================================== !
-  
+
   subroutine shoc_init_e3sm(pbuf2d, dp1_in)
 
   !------------------------------------------------------------------- !
   ! Initialize SHOC for E3SM                                           !
-  !------------------------------------------------------------------- !  
+  !------------------------------------------------------------------- !
 
     use physics_types,          only: physics_state, physics_ptend
     use ppgrid,                 only: pver, pverp, pcols
@@ -254,51 +254,51 @@ end function shoc_implements_cnst
     use physics_buffer,         only: pbuf_get_index, pbuf_set_field, &
                                       physics_buffer_desc
     use rad_constituents,       only: rad_cnst_get_info, rad_cnst_get_mode_num_idx, &
-                                      rad_cnst_get_mam_mmr_idx	
-    use constituents,           only: cnst_get_ind	
-    use shoc,                   only: shoc_init			      			      
+                                      rad_cnst_get_mam_mmr_idx
+    use constituents,           only: cnst_get_ind
+    use shoc,                   only: shoc_init
     use cam_history,            only: horiz_only, addfld, add_default
     use error_messages,         only: handle_errmsg
-    use trb_mtn_stress,         only: init_tms   
- 
+    use trb_mtn_stress,         only: init_tms
+
     implicit none
     !  Input Variables
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
-    
+
     real(r8) :: dp1_in
-    
+
     integer :: lptr
     integer :: nmodes, nspec, m, l
     integer :: ixnumliq
     integer :: ntop_shoc
     integer :: nbot_shoc
-    character(len=128) :: errstring   
+    character(len=128) :: errstring
 
     logical :: history_amwg
- 
+
     lq(1:pcnst) = .true.
     edsclr_dim = pcnst
-    
+
     !----- Begin Code -----
 
     ! ----------------------------------------------------------------- !
-    ! Determine how many constituents SHOC will transport.  Note that  
-    ! SHOC does not transport aerosol consituents.  Therefore, need to 
+    ! Determine how many constituents SHOC will transport.  Note that
+    ! SHOC does not transport aerosol consituents.  Therefore, need to
     ! determine how many aerosols constituents there are and subtract that
-    ! off of pcnst (the total consituents) 
+    ! off of pcnst (the total consituents)
     ! ----------------------------------------------------------------- !
 
     call phys_getopts(prog_modal_aero_out=prog_modal_aero, &
                       history_amwg_out = history_amwg, &
-                      liqcf_fix_out   = liqcf_fix)    
-    
+                      liqcf_fix_out   = liqcf_fix)
+
     ! Define physics buffers indexes
     cld_idx     = pbuf_get_index('CLD')         ! Cloud fraction
     concld_idx  = pbuf_get_index('CONCLD')      ! Convective cloud cover
     ast_idx     = pbuf_get_index('AST')         ! Stratiform cloud fraction
     alst_idx    = pbuf_get_index('ALST')        ! Liquid stratiform cloud fraction
     aist_idx    = pbuf_get_index('AIST')        ! Ice stratiform cloud fraction
-    qlst_idx    = pbuf_get_index('QLST')        ! Physical in-stratus LWC 
+    qlst_idx    = pbuf_get_index('QLST')        ! Physical in-stratus LWC
     qist_idx    = pbuf_get_index('QIST')        ! Physical in-stratus IWC
     dp_frac_idx = pbuf_get_index('DP_FRAC')     ! Deep convection cloud fraction
     icwmrdp_idx = pbuf_get_index('ICWMRDP')     ! In-cloud deep convective mixing ratio
@@ -308,31 +308,31 @@ end function shoc_implements_cnst
     prer_evap_idx   = pbuf_get_index('PRER_EVAP')
     qrl_idx         = pbuf_get_index('QRL')
     cmfmc_sh_idx    = pbuf_get_index('CMFMC_SH')
-    tke_idx         = pbuf_get_index('tke')   
+    tke_idx         = pbuf_get_index('tke')
     vmag_gust_idx = pbuf_get_index('vmag_gust')
- 
+
     if (is_first_step()) then
-      call pbuf_set_field(pbuf2d, wthv_idx, 0.0_r8) 
-      call pbuf_set_field(pbuf2d, tkh_idx, 0.0_r8) 
-      call pbuf_set_field(pbuf2d, tk_idx, 0.0_r8) 
+      call pbuf_set_field(pbuf2d, wthv_idx, 0.0_r8)
+      call pbuf_set_field(pbuf2d, tkh_idx, 0.0_r8)
+      call pbuf_set_field(pbuf2d, tk_idx, 0.0_r8)
       call pbuf_set_field(pbuf2d, fice_idx, 0.0_r8)
       call pbuf_set_field(pbuf2d, tke_idx, tke_tol)
       call pbuf_set_field(pbuf2d, alst_idx, 0.0_r8)
       call pbuf_set_field(pbuf2d, aist_idx, 0.0_r8)
-      
+
       call pbuf_set_field(pbuf2d, vmag_gust_idx,    1.0_r8)
-      
+
     endif
-    
+
     if (prog_modal_aero) then
        ! Turn off modal aerosols and decrement edsclr_dim accordingly
        call rad_cnst_get_info(0, nmodes=nmodes)
- 
+
        do m = 1, nmodes
           call rad_cnst_get_mode_num_idx(m, lptr)
           lq(lptr)=.false.
           edsclr_dim = edsclr_dim-1
- 
+
           call rad_cnst_get_info(0, m, nspec=nspec)
           do l = 1, nspec
              call rad_cnst_get_mam_mmr_idx(m, l, lptr)
@@ -340,14 +340,14 @@ end function shoc_implements_cnst
              edsclr_dim = edsclr_dim-1
           end do
        end do
- 
+
        !  In addition, if running with MAM, droplet number is transported
        !  in dropmixnuc, therefore we do NOT want SHOC to apply transport
        !  tendencies to avoid double counted.  Else, we apply tendencies.
        call cnst_get_ind('NUMLIQ',ixnumliq)
        lq(ixnumliq) = .false.
        edsclr_dim = edsclr_dim-1
-    endif 
+    endif
 
     ! Add SHOC fields
     call addfld('SHOC_TKE', (/'lev'/), 'A', 'm2/s2', 'TKE')
@@ -370,6 +370,11 @@ end function shoc_implements_cnst
     call addfld('CONCLD',(/'lev'/),  'A',        'fraction', 'Convective cloud cover')
     call addfld('BRUNT',(/'lev'/), 'A', 's-1', 'Brunt frequency')
     call addfld('RELVAR',(/'lev'/), 'A', 'kg/kg', 'SHOC cloud liquid relative variance')
+    ! MKW added 20200608
+    call addfld('THETAL',(/'lev'/), 'A', 'K', 'Liq. water potential temperature')
+    call addfld('THETAV',(/'lev'/), 'A', 'K', 'Virtual potential temperature')
+    call addfld('ZM_SHOC',(/'ilev'/), 'A', 'm', 'Momentum heights')
+    call addfld('ZT_SHOC',(/'lev'/), 'A', 'm', 'Thermodynamic heights')
 
     call add_default('SHOC_TKE', 1, ' ')
     call add_default('WTHV_SEC', 1, ' ')
@@ -392,68 +397,121 @@ end function shoc_implements_cnst
     call add_default('BRUNT',1,' ')
     call add_default('RELVAR',1,' ')
 
+    ! MKW added 20200608
+    call add_default('THETAL',1,' ')
+    call add_default('THETAV',1,' ')
+    call add_default('ZM_SHOC',1,' ')
+    call add_default('ZT_SHOC',1,' ')
+
+    ! Add EDMF fields - MKW 20200402
+    call addfld ( 'edmf_DRY_A'    , (/ 'ilev' /), 'A', 'fraction', 'Dry updraft area fraction (EDMF)' )
+    call addfld ( 'edmf_MOIST_A'  , (/ 'ilev' /), 'A', 'fraction', 'Moist updraft area fraction (EDMF)' )
+    call addfld ( 'edmf_DRY_W'    , (/ 'ilev' /), 'A', 'm/s'     , 'Dry updraft vertical velocity (EDMF)' )
+    call addfld ( 'edmf_MOIST_W'  , (/ 'ilev' /), 'A', 'm/s'     , 'Moist updraft vertical velocity (EDMF)' )
+    call addfld ( 'edmf_DRY_QT'   , (/ 'ilev' /), 'A', 'kg/kg'   , 'Dry updraft total water mixing ratio (EDMF)' )
+    call addfld ( 'edmf_MOIST_QT' , (/ 'ilev' /), 'A', 'kg/kg'   , 'Moist updraft total water mixing ratio (EDMF)' )
+    call addfld ( 'edmf_DRY_THL'  , (/ 'ilev' /), 'A', 'K'       , 'Dry updraft liquid-ice potential temperature (EDMF)' )
+    call addfld ( 'edmf_MOIST_THL', (/ 'ilev' /), 'A', 'K'       , 'Moist updraft liquid-ice potential temperature (EDMF)' )
+    call addfld ( 'edmf_DRY_U'    , (/ 'ilev' /), 'A', 'm/s'     , 'Dry updraft zonal velocity (EDMF)' )
+    call addfld ( 'edmf_MOIST_U'  , (/ 'ilev' /), 'A', 'm/s'     , 'Moist updraft zonal velocity (EDMF)' )
+    call addfld ( 'edmf_DRY_V'    , (/ 'ilev' /), 'A', 'm/s'     , 'Dry updraft meridional velocity (EDMF)' )
+    call addfld ( 'edmf_MOIST_V'  , (/ 'ilev' /), 'A', 'm/s'     , 'Moist updraft meridional velocity (EDMF)' )
+    call addfld ( 'edmf_MOIST_QC' , (/ 'ilev' /), 'A', 'kg/kg'   , 'Moist updraft condensate mixing ratio (EDMF)' )
+    call addfld ( 'edmf_S_AE'     , (/ 'ilev' /), 'A', 'fraction', 'a_e (EDMF)' )
+    call addfld ( 'edmf_S_AW'     , (/ 'ilev' /), 'A', 'm/s'     , 'Sum of a_i*w_i (EDMF)' )
+    call addfld ( 'edmf_S_AWTHL'  , (/ 'ilev' /), 'A', 'K m/s'   , 'Sum of a_i*w_i*thl_i (EDMF)' )
+    call addfld ( 'edmf_S_AWQT'   , (/ 'ilev' /), 'A', 'kgm/kgs' , 'Sum of a_i*w_i*q_ti (EDMF)' )
+    call addfld ( 'edmf_S_AWU'    , (/ 'ilev' /), 'A', 'm2/s2'   , 'Sum of a_i*w_i*u_i (EDMF)' )
+    call addfld ( 'edmf_S_AWV'    , (/ 'ilev' /), 'A', 'm2/s2'   , 'Sum of a_i*w_i*v_i (EDMF)' )
+    call addfld ( 'edmf_thlflx'   , (/ 'ilev' /), 'A', 'K m/s'   , 'thl flux by edmf (EDMF)' )
+    call addfld ( 'edmf_qtflx'    , (/ 'ilev' /), 'A', 'kg/kg/s' , 'qt flux by edmf (EDMF)' )
+
+    call add_default( 'edmf_DRY_A'    , 1, ' ')
+    call add_default( 'edmf_MOIST_A'  , 1, ' ')
+    call add_default( 'edmf_DRY_W'    , 1, ' ')
+    call add_default( 'edmf_MOIST_W'  , 1, ' ')
+    call add_default( 'edmf_DRY_QT'   , 1, ' ')
+    call add_default( 'edmf_MOIST_QT' , 1, ' ')
+    call add_default( 'edmf_DRY_THL'  , 1, ' ')
+    call add_default( 'edmf_MOIST_THL', 1, ' ')
+    call add_default( 'edmf_DRY_U'    , 1, ' ')
+    call add_default( 'edmf_MOIST_U'  , 1, ' ')
+    call add_default( 'edmf_DRY_V'    , 1, ' ')
+    call add_default( 'edmf_MOIST_V'  , 1, ' ')
+    call add_default( 'edmf_MOIST_QC' , 1, ' ')
+    call add_default( 'edmf_S_AE'     , 1, ' ')
+    call add_default( 'edmf_S_AW'     , 1, ' ')
+    call add_default( 'edmf_S_AWTHL'  , 1, ' ')
+    call add_default( 'edmf_S_AWQT'   , 1, ' ')
+    call add_default( 'edmf_S_AWU'    , 1, ' ')
+    call add_default( 'edmf_S_AWV'    , 1, ' ')
+    call add_default( 'edmf_thlflx'   , 1, ' ')
+    call add_default( 'edmf_qtflx'    , 1, ' ')
+
     ! ---------------------------------------------------------------!
     ! Initialize SHOC                                                !
     ! ---------------------------------------------------------------!
- 
+
     ntop_shoc = 1    ! if >1, must be <= nbot_molec
-    nbot_shoc = pver ! currently always pver 
- 
+    nbot_shoc = pver ! currently always pver
+
     call shoc_init( &
           pver, gravit, rair, rh2o, cpair, &
 	  zvir, latvap, latice, karman, &
-	  pref_mid, nbot_shoc, ntop_shoc )   
-    
+	  pref_mid, nbot_shoc, ntop_shoc )
+
+    ! MKW TODO: add edmf_init here to set physical constants in EDMF module?
+
     ! --------------- !
     ! End             !
     ! Initialization  !
-    ! --------------- !  
-    
-    dp1 = dp1_in  
-  
-  end subroutine shoc_init_e3sm   
-  
+    ! --------------- !
+
+    dp1 = dp1_in
+
+  end subroutine shoc_init_e3sm
+
   ! =============================================================================== !
   !                                                                                 !
   ! =============================================================================== !
-  
+
   subroutine shoc_tend_e3sm( &
                              state, ptend_all, pbuf, hdtime, &
 			     cmfmc, cam_in, sgh30, &
 			     macmic_it, cld_macmic_num_steps, &
 			     dlf, det_s, det_ice, alst_o)
-  
+
   !------------------------------------------------------------------- !
   ! Provide tendencies of shallow convection , turbulence, and         !
   !   macrophysics from SHOC to E3SM                                   !
-  !------------------------------------------------------------------- !  
-  
+  !------------------------------------------------------------------- !
+
     use physics_types,  only: physics_state, physics_ptend, &
                               physics_state_copy, physics_ptend_init, &
-                              physics_ptend_sum 
-			      
+                              physics_ptend_sum
+
     use physics_update_mod, only: physics_update
 
     use physics_buffer, only: pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field, &
-                              pbuf_set_field, physics_buffer_desc	
-			      
+                              pbuf_set_field, physics_buffer_desc
+
     use ppgrid,         only: pver, pverp, pcols
     use constituents,   only: cnst_get_ind
     use camsrfexch,     only: cam_in_t
-    use ref_pres,       only: top_lev => trop_cloud_top_lev  
-    use time_manager,   only: is_first_step   
+    use ref_pres,       only: top_lev => trop_cloud_top_lev
+    use time_manager,   only: is_first_step
     use cam_abortutils, only: endrun
     use wv_saturation,  only: qsat
-    use micro_mg_cam,   only: micro_mg_version  
-    use cldfrc2m,                  only: aist_vector 
+    use micro_mg_cam,   only: micro_mg_version
+    use cldfrc2m,                  only: aist_vector
     use hb_diff,                   only: pblintd
     use trb_mtn_stress,            only: compute_tms
     use shoc,           only: shoc_main
     use cam_history,    only: outfld
-    use scamMod,        only: single_column, iop_mode  
- 
+    use scamMod,        only: single_column, iop_mode
+
     implicit none
-    
+
    ! --------------- !
    ! Input Auguments !
    ! --------------- !
@@ -465,11 +523,11 @@ end function shoc_implements_cnst
    real(r8),            intent(in)    :: cmfmc(pcols,pverp)       ! convective mass flux--m sub c           [kg/m2/s]
    real(r8),            intent(in)    :: sgh30(pcols)             ! std deviation of orography              [m]
    integer,             intent(in)    :: cld_macmic_num_steps     ! number of mac-mic iterations
-   integer,             intent(in)    :: macmic_it                ! number of mac-mic iterations    		      		  
+   integer,             intent(in)    :: macmic_it                ! number of mac-mic iterations
    ! ---------------------- !
    ! Input-Output Auguments !
    ! ---------------------- !
-    
+
    type(physics_buffer_desc), pointer :: pbuf(:)
 
    ! ---------------------- !
@@ -478,18 +536,18 @@ end function shoc_implements_cnst
 
    type(physics_ptend), intent(out)   :: ptend_all                 ! package tendencies
 
-   ! These two variables are needed for energy check    
+   ! These two variables are needed for energy check
    real(r8),            intent(out)   :: det_s(pcols)              ! Integral of detrained static energy from ice
    real(r8),            intent(out)   :: det_ice(pcols)            ! Integral of detrained ice for energy check
 
-   real(r8), intent(out) :: alst_o(pcols,pver)  ! H. Wang: for old liquid status fraction 
-   
+   real(r8), intent(out) :: alst_o(pcols,pver)  ! H. Wang: for old liquid status fraction
+
    ! --------------- !
    ! Local Variables !
    ! --------------- !
 
    integer :: shoctop(pcols)
-   
+
 #ifdef SHOC_SGS
 
    type(physics_state) :: state1                ! Local copy of state variable
@@ -502,9 +560,9 @@ end function shoc_implements_cnst
    integer :: err_code                          ! Diagnostic, for if some calculation goes amiss.
    integer :: begin_height, end_height
    integer :: icnt
-   
-   real(r8) :: dtime                            ! SHOC time step                              [s]   
-   real(r8) :: edsclr_in(pcols,pver,edsclr_dim)      ! Scalars to be diffused through SHOC         [units vary]   
+
+   real(r8) :: dtime                            ! SHOC time step                              [s]
+   real(r8) :: edsclr_in(pcols,pver,edsclr_dim)      ! Scalars to be diffused through SHOC         [units vary]
    real(r8) :: edsclr_out(pcols,pver,edsclr_dim)
    real(r8) :: rcm_in(pcols,pver)
    real(r8) :: cloudfrac_shoc(pcols,pver)
@@ -529,7 +587,7 @@ end function shoc_implements_cnst
    real(r8) :: isotropy(pcols,pver)
    real(r8) :: host_dx, host_dy
    real(r8) :: host_temp(pcols,pver)
-   real(r8) :: host_dx_in(pcols), host_dy_in(pcols)  
+   real(r8) :: host_dx_in(pcols), host_dy_in(pcols)
    real(r8) :: shoc_mix_out(pcols,pver), tk_in(pcols,pver), tkh_in(pcols,pver)
    real(r8) :: isotropy_out(pcols,pver), tke_zt(pcols,pver)
    real(r8) :: w_sec_out(pcols,pver), thl_sec_out(pcols,pverp)
@@ -546,87 +604,98 @@ end function shoc_implements_cnst
 
    real(r8) :: obklen(pcols), ustar2(pcols), kinheat(pcols), kinwat(pcols)
    real(r8) :: dummy2(pcols), dummy3(pcols), kbfs(pcols), th(pcols,pver), thv(pcols,pver)
-   real(r8) :: thv2(pcols,pver)  
- 
+   real(r8) :: thv2(pcols,pver)
+
    real(r8) :: minqn, rrho(pcols,pver), rrho_i(pcols,pverp)    ! minimum total cloud liquid + ice threshold    [kg/kg]
    real(r8) :: cldthresh, frac_limit
    real(r8) :: ic_limit, dum1
- 
+
    real(r8) :: wpthlp_sfc(pcols), wprtp_sfc(pcols), upwp_sfc(pcols), vpwp_sfc(pcols)
    real(r8) :: wtracer_sfc(pcols,edsclr_dim)
-  
+
+   ! For EDMF output - MKW 20200402
+   real(r8), dimension(pcols,pverp) :: edmf_dry_a, edmf_moist_a, &
+             edmf_dry_w, edmf_moist_w, &
+             edmf_dry_qt, edmf_moist_qt, &
+             edmf_dry_thl, edmf_moist_thl, &
+             edmf_dry_u, edmf_moist_u, &
+             edmf_dry_v, edmf_moist_v, &
+             edmf_moist_qc, edmf_thlflx, edmf_qtflx, &
+             s_ae, s_aw, s_awthl, s_awqt, s_awql, s_awqi, s_awu, s_awv,&
+             edmf_thlflx_out,edmf_qtflx_out
+
    ! Variables below are needed to compute energy integrals for conservation
    real(r8) :: ke_a(pcols), ke_b(pcols), te_a(pcols), te_b(pcols)
    real(r8) :: wv_a(pcols), wv_b(pcols), wl_b(pcols), wl_a(pcols)
    real(r8) :: se_dis(pcols), se_a(pcols), se_b(pcols), shoc_s(pcols,pver)
    real(r8) :: shoc_t(pcols,pver)
-   
+
    ! --------------- !
    ! Pointers        !
    ! --------------- !
-  
+
    real(r8), pointer, dimension(:,:) :: tke_zi  ! turbulent kinetic energy, interface
    real(r8), pointer, dimension(:,:) :: wthv ! buoyancy flux
-   real(r8), pointer, dimension(:,:) :: tkh 
+   real(r8), pointer, dimension(:,:) :: tkh
    real(r8), pointer, dimension(:,:) :: tk
    real(r8), pointer, dimension(:,:) :: cld      ! cloud fraction                               [fraction]
    real(r8), pointer, dimension(:,:) :: concld   ! convective cloud fraction                    [fraction]
    real(r8), pointer, dimension(:,:) :: ast      ! stratiform cloud fraction                    [fraction]
    real(r8), pointer, dimension(:,:) :: alst     ! liquid stratiform cloud fraction             [fraction]
-   real(r8), pointer, dimension(:,:) :: aist     ! ice stratiform cloud fraction                [fraction] 
-   real(r8), pointer, dimension(:,:) :: cmeliq 
-           
+   real(r8), pointer, dimension(:,:) :: aist     ! ice stratiform cloud fraction                [fraction]
+   real(r8), pointer, dimension(:,:) :: cmeliq
+
    real(r8), pointer, dimension(:,:) :: qlst     ! Physical in-stratus LWC                      [kg/kg]
    real(r8), pointer, dimension(:,:) :: qist     ! Physical in-stratus IWC                      [kg/kg]
    real(r8), pointer, dimension(:,:) :: deepcu   ! deep convection cloud fraction               [fraction]
-   real(r8), pointer, dimension(:,:) :: shalcu   ! shallow convection cloud fraction            [fraction]    
+   real(r8), pointer, dimension(:,:) :: shalcu   ! shallow convection cloud fraction            [fraction]
    real(r8), pointer, dimension(:,:) :: khzt     ! eddy diffusivity on thermo levels            [m^2/s]
    real(r8), pointer, dimension(:,:) :: khzm     ! eddy diffusivity on momentum levels          [m^2/s]
    real(r8), pointer, dimension(:) :: pblh     ! planetary boundary layer height                [m]
-   real(r8), pointer, dimension(:,:) :: dp_icwmr ! deep convection in cloud mixing ratio        [kg/kg] 
-   real(r8), pointer, dimension(:,:) :: cmfmc_sh ! Shallow convective mass flux--m subc (pcols,pverp) [kg/m2/s/]     
+   real(r8), pointer, dimension(:,:) :: dp_icwmr ! deep convection in cloud mixing ratio        [kg/kg]
+   real(r8), pointer, dimension(:,:) :: cmfmc_sh ! Shallow convective mass flux--m subc (pcols,pverp) [kg/m2/s/]
 
-   real(r8), pointer, dimension(:,:) :: prer_evap 
+   real(r8), pointer, dimension(:,:) :: prer_evap
    real(r8), pointer, dimension(:,:) :: accre_enhan
    real(r8), pointer, dimension(:,:) :: relvar
-   
+
    logical :: lqice(pcnst)
    real(r8) :: relvarmax
-   
+
    !------------------------------------------------------------------!
    !------------------------------------------------------------------!
    !------------------------------------------------------------------!
    !       MAIN COMPUTATION BEGINS HERE                               !
    !------------------------------------------------------------------!
    !------------------------------------------------------------------!
-   !------------------------------------------------------------------!   
-   
+   !------------------------------------------------------------------!
+
  !  Get indicees for cloud and ice mass and cloud and ice number
    ic_limit   = 1.e-12_r8
    frac_limit = 0.01_r8
-   
+
    call cnst_get_ind('Q',ixq)
    call cnst_get_ind('CLDLIQ',ixcldliq)
    call cnst_get_ind('CLDICE',ixcldice)
    call cnst_get_ind('NUMLIQ',ixnumliq)
    call cnst_get_ind('NUMICE',ixnumice)
-   
+
    call physics_ptend_init(ptend_loc,state%psetcols, 'shoc', ls=.true., lu=.true., lv=.true., lq=lq)
-   
+
    call physics_state_copy(state,state1)
-   
+
    !  Determine number of columns and which chunk computation is to be performed on
    ncol = state%ncol
-   lchnk = state%lchnk    
-   
-   !  Determine time step of physics buffer 
-   itim_old = pbuf_old_tim_idx()     
-   
-   !  Establish associations between pointers and physics buffer fields   
+   lchnk = state%lchnk
+
+   !  Determine time step of physics buffer
+   itim_old = pbuf_old_tim_idx()
+
+   !  Establish associations between pointers and physics buffer fields
    call pbuf_get_field(pbuf, tke_idx,     tke_zi)
-   call pbuf_get_field(pbuf, wthv_idx,     wthv,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))  
-   call pbuf_get_field(pbuf, tkh_idx,      tkh,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))  
-   call pbuf_get_field(pbuf, tk_idx,       tk,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))  
+   call pbuf_get_field(pbuf, wthv_idx,     wthv,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   call pbuf_get_field(pbuf, tkh_idx,      tkh,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   call pbuf_get_field(pbuf, tk_idx,       tk,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
    call pbuf_get_field(pbuf, cld_idx,     cld,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
    call pbuf_get_field(pbuf, concld_idx,  concld,  start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
    call pbuf_get_field(pbuf, ast_idx,     ast,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
@@ -634,7 +703,7 @@ end function shoc_implements_cnst
    call pbuf_get_field(pbuf, aist_idx,    aist,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
    call pbuf_get_field(pbuf, qlst_idx,    qlst,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
    call pbuf_get_field(pbuf, qist_idx,    qist,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-   
+
    call pbuf_get_field(pbuf, prer_evap_idx, prer_evap)
    call pbuf_get_field(pbuf, accre_enhan_idx, accre_enhan)
    call pbuf_get_field(pbuf, cmeliq_idx,  cmeliq)
@@ -645,51 +714,51 @@ end function shoc_implements_cnst
    call pbuf_get_field(pbuf, kvh_idx,     khzt)
    call pbuf_get_field(pbuf, pblh_idx,    pblh)
    call pbuf_get_field(pbuf, icwmrdp_idx, dp_icwmr)
-   call pbuf_get_field(pbuf, cmfmc_sh_idx, cmfmc_sh)  
-   
+   call pbuf_get_field(pbuf, cmfmc_sh_idx, cmfmc_sh)
+
    !  Determine SHOC time step and make it sub-step friendly
    !  For now we want SHOC time step to be 5 min.  However, there are certain
-   !  instances when a 5 min time step will not be possible (based on 
-   !  host model time step or on macro-micro sub-stepping   
-   
-   dtime = shoc_timestep 
-   
-   !  Now check to see if dtime is greater than the host model 
-   !    (or sub stepped) time step.  If it is, then simply 
-   !    set it equal to the host (or sub step) time step.  
+   !  instances when a 5 min time step will not be possible (based on
+   !  host model time step or on macro-micro sub-stepping
+
+   dtime = shoc_timestep
+
+   !  Now check to see if dtime is greater than the host model
+   !    (or sub stepped) time step.  If it is, then simply
+   !    set it equal to the host (or sub step) time step.
    !    This section is mostly to deal with small host model
    !    time steps (or small sub-steps)
-   
+
    if (dtime .gt. hdtime) then
      dtime = hdtime
    endif
-   
+
    !  Now check to see if SHOC time step divides evenly into
    !    the host model time step.  If not, force it to divide evenly.
    !    We also want it to be 5 minutes or less.  This section is
    !    mainly for host model time steps that are not evenly divisible
-   !    by 5 minutes  
-   
+   !    by 5 minutes
+
    if (mod(hdtime,dtime) .ne. 0) then
      dtime = hdtime/2._r8
-     do while (dtime .gt. 300._r8) 
+     do while (dtime .gt. 300._r8)
        dtime = dtime/2._r8
      end do
-   endif  
-   
+   endif
+
    !  If resulting host model time step and SHOC time step do not divide evenly
-   !    into each other, have model throw a fit.  
+   !    into each other, have model throw a fit.
 
    if (mod(hdtime,dtime) .ne. 0) then
      call endrun('shoc_tend_e3sm:  SHOC time step and HOST time step NOT compatible')
-   endif      
-  
-   !  determine number of timesteps SHOC core should be advanced, 
-   !  host time step divided by SHOC time step  
+   endif
+
+   !  determine number of timesteps SHOC core should be advanced,
+   !  host time step divided by SHOC time step
    nadv = max(hdtime/dtime,1._r8)
 
    ! Set grid space, in meters. If SCM, set to a grid size representative
-   !  of a typical GCM.  Otherwise, compute locally.    
+   !  of a typical GCM.  Otherwise, compute locally.
    if (single_column .and. .not. iop_mode) then
      host_dx_in(:) = 100000._r8
      host_dy_in(:) = 100000._r8
@@ -700,52 +769,52 @@ end function shoc_implements_cnst
    else
      call grid_size(state1, host_dx_in, host_dy_in)
    endif
- 
+
    minqn = 0._r8
    newfice(:,:) = 0._r8
    where(state1%q(:ncol,:pver,ixcldice) .gt. minqn) &
-       newfice(:ncol,:pver) = state1%q(:ncol,:pver,ixcldice)/(state1%q(:ncol,:pver,ixcldliq)+state1%q(:ncol,:pver,ixcldice))  
-       
+       newfice(:ncol,:pver) = state1%q(:ncol,:pver,ixcldice)/(state1%q(:ncol,:pver,ixcldliq)+state1%q(:ncol,:pver,ixcldice))
+
    do k=1,pver
      do i=1,ncol
        exner(i,k) = 1._r8/((state1%pmid(i,k)/p0_shoc)**(rair/cpair))
      enddo
-   enddo       
-       
-   !  At each SHOC call, initialize mean momentum  and thermo SHOC state 
+   enddo
+
+   !  At each SHOC call, initialize mean momentum  and thermo SHOC state
    !  from the E3SM state
-   
+
    do k=1,pver   ! loop over levels
      do i=1,ncol ! loop over columns
-     
+
        rvm(i,k) = state1%q(i,k,ixq)
        rcm(i,k) = state1%q(i,k,ixcldliq)
        rtm(i,k) = rvm(i,k) + rcm(i,k)
        um(i,k) = state1%u(i,k)
        vm(i,k) = state1%v(i,k)
-       
+
        thlm(i,k) = state1%t(i,k)*exner(i,k)-(latvap/cpair)*state1%q(i,k,ixcldliq)
-       thv(i,k) = state1%t(i,k)*exner(i,k)*(1.0_r8+zvir*state1%q(i,k,ixq)-state1%q(i,k,ixcldliq)) 
- 
+       thv(i,k) = state1%t(i,k)*exner(i,k)*(1.0_r8+zvir*state1%q(i,k,ixq)-state1%q(i,k,ixcldliq))
+
        tke_zt(i,k) = max(tke_tol,state1%q(i,k,ixtke))
-       
-       ! Cloud fraction needs to be initialized for first 
+
+       ! Cloud fraction needs to be initialized for first
        !  PBL height calculation call
-       cloud_frac(i,k) = alst(i,k) 
-     
+       cloud_frac(i,k) = alst(i,k)
+
      enddo
-   enddo         
-   
+   enddo
+
    ! ------------------------------------------------- !
    ! Prepare inputs for SHOC call                      !
-   ! ------------------------------------------------- ! 
-   
+   ! ------------------------------------------------- !
+
    do k=1,pver
      do i=1,ncol
        dz_g(i,k) = state1%zi(i,k)-state1%zi(i,k+1)  ! compute thickness
      enddo
    enddo
-   
+
    !  Define the SHOC thermodynamic grid (in units of m)
    wm_zt(:,pver) = 0._r8
    do k=1,pver
@@ -756,7 +825,7 @@ end function shoc_implements_cnst
        shoc_s(i,k) = state1%s(i,k)
      enddo
    enddo
-     
+
    do k=1,pverp
      do i=1,ncol
        zi_g(i,k) = state1%zi(i,k)-state1%zi(i,pver+1)
@@ -773,14 +842,14 @@ end function shoc_implements_cnst
       wpthlp_sfc(i) = cam_in%shf(i)/(cpair*rrho_i(i,pverp))       ! Sensible heat flux
       wprtp_sfc(i)  = cam_in%cflx(i,1)/(rrho_i(i,pverp))      ! Latent heat flux
       upwp_sfc(i)   = cam_in%wsx(i)/rrho_i(i,pverp)               ! Surface meridional momentum flux
-      vpwp_sfc(i)   = cam_in%wsy(i)/rrho_i(i,pverp)               ! Surface zonal momentum flux  
+      vpwp_sfc(i)   = cam_in%wsy(i)/rrho_i(i,pverp)               ! Surface zonal momentum flux
       wtracer_sfc(i,:) = 0._r8  ! in E3SM tracer fluxes are done elsewhere
-   enddo               
-   
-   !  Do the same for tracers 
+   enddo
+
+   !  Do the same for tracers
    icnt=0
    do ixind=1,pcnst
-     if (lq(ixind))  then 
+     if (lq(ixind))  then
        icnt=icnt+1
        do k=1,pver
          do i=1,ncol
@@ -788,11 +857,11 @@ end function shoc_implements_cnst
          enddo
        enddo
      end if
-   enddo    
-    
+   enddo
+
    ! ------------------------------------------------- !
    ! Actually call SHOC                                !
-   ! ------------------------------------------------- !   
+   ! ------------------------------------------------- !
 
    call shoc_main( &
         ncol, pver, pverp, dtime, nadv, & ! Input
@@ -807,22 +876,31 @@ end function shoc_implements_cnst
 	rcm(:ncol,:),cloud_frac(:ncol,:), & ! Input/Output
         pblh(:ncol), & ! Output
         shoc_mix_out(:ncol,:), isotropy_out(:ncol,:), & ! Output (diagnostic)
-        w_sec_out(:ncol,:), thl_sec_out(:ncol,:), qw_sec_out(:ncol,:), qwthl_sec_out(:ncol,:), & ! Output (diagnostic)   
+        w_sec_out(:ncol,:), thl_sec_out(:ncol,:), qw_sec_out(:ncol,:), qwthl_sec_out(:ncol,:), & ! Output (diagnostic)
         wthl_sec_out(:ncol,:), wqw_sec_out(:ncol,:), wtke_sec_out(:ncol,:), & ! Output (diagnostic)
         uw_sec_out(:ncol,:), vw_sec_out(:ncol,:), w3_out(:ncol,:), & ! Output (diagnostic)
-        wqls_out(:ncol,:),brunt_out(:ncol,:),rcm2(:ncol,:)) ! Output (diagnostic)
-   
+        wqls_out(:ncol,:),brunt_out(:ncol,:),rcm2(:ncol,:), & ! Output (diagnostic)
+        edmf_dry_a(:ncol,:), edmf_moist_a(:ncol,:), & ! Output (EDMF diagnostic)
+        edmf_dry_w(:ncol,:), edmf_moist_w(:ncol,:), & ! Output (EDMF diagnostic)
+        edmf_dry_qt(:ncol,:), edmf_moist_qt(:ncol,:), & ! Output (EDMF diagnostic)
+        edmf_dry_thl(:ncol,:), edmf_moist_thl(:ncol,:), & ! Output (EDMF diagnostic)
+        edmf_dry_u(:ncol,:), edmf_moist_u(:ncol,:), & ! Output (EDMF diagnostic)
+        edmf_dry_v(:ncol,:), edmf_moist_v(:ncol,:), & ! Output (EDMF diagnostic)
+        edmf_moist_qc(:ncol,:), edmf_thlflx(:ncol,:), edmf_qtflx(:ncol,:), & ! Output (EDMF diagnostic)
+        s_ae(:ncol,:), s_aw(:ncol,:), s_awthl(:ncol,:), s_awqt(:ncol,:), & ! Output (EDMF diagnostic)
+        s_awql(:ncol,:), s_awqi(:ncol,:), s_awu(:ncol,:), s_awv(:ncol,:) ) ! Output (EDMF diagnostic)
+
    ! Transfer back to pbuf variables
-   
+
    do k=1,pver
-     do i=1,ncol 
-     
-       cloud_frac(i,k) = min(cloud_frac(i,k),1._r8)
-       
+     do i=1,ncol
+
+       cloud_frac(i,k) = min(s_ae(i,k)*cloud_frac(i,k),1._r8) ! MKW 20200608
+
        do ixind=1,edsclr_dim
          edsclr_out(i,k,ixind) = edsclr_in(i,k,ixind)
-       enddo      
- 
+       enddo
+
      enddo
    enddo
 
@@ -840,17 +918,17 @@ end function shoc_implements_cnst
    !  Now compute the tendencies of SHOC to E3SM
    do k=1,pver
      do i=1,ncol
-       
+
        ptend_loc%u(i,k) = (um(i,k)-state1%u(i,k))/hdtime
-       ptend_loc%v(i,k) = (vm(i,k)-state1%v(i,k))/hdtime           
+       ptend_loc%v(i,k) = (vm(i,k)-state1%v(i,k))/hdtime
        ptend_loc%q(i,k,ixq) = (rtm(i,k)-rcm(i,k)-state1%q(i,k,ixq))/hdtime ! water vapor
        ptend_loc%q(i,k,ixcldliq) = (rcm(i,k)-state1%q(i,k,ixcldliq))/hdtime   ! Tendency of liquid water
        ptend_loc%s(i,k) = (shoc_s(i,k)-state1%s(i,k))/hdtime
-       
+
        ptend_loc%q(i,k,ixtke)=(tke_zt(i,k)-state1%q(i,k,ixtke))/hdtime ! TKE
-       
+
    !  Apply tendencies to ice mixing ratio, liquid and ice number, and aerosol constituents.
-   !  Loading up this array doesn't mean the tendencies are applied.  
+   !  Loading up this array doesn't mean the tendencies are applied.
    !  edsclr_out is compressed with just the constituents being used, ptend and state are not compressed
 
        icnt=0
@@ -858,35 +936,35 @@ end function shoc_implements_cnst
          if (lq(ixind)) then
            icnt=icnt+1
            if ((ixind /= ixq) .and. (ixind /= ixcldliq) .and. (ixind /= ixtke)) then
-             ptend_loc%q(i,k,ixind) = (edsclr_out(i,k,icnt)-state1%q(i,k,ixind))/hdtime ! transported constituents 
+             ptend_loc%q(i,k,ixind) = (edsclr_out(i,k,icnt)-state1%q(i,k,ixind))/hdtime ! transported constituents
            end if
          end if
        enddo
 
      enddo
-   enddo   
-   
+   enddo
+
    cmeliq(:,:) = ptend_loc%q(:,:,ixcldliq)
-  
+
    ! Update physics tendencies
    call physics_ptend_init(ptend_all, state%psetcols, 'shoc')
    call physics_ptend_sum(ptend_loc,ptend_all,ncol)
    call physics_update(state1,ptend_loc,hdtime)
-   
+
    ! ------------------------------------------------------------ !
-   ! ------------------------------------------------------------ ! 
+   ! ------------------------------------------------------------ !
    ! ------------------------------------------------------------ !
    ! The rest of the code deals with diagnosing variables         !
    ! for microphysics/radiation computation and macrophysics      !
    ! ------------------------------------------------------------ !
    ! ------------------------------------------------------------ !
-   ! ------------------------------------------------------------ !   
-   
-   ! --------------------------------------------------------------------------------- !  
+   ! ------------------------------------------------------------ !
+
+   ! --------------------------------------------------------------------------------- !
    !  COMPUTE THE ICE CLOUD DETRAINMENT                                                !
    !  Detrainment of convective condensate into the environment or stratiform cloud    !
    ! --------------------------------------------------------------------------------- !
-   
+
    !  Initialize the shallow convective detrainment rate, will always be zero
    dlf2(:,:) = 0.0_r8
 
@@ -894,9 +972,9 @@ end function shoc_implements_cnst
    lqice(ixcldliq) = .true.
    lqice(ixcldice) = .true.
    lqice(ixnumliq) = .true.
-   lqice(ixnumice) = .true.   
-   
-   call physics_ptend_init(ptend_loc,state%psetcols, 'clubb_det', ls=.true., lq=lqice)   
+   lqice(ixnumice) = .true.
+
+   call physics_ptend_init(ptend_loc,state%psetcols, 'clubb_det', ls=.true., lq=lqice)
    do k=1,pver
       do i=1,ncol
          if( state1%t(i,k) > shoc_tk1 ) then
@@ -908,62 +986,62 @@ end function shoc_implements_cnst
             !(clubb_tk1 - clubb_tk2) is also 30.0 but it introduced a non-bfb change
             dum1 = ( shoc_tk1 - state1%t(i,k) ) /(shoc_tk1 - shoc_tk2)
          endif
-        
+
          ptend_loc%q(i,k,ixcldliq) = dlf(i,k) * ( 1._r8 - dum1 )
          ptend_loc%q(i,k,ixcldice) = dlf(i,k) * dum1
          ptend_loc%q(i,k,ixnumliq) = 3._r8 * ( max(0._r8, ( dlf(i,k) - dlf2(i,k) )) * ( 1._r8 - dum1 ) ) &
                                      / (4._r8*3.14_r8* shoc_liq_deep**3*997._r8) + & ! Deep    Convection
                                      3._r8 * (                         dlf2(i,k)    * ( 1._r8 - dum1 ) ) &
-                                     / (4._r8*3.14_r8*shoc_liq_sh**3*997._r8)     ! Shallow Convection 
+                                     / (4._r8*3.14_r8*shoc_liq_sh**3*997._r8)     ! Shallow Convection
          ptend_loc%q(i,k,ixnumice) = 3._r8 * ( max(0._r8, ( dlf(i,k) - dlf2(i,k) )) *  dum1 ) &
                                      / (4._r8*3.14_r8*shoc_ice_deep**3*500._r8) + & ! Deep    Convection
                                      3._r8 * (                         dlf2(i,k)    *  dum1 ) &
                                      / (4._r8*3.14_r8*shoc_ice_sh**3*500._r8)     ! Shallow Convection
          ptend_loc%s(i,k)          = dlf(i,k) * dum1 * latice
- 
+
          ! Only rliq is saved from deep convection, which is the reserved liquid.  We need to keep
          !   track of the integrals of ice and static energy that is effected from conversion to ice
          !   so that the energy checker doesn't complain.
          det_s(i)                  = det_s(i) + ptend_loc%s(i,k)*state1%pdel(i,k)/gravit
          det_ice(i)                = det_ice(i) - ptend_loc%q(i,k,ixcldice)*state1%pdel(i,k)/gravit
- 
+
       enddo
     enddo
 
     det_ice(:ncol) = det_ice(:ncol)/1000._r8  ! divide by density of water
-   
+
     call physics_ptend_sum(ptend_loc,ptend_all,ncol)
     call physics_update(state1,ptend_loc,hdtime)
-   
+
     ! For purposes of this implementation, just set relvar and accre_enhan to 1
     relvar(:,:) = 1.0_r8
-    accre_enhan(:,:) = 1._r8  
-   
+    accre_enhan(:,:) = 1._r8
+
 ! +++ JShpund: add relative cloud liquid variance (a vectorized version based on CLUBB)
 !     TODO: double check the hardcoded values ('relvarmax', '0.001_r8')
     relvarmax = 10.0_r8
     where (rcm(:ncol,:pver) /= 0.0 .and. rcm2(:ncol,:pver) /= 0.0) &
            relvar(:ncol,:pver) = min(relvarmax,max(0.001_r8,rcm(:ncol,:pver)**2.0/rcm2(:ncol,:pver)))
 
-    ! --------------------------------------------------------------------------------- ! 
+    ! --------------------------------------------------------------------------------- !
     !  Diagnose some quantities that are computed in macrop_tend here.                  !
     !  These are inputs required for the microphysics calculation.                      !
     !                                                                                   !
     !  FIRST PART COMPUTES THE STRATIFORM CLOUD FRACTION FROM SHOC CLOUD FRACTION       !
-    ! --------------------------------------------------------------------------------- ! 
-   
+    ! --------------------------------------------------------------------------------- !
+
     ! HW: set alst to alst_o before getting updated
     if(liqcf_fix) then
       if(.not.is_first_step()) alst_o(:ncol,:pver) = alst(:ncol,:pver)
     endif
 
-    !  initialize variables 
+    !  initialize variables
     alst(:,:) = 0.0_r8
-    qlst(:,:) = 0.0_r8 
- 
+    qlst(:,:) = 0.0_r8
+
     do k=1,pver
       do i=1,ncol
-        alst(i,k) = cloud_frac(i,k)   
+        alst(i,k) = cloud_frac(i,k)
         qlst(i,k) = rcm(i,k)/max(0.01_r8,alst(i,k))  ! Incloud stratus condensate mixing ratio
       enddo
     enddo
@@ -971,56 +1049,57 @@ end function shoc_implements_cnst
     ! HW
     if(liqcf_fix) then
       if(is_first_step()) alst_o(:ncol,:pver) = alst(:ncol,:pver)
-    endif  
-   
-    ! --------------------------------------------------------------------------------- !  
+    endif
+
+    ! --------------------------------------------------------------------------------- !
     !  THIS PART COMPUTES CONVECTIVE AND DEEP CONVECTIVE CLOUD FRACTION                 !
-    ! --------------------------------------------------------------------------------- ! 
- 
+    ! --------------------------------------------------------------------------------- !
+
     deepcu(:,pver) = 0.0_r8
     shalcu(:,pver) = 0.0_r8
- 
+
     do k=1,pver-1
       do i=1,ncol
-        !  diagnose the deep convective cloud fraction, as done in macrophysics based on the 
-        !  deep convective mass flux, read in from pbuf.  Since shallow convection is never 
+        !  diagnose the deep convective cloud fraction, as done in macrophysics based on the
+        !  deep convective mass flux, read in from pbuf.  Since shallow convection is never
         !  called, the shallow convective mass flux will ALWAYS be zero, ensuring that this cloud
-        !  fraction is purely from deep convection scheme.  
+        !  fraction is purely from deep convection scheme.
         deepcu(i,k) = max(0.0_r8,min(dp1*log(1.0_r8+500.0_r8*(cmfmc(i,k+1)-cmfmc_sh(i,k+1))),0.6_r8))
-        shalcu(i,k) = 0._r8
-       
+        shalcu(i,k) = edmf_moist_a(i,k)!0._r8
+        ! MKW TODO: do we want to separate MF cloud here and put it in concld, either via shalcu or deepcu?
+
         if (deepcu(i,k) <= frac_limit .or. dp_icwmr(i,k) < ic_limit) then
           deepcu(i,k) = 0._r8
         endif
-             
-        !  using the deep convective cloud fraction, and SHOC cloud fraction (variable 
+
+        !  using the deep convective cloud fraction, and SHOC cloud fraction (variable
         !  "cloud_frac"), compute the convective cloud fraction.  This follows the formulation
-        !  found in macrophysics code.  Assumes that convective cloud is all nonstratiform cloud 
+        !  found in macrophysics code.  Assumes that convective cloud is all nonstratiform cloud
         !  from SHOC plus the deep convective cloud fraction
-        concld(i,k) = min(cloud_frac(i,k)-alst(i,k)+deepcu(i,k),0.80_r8)
+        concld(i,k) = min(cloud_frac(i,k)-alst(i,k)+shalcu(i,k)+deepcu(i,k),0.80_r8)
       enddo
-    enddo   
-   
-    ! --------------------------------------------------------------------------------- !  
+    enddo
+
+    ! --------------------------------------------------------------------------------- !
     !  COMPUTE THE ICE CLOUD FRACTION PORTION                                           !
     !  use the aist_vector function to compute the ice cloud fraction                   !
     ! --------------------------------------------------------------------------------- !
-   
+
     do k=1,pver
       call aist_vector(state1%q(:,k,ixq),state1%t(:,k),state1%pmid(:,k),state1%q(:,k,ixcldice), &
            state1%q(:,k,ixnumice),cam_in%landfrac(:),cam_in%snowhland(:),aist(:,k),ncol)
     enddo
-   
-    ! --------------------------------------------------------------------------------- !  
+
+    ! --------------------------------------------------------------------------------- !
     !  THIS PART COMPUTES THE LIQUID STRATUS FRACTION                                   !
     !                                                                                   !
     !  For now leave the computation of ice stratus fraction from macrop_driver intact  !
-    !  because SHOC does nothing with ice.  Here I simply overwrite the liquid stratus ! 
+    !  because SHOC does nothing with ice.  Here I simply overwrite the liquid stratus !
     !  fraction that was coded in macrop_driver                                         !
-    ! --------------------------------------------------------------------------------- !  
- 
+    ! --------------------------------------------------------------------------------- !
+
     !  Recompute net stratus fraction using maximum over-lapping assumption, as done
-    !  in macrophysics code, using alst computed above and aist read in from physics buffer            
+    !  in macrophysics code, using alst computed above and aist read in from physics buffer
 
     cldthresh=1.e-18_r8
 
@@ -1029,20 +1108,20 @@ end function shoc_implements_cnst
 
         ast(i,k) = max(alst(i,k),aist(i,k))
 
-        qist(i,k) = state1%q(i,k,ixcldice)/max(0.01_r8,aist(i,k)) 
+        qist(i,k) = state1%q(i,k,ixcldice)/max(0.01_r8,aist(i,k))
       enddo
     enddo
-   
-    !  Probably need to add deepcu cloud fraction to the cloud fraction array, else would just 
-    !  be outputting the shallow convective cloud fraction 
+
+    !  Probably need to add deepcu cloud fraction to the cloud fraction array, else would just
+    !  be outputting the shallow convective cloud fraction
 
     do k=1,pver
       do i=1,ncol
-        cloud_frac(i,k) = min(ast(i,k)+deepcu(i,k),1.0_r8)
+        cloud_frac(i,k) = min(ast(i,k)+shalcu(i,k)+deepcu(i,k),1.0_r8)
       enddo
     enddo
-   
-    cld(:,1:pver) = cloud_frac(:,1:pver)	
+
+    cld(:,1:pver) = cloud_frac(:,1:pver)
 
     ! --------------------------------------------------------!
     ! Output fields
@@ -1051,14 +1130,17 @@ end function shoc_implements_cnst
     do k=1,pverp
       do i=1,ncol
         wthl_output(i,k) = wthl_sec_out(i,k) * rrho_i(i,k) * cpair
-        wqw_output(i,k) = wqw_sec_out(i,k) * rrho_i(i,k) * latvap 
+        wqw_output(i,k) = wqw_sec_out(i,k) * rrho_i(i,k) * latvap
+        ! MKW added 20200608
+        edmf_thlflx_out(i,k) = edmf_thlflx2(i,k) * rrho_i(i,k) * cpair
+        edmf_qtflx_out(i,k) = edmf_qtflx2(i,k) * rrho_i(i,k) * latvap
       enddo
     enddo
 
     do k=1,pver
       do i=1,ncol
         wthv_output(i,k) = wthv(i,k) * rrho(i,k) * cpair
-        wql_output(i,k) = wqls_out(i,k) * rrho(i,k) * latvap 
+        wql_output(i,k) = wqls_out(i,k) * rrho(i,k) * latvap
       enddo
     enddo
 
@@ -1082,11 +1164,40 @@ end function shoc_implements_cnst
     call outfld('CONCLD',concld,pcols,lchnk)
     call outfld('BRUNT',brunt_out,pcols,lchnk)
     call outfld('RELVAR',relvar,pcols,lchnk)
+    ! MKW added 20200608
+    call outfld('THETAL',thlm,pcols,lchnk)
+    call outfld('THETAV',thv,pcols,lchnk)
+    call outfld('ZM_SHOC',zi_g,pcols,lchnk)
+    call outfld('ZT_SHOC',zt_g,pcols,lchnk)
 
-#endif    
-    return         
-  end subroutine shoc_tend_e3sm   
-  
+
+    ! EDMF outputs
+    call outfld( 'edmf_DRY_A'    , edmf_dry_a,     pcols, lchnk )
+    call outfld( 'edmf_MOIST_A'  , edmf_moist_a,   pcols, lchnk )
+    call outfld( 'edmf_DRY_W'    , edmf_dry_w,     pcols, lchnk )
+    call outfld( 'edmf_MOIST_W'  , edmf_moist_w,   pcols, lchnk )
+    call outfld( 'edmf_DRY_QT'   , edmf_dry_qt,    pcols, lchnk )
+    call outfld( 'edmf_MOIST_QT' , edmf_moist_qt,  pcols, lchnk )
+    call outfld( 'edmf_DRY_THL'  , edmf_dry_thl,   pcols, lchnk )
+    call outfld( 'edmf_MOIST_THL', edmf_moist_thl, pcols, lchnk )
+    call outfld( 'edmf_DRY_U'    , edmf_dry_u,     pcols, lchnk )
+    call outfld( 'edmf_MOIST_U'  , edmf_moist_u,   pcols, lchnk )
+    call outfld( 'edmf_DRY_V'    , edmf_dry_v,     pcols, lchnk )
+    call outfld( 'edmf_MOIST_V'  , edmf_moist_v,   pcols, lchnk )
+    call outfld( 'edmf_MOIST_QC' , edmf_moist_qc,  pcols, lchnk )
+    call outfld( 'edmf_thlflx'   , edmf_thlflx_out,pcols, lchnk )
+    call outfld( 'edmf_qtflx'    , edmf_qtflx_out, pcols, lchnk )
+    call outfld( 'edmf_S_AE'     , s_ae,           pcols, lchnk )
+    call outfld( 'edmf_S_AW'     , s_aw,           pcols, lchnk )
+    call outfld( 'edmf_S_AWTHL'  , s_awthl,        pcols, lchnk )
+    call outfld( 'edmf_S_AWQT'   , s_awqt,         pcols, lchnk )
+    call outfld( 'edmf_S_AWU'    , s_awu,          pcols, lchnk )
+    call outfld( 'edmf_S_AWV'    , s_awv,          pcols, lchnk )
+
+#endif
+    return
+  end subroutine shoc_tend_e3sm
+
   subroutine grid_size(state, grid_dx, grid_dy)
   ! Determine the size of the grid for each of the columns in state
 
@@ -1094,11 +1205,11 @@ end function shoc_implements_cnst
   use shr_const_mod,   only: shr_const_pi
   use physics_types,   only: physics_state
   use ppgrid,          only: pver, pverp, pcols
- 
+
   type(physics_state), intent(in) :: state
   real(r8), intent(out)           :: grid_dx(pcols), grid_dy(pcols)   ! E3SM grid [m]
 
-  real(r8), parameter :: earth_ellipsoid1 = 111132.92_r8 ! World Geodetic System 1984 (WGS84) 
+  real(r8), parameter :: earth_ellipsoid1 = 111132.92_r8 ! World Geodetic System 1984 (WGS84)
                                                          ! first coefficient, meters per degree longitude at equator
   real(r8), parameter :: earth_ellipsoid2 = 559.82_r8 ! second expansion coefficient for WGS84 ellipsoid
   real(r8), parameter :: earth_ellipsoid3 = 1.175_r8 ! third expansion coefficient for WGS84 ellipsoid
@@ -1111,33 +1222,33 @@ end function shoc_implements_cnst
       column_area = get_area_p(state%lchnk,i)
       ! convert to degrees
       degree = sqrt(column_area)*(180._r8/shr_const_pi)
-       
+
       ! Now find meters per degree latitude
       ! Below equation finds distance between two points on an ellipsoid, derived from expansion
-      !  taking into account ellipsoid using World Geodetic System (WGS84) reference 
+      !  taking into account ellipsoid using World Geodetic System (WGS84) reference
       mpdeglat = earth_ellipsoid1 - earth_ellipsoid2 * cos(2._r8*state%lat(i)) + earth_ellipsoid3 * cos(4._r8*state%lat(i))
       grid_dx(i) = mpdeglat * degree
       grid_dy(i) = grid_dx(i) ! Assume these are the same
-  enddo   
+  enddo
 
-  end subroutine grid_size  
-  
+  end subroutine grid_size
+
   subroutine grid_size_uniform(grid_dx, grid_dy)
-  
+
     ! Estimate grid box size at equator using
     !  the earth radius set for this case.  This assumes
-    !  that all grid points are uniform, which is 
-    !  reasonable for IOP mode (not currently compatible with RRM) 
-  
+    !  that all grid points are uniform, which is
+    !  reasonable for IOP mode (not currently compatible with RRM)
+
     use physical_constants, only: rearth, dd_pi
     use dimensions_mod, only: np, ne
-    
+
     real(r8), intent(out) :: grid_dx, grid_dy
-    
+
     grid_dx = dd_pi*rearth/(2000.d0*dble(ne*(np-1)))
     grid_dx = grid_dx*1000._r8
     grid_dy = grid_dx
-  
-  end subroutine grid_size_uniform    
+
+  end subroutine grid_size_uniform
 
 end module shoc_intr
