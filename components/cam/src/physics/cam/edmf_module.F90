@@ -8,7 +8,7 @@ module edmf
 
   implicit none
 
-  public :: integrate_mf, init_random_seed, mf_calc_vertflux, compute_tmpi3
+  public :: integrate_mf, init_random_seed, calc_mf_vertflux, compute_tmpi3
 
   private
 
@@ -636,9 +636,41 @@ end subroutine linear_interp
 
   end subroutine condensation_mf
 
-  subroutine mf_calc_vertflux
-    ! placeholder
-  end subroutine mf_calc_vertflux
+  subroutine calc_mf_vertflux(shcol,nlev,nlevi,aw,awvar,var,varflx)
+
+    implicit none
+
+  ! INPUT VARIABLES
+    ! number of SHOC columns
+    integer, intent(in) :: shcol
+    ! number of midpoint levels
+    integer, intent(in) :: nlev
+    ! number of interface levels
+    integer, intent(in) :: nlevi
+    ! Sum plume (a_i*w_i) [m/s]
+    real(rtype), intent(in) :: aw(shcol,nlevi)
+    ! Sum plume vertical flux of generic variable var (a_i*w_i*var_i) [units vary]
+    real(rtype), intent(in) :: awvar(shcol,nlevi)
+    ! Input variable on thermo/full grid [units vary]
+    real(rtype), intent(in) :: var(shcol,nlev)
+
+  ! OUTPUT VARIABLE
+    real(rtype), intent(out) :: varflx(shcol,nlevi)
+
+    ! MKW TODO: SHOC has separate subroutines for lower (k=nlevi) and
+    !   upper (k=1) boundary conditions. Make these off later if SCREAM
+    !   folks want that. Should be very quick.
+
+    ! diagnose MF fluxes
+    varflx(:shcol,1) = 0._rtype;
+    do k=2,nlev
+      do i=1,shcol
+        ! MKW NOTE: upwind differencing here, centered differencing in solver. Fix inconsistency.
+        varflx(i,k)= awvar(i,k) - aw(i,k)*var(i,k+1)
+      end do
+    end do
+    varflx(:shcol,nlevi) = 0._rtype;
+  end subroutine calc_mf_vertflux
 
   subroutine compute_tmpi3(nlevi, shcol, dtime, rho_zi, tmpi3)
 

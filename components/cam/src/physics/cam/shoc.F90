@@ -14,7 +14,7 @@ module shoc
 
   use physics_utils, only: rtype, rtype8, itype, btype
   use scream_abortutils, only: endscreamrun
-  use edmf, only: integrate_mf, init_random_seed, mf_calc_vertflux, compute_tmpi3
+  use edmf, only: integrate_mf, init_random_seed, calc_mf_vertflux, compute_tmpi3
 
 ! Bit-for-bit math functions.
 #ifdef SCREAM_CONFIG_IS_CMAKE
@@ -1440,14 +1440,14 @@ subroutine diag_second_moments(&
          shcol,nlev,nlevi,tkh_zi,dz_zi,thetal,&   ! Input
          wthl_sec)                                ! Input/Output
 
-  ! MKW TODO: add subroutine mf_calc_vertflux in edmf_module, call here for thetal
+  call calc_mf_vertflux(shcol,nlev,nlevi,aw,awthl,thetal,mf_thlflx)
 
   ! Calculate vertical flux for moisture
   call calc_shoc_vertflux(&
          shcol,nlev,nlevi,tkh_zi,dz_zi,qw,&       ! Input
          wqw_sec)                                 ! Input/Output
 
-  ! MKW TODO: call mf_calc_vertflux for qw
+  call calc_mf_vertflux(shcol,nlev,nlevi,aw,awqt,qw,mf_qtflx)
 
   ! Calculate vertical flux for TKE
   call calc_shoc_vertflux(&
