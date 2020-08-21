@@ -1452,6 +1452,9 @@ subroutine diag_second_moments_ubycond(&
   !  boundary condition for the second order moments
   !  needed for the SHOC parameterization.  Currently
   !  set all to zero.
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use shoc_iso_f, only: shoc_diag_second_moments_ubycond_f
+#endif
 
   implicit none
 
@@ -1483,6 +1486,18 @@ subroutine diag_second_moments_ubycond(&
 
   ! LOCAL VARIABLES
   integer :: i
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   if (use_cxx) then
+       call shoc_diag_second_moments_ubycond_f(&
+                             shcol,num_tracer, &                    ! Input
+                             thl_sec, qw_sec,&                      ! Output
+                             wthl_sec,wqw_sec,&                     ! Output
+                             qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Output
+                             wtracer_sec)                           ! Output
+      return
+   endif
+#endif
 
   ! apply the upper boundary condition
   do i=1,shcol
