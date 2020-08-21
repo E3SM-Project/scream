@@ -3277,6 +3277,20 @@ cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i, &
 ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,inv_dt, &
 dt,qr2qv_evap_tend,nr_evap_tend)
 
+  !The evaporation rate is basically ssat_r/(tau_eff*ab) where
+  !ssat_r=qv - qv_sat_l is the absolute supersaturation, tau_eff 
+  !is the total effective supersaturation removal timescale
+  !(represented by the inverse timescale eps_eff below) and ab is the
+  !psychrometric correction for condensational heating changing qv_sat
+  !sensitivity. This formulation depends sensitively on ssat_r, which
+  !can change rapidly within a timestep because liquid saturation
+  !adjustment has a relaxation timescale of seconds. For accuracy and
+  !stability, we analytically integrate ssat_r over the timestep under
+  !the simplifying assumption that all processes other than saturation
+  !relaxation are a constant source/sink term. See Morrison+Milbrandt 2015
+  !https://doi.org/10.1175/JAS-D-14-0065.1 and Morrison+Grabowski 2008
+  !https://doi.org/10.1175/2007JAS2374.1 for details.
+  
    implicit none
 
    real(rtype), intent(in)  :: qr_incld
@@ -3294,46 +3308,57 @@ dt,qr2qv_evap_tend,nr_evap_tend)
    real(rtype), intent(inout) :: nr_evap_tend
    real(rtype) :: cld, xx, ssat_r, SPF, hlp_w, inv_xx, qrcon, inv_abi, aaa, sup_r 
 
-   ! +++++++++++++++++++++++++++++++++++++++++++++++ JS:
-   ! Local stuff (generalize when done):
+   !Initialize variables
+   qr2qv_evap_tend = 0.0_rtype
+   nr_evap_tend = 0.0_rtype
 
+   !Cloud fraction in clear-sky conditions has been set to mincld
+   !to avoid divide-by-zero problems. Because rain evap only happens
+   !in rainy portions outside cloud, setting clear-sky cloud fraction
+   !to mincld reduces evaporating area. We fix that here by computing
+   !a temporary cloud fraction which is zero if cloud condensate is small.
    if (qc_incld + qi_incld < 1.e-6_rtype) then
          cld = 0._rtype
    else
          cld = cld_frac_l
    end if
 
-   ! Only calculate if there is some rain fraction > cloud fraction
-   qr2qv_evap_tend = 0.0_rtype
-   nr_evap_tend = 0.0_rtype
+   !Only evaporate in the rainy area outside cloud
    if (cld_frac_r > cld) then
 
       ssat_r = qv - qv_sat_l
       sup_r = qv / qv_sat_l - 1.0_rtype
       SPF = 1.0_rtype   
 
+      !Compute total effective inverse saturation removal timescale eps_eff
+      !qc saturation is handled by macrophysics so the qc saturation removal timescale is
+      !not included here. Below freezing, eps_eff is the sum of the inverse saturation
+      !removal timescales for liquid and ice. The ice term has extra scaling terms to convert
+      !it from being relative to ice to liquid instead. See Eq C3 of Morrison+Milbrandt 2015
+      !https://doi.org/10.1175/JAS-D-14-0065.1
       if (t < 273.15_rtype) then
-         inv_abi = 1.0_rtype/abi
-         xx   = epsr + epsi_tot*(1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi
+         inv_abi = 1.0_rtype/abi !accounts for condensational heating changing qv_sat
+         eps_eff   = epsr + epsi_tot*(1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi
       else
-         xx   = epsr
+         eps_eff   = epsr
       endif
 
-      ! hlp_qv_sat_i = qv_sat_i   !no modification due to latent heating
-      hlp_w = -cp/g*(t - t_prev)*inv_dt
+      !Set lower bound on eps_eff to prevent division by zero
+      eps_eff  = max(1.e-20_rtype,eps_eff)   
+      inv_eps_eff = 1.0_rtype/eps_eff
 
+      !Compute the constant source/sink term for analytic integration. See Eq C4 in
+      !Morrison+Milbrandt 2015 https://doi.org/10.1175/JAS-D-14-0065.1
       if (t < 273.15_rtype) then
-         aaa = (qv - qv_prev)*inv_dt - dqsdt*(-hlp_w*g*inv_cp)-(qv_sat_l - qv_sat_i)*     &
+         A_c = (qv - qv_prev)*inv_dt - dqsdt*(t-t_prev)*inv_dt - (qv_sat_l - qv_sat_i)*     &
                (1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi*epsi_tot
       else
-         aaa = (qv - qv_prev)*inv_dt - dqsdt*(-hlp_w*g*inv_cp)
+         A_c = (qv - qv_prev)*inv_dt - dqsdt*(t-t_prev)*inv_dt
       endif
 
-      xx  = max(1.e-20_rtype,xx)   ! set lower bound on xx to prevent division by zero
-      inv_xx = 1.0_rtype/xx
 
       qrcon = 0.0  !condensation rate, so rain evaporation will be < 0
-      if (qr_incld > qsmall) qrcon = (aaa*epsr*inv_xx + (ssat_r*SPF-aaa*inv_xx)*inv_dt*epsr*inv_xx*(1.0_rtype-dexp(-dble(xx*dt))))/ab
+      if (qr_incld > qsmall) qrcon = (A_c*epsr*inv_eps_eff + (ssat_r*SPF-A_c*inv_eps_eff)*inv_dt*epsr*inv_eps_eff*(1.0_rtype-dexp(-dble(eps_eff*dt))))/ab
 
       if (sup_r < -0.001_rtype .and. qr_incld < 1.e-12_rtype)  qrcon = -qr_incld*inv_dt
 
