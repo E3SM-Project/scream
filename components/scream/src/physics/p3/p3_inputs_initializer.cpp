@@ -28,6 +28,8 @@ void P3InputsInitializer::initialize_fields ()
   count += m_fields.count("pmid");
   count += m_fields.count("dp");
   count += m_fields.count("zi");
+  count += m_fields.count("qv_prev_p3");
+  count += m_fields.count("t_prev_p3");
 
   if (count==0) {
     return;
@@ -48,6 +50,8 @@ void P3InputsInitializer::initialize_fields ()
   auto d_pmid  = m_fields.at("pmid").get_view();
   auto d_dpres  = m_fields.at("dp").get_view();
   auto d_zi    = m_fields.at("zi").get_view();
+  auto d_qv_prev_p3 = m_fields.at("qv_prev_p3").get_view();
+  auto d_T_prev_p3 = m_fields.at("T_prev_p3").get_view();
 
   // Create host mirrors
   auto h_q     = Kokkos::create_mirror_view(d_q);
@@ -58,6 +62,8 @@ void P3InputsInitializer::initialize_fields ()
   auto h_pmid  = Kokkos::create_mirror_view(d_pmid);
   auto h_dpres  = Kokkos::create_mirror_view(d_dpres);
   auto h_zi    = Kokkos::create_mirror_view(d_zi);
+  auto h_qv_prev_p3    = Kokkos::create_mirror_view(d_qv_prev_p3);
+  auto h_T_prev_p3    = Kokkos::create_mirror_view(d_T_prev_p3);
 
   // Get host mirros' raw pointers
   auto q     = h_q.data();
@@ -68,9 +74,11 @@ void P3InputsInitializer::initialize_fields ()
   auto pmid  = h_pmid.data();
   auto dpres  = h_dpres.data();
   auto zi    = h_zi.data();
+  auto qv_prev_p3 = h_qv_prev_p3.data();
+  auto T_prev_p3  = h_T_prev_p3.data();
 
   // Call f90 routine
-  p3_standalone_init_f90 (q, T, zi, pmid, dpres, ast, ni_activated, nc_nuceat_tend);
+  p3_standalone_init_f90 (q, T, zi, pmid, dpres, ast, ni_activated, nc_nuceat_tend, qv_prev_p3, T_prev_p3);
 
   // Deep copy back to device
   Kokkos::deep_copy(d_q,h_q);
@@ -81,6 +89,8 @@ void P3InputsInitializer::initialize_fields ()
   Kokkos::deep_copy(d_pmid,h_pmid);
   Kokkos::deep_copy(d_dpres,h_dpres);
   Kokkos::deep_copy(d_zi,h_zi);
+  Kokkos::deep_copy(d_qv_prev_p3,h_qv_prev_p3);
+  Kokkos::deep_copy(d_T_prev_p3,h_T_prev_p3);
 
   // If we are in charge of init-ing FQ as well, init it to 0.
   if (m_fields.count("FQ")==1) {

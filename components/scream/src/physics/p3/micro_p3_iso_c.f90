@@ -654,16 +654,19 @@ subroutine  update_prognostic_ice_c(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
   end subroutine ice_self_collection_c
 
   subroutine evaporate_precip_c(qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, &
-       cld_frac_r, qv_sat_l, ab, epsr, qv, qr2qv_evap_tend, nr_evap_tend) bind(C)
+       cld_frac_r, qv, qv_prev, qv_sat_l, qv_sat_i, ab, abi, epsr, epsi_tot, t, &
+       t_prev, latent_heat_sublim, dqsdt, inv_dt, dt, qr2qv_evap_tend, nr_evap_tend) bind(C)
     use micro_p3, only: evaporate_precip
 
     ! arguments
     real(kind=c_real), value, intent(in) :: qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, &
-        cld_frac_r, qv_sat_l, ab, epsr, qv
+        cld_frac_r, qv_sat_l, ab, epsr, qv, qv_prev, t, t_prev, qv_sat_i, abi, epsi_tot, latent_heat_sublim, &
+        dqsdt, inv_dt, dt
     real(kind=c_real), intent(out) :: qr2qv_evap_tend, nr_evap_tend
 
     call evaporate_precip(qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, &
-       cld_frac_r, qv_sat_l, ab, epsr, qv, qr2qv_evap_tend, nr_evap_tend)
+       cld_frac_r, qv, qv_prev, qv_sat_l, qv_sat_i, ab, abi, epsr, epsi_tot, t, &
+       t_prev, latent_heat_sublim, dqsdt, inv_dt, dt, qr2qv_evap_tend, nr_evap_tend)
   end subroutine evaporate_precip_c
 
   subroutine  update_prognostic_liquid_c(qc2qr_accret_tend, nc_accret_tend, qc2qr_autoconv_tend,nc2nr_autoconv_tend, ncautr, nc_selfcollect_tend, &
@@ -853,7 +856,7 @@ subroutine  update_prognostic_ice_c(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
 
  subroutine p3_main_part2_c(kts, kte, kbot, ktop, kdir, do_predict_nc, dt, inv_dt, &
        pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, inv_cld_frac_l, inv_cld_frac_i, inv_cld_frac_r, ni_activated, inv_qc_relvar, cld_frac_i, cld_frac_l, cld_frac_r,&
-       t, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, qi, ni, &
+       qv_prev, t_prev, t, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, qi, ni, &
        qm, bm, latent_heat_vapor, latent_heat_sublim, latent_heat_fusion, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld, nr_incld, &
        ni_incld, bm_incld, mu_c, nu, lamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, cmeiout, precip_total_tend, &
        nevapr, qr_evap_tend, vap_liq_exchange, vap_ice_exchange, liq_ice_exchange, pratot, &
@@ -867,7 +870,7 @@ subroutine  update_prognostic_ice_c(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
    real(kind=c_real), value, intent(in) :: dt, inv_dt
 
    real(kind=c_real), intent(in), dimension(kts:kte) :: pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, inv_cld_frac_l, inv_cld_frac_i, &
-        inv_cld_frac_r, ni_activated, inv_qc_relvar, cld_frac_i, cld_frac_l, cld_frac_r
+        inv_cld_frac_r, ni_activated, inv_qc_relvar, cld_frac_i, cld_frac_l, cld_frac_r, qv_prev, t_prev
 
    real(kind=c_real), intent(inout), dimension(kts:kte) :: t, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn, &
         qv, th, qc, nc, qr, nr, qi, ni, qm, bm, latent_heat_vapor, latent_heat_sublim, latent_heat_fusion, qc_incld, qr_incld, &
@@ -882,7 +885,7 @@ subroutine  update_prognostic_ice_c(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
 
    call p3_main_part2(kts, kte, kbot, ktop, kdir, do_predict_nc, dt, inv_dt, &
         pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, inv_cld_frac_l, inv_cld_frac_i, inv_cld_frac_r, ni_activated, inv_qc_relvar, cld_frac_i, cld_frac_l, cld_frac_r,&
-        t, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, qi, ni, &
+        qv_prev, t_prev, t, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, qi, ni, &
         qm, bm, latent_heat_vapor, latent_heat_sublim, latent_heat_fusion, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld, nr_incld, &
         ni_incld, bm_incld, mu_c, nu, lamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, cmeiout, precip_total_tend, &
         nevapr, qr_evap_tend, vap_liq_exchange, vap_ice_exchange, liq_ice_exchange, pratot, &

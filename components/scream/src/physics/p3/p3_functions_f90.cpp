@@ -132,7 +132,9 @@ void  update_prognostic_ice_c(
   Real* bm, Real* qc, Real* nc, Real* qr, Real* nr);
 
 void evaporate_precip_c(Real qr_incld, Real qc_incld, Real nr_incld, Real qi_incld, Real cld_frac_l,
-  Real cld_frac_r, Real qv_sat_l, Real ab, Real epsr, Real qv, Real* qr2qv_evap_tend, Real* nr_evap_tend);
+  Real cld_frac_r, Real qv, Real qv_prev, Real qv_sat_l, Real qv_sat_i, Real ab, Real abi, Real epsr, 
+  Real epsi_tot, Real t, Real t_prev, Real latent_heat_sublim, Real dqsdt, Real inv_dt, Real dt, 
+  Real* qr2qv_evap_tend, Real* nr_evap_tend);
 
 void update_prognostic_liquid_c(
   Real qc2qr_accret_tend, Real nc_accret_tend, Real qc2qr_autoconv_tend, Real nc2nr_autoconv_tend, Real ncautr,
@@ -665,7 +667,8 @@ void evaporate_precip(EvapSublimatePrecipData& d)
 {
   p3_init();
   evaporate_precip_c(d.qr_incld, d.qc_incld, d.nr_incld, d.qi_incld,
-			       d.cld_frac_l, d.cld_frac_r, d.qv_sat_l, d.ab, d.epsr, d.qv,
+			       d.cld_frac_l, d.cld_frac_r, d.qv, d.qv_prev, d.qv_sat_l, d.qv_sat_i, d.ab, d.abi,
+                               d.epsr, d.epsi_tot, d.t, d.t_prev, d.latent_heat_sublim, d.dqsdt, d.inv_dt, d.dt,
 			       &d.qr2qv_evap_tend, &d.nr_evap_tend);
 }
 

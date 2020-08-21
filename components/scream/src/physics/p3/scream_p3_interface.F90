@@ -57,7 +57,7 @@ contains
 
   end subroutine p3_init_f90
   !====================================================================!
-  subroutine p3_standalone_init_f90 (q,T,zi,pmid,dpres,ast,ni_activated,nc_nuceat_tend) bind(c)
+  subroutine p3_standalone_init_f90 (q,T,zi,pmid,dpres,ast,ni_activated,nc_nuceat_tend,qv_prev,T_prev) bind(c)
     use micro_p3,       only: p3_init
     use micro_p3_utils, only: micro_p3_utils_init
 
@@ -69,6 +69,8 @@ contains
     real(kind=c_real), intent(inout) :: ast(pcols,pver)      !
     real(kind=c_real), intent(inout) :: ni_activated(pcols,pver)     ! ice nucleation number
     real(kind=c_real), intent(inout) :: nc_nuceat_tend(pcols,pver)    ! liquid activation number tendency
+    real(kind=c_real), intent(inout) :: qv_prev(pcols,pver)  ! State array  kg/kg Pa
+    real(kind=c_real), intent(inout) :: T_prev(pcols,pver)        !
 
     character(len=100) :: case_title
 
@@ -94,6 +96,8 @@ contains
       read(981,'(E16.8)') zi(i,nlev+1)
     end do
     close(981)
+    qv_prev(:,:) = q(:,:,1)
+    T_prev(:,:)  = T(:,:)
 
     masterproc = .false.
     call micro_p3_utils_init(cpair,rair,rh2o,rhoh2o,mwh2o,mwdry,gravit,latvap,latice, &
@@ -101,7 +105,7 @@ contains
     print *, 'P3-Standalone-Init Finished'
   end subroutine p3_standalone_init_f90
   !====================================================================!
-  subroutine p3_main_f90 (dtime,zi,pmid,dpres,ast,ni_activated,nc_nuceat_tend,q,FQ,T) bind(c)
+  subroutine p3_main_f90 (dtime,zi,pmid,dpres,ast,ni_activated,nc_nuceat_tend,q,FQ,T,qv_prev,T_prev) bind(c)
     use micro_p3,       only: p3_main
 
 !    real, intent(in) :: q(pcols,pver,9) ! Tracer mass concentrations from SCREAM      kg/kg
@@ -115,6 +119,8 @@ contains
     real(kind=c_real), intent(in)    :: ast(pcols,pver)     ! cloud fraction
     real(kind=c_real), intent(in)    :: ni_activated(pcols,pver)    ! ice nucleation number
     real(kind=c_real), intent(in)    :: nc_nuceat_tend(pcols,pver)   ! liquid activation number tendency
+    real(kind=c_real), intent(inout) :: qv_prev(pcols,pver)   ! water vapor mass concentration from previous micro step - used for rain_evap
+    real(kind=c_real), intent(inout) :: T_prev(pcols,pver)    ! temperature from previous micro step - used for rain_evap
     !INTERNAL VARIABLES
     real(kind=c_real) :: th(pcols,pver)         !potential temperature  K
     real(kind=c_real) :: dz(pcols,pver)        !geometric layer thickness              m
@@ -127,13 +133,9 @@ contains
     real(kind=c_real) :: qm(pcols,pver)      !rime ice mixing ratio                  kg/kg
     real(kind=c_real) :: numice(pcols,pver)     !total ice crystal number concentration #/kg
     real(kind=c_real) :: rimvol(pcols,pver)     !rime volume mixing ratio               m3/kg
-    ! real(kind=c_real) :: temp(pcols,pver)       !potential temperature                  K
-    ! real(kind=c_real) :: rim(pcols,pver)        !rime mixing ratio                      kg/kg
     real(kind=c_real) :: precip_liq_surf(pcols)         !precipitation rate, liquid             m s-1
     real(kind=c_real) :: precip_ice_surf(pcols)         !precipitation rate, solid              m s-1
     real(kind=c_real) :: diag_ze(pcols,pver)    !equivalent reflectivity                dBZ
-    ! real(kind=c_real) :: diag_effc(pcols,pver)  !effective radius, cloud                m
-    ! real(kind=c_real) :: diag_effi(pcols,pver)  !effective radius, ice                  m
     real(kind=c_real) :: diag_vmi(pcols,pver)   !mass-weighted fall speed of ice        m s-1
     real(kind=c_real) :: diag_di(pcols,pver)    !mean diameter of ice                   m
     real(kind=c_real) :: rho_qi(pcols,pver)  !bulk density of ice                    kg m-1
@@ -298,6 +300,8 @@ contains
          liq_ice_exchange(its:ite,kts:kte),& ! OUT sum of liq-ice phase change tendenices
          vap_liq_exchange(its:ite,kts:kte),& ! OUT sun of vap-liq phase change tendencies
          vap_ice_exchange(its:ite,kts:kte),& ! OUT sum of vap-ice phase change tendencies
+         qv_prev(its:ite,kts:kte),         & ! IN water vapor mixing ratio from previous microphysics step
+         T_prev(its:ite,kts:kte),          & ! IN temperature from previous microphysics step
          col_location(its:ite,3)           & ! IN location of columns
          )
     do i = its,ite
@@ -315,6 +319,8 @@ contains
         q(i,k,7) = numrain(i,k)
         q(i,k,8) = qm(i,k)
         q(i,k,9) = rimvol(i,k)
+        qv_prev(i,k) = qv(i,k)
+        T_prev(i,k)  = th(i,k)/exner(icol,k)
       end do
     end do
 
