@@ -813,7 +813,7 @@ struct UnitWrap::UnitTest<D>::TestGetTimeSpacePhysVariables
 template <typename D>
 struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
 {
-  static void evaporate_sublimate_precip_unit_bfb_tests(){
+  static void evaporate_precip_unit_bfb_tests(){
 
     //fortran generated data is input to the following
     //This subroutine has 12 args, only 10 are supplied here for invoking it as last 2 are intent-outs
@@ -846,7 +846,7 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
 
     // Get data from fortran
     for (Int i = 0; i < max_pack_size; ++i) {
-      evaporate_sublimate_precip(espd[i]);
+      evaporate_precip(espd[i]);
     }
 
     // Run the lookup from a kernel and copy results back to host
@@ -871,7 +871,7 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
         nr_evap_tend[s]       = espd_device(vs).nr_evap_tend;
       }
 
-      Functions::evaporate_sublimate_precip(qr_incld, qc_incld, nr_incld, qi_incld,  cld_frac_l, cld_frac_r, qv_sat_l, ab,
+      Functions::evaporate_precip(qr_incld, qc_incld, nr_incld, qi_incld,  cld_frac_l, cld_frac_r, qv_sat_l, ab,
                                             epsr, qv, qr2qv_evap_tend, nr_evap_tend);
 
       // Copy results back into views
@@ -902,7 +902,7 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
   }
 
   static void run_bfb(){
-    evaporate_sublimate_precip_unit_bfb_tests();
+    evaporate_precip_unit_bfb_tests();
   }
 
 }; //TestEvapSublPrecip
@@ -1282,7 +1282,7 @@ TEST_CASE("p3_update_prognostic_liquid_test", "[p3_unit_tests]"){
   scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestP3UpdatePrognosticLiq::run_bfb();
 }
 
-TEST_CASE("p3_evaporate_sublimate_precip_test", "[p3_unit_tests]"){
+TEST_CASE("p3_evaporate_precip_test", "[p3_unit_tests]"){
   scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestEvapSublPrecip::run_bfb();
 }
 

@@ -811,11 +811,11 @@ struct EvapSublimatePrecipData
   Real qr2qv_evap_tend, nr_evap_tend;
 };
 
-void evaporate_sublimate_precip(EvapSublimatePrecipData& d);
+void evaporate_precip(EvapSublimatePrecipData& d);
 
 extern "C"{
 
-void evaporate_sublimate_precip_f( Real qr_incld, Real qc_incld, Real nr_incld, Real qi_incld,
+void evaporate_precip_f( Real qr_incld, Real qc_incld, Real nr_incld, Real qi_incld,
 Real cld_frac_l, Real cld_frac_r, Real qv_sat_l, Real ab, Real epsr, Real qv, Real* qr2qv_evap_tend, Real* nr_evap_tend);
 }
 

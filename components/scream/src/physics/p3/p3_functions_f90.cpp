@@ -131,7 +131,7 @@ void  update_prognostic_ice_c(
   Real rho_qm_cloud, Real* th, Real* qv, Real* qi, Real* ni, Real* qm,
   Real* bm, Real* qc, Real* nc, Real* qr, Real* nr);
 
-void evaporate_sublimate_precip_c(Real qr_incld, Real qc_incld, Real nr_incld, Real qi_incld, Real cld_frac_l,
+void evaporate_precip_c(Real qr_incld, Real qc_incld, Real nr_incld, Real qi_incld, Real cld_frac_l,
   Real cld_frac_r, Real qv_sat_l, Real ab, Real epsr, Real qv, Real* qr2qv_evap_tend, Real* nr_evap_tend);
 
 void update_prognostic_liquid_c(
@@ -661,10 +661,10 @@ void update_prognostic_ice(P3UpdatePrognosticIceData& d){
                           &d.bm,         &d.qc,    &d.nc,    &d.qr, &d.nr);
 }
 
-void evaporate_sublimate_precip(EvapSublimatePrecipData& d)
+void evaporate_precip(EvapSublimatePrecipData& d)
 {
   p3_init();
-  evaporate_sublimate_precip_c(d.qr_incld, d.qc_incld, d.nr_incld, d.qi_incld,
+  evaporate_precip_c(d.qr_incld, d.qc_incld, d.nr_incld, d.qi_incld,
 			       d.cld_frac_l, d.cld_frac_r, d.qv_sat_l, d.ab, d.epsr, d.qv,
 			       &d.qr2qv_evap_tend, &d.nr_evap_tend);
 }
@@ -1523,7 +1523,7 @@ void update_prognostic_ice_f( Real qc2qi_hetero_freeze_tend_, Real qc2qi_collect
   *nr_    = t_h(9);
 }
 
-void evaporate_sublimate_precip_f(Real qr_incld_, Real qc_incld_, Real nr_incld_, Real qi_incld_, Real cld_frac_l_,
+void evaporate_precip_f(Real qr_incld_, Real qc_incld_, Real nr_incld_, Real qi_incld_, Real cld_frac_l_,
 				  Real cld_frac_r_, Real qv_sat_l_, Real ab_, Real epsr_, Real qv_,
 				  Real* qr2qv_evap_tend_, Real* nr_evap_tend_)
 {
@@ -1541,7 +1541,7 @@ void evaporate_sublimate_precip_f(Real qr_incld_, Real qc_incld_, Real nr_incld_
 
       typename P3F::Spack qr2qv_evap_tend(local_qr2qv_evap_tend), nr_evap_tend(local_nr_evap_tend);
 
-      P3F::evaporate_sublimate_precip(qr_incld, qc_incld, nr_incld, qi_incld,  cld_frac_l, cld_frac_r, qv_sat_l, ab,
+      P3F::evaporate_precip(qr_incld, qc_incld, nr_incld, qi_incld,  cld_frac_l, cld_frac_r, qv_sat_l, ab,
       epsr, qv, qr2qv_evap_tend, nr_evap_tend);
 
       t_d(0) = qr2qv_evap_tend[0];

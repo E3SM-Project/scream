@@ -642,7 +642,7 @@ struct Functions
 
   // TODO (comments)
   KOKKOS_FUNCTION
-  static void evaporate_sublimate_precip(const Spack& qr_incld, const Spack& qc_incld,
+  static void evaporate_precip(const Spack& qr_incld, const Spack& qc_incld,
 					 const Spack& nr_incld, const Spack& qi_incld,
 					 const Spack& cld_frac_l, const Spack& cld_frac_r,
 					 const Spack& qv_sat_l, const Spack& ab, const Spack& epsr,
@@ -970,7 +970,7 @@ void init_tables_from_f90_c(Real* vn_table_data, Real* vm_table_data,
 # include "p3_rain_sed_impl.hpp"
 # include "p3_rain_imm_freezing_impl.hpp"
 # include "p3_get_time_space_phys_variables_impl.hpp"
-# include "p3_evaporate_sublimate_precip_impl.hpp"
+# include "p3_evaporate_precip_impl.hpp"
 # include "p3_update_prognostics_impl.hpp"
 # include "p3_ice_collection_impl.hpp"
 # include "p3_ice_deposition_sublimation_impl.hpp"

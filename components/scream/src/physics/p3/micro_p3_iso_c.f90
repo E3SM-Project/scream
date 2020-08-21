@@ -103,7 +103,7 @@ contains
        pres,dz,nc_nuceat_tend,ni_activated,inv_qc_relvar,it,precip_liq_surf,precip_ice_surf,its,ite,kts,kte,diag_effc,     &
        diag_effi,rho_qi,do_predict_nc, dpres,exner,cmeiout,precip_total_tend,nevapr, &
        qr_evap_tend,precip_liq_flux,precip_ice_flux,cld_frac_r,cld_frac_l,cld_frac_i,mu_c,lamc,liq_ice_exchange, &
-       vap_liq_exchange, vap_ice_exchange) bind(C)
+       vap_liq_exchange, vap_ice_exchange,qv_prev,t_prev) bind(C)
     use micro_p3, only : p3_main
 
     real(kind=c_real), intent(inout), dimension(its:ite,kts:kte) :: qc, nc, qr, nr, qv, th
@@ -131,6 +131,8 @@ contains
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: liq_ice_exchange
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: vap_liq_exchange
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: vap_ice_exchange
+    real(kind=c_real), intent(in),   dimension(its:ite,kts:kte)      :: qv_prev
+    real(kind=c_real), intent(in),   dimension(its:ite,kts:kte)      :: t_prev
 
     real(kind=c_real), dimension(its:ite,kts:kte,49)   :: p3_tend_out
     real(kind=c_real), dimension(its:ite,3) :: col_location
@@ -143,7 +145,7 @@ contains
          pres,dz,nc_nuceat_tend,ni_activated,inv_qc_relvar,it,precip_liq_surf,precip_ice_surf,its,ite,kts,kte,diag_effc, &
          diag_effi,rho_qi,do_predict_nc,dpres,exner,cmeiout,precip_total_tend,nevapr, &
          qr_evap_tend,precip_liq_flux,precip_ice_flux,cld_frac_r,cld_frac_l,cld_frac_i,p3_tend_out,mu_c,lamc,liq_ice_exchange,&
-         vap_liq_exchange, vap_ice_exchange, col_location)
+         vap_liq_exchange, vap_ice_exchange, qv_prev,T_prev,col_location)
   end subroutine p3_main_c
 
   subroutine micro_p3_utils_init_c(Cpair, Rair, RH2O, RHO_H2O, &
@@ -651,18 +653,18 @@ subroutine  update_prognostic_ice_c(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
                              qi_incld, ni_incld, ni_selfcollect_tend)
   end subroutine ice_self_collection_c
 
-  subroutine evaporate_sublimate_precip_c(qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, &
+  subroutine evaporate_precip_c(qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, &
        cld_frac_r, qv_sat_l, ab, epsr, qv, qr2qv_evap_tend, nr_evap_tend) bind(C)
-    use micro_p3, only: evaporate_sublimate_precip
+    use micro_p3, only: evaporate_precip
 
     ! arguments
     real(kind=c_real), value, intent(in) :: qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, &
         cld_frac_r, qv_sat_l, ab, epsr, qv
     real(kind=c_real), intent(out) :: qr2qv_evap_tend, nr_evap_tend
 
-    call evaporate_sublimate_precip(qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, &
+    call evaporate_precip(qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, &
        cld_frac_r, qv_sat_l, ab, epsr, qv, qr2qv_evap_tend, nr_evap_tend)
-  end subroutine evaporate_sublimate_precip_c
+  end subroutine evaporate_precip_c
 
   subroutine  update_prognostic_liquid_c(qc2qr_accret_tend, nc_accret_tend, qc2qr_autoconv_tend,nc2nr_autoconv_tend, ncautr, nc_selfcollect_tend, &
        qr2qv_evap_tend, nr_evap_tend, nr_selfcollect_tend, do_predict_nc, inv_rho, exner, latent_heat_vapor, dt, th, qv, qc, nc, qr, nr) bind(C)
