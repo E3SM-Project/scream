@@ -71,6 +71,9 @@ void check_length_scale_shoc_length_c(Int nlev, Int shcol, Real *host_dx,
 void shoc_diag_second_moments_srf_c(Int shcol, Real* wthl, Real* uw, Real* vw,
                                    Real* ustar2, Real* wstar);
 
+void shoc_diag_second_moments_ubycond_c(Int shcol, Int num_tracer, Real* thl, Real* qw, Real* wthl, 
+                                       Real* wqw, Real* qwthl, Real* uw, Real* vw,
+                                       Real* wtke, Real* wtracer);
 }
 
 namespace scream {
@@ -80,28 +83,34 @@ namespace shoc {
 // Data struct
 //
 
-SHOCDataBase::SHOCDataBase(Int shcol_, Int nlev_, Int nlevi_,
-                           const std::vector<Real**>& ptrs, const std::vector<Real**>& ptrs_i) :
+SHOCDataBase::SHOCDataBase(Int shcol_, Int nlev_, Int nlevi_, Int num_tracer_,
+                           const std::vector<Real**>& ptrs, const std::vector<Real**>& ptrs_i, const std::vector<Real**>& ptrs_t) :
   shcol(shcol_),
   nlev(nlev_),
   nlevi(nlevi_),
+  num_tracer(num_tracer_),
   m_total(shcol_ * nlev_),
   m_totali(shcol_ * nlevi_),
+  m_totalt(shcol_ * num_tracer_),
   m_ptrs(ptrs),
   m_ptrs_i(ptrs_i),
-  m_data(m_ptrs.size() * m_total + m_ptrs_i.size() * m_totali, 0)
+  m_ptrs_t(ptrs_t),
+  m_data(m_ptrs.size() * m_total + m_ptrs_i.size() * m_totali + m_ptrs_t.size() * m_totalt, 0)
 {
   init_ptrs();
 }
 
-SHOCDataBase::SHOCDataBase(const SHOCDataBase &rhs, const std::vector<Real**>& ptrs, const std::vector<Real**>& ptrs_i) :
+SHOCDataBase::SHOCDataBase(const SHOCDataBase &rhs, const std::vector<Real**>& ptrs, const std::vector<Real**>& ptrs_i, const std::vector<Real**>& ptrs_t) :
   shcol(rhs.shcol),
   nlev(rhs.nlev),
   nlevi(rhs.nlevi),
+  num_tracer(rhs.num_tracer),
   m_total(rhs.m_total),
   m_totali(rhs.m_totali),
+  m_totalt(rhs.m_totalt),
   m_ptrs(ptrs),
   m_ptrs_i(ptrs_i),
+  m_ptrs_t(ptrs_t),
   m_data(rhs.m_data)
 {
   init_ptrs();
@@ -109,12 +118,14 @@ SHOCDataBase::SHOCDataBase(const SHOCDataBase &rhs, const std::vector<Real**>& p
 
 SHOCDataBase& SHOCDataBase::operator=(const SHOCDataBase& rhs)
 {
-  shcol    = rhs.shcol;
-  nlev     = rhs.nlev;
-  nlevi    = rhs.nlevi;
-  m_total  = rhs.m_total;
-  m_totali = rhs.m_totali;
-  m_data   = rhs.m_data; // Copy
+  shcol      = rhs.shcol;
+  nlev       = rhs.nlev;
+  nlevi      = rhs.nlevi;
+  num_tracer = rhs.num_tracer;
+  m_total    = rhs.m_total;
+  m_totali   = rhs.m_totali;
+  m_totalt   = rhs.m_totalt;
+  m_data     = rhs.m_data; // Copy
 
   init_ptrs();
 
@@ -135,6 +146,12 @@ void SHOCDataBase::init_ptrs()
     *(m_ptrs_i[i]) = data_begin + offset;
     offset += m_totali;
   }
+
+  for (size_t i = 0; i < m_ptrs_t.size(); ++i) {
+    *(m_ptrs_t[i]) = data_begin + offset;
+    offset += m_totali;
+  }
+
 }
 
 void SHOCDataBase::randomize()
@@ -151,6 +168,12 @@ void SHOCDataBase::randomize()
   for (size_t i = 0; i < m_ptrs_i.size(); ++i) {
     for (size_t j = 0; j < m_totali; ++j) {
       (*(m_ptrs_i[i]))[j] = data_dist(generator);
+    }
+  }
+
+  for (size_t i = 0; i < m_ptrs_t.size(); ++i) {
+    for (size_t j = 0; j < m_totalt; ++j) {
+      (*(m_ptrs_t[i]))[j] = data_dist(generator);
     }
   }
 }
@@ -284,6 +307,14 @@ void shoc_diag_second_moments_srf(SHOCSecondMomentSrfData& d)
   d.transpose<util::TransposeDirection::f2c>();
 }
 
+void shoc_diag_second_moments_ubycond(SHOCSecondMomentUbycondData& d)
+{
+  shoc_init(d.nlev, true);
+  d.transpose<util::TransposeDirection::c2f>();
+  shoc_diag_second_moments_ubycond_c(d.shcol, d.num_tracer, d.thl, d.qw, d.wthl, d.wqw, d.qwthl, d.uw, d.vw, d.wtke, d.wtracer);
+  d.transpose<util::TransposeDirection::f2c>();
+}
+
 //
 // _f function definitions. These expect data in C layout
 //
@@ -370,6 +401,65 @@ void shoc_diag_second_moments_srf_f(Int shcol, Real* wthl, Real* uw, Real* vw, R
 
   Kokkos::Array<view_1d, 2> out_views = {ustar2_d, wstar_d};
   pack::device_to_host({ustar2, wstar}, shcol, out_views);
+}
+
+void shoc_diag_second_moments_ubycond_f(Int shcol, Int num_tracer, Real* thl, Real* qw, Real* wthl, Real* wqw, Real* qwthl, Real* uw, Real* vw,
+      Real* wtke, Real* wtracer)
+{
+  using SHOC       = Functions<Real, DefaultDevice>;
+  using Spack      = typename SHOC::Spack;
+  using Scalar     = typename SHOC::Scalar;
+  using Pack1      = typename pack::Pack<Real, 1>;
+  using view_1d    = typename SHOC::view_1d<Pack1>;
+  using view_2d    = typename SHOC::view_2d<Spack>;
+  using KT         = typename SHOC::KT;
+  using ExeSpace   = typename KT::ExeSpace;
+  using MemberType = typename SHOC::MemberType;
+
+  const Int ntracer_pack = scream::pack::npack<Spack>(num_tracer);
+
+  Kokkos::Array<view_1d, 8> uby_1d;
+  Kokkos::Array<view_2d, 1> uby_2d;
+
+  pack::host_to_device({thl, qw, qwthl, wthl, wqw, uw, vw, wtke}, shcol, uby_1d);
+  pack::host_to_device({wtracer}, shcol, num_tracer, uby_2d, true);
+
+  view_1d thl_d(uby_1d[0]),
+          qw_d(uby_1d[1]),
+          qwthl_d(uby_1d[2]),
+          wthl_d(uby_1d[3]),
+          wqw_d(uby_1d[4]),
+          uw_d(uby_1d[5]),
+          vw_d(uby_1d[6]),
+          wtke_d(uby_1d[7]);
+
+  view_2d wtracer_d(uby_2d[0]);
+
+  auto policy = util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, ntracer_pack);
+  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+    const Int i = team.league_rank();
+
+    Scalar thl_s{thl_d(i)[0]};
+    Scalar qw_s{qw_d(i)[0]};
+    Scalar wthl_s{wthl_d(i)[0]};
+    Scalar wqw_s{wqw_d(i)[0]};
+    Scalar qwthl_s{qwthl_d(i)[0]};
+    Scalar uw_s{uw_d(i)[0]};
+    Scalar vw_s{vw_d(i)[0]};
+    Scalar wtke_s{wtke_d(i)[0]};
+
+    const auto wtracer_slice = util::subview(wtracer_d, i);
+
+    SHOC::shoc_diag_second_moments_ubycond(team, num_tracer, thl_s, qw_s, wthl_s, wqw_s, qwthl_s, uw_s, vw_s, wtke_s, wtracer_slice);
+
+  });
+
+  // back to host
+  Kokkos::Array<view_1d, 8> host_views = {thl_d, qw_d, qwthl_d, wthl_d, wqw_d, uw_d, vw_d, wtke_d};
+  Kokkos::Array<view_2d, 1> host_2d_views = {wtracer_d};
+
+  pack::device_to_host({thl, qw, qwthl, wthl, wqw, uw, vw, wtke}, shcol, host_views);
+  pack::device_to_host({wtracer}, shcol, num_tracer, host_2d_views, true);
 }
 
 } // namespace shoc

@@ -84,6 +84,13 @@ struct Functions
     const Scalar& wthl_sfc, const Scalar& uw_sfc, const Scalar& vw_sfc,
     Scalar& ustar2, Scalar& wstar);
 
+  KOKKOS_FUNCTION  
+  static void shoc_diag_second_moments_ubycond(
+    const MemberType& team, const Int& num_tracer,
+    Scalar& thl_sec, Scalar& qw_sec, Scalar& wthl_sec, Scalar& wqw_sec,
+    Scalar& qwthl_sec, Scalar& uw_sec, Scalar& vw_sec, Scalar& wtke_sec,
+    const view_1d<Spack>& wtracer_sec);
+
 }; // struct Functions
 
 } // namespace shoc
@@ -94,6 +101,7 @@ struct Functions
 #ifdef KOKKOS_ENABLE_CUDA
 # include "shoc_calc_shoc_vertflux_impl.hpp"
 # include "shoc_diag_second_moments_srf_impl.hpp"
+# include "shoc_diag_second_moments_ubycond_impl.hpp"
 #endif
 
 #endif

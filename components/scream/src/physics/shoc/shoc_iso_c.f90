@@ -354,4 +354,15 @@ contains
    call diag_second_moments_srf(shcol, wthl, uw, vw, ustar2, wstar)
  end subroutine shoc_diag_second_moments_srf_c
 
+ subroutine shoc_diag_second_moments_ubycond_c(shcol, num_tracer, thl, qw, wthl, wqw, qwthl, uw, vw, wtke, wtracer) bind(C)
+   use shoc, only: diag_second_moments_ubycond
+
+   ! argmens
+   integer(kind=c_int), value, intent(in) :: shcol, num_tracer
+   real(kind=c_real), intent(out)  :: thl(shcol), qw(shcol), qwthl(shcol),wthl(shcol),wqw(shcol), uw(shcol), vw(shcol), wtke(shcol)
+   real(kind=c_real), intent(out) :: wtracer(shcol, num_tracer)
+
+   call diag_second_moments_ubycond(shcol, num_tracer, thl, qw, wthl, wqw, qwthl, uw, vw, wtke, wtracer)
+ end subroutine shoc_diag_second_moments_ubycond_c
+
 end module shoc_iso_c
