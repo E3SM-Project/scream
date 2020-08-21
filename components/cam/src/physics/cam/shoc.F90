@@ -14,7 +14,7 @@ module shoc
 
   use physics_utils, only: rtype, rtype8, itype, btype
   use scream_abortutils, only: endscreamrun
-  use edmf, only: integrate_mf, init_random_seed, mf_calc_vertflux, calculate_tmpi3
+  use edmf, only: integrate_mf, init_random_seed, mf_calc_vertflux, compute_tmpi3
 
 ! Bit-for-bit math functions.
 #ifdef SCREAM_CONFIG_IS_CMAKE
@@ -750,6 +750,8 @@ subroutine update_prognostics_implicit( &
   real(rtype) :: denom(shcol,nlev) ! denominator in solver
   real(rtype) :: ze(shcol,nlev)
 
+  real(rtype) :: tmpi3(shcol,nlevi) ! for EDMF in diffusion solver
+
   ! linearly interpolate tkh, tk, and air density onto the interface grids
   call linear_interp(zt_grid,zi_grid,tkh,tkh_zi,nlev,nlevi,shcol,0._rtype)
   call linear_interp(zt_grid,zi_grid,tk,tk_zi,nlev,nlevi,shcol,0._rtype)
@@ -1392,6 +1394,12 @@ subroutine diag_second_moments(&
 ! OUTPUT VARIABLES
   ! second order vertical velocity [m2/s2]
   real(rtype), intent(out) :: w_sec(shcol,nlev)
+
+  ! EDMF output
+  ! vertical flux of heat from mass flux plumes [K m/s]
+  real(rtype), intent(out) :: mf_thlflx(shcol,nlevi) 
+  ! vertical flux of moisture from mass flux plumes [kg/kg m/s]
+  real(rtype), intent(out) :: mf_qtflx(shcol,nlevi)
 
   ! LOCAL VARIABLES
   integer :: p

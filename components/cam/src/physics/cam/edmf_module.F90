@@ -4,10 +4,11 @@ module edmf
 
   use physconst,     only: rgas => rair, cp => cpair, ggr => gravit, &
                            lcond => latvap, lice => latice, eps => zvir
+  use shoc,          only: linear_interp
 
   implicit none
 
-  public :: integrate_mf, init_random_seed, mf_calc_vertflux, calculate_tmpi3
+  public :: integrate_mf, init_random_seed, mf_calc_vertflux, compute_tmpi3
 
   private
 
@@ -71,7 +72,6 @@ contains
   ! - mass flux variables are computed on edges (i.e. momentum grid):
   !  upa,upw,upqt,... 1:nzi
   !  dry_a,moist_a,dry_w,moist_w, ... 1:nzi
-
        ! Variable(s)
        integer, intent(in) :: shcol,nz,nzi,nup
        real(rtype), dimension(shcol,nz),  intent(in) :: zt_in,dz_zt_in,p_in !,iex_in
@@ -586,7 +586,7 @@ contains
       enddo
     enddo
 
-  end subroutine compute_tmpi
+  end subroutine compute_tmpi3
 
   subroutine Poisson(istart,iend,jstart,jend,mu,poi)
          ! Variable(s)

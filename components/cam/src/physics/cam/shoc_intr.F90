@@ -1132,8 +1132,8 @@ end function shoc_implements_cnst
         wthl_output(i,k) = wthl_sec_out(i,k) * rrho_i(i,k) * cpair
         wqw_output(i,k) = wqw_sec_out(i,k) * rrho_i(i,k) * latvap
         ! MKW added 20200608
-        edmf_thlflx_out(i,k) = edmf_thlflx2(i,k) * rrho_i(i,k) * cpair
-        edmf_qtflx_out(i,k) = edmf_qtflx2(i,k) * rrho_i(i,k) * latvap
+        edmf_thlflx_out(i,k) = edmf_thlflx(i,k) * rrho_i(i,k) * cpair
+        edmf_qtflx_out(i,k) = edmf_qtflx(i,k) * rrho_i(i,k) * latvap
       enddo
     enddo
 
