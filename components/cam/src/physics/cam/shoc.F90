@@ -430,7 +430,7 @@ subroutine shoc_main ( &
     ! If using EDMF plumes, diagnose plume properties here
     nup = 100
     if (do_edmf) then
-       do_mfdif = .false.
+       do_mfdif = .true.
        call init_random_seed
        call integrate_mf(&
                shcol, nlev, nlevi, dtime,&               ! Input

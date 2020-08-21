@@ -657,6 +657,9 @@ end subroutine linear_interp
   ! OUTPUT VARIABLE
     real(rtype), intent(out) :: varflx(shcol,nlevi)
 
+  ! INTERNAL VARIABLES
+    integer :: i,k
+
     ! MKW TODO: SHOC has separate subroutines for lower (k=nlevi) and
     !   upper (k=1) boundary conditions. Make these off later if SCREAM
     !   folks want that. Should be very quick.
