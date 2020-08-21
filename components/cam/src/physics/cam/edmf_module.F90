@@ -4,7 +4,7 @@ module edmf
 
   use physconst,     only: rgas => rair, cp => cpair, ggr => gravit, &
                            lcond => latvap, lice => latice, eps => zvir
-  use shoc,          only: linear_interp
+  ! use shoc,          only: linear_interp
 
   implicit none
 
@@ -476,6 +476,83 @@ contains
 
 
   end subroutine integrate_mf
+
+  !==============================================================
+  ! Linear interpolation to get values on various grids
+  ! MKW: copying this from shoc.F90 since I can't get it to work with a "use" statement
+
+subroutine linear_interp(x1,x2,y1,y2,km1,km2,ncol,minthresh)
+    implicit none
+
+    integer, intent(in) :: km1, km2
+    integer, intent(in) :: ncol
+    real(rtype), intent(in) :: x1(ncol,km1), y1(ncol,km1)
+    real(rtype), intent(in) :: x2(ncol,km2)
+    real(rtype), intent(in) :: minthresh
+    real(rtype), intent(out) :: y2(ncol,km2)
+
+    integer :: k1, k2, i
+
+#if 1
+    !i = check_grid(x1,x2,km1,km2,ncol)
+    if (km1 .eq. km2+1) then
+       do k2 = 1,km2
+          k1 = k2+1
+          do i = 1,ncol
+             y2(i,k2) = y1(i,k1-1) + (y1(i,k1)-y1(i,k1-1))*(x2(i,k2)-x1(i,k1-1))/(x1(i,k1)-x1(i,k1-1))
+          end do
+       end do
+    elseif (km2 .eq. km1+1) then
+       k2 = 1
+       do i = 1,ncol
+          y2(i,k2) = y1(i,1) + (y1(i,2)-y1(i,1))*(x2(i,k2)-x1(i,1))/(x1(i,2)-x1(i,1))
+       end do
+       do k2 = 2, km2-1
+          k1 = k2
+          do i = 1,ncol
+             y2(i,k2) = y1(i,k1-1) + (y1(i,k1)-y1(i,k1-1))*(x2(i,k2)-x1(i,k1-1))/(x1(i,k1)-x1(i,k1-1))
+          end do
+       end do
+       k2 = km2
+       do i = 1,ncol
+          y2(i,k2) = y1(i,km1) + (y1(i,km1)-y1(i,km1-1))*(x2(i,k2)-x1(i,km1))/(x1(i,km1)-x1(i,km1-1))
+       end do
+    else
+       print *,km1,km2
+    end if
+    do k2 = 1,km2
+       do i = 1,ncol
+          if (y2(i,k2) .lt. minthresh) then
+             y2(i,k2) = minthresh
+          endif
+       end do
+    end do
+#else
+    do i=1,ncol
+       do k2=1,km2
+          if( x2(i,k2) <= x1(i,1) ) then
+             y2(i,k2) = y1(i,1) + (y1(i,2)-y1(i,1))*(x2(i,k2)-x1(i,1))/(x1(i,2)-x1(i,1))
+          elseif( x2(i,k2) >= x1(i,km1) ) then
+             y2(i,k2) = y1(i,km1) + (y1(i,km1)-y1(i,km1-1))*(x2(i,k2)-x1(i,km1))/(x1(i,km1)-x1(i,km1-1))
+          else
+             do k1 = 2,km1
+                if( (x2(i,k2)>=x1(i,k1-1)).and.(x2(i,k2)<x1(i,k1)) ) then
+                   y2(i,k2) = y1(i,k1-1) + (y1(i,k1)-y1(i,k1-1))*(x2(i,k2)-x1(i,k1-1))/(x1(i,k1)-x1(i,k1-1))
+                endif
+             enddo ! end k1 loop
+          endif
+
+          if (y2(i,k2) .lt. minthresh) then
+             y2(i,k2) = minthresh
+          endif
+
+       enddo ! end k2 loop
+    enddo ! i loop
+#endif
+
+    return
+
+end subroutine linear_interp
 
 
   subroutine condensation_mf( qt, thl, p, iex, thv, qc, th, ql, qi)
