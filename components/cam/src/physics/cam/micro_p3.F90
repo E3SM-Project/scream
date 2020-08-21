@@ -3241,7 +3241,7 @@ qidep,qi2qv_sublim_tend,ni_sublim_tend,qiberg)
    oabi = 1._rtype/abi
    if (qi_incld>=qsmall) then
       !Compute deposition/sublimation with semi-analytic formulation
-      qidep = (qv - qv_sat_i) * inv_dt * (1.0_rtype-dexp(-dble(dt*epsr))) * oabi
+      qidep = (qv - qv_sat_i) * inv_dt * (1.0_rtype-dexp(-dble(dt*epsi))) * oabi
       !Split into deposition or sublimation.
       if (t < zerodegc .and. qidep>0._rtype) then
          qi2qv_sublim_tend=0._rtype
