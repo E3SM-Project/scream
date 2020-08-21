@@ -3376,7 +3376,7 @@ dt,qr2qv_evap_tend,nr_evap_tend)
          !and equilibrium evap rates with weighting tscale_weight. L'Hospital's rule 
          !shows tscale_weight is 1 in the limit of small dt. It approaches 0 as dt
          !gets big.
-         tscale_weight = tau_eff*inv_dt*(1._rtype - exp(dt*eps_eff) )
+         tscale_weight = tau_eff*inv_dt*(1._rtype - exp(-dt*eps_eff) )
 
          !in limit of very long timescales, evap must balance A_c.
          !(1/tau_r)/(1/tau_eff) is the fraction of this total tendency assigned to rain
