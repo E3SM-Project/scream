@@ -3277,23 +3277,21 @@ cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i, &
 ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,inv_dt, &
 dt,qr2qv_evap_tend,nr_evap_tend)
 
-  !The evaporation rate is basically ssat_r/(tau_eff*ab) where
-  !ssat_r=qv - qv_sat_l is the absolute supersaturation, tau_eff 
+  !Evaporation is basically (qv - sv_sat)/(tau_eff*ab) where tau_eff 
   !is the total effective supersaturation removal timescale
-  !(represented by the inverse timescale eps_eff below) and ab is the
-  !psychrometric correction for condensational heating changing qv_sat
-  !sensitivity. This formulation depends sensitively on ssat_r, which
+  !and ab is the psychrometric correction for condensational heating 
+  !changing qv_sat. This formulation depends sensitively on ssat_r, which
   !can change rapidly within a timestep because liquid saturation
   !adjustment has a relaxation timescale of seconds. For accuracy and
   !stability, we analytically integrate ssat_r over the timestep under
   !the simplifying assumption that all processes other than saturation
-  !relaxation are a constant source/sink term. See Morrison+Milbrandt 2015
+  !relaxation are a constant source/sink term A_c. See Morrison+Milbrandt 2015
   !https://doi.org/10.1175/JAS-D-14-0065.1 and Morrison+Grabowski 2008
   !https://doi.org/10.1175/2007JAS2374.1 for details.
   
    implicit none
 
-   real(rtype), intent(in)  :: qr_incld
+   real(rtype), intent(in)  :: qr_incld 
    real(rtype), intent(in)  :: qc_incld
    real(rtype), intent(in)  :: nr_incld
    real(rtype), intent(in)  :: qi_incld
@@ -3306,11 +3304,13 @@ dt,qr2qv_evap_tend,nr_evap_tend)
    real(rtype), intent(in)  :: t,t_prev,latent_heat_sublim,dqsdt,inv_dt,dt
    real(rtype), intent(inout) :: qr2qv_evap_tend
    real(rtype), intent(inout) :: nr_evap_tend
-   real(rtype) :: cld_frac, eps_eff, ssat_r, inv_xx, qrcon, inv_abi, A_c, sup_r 
+   real(rtype) :: cld_frac, eps_eff, tau_eff, tau_r, ssat_r, inv_abi, A_c, sup_r
+   real(rtype) :: equilib_evap_tend, tscale_weight, instant_evap_tend
 
    !Initialize variables
    qr2qv_evap_tend = 0.0_rtype
    nr_evap_tend = 0.0_rtype
+   tau_r = 1._rtype/epsr
 
    !Compute absolute supersaturation.
    !Ignore the difference between clear-sky and cell-ave qv and T
@@ -3347,12 +3347,12 @@ dt,qr2qv_evap_tend,nr_evap_tend)
 
       !Set lower bound on eps_eff to prevent division by zero
       eps_eff  = max(1.e-20_rtype,eps_eff)   
-      inv_eps_eff = 1.0_rtype/eps_eff
+      tau_eff = 1.0_rtype/eps_eff
 
       !Compute the constant source/sink term A_c for analytic integration. See Eq C4 in
       !Morrison+Milbrandt 2015 https://doi.org/10.1175/JAS-D-14-0065.1
       if (t < 273.15_rtype) then
-         A_c = (qv - qv_prev)*inv_dt - dqsdt*(t-t_prev)*inv_dt - (qv_sat_l - qv_sat_i)*     &
+         A_c = (qv - qv_prev)*inv_dt - dqsdt*(t-t_prev)*inv_dt - (qv_sat_l - qv_sat_i)* &
                (1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi*epsi_tot
       else
          A_c = (qv - qv_prev)*inv_dt - dqsdt*(t-t_prev)*inv_dt
@@ -3361,39 +3361,44 @@ dt,qr2qv_evap_tend,nr_evap_tend)
       !Now compute evap rate
       
       !If no rain to evap, set tend to 0
+      !Note: qr2qv_evap_tend was already initialized to 0 at the
+      !beginning of this function so this is a bit redundant 
       if (qr_incld < qsmall ) then
          qr2qv_evap_tend = 0._rtype
          
-      !If there's negligible qr and conditions are subsaturated, just evaporate all qr
+      !If there's negligible qr and conditions are subsaturated, evaporate all qr
       elseif (qr_incld < 1e-12_rtype .and. qv/qv_sat_l < 0.999_rtype) then
          qr2qv_evap_tend = qr_incld*inv_dt
 
       !If sizable qr, compute tend. 
       else
-         !evap analytically averaged over the timestep can be written as the ave
-         !of rates for the limits of very short and very long timesteps. tscale_weight
-         !is the weighting factor for this solution. L'Hospital's rule shows it
-         !is 1 in the limit of small dt. It approaches 0 as dt gets big.
+         !Timestep-averaged evap can be written as the weighted average of instantaneous 
+         !and equilibrium evap rates with weighting tscale_weight. L'Hospital's rule 
+         !shows tscale_weight is 1 in the limit of small dt. It approaches 0 as dt
+         !gets big.
          tscale_weight = tau_eff*inv_dt*(1._rtype - exp(dt*eps_eff) )
 
          !in limit of very long timescales, evap must balance A_c.
          !(1/tau_r)/(1/tau_eff) is the fraction of this total tendency assigned to rain
+         !Will be >0 if A_c>0: increased supersat from other procs must be balanced by
+         !evaporation to stay in equilibrium.
          equilib_evap_tend = A_c/ab*tau_eff/tau_r
 
          !in limit of short timesteps, evap can be calculated from ssat_r at the
          !beginning of the timestep
-         instant_evap_tend = ssat_r/(ab*tau_r)
+         !ssat_r<0 when evap occurs and evap_tend is positive when evaporating, so added
+         !neg in front
+         instant_evap_tend = -ssat_r/(ab*tau_r)
          
          qr2qv_evap_tend = instant_evap_tend*tscale_weight &
-              + equilib_evap_tend*(1-tscale_weight))
+              + equilib_evap_tend*(1-tscale_weight)
 
       end if
-
-      !POSSIBLE SIGN PROBLEM WITH EQUIL TERM? SSAT_R<0 => INSTANT_EVAP_TEND ALWAYS <0?
-      !IS MAX BELOW CORRECT, OR SHOULD IT BE MIN?
       
-      !Limit evap from exceeding saturation deficit
-      qr2qv_evap_tend = max(qr2qv_evap_tend,ssat_r*inv_dt/ab)
+      !Limit evap from exceeding saturation deficit. Analytic integration
+      !would prevent this from happening if A_c was included in microphysics
+      !timestepping.
+      qr2qv_evap_tend = min(qr2qv_evap_tend,-ssat_r*inv_dt/ab)
       
       !Evap rate so far is an average over the rainy area outside clouds.
       !Turn this into an average over the entire raining area
@@ -3403,24 +3408,6 @@ dt,qr2qv_evap_tend,nr_evap_tend)
       nr_evap_tend = qr2qv_evap_tend*(nr_incld/qr_incld)
 
    end if !cld_frac_r>cldfrac and ssat_r<0
-      
-      !Next lines are weird: qrcon is supposed to be condensation onto rain because the enviro is supersaturated.
-      !the last if statement checks if qrcon is working backwards (evaporating) and if so, zeros out qrcon and assigns
-      !to qrevp instead. If qrcon is positive, it is ignored because qrcon isn't returned from this function.
-
-      qrcon = 0.0  !condensation rate, so rain evaporation will be < 0
-      if (qr_incld > qsmall) qrcon = (A_c*epsr*inv_eps_eff + (ssat_r*SPF-A_c*inv_eps_eff)*inv_dt*epsr*inv_eps_eff*(1.0_rtype-dexp(-dble(eps_eff*dt))))/ab
-
-      if (sup_r < -0.001_rtype .and. qr_incld < 1.e-12_rtype)  qrcon = -qr_incld*inv_dt
-
-      if (qrcon < 0.0_rtype) then
-         qrcon = max(qrcon,(qv-qv_sat_l)*inv_dt/ab) ! Do not allow qrcon*dt from exceeding saturation deficit
-         qr2qv_evap_tend = -qrcon*(cld_frac_r-cld)/cld_frac_r !qr2qv_evap_tend occurs where there's rain but no cloud and scale by rain fraction
-         nr_evap_tend = qr2qv_evap_tend*(nr_incld/qr_incld)
-         qrcon = 0.0_rtype
-      endif
-
-   endif
 
    return
 
