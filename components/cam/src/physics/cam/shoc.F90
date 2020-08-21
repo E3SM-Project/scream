@@ -80,7 +80,7 @@ logical, parameter :: dothetal_skew = .false.
 ! Use EDMF approach (SHOC+MF)
 !  In the long run, set this as a namelist variable.
 !  May even want to put this in shoc_intr?
-logical, parameter :: do_edmf = .false.
+logical, parameter :: do_edmf = .true.
 
 ! ========
 ! Below define some parameters for SHOC
@@ -430,7 +430,7 @@ subroutine shoc_main ( &
     ! If using EDMF plumes, diagnose plume properties here
     nup = 100
     if (do_edmf) then
-       do_mfdif = .true.
+       do_mfdif = .false.
        call init_random_seed
        call integrate_mf(&
                shcol, nlev, nlevi, dtime,&               ! Input
