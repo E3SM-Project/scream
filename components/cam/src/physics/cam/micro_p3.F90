@@ -3311,7 +3311,9 @@ dt,qr2qv_evap_tend,nr_evap_tend)
    !Initialize variables
    qr2qv_evap_tend = 0.0_rtype
    nr_evap_tend = 0.0_rtype
+   ssat_r = qv - qv_sat_l !absolute supersaturation
 
+   
    !Cloud fraction in clear-sky conditions has been set to mincld
    !to avoid divide-by-zero problems. Because rain evap only happens
    !in rainy portions outside cloud, setting clear-sky cloud fraction
@@ -3326,9 +3328,9 @@ dt,qr2qv_evap_tend,nr_evap_tend)
    !Only evaporate in the rainy area outside cloud
    if (cld_frac_r > cld) then
 
-      ssat_r = qv - qv_sat_l
-      sup_r = qv / qv_sat_l - 1.0_rtype
-      SPF = 1.0_rtype   
+      !test: should be able to put ssat<0 in the above if statement instead of the max(0,...) in the actual calc.
+      
+      SPF = 1.0_rtype !delete this!!!  
 
       !Compute total effective inverse saturation removal timescale eps_eff
       !qc saturation is handled by macrophysics so the qc saturation removal timescale is
@@ -3347,7 +3349,7 @@ dt,qr2qv_evap_tend,nr_evap_tend)
       eps_eff  = max(1.e-20_rtype,eps_eff)   
       inv_eps_eff = 1.0_rtype/eps_eff
 
-      !Compute the constant source/sink term for analytic integration. See Eq C4 in
+      !Compute the constant source/sink term A_c for analytic integration. See Eq C4 in
       !Morrison+Milbrandt 2015 https://doi.org/10.1175/JAS-D-14-0065.1
       if (t < 273.15_rtype) then
          A_c = (qv - qv_prev)*inv_dt - dqsdt*(t-t_prev)*inv_dt - (qv_sat_l - qv_sat_i)*     &
@@ -3356,6 +3358,28 @@ dt,qr2qv_evap_tend,nr_evap_tend)
          A_c = (qv - qv_prev)*inv_dt - dqsdt*(t-t_prev)*inv_dt
       endif
 
+      !Now compute evap rate
+      
+      !If no rain to evap, set tend to 0
+      if (qr_incld < qsmall ) then
+         qr2qv_evap_tend = 0._rtype
+         
+      !If there's negligible rain and conditions are subsaturated, just evaporate all qr
+      elseif (qr_incld < 1e-12_rtype .and. qv/qv_sat_l < 0.999_rtype) then
+         qr2qv_evap_tend = qr_incld*inv_dt
+
+      !If sizable rain, compute tend. 
+      else
+         qr2qv_evap_tend = max(0._rtype,-(A_c*epsr*inv_eps_eff &
+              +(ssat_r*SPF-A_c*inv_eps_eff)*inv_dt*epsr*inv_eps_eff*(1.0_rtype-dexp(-dble(eps_eff*dt))))/ab )
+      end if
+
+      !Evap rate above is a rate in the evaporating region. Turn this into a cell-ave value
+
+      
+      !Next lines are weird: qrcon is supposed to be condensation onto rain because the enviro is supersaturated.
+      !the last if statement checks if qrcon is working backwards (evaporating) and if so, zeros out qrcon and assigns
+      !to qrevp instead. If qrcon is positive, it is ignored because qrcon isn't returned from this function.
 
       qrcon = 0.0  !condensation rate, so rain evaporation will be < 0
       if (qr_incld > qsmall) qrcon = (A_c*epsr*inv_eps_eff + (ssat_r*SPF-A_c*inv_eps_eff)*inv_dt*epsr*inv_eps_eff*(1.0_rtype-dexp(-dble(eps_eff*dt))))/ab
