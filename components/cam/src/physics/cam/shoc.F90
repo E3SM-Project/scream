@@ -452,29 +452,29 @@ subroutine shoc_main ( &
     else
        do_mfdif = .false.
 
-       mf_dry_a = 0.
-       mf_dry_w = 0.
-       mf_dry_qt = 0.
-       mf_dry_thl = 0.
-       mf_dry_u = 0.
-       mf_dry_v = 0.
+       mf_dry_a = 0._rtype
+       mf_dry_w = 0._rtype
+       mf_dry_qt = 0._rtype
+       mf_dry_thl = 0._rtype
+       mf_dry_u = 0._rtype
+       mf_dry_v = 0._rtype
 
-       mf_moist_a = 0.
-       mf_moist_w = 0.
-       mf_moist_qt = 0.
-       mf_moist_thl = 0.
-       mf_moist_u = 0.
-       mf_moist_v = 0.
-       mf_moist_qc = 0.
+       mf_moist_a = 0._rtype
+       mf_moist_w = 0._rtype
+       mf_moist_qt = 0._rtype
+       mf_moist_thl = 0._rtype
+       mf_moist_u = 0._rtype
+       mf_moist_v = 0._rtype
+       mf_moist_qc = 0._rtype
 
-       s_ae = 1.
-       s_aw = 0.
-       s_awthl = 0.
-       s_awqt = 0.
-       s_awql = 0.
-       s_awqi = 0.
-       s_awu = 0.
-       s_awv = 0.
+       s_ae = 1._rtype
+       s_aw = 0._rtype
+       s_awthl = 0._rtype
+       s_awqt = 0._rtype
+       s_awql = 0._rtype
+       s_awqi = 0._rtype
+       s_awu = 0._rtype
+       s_awv = 0._rtype
     endif
 
     ! Advance the SGS TKE equation
@@ -1398,7 +1398,7 @@ subroutine diag_second_moments(&
 
   ! EDMF output
   ! vertical flux of heat from mass flux plumes [K m/s]
-  real(rtype), intent(out) :: mf_thlflx(shcol,nlevi) 
+  real(rtype), intent(out) :: mf_thlflx(shcol,nlevi)
   ! vertical flux of moisture from mass flux plumes [kg/kg m/s]
   real(rtype), intent(out) :: mf_qtflx(shcol,nlevi)
 
