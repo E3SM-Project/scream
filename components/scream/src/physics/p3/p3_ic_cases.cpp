@@ -42,6 +42,8 @@ FortranData::Ptr make_mixed (const Int ncol) {
     for (k = 0; k < nk; ++k) {
       const auto tmp = -5e-4 + 1e-3/double(nk)*k;
       d.qv(i,k) = tmp > 0 ? tmp : 0;
+      const auto tmp_p = -4.9e-4 + 1e-3/double(nk)*k;
+      d.qv_prev(i,k) = tmp_p > 0 ? tmp_p : 0;
     }
     // make layer with qc saturated.
     for (k = 0; k < 15; ++k) d.qv(i,nk-20+k) = 5e-3;
@@ -68,6 +70,8 @@ FortranData::Ptr make_mixed (const Int ncol) {
     for (k = 0; k < nk; ++k) {
       T(k) = 150 + 150/double(nk)*k;
       if (i > 0) T(k) += ((i % 3) - 0.5)/double(nk)*k;
+      d.T_prev(i,k) = 145 + 150/double(nk)*k;
+      if (i > 0) d.T_prev(i,k) += ((i % 3) - 0.5)/double(nk)*k;
       d.th(i,k) = T(k)*std::pow(Real(consts::P0/d.pres(i,k)), Real(consts::RD/consts::CP));
     }
 
