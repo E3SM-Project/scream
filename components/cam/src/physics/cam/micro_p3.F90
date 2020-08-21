@@ -3306,32 +3306,32 @@ dt,qr2qv_evap_tend,nr_evap_tend)
    real(rtype), intent(in)  :: t,t_prev,latent_heat_sublim,dqsdt,inv_dt,dt
    real(rtype), intent(inout) :: qr2qv_evap_tend
    real(rtype), intent(inout) :: nr_evap_tend
-   real(rtype) :: cld, xx, ssat_r, SPF, hlp_w, inv_xx, qrcon, inv_abi, aaa, sup_r 
+   real(rtype) :: cld_frac, eps_eff, ssat_r, inv_xx, qrcon, inv_abi, A_c, sup_r 
 
    !Initialize variables
    qr2qv_evap_tend = 0.0_rtype
    nr_evap_tend = 0.0_rtype
+
+   !Compute absolute supersaturation.
+   !Ignore the difference between clear-sky and cell-ave qv and T
+   !because micro lacks the info to reliably reconstruct macrophys
+   !subgrid variability
    ssat_r = qv - qv_sat_l !absolute supersaturation
 
-   
    !Cloud fraction in clear-sky conditions has been set to mincld
    !to avoid divide-by-zero problems. Because rain evap only happens
    !in rainy portions outside cloud, setting clear-sky cloud fraction
    !to mincld reduces evaporating area. We fix that here by computing
    !a temporary cloud fraction which is zero if cloud condensate is small.
    if (qc_incld + qi_incld < 1.e-6_rtype) then
-         cld = 0._rtype
+         cld_frac = 0._rtype
    else
-         cld = cld_frac_l
+         cld_frac = cld_frac_l
    end if
 
-   !Only evaporate in the rainy area outside cloud
-   if (cld_frac_r > cld) then
-
-      !test: should be able to put ssat<0 in the above if statement instead of the max(0,...) in the actual calc.
+   !Only evaporate in the rainy area outside cloud when subsaturated
+   if (cld_frac_r > cld_frac .and. ssat_r<0._rtype) then
       
-      SPF = 1.0_rtype !delete this!!!  
-
       !Compute total effective inverse saturation removal timescale eps_eff
       !qc saturation is handled by macrophysics so the qc saturation removal timescale is
       !not included here. Below freezing, eps_eff is the sum of the inverse saturation
@@ -3364,18 +3364,45 @@ dt,qr2qv_evap_tend,nr_evap_tend)
       if (qr_incld < qsmall ) then
          qr2qv_evap_tend = 0._rtype
          
-      !If there's negligible rain and conditions are subsaturated, just evaporate all qr
+      !If there's negligible qr and conditions are subsaturated, just evaporate all qr
       elseif (qr_incld < 1e-12_rtype .and. qv/qv_sat_l < 0.999_rtype) then
          qr2qv_evap_tend = qr_incld*inv_dt
 
-      !If sizable rain, compute tend. 
+      !If sizable qr, compute tend. 
       else
-         qr2qv_evap_tend = max(0._rtype,-(A_c*epsr*inv_eps_eff &
-              +(ssat_r*SPF-A_c*inv_eps_eff)*inv_dt*epsr*inv_eps_eff*(1.0_rtype-dexp(-dble(eps_eff*dt))))/ab )
+         !evap analytically averaged over the timestep can be written as the ave
+         !of rates for the limits of very short and very long timesteps. tscale_weight
+         !is the weighting factor for this solution. L'Hospital's rule shows it
+         !is 1 in the limit of small dt. It approaches 0 as dt gets big.
+         tscale_weight = tau_eff*inv_dt*(1._rtype - exp(dt*eps_eff) )
+
+         !in limit of very long timescales, evap must balance A_c.
+         !(1/tau_r)/(1/tau_eff) is the fraction of this total tendency assigned to rain
+         equilib_evap_tend = A_c/ab*tau_eff/tau_r
+
+         !in limit of short timesteps, evap can be calculated from ssat_r at the
+         !beginning of the timestep
+         instant_evap_tend = ssat_r/(ab*tau_r)
+         
+         qr2qv_evap_tend = instant_evap_tend*tscale_weight &
+              + equilib_evap_tend*(1-tscale_weight))
+
       end if
 
-      !Evap rate above is a rate in the evaporating region. Turn this into a cell-ave value
+      !POSSIBLE SIGN PROBLEM WITH EQUIL TERM? SSAT_R<0 => INSTANT_EVAP_TEND ALWAYS <0?
+      !IS MAX BELOW CORRECT, OR SHOULD IT BE MIN?
+      
+      !Limit evap from exceeding saturation deficit
+      qr2qv_evap_tend = max(qr2qv_evap_tend,ssat_r*inv_dt/ab)
+      
+      !Evap rate so far is an average over the rainy area outside clouds.
+      !Turn this into an average over the entire raining area
+      qr2qv_evap_tend = qr2qv_evap_tend*(cld_frac_r-cld_frac)/cld_frac_r
 
+      !Let nr remove drops proportionally to mass change
+      nr_evap_tend = qr2qv_evap_tend*(nr_incld/qr_incld)
+
+   end if !cld_frac_r>cldfrac and ssat_r<0
       
       !Next lines are weird: qrcon is supposed to be condensation onto rain because the enviro is supersaturated.
       !the last if statement checks if qrcon is working backwards (evaporating) and if so, zeros out qrcon and assigns
