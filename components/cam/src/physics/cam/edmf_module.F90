@@ -136,17 +136,17 @@ contains
   ! entrainment parameters
        real(rtype),parameter :: &
   !      L0   = 150._rtype,&
-  !       ENT0 = .5_rtype
+  !       ent0 = .5_rtype
   !!       L0   = 150._rtype,&
-  !!       ENT0 = .8_rtype
+  !!       ent0 = .8_rtype
   !        L0   = 100._rtype,&
-  !        ENT0 = .42_rtype
+  !        ent0 = .42_rtype
            L0   = 50._rtype,&
-           ENT0 = .22_rtype
+           ent0 = .22_rtype
   !!      L0   = 50._rtype,&
-  !!       ENT0 = .18_rtype
+  !!       ent0 = .18_rtype
   !       L0   = 25._rtype,&
-  !       ENT0 = .11_rtype
+  !       ent0 = .11_rtype
 
   !! parameters defining initial conditions for updrafts
        real(rtype),parameter :: &
@@ -439,7 +439,7 @@ contains
          !!sflx(kts)  = 0.
          !qtflx(j,1) = 0._rtype
 
-         !print*,'max(1-ae)=',maxval(1._rtype-ae(j,:))
+         print*,'max(1-ae)=',maxval(1._rtype-ae(j,:))
 
        end if  ! ( wthv > 0.0 )
      end do ! j=1,shcol

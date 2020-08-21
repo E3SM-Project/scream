@@ -27,7 +27,7 @@ save ! for module variables
 
 public  :: shoc_init, shoc_main
 
-logical :: use_cxx = .true.
+logical :: use_cxx = .false.
 
 real(rtype), parameter, public :: largeneg = -99999999.99_rtype
 
@@ -80,7 +80,7 @@ logical, parameter :: dothetal_skew = .false.
 ! Use EDMF approach (SHOC+MF)
 !  In the long run, set this as a namelist variable.
 !  May even want to put this in shoc_intr?
-logical, parameter :: do_edmf = .true.
+logical, parameter :: do_edmf = .false.
 
 ! ========
 ! Below define some parameters for SHOC
@@ -762,6 +762,7 @@ subroutine update_prognostics_implicit( &
   !  at interfaces. Substitue dp = g*rho*dz in the above equation
   call compute_tmpi(nlevi, shcol, dtime, rho_zi, dz_zi, tmpi)
   ! MKW added 20200820
+  tmpi3(:,1) = 0._rtype
   call compute_tmpi3(nlevi, shcol, dtime, rho_zi, tmpi3)
 
   ! compute 1/dp term, needed in diffusion solver
