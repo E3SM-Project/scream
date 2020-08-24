@@ -21,9 +21,9 @@ interface
     integer(kind=c_int), intent(in), value :: shcol
     integer(kind=c_int), intent(in), value :: nlev
     integer(kind=c_int), intent(in), value :: nlevi
-    real(kind=c_real), intent(in) :: tkh_zi(shcol,nlevi)
-    real(kind=c_real), intent(in) :: dz_zi(shcol,nlevi)
-    real(kind=c_real), intent(in) :: invar(shcol,nlev)
+    real(kind=c_real),   intent(in) :: tkh_zi(shcol,nlevi)
+    real(kind=c_real),   intent(in) :: dz_zi(shcol,nlevi)
+    real(kind=c_real),   intent(in) :: invar(shcol,nlev)
 
     real(kind=c_real), intent(inout) :: vertflux(shcol,nlevi)
 
@@ -42,6 +42,18 @@ interface
    real(kind=c_real), intent(out) :: wstar(shcol)
 
  end subroutine shoc_diag_second_moments_srf_f
+
+  subroutine integ_column_stability_f(nlev, shcol, dz_zt, pres, brunt, brunt_int) bind (C)
+    use iso_c_binding
+
+    integer(kind=c_int), intent(in) :: nlev, shcol
+    real(kind=c_real),   intent(in) :: dz_zt(shcol,nlev)
+    real(kind=c_real),   intent(in) :: pres(shcol,nlev)
+    real(kind=c_real),   intent(in) :: brunt(shcol,nlev)
+
+    real(kind=c_real),   intent(out) :: brunt_int(shcol)
+
+  end subroutine integ_column_stability_f
 
 end interface
 

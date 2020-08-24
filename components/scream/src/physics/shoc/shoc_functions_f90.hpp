@@ -331,6 +331,8 @@ void calc_shoc_vertflux_f(Int shcol, Int nlev, Int nlevi, Real *tkh_zi,
 void shoc_diag_second_moments_srf_f(Int shcol, Real* wthl, Real* uw, Real* vw,
                          Real* ustar2, Real* wstar);
 
+void integ_column_stability_f(Int nlev, Int shcol, Real *dz_zt,
+			      Real *pres, Real* brunt, Real *brunt_int);
 }
 
 }  // namespace shoc
