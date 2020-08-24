@@ -21,9 +21,9 @@ interface
     integer(kind=c_int), intent(in), value :: shcol
     integer(kind=c_int), intent(in), value :: nlev
     integer(kind=c_int), intent(in), value :: nlevi
-    real(kind=c_real),   intent(in) :: tkh_zi(shcol,nlevi)
-    real(kind=c_real),   intent(in) :: dz_zi(shcol,nlevi)
-    real(kind=c_real),   intent(in) :: invar(shcol,nlev)
+    real(kind=c_real), intent(in) :: tkh_zi(shcol,nlevi)
+    real(kind=c_real), intent(in) :: dz_zi(shcol,nlevi)
+    real(kind=c_real), intent(in) :: invar(shcol,nlev)
 
     real(kind=c_real), intent(inout) :: vertflux(shcol,nlevi)
 

@@ -379,12 +379,10 @@ void shoc_diag_second_moments_srf_f(Int shcol, Real* wthl, Real* uw, Real* vw, R
   pack::device_to_host({ustar2, wstar}, shcol, out_views);
 }
 
-
-
 void integ_column_stability_f(Int nlev, Int shcol, Real *dz_zt,
 			      Real *pres, Real* brunt, Real *brunt_int)
 {
-
+}
 
 } // namespace shoc
 } // namespace scream
