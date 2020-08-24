@@ -663,7 +663,7 @@ void update_prognostic_ice(P3UpdatePrognosticIceData& d){
                           &d.bm,         &d.qc,    &d.nc,    &d.qr, &d.nr);
 }
 
-void evaporate_precip(EvapSublimatePrecipData& d)
+void evaporate_precip(EvapPrecipData& d)
 {
   p3_init();
   evaporate_precip_c(d.qr_incld, d.qc_incld, d.nr_incld, d.qi_incld,

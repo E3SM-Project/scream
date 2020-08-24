@@ -817,7 +817,7 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
 
     //fortran generated data is input to the following
     //This subroutine has 12 args, only 10 are supplied here for invoking it as last 2 are intent-outs
-    EvapSublimatePrecipData espd[max_pack_size] = {
+    EvapPrecipData espd[max_pack_size] = {
       {1.0010E-06,1.0000E-06,6.3726E+05,0.0000E+00,1.0000E+00,1.0000E+00,2.0321E-02,4.0889E+00,1.0080E-03,5.0000E-02},
       {5.2632E-07,0.0000E+00,3.3506E+05,0.0000E+00,1.0000E+00,1.0000E+00,1.8120E-02,3.7933E+00,5.2700E-04,4.7222E-04},
       {1.0526E-06,0.0000E+00,6.7013E+05,0.0000E+00,1.0000E+00,1.0000E+00,1.6134E-02,3.5224E+00,1.0480E-03,4.5833E-04},
@@ -837,7 +837,7 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
     };
 
     // Sync to device
-    view_1d<EvapSublimatePrecipData> espd_device("espd", max_pack_size);
+    view_1d<EvapPrecipData> espd_device("espd", max_pack_size);
     auto espd_host = Kokkos::create_mirror_view(espd_device);
 
     // This copy only copies the input variables.
