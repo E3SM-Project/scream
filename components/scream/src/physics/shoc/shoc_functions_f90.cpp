@@ -95,7 +95,7 @@ void shoc_diag_second_moments_srf_c(Int shcol, Real* wthl, Real* uw, Real* vw,
 void linear_interp_c(Real *x1, Real *x2, Real *y1, Real *y2, Int km1,
                      Int km2, Int ncol, Real minthresh);
 		     
-void shoc_assumed_pdf_tilda_to_real_c(Real w_first, Real sqrtw2, Real w1);		     			   
+void shoc_assumed_pdf_tilda_to_real_c(Real w_first, Real sqrtw2, Real* w1);		     			   
 
 void shoc_pblintd_init_pot_c(Int shcol, Int nlev, Real* thl, Real* ql, Real* q, Real* thv);
 }
@@ -418,11 +418,11 @@ void shoc_pblintd_init_pot(SHOCPblintdInitPotData& d)
   d.transpose<ekat::util::TransposeDirection::f2c>();
 }
 
-//void shoc_assumed_pdf_tilda_to_real(w_first, sqrtw2, w1)
-//{
-//  shoc_init(d.nlev, true);
-//  shoc_assumed_pdf_tilda_to_real_c(w_first, sqrtw2, w1);
-//}
+void shoc_assumed_pdf_tilda_to_real(SHOCPDFtildaData &d)
+{
+  shoc_init(1, true);
+  shoc_assumed_pdf_tilda_to_real_c(d.w_first, d.sqrtw2, &d.w1);
+}
 
 //
 // _f function definitions. These expect data in C layout

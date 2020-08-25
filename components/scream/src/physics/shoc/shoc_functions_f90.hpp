@@ -428,6 +428,18 @@ struct SHOCPblintdInitPotData : public SHOCDataBase {
   SHOCPblintdInitPotData &operator=(const SHOCPblintdInitPotData &rhs) { SHOCDataBase::operator=(rhs); return *this; }
 }; 
 
+//Create data structure to hold data for shoc_assumed_pdf_tilda_to_real
+struct SHOCPDFtildaData
+{
+  // inputs
+  Real w_first, sqrtw2;
+  
+  // outputs
+  Real w1;
+
+};
+>>>>>>> fixes to get test to run
+
 //
 // Glue functions to call fortran from from C++ with the Data struct
 //
@@ -457,7 +469,11 @@ void compute_shoc_mix_shoc_length(SHOCMixlengthData &d);
 void check_length_scale_shoc_length(SHOCMixcheckData &d);
 void shoc_diag_second_moments_srf(SHOCSecondMomentSrfData& d);
 void linear_interp(SHOCLinearintData &d);
+<<<<<<< HEAD
 void shoc_pblintd_init_pot(SHOCPblintdInitPotData &d);
+=======
+void shoc_assumed_pdf_tilda_to_real(SHOCPDFtildaData &d);
+>>>>>>> fixes to get test to run
 
 //
 // _f functions decls
