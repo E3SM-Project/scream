@@ -496,6 +496,18 @@ contains
     call linear_interp(x1,x2,y1,y2,km1,km2,ncol,minthresh)
 
   end subroutine linear_interp_c  
+  
+  subroutine shoc_assumed_pdf_tilda_to_real_c(w_first, sqrtw2, w1) bind (C)
+    use shoc, only: shoc_assumed_pdf_tilda_to_real
+
+    real(kind=c_real), intent(in), value :: w_first
+    real(kind=c_real), intent(in), value :: sqrtw2
+    
+    real(kind=c_real), intent(inout) :: w1
+
+    call shoc_assumed_pdf_tilda_to_real(w_first, sqrtw2, w1)
+
+  end subroutine shoc_assumed_pdf_tilda_to_real_c   
 
   subroutine shoc_pblintd_init_pot_c(shcol, nlev, thl, ql, q, thv) bind(C)
    use shoc, only: pblintd_init_pot
