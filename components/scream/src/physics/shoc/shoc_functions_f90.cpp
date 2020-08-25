@@ -382,6 +382,62 @@ void shoc_diag_second_moments_srf_f(Int shcol, Real* wthl, Real* uw, Real* vw, R
 void integ_column_stability_f(Int nlev, Int shcol, Real *dz_zt,
 			      Real *pres, Real* brunt, Real *brunt_int)
 {
+    using SHF = Functions<Real, DefaultDevice>;
+  //using SHF        = Functions<Real, DefaultDevice>;
+  using Scalar     = typename SHF::Scalar;
+  using Spack      = typename SHF::Spack;
+  using view_2d    = typename SHF::view_2d<Spack>;
+  using KT         = typename SHF::KT;
+  using ExeSpace   = typename KT::ExeSpace;
+  using MemberType = typename SHF::MemberType;
+
+  //use 1D view as brunt_int is a 1D output variable
+  using Pack1      = typename pack::Pack<Real, 1>;
+  using view_1d    = typename SHF::view_1d<Pack1>;
+
+  //inputs
+  static constexpr Int num_arrays = 3;
+  Kokkos::Array<view_2d, num_arrays> temp2D_d;
+
+  Kokkos::Array<size_t, num_arrays> dim1_sizes     = {shcol,  shcol, shcol};
+  Kokkos::Array<size_t, num_arrays> dim2_sizes     = {nlev,  nlev, nlev};
+  Kokkos::Array<const Real*, num_arrays> ptr_array = {dz_zt, pres, brunt};
+
+  // Sync to device
+  pack::host_to_device(ptr_array, dim1_sizes, dim2_sizes, temp2D_d, true);
+
+  //declare input device variables
+  view_2d
+    dz_zt_d(temp2D_d[0]),
+    pres_d (temp2D_d[1]),
+    brunt_d(temp2D_d[2]);
+
+  //declare output device variables
+  view_1d brunt_int_d("brunt_int", shcol);
+
+  const Int nk_pack = scream::pack::npack<Spack>(nlev);
+  const auto policy = util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
+
+  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+    const Int i = team.league_rank();
+
+    const auto odz_zt_d = util::subview(dz_zt_d, i);
+    const auto opres_d  = util::subview(pres_d, i);
+    const auto obrunt_d = util::subview(brunt_d, i);
+    Scalar brunt_int_s{0};
+
+    SHF::integ_column_stability(team, nlev, odz_zt_d, opres_d, obrunt_d, brunt_int_s);
+
+    //brunt_int_d(i)[0] = brunt_int_s;
+
+      //calc_shoc_vertflux(team, nlev, otkh_zi_d, odz_zi_d, oinvar_d, overtflux_d);
+  });
+  /*
+  // Sync back to host
+  Kokkos::Array<view_2d, 1> inout_views = {vertflux_d};
+  pack::device_to_host({vertflux}, {shcol}, {nlevi}, inout_views, true);
+  */
+
 }
 
 } // namespace shoc

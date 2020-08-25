@@ -84,6 +84,15 @@ struct Functions
     const Scalar& wthl_sfc, const Scalar& uw_sfc, const Scalar& vw_sfc,
     Scalar& ustar2, Scalar& wstar);
 
+ KOKKOS_FUNCTION
+ static void integ_column_stability(
+   const MemberType& team,
+   const Int& nlev,
+   const uview_1d<const Spack>& dz_zt,
+   const uview_1d<const Spack>& pres,
+   const uview_1d<const Spack>& brunt,
+   Scalar& brunt_int);
+
 }; // struct Functions
 
 } // namespace shoc
@@ -94,6 +103,7 @@ struct Functions
 #ifdef KOKKOS_ENABLE_CUDA
 # include "shoc_calc_shoc_vertflux_impl.hpp"
 # include "shoc_diag_second_moments_srf_impl.hpp"
+# include "shoc_integ_column_stability_impl.hpp"
 #endif
 
 #endif
