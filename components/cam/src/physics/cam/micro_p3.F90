@@ -1576,7 +1576,10 @@ contains
     else
 
        write(err_msg,*)'Error: Either MurphyKoop_svp i_type is not 0 or 1 or t=NaN. itype= ', &
-            i_type,' and temperature t=',t,' in file: ',__FILE__,' at line:',__LINE__
+            i_type,' and temperature t=',t ,' in file: ',&
+            __FILE__,&
+            ' at line:',&
+            __LINE__
        call endscreamrun(err_msg)
     endif
 
@@ -1660,7 +1663,8 @@ contains
 
        call report_error_info('Something went wrong', 'polysvp1')
        write(err_msg,*)'** polysvp1 i_type must be 0 or 1 but is: ', &
-            i_type,' temperature is:',t,' in file: ',__FILE__, &
+            i_type,' temperature is:',t,' in file: ',&
+            __FILE__, &
             ' at line:',__LINE__
        call endscreamrun(err_msg)
     endif
@@ -1672,7 +1676,7 @@ contains
   subroutine check_temp(t, subname)
     !Check if temprature values are in legit range
     use scream_abortutils, only : endscreamrun
-    use ieee_arithmetic,   only : ieee_is_finite, ieee_is_nan
+    !use ieee_arithmetic,   only : ieee_is_finite, ieee_is_nan
 
     implicit none
 
@@ -1682,17 +1686,18 @@ contains
     character(len=1000) :: err_msg
 
     if(t <= 0.0_rtype) then
-       write(err_msg,*)'Error: Called from:',trim(adjustl(subname)),'; Temperature is:',t,' which is <= 0._r8 in file:',__FILE__, &
+       write(err_msg,*)'Error: Called from:',trim(adjustl(subname)),'; Temperature is:',t,' which is <= 0._r8 in file:',&
+            __FILE__, &
             ' at line:',__LINE__
        call endscreamrun(err_msg)
-    elseif(.not. ieee_is_finite(t)) then
-       write(err_msg,*)'Error: Called from:',trim(adjustl(subname)),'; Temperature is:',t,' which is not finite in file:', &
-            __FILE__,' at line:',__LINE__
-       call endscreamrun(err_msg)
-    elseif(ieee_is_nan(t)) then
-       write(err_msg,*)'Error: Called from:',trim(adjustl(subname)),'; Temperature is:',t,' which is NaN in file:',__FILE__, &
-             'at line:',__LINE__
-       call endscreamrun(err_msg)
+    !elseif(.not. ieee_is_finite(t)) then
+    !   write(err_msg,*)'Error: Called from:',trim(adjustl(subname)),'; Temperature is:',t,' which is not finite in file:', &
+    !        __FILE__,' at line:',__LINE__
+    !   call endscreamrun(err_msg)
+    !elseif(ieee_is_nan(t)) then
+    !   write(err_msg,*)'Error: Called from:',trim(adjustl(subname)),'; Temperature is:',t,' which is NaN in file:',__FILE__, &
+    !         'at line:',__LINE__
+    !   call endscreamrun(err_msg)
     endif
 
     return
@@ -2157,7 +2162,9 @@ contains
        print*
        if (source_ind/=100) then
           write(err_msg,*)'Source_ind should be 100, source_ind is:', &
-               source_ind,' in file:',__FILE__,' at line:',__LINE__
+               source_ind,' in file:',&
+               __FILE__,&
+               ' at line:',__LINE__
           call endscreamrun(err_msg)
        endif
     endif
@@ -2892,8 +2899,9 @@ end subroutine cloud_water_autoconversion
 
 subroutine back_to_cell_average(cld_frac_l,cld_frac_r,cld_frac_i,                         &
    qc2qr_accret_tend,qr2qv_evap_tend,qc2qr_autoconv_tend,                                                      &
-   nc_accret_tend,nc_selfcollect_tend,nc2nr_autoconv_tend,nr_selfcollect_tend,nr_evap_tend,ncautr,qi2qv_sublim_tend,nr_ice_shed_tend,qc2qi_hetero_freeze_tend,              &
-   qrcol,qc2qr_ice_shed_tend,qi2qr_melt_tend,qccol,qr2qi_immers_freeze_tend,ni2nr_melt_tend,nc_collect_tend,ncshdc,nc2ni_immers_freeze_tend,nr_collect_tend,ni_selfcollect_tend,   &
+   nc_accret_tend,nc_selfcollect_tend,nc2nr_autoconv_tend,nr_selfcollect_tend,nr_evap_tend,ncautr,qi2qv_sublim_tend, &
+   nr_ice_shed_tend,qc2qi_hetero_freeze_tend, qrcol,qc2qr_ice_shed_tend,qi2qr_melt_tend,qccol,qr2qi_immers_freeze_tend, &
+   ni2nr_melt_tend,nc_collect_tend,ncshdc,nc2ni_immers_freeze_tend,nr_collect_tend,ni_selfcollect_tend,   &
    qidep,nr2ni_immers_freeze_tend,ni_sublim_tend,qinuc,ni_nucleat_tend,qiberg)
 
    ! Here we map the microphysics tendency rates back to CELL-AVERAGE quantities for updating
@@ -2906,8 +2914,10 @@ subroutine back_to_cell_average(cld_frac_l,cld_frac_r,cld_frac_i,               
    real(rtype), intent(in) :: cld_frac_r
    real(rtype), intent(in) :: cld_frac_i
 
-   real(rtype), intent(inout) :: qc2qr_accret_tend, qr2qv_evap_tend, qc2qr_autoconv_tend, nc_accret_tend, nc_selfcollect_tend, nc2nr_autoconv_tend, nr_selfcollect_tend, nr_evap_tend, ncautr
-   real(rtype), intent(inout) :: qi2qv_sublim_tend, nr_ice_shed_tend, qc2qi_hetero_freeze_tend, qrcol, qc2qr_ice_shed_tend, qi2qr_melt_tend, qccol, qr2qi_immers_freeze_tend, ni2nr_melt_tend, &
+   real(rtype), intent(inout) :: qc2qr_accret_tend, qr2qv_evap_tend, qc2qr_autoconv_tend, nc_accret_tend, &
+        nc_selfcollect_tend, nc2nr_autoconv_tend, nr_selfcollect_tend, nr_evap_tend, ncautr
+   real(rtype), intent(inout) :: qi2qv_sublim_tend, nr_ice_shed_tend, qc2qi_hetero_freeze_tend, qrcol, qc2qr_ice_shed_tend, &
+        qi2qr_melt_tend, qccol, qr2qi_immers_freeze_tend, ni2nr_melt_tend, &
         nc_collect_tend, ncshdc, nc2ni_immers_freeze_tend, nr_collect_tend, ni_selfcollect_tend, qidep
    real(rtype), intent(inout) :: nr2ni_immers_freeze_tend, ni_sublim_tend, qinuc, ni_nucleat_tend, qiberg
 
@@ -2993,7 +3003,8 @@ subroutine cloud_water_conservation(qc,dt,    &
    implicit none
 
    real(rtype), intent(in) :: qc, dt
-   real(rtype), intent(inout) :: qc2qr_autoconv_tend, qc2qr_accret_tend, qccol, qc2qi_hetero_freeze_tend, qc2qr_ice_shed_tend, qiberg, qi2qv_sublim_tend, qidep
+   real(rtype), intent(inout) :: qc2qr_autoconv_tend, qc2qr_accret_tend, qccol, qc2qi_hetero_freeze_tend, qc2qr_ice_shed_tend, &
+   qiberg, qi2qv_sublim_tend, qidep
    real(rtype) :: sinks, ratio
 
    sinks   = (qc2qr_autoconv_tend+qc2qr_accret_tend+qccol+qc2qi_hetero_freeze_tend+qc2qr_ice_shed_tend+qiberg)*dt
@@ -3143,7 +3154,8 @@ subroutine update_prognostic_ice(qc2qi_hetero_freeze_tend,qccol,qc2qr_ice_shed_t
    bm = bm + (qrcol*inv_rho_rimeMax+qccol/rho_qm_cloud+(qr2qi_immers_freeze_tend+ &
         qc2qi_hetero_freeze_tend)*inv_rho_rimeMax)*dt
 
-   ni = ni + (ni_nucleat_tend-ni2nr_melt_tend-ni_sublim_tend-ni_selfcollect_tend+nr2ni_immers_freeze_tend+nc2ni_immers_freeze_tend)*dt
+   ni = ni + (ni_nucleat_tend-ni2nr_melt_tend-ni_sublim_tend-ni_selfcollect_tend &
+        +nr2ni_immers_freeze_tend+nc2ni_immers_freeze_tend)*dt
 
    !PMC nCat deleted interactions_loop
 
@@ -3173,8 +3185,8 @@ subroutine update_prognostic_ice(qc2qi_hetero_freeze_tend,qccol,qc2qr_ice_shed_t
        qc2qi_hetero_freeze_tend+qr2qi_immers_freeze_tend-qi2qr_melt_tend+qiberg)* xlf*inv_cp)*dt
 end subroutine update_prognostic_ice
 
-subroutine update_prognostic_liquid(qc2qr_accret_tend,nc_accret_tend,qc2qr_autoconv_tend,nc2nr_autoconv_tend,ncautr,nc_selfcollect_tend,    &
-    qr2qv_evap_tend,nr_evap_tend,nr_selfcollect_tend,                                                        &
+subroutine update_prognostic_liquid(qc2qr_accret_tend,nc_accret_tend,qc2qr_autoconv_tend,nc2nr_autoconv_tend, &
+     ncautr,nc_selfcollect_tend, qr2qv_evap_tend,nr_evap_tend,nr_selfcollect_tend,         &
     do_predict_nc,inv_rho,exner,latent_heat_vapor,dt,                                      &
     th,qv,qc,nc,qr,nr)
 
@@ -3341,7 +3353,8 @@ dt,qr2qv_evap_tend,nr_evap_tend)
       inv_xx = 1.0_rtype/xx
 
       qrcon = 0.0  !condensation rate, so rain evaporation will be < 0
-      if (qr_incld > qsmall) qrcon = (aaa*epsr*inv_xx + (ssat_r*SPF-aaa*inv_xx)*inv_dt*epsr*inv_xx*(1.0_rtype-dexp(-dble(xx*dt))))/ab
+      if (qr_incld > qsmall) qrcon = (aaa*epsr*inv_xx + (ssat_r*SPF-aaa*inv_xx)*inv_dt*epsr*inv_xx &
+           *(1.0_rtype-dexp(-dble(xx*dt))))/ab
 
       if (sup_r < -0.001_rtype .and. qr_incld < 1.e-12_rtype)  qrcon = -qr_incld*inv_dt
 
