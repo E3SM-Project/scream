@@ -425,8 +425,8 @@ void calc_shoc_vertflux_f(Int shcol, Int nlev, Int nlevi, Real *tkh_zi,
   static constexpr Int num_arrays = 4;
 
   Kokkos::Array<view_2d, num_arrays> temp_d;
-  Kokkos::Array<size_t, num_arrays> dim1_sizes     = {shcol,  shcol, shcol, shcol};
-  Kokkos::Array<size_t, num_arrays> dim2_sizes     = {nlevi,  nlevi, nlev,  nlevi};
+  Kokkos::Array<size_t, num_arrays> dim1_sizes     = {(size_t)shcol,  (size_t)shcol, (size_t)shcol, (size_t)shcol};
+  Kokkos::Array<size_t, num_arrays> dim2_sizes     = {(size_t)nlevi,  (size_t)nlevi, (size_t)nlev,  (size_t)nlevi};
   Kokkos::Array<const Real*, num_arrays> ptr_array = {tkh_zi, dz_zi, invar, vertflux};
 
   // Sync to device
@@ -453,7 +453,7 @@ void calc_shoc_vertflux_f(Int shcol, Int nlev, Int nlevi, Real *tkh_zi,
 
   // Sync back to host
   Kokkos::Array<view_2d, 1> inout_views = {vertflux_d};
-  ekat::pack::device_to_host({vertflux}, {shcol}, {nlevi}, inout_views, true);
+  ekat::pack::device_to_host({vertflux}, {(size_t)shcol}, {(size_t)nlevi}, inout_views, true);
 }
 
 void shoc_diag_second_moments_srf_f(Int shcol, Real* wthl, Real* uw, Real* vw, Real* ustar2, Real* wstar)
