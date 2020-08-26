@@ -3272,83 +3272,83 @@ qidep,qi2qv_sublim_tend,ni_sublim_tend,qiberg)
 end subroutine ice_deposition_sublimation
 
 !---Terai/Schpund version below!!!
-!!$subroutine evaporate_precip(qr_incld,qc_incld,nr_incld,qi_incld, &
-!!$cld_frac_l,cld_frac_r,qv,qv_old,qv_sat_l,qv_sat_i, &
-!!$ab,abi,epsr,epsi_tot,t,t_old,latent_heat_sublim,dqsdt,inv_dt, &
-!!$dt,qr2qv_evap_tend,nr_evap_tend)
-!!$
-!!$   implicit none
-!!$
-!!$   real(rtype), intent(in)  :: qr_incld
-!!$   real(rtype), intent(in)  :: qc_incld
-!!$   real(rtype), intent(in)  :: nr_incld
-!!$   real(rtype), intent(in)  :: qi_incld
-!!$   real(rtype), intent(in)  :: cld_frac_l
-!!$   real(rtype), intent(in)  :: cld_frac_r
-!!$   real(rtype), intent(in)  :: qv_sat_l,qv_sat_i
-!!$   real(rtype), intent(in)  :: ab,abi
-!!$   real(rtype), intent(in)  :: epsr,epsi_tot
-!!$   real(rtype), intent(in)  :: qv,qv_old
-!!$   real(rtype), intent(in)  :: t,t_old,latent_heat_sublim,dqsdt,inv_dt,dt
-!!$   real(rtype), intent(inout) :: qr2qv_evap_tend
-!!$   real(rtype), intent(inout) :: nr_evap_tend
-!!$   real(rtype) :: cld, xx, ssat_r, SPF, hlp_w, inv_xx, qrcon, inv_abi, aaa, sup_r 
-!!$
-!!$   ! +++++++++++++++++++++++++++++++++++++++++++++++ JS:
-!!$   ! Local stuff (generalize when done):
-!!$
-!!$   if (qc_incld + qi_incld < 1.e-6_rtype) then
-!!$         cld = 0._rtype
-!!$   else
-!!$         cld = cld_frac_l
-!!$   end if
-!!$
-!!$   ! Only calculate if there is some rain fraction > cloud fraction
-!!$   qr2qv_evap_tend = 0.0_rtype
-!!$   nr_evap_tend = 0.0_rtype
-!!$   if (cld_frac_r > cld) then
-!!$
-!!$      ssat_r = qv - qv_sat_l
-!!$      sup_r = qv / qv_sat_l - 1.0_rtype
-!!$      SPF = 1.0_rtype   
-!!$
-!!$      if (t < 273.15_rtype) then
-!!$         inv_abi = 1.0_rtype/abi
-!!$         xx   = epsr + epsi_tot*(1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi
-!!$      else
-!!$         xx   = epsr
-!!$      endif
-!!$
-!!$      ! hlp_qv_sat_i = qv_sat_i   !no modification due to latent heating
-!!$      hlp_w = -cp/g*(t - t_old)*inv_dt
-!!$
-!!$      if (t < 273.15_rtype) then
-!!$         aaa = (qv - qv_old)*inv_dt - dqsdt*(-hlp_w*g*inv_cp)-(qv_sat_l - qv_sat_i)*     &
-!!$               (1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi*epsi_tot
-!!$      else
-!!$         aaa = (qv - qv_old)*inv_dt - dqsdt*(-hlp_w*g*inv_cp)
-!!$      endif
-!!$
-!!$      xx  = max(1.e-20_rtype,xx)   ! set lower bound on xx to prevent division by zero
-!!$      inv_xx = 1.0_rtype/xx
-!!$
-!!$      qrcon = 0.0  !condensation rate, so rain evaporation will be < 0
-!!$      if (qr_incld > qsmall) qrcon = (aaa*epsr*inv_xx + (ssat_r*SPF-aaa*inv_xx)*inv_dt*epsr*inv_xx*(1.0_rtype-dexp(-dble(xx*dt))))/ab
-!!$
-!!$      if (sup_r < -0.001_rtype .and. qr_incld < 1.e-12_rtype)  qrcon = -qr_incld*inv_dt
-!!$
-!!$      if (qrcon < 0.0_rtype) then
-!!$         qrcon = max(qrcon,(qv-qv_sat_l)*inv_dt/ab) ! Do not allow qrcon*dt from exceeding saturation deficit
-!!$         qr2qv_evap_tend = -qrcon*(cld_frac_r-cld)/cld_frac_r !qr2qv_evap_tend occurs where there's rain but no cloud and scale by rain fraction
-!!$         nr_evap_tend = qr2qv_evap_tend*(nr_incld/qr_incld)
-!!$         qrcon = 0.0_rtype
-!!$      endif
-!!$
-!!$   endif
-!!$
-!!$   return
-!!$
-!!$end subroutine evaporate_precip
+subroutine evaporate_precip_old(qr_incld,qc_incld,nr_incld,qi_incld, &
+cld_frac_l,cld_frac_r,qv,qv_old,qv_sat_l,qv_sat_i, &
+ab,abi,epsr,epsi_tot,t,t_old,latent_heat_sublim,dqsdt,inv_dt, &
+dt,qr2qv_evap_tend,nr_evap_tend)
+
+   implicit none
+
+   real(rtype), intent(in)  :: qr_incld
+   real(rtype), intent(in)  :: qc_incld
+   real(rtype), intent(in)  :: nr_incld
+   real(rtype), intent(in)  :: qi_incld
+   real(rtype), intent(in)  :: cld_frac_l
+   real(rtype), intent(in)  :: cld_frac_r
+   real(rtype), intent(in)  :: qv_sat_l,qv_sat_i
+   real(rtype), intent(in)  :: ab,abi
+   real(rtype), intent(in)  :: epsr,epsi_tot
+   real(rtype), intent(in)  :: qv,qv_old
+   real(rtype), intent(in)  :: t,t_old,latent_heat_sublim,dqsdt,inv_dt,dt
+   real(rtype), intent(inout) :: qr2qv_evap_tend
+   real(rtype), intent(inout) :: nr_evap_tend
+   real(rtype) :: cld, xx, ssat_r, SPF, hlp_w, inv_xx, qrcon, inv_abi, aaa, sup_r 
+
+   ! +++++++++++++++++++++++++++++++++++++++++++++++ JS:
+   ! Local stuff (generalize when done):
+
+   if (qc_incld + qi_incld < 1.e-6_rtype) then
+         cld = 0._rtype
+   else
+         cld = cld_frac_l
+   end if
+
+   ! Only calculate if there is some rain fraction > cloud fraction
+   qr2qv_evap_tend = 0.0_rtype
+   nr_evap_tend = 0.0_rtype
+   if (cld_frac_r > cld) then
+
+      ssat_r = qv - qv_sat_l
+      sup_r = qv / qv_sat_l - 1.0_rtype
+      SPF = 1.0_rtype   
+
+      if (t < 273.15_rtype) then
+         inv_abi = 1.0_rtype/abi
+         xx   = epsr + epsi_tot*(1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi
+      else
+         xx   = epsr
+      endif
+
+      ! hlp_qv_sat_i = qv_sat_i   !no modification due to latent heating
+      hlp_w = -cp/g*(t - t_old)*inv_dt
+
+      if (t < 273.15_rtype) then
+         aaa = (qv - qv_old)*inv_dt - dqsdt*(-hlp_w*g*inv_cp)-(qv_sat_l - qv_sat_i)*     &
+               (1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi*epsi_tot
+      else
+         aaa = (qv - qv_old)*inv_dt - dqsdt*(-hlp_w*g*inv_cp)
+      endif
+
+      xx  = max(1.e-20_rtype,xx)   ! set lower bound on xx to prevent division by zero
+      inv_xx = 1.0_rtype/xx
+
+      qrcon = 0.0  !condensation rate, so rain evaporation will be < 0
+      if (qr_incld > qsmall) qrcon = (aaa*epsr*inv_xx + (ssat_r*SPF-aaa*inv_xx)*inv_dt*epsr*inv_xx*(1.0_rtype-dexp(-dble(xx*dt))))/ab
+
+      if (sup_r < -0.001_rtype .and. qr_incld < 1.e-12_rtype)  qrcon = -qr_incld*inv_dt
+
+      if (qrcon < 0.0_rtype) then
+         qrcon = max(qrcon,(qv-qv_sat_l)*inv_dt/ab) ! Do not allow qrcon*dt from exceeding saturation deficit
+         qr2qv_evap_tend = -qrcon*(cld_frac_r-cld)/cld_frac_r !qr2qv_evap_tend occurs where there's rain but no cloud and scale by rain fraction
+         nr_evap_tend = qr2qv_evap_tend*(nr_incld/qr_incld)
+         qrcon = 0.0_rtype
+      endif
+
+   endif
+
+   return
+
+end subroutine evaporate_precip_old
 
 !+++PMC Ver below!!!
 
