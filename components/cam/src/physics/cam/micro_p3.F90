@@ -341,8 +341,10 @@ contains
   !==========================================================================================!
 
   SUBROUTINE p3_main_part1(kts, kte, kbot, ktop, kdir, do_predict_nc, dt, &
-       pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, inv_cld_frac_l, inv_cld_frac_i, inv_cld_frac_r, latent_heat_vapor, latent_heat_sublim, xlf, &
-       t, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, &
+       pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, inv_cld_frac_l, inv_cld_frac_i, &
+       inv_cld_frac_r, latent_heat_vapor, latent_heat_sublim, xlf, &
+       t, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn, qv, th, &
+       qc, nc, qr, nr, &
        qi, ni, qm, bm, qc_incld, qr_incld, qi_incld, qm_incld, &
        nc_incld, nr_incld, ni_incld, bm_incld, is_nucleat_possible, is_hydromet_present)
 
@@ -468,13 +470,13 @@ contains
     logical(btype), intent(in) :: do_predict_nc
     real(rtype), intent(in) :: dt, inv_dt
 
-    real(rtype), intent(in), dimension(kts:kte) :: pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, inv_cld_frac_l, inv_cld_frac_i,   &
-         inv_cld_frac_r, ni_activated, inv_qc_relvar, cld_frac_i, cld_frac_l, cld_frac_r, qv_prev, t_prev
+    real(rtype), intent(in), dimension(kts:kte) :: pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, inv_cld_frac_l,  &
+         inv_cld_frac_i, inv_cld_frac_r, ni_activated, inv_qc_relvar, cld_frac_i, cld_frac_l, cld_frac_r, qv_prev, t_prev
 
-    real(rtype), intent(inout), dimension(kts:kte) :: t, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn,        &
-         qv, th, qc, nc, qr, nr, qi, ni, qm, bm, latent_heat_vapor, latent_heat_sublim, xlf, qc_incld, qr_incld,                    &
+    real(rtype), intent(inout), dimension(kts:kte) :: t, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn, &
+         qv, th, qc, nc, qr, nr, qi, ni, qm, bm, latent_heat_vapor, latent_heat_sublim, xlf, qc_incld, qr_incld,                 &
          qi_incld, qm_incld, nc_incld, nr_incld, ni_incld, bm_incld, mu_c, nu, lamc, cdist, cdist1,      &
-         cdistr, mu_r, lamr, logn0r, cmeiout, precip_total_tend, nevapr, qr_evap_tend, vap_liq_exchange,                            &
+         cdistr, mu_r, lamr, logn0r, cmeiout, precip_total_tend, nevapr, qr_evap_tend, vap_liq_exchange,                         &
          vap_ice_exchange, liq_ice_exchange, pratot, prctot
 
     real(rtype), intent(inout), dimension(kts:kte,49) :: p3_tend_out ! micro physics tendencies
@@ -773,9 +775,11 @@ contains
 
       ! Here we map the microphysics tendency rates back to CELL-AVERAGE quantities for updating
       ! cell-average quantities.
-      call back_to_cell_average(cld_frac_l(k), cld_frac_r(k), cld_frac_i(k), qc2qr_accret_tend, qr2qv_evap_tend, qc2qr_autoconv_tend,&
-           nc_accret_tend, nc_selfcollect_tend, nc2nr_autoconv_tend, nr_selfcollect_tend, nr_evap_tend, ncautr, qi2qv_sublim_tend, nr_ice_shed_tend, qc2qi_hetero_freeze_tend,&
-           qrcol, qc2qr_ice_shed_tend, qi2qr_melt_tend, qccol, qr2qi_immers_freeze_tend, ni2nr_melt_tend, nc_collect_tend, ncshdc, nc2ni_immers_freeze_tend, nr_collect_tend, ni_selfcollect_tend,&
+      call back_to_cell_average(cld_frac_l(k),cld_frac_r(k),cld_frac_i(k), qc2qr_accret_tend, qr2qv_evap_tend, qc2qr_autoconv_tend,&
+           nc_accret_tend, nc_selfcollect_tend, nc2nr_autoconv_tend, nr_selfcollect_tend, nr_evap_tend, ncautr, &
+           qi2qv_sublim_tend, nr_ice_shed_tend, qc2qi_hetero_freeze_tend,&
+           qrcol, qc2qr_ice_shed_tend, qi2qr_melt_tend, qccol, qr2qi_immers_freeze_tend, ni2nr_melt_tend, nc_collect_tend, &
+      ncshdc, nc2ni_immers_freeze_tend, nr_collect_tend, ni_selfcollect_tend,&
            qidep, nr2ni_immers_freeze_tend, ni_sublim_tend, qinuc, ni_nucleat_tend, qiberg)
 
       !.................................................................
@@ -807,13 +811,16 @@ contains
       !          cannot possibly overdeplete qv
 
       ! cloud
-      call cloud_water_conservation(qc(k), dt, qc2qr_autoconv_tend, qc2qr_accret_tend, qccol, qc2qi_hetero_freeze_tend, qc2qr_ice_shed_tend, qiberg, qi2qv_sublim_tend, qidep)
+      call cloud_water_conservation(qc(k), dt, qc2qr_autoconv_tend, qc2qr_accret_tend, qccol, qc2qi_hetero_freeze_tend, &
+           qc2qr_ice_shed_tend, qiberg, qi2qv_sublim_tend, qidep)
 
       ! rain
-      call rain_water_conservation(qr(k), qc2qr_autoconv_tend, qc2qr_accret_tend, qi2qr_melt_tend, qc2qr_ice_shed_tend, dt, qr2qv_evap_tend, qrcol, qr2qi_immers_freeze_tend)
+      call rain_water_conservation(qr(k), qc2qr_autoconv_tend, qc2qr_accret_tend, qi2qr_melt_tend, qc2qr_ice_shed_tend, dt, &
+           qr2qv_evap_tend, qrcol, qr2qi_immers_freeze_tend)
 
       ! ice
-      call ice_water_conservation(qi(k), qidep, qinuc, qiberg, qrcol, qccol, qr2qi_immers_freeze_tend, qc2qi_hetero_freeze_tend, dt, qi2qv_sublim_tend, qi2qr_melt_tend)
+      call ice_water_conservation(qi(k), qidep, qinuc, qiberg, qrcol, qccol, qr2qi_immers_freeze_tend, qc2qi_hetero_freeze_tend, &
+           dt, qi2qv_sublim_tend, qi2qr_melt_tend)
 
       !---------------------------------------------------------------------------------
       ! update prognostic microphysics and thermodynamics variables
@@ -823,14 +830,14 @@ contains
       call update_prognostic_ice(qc2qi_hetero_freeze_tend, qccol, qc2qr_ice_shed_tend, &
            nc_collect_tend, nc2ni_immers_freeze_tend, ncshdc, &
            qrcol, nr_collect_tend,  qr2qi_immers_freeze_tend, nr2ni_immers_freeze_tend, nr_ice_shed_tend, &
-           qi2qr_melt_tend, ni2nr_melt_tend, qi2qv_sublim_tend, qidep, qinuc, ni_nucleat_tend, ni_selfcollect_tend, ni_sublim_tend, qiberg, &
-           exner(k), latent_heat_sublim(k), xlf(k), &
+           qi2qr_melt_tend, ni2nr_melt_tend, qi2qv_sublim_tend, qidep, qinuc, ni_nucleat_tend, ni_selfcollect_tend, &
+           ni_sublim_tend, qiberg, exner(k), latent_heat_sublim(k), xlf(k), &
            do_predict_nc, log_wetgrowth, dt, nmltratio, rho_qm_cloud, &
            th(k), qv(k), qi(k), ni(k), qm(k), bm(k), qc(k), nc(k), qr(k), nr(k) )
 
       !-- warm-phase only processes:
-      call update_prognostic_liquid(qc2qr_accret_tend, nc_accret_tend, qc2qr_autoconv_tend, nc2nr_autoconv_tend, ncautr, nc_selfcollect_tend,  &
-           qr2qv_evap_tend, nr_evap_tend, nr_selfcollect_tend,                                                  &
+      call update_prognostic_liquid(qc2qr_accret_tend, nc_accret_tend, qc2qr_autoconv_tend, nc2nr_autoconv_tend, ncautr, &
+           nc_selfcollect_tend, qr2qv_evap_tend, nr_evap_tend, nr_selfcollect_tend,           &
            do_predict_nc, inv_rho(k), exner(k), latent_heat_vapor(k), dt,                     &
            th(k), qv(k), qc(k), nc(k), qr(k), nr(k))
 
@@ -1065,8 +1072,8 @@ contains
   SUBROUTINE p3_main(qc,nc,qr,nr,th,qv,dt,qi,qm,ni,bm,   &
        pres,dz,nc_nuceat_tend,ni_activated,inv_qc_relvar,it,precip_liq_surf,precip_ice_surf,its,ite,kts,kte,diag_effc,     &
        diag_effi,rho_qi,do_predict_nc, &
-       dpres,exner,cmeiout,precip_total_tend,nevapr,qr_evap_tend,precip_liq_flux,precip_ice_flux,cld_frac_r,cld_frac_l,cld_frac_i,  &
-       p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
+       dpres,exner,cmeiout,precip_total_tend,nevapr,qr_evap_tend,precip_liq_flux,precip_ice_flux,cld_frac_r, &
+       cld_frac_l,cld_frac_i, p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
        vap_ice_exchange,qv_prev,t_prev,col_location)
 
     !----------------------------------------------------------------------------------------!
@@ -1273,8 +1280,8 @@ contains
 
        call p3_main_part1(kts, kte, kbot, ktop, kdir, do_predict_nc, dt, &
             pres(i,:), dpres(i,:), dz(i,:), nc_nuceat_tend(i,:), exner(i,:), inv_exner(i,:), &
-            inv_cld_frac_l(i,:), inv_cld_frac_i(i,:), inv_cld_frac_r(i,:), latent_heat_vapor(i,:), latent_heat_sublim(i,:), xlf(i,:), &
-            t(i,:), rho(i,:), inv_rho(i,:), qv_sat_l(i,:), qv_sat_i(i,:), qv_supersat_i(i,:), rhofacr(i,:), &
+            inv_cld_frac_l(i,:), inv_cld_frac_i(i,:), inv_cld_frac_r(i,:), latent_heat_vapor(i,:), latent_heat_sublim(i,:), &
+            xlf(i,:), t(i,:), rho(i,:), inv_rho(i,:), qv_sat_l(i,:), qv_sat_i(i,:), qv_supersat_i(i,:), rhofacr(i,:), &
             rhofaci(i,:), acn(i,:), qv(i,:), th(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), &
             qi(i,:), ni(i,:), qm(i,:), bm(i,:), qc_incld(i,:), qr_incld(i,:), &
             qi_incld(i,:), qm_incld(i,:), nc_incld(i,:), nr_incld(i,:), &
@@ -1346,7 +1353,8 @@ contains
 
        call rain_sedimentation(kts,kte,ktop,kbot,kdir, &
          qr_incld(i,:),rho(i,:),inv_rho(i,:),rhofacr(i,:),cld_frac_r(i,:),inv_dz(i,:),dt,inv_dt, &
-         qr(i,:),nr(i,:),nr_incld(i,:),mu_r(i,:),lamr(i,:),precip_liq_surf(i),precip_liq_flux(i,:),p3_tend_out(i,:,38),p3_tend_out(i,:,39))
+         qr(i,:),nr(i,:),nr_incld(i,:),mu_r(i,:),lamr(i,:),precip_liq_surf(i),precip_liq_flux(i,:),p3_tend_out(i,:,38), &
+         p3_tend_out(i,:,39))
 
        !------------------------------------------------------------------------------------------!
        ! Ice sedimentation:  (adaptive substepping)
