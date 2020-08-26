@@ -1,5 +1,5 @@
 #include "shoc_functions_f90.hpp"
-
+#include <iostream>
 #include "ekat/scream_assert.hpp"
 #include "ekat/util/scream_utils.hpp"
 #include "ekat/util/scream_kokkos_utils.hpp"
@@ -428,16 +428,12 @@ void integ_column_stability_f(Int nlev, Int shcol, Real *dz_zt,
 
     SHF::integ_column_stability(team, nlev, odz_zt_d, opres_d, obrunt_d, brunt_int_s);
 
-    //brunt_int_d(i)[0] = brunt_int_s;
-
-      //calc_shoc_vertflux(team, nlev, otkh_zi_d, odz_zi_d, oinvar_d, overtflux_d);
+    brunt_int_d(i)[0] = brunt_int_s;
   });
-  /*
-  // Sync back to host
-  Kokkos::Array<view_2d, 1> inout_views = {vertflux_d};
-  pack::device_to_host({vertflux}, {shcol}, {nlevi}, inout_views, true);
-  */
 
+  // Sync back to host
+  Kokkos::Array<view_1d, 1> inout_views = {brunt_int_d};
+  pack::device_to_host({brunt_int}, {shcol}, inout_views);
 }
 
 } // namespace shoc

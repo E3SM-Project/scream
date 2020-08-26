@@ -21,15 +21,18 @@ void Functions<S,D>
   brunt_int = 0;
   static constexpr auto troppres = 80000;
 
-  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev_pack), [&] (const Int& k) {
-      //auto range_pack1 = scream::pack::range<IntSmallPack>(k*Spack::n);
+  Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, nlev_pack), [&] (const Int& k, Scalar& val) {
+      Spack my_result(0);
 
-      //Find if pressure if greater that troposheric pressure
+      //Find if pressure is greater than tropospheric pressure
       auto press_gt_troppress = (pres(k) > troppres);
-      if(press_gt_troppress.any()){
-	//brunt_int = brunt_int + dz_zt(k) * brunt(k);
+
+      my_result.set(press_gt_troppress, dz_zt(k) * brunt(k));
+      for (int s = 0; s < Spack::n; ++s) {
+	val += my_result[s];
       }
-    });
+      //    }, Kokkos::Sum<brunt_int>);
+    }, brunt_int);
 
 
   /* brunt_int(1:shcol) = 0._rtype
