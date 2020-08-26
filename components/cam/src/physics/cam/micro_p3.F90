@@ -3351,6 +3351,45 @@ end subroutine ice_deposition_sublimation
 !!$end subroutine evaporate_precip
 
 !+++PMC Ver below!!!
+
+real(rtype) function rain_evap_tscale_weight(dt_over_tau)
+  !Returns weighting between 0 and 1 for how much of the instantaneous
+  !evaporation rate and how much of the equilibrium evaporation rate to
+  !blend to get the timestep-average rain evaporation rate
+
+  real(rtype), intent(in) :: dt_over_tau  !microphysics timestep divided by effective evap timescale
+  
+  rain_evap_tscale_weight=(1._rtype - exp(-dt_over_tau) )/dt_over_tau
+
+  return
+end function rain_evap_tscale_weight
+
+real(rtype) function rain_evap_equilib_tend(A_c,ab,tau_eff,tau_r)
+  !In equilibrium, the total evaporation must balance the tendency A_c from
+  !all other processes. The rain evaporation is the fraction (1/tau_r)/(1/tau_eff)
+  !of the total tendency and ab corrects for saturation changes due to evaporative
+  !cooling.
+
+  real(rtype), intent(in) :: A_c, ab, tau_eff, tau_r
+
+  rain_evap_equilib_tend = A_c/ab*tau_eff/tau_r
+
+  return
+end function rain_evap_equilib_tend
+
+real(rtype) function rain_evap_instant_tend(ssat_r, ab, tau_r)
+  !The instantaneous rain evap tendency is just the absolute supersaturation
+  !ssat_r divided by the supersaturation removal timescale for rain tau_r
+  !corrected for the effect of evaporative cooling on saturation ab.
+
+  real(rtype), intent(in) :: ssat_r, ab, tau_r
+
+  rain_evap_instant_tend = -ssat_r/(ab*tau_r)
+
+  return
+end function rain_evap_instant_tend
+
+
 subroutine evaporate_precip(qr_incld,qc_incld,nr_incld,qi_incld, &
 cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i, &
 ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,inv_dt, &
@@ -3455,19 +3494,19 @@ dt,qr2qv_evap_tend,nr_evap_tend)
          !and equilibrium evap rates with weighting tscale_weight. L'Hospital's rule 
          !shows tscale_weight is 1 in the limit of small dt. It approaches 0 as dt
          !gets big.
-         tscale_weight = tau_eff*inv_dt*(1._rtype - exp(-dt*eps_eff) )
+         tscale_weight = rain_evap_tscale_weight(dt/tau_eff)
 
          !in limit of very long timescales, evap must balance A_c.
          !(1/tau_r)/(1/tau_eff) is the fraction of this total tendency assigned to rain
          !Will be >0 if A_c>0: increased supersat from other procs must be balanced by
          !evaporation to stay in equilibrium.
-         equilib_evap_tend = A_c/ab*tau_eff/tau_r
+         equilib_evap_tend = rain_evap_equilib_tend(A_c,ab,tau_eff,tau_r)
 
          !in limit of short timesteps, evap can be calculated from ssat_r at the
          !beginning of the timestep
          !ssat_r<0 when evap occurs and evap_tend is positive when evaporating, so added
          !neg in front
-         instant_evap_tend = -ssat_r/(ab*tau_r)
+         instant_evap_tend = rain_evap_instant_tend(ssat_r, ab, tau_r)
          
          qr2qv_evap_tend = instant_evap_tend*tscale_weight &
               + equilib_evap_tend*(1-tscale_weight)
