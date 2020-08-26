@@ -816,7 +816,9 @@ void evaporate_precip(EvapPrecipData& d);
 extern "C"{
 
 void evaporate_precip_f( Real qr_incld, Real qc_incld, Real nr_incld, Real qi_incld,
-Real cld_frac_l, Real cld_frac_r, Real qv_sat_l, Real ab, Real epsr, Real qv, Real* qr2qv_evap_tend, Real* nr_evap_tend);
+Real cld_frac_l, Real cld_frac_r, Real qv, Real qv_prev, Real qv_sat_l, Real qv_sat_i,
+Real ab, Real abi, Real epsr, Real epsi_tot, Real t, Real t_prev, Real latent_heat_sublim,
+Real dqsdt, Real inv_dt, Real dt, Real* qr2qv_evap_tend, Real* nr_evap_tend);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1127,7 +1129,7 @@ void p3_main_part1_f(
 
 struct P3MainPart2Data
 {
-  static constexpr size_t NUM_ARRAYS = 62;
+  static constexpr size_t NUM_ARRAYS = 64;
 
   // Inputs
   Int kts, kte, kbot, ktop, kdir;
@@ -1140,7 +1142,7 @@ struct P3MainPart2Data
     *qv, *th, *qc, *nc, *qr, *nr, *qi, *ni, *qm, *bm, *latent_heat_vapor, *latent_heat_sublim, *latent_heat_fusion, *qc_incld, *qr_incld,
     *qi_incld, *qm_incld, *nc_incld, *nr_incld, *ni_incld, *bm_incld, *mu_c, *nu, *lamc, *cdist, *cdist1,
     *cdistr, *mu_r, *lamr, *logn0r, *cmeiout, *precip_total_tend, *nevapr, *qr_evap_tend, *vap_liq_exchange,
-    *vap_ice_exchange, *liq_ice_exchange, *pratot, *prctot;
+    *vap_ice_exchange, *liq_ice_exchange, *pratot, *prctot, *qv_prev, *t_prev;  //AaronDonahue - Should qv/t _prev be in/out or just in?
 
   bool is_hydromet_present;
 
@@ -1166,7 +1168,7 @@ extern "C" {
 void p3_main_part2_f(
   Int kts, Int kte, Int kbot, Int ktop, Int kdir, bool do_predict_nc, Real dt, Real inv_dt,
   Real* pres, Real* dpres, Real* dz, Real* nc_nuceat_tend, Real* exner, Real* inv_exner, Real* inv_cld_frac_l, Real* inv_cld_frac_i, Real* inv_cld_frac_r, Real* ni_activated, Real* inv_qc_relvar, Real* cld_frac_i, Real* cld_frac_l, Real* cld_frac_r,
-  Real* t, Real* rho, Real* inv_rho, Real* qv_sat_l, Real* qv_sat_i, Real* qv_supersat_i, Real* rhofacr, Real* rhofaci, Real* acn, Real* qv, Real* th, Real* qc, Real* nc, Real* qr, Real* nr, Real* qi, Real* ni,
+  Real* qv_prev, Real* t_prev, Real* t, Real* rho, Real* inv_rho, Real* qv_sat_l, Real* qv_sat_i, Real* qv_supersat_i, Real* rhofacr, Real* rhofaci, Real* acn, Real* qv, Real* th, Real* qc, Real* nc, Real* qr, Real* nr, Real* qi, Real* ni,
   Real* qm, Real* bm, Real* latent_heat_vapor, Real* latent_heat_sublim, Real* latent_heat_fusion, Real* qc_incld, Real* qr_incld, Real* qi_incld, Real* qm_incld, Real* nc_incld, Real* nr_incld,
   Real* ni_incld, Real* bm_incld, Real* mu_c, Real* nu, Real* lamc, Real* cdist, Real* cdist1, Real* cdistr, Real* mu_r, Real* lamr, Real* logn0r, Real* cmeiout, Real* precip_total_tend,
   Real* nevapr, Real* qr_evap_tend, Real* vap_liq_exchange, Real* vap_ice_exchange, Real* liq_ice_exchange, Real* pratot,
@@ -1221,8 +1223,8 @@ void p3_main_part3_f(
 
 struct P3MainData
 {
-  static constexpr size_t NUM_ARRAYS = 36;
-  static constexpr size_t NUM_INPUT_ARRAYS = 20;
+  static constexpr size_t NUM_ARRAYS = 38;
+  static constexpr size_t NUM_INPUT_ARRAYS = 24;
 
   // Inputs
   Int its, ite, kts, kte, it;
@@ -1231,7 +1233,7 @@ struct P3MainData
   bool do_predict_nc;
 
   // In/out
-  Real* qc, *nc, *qr, *nr, *qi, *qm, *ni, *bm, *qv, *th;
+  Real* qc, *nc, *qr, *nr, *qi, *qm, *ni, *bm, *qv, *th, *qv_prev, *t_prev;
 
   // Out
   Real *diag_effc, *diag_effi, *rho_qi, *mu_c, *lamc, *cmeiout, *precip_total_tend, *nevapr,
@@ -1266,6 +1268,8 @@ struct P3MainData
     util::transpose<D>(bm, d_trans.bm, m_ni, m_nk);
     util::transpose<D>(qv, d_trans.qv, m_ni, m_nk);
     util::transpose<D>(th, d_trans.th, m_ni, m_nk);
+    util::transpose<D>(qv_prev, d_trans.qv_prev, m_ni, m_nk);
+    util::transpose<D>(t_prev, d_trans.t_prev, m_ni, m_nk);
     util::transpose<D>(diag_effc, d_trans.diag_effc, m_ni, m_nk);
     util::transpose<D>(diag_effi, d_trans.diag_effi, m_ni, m_nk);
     util::transpose<D>(rho_qi, d_trans.rho_qi, m_ni, m_nk);
@@ -1309,7 +1313,7 @@ void p3_main_f(
   Real* diag_effi, Real* rho_qi, bool do_predict_nc, Real* dpres, Real* exner,
   Real* cmeiout, Real* precip_total_tend, Real* nevapr, Real* qr_evap_tend, Real* precip_liq_flux,
   Real* precip_ice_flux, Real* cld_frac_r, Real* cld_frac_l, Real* cld_frac_i, Real* mu_c, Real* lamc,
-  Real* liq_ice_exchange, Real* vap_liq_exchange, Real* vap_ice_exchange);
+  Real* liq_ice_exchange, Real* vap_liq_exchange, Real* vap_ice_exchange, Real* qv_prev, Real* t_prev);
 }
 
 }  // namespace p3

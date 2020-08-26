@@ -47,6 +47,7 @@ FortranData::Ptr make_mixed (const Int ncol) {
     }
     // make layer with qc saturated.
     for (k = 0; k < 15; ++k) d.qv(i,nk-20+k) = 5e-3;
+    for (k = 0; k < 15; ++k) d.qv_prev(i,nk-20+k) = 4.9e-3;
 
     // pres is actually an input variable, but needed here to compute theta.
     for (k = 0; k < nk; ++k) d.pres(i,k) = 100 + 1e5/double(nk)*k;
@@ -70,8 +71,8 @@ FortranData::Ptr make_mixed (const Int ncol) {
     for (k = 0; k < nk; ++k) {
       T(k) = 150 + 150/double(nk)*k;
       if (i > 0) T(k) += ((i % 3) - 0.5)/double(nk)*k;
-      d.T_prev(i,k) = 145 + 150/double(nk)*k;
-      if (i > 0) d.T_prev(i,k) += ((i % 3) - 0.5)/double(nk)*k;
+      d.t_prev(i,k) = 145 + 150/double(nk)*k;
+      if (i > 0) d.t_prev(i,k) += ((i % 3) - 0.5)/double(nk)*k;
       d.th(i,k) = T(k)*std::pow(Real(consts::P0/d.pres(i,k)), Real(consts::RD/consts::CP));
     }
 
@@ -79,6 +80,7 @@ FortranData::Ptr make_mixed (const Int ncol) {
     // needed for code coverage.
     d.qi(i,nk-1) = 1e-9;
     d.qv(i,nk-1) = 5e-2; // also needs to be supersaturated to avoid getting set
+    d.qv_prev(i,nk-1) = 4.9e-2; // also needs to be supersaturated to avoid getting set
     // to 0 earlier.
 
     // make lowest-level qc and qr>0 to trigger surface rain and drizzle
@@ -92,9 +94,11 @@ FortranData::Ptr make_mixed (const Int ncol) {
     // make qc>0 and qr>0 where T<233.15 to test homogeneous freezing.
     d.qc(i,35) = 1e-7;
     d.qv(i,35) = 1e-6;
+    d.qv_prev(i,35) = 0.9e-6;
 
     // deposition/condensation-freezing needs t<258.15 and >5% supersat.
     d.qv(i,33) = 1e-4;
+    d.qv_prev(i,33) = 0.9e-4;
 
     // input variables.
     d.dt = 1800;

@@ -112,8 +112,10 @@ struct Functions
     view_2d<Spack> bm;
     // Water vapor mixing ratio [kg kg-1]
     view_2d<Spack> qv;
+    view_2d<Spack> qv_prev;
     // Potential temperature [K]
     view_2d<Spack> th;
+    view_2d<Spack> t_prev;
   };
 
   // This struct stores diagnostic variables used by P3.
@@ -644,9 +646,13 @@ struct Functions
   KOKKOS_FUNCTION
   static void evaporate_precip(const Spack& qr_incld, const Spack& qc_incld,
 					 const Spack& nr_incld, const Spack& qi_incld,
-					 const Spack& cld_frac_l, const Spack& cld_frac_r,
-					 const Spack& qv_sat_l, const Spack& ab, const Spack& epsr,
-					 const Spack& qv, Spack& qr2qv_evap_tend, Spack& nr_evap_tend,
+					 const Spack& cld_frac_l, const Spack& cld_frac_r, 
+					 const Spack& qv, const Spack& qv_prev,
+					 const Spack& qv_sat_l, const Spack& qv_sat_i, const Spack& ab, const Spack& abi,
+					 const Spack& epsr, const Spack& epsi_tot,
+					 const Spack& t, const Spack& t_prev,
+					 const Spack& latent_heat_sublim, const Spack& dqsdt, const Scalar& inv_dt, const Scalar& dt,
+					 Spack& qr2qv_evap_tend, Spack& nr_evap_tend,
                                          const Smask& context = Smask(true));
 
   //get number and mass tendencies due to melting ice
@@ -757,6 +763,8 @@ struct Functions
     const uview_1d<Spack>& t,
     const uview_1d<Spack>& qv,
     const uview_1d<Spack>& inv_dz,
+    const uview_1d<Spack>& t_prev,
+    const uview_1d<Spack>& qv_prev,
     Scalar& precip_liq_surf,
     Scalar& precip_ice_surf,
     view_1d_ptr_array<Spack, 36>& zero_init);
@@ -834,6 +842,8 @@ struct Functions
     const uview_1d<const Spack>& cld_frac_i,
     const uview_1d<const Spack>& cld_frac_l,
     const uview_1d<const Spack>& cld_frac_r,
+    const uview_1d<Spack>& q_prev,
+    const uview_1d<Spack>& t_prev,
     const uview_1d<Spack>& t,
     const uview_1d<Spack>& rho,
     const uview_1d<Spack>& inv_rho,

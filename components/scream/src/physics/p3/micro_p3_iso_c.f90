@@ -131,8 +131,8 @@ contains
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: liq_ice_exchange
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: vap_liq_exchange
     real(kind=c_real), intent(out),   dimension(its:ite,kts:kte)      :: vap_ice_exchange
-    real(kind=c_real), intent(in),   dimension(its:ite,kts:kte)      :: qv_prev
-    real(kind=c_real), intent(in),   dimension(its:ite,kts:kte)      :: t_prev
+    real(kind=c_real), intent(in),    dimension(its:ite,kts:kte)      :: qv_prev
+    real(kind=c_real), intent(in),    dimension(its:ite,kts:kte)      :: t_prev
 
     real(kind=c_real), dimension(its:ite,kts:kte,49)   :: p3_tend_out
     real(kind=c_real), dimension(its:ite,3) :: col_location
@@ -145,7 +145,7 @@ contains
          pres,dz,nc_nuceat_tend,ni_activated,inv_qc_relvar,it,precip_liq_surf,precip_ice_surf,its,ite,kts,kte,diag_effc, &
          diag_effi,rho_qi,do_predict_nc,dpres,exner,cmeiout,precip_total_tend,nevapr, &
          qr_evap_tend,precip_liq_flux,precip_ice_flux,cld_frac_r,cld_frac_l,cld_frac_i,p3_tend_out,mu_c,lamc,liq_ice_exchange,&
-         vap_liq_exchange, vap_ice_exchange, qv_prev,T_prev,col_location)
+         vap_liq_exchange, vap_ice_exchange,qv_prev,t_prev,col_location)
   end subroutine p3_main_c
 
   subroutine micro_p3_utils_init_c(Cpair, Rair, RH2O, RHO_H2O, &

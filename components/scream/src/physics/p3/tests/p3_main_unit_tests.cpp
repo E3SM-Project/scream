@@ -194,6 +194,8 @@ static void run_bfb_p3_main_part2()
     std::make_pair(0, 1), // cld_frac_i
     std::make_pair(0, 1), // cld_frac_l
     std::make_pair(0, 1), // cld_frac_r
+    std::make_pair(0, 1), // qv_prev
+    std::make_pair(zerodegc - 10, zerodegc + 10), // t_prev
     std::make_pair(zerodegc - 10, zerodegc + 10), // t
     std::make_pair(0, 1), // rho
     std::make_pair(0, 1), // inv_rho
@@ -275,7 +277,7 @@ static void run_bfb_p3_main_part2()
       d.kts, d.kte, d.kbot, d.ktop, d.kdir, d.do_predict_nc, d.dt, d.inv_dt,
       d.pres, d.dpres, d.dz, d.nc_nuceat_tend, d.exner, d.inv_exner, d.inv_cld_frac_l, d.inv_cld_frac_i, 
       d.inv_cld_frac_r, d.ni_activated, d.inv_qc_relvar, d.cld_frac_i, d.cld_frac_l, d.cld_frac_r,
-      d.t, d.rho, d.inv_rho, d.qv_sat_l, d.qv_sat_i, d.qv_supersat_i, d.rhofacr, d.rhofaci, d.acn, d.qv, d.th, d.qc, d.nc, d.qr, d.nr, d.qi, d.ni,
+      d.qv_prev, d.t_prev, d.t, d.rho, d.inv_rho, d.qv_sat_l, d.qv_sat_i, d.qv_supersat_i, d.rhofacr, d.rhofaci, d.acn, d.qv, d.th, d.qc, d.nc, d.qr, d.nr, d.qi, d.ni,
       d.qm, d.bm, d.latent_heat_vapor, d.latent_heat_sublim, d.latent_heat_fusion, d.qc_incld, d.qr_incld, d.qi_incld, d.qm_incld, d.nc_incld, d.nr_incld,
       d.ni_incld, d.bm_incld, d.mu_c, d.nu, d.lamc, d.cdist, d.cdist1, d.cdistr, d.mu_r, d.lamr, d.logn0r, d.cmeiout, d.precip_total_tend,
       d.nevapr, d.qr_evap_tend, d.vap_liq_exchange, d.vap_ice_exchange, d.liq_ice_exchange, d.pratot,
@@ -297,6 +299,8 @@ static void run_bfb_p3_main_part2()
       REQUIRE(isds_fortran[i].acn[k]                == isds_cxx[i].acn[k]);
       REQUIRE(isds_fortran[i].qv[k]                 == isds_cxx[i].qv[k]);
       REQUIRE(isds_fortran[i].th[k]                 == isds_cxx[i].th[k]);
+      REQUIRE(isds_fortran[i].qv_prev[k]            == isds_cxx[i].qv_prev[k]);
+      REQUIRE(isds_fortran[i].t_prev[k]             == isds_cxx[i].t_prev[k]);
       REQUIRE(isds_fortran[i].qc[k]                 == isds_cxx[i].qc[k]);
       REQUIRE(isds_fortran[i].nc[k]                 == isds_cxx[i].nc[k]);
       REQUIRE(isds_fortran[i].qr[k]                 == isds_cxx[i].qr[k]);
@@ -453,6 +457,7 @@ static void run_bfb_p3_main_part3()
 static void run_bfb_p3_main()
 {
   constexpr Scalar qsmall     = C::QSMALL;
+  constexpr Scalar zerodegc   = C::ZeroDegC;
 
   const std::array< std::pair<Real, Real>, P3MainData::NUM_INPUT_ARRAYS > ranges = {
     std::make_pair(1.00000000E+02 , 9.87111111E+04), // pres
@@ -475,6 +480,8 @@ static void run_bfb_p3_main()
     std::make_pair(0              , 1.00000000E-02), // bm
     std::make_pair(0              , 5.00000000E-02), // qv
     std::make_pair(6.72653866E+02 , 1.07954335E+03), // th
+    std::make_pair(0              , 4.90000000E-02), // qv_prev
+    std::make_pair(zerodegc - 9, zerodegc + 9),      // t_prev
   };
 
   P3MainData isds_fortran[] = {
@@ -507,7 +514,7 @@ static void run_bfb_p3_main()
       d.precip_ice_surf, d.its, d.ite, d.kts, d.kte, d.diag_effc, d.diag_effi,
       d.rho_qi, d.do_predict_nc, d.dpres, d.exner, d.cmeiout, d.precip_total_tend,
       d.nevapr, d.qr_evap_tend, d.precip_liq_flux, d.precip_ice_flux, d.cld_frac_r, d.cld_frac_l, d.cld_frac_i, d.mu_c,
-      d.lamc, d.liq_ice_exchange, d.vap_liq_exchange, d.vap_ice_exchange);
+      d.lamc, d.liq_ice_exchange, d.vap_liq_exchange, d.vap_ice_exchange,d.qv_prev,d.t_prev);
     d.transpose<util::TransposeDirection::f2c>();
   }
 
@@ -523,6 +530,8 @@ static void run_bfb_p3_main()
       REQUIRE(isds_fortran[i].bm[t]                == isds_cxx[i].bm[t]);
       REQUIRE(isds_fortran[i].qv[t]                == isds_cxx[i].qv[t]);
       REQUIRE(isds_fortran[i].th[t]                == isds_cxx[i].th[t]);
+      REQUIRE(isds_fortran[i].qv_prev[t]           == isds_cxx[i].qv_prev[t]);
+      REQUIRE(isds_fortran[i].t_prev[t]            == isds_cxx[i].t_prev[t]);
       REQUIRE(isds_fortran[i].diag_effc[t]         == isds_cxx[i].diag_effc[t]);
       REQUIRE(isds_fortran[i].diag_effi[t]         == isds_cxx[i].diag_effi[t]);
       REQUIRE(isds_fortran[i].rho_qi[t]            == isds_cxx[i].rho_qi[t]);

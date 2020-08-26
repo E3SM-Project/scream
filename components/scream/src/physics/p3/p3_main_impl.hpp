@@ -37,6 +37,8 @@ void Functions<S,D>
   const uview_1d<Spack>& t,
   const uview_1d<Spack>& qv,
   const uview_1d<Spack>& inv_dz,
+  const uview_1d<Spack>& t_prev,
+  const uview_1d<Spack>& qv_prev,
   Scalar& precip_liq_surf,
   Scalar& precip_ice_surf,
   view_1d_ptr_array<Spack, 36>& zero_init)
@@ -58,6 +60,8 @@ void Functions<S,D>
     inv_exner(k)         = 1 / exner(k);
     t(k)                 = th(k) * inv_exner(k);
     qv(k)                = pack::max(qv(k), 0);
+    t_prev(k)            = th(k) * inv_exner(k);
+    qv_prev(k)           = pack::max(qv(k), 0);
     inv_dz(k)            = 1 / dz(k);
 
     for (size_t j = 0; j < zero_init.size(); ++j) {
@@ -253,6 +257,8 @@ void Functions<S,D>
   const uview_1d<const Spack>& cld_frac_i,
   const uview_1d<const Spack>& cld_frac_l,
   const uview_1d<const Spack>& cld_frac_r,
+  const uview_1d<Spack>& qv_prev,
+  const uview_1d<Spack>& t_prev,
   const uview_1d<Spack>& t,
   const uview_1d<Spack>& rho,
   const uview_1d<Spack>& inv_rho,
@@ -535,7 +541,8 @@ void Functions<S,D>
         epsr, epsc, not_skip_micro);
 
       evaporate_precip(
-        qr_incld(k), qc_incld(k), nr_incld(k), qi_incld(k), cld_frac_l(k), cld_frac_r(k), qv_sat_l(k), ab, epsr, qv(k),
+        qr_incld(k), qc_incld(k), nr_incld(k), qi_incld(k), cld_frac_l(k), cld_frac_r(k), qv(k), qv_prev(k), 
+        qv_sat_l(k), qv_sat_i(k), ab, abi, epsr, epsi_tot, t(k), t_prev(k), latent_heat_sublim(k), dqsdt, inv_dt, dt,
         qr2qv_evap_tend, nr_evap_tend, not_skip_micro);
 
       ice_deposition_sublimation(
@@ -972,6 +979,8 @@ void Functions<S,D>
     const auto oni                 = util::subview(prognostic_state.ni, i);
     const auto obm                 = util::subview(prognostic_state.bm, i);
     const auto oqv                 = util::subview(prognostic_state.qv, i);
+    const auto oqv_prev            = util::subview(prognostic_state.qv_prev, i);
+    const auto ot_prev             = util::subview(prognostic_state.t_prev, i);
     const auto oth                 = util::subview(prognostic_state.th, i);
     const auto odiag_effc          = util::subview(diagnostic_outputs.diag_effc, i);
     const auto odiag_effi          = util::subview(diagnostic_outputs.diag_effi, i);
@@ -1009,7 +1018,7 @@ void Functions<S,D>
       team, nk_pack,
       ocld_frac_i, ocld_frac_l, ocld_frac_r, oexner, oth, odz, diag_ze,
       ze_ice, ze_rain, odiag_effc, odiag_effi, inv_cld_frac_i, inv_cld_frac_l,
-      inv_cld_frac_r, inv_exner, t, oqv, inv_dz,
+      inv_cld_frac_r, inv_exner, t, oqv, inv_dz, oqv_prev, ot_prev,
       diagnostic_outputs.precip_liq_surf(i), diagnostic_outputs.precip_ice_surf(i), zero_init);
     p3_main_part1(
       team, nk, infrastructure.predictNc, infrastructure.dt,
@@ -1030,7 +1039,7 @@ void Functions<S,D>
       team, nk_pack, infrastructure.predictNc, infrastructure.dt, inv_dt,
       dnu, itab, itabcol, revap_table, opres, odpres, odz, onc_nuceat_tend, oexner,
       inv_exner, inv_cld_frac_l, inv_cld_frac_i, inv_cld_frac_r, oni_activated, oinv_qc_relvar, ocld_frac_i,
-      ocld_frac_l, ocld_frac_r, t, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn,
+      ocld_frac_l, ocld_frac_r, oqv_prev, ot_prev, t, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn,
       oqv, oth, oqc, onc, oqr, onr, oqi, oni, oqm, obm, olatent_heat_vapor,
       olatent_heat_sublim, olatent_heat_fusion, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld,
       nr_incld, ni_incld, bm_incld, omu_c, nu, olamc, cdist, cdist1, cdistr,
