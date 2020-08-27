@@ -198,11 +198,12 @@ subroutine shoc_main ( &
      wthl_sec, wqw_sec, wtke_sec,&        ! Output (diagnostic)
      uw_sec, vw_sec, w3,&                 ! Output (diagnostic)
      wqls_sec, brunt, shoc_ql2,&          ! Output (diagnostic)
+     wthv_sec_tot, &                      ! EDMF output (diagnostic)
      mf_dry_a, mf_moist_a, mf_dry_w, mf_moist_w,&        ! EDMF input/output
      mf_dry_qt, mf_moist_qt, mf_dry_thl, mf_moist_thl,&  ! EDMF input/output
      mf_dry_u, mf_moist_u, mf_dry_v, mf_moist_v,&        ! EDMF input/output
      mf_moist_qc, mf_thlflx, mf_qtflx,&                  ! EDMF input/output
-     s_ae, s_aw, s_awthl, s_awqt,&                       ! EDMF input/output
+     s_ae, s_aw, s_awthv, s_awthl, s_awqt,&              ! EDMF input/output
      s_awql, s_awqi, s_awu, s_awv)                       ! EDMF input/output
 
   implicit none
@@ -296,6 +297,7 @@ subroutine shoc_main ( &
       mf_thlflx,  mf_qtflx,     & ! total MF turbulent flux of theta_l [K m/s], q_t [(kg/kg) m/s]
       s_ae,    & ! environmental area; by default ae=1 (set constant for now) [-]
       s_aw,    & ! sum(a_i * w_i) [m/s]
+      s_awthv, & ! sum(a_i * w_i * thv_i) [K m/s]
       s_awthl, & ! sum(a_i * w_i * thl_i) [K m/s]
       s_awqt,  & ! sum(a_i * w_i * qt_i)  [(kg/kg) m/s]
       s_awql,  & ! sum(a_i * w_i * ql_i) [(kg/kg) m/s]
@@ -341,6 +343,8 @@ subroutine shoc_main ( &
   real(rtype) :: brunt(shcol,nlev)
   ! return to isotropic timescale [s]
   real(rtype) :: isotropy(shcol,nlev)
+  ! Total buoyancy flux (with MF) [K m/s]
+  real(rtype) :: wthv_sec_tot(shcol,nlev)
 
   !============================================================================
 ! LOCAL VARIABLES
@@ -419,14 +423,6 @@ subroutine shoc_main ( &
        ustar,obklen,kbfs,shoc_cldfrac,&     ! Input
        pblh)                                ! Output
 
-    ! Update the turbulent length scale
-    call shoc_length(&
-       shcol,nlev,nlevi,tke,&               ! Input
-       host_dx,host_dy,pblh,&               ! Input
-       zt_grid,zi_grid,dz_zt,dz_zi,&        ! Input
-       thetal,wthv_sec,thv,&                ! Input
-       brunt,shoc_mix)                      ! Output
-
     ! If using EDMF plumes, diagnose plume properties here
     nup = 100
     if (do_edmf) then
@@ -445,6 +441,7 @@ subroutine shoc_main ( &
                mf_dry_v,   mf_moist_v, &                 ! Output - updraft diagnostics
                            mf_moist_qc, &                ! Output - updraft diagnostics
                s_ae,       s_aw, &                       ! Output - for diffusion solver
+               s_awthv, &                                ! Output for total wthv
                s_awthl,    s_awqt, &                     ! Output - for diffusion solver
                s_awql,     s_awqi, &                     ! Output - for diffusion solver/PDF closure but not coupled yet
                s_awu,      s_awv )                       ! Output - for diffusion solver/PDF closure but not coupled yet
@@ -469,6 +466,7 @@ subroutine shoc_main ( &
 
        s_ae = 1._rtype
        s_aw = 0._rtype
+       s_awthv = 0._rtype
        s_awthl = 0._rtype
        s_awqt = 0._rtype
        s_awql = 0._rtype
@@ -477,11 +475,27 @@ subroutine shoc_main ( &
        s_awv = 0._rtype
     endif
 
+    ! Calculate the total buoyancy flux: wthv_tot = s_ae*wthv_sec + s_awthv - s_aw*thv_zi
+    ! needed for the TKE equation
+    call wthv_mf(&
+       shcol,nlev,nlevi,&             ! Input
+       wthv_sec,thv,&                 ! Input
+       s_ae, s_aw, s_awthv,&          ! Input
+       wthv_sec_tot) 
+       
+    ! Update the turbulent length scale
+    call shoc_length(&
+       shcol,nlev,nlevi,tke,&               ! Input
+       host_dx,host_dy,pblh,&               ! Input
+       zt_grid,zi_grid,dz_zt,dz_zi,&        ! Input
+       thetal,wthv_sec_tot,thv,&            ! Input
+       brunt,shoc_mix)                      ! Output
+        
     ! Advance the SGS TKE equation
     ! MKW TODO: add MF buoyancy flux to inputs
     call shoc_tke(&
        shcol,nlev,nlevi,dtime,&             ! Input
-       wthv_sec,shoc_mix,&                  ! Input
+       wthv_sec_tot,shoc_mix,&              ! Input
        dz_zi,dz_zt,pres,&                   ! Input
        u_wind,v_wind,brunt,obklen,&         ! Input
        zt_grid,zi_grid,pblh,&               ! Input
@@ -588,6 +602,53 @@ subroutine shoc_main ( &
   return
 
 end subroutine shoc_main
+
+!==============================================================
+! Calculates the total bouyancy flux: wthv_tot = s_ae*wthv_sec + s_awthv - s_aw*thv_zi
+! Bouyancy flux is used in shoc_length() and shoc_tke() 
+
+subroutine wthv_mf(&
+       shcol,nlev,nlevi,&             ! Input
+       wthv_sec,thv,&                 ! Input
+       s_ae, s_aw, s_awthv,&          ! Input
+       wthv_sec_tot)                  ! Output
+  
+  implicit none
+
+! INPUT VARIABLES
+  ! number of columns [-]
+  integer, intent(in) :: shcol
+  ! number of mid-point levels [-]
+  integer, intent(in) :: nlev
+  ! number of interface levels [-]
+  integer, intent(in) :: nlevi
+  ! SGS buoyancy flux [K m/s]
+  real(rtype), intent(in) :: wthv_sec(shcol,nlev)
+  ! Virtual potential temperature [K]
+  real(rtype), intent(in) :: thv(shcol,nlev)
+  ! Input variables needed for ED+MF
+  real(rtype), intent(in) :: s_ae(shcol,nlevi)    ! environmental area
+  real(rtype), intent(in) :: s_aw(shcol,nlevi)    ! sum(a_i * w_i) [m/s]
+  real(rtype), intent(in) :: s_awthv(shcol,nlevi) ! sum(a_i * w_i * thv_i) [K m/s]
+  ! Output = total wthv flux = ED + MF
+  real(rtype), intent(out) :: wthv_sec_tot(shcol,nlev)
+  
+  ! local variables
+  integer :: i, k
+
+  do k=2,nlev
+    do i=1,shcol
+      wthv_sec_tot(i,k) = s_ae(i,k)*wthv_sec(i,k) + s_awthv(i,k) - s_aw(i,k)*thv(i,k)
+    enddo
+  enddo
+  
+  do i=1,shcol
+     wthv_sec_tot(i,1) = 0._rtype
+  enddo
+  
+  return
+
+end subroutine wthv_mf
 
 !==============================================================
 ! Define grid variables needed for the parameterization
@@ -1407,7 +1468,11 @@ subroutine diag_second_moments(&
   real(rtype) :: isotropy_zi(shcol,nlevi)
   real(rtype) :: tkh_zi(shcol,nlevi)
   real(rtype) :: tk_zi(shcol,nlevi)
-
+  ! Determines if total fluxes (ED+MF) are computed or not
+  logical :: do_total_fluxes
+  !Dummy variable
+  real(rtype) :: aw_dummy(shcol,nlevi)
+  
   ! Interpolate some variables from the midpoint grid to the interface grid
   call linear_interp(zt_grid,zi_grid,isotropy,isotropy_zi,nlev,nlevi,shcol,0._rtype)
   call linear_interp(zt_grid,zi_grid,tkh,tkh_zi,nlev,nlevi,shcol,0._rtype)
@@ -1436,38 +1501,60 @@ subroutine diag_second_moments(&
          qwthl_sec)                               ! Input/Output
 
   ! Calculate vertical flux for heat
+  do_total_fluxes = .true.
   call calc_shoc_vertflux(&
          shcol,nlev,nlevi,tkh_zi,dz_zi,thetal,&   ! Input
+         zt_grid,zi_grid,ae,aw,awthl,&            ! Input
+         do_total_fluxes,&                        ! Input - Logical variable
          wthl_sec)                                ! Input/Output
 
   call calc_mf_vertflux(shcol,nlev,nlevi,aw,awthl,thetal,mf_thlflx)
 
   ! Calculate vertical flux for moisture
+  do_total_fluxes = .true.
   call calc_shoc_vertflux(&
          shcol,nlev,nlevi,tkh_zi,dz_zi,qw,&       ! Input
+         zt_grid,zi_grid,ae,aw,awqt,&             ! Input
+         do_total_fluxes,&                        ! Input - Logical variable
          wqw_sec)                                 ! Input/Output
 
   call calc_mf_vertflux(shcol,nlev,nlevi,aw,awqt,qw,mf_qtflx)
 
   ! Calculate vertical flux for TKE
+  do_total_fluxes = .false.
+  aw_dummy = 0._rtype 
   call calc_shoc_vertflux(&
          shcol,nlev,nlevi,tkh_zi,dz_zi,tke,&      ! Input
+         zt_grid,zi_grid,ae,aw,aw_dummy,&         ! Input
+         do_total_fluxes,&                        ! Input - Logical variable
          wtke_sec)                                ! Input/Output
 
   ! Calculate vertical flux for momentum (zonal wind)
+  do_total_fluxes = .false.
+  aw_dummy = 0._rtype 
   call calc_shoc_vertflux(&
          shcol,nlev,nlevi,tk_zi,dz_zi,u_wind,&    ! Input
+         zt_grid,zi_grid,ae,aw,aw_dummy,&         ! Input
+         do_total_fluxes,&                        ! Input - Logical variable
          uw_sec)                                  ! Input/Output
 
   ! Calculate vertical flux for momentum (meridional wind)
+  do_total_fluxes = .false.
+  aw_dummy = 0._rtype 
   call calc_shoc_vertflux(&
          shcol,nlev,nlevi,tk_zi,dz_zi,v_wind,&    ! Input
+         zt_grid,zi_grid,ae,aw,aw_dummy,&         ! Input
+         do_total_fluxes,&                        ! Input - Logical variable
          vw_sec)                                  ! Input/Output
 
   ! Calculate vertical flux for tracers
+  do_total_fluxes = .false.
+  aw_dummy = 0._rtype 
   do p=1,num_tracer
     call calc_shoc_vertflux(&
            shcol,nlev,nlevi,tkh_zi,dz_zi,tracer(:shcol,:nlev,p),& ! Input
+           zt_grid,zi_grid,ae,aw,aw_dummy,&                       ! Input
+           do_total_fluxes,&                                      ! Input - Logical variable
            wtracer_sec(:shcol,:nlev,p))                           ! Input/Output
   enddo
 
@@ -1533,6 +1620,8 @@ end subroutine calc_shoc_varorcovar
 
 subroutine calc_shoc_vertflux(&
          shcol,nlev,nlevi,tkh_zi,dz_zi,invar,&  ! Input
+         zt_grid,zi_grid,s_ae,s_aw,s_aw_invar,& ! Input
+         do_total_fluxes,&                      ! Input - Logical variable
          vertflux)                              ! Input/Output
 
   ! Compute either the vertical flux via
@@ -1556,38 +1645,66 @@ subroutine calc_shoc_vertflux(&
   real(rtype), intent(in) :: tkh_zi(shcol,nlevi)
   ! delta z centerend on zi grid [m]
   real(rtype), intent(in) :: dz_zi(shcol,nlevi)
+  ! Heights of mid-point grid [m]
+  real(rtype), intent(in) :: zt_grid(shcol,nlev)
+  ! Heights of interface grid [m]
+  real(rtype), intent(in) :: zi_grid(shcol,nlevi)
   ! Input variable [units vary]
   real(rtype), intent(in) :: invar(shcol,nlev)
-
-! INPUT/OUTPUT VARIABLES
+  ! Input from the MF subroutine
+  real(rtype), intent(in) :: s_ae(shcol,nlevi)       ! EDMF: Environmental area
+  real(rtype), intent(in) :: s_aw(shcol,nlevi)       ! EDMF: sum(a_i * w_i) [m/s]
+  real(rtype), intent(in) :: s_aw_invar(shcol,nlevi) ! EDMF: sum(a_i * w_i * var_in) [? m/s]
+    
+  ! Logical variable
+  logical, intent(in) :: do_total_fluxes
+  
+  ! INPUT/OUTPUT VARIABLES
   real(rtype), intent(out) :: vertflux(shcol,nlevi)
 
 ! LOCAL VARIABLES
   integer :: i, k, kt
   real(rtype) :: grid_dz
-
+  real(rtype) :: invar_zi(shcol,nlevi)
+  
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
       call calc_shoc_vertflux_f(shcol,nlev,nlevi,tkh_zi,dz_zi,invar,&  ! Input
-           vertflux)                              ! Input/Output)
+           vertflux)                                                   ! Input/Output)
       return
    endif
 #endif
+   
+  call linear_interp(zt_grid,zi_grid,invar,invar_zi,nlev,nlevi,shcol,0._rtype)
 
-  do k=2,nlev
-
-    kt=k-1 ! define upper grid point indicee
-    do i=1,shcol
-
-      grid_dz=1._rtype/dz_zi(i,k) ! vertical grid diff squared
-
-      ! Compute the vertical flux via downgradient diffusion
-      vertflux(i,k)=-1._rtype*tkh_zi(i,k)*grid_dz*&
-        (invar(i,kt)-invar(i,k))
-
-    enddo
-  enddo
-
+  if (do_total_fluxes) then
+    do k=2,nlev
+      
+      kt=k-1 ! define upper grid point indice
+      do i=1,shcol
+        
+        grid_dz=1._rtype/dz_zi(i,k) ! vertical grid diff squared
+        
+        ! Compute the vertical flux via downgradient diffusion
+        vertflux(i,k)=(-1._rtype*s_ae(i,k)*tkh_zi(i,k)*grid_dz*(invar(i,kt)-invar(i,k))) + &
+          s_aw_invar(i,k) - s_aw(i,k)*0.5*(invar(i,kt)+invar(i,k))    !invar_zi(i,k)
+        
+      enddo
+    enddo  
+  else
+    do k=2,nlev
+    
+      kt=k-1 ! define upper grid point indice
+      do i=1,shcol
+        grid_dz=1._rtype/dz_zi(i,k) ! vertical grid diff squared
+        
+        vertflux(i,k)=-1._rtype*tkh_zi(i,k)*grid_dz*&
+          (invar(i,kt)-invar(i,k))
+      enddo
+    enddo  
+          
+  endif
+  
   return
 end subroutine calc_shoc_vertflux
 
