@@ -1468,6 +1468,8 @@ subroutine diag_second_moments(&
   real(rtype) :: isotropy_zi(shcol,nlevi)
   real(rtype) :: tkh_zi(shcol,nlevi)
   real(rtype) :: tk_zi(shcol,nlevi)
+  real(rtype) :: thl_zi(shcol,nlevi)
+  real(rtype) :: qw_zi(shcol,nlevi)
   ! Determines if total fluxes (ED+MF) are computed or not
   logical :: do_total_fluxes
   !Dummy variable
@@ -1477,6 +1479,8 @@ subroutine diag_second_moments(&
   call linear_interp(zt_grid,zi_grid,isotropy,isotropy_zi,nlev,nlevi,shcol,0._rtype)
   call linear_interp(zt_grid,zi_grid,tkh,tkh_zi,nlev,nlevi,shcol,0._rtype)
   call linear_interp(zt_grid,zi_grid,tk,tk_zi,nlev,nlevi,shcol,0._rtype)
+  call linear_interp(zt_grid,zi_grid,thetal,thl_zi,nlev,nlevi,shcol,0._rtype)
+  call linear_interp(zt_grid,zi_grid,qw,qw_zi,nlev,nlevi,shcol,0._rtype)
 
   ! Vertical velocity variance is assumed to be propotional
   !  to the TKE
@@ -1508,7 +1512,7 @@ subroutine diag_second_moments(&
          do_total_fluxes,&                        ! Input - Logical variable
          wthl_sec)                                ! Input/Output
 
-  call calc_mf_vertflux(shcol,nlev,nlevi,aw,awthl,thetal,mf_thlflx)
+  call calc_mf_vertflux(shcol,nlev,nlevi,aw,awthl,thl_zi,mf_thlflx)
 
   ! Calculate vertical flux for moisture
   do_total_fluxes = .true.
@@ -1518,7 +1522,7 @@ subroutine diag_second_moments(&
          do_total_fluxes,&                        ! Input - Logical variable
          wqw_sec)                                 ! Input/Output
 
-  call calc_mf_vertflux(shcol,nlev,nlevi,aw,awqt,qw,mf_qtflx)
+  call calc_mf_vertflux(shcol,nlev,nlevi,aw,awqt,qw_zi,mf_qtflx)
 
   ! Calculate vertical flux for TKE
   do_total_fluxes = .false.
@@ -1767,7 +1771,9 @@ subroutine diag_second_moments_ubycond(&
   return
 end subroutine diag_second_moments_ubycond
 
-!==============================================================
+!
+
+=========================================================
 ! SHOC Diagnose the third order moment of vertical velocity
 
 subroutine diag_third_shoc_moments(&
@@ -3070,7 +3076,7 @@ subroutine integ_column_stability(nlev, shcol, dz_zt, pres, brunt, brunt_int)
 
 end subroutine integ_column_stability
 
-!==============================================================
+!=========================================================
 ! Compute shear production term, which is on interface levels
 ! This follows the methods of Bretheron and Park (2010)
 

@@ -652,7 +652,7 @@ end subroutine linear_interp
     ! Sum plume vertical flux of generic variable var (a_i*w_i*var_i) [units vary]
     real(rtype), intent(in) :: awvar(shcol,nlevi)
     ! Input variable on thermo/full grid [units vary]
-    real(rtype), intent(in) :: var(shcol,nlev)
+    real(rtype), intent(in) :: var(shcol,nlevi) ! NOTE: var is interpolated to zi, so has dim nzi
 
   ! OUTPUT VARIABLE
     real(rtype), intent(out) :: varflx(shcol,nlevi)
@@ -668,8 +668,8 @@ end subroutine linear_interp
     varflx(:shcol,1) = 0._rtype;
     do k=2,nlev
       do i=1,shcol
-        ! MKW NOTE: upwind differencing here, centered differencing in solver. Fix inconsistency.
-        varflx(i,k)= awvar(i,k) - aw(i,k)*var(i,k+1)
+        ! MKW NOTE: we may change this to
+        varflx(i,k)= awvar(i,k) - aw(i,k)*var(i,k)
       end do
     end do
     varflx(:shcol,nlevi) = 0._rtype;
