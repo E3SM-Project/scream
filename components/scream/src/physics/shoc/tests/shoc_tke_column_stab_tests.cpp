@@ -122,6 +122,58 @@ struct UnitWrap::UnitTest<D>::TestShocIntColStab {
     }
   }
 
+  static void run_bfb()
+  {
+    //declare data for the f90 function call
+    SHOCColstabData SDS_f90[] = {
+      SHOCColstabData(10, 71),
+      SHOCColstabData(10, 12),
+      SHOCColstabData(7,  16),
+      SHOCColstabData(2,  7 ),
+    };
+
+    static constexpr Int num_runs = sizeof(SDS_f90) / sizeof(SHOCColstabData);
+
+    for (Int i = 0; i < num_runs; ++i) {
+      SDS_f90[i].randomize();
+    }
+
+    // Create copies of data for use by cxx. Needs to happen before fortran calls so that
+    // inout data (if any) is in original state
+    SHOCColstabData SDS_cxx[] = {
+      SHOCColstabData(SDS_f90[0]),
+      SHOCColstabData(SDS_f90[1]),
+      SHOCColstabData(SDS_f90[2]),
+      SHOCColstabData(SDS_f90[3]),
+    };
+
+    // Assume all data is in C layout
+
+    // Get data from fortran
+    for (Int i = 0; i < num_runs; ++i) {
+      // expects data in C layout
+      integ_column_stability(SDS_f90[i]);
+    }
+
+    // Get data from cxx
+    for (Int i = 0; i < num_runs; ++i) {
+      SHOCColstabData& d = SDS_cxx[i];
+      d.transpose<util::TransposeDirection::c2f>();
+      // expects data in fortran layout
+      integ_column_stability_f(d.nlev, d.shcol, d.dz_zt, d.pres, d.brunt, d.brunt_int);
+      d.transpose<util::TransposeDirection::f2c>();
+    }
+
+    // Verify BFB results, all data should be in C layout
+    for (Int i = 0; i < num_runs; ++i) {
+      SHOCColstabData& d_f90 = SDS_f90[i];
+      SHOCColstabData& d_cxx = SDS_cxx[i];
+      for (Int k = 0; k < d_f90.totali(); ++k) {
+	REQUIRE(d_f90.brunt_int[k] == d_cxx.brunt_int[k]);
+      }
+    }
+
+  }//run_bfb
 };
 
 }  // namespace unit_test
@@ -141,6 +193,7 @@ TEST_CASE("shoc_tke_column_stab_b4b", "shoc")
 {
   using TestStruct = scream::shoc::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestShocIntColStab;
 
+  TestStruct::run_bfb();
 }
 
 } // namespace

@@ -1,5 +1,5 @@
 #include "shoc_functions_f90.hpp"
-#include <iostream>
+
 #include "ekat/scream_assert.hpp"
 #include "ekat/util/scream_utils.hpp"
 #include "ekat/util/scream_kokkos_utils.hpp"
@@ -382,13 +382,13 @@ void shoc_diag_second_moments_srf_f(Int shcol, Real* wthl, Real* uw, Real* vw, R
 void integ_column_stability_f(Int nlev, Int shcol, Real *dz_zt,
 			      Real *pres, Real* brunt, Real *brunt_int)
 {
-    using SHF = Functions<Real, DefaultDevice>;
-  //using SHF        = Functions<Real, DefaultDevice>;
+  using SHF        = Functions<Real, DefaultDevice>;
+
   using Scalar     = typename SHF::Scalar;
   using Spack      = typename SHF::Spack;
   using view_2d    = typename SHF::view_2d<Spack>;
   using KT         = typename SHF::KT;
-  using ExeSpace   = typename KT::ExeSpace;
+  using ExeSpace   = typename KT ::ExeSpace;
   using MemberType = typename SHF::MemberType;
 
   //use 1D view as brunt_int is a 1D output variable
@@ -400,8 +400,8 @@ void integ_column_stability_f(Int nlev, Int shcol, Real *dz_zt,
   Kokkos::Array<view_2d, num_arrays> temp2D_d;
 
   Kokkos::Array<size_t, num_arrays> dim1_sizes     = {shcol,  shcol, shcol};
-  Kokkos::Array<size_t, num_arrays> dim2_sizes     = {nlev,  nlev, nlev};
-  Kokkos::Array<const Real*, num_arrays> ptr_array = {dz_zt, pres, brunt};
+  Kokkos::Array<size_t, num_arrays> dim2_sizes     = {nlev,   nlev,  nlev};
+  Kokkos::Array<const Real*, num_arrays> ptr_array = {dz_zt,  pres,  brunt};
 
   // Sync to device
   pack::host_to_device(ptr_array, dim1_sizes, dim2_sizes, temp2D_d, true);
@@ -421,9 +421,11 @@ void integ_column_stability_f(Int nlev, Int shcol, Real *dz_zt,
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
     const Int i = team.league_rank();
 
+    // create subviews of the views
     const auto odz_zt_d = util::subview(dz_zt_d, i);
     const auto opres_d  = util::subview(pres_d, i);
     const auto obrunt_d = util::subview(brunt_d, i);
+    //declare output as a scalar
     Scalar brunt_int_s{0};
 
     SHF::integ_column_stability(team, nlev, odz_zt_d, opres_d, obrunt_d, brunt_int_s);

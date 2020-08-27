@@ -21,28 +21,17 @@ void Functions<S,D>
   brunt_int = 0;
   static constexpr auto troppres = 80000;
 
+  //Reduction in brunt_int; therefore paralle_reduce is being used instead of parallel_for
   Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, nlev_pack), [&] (const Int& k, Scalar& val) {
-      Spack my_result(0);
-
       //Find if pressure is greater than tropospheric pressure
       auto press_gt_troppress = (pres(k) > troppres);
 
+      Spack my_result(0);
       my_result.set(press_gt_troppress, dz_zt(k) * brunt(k));
       for (int s = 0; s < Spack::n; ++s) {
 	val += my_result[s];
       }
-      //    }, Kokkos::Sum<brunt_int>);
     }, brunt_int);
-
-
-  /* brunt_int(1:shcol) = 0._rtype
-     do k = 1, nlev
-     do i = 1, shcol
-        if (pres(i,k) .gt. troppres) then
-	   brunt_int(i) = brunt_int(i) + dz_zt(i,k)*brunt(i,k)
-        endif
-     enddo
-     enddo*/
 
 }
 
