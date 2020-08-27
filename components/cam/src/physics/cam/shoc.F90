@@ -1407,11 +1407,15 @@ subroutine diag_second_moments(&
   real(rtype) :: isotropy_zi(shcol,nlevi)
   real(rtype) :: tkh_zi(shcol,nlevi)
   real(rtype) :: tk_zi(shcol,nlevi)
+  real(rtype) :: thl_zi(shcol,nlevi)
+  real(rtype) :: qw_zi(shcol,nlevi)
 
   ! Interpolate some variables from the midpoint grid to the interface grid
   call linear_interp(zt_grid,zi_grid,isotropy,isotropy_zi,nlev,nlevi,shcol,0._rtype)
   call linear_interp(zt_grid,zi_grid,tkh,tkh_zi,nlev,nlevi,shcol,0._rtype)
   call linear_interp(zt_grid,zi_grid,tk,tk_zi,nlev,nlevi,shcol,0._rtype)
+  call linear_interp(zt_grid,zi_grid,thetal,thl_zi,nlev,nlevi,shcol,0._rtype)
+  call linear_interp(zt_grid,zi_grid,qw,qw_zi,nlev,nlevi,shcol,0._rtype)
 
   ! Vertical velocity variance is assumed to be propotional
   !  to the TKE
@@ -1440,14 +1444,14 @@ subroutine diag_second_moments(&
          shcol,nlev,nlevi,tkh_zi,dz_zi,thetal,&   ! Input
          wthl_sec)                                ! Input/Output
 
-  call calc_mf_vertflux(shcol,nlev,nlevi,aw,awthl,thetal,mf_thlflx)
+  call calc_mf_vertflux(shcol,nlev,nlevi,aw,awthl,thl_zi,mf_thlflx)
 
   ! Calculate vertical flux for moisture
   call calc_shoc_vertflux(&
          shcol,nlev,nlevi,tkh_zi,dz_zi,qw,&       ! Input
          wqw_sec)                                 ! Input/Output
 
-  call calc_mf_vertflux(shcol,nlev,nlevi,aw,awqt,qw,mf_qtflx)
+  call calc_mf_vertflux(shcol,nlev,nlevi,aw,awqt,qw_zi,mf_qtflx)
 
   ! Calculate vertical flux for TKE
   call calc_shoc_vertflux(&
