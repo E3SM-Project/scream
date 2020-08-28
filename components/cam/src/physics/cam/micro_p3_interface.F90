@@ -367,8 +367,8 @@ end subroutine micro_p3_readnl
        call pbuf_set_field(pbuf2d, relvar_idx, 2._rtype)
        call pbuf_set_field(pbuf2d, accre_enhan_idx, micro_mg_accre_enhan_fac)
        call pbuf_set_field(pbuf2d, qr_evap_tend_idx,  0._rtype)
-       call pbuf_set_field(pbuf2d, qv_prev_idx,  0._rtype)
-       call pbuf_set_field(pbuf2d, t_prev_idx,  0._rtype)
+       call pbuf_set_field(pbuf2d, qv_prev_idx,  -12._rtype)
+       call pbuf_set_field(pbuf2d, t_prev_idx,  -12._rtype)
  
     end if
 

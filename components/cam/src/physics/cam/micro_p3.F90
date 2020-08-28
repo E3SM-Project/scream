@@ -3455,6 +3455,15 @@ dt,qr2qv_evap_tend,nr_evap_tend)
    real(rtype) :: cld_frac, eps_eff, tau_eff, tau_r, ssat_r, A_c, sup_r
    real(rtype) :: equilib_evap_tend, tscale_weight, instant_evap_tend
 
+   !qv_prev and t_prev are initialized as -12 in micro_p3_init
+   ! check whether qv_prev and t_prev are less than -10 and if so, set as qv and t
+   if (qv_prev < -10._rtype) then
+      qv_prev=qv
+   end if
+   if (t_prev < -10._rtype) then
+      t_prev=t
+   end if
+
    !Initialize variables
    qr2qv_evap_tend = 0.0_rtype
    nr_evap_tend = 0.0_rtype
