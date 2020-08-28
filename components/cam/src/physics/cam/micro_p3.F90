@@ -3292,123 +3292,132 @@ qidep,qi2qv_sublim_tend,ni_sublim_tend,qiberg)
 end subroutine ice_deposition_sublimation
 
 !---Terai/Schpund version below!!!
-subroutine evaporate_precip_old(qr_incld,qc_incld,nr_incld,qi_incld, &
-cld_frac_l,cld_frac_r,qv,qv_old,qv_sat_l,qv_sat_i, &
-ab,abi,epsr,epsi_tot,t,t_old,latent_heat_sublim,dqsdt,inv_dt, &
-dt,qr2qv_evap_tend,nr_evap_tend)
-
-   implicit none
-
-   real(rtype), intent(in)  :: qr_incld
-   real(rtype), intent(in)  :: qc_incld
-   real(rtype), intent(in)  :: nr_incld
-   real(rtype), intent(in)  :: qi_incld
-   real(rtype), intent(in)  :: cld_frac_l
-   real(rtype), intent(in)  :: cld_frac_r
-   real(rtype), intent(in)  :: qv_sat_l,qv_sat_i
-   real(rtype), intent(in)  :: ab,abi
-   real(rtype), intent(in)  :: epsr,epsi_tot
-   real(rtype), intent(in)  :: qv,qv_old
-   real(rtype), intent(in)  :: t,t_old,latent_heat_sublim,dqsdt,inv_dt,dt
-   real(rtype), intent(inout) :: qr2qv_evap_tend
-   real(rtype), intent(inout) :: nr_evap_tend
-   real(rtype) :: cld, xx, ssat_r, SPF, hlp_w, inv_xx, qrcon, inv_abi, aaa, sup_r 
-
-   ! +++++++++++++++++++++++++++++++++++++++++++++++ JS:
-   ! Local stuff (generalize when done):
-
-   if (qc_incld + qi_incld < 1.e-6_rtype) then
-         cld = 0._rtype
-   else
-         cld = cld_frac_l
-   end if
-
-   ! Only calculate if there is some rain fraction > cloud fraction
-   qr2qv_evap_tend = 0.0_rtype
-   nr_evap_tend = 0.0_rtype
-   if (cld_frac_r > cld) then
-
-      ssat_r = qv - qv_sat_l
-      sup_r = qv / qv_sat_l - 1.0_rtype
-      SPF = 1.0_rtype   
-
-      if (t < 273.15_rtype) then
-         inv_abi = 1.0_rtype/abi
-         xx   = epsr + epsi_tot*(1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi
-      else
-         xx   = epsr
-      endif
-
-      ! hlp_qv_sat_i = qv_sat_i   !no modification due to latent heating
-      hlp_w = -cp/g*(t - t_old)*inv_dt
-
-      if (t < 273.15_rtype) then
-         aaa = (qv - qv_old)*inv_dt - dqsdt*(-hlp_w*g*inv_cp)-(qv_sat_l - qv_sat_i)*     &
-               (1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi*epsi_tot
-      else
-         aaa = (qv - qv_old)*inv_dt - dqsdt*(-hlp_w*g*inv_cp)
-      endif
-
-      xx  = max(1.e-20_rtype,xx)   ! set lower bound on xx to prevent division by zero
-      inv_xx = 1.0_rtype/xx
-
-      qrcon = 0.0  !condensation rate, so rain evaporation will be < 0
-      if (qr_incld > qsmall) qrcon = (aaa*epsr*inv_xx + (ssat_r*SPF-aaa*inv_xx)*inv_dt*epsr*inv_xx &
-           *(1.0_rtype-dexp(-dble(xx*dt))))/ab
-
-      if (sup_r < -0.001_rtype .and. qr_incld < 1.e-12_rtype)  qrcon = -qr_incld*inv_dt
-
-      if (qrcon < 0.0_rtype) then
-         qrcon = max(qrcon,(qv-qv_sat_l)*inv_dt/ab) ! Do not allow qrcon*dt from exceeding saturation deficit
-         qr2qv_evap_tend = -qrcon*(cld_frac_r-cld)/cld_frac_r !qr2qv_evap_tend occurs where there's rain but no cloud and scale by rain fraction
-         nr_evap_tend = qr2qv_evap_tend*(nr_incld/qr_incld)
-         qrcon = 0.0_rtype
-      endif
-
-   endif
-
-   return
-
-end subroutine evaporate_precip_old
+!!$subroutine evaporate_precip_old(qr_incld,qc_incld,nr_incld,qi_incld, &
+!!$cld_frac_l,cld_frac_r,qv,qv_old,qv_sat_l,qv_sat_i, &
+!!$ab,abi,epsr,epsi_tot,t,t_old,latent_heat_sublim,dqsdt,inv_dt, &
+!!$dt,qr2qv_evap_tend,nr_evap_tend)
+!!$
+!!$   implicit none
+!!$
+!!$   real(rtype), intent(in)  :: qr_incld
+!!$   real(rtype), intent(in)  :: qc_incld
+!!$   real(rtype), intent(in)  :: nr_incld
+!!$   real(rtype), intent(in)  :: qi_incld
+!!$   real(rtype), intent(in)  :: cld_frac_l
+!!$   real(rtype), intent(in)  :: cld_frac_r
+!!$   real(rtype), intent(in)  :: qv_sat_l,qv_sat_i
+!!$   real(rtype), intent(in)  :: ab,abi
+!!$   real(rtype), intent(in)  :: epsr,epsi_tot
+!!$   real(rtype), intent(in)  :: qv,qv_old
+!!$   real(rtype), intent(in)  :: t,t_old,latent_heat_sublim,dqsdt,inv_dt,dt
+!!$   real(rtype), intent(inout) :: qr2qv_evap_tend
+!!$   real(rtype), intent(inout) :: nr_evap_tend
+!!$   real(rtype) :: cld, xx, ssat_r, SPF, hlp_w, inv_xx, qrcon, inv_abi, aaa, sup_r 
+!!$
+!!$   ! +++++++++++++++++++++++++++++++++++++++++++++++ JS:
+!!$   ! Local stuff (generalize when done):
+!!$
+!!$   if (qc_incld + qi_incld < 1.e-6_rtype) then
+!!$      cld = 0._rtype
+!!$   else
+!!$         cld = cld_frac_l
+!!$   end if
+!!$
+!!$   ! Only calculate if there is some rain fraction > cloud fraction
+!!$   qr2qv_evap_tend = 0.0_rtype
+!!$   nr_evap_tend = 0.0_rtype
+!!$   if (cld_frac_r > cld) then
+!!$      
+!!$      ssat_r = qv - qv_sat_l
+!!$      sup_r = qv / qv_sat_l - 1.0_rtype
+!!$      SPF = 1.0_rtype   
+!!$
+!!$      if (t < 273.15_rtype) then
+!!$         inv_abi = 1.0_rtype/abi
+!!$         xx   = epsr + epsi_tot*(1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi
+!!$      else
+!!$         xx   = epsr
+!!$      endif
+!!$      
+!!$      ! hlp_qv_sat_i = qv_sat_i   !no modification due to latent heating
+!!$      hlp_w = -cp/g*(t - t_old)*inv_dt
+!!$
+!!$      if (t < 273.15_rtype) then
+!!$         aaa = (qv - qv_old)*inv_dt - dqsdt*(-hlp_w*g*inv_cp)-(qv_sat_l - qv_sat_i)*     &
+!!$               (1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi*epsi_tot
+!!$      else
+!!$         aaa = (qv - qv_old)*inv_dt - dqsdt*(-hlp_w*g*inv_cp)
+!!$      endif
+!!$      
+!!$      xx  = max(1.e-20_rtype,xx)   ! set lower bound on xx to prevent division by zero
+!!$      inv_xx = 1.0_rtype/xx
+!!$
+!!$      qrcon = 0.0  !condensation rate, so rain evaporation will be < 0
+!!$      if (qr_incld > qsmall) qrcon = (aaa*epsr*inv_xx + (ssat_r*SPF-aaa*inv_xx)*inv_dt*epsr*inv_xx &
+!!$           *(1.0_rtype-dexp(-dble(xx*dt))))/ab
+!!$      
+!!$      if (sup_r < -0.001_rtype .and. qr_incld < 1.e-12_rtype)  qrcon = -qr_incld*inv_dt
+!!$
+!!$      if (qrcon < 0.0_rtype) then
+!!$         qrcon = max(qrcon,(qv-qv_sat_l)*inv_dt/ab) ! Do not allow qrcon*dt from exceeding saturation deficit
+!!$         qr2qv_evap_tend = -qrcon*(cld_frac_r-cld)/cld_frac_r !qr2qv_evap_tend occurs where there's rain but no cloud and scale by rain fraction
+!!$         nr_evap_tend = qr2qv_evap_tend*(nr_incld/qr_incld)
+!!$         qrcon = 0.0_rtype
+!!$      endif
+!!$      
+!!$   endif
+!!$   
+!!$   return
+!!$
+!!$end subroutine evaporate_precip_old
 
 !+++PMC Ver below!!!
 
-real(rtype) function rain_evap_tscale_weight(dt_over_tau)
+subroutine rain_evap_tscale_weight(dt_over_tau,weight)
   !Returns weighting between 0 and 1 for how much of the instantaneous
   !evaporation rate and how much of the equilibrium evaporation rate to
   !blend to get the timestep-average rain evaporation rate
 
   real(rtype), intent(in) :: dt_over_tau  !microphysics timestep divided by effective evap timescale
+  real(rtype), intent(out) :: weight
   
-  rain_evap_tscale_weight=(1._rtype - exp(-dt_over_tau) )/dt_over_tau
+  weight=(1._rtype - exp(-dt_over_tau) )/dt_over_tau
 
   return
-end function rain_evap_tscale_weight
+end subroutine rain_evap_tscale_weight
 
-real(rtype) function rain_evap_equilib_tend(A_c,ab,tau_eff,tau_r)
+subroutine rain_evap_equilib_tend(A_c,ab,tau_eff,tau_r, tend)
   !In equilibrium, the total evaporation must balance the tendency A_c from
   !all other processes. The rain evaporation is the fraction (1/tau_r)/(1/tau_eff)
   !of the total tendency and ab corrects for saturation changes due to evaporative
   !cooling.
 
   real(rtype), intent(in) :: A_c, ab, tau_eff, tau_r
+  real(rtype), intent(out) :: tend
 
-  rain_evap_equilib_tend = A_c/ab*tau_eff/tau_r
+  !sign convention: Negative A_c causes a supersaturation deficit which needs to be removed
+  !by evaporation (which is signed positive when active) to maintain equilibrium. Thus need
+  !a negative sign here since other terms are always positive.
+  tend = -A_c/ab*tau_eff/tau_r
 
   return
-end function rain_evap_equilib_tend
+end subroutine rain_evap_equilib_tend
 
-real(rtype) function rain_evap_instant_tend(ssat_r, ab, tau_r)
+subroutine rain_evap_instant_tend(ssat_r, ab, tau_r,tend)
   !The instantaneous rain evap tendency is just the absolute supersaturation
   !ssat_r divided by the supersaturation removal timescale for rain tau_r
   !corrected for the effect of evaporative cooling on saturation ab.
 
   real(rtype), intent(in) :: ssat_r, ab, tau_r
+  real(rtype), intent(out) :: tend
 
-  rain_evap_instant_tend = -ssat_r/(ab*tau_r)
+  !sign convention: ssat_r must be <0 for evap, other terms are always positive,
+  !and we want evap rate positive... so put a minus sign in front.
+  
+  tend = -ssat_r/(ab*tau_r)
 
   return
-end function rain_evap_instant_tend
+end subroutine rain_evap_instant_tend
 
 
 subroutine evaporate_precip(qr_incld,qc_incld,nr_incld,qi_incld, &
@@ -3443,7 +3452,7 @@ dt,qr2qv_evap_tend,nr_evap_tend)
    real(rtype), intent(in)  :: t,t_prev,latent_heat_sublim,dqsdt,inv_dt,dt
    real(rtype), intent(inout) :: qr2qv_evap_tend
    real(rtype), intent(inout) :: nr_evap_tend
-   real(rtype) :: cld_frac, eps_eff, tau_eff, tau_r, ssat_r, inv_abi, A_c, sup_r
+   real(rtype) :: cld_frac, eps_eff, tau_eff, tau_r, ssat_r, A_c, sup_r
    real(rtype) :: equilib_evap_tend, tscale_weight, instant_evap_tend
 
    !Initialize variables
@@ -3456,7 +3465,7 @@ dt,qr2qv_evap_tend,nr_evap_tend)
    !because micro lacks the info to reliably reconstruct macrophys
    !subgrid variability
    ssat_r = qv - qv_sat_l !absolute supersaturation
-
+   
    !Cloud fraction in clear-sky conditions has been set to mincld
    !to avoid divide-by-zero problems. Because rain evap only happens
    !in rainy portions outside cloud, setting clear-sky cloud fraction
@@ -3469,6 +3478,8 @@ dt,qr2qv_evap_tend,nr_evap_tend)
    end if
 
    !Only evaporate in the rainy area outside cloud when subsaturated
+   !Note: ignoring case where cell initially supersaturated but other processes would make
+   !it subsaturated within 1 timestep.
    if (cld_frac_r > cld_frac .and. ssat_r<0._rtype) then
       
       !Compute total effective inverse saturation removal timescale eps_eff
@@ -3478,12 +3489,11 @@ dt,qr2qv_evap_tend,nr_evap_tend)
       !it from being relative to ice to liquid instead. See Eq C3 of Morrison+Milbrandt 2015
       !https://doi.org/10.1175/JAS-D-14-0065.1
       if (t < 273.15_rtype) then
-         inv_abi = 1.0_rtype/abi !accounts for condensational heating changing qv_sat
-         eps_eff   = epsr + epsi_tot*(1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi
+         eps_eff   = epsr + epsi_tot*(1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)/abi
       else
          eps_eff   = epsr
       endif
-
+      
       !Set lower bound on eps_eff to prevent division by zero
       eps_eff  = max(1.e-20_rtype,eps_eff)   
       tau_eff = 1.0_rtype/eps_eff
@@ -3492,11 +3502,11 @@ dt,qr2qv_evap_tend,nr_evap_tend)
       !Morrison+Milbrandt 2015 https://doi.org/10.1175/JAS-D-14-0065.1
       if (t < 273.15_rtype) then
          A_c = (qv - qv_prev)*inv_dt - dqsdt*(t-t_prev)*inv_dt - (qv_sat_l - qv_sat_i)* &
-               (1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)*inv_abi*epsi_tot
+               (1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)/abi*epsi_tot
       else
          A_c = (qv - qv_prev)*inv_dt - dqsdt*(t-t_prev)*inv_dt
       endif
-
+      
       !Now compute evap rate
       
       !If no rain to evap, set tend to 0
@@ -3504,30 +3514,30 @@ dt,qr2qv_evap_tend,nr_evap_tend)
       !beginning of this function so this is a bit redundant 
       if (qr_incld < qsmall ) then
          qr2qv_evap_tend = 0._rtype
-         
+
       !If there's negligible qr and conditions are subsaturated, evaporate all qr
       elseif (qr_incld < 1e-12_rtype .and. qv/qv_sat_l < 0.999_rtype) then
          qr2qv_evap_tend = qr_incld*inv_dt
-
+         
       !If sizable qr, compute tend. 
       else
          !Timestep-averaged evap can be written as the weighted average of instantaneous 
          !and equilibrium evap rates with weighting tscale_weight. L'Hospital's rule 
          !shows tscale_weight is 1 in the limit of small dt. It approaches 0 as dt
          !gets big.
-         tscale_weight = rain_evap_tscale_weight(dt/tau_eff)
+         call rain_evap_tscale_weight(dt/tau_eff,tscale_weight)
 
          !in limit of very long timescales, evap must balance A_c.
          !(1/tau_r)/(1/tau_eff) is the fraction of this total tendency assigned to rain
          !Will be >0 if A_c>0: increased supersat from other procs must be balanced by
          !evaporation to stay in equilibrium.
-         equilib_evap_tend = rain_evap_equilib_tend(A_c,ab,tau_eff,tau_r)
+         call  rain_evap_equilib_tend(A_c,ab,tau_eff,tau_r,equilib_evap_tend)
 
          !in limit of short timesteps, evap can be calculated from ssat_r at the
          !beginning of the timestep
          !ssat_r<0 when evap occurs and evap_tend is positive when evaporating, so added
          !neg in front
-         instant_evap_tend = rain_evap_instant_tend(ssat_r, ab, tau_r)
+         call  rain_evap_instant_tend(ssat_r, ab, tau_r, instant_evap_tend)
          
          qr2qv_evap_tend = instant_evap_tend*tscale_weight &
               + equilib_evap_tend*(1-tscale_weight)
@@ -3547,7 +3557,7 @@ dt,qr2qv_evap_tend,nr_evap_tend)
       nr_evap_tend = qr2qv_evap_tend*(nr_incld/qr_incld)
 
    end if !cld_frac_r>cldfrac and ssat_r<0
-
+   
    return
 
 end subroutine evaporate_precip
