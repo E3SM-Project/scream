@@ -508,7 +508,7 @@ void integ_column_stability_f(Int nlev, Int shcol, Real *dz_zt,
   using MemberType = typename SHF::MemberType;
 
   //use 1D view as brunt_int is a 1D output variable
-  using Pack1      = typename pack::Pack<Real, 1>;
+  using Pack1      = typename ekat::pack::Pack<Real, 1>;
   using view_1d    = typename SHF::view_1d<Pack1>;
 
   //inputs
@@ -520,7 +520,7 @@ void integ_column_stability_f(Int nlev, Int shcol, Real *dz_zt,
   Kokkos::Array<const Real*, num_arrays> ptr_array = {dz_zt,  pres,  brunt};
 
   // Sync to device
-  pack::host_to_device(ptr_array, dim1_sizes, dim2_sizes, temp2D_d, true);
+  ekat::pack::host_to_device(ptr_array, dim1_sizes, dim2_sizes, temp2D_d, true);
 
   //declare input device variables
   view_2d
@@ -531,16 +531,16 @@ void integ_column_stability_f(Int nlev, Int shcol, Real *dz_zt,
   //declare output device variables
   view_1d brunt_int_d("brunt_int", shcol);
 
-  const Int nk_pack = scream::pack::npack<Spack>(nlev);
-  const auto policy = util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
+  const Int nk_pack = ekat::pack::npack<Spack>(nlev);
+  const auto policy = ekat::util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
 
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
     const Int i = team.league_rank();
 
     // create subviews of the views
-    const auto odz_zt_d = util::subview(dz_zt_d, i);
-    const auto opres_d  = util::subview(pres_d, i);
-    const auto obrunt_d = util::subview(brunt_d, i);
+    const auto odz_zt_d = ekat::util::subview(dz_zt_d, i);
+    const auto opres_d  = ekat::util::subview(pres_d, i);
+    const auto obrunt_d = ekat::util::subview(brunt_d, i);
     //declare output as a scalar
     Scalar brunt_int_s{0};
 
@@ -551,7 +551,7 @@ void integ_column_stability_f(Int nlev, Int shcol, Real *dz_zt,
 
   // Sync back to host
   Kokkos::Array<view_1d, 1> inout_views = {brunt_int_d};
-  pack::device_to_host({brunt_int}, {shcol}, inout_views);
+  ekat::pack::device_to_host({brunt_int}, {shcol}, inout_views);
 }
 
 } // namespace shoc

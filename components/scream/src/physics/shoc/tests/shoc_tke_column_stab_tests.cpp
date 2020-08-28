@@ -156,10 +156,10 @@ struct UnitWrap::UnitTest<D>::TestShocIntColStab {
     // Get data from cxx
     for (Int i = 0; i < num_runs; ++i) {
       SHOCColstabData& d = SDS_cxx[i];
-      d.transpose<util::TransposeDirection::c2f>();
+      d.transpose<ekat::util::TransposeDirection::c2f>();
       // expects data in fortran layout
       integ_column_stability_f(d.nlev, d.shcol, d.dz_zt, d.pres, d.brunt, d.brunt_int);
-      d.transpose<util::TransposeDirection::f2c>();
+      d.transpose<ekat::util::TransposeDirection::f2c>();
     }
 
     // Verify BFB results, all data should be in C layout

@@ -17,7 +17,7 @@ void Functions<S,D>
   const uview_1d<const Spack>& brunt,
   Scalar& brunt_int)
 {
-  const Int nlev_pack = scream::pack::npack<Spack>(nlev);
+  const Int nlev_pack = ekat::pack::npack<Spack>(nlev);
   brunt_int = 0;
   static constexpr auto troppres = 80000;
 
