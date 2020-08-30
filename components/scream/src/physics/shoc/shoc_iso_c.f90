@@ -497,4 +497,18 @@ contains
 
   end subroutine linear_interp_c  
 
+ subroutine shoc_diag_second_moments_lbycond_c(shcol, wthl, wqw, uw, vw,ustar2, wstar, &
+            wthlo, wqwo, uwo, vwo, wtkeo, thlo, qwo, qwthlo) bind(C)
+   use shoc, only: diag_second_moments_lbycond
+
+   ! argmens
+   integer(kind=c_int), value, intent(in) :: shcol
+   real(kind=c_real), intent(in)  :: wthl(shcol), wqw(shcol), uw(shcol), vw(shcol), ustar2(shcol), wstar(shcol)
+   real(kind=c_real), intent(out) :: wthlo(shcol), wqwo(shcol), uwo(shcol), vwo(shcol), wtkeo(shcol), thlo(shcol), qwo(shcol), qwthlo(shcol)
+
+   call diag_second_moments_lbycond(shcol, wthl, wqw, uw, vw, ustar2, wstar,&
+                                    wthlo, wqwo, uwo, vwo, wtkeo, thlo, qwo, qwthlo)
+
+ end subroutine shoc_diag_second_moments_lbycond_c
+
 end module shoc_iso_c

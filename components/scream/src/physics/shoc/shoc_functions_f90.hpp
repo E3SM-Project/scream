@@ -415,6 +415,22 @@ struct SHOCLinearintData : public SHOCDataBase {
   { SHOCDataBase::operator=(rhs); minthresh = rhs.minthresh; return *this; }
 };//SHOCLinearintData
 
+
+struct SHOCSecondMomLbycondData : public SHOCDataBase {
+  // inputs
+  Real *wthl, *wqw, *uw, *vw, *ustar2, *wstar;
+
+  // outputs
+  Real *wthlo, *wqwo, *uwo, *vwo, *wtkeo, *thlo, *qwo, *qwthlo;
+
+  SHOCSecondMomLbycondData(Int shcol_) :
+      SHOCDataBase(shcol_, 1, 0, {&wthl, &wqw, &uw, &vw, &ustar2, &wstar, &wthlo, &wqwo, &uwo, &vwo, &wtkeo, &thlo, &qwo, &qwthlo}, {}, {}) {}
+  SHOCSecondMomLbycondData(const SHOCSecondMomLbycondData &rhs) : 
+      SHOCDataBase(rhs, {&wthl, &wqw, &uw, &vw, &ustar2, &wstar, &wthlo, &wqwo, &uwo, &vwo, &wtkeo, &thlo, &qwo, &qwthlo}, {}, {}) {}
+  SHOCSecondMomLbycondData &operator=(const SHOCSecondMomLbycondData &rhs) { SHOCDataBase::operator=(rhs); return *this; }
+};
+
+
 //
 // Glue functions to call fortran from from C++ with the Data struct
 //
@@ -444,6 +460,7 @@ void compute_shoc_mix_shoc_length(SHOCMixlengthData &d);
 void check_length_scale_shoc_length(SHOCMixcheckData &d);
 void shoc_diag_second_moments_srf(SHOCSecondMomentSrfData& d);
 void linear_interp(SHOCLinearintData &d);
+void shoc_diag_second_moments_lbycond(SHOCSecondMomLbycondData& d);
 
 //
 // _f functions decls
@@ -454,6 +471,8 @@ void calc_shoc_vertflux_f(Int shcol, Int nlev, Int nlevi, Real *tkh_zi,
 			  Real *dz_zi, Real *invar, Real *vertflux);
 void shoc_diag_second_moments_srf_f(Int shcol, Real* wthl, Real* uw, Real* vw,
                          Real* ustar2, Real* wstar);
+void shoc_diag_second_moments_lbycond_f(Int shcol, Real* wthl, Real* wqw, Real* uw, Real* vw, Real* ustar2, Real* wstar,
+                         Real* wthlo, Real* wqwo, Real* uwo, Real* vwo, Real* wtkeo, Real* thlo, Real* qwo, Real* qwthlo);
 
 }
 
