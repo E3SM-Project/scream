@@ -86,6 +86,7 @@ struct UnitWrap {
     struct TestShocPdfCompCldVar;
     struct TestShocPdfCompLiqFlux;
     struct TestShocPdfCompBuoyFlux;
+    struct TestSecondMomUbycond;
   };
 
 };

@@ -87,6 +87,11 @@ struct Functions
     const view_1d<const Spack>& thl, const view_1d<const Spack>& ql, const view_1d<const Spack>& q,
     const view_1d<Spack>& thv);
 
+  KOKKOS_FUNCTION
+  static void shoc_diag_second_moments_ubycond(
+    Scalar& thl_sec, Scalar& qw_sec, Scalar& wthl_sec, Scalar& wqw_sec,
+    Scalar& qwthl_sec, Scalar& uw_sec, Scalar& vw_sec, Scalar& wtke_sec);
+
 }; // struct Functions
 
 } // namespace shoc
@@ -98,6 +103,7 @@ struct Functions
 # include "shoc_calc_shoc_vertflux_impl.hpp"
 # include "shoc_diag_second_moments_srf_impl.hpp"
 # include "shoc_pblintd_init_pot_impl.hpp"
+# include "shoc_diag_second_moments_ubycond_impl.hpp"
 #endif
 
 #endif

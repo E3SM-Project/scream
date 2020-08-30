@@ -415,6 +415,7 @@ struct SHOCLinearintData : public SHOCDataBase {
   { SHOCDataBase::operator=(rhs); minthresh = rhs.minthresh; return *this; }
 };//SHOCLinearintData
 
+<<<<<<< HEAD
 struct SHOCPblintdInitPotData : public SHOCDataBase {
   // inputs
   Real *thl, *ql, *q;
@@ -556,6 +557,17 @@ struct SHOCPDFcompbuoyfluxData
   // outputs
   Real wthv_sec;
 
+=======
+struct SHOCSecondMomentUbycondData : public SHOCDataBase {
+  // Outputs
+  Real *thl, *qw, *wthl, *wqw, *qwthl, *uw, *vw, *wtke;
+
+  SHOCSecondMomentUbycondData(Int shcol_) :
+     SHOCDataBase(shcol_, 1, 0, {&thl, &qw, &wthl, &wqw, &qwthl, &uw, &vw, &wtke}, {}, {}) {}
+  SHOCSecondMomentUbycondData(const SHOCSecondMomentUbycondData &rhs) :
+     SHOCDataBase(rhs, {&thl, &qw, &wthl, &wqw, &qwthl, &uw, &vw, &wtke}, {}, {}) {}
+  SHOCSecondMomentUbycondData &operator=(const SHOCSecondMomentUbycondData &rhs) { SHOCDataBase::operator=(rhs); return *this; }
+>>>>>>> porting diag_second_moments_ubycond
 };
 
 //
@@ -598,6 +610,7 @@ void shoc_assumed_pdf_compute_qs(SHOCPDFcompqsData &d);
 void shoc_assumed_pdf_compute_cloud_liquid_variance(SHOCPDFcompcloudvarData &d);
 void shoc_assumed_pdf_compute_cloud_liquid_water_flux(SHOCPDFcompliqfluxData &d);
 void shoc_assumed_pdf_compute_buoyancy_flux(SHOCPDFcompbuoyfluxData &d);
+void shoc_diag_second_moments_ubycond(SHOCSecondMomentUbycondData& d);
 
 //
 // _f functions decls
@@ -609,6 +622,10 @@ void calc_shoc_vertflux_f(Int shcol, Int nlev, Int nlevi, Real *tkh_zi,
 void shoc_diag_second_moments_srf_f(Int shcol, Real* wthl, Real* uw, Real* vw,
                          Real* ustar2, Real* wstar);
 void shoc_pblintd_init_pot_f(Int shcol, Int nlev, Real* thl, Real* ql, Real* q, Real* thv);
+
+void shoc_diag_second_moments_ubycond_f(Int shcol, Real* thl, Real* qw, Real* wthl,
+                          Real* wqw, Real* qwthl, Real* uw, Real* vw, Real* wtke);
+
 }
 
 }  // namespace shoc
