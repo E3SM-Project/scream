@@ -33,6 +33,7 @@ set(SHOC_TESTS_SRCS
     shoc_pdf_computetemp_tests.cpp
     shoc_diag_second_mom_ubycond_test.cpp
     shoc_pdf_compute_qs_tests.cpp
+    shoc_pdf_compute_s_tests.cpp
     shoc_pdf_compute_buoyflux_tests.cpp
     shoc_pdf_compute_liqflux_tests.cpp
     shoc_pdf_compute_cloudvar_tests.cpp
