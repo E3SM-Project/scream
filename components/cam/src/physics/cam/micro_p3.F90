@@ -3454,14 +3454,20 @@ dt,qr2qv_evap_tend,nr_evap_tend)
    real(rtype), intent(inout) :: nr_evap_tend
    real(rtype) :: cld_frac, eps_eff, tau_eff, tau_r, ssat_r, A_c, sup_r
    real(rtype) :: equilib_evap_tend, tscale_weight, instant_evap_tend
+   real(rtype) :: qv_prev_int, t_prev_int
 
-   !qv_prev and t_prev are initialized as -12 in micro_p3_init
+   ! qv_prev_int and t_prev_int are local variables for qv_prev and t_prev
+   ! qv_prev and t_prev are initialized as -12 in micro_p3_init
    ! check whether qv_prev and t_prev are less than -10 and if so, set as qv and t
    if (qv_prev < -10._rtype) then
-      qv_prev=qv
+      qv_prev_int=qv
+   else
+      qv_prev_int=qv_prev
    end if
    if (t_prev < -10._rtype) then
-      t_prev=t
+      t_prev_int=t
+   else
+      t_prev_int=t_prev
    end if
 
    !Initialize variables
@@ -3510,10 +3516,10 @@ dt,qr2qv_evap_tend,nr_evap_tend)
       !Compute the constant source/sink term A_c for analytic integration. See Eq C4 in
       !Morrison+Milbrandt 2015 https://doi.org/10.1175/JAS-D-14-0065.1
       if (t < 273.15_rtype) then
-         A_c = (qv - qv_prev)*inv_dt - dqsdt*(t-t_prev)*inv_dt - (qv_sat_l - qv_sat_i)* &
+         A_c = (qv - qv_prev_int)*inv_dt - dqsdt*(t-t_prev_int)*inv_dt - (qv_sat_l - qv_sat_i)* &
                (1.0_rtype + latent_heat_sublim*inv_cp*dqsdt)/abi*epsi_tot
       else
-         A_c = (qv - qv_prev)*inv_dt - dqsdt*(t-t_prev)*inv_dt
+         A_c = (qv - qv_prev_int)*inv_dt - dqsdt*(t-t_prev_int)*inv_dt
       endif
       
       !Now compute evap rate
