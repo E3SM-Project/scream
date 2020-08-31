@@ -1156,8 +1156,8 @@ subroutine diag_second_moments_lbycond(&
     uf = max(ufmin,uf)
 
     ! Diagnose thermodynamics variances and covariances
-    thl_sec(i) = 0.4_rtype * a_const * bfb_pow(wthl_sfc(i)/uf, 2.0_rtype)
-    qw_sec(i) = 0.4_rtype * a_const * bfb_pow(wqw_sfc(i)/uf, 2.0_rtype)
+    thl_sec(i) = 0.4_rtype * a_const * (wthl_sfc(i)/uf) * (wthl_sfc(i)/uf)
+    qw_sec(i) = 0.4_rtype * a_const * (wqw_sfc(i)/uf) * (wqw_sfc(i)/uf)
     qwthl_sec(i) = 0.2_rtype * a_const * (wthl_sfc(i)/uf) * &
                          (wqw_sfc(i)/uf)
 
@@ -1167,7 +1167,7 @@ subroutine diag_second_moments_lbycond(&
     wqw_sec(i) = wqw_sfc(i)
     uw_sec(i) = uw_sfc(i)
     vw_sec(i) = vw_sfc(i)
-    wtke_sec(i) = bfb_pow(max(bfb_sqrt(ustar2(i)),0.01_rtype), 3.0_rtype)
+    wtke_sec(i) = bfb_pow(max(bfb_sqrt(ustar2(i)),0.01_rtype), 3._rtype)
 
   enddo ! end i loop (column loop)
   return

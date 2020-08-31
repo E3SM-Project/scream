@@ -472,7 +472,6 @@ contains
   subroutine shoc_diag_second_moments_srf_c(shcol, wthl, uw, vw, ustar2, wstar) bind(C)
    use shoc, only: diag_second_moments_srf
 
-   ! argmens
    integer(kind=c_int), value, intent(in) :: shcol
    real(kind=c_real), intent(in)  :: wthl(shcol), uw(shcol), vw(shcol)
    real(kind=c_real), intent(out) :: ustar2(shcol), wstar(shcol)
@@ -501,7 +500,6 @@ contains
             wthlo, wqwo, uwo, vwo, wtkeo, thlo, qwo, qwthlo) bind(C)
    use shoc, only: diag_second_moments_lbycond
 
-   ! argmens
    integer(kind=c_int), value, intent(in) :: shcol
    real(kind=c_real), intent(in)  :: wthl(shcol), wqw(shcol), uw(shcol), vw(shcol), ustar2(shcol), wstar(shcol)
    real(kind=c_real), intent(out) :: wthlo(shcol), wqwo(shcol), uwo(shcol), vwo(shcol), wtkeo(shcol), thlo(shcol), qwo(shcol), qwthlo(shcol)

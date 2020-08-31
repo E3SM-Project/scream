@@ -35,6 +35,10 @@ static void run_second_mom_lbycond_bfb()
 
   static constexpr Int num_runs = sizeof(lby_fortran) / sizeof(SHOCSecondMomLbycondData);
 
+  for (Int i = 0; i < num_runs; ++i) {
+    lby_fortran[i].randomize({ {-1, 1} });
+  }
+
   // Create copies of data for use by cxx. Needs to happen before fortran calls so that
   // inout data is in original state
   SHOCSecondMomLbycondData lby_cxx[num_runs] = {
@@ -80,7 +84,6 @@ static void run_second_mom_lbycond_phys()
 }
 }
 }
-
 
 namespace {
 TEST_CASE("second_mom_lby", "shoc") {

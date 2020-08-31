@@ -34,7 +34,6 @@ interface
 
    integer(kind=c_int), value, intent(in) :: shcol
 
-   ! arguments
    real(kind=c_real), intent(in) :: wthl(shcol)
    real(kind=c_real), intent(in) :: uw(shcol)
    real(kind=c_real), intent(in) :: vw(shcol)
@@ -47,7 +46,6 @@ interface
             wthlo, wqwo, uwo, vwo, wtkeo, thlo, qwo, qwthlo) bind(C)
    use iso_c_binding
 
-   ! argments
    integer(kind=c_int), value, intent(in) :: shcol
    real(kind=c_real), intent(in)  :: wthl(shcol), wqw(shcol), uw(shcol), vw(shcol), ustar2(shcol), wstar(shcol)
    real(kind=c_real), intent(out) :: wthlo(shcol), wqwo(shcol), uwo(shcol), vwo(shcol), wtkeo(shcol), thlo(shcol), qwo(shcol), qwthlo(shcol)
