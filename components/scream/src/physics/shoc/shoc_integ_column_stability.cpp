@@ -5,8 +5,7 @@ namespace scream {
 namespace shoc {
 
 /*
- * Explicit instantiation for computing brunt_int on Reals using the
- * default device.
+ * Explicit instantiation for default device.
  */
 
 template struct Functions<Real,DefaultDevice>;
