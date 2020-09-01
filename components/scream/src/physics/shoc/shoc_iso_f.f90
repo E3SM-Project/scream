@@ -43,6 +43,16 @@ interface
 
  end subroutine shoc_diag_second_moments_srf_f
 
+ subroutine shoc_pblintd_init_pot_f(shcol, nlev, thl, ql, q, thv) bind(C)
+   use iso_c_binding
+
+   ! argmens
+   integer(kind=c_int), value, intent(in) :: shcol, nlev
+   real(kind=c_real), intent(in)  :: thl(shcol, nlev), ql(shcol, nlev), q(shcol,nlev)
+   real(kind=c_real), intent(out) :: thv(shcol, nlev)
+
+ end subroutine shoc_pblintd_init_pot_f
+
 end interface
 
 end module shoc_iso_f

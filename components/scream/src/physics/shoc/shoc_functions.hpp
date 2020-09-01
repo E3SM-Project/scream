@@ -81,6 +81,12 @@ struct Functions
     const Scalar& wthl_sfc, const Scalar& uw_sfc, const Scalar& vw_sfc,
     Scalar& ustar2, Scalar& wstar);
 
+  KOKKOS_FUNCTION
+  static void shoc_pblintd_init_pot(
+    const MemberType& team, const Int& nlev,
+    const view_1d<const Spack>& thl, const view_1d<const Spack>& ql, const view_1d<const Spack>& q,
+    const view_1d<Spack>& thv);
+
 }; // struct Functions
 
 } // namespace shoc
@@ -91,6 +97,7 @@ struct Functions
 #ifdef KOKKOS_ENABLE_CUDA
 # include "shoc_calc_shoc_vertflux_impl.hpp"
 # include "shoc_diag_second_moments_srf_impl.hpp"
+# include "shoc_pblintd_init_pot_impl.hpp"
 #endif
 
 #endif

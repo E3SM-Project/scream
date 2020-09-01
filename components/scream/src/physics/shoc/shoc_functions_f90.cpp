@@ -95,6 +95,7 @@ void shoc_diag_second_moments_srf_c(Int shcol, Real* wthl, Real* uw, Real* vw,
 void linear_interp_c(Real *x1, Real *x2, Real *y1, Real *y2, Int km1,
                      Int km2, Int ncol, Real minthresh);			   
 
+void shoc_pblintd_init_pot_c(Int shcol, Int nlev, Real* thl, Real* ql, Real* q, Real* thv);
 }
 
 namespace scream {
@@ -407,6 +408,14 @@ void linear_interp(SHOCLinearintData& d)
   d.transpose<ekat::util::TransposeDirection::f2c>();
 }
 
+void shoc_pblintd_init_pot(SHOCPblintdInitPotData& d)
+{
+  shoc_init(d.nlev, true);
+  d.transpose<ekat::util::TransposeDirection::c2f>();
+  shoc_pblintd_init_pot_c(d.shcol, d.nlev, d.thl, d.ql, d.q, d.thv);
+  d.transpose<ekat::util::TransposeDirection::f2c>();
+}
+
 //
 // _f function definitions. These expect data in C layout
 //
@@ -493,6 +502,44 @@ void shoc_diag_second_moments_srf_f(Int shcol, Real* wthl, Real* uw, Real* vw, R
 
   Kokkos::Array<view_1d, 2> out_views = {ustar2_d, wstar_d};
   ekat::pack::device_to_host({ustar2, wstar}, shcol, out_views);
+}
+
+void shoc_pblintd_init_pot_f(Int shcol, Int nlev, Real *thl, Real* ql, Real* q,
+                             Real *thv)
+{
+  using SHOC       = Functions<Real, DefaultDevice>;
+  using Spack      = typename SHOC::Spack;
+  using view_2d    = typename SHOC::view_2d<Spack>;
+  using KT         = typename SHOC::KT;
+  using ExeSpace   = typename KT::ExeSpace;
+  using MemberType = typename SHOC::MemberType;
+
+  static constexpr Int num_arrays = 3;
+
+  Kokkos::Array<view_2d, num_arrays> temp_d;
+  ekat::pack::host_to_device({thl, ql, q}, shcol, nlev, temp_d, true);
+
+  view_2d thl_d(temp_d[0]),
+          ql_d (temp_d[1]),
+          q_d  (temp_d[2]);
+
+  view_2d thv_d("thv", shcol, nlev);
+
+  const Int nlev_pack = ekat::pack::npack<Spack>(nlev);
+  const auto policy = ekat::util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_pack);
+  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+    const Int i = team.league_rank();
+
+    const auto thl_1d = ekat::util::subview(thl_d, i);
+    const auto ql_1d  = ekat::util::subview(ql_d, i);
+    const auto q_1d   = ekat::util::subview(q_d, i);
+    const auto thv_1d = ekat::util::subview(thv_d, i);
+
+    SHOC::shoc_pblintd_init_pot(team, nlev, thl_1d, ql_1d, q_1d, thv_1d);
+  });
+
+  Kokkos::Array<view_2d, 1> inout_views = {thv_d};
+  ekat::pack::device_to_host({thv}, {shcol}, {nlev}, inout_views, true);
 }
 
 } // namespace shoc
