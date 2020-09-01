@@ -43,17 +43,27 @@ interface
 
  end subroutine shoc_diag_second_moments_srf_f
 
-  subroutine integ_column_stability_f(nlev, shcol, dz_zt, pres, brunt, brunt_int) bind (C)
-    use iso_c_binding
+ subroutine shoc_diag_second_moments_ubycond_f(shcol, thl, qw, wthl, wqw, qwthl, uw, vw, wtke) bind(C)
+   use iso_c_binding
 
-    integer(kind=c_int), intent(in), value :: nlev, shcol
-    real(kind=c_real),   intent(in) :: dz_zt(shcol,nlev)
-    real(kind=c_real),   intent(in) :: pres(shcol,nlev)
-    real(kind=c_real),   intent(in) :: brunt(shcol,nlev)
+   ! argmens
+   integer(kind=c_int), value, intent(in) :: shcol
+   real(kind=c_real), intent(out)  :: thl(shcol), qw(shcol), qwthl(shcol),wthl(shcol),wqw(shcol), &
+        uw(shcol), vw(shcol), wtke(shcol)
 
-    real(kind=c_real),   intent(out) :: brunt_int(shcol)
+ end subroutine shoc_diag_second_moments_ubycond_f
 
-  end subroutine integ_column_stability_f
+ subroutine integ_column_stability_f(nlev, shcol, dz_zt, pres, brunt, brunt_int) bind (C)
+   use iso_c_binding
+
+   integer(kind=c_int), intent(in), value :: nlev, shcol
+   real(kind=c_real),   intent(in) :: dz_zt(shcol,nlev)
+   real(kind=c_real),   intent(in) :: pres(shcol,nlev)
+   real(kind=c_real),   intent(in) :: brunt(shcol,nlev)
+
+   real(kind=c_real),   intent(out) :: brunt_int(shcol)
+
+ end subroutine integ_column_stability_f
 
 end interface
 
