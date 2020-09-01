@@ -41,7 +41,9 @@ void Functions<S,D>
   wqw_sec  = wqw_sfc;
   uw_sec   = uw_sfc;
   vw_sec   = vw_sfc;
-  wtke_sec = pow(max(sqrt(ustar2),ufmin), sp(3.));
+
+  auto wtke0    = max(sqrt(ustar2),ufmin);
+  wtke_sec = wtke0*wtke0*wtke0;
 }
 } // namespace shoc
 } // namespace scream

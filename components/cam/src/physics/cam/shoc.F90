@@ -1129,7 +1129,7 @@ subroutine diag_second_moments_lbycond(&
 
 ! LOCAL VARIABLES
   integer :: i, p
-  real(rtype) :: uf
+  real(rtype) :: uf, wtke0
 
   ! Constants to parameterize surface variances
   real(rtype), parameter :: a_const = 1.8_rtype
@@ -1167,7 +1167,9 @@ subroutine diag_second_moments_lbycond(&
     wqw_sec(i) = wqw_sfc(i)
     uw_sec(i) = uw_sfc(i)
     vw_sec(i) = vw_sfc(i)
-    wtke_sec(i) = bfb_pow(max(bfb_sqrt(ustar2(i)),0.01_rtype), 3._rtype)
+
+    wtke0 = max(bfb_sqrt(ustar2(i)),0.01_rtype)
+    wtke_sec(i) = wtke0*wtke0*wtke0
 
   enddo ! end i loop (column loop)
   return
