@@ -351,7 +351,6 @@ struct SHOCLinearintData : public PhysicsTestData {
   { PhysicsTestData::operator=(rhs); minthresh = rhs.minthresh; return *this; }
 };//SHOCLinearintData
 
-<<<<<<< HEAD
 struct SHOCPblintdInitPotData : public SHOCDataBase {
   // inputs
   Real *thl, *ql, *q;
@@ -373,7 +372,6 @@ struct SHOCPDFtildaData
   
   // outputs
   Real w1;
-
 };
 
 // Create data structure to hold data for shoc_assumed_pdf_vv_parameters
@@ -426,7 +424,6 @@ struct SHOCPDFcomptempData
   
   // outputs
   Real Tl1;
-
 };
 
 //Create data structure to hold data for shoc_assumed_pdf_compute_qs
@@ -437,7 +434,6 @@ struct SHOCPDFcompqsData
   
   // outputs
   Real qs1, beta1, qs2, beta2;
-
 };
 
 //Create data structure to hold data for shoc_assumed_pdf_compute_s
@@ -448,7 +444,6 @@ struct SHOCPDFcompsData
   
   // outputs
   Real s, std_s, qn, C;
-
 };
 
 //Create data structure to hold data for shoc_assumed_pdf_compute_sgs_liquid
@@ -459,7 +454,6 @@ struct SHOCPDFcompsgsliqData
   
   // outputs
   Real shoc_ql;
-
 };
 
 //Create data structure to hold data for shoc_assumed_pdf_compute_cloud_liquid_variance
@@ -470,7 +464,6 @@ struct SHOCPDFcompcloudvarData
   
   // outputs
   Real shoc_ql2;
-
 };
 
 //Create data structure to hold data for shoc_assumed_pdf_compute_liquid_water_flux
@@ -481,7 +474,6 @@ struct SHOCPDFcompliqfluxData
   
   // outputs
   Real wqls;
-
 };
 
 //Create data structure to hold data for shoc_assumed_pdf_compute_buoyancy_flux
@@ -492,8 +484,8 @@ struct SHOCPDFcompbuoyfluxData
   
   // outputs
   Real wthv_sec;
+};
 
-=======
 struct SHOCSecondMomentUbycondData : public SHOCDataBase {
   // Outputs
   Real *thl, *qw, *wthl, *wqw, *qwthl, *uw, *vw, *wtke;
@@ -503,7 +495,6 @@ struct SHOCSecondMomentUbycondData : public SHOCDataBase {
   SHOCSecondMomentUbycondData(const SHOCSecondMomentUbycondData &rhs) :
      SHOCDataBase(rhs, {&thl, &qw, &wthl, &wqw, &qwthl, &uw, &vw, &wtke}, {}, {}) {}
   SHOCSecondMomentUbycondData &operator=(const SHOCSecondMomentUbycondData &rhs) { SHOCDataBase::operator=(rhs); return *this; }
->>>>>>> porting diag_second_moments_ubycond
 };
 
 //
