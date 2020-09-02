@@ -12,8 +12,11 @@ KOKKOS_FUNCTION
 void Functions<S,D>
 ::evaporate_rain(
   const Spack& qr_incld, const Spack& qc_incld, const Spack& nr_incld, const Spack& qi_incld,
-  const Spack& cld_frac_l, const Spack& cld_frac_r, const Spack& qv_sat_l, const Spack& ab, const Spack& epsr,
-  const Spack& qv, Spack& qr2qv_evap_tend, Spack& nr_evap_tend,
+  const Spack& cld_frac_l, const Spack& cld_frac_r, const Spack& qv, const Spack& qv_prev,
+  const Spack& qv_sat_l, const Spack& qv_sat_i, const Spack& ab, const Spack& abi,
+  const Spack& epsr, const Spack& epsi_tot, const Spack& t, const Spack& t_prev,
+  const Spack& latent_heat_sublim, const Spack& dqsdt, const Spack& dt,
+  Spack& qr2qv_evap_tend, Spack& nr_evap_tend,
   const Smask& context)
 {
   /* It is assumed that macrophysics handles condensation/evaporation of qc and

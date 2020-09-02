@@ -815,7 +815,11 @@ void evaporate_rain(EvapRainData& d);
 extern "C"{
 
 void evaporate_rain_f( Real qr_incld, Real qc_incld, Real nr_incld, Real qi_incld,
-Real cld_frac_l, Real cld_frac_r, Real qv_sat_l, Real ab, Real epsr, Real qv, Real* qr2qv_evap_tend, Real* nr_evap_tend);
+		       Real cld_frac_l, Real cld_frac_r, Real qv, Real qv_prev,
+		       Real qv_sat_l, Real qv_sat_i, Real ab, Real abi,
+		       Real epsr, Real epsi_tot, Real t, Real t_prev,
+		       Real latent_heat_sublim, Real dqsdt, Real dt,
+		       Real* qr2qv_evap_tend, Real* nr_evap_tend);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

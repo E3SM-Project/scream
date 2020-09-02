@@ -401,13 +401,17 @@ subroutine  update_prognostic_ice_f(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
     real(kind=c_real), intent(out) :: ni_selfcollect_tend
   end subroutine ice_self_collection_f
 
-  subroutine evaporate_rain_f(qr_incld, qc_incld, nr_incld, qi_incld,  cld_frac_l, cld_frac_r, qv_sat_l, ab, &
-       epsr, qv, qr2qv_evap_tend, nr_evap_tend) bind(C)
+  subroutine evaporate_rain_f(qr_incld,qc_incld,nr_incld,qi_incld, &
+       cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i, &
+       ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,dt,&
+       qr2qv_evap_tend,nr_evap_tend) bind(C)
     use iso_c_binding
 
     ! arguments:
-    real(kind=c_real), value, intent(in) :: qr_incld, qc_incld, nr_incld, qi_incld,  cld_frac_l, cld_frac_r, qv_sat_l, ab, &
-         epsr, qv
+    real(kind=c_real), value, intent(in) :: qr_incld,qc_incld,nr_incld,qi_incld, &
+         cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i, &
+         ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,d
+
     real(kind=c_real), intent(out) :: qr2qv_evap_tend, nr_evap_tend
 
   end subroutine evaporate_rain_f

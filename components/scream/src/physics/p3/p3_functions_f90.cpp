@@ -130,8 +130,12 @@ void  update_prognostic_ice_c(
   Real rho_qm_cloud, Real* th, Real* qv, Real* qi, Real* ni, Real* qm,
   Real* bm, Real* qc, Real* nc, Real* qr, Real* nr);
 
-void evaporate_rain_c(Real qr_incld, Real qc_incld, Real nr_incld, Real qi_incld, Real cld_frac_l,
-  Real cld_frac_r, Real qv_sat_l, Real ab, Real epsr, Real qv, Real* qr2qv_evap_tend, Real* nr_evap_tend);
+void evaporate_rain_c( Real qr_incld, Real qc_incld, Real nr_incld, Real qi_incld,
+  Real cld_frac_l, Real cld_frac_r, Real qv, Real qv_prev,
+  Real qv_sat_l, Real qv_sat_i, Real ab, Real abi,
+  Real epsr, Real epsi_tot, Real t, Real t_prev,
+  Real latent_heat_sublim, Real dqsdt, Real dt,
+  Real* qr2qv_evap_tend, Real* nr_evap_tend);
 
 void update_prognostic_liquid_c(
   Real qc2qr_accret_tend, Real nc_accret_tend, Real qc2qr_autoconv_tend, Real nc2nr_autoconv_tend, Real ncautr,
@@ -666,9 +670,10 @@ void update_prognostic_ice(P3UpdatePrognosticIceData& d){
 void evaporate_rain(EvapRainData& d)
 {
   p3_init();
-  evaporate_rain_c(d.qr_incld, d.qc_incld, d.nr_incld, d.qi_incld,
-			       d.cld_frac_l, d.cld_frac_r, d.qv_sat_l, d.ab, d.epsr, d.qv,
-			       &d.qr2qv_evap_tend, &d.nr_evap_tend);
+  evaporate_rain_c(d.qr_incld,d.qc_incld,d.nr_incld,d.qi_incld, &
+		   d.cld_frac_l,d.cld_frac_r,d.qv,d.qv_prev,d.qv_sat_l,d.qv_sat_i, &
+		   d.ab,d.abi,d.epsr,d.epsi_tot,d.t,d.t_prev,d.latent_heat_sublim,d.dqsdt,d.dt,&
+		   &d.qr2qv_evap_tend,&d.nr_evap_tend);
 }
 
 void  update_prognostic_liquid(P3UpdatePrognosticLiqData& d){
@@ -1525,9 +1530,13 @@ void update_prognostic_ice_f( Real qc2qi_hetero_freeze_tend_, Real qc2qi_collect
   *nr_    = t_h(9);
 }
 
-void evaporate_rain_f(Real qr_incld_, Real qc_incld_, Real nr_incld_, Real qi_incld_, Real cld_frac_l_,
-				  Real cld_frac_r_, Real qv_sat_l_, Real ab_, Real epsr_, Real qv_,
-				  Real* qr2qv_evap_tend_, Real* nr_evap_tend_)
+void evaporate_rain_f(Real qr_incld_, Real qc_incld_, Real nr_incld_, Real qi_incld_,
+		      Real cld_frac_l_, Real cld_frac_r_, Real qv_, Real qv_prev_,
+		      Real qv_sat_l_, Real qv_sat_i_, Real ab_, Real abi_,
+		      Real epsr_, Real epsi_tot_, Real t_, Real t_prev_,
+		      Real latent_heat_sublim_, Real dqsdt_, Real dt_,
+		      Real* qr2qv_evap_tend_, Real* nr_evap_tend_)
+
 {
   using P3F = Functions<Real, DefaultDevice>;
 
@@ -1538,13 +1547,17 @@ void evaporate_rain_f(Real qr_incld_, Real qc_incld_, Real nr_incld_, Real qi_in
   Real local_nr_evap_tend = *nr_evap_tend_;
 
   Kokkos::parallel_for(1, KOKKOS_LAMBDA(const Int&) {
-      typename P3F::Spack qr_incld(qr_incld_), qc_incld(qc_incld_), nr_incld(nr_incld_), qi_incld(qi_incld_),
-	cld_frac_l(cld_frac_l_), cld_frac_r(cld_frac_r_), qv_sat_l(qv_sat_l_), ab(ab_), epsr(epsr_), qv(qv_);
+      typename P3F::Spack qr_incld(qr_incld_),qc_incld(qc_incld_),nr_incld(nr_incld_),qi_incld(qi_incld_), &
+	cld_frac_l(cld_frac_l_),cld_frac_r(cld_frac_r_),qv(qv_),qv_prev(qv_prev_),qv_sat_l(qv_sat_l_), &
+	qv_sat_i(qv_sat_i_),ab(ab_),abi(abi_),epsr(epsr_),epsi_tot(epsi_tot_),t(t_),t_prev(t_prev_), &
+	latent_heat_sublim(latent_heat_sublim_),dqsdt(dqsdt_),dt(dt_);
 
       typename P3F::Spack qr2qv_evap_tend(local_qr2qv_evap_tend), nr_evap_tend(local_nr_evap_tend);
 
-      P3F::evaporate_rain(qr_incld, qc_incld, nr_incld, qi_incld,  cld_frac_l, cld_frac_r, qv_sat_l, ab,
-      epsr, qv, qr2qv_evap_tend, nr_evap_tend);
+      P3F::evaporate_rain(qr_incld,qc_incld,nr_incld,qi_incld, &
+       cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i, &
+       ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,dt,&
+       qr2qv_evap_tend,nr_evap_tend);
 
       t_d(0) = qr2qv_evap_tend[0];
       t_d(1) = nr_evap_tend[0];
