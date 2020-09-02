@@ -801,7 +801,7 @@ Real* qi, Real* ni, Real* qm, Real* bm, Real* qc, Real* nc, Real* qr, Real* nr);
 
 ///////////////////////////////////////////////////////////////////////////////
 
-struct EvapSublimatePrecipData
+struct EvapRainData
 {
   // Inputs
   Real qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, cld_frac_r, qv_sat_l, ab, epsr, qv;
@@ -810,11 +810,11 @@ struct EvapSublimatePrecipData
   Real qr2qv_evap_tend, nr_evap_tend;
 };
 
-void evaporate_sublimate_precip(EvapSublimatePrecipData& d);
+void evaporate_rain(EvapRainData& d);
 
 extern "C"{
 
-void evaporate_sublimate_precip_f( Real qr_incld, Real qc_incld, Real nr_incld, Real qi_incld,
+void evaporate_rain_f( Real qr_incld, Real qc_incld, Real nr_incld, Real qi_incld,
 Real cld_frac_l, Real cld_frac_r, Real qv_sat_l, Real ab, Real epsr, Real qv, Real* qr2qv_evap_tend, Real* nr_evap_tend);
 }
 

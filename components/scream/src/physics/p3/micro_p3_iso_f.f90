@@ -401,7 +401,7 @@ subroutine  update_prognostic_ice_f(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
     real(kind=c_real), intent(out) :: ni_selfcollect_tend
   end subroutine ice_self_collection_f
 
-  subroutine evaporate_sublimate_precip_f(qr_incld, qc_incld, nr_incld, qi_incld,  cld_frac_l, cld_frac_r, qv_sat_l, ab, &
+  subroutine evaporate_rain_f(qr_incld, qc_incld, nr_incld, qi_incld,  cld_frac_l, cld_frac_r, qv_sat_l, ab, &
        epsr, qv, qr2qv_evap_tend, nr_evap_tend) bind(C)
     use iso_c_binding
 
@@ -410,7 +410,7 @@ subroutine  update_prognostic_ice_f(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
          epsr, qv
     real(kind=c_real), intent(out) :: qr2qv_evap_tend, nr_evap_tend
 
-  end subroutine evaporate_sublimate_precip_f
+  end subroutine evaporate_rain_f
 
   subroutine update_prognostic_liquid_f(qc2qr_accret_tend, nc_accret_tend, qc2qr_autoconv_tend,nc2nr_autoconv_tend, ncautr, nc_selfcollect_tend, &
        qr2qv_evap_tend, nr_evap_tend, nr_selfcollect_tend, do_predict_nc, inv_rho, exner, latent_heat_vapor, dt, th, qv, qc, nc, qr, nr) bind(C)

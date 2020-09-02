@@ -733,7 +733,7 @@ contains
            dv,mu,sc,mu_r(k),lamr(k),cdistr(k),cdist(k),qr_incld(k),qc_incld(k), &
            epsr,epsc)
 
-      call evaporate_precip(qr_incld(k),qc_incld(k),nr_incld(k),qi_incld(k), &
+      call evaporate_rain(qr_incld(k),qc_incld(k),nr_incld(k),qi_incld(k), &
            cld_frac_l(k),cld_frac_r(k),qv(k),qv_prev(k),qv_sat_l(k),qv_sat_i(k), &
            ab,abi,epsr,epsi_tot,t(k),t_prev(k),latent_heat_sublim(k),dqsdt,inv_dt,&
            dt,qr2qv_evap_tend,nr_evap_tend)
@@ -3337,7 +3337,7 @@ subroutine rain_evap_instant_tend(ssat_r, ab, tau_r,tend)
 end subroutine rain_evap_instant_tend
 
 
-subroutine evaporate_precip(qr_incld,qc_incld,nr_incld,qi_incld, &
+subroutine evaporate_rain(qr_incld,qc_incld,nr_incld,qi_incld, &
 cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i, &
 ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,inv_dt, &
 dt,qr2qv_evap_tend,nr_evap_tend)
@@ -3477,7 +3477,7 @@ dt,qr2qv_evap_tend,nr_evap_tend)
    
    return
 
-end subroutine evaporate_precip
+end subroutine evaporate_rain
 
 subroutine get_time_space_phys_variables( &
 t,pres,rho,latent_heat_vapor,latent_heat_sublim,qv_sat_l,qv_sat_i, &

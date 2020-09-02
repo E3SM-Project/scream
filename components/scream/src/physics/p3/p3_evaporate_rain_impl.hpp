@@ -1,5 +1,5 @@
-#ifndef P3_EVAPORATE_SUBLIMATE_PRECIP_IMPL_HPP
-#define P3_EVAPORATE_SUBLIMATE_PRECIP_IMPL_HPP
+#ifndef P3_EVAPORATE_RAIN_IMPL_HPP
+#define P3_EVAPORATE_RAIN_IMPL_HPP
 
 #include "p3_functions.hpp"
 #include "physics_constants.hpp"
@@ -10,7 +10,7 @@ namespace p3 {
 template<typename S, typename D>
 KOKKOS_FUNCTION
 void Functions<S,D>
-::evaporate_sublimate_precip(
+::evaporate_rain(
   const Spack& qr_incld, const Spack& qc_incld, const Spack& nr_incld, const Spack& qi_incld,
   const Spack& cld_frac_l, const Spack& cld_frac_r, const Spack& qv_sat_l, const Spack& ab, const Spack& epsr,
   const Spack& qv, Spack& qr2qv_evap_tend, Spack& nr_evap_tend,

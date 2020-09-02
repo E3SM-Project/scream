@@ -656,18 +656,18 @@ subroutine  update_prognostic_ice_c(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
                              qi_incld, ni_incld, ni_selfcollect_tend)
   end subroutine ice_self_collection_c
 
-  subroutine evaporate_sublimate_precip_c(qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, &
+  subroutine evaporate_rain_c(qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, &
        cld_frac_r, qv_sat_l, ab, epsr, qv, qr2qv_evap_tend, nr_evap_tend) bind(C)
-    use micro_p3, only: evaporate_sublimate_precip
+    use micro_p3, only: evaporate_rain
 
     ! arguments
     real(kind=c_real), value, intent(in) :: qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, &
         cld_frac_r, qv_sat_l, ab, epsr, qv
     real(kind=c_real), intent(out) :: qr2qv_evap_tend, nr_evap_tend
 
-    call evaporate_sublimate_precip(qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, &
+    call evaporate_rain(qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, &
        cld_frac_r, qv_sat_l, ab, epsr, qv, qr2qv_evap_tend, nr_evap_tend)
-  end subroutine evaporate_sublimate_precip_c
+  end subroutine evaporate_rain_c
 
   subroutine  update_prognostic_liquid_c(qc2qr_accret_tend, nc_accret_tend, qc2qr_autoconv_tend,nc2nr_autoconv_tend, ncautr, nc_selfcollect_tend, &
        qr2qv_evap_tend, nr_evap_tend, nr_selfcollect_tend, do_predict_nc, inv_rho, exner, latent_heat_vapor, dt, th, qv, qc, nc, qr, nr) bind(C)

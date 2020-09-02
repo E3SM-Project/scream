@@ -811,11 +811,11 @@ struct UnitWrap::UnitTest<D>::TestGetTimeSpacePhysVariables
 template <typename D>
 struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
 {
-  static void evaporate_sublimate_precip_unit_bfb_tests(){
+  static void evaporate_rain_unit_bfb_tests(){
 
     //fortran generated data is input to the following
     //This subroutine has 12 args, only 10 are supplied here for invoking it as last 2 are intent-outs
-    EvapSublimatePrecipData espd[max_pack_size] = {
+    EvapRainData espd[max_pack_size] = {
       {1.0010E-06,1.0000E-06,6.3726E+05,0.0000E+00,1.0000E+00,1.0000E+00,2.0321E-02,4.0889E+00,1.0080E-03,5.0000E-02},
       {5.2632E-07,0.0000E+00,3.3506E+05,0.0000E+00,1.0000E+00,1.0000E+00,1.8120E-02,3.7933E+00,5.2700E-04,4.7222E-04},
       {1.0526E-06,0.0000E+00,6.7013E+05,0.0000E+00,1.0000E+00,1.0000E+00,1.6134E-02,3.5224E+00,1.0480E-03,4.5833E-04},
@@ -835,7 +835,7 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
     };
 
     // Sync to device
-    view_1d<EvapSublimatePrecipData> espd_device("espd", max_pack_size);
+    view_1d<EvapRainData> espd_device("espd", max_pack_size);
     auto espd_host = Kokkos::create_mirror_view(espd_device);
 
     // This copy only copies the input variables.
@@ -844,7 +844,7 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
 
     // Get data from fortran
     for (Int i = 0; i < max_pack_size; ++i) {
-      evaporate_sublimate_precip(espd[i]);
+      evaporate_rain(espd[i]);
     }
 
     // Run the lookup from a kernel and copy results back to host
@@ -869,7 +869,7 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
         nr_evap_tend[s]       = espd_device(vs).nr_evap_tend;
       }
 
-      Functions::evaporate_sublimate_precip(qr_incld, qc_incld, nr_incld, qi_incld,  cld_frac_l, cld_frac_r, qv_sat_l, ab,
+      Functions::evaporate_rain(qr_incld, qc_incld, nr_incld, qi_incld,  cld_frac_l, cld_frac_r, qv_sat_l, ab,
                                             epsr, qv, qr2qv_evap_tend, nr_evap_tend);
 
       // Copy results back into views
@@ -900,7 +900,7 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
   }
 
   static void run_bfb(){
-    evaporate_sublimate_precip_unit_bfb_tests();
+    evaporate_rain_unit_bfb_tests();
   }
 
 }; //TestEvapSublPrecip
@@ -1280,7 +1280,7 @@ TEST_CASE("p3_update_prognostic_liquid_test", "[p3_unit_tests]"){
   scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestP3UpdatePrognosticLiq::run_bfb();
 }
 
-TEST_CASE("p3_evaporate_sublimate_precip_test", "[p3_unit_tests]"){
+TEST_CASE("p3_evaporate_rain_test", "[p3_unit_tests]"){
   scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestEvapSublPrecip::run_bfb();
 }
 
