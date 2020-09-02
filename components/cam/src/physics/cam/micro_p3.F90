@@ -735,8 +735,8 @@ contains
 
       call evaporate_rain(qr_incld(k),qc_incld(k),nr_incld(k),qi_incld(k), &
            cld_frac_l(k),cld_frac_r(k),qv(k),qv_prev(k),qv_sat_l(k),qv_sat_i(k), &
-           ab,abi,epsr,epsi_tot,t(k),t_prev(k),latent_heat_sublim(k),dqsdt,inv_dt,&
-           dt,qr2qv_evap_tend,nr_evap_tend)
+           ab,abi,epsr,epsi_tot,t(k),t_prev(k),latent_heat_sublim(k),dqsdt,dt,&
+           qr2qv_evap_tend,nr_evap_tend)
 
       call ice_deposition_sublimation(qi_incld(k), ni_incld(k), t(k), &
            qv_sat_l(k),qv_sat_i(k),epsi,abi,qv(k), &
@@ -3339,8 +3339,8 @@ end subroutine rain_evap_instant_tend
 
 subroutine evaporate_rain(qr_incld,qc_incld,nr_incld,qi_incld, &
 cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i, &
-ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,inv_dt, &
-dt,qr2qv_evap_tend,nr_evap_tend)
+ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,dt, &
+qr2qv_evap_tend,nr_evap_tend)
 
   !Evaporation is basically (qv - sv_sat)/(tau_eff*ab) where tau_eff 
   !is the total effective supersaturation removal timescale
@@ -3366,16 +3366,17 @@ dt,qr2qv_evap_tend,nr_evap_tend)
    real(rtype), intent(in)  :: ab,abi
    real(rtype), intent(in)  :: epsr,epsi_tot
    real(rtype), intent(in)  :: qv,qv_prev
-   real(rtype), intent(in)  :: t,t_prev,latent_heat_sublim,dqsdt,inv_dt,dt
+   real(rtype), intent(in)  :: t,t_prev,latent_heat_sublim,dqsdt,dt
    real(rtype), intent(out) :: qr2qv_evap_tend
    real(rtype), intent(out) :: nr_evap_tend
-   real(rtype) :: cld_frac, eps_eff, tau_eff, tau_r, ssat_r, A_c, sup_r
+   real(rtype) :: cld_frac, eps_eff, tau_eff, tau_r, ssat_r, A_c, sup_r,inv_dt
    real(rtype) :: equilib_evap_tend, tscale_weight, instant_evap_tend
 
    !Initialize variables
    qr2qv_evap_tend = 0.0_rtype
    nr_evap_tend = 0.0_rtype
    tau_r = 1._rtype/epsr
+   inv_dt=1._rtype/dt
 
    !Compute absolute supersaturation.
    !Ignore the difference between clear-sky and cell-ave qv and T
