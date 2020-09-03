@@ -293,6 +293,22 @@ struct SHOCMixcheckData : public PhysicsTestData {
     PhysicsTestData(rhs, {&shoc_mix, &host_dx, &host_dy}) {}
 };//SHOCMixcheckData
 
+//Create data structure to hold data for clipping_diag_third_shoc_moments
+struct SHOCClipthirdmomsData : public SHOCDataBase {
+  // Inputs
+  Real *w_sec_zi;
+
+  // In/out
+  Real *w3;
+
+  SHOCClipthirdmomsData(Int shcol_, Int nlevi_) :
+    SHOCDataBase(shcol_, 0, nlevi_, {}, {&w_sec_zi, &w3}, {}) {}
+  SHOCClipthirdmomsData(const SHOCClipthirdmomsData &rhs) :
+    SHOCDataBase(rhs, {}, {&w_sec_zi, &w3}, {}) {}
+  SHOCClipthirdmomsData &operator=(const SHOCClipthirdmomsData &rhs)
+  { SHOCDataBase::operator=(rhs); return *this; }
+};//SHOCClipthirdmomsData
+
 struct SHOCSecondMomentSrfData : public PhysicsTestData {
   // Inputs
   Real *wthl, *uw, *vw;
@@ -493,6 +509,7 @@ void compute_conv_vel_shoc_length(SHOCConvvelData &d);
 void compute_conv_time_shoc_length(SHOCConvtimeData &d);
 void compute_shoc_mix_shoc_length(SHOCMixlengthData &d);
 void check_length_scale_shoc_length(SHOCMixcheckData &d);
+void clipping_diag_third_shoc_moments(SHOCClipthirdmomsData &d);
 void shoc_diag_second_moments_srf(SHOCSecondMomentSrfData& d);
 void linear_interp(SHOCLinearintData &d);
 void shoc_pblintd_init_pot(SHOCPblintdInitPotData &d);
