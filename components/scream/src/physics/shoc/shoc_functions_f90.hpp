@@ -323,6 +323,22 @@ struct SHOCMixcheckData : public PhysicsTestData {
   PTD_ASSIGN_OP(SHOCMixcheckData, 0);
 };//SHOCMixcheckData
 
+//Create data structure to hold data for clipping_diag_third_shoc_moments
+struct SHOCClipthirdmomsData : public SHOCDataBase {
+  // Inputs
+  Real *w_sec_zi;
+
+  // In/out
+  Real *w3;
+
+  SHOCClipthirdmomsData(Int shcol_, Int nlevi_) :
+    SHOCDataBase(shcol_, 0, nlevi_, {}, {&w_sec_zi, &w3}, {}) {}
+  SHOCClipthirdmomsData(const SHOCClipthirdmomsData &rhs) :
+    SHOCDataBase(rhs, {}, {&w_sec_zi, &w3}, {}) {}
+  SHOCClipthirdmomsData &operator=(const SHOCClipthirdmomsData &rhs)
+  { SHOCDataBase::operator=(rhs); return *this; }
+};//SHOCClipthirdmomsData
+
 struct SHOCSecondMomentSrfData : public PhysicsTestData {
   // Inputs
   Real *wthl, *uw, *vw;
@@ -543,6 +559,7 @@ void shoc_assumed_pdf_compute_liquid_water_flux     (SHOCPDFcompliqfluxData &d);
 void shoc_assumed_pdf_compute_buoyancy_flux         (SHOCPDFcompbuoyfluxData &d);
 void shoc_diag_second_moments_ubycond               (SHOCSecondMomentUbycondData& d);
 void shoc_pblintd_cldcheck                          (SHOCPblintdCldCheckData& d);
+
 //
 // _f functions decls
 //
