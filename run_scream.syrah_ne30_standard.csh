@@ -15,7 +15,7 @@ set job_name       = test_prescribed_CCN_3
 set compset        = FSCREAM-LR
 set resolution     = ne30_ne30
 set machine        = syrah
-set walltime       = 00:10:00
+set walltime       = 00:15:00
 setenv project       cbronze
 
 ### SOURCE CODE OPTIONS

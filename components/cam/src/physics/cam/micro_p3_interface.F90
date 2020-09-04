@@ -42,7 +42,7 @@ module micro_p3_interface
   !use cam_grid_support, only: cam_grid_get_dim_names
   !use ncdio_atm,       only: infld
   !use time_manager,   only: get_curr_date
-  !use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp, psubcols
+   use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp, psubcols
 
      
   implicit none
@@ -93,7 +93,10 @@ module micro_p3_interface
       prer_evap_idx,      &
       cmeliq_idx,         &
       relvar_idx,         &
-      accre_enhan_idx     
+      accre_enhan_idx,    &
+      current_month      !Needed for prescribed CCN option     
+
+   real(rtype):: mon_ccn(pcols,pver,2) !need to figure this out
 
 ! Physics buffer indices for fields registered by other modules
    integer :: &
@@ -329,6 +332,14 @@ end subroutine micro_p3_readnl
     use cam_history,    only: addfld, add_default, horiz_only
     use cam_history_support, only: add_hist_coord 
     use micro_p3_utils, only: micro_p3_utils_init
+    use time_manager,     only: get_curr_date  !needed for intializing current_month
+    use pio,            only: file_desc_t, pio_nowrite
+    use cam_pio_utils,    only: cam_pio_openfile,cam_pio_closefile
+    use cam_grid_support, only: cam_grid_check, cam_grid_id
+    use cam_grid_support, only: cam_grid_get_dim_names
+    use ncdio_atm,       only: infld
+    use time_manager,   only: get_curr_date
+    use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp, psubcols
 
     type(physics_buffer_desc),  pointer :: pbuf2d(:,:)
     integer        :: m, mm
@@ -338,7 +349,16 @@ end subroutine micro_p3_readnl
     logical :: history_budget       ! Output tendencies and state variables for CAM4
     integer :: budget_histfile      ! output history file number for budget fields
                                    ! temperature, water vapor, cloud ice and cloud
-
+    
+    !needed for prescribed CCN option:
+    character(len=20) :: base_file_name
+    character(len=100) :: filename, filename_next_month
+    character(len=8) :: mon_str, next_mon_str
+    character(len=8) :: dim1name, dim2name
+    type(file_desc_t), pointer :: nccn_ncid
+    integer :: year, month, day, tod, next_month, grid_id
+    logical :: found = .false.
+ 
     call micro_p3_utils_init(cpair,rair,rh2o,rhoh2o,mwh2o,mwdry,gravit,latvap,latice, &
              cpliq,tmelt,pi,iulog,masterproc)
 
@@ -637,6 +657,50 @@ end subroutine micro_p3_readnl
       end if
    end if
 
+
+   if (log_prescribeCCN) then !intialize mon_ccn
+
+      !intialize current_month
+      call get_curr_date(year,month,day,tod)
+      current_month = month
+      if (month==12) then
+         next_month = 1
+      else
+         next_month = month + 1
+      end if
+
+      write(mon_str,*) current_month
+      write(next_mon_str,*) next_month
+ 
+      !assign base_file_name the name of the CCN file being used 
+      base_file_name = "prescribed_CCN_file_"
+
+      !retrieve the name of the relevant file by combining base file name with
+      !month and full file path:
+      filename = trim(micro_p3_lookup_dir)//'/'//trim(base_file_name)//trim(mon_str)//'.nc'
+
+      filename_next_month = trim(micro_p3_lookup_dir)//'/'//trim(base_file_name)//trim(next_mon_str)//'.nc'
+
+      grid_id = cam_grid_id('physgrid')
+
+      call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
+
+      call cam_pio_openfile(nccn_ncid,filename,PIO_NOWRITE)
+
+      call infld('CCN3', nccn_ncid, dim1name, dim2name, 1, pcols, begchunk, &
+          &endchunk,mon_ccn(:,:,1), found, gridname='physgrid')
+
+      call cam_pio_closefile(nccn_ncid)
+
+      call cam_pio_openfile(nccn_ncid,filename_next_month,PIO_NOWRITE)
+
+      call infld('CCN3', nccn_ncid, dim1name, dim2name, 1, pcols, begchunk, &
+          &endchunk,mon_ccn(:,:,2), found, gridname='physgrid')
+
+      call cam_pio_closefile(nccn_ncid)
+   
+  end if
+
   end subroutine micro_p3_init
 
   !================================================================================================
@@ -714,10 +778,13 @@ end subroutine micro_p3_readnl
     end subroutine get_cloud_fraction
 
   !================================================================================================
+   
+  !subroutine read_in_monthly_CCN(nccn_monthly,micro_p3_lookup_dir,its,ite,kts,kte)
+
   subroutine get_prescribed_CCN(nccn_prescribed,micro_p3_lookup_dir,its,ite,kts,kte)
    
-    use pio,              only: file_desc_t
-    use cam_pio_utils,    only: cam_pio_openfile
+    use pio,              only: file_desc_t,pio_nowrite
+    use cam_pio_utils,    only: cam_pio_openfile,cam_pio_closefile
     use cam_grid_support, only: cam_grid_check, cam_grid_id
     use cam_grid_support, only: cam_grid_get_dim_names
     use ncdio_atm,        only: infld
@@ -730,31 +797,61 @@ end subroutine micro_p3_readnl
    character*(*), intent(in)    :: micro_p3_lookup_dir                !directory of the lookup tables
 
    !internal variables
-   character(len=*) :: year,month,day,tod,base_file_name,filename
+   character(len=20) :: base_file_name 
+   character(len=100) :: filename
+   character(len=8) :: mon_str
    character(len=8) :: dim1name, dim2name
    type(file_desc_t), pointer :: nccn_ncid
-
+   integer :: year, month, day, tod, next_month, grid_id
+   logical :: found = .false.
+   real(rtype),dimension(its:ite,kts:kte) :: nccn_next_month
+   real(rtype) :: fraction_of_month
 
    !get current time step's date
    call get_curr_date(year,month,day,tod)
 
-   !assign base_file_name the name of the CCN file being used 
-   base_file_name = "prescribed_CCN_file_"
+   if (current_month .ne. month) then 
 
-   !retrieve the name of the relevant file by combining base file name with
-   !month and full file path:
-   filename = trim(micro_p3_lookup_dir)//'/'//trim(base_file_name)//trim(month)//'.nc'  
+      mon_ccn(:,:,1) = mon_ccn(:,:,2)
 
-   grid_id = cam_grid_id('physgrid')
+      if (month==12) then
+         next_month = 1
+      else 
+         next_month = month + 1
+      end if
 
-   call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
+      write(mon_str,*) next_month
 
-   call cam_pio_openfile(ncon_ncid,CCN_FILENAME,PIO_NOWRITE)
+      !assign base_file_name the name of the CCN file being used 
+      base_file_name = "prescribed_CCN_file_"
 
-   call infld('CCN3', nccn_ncid, dim1name, dim2name, 1, pcols, begchunk, &
-        &endchunk,nccn_prescribed, found, gridname='physgrid')
+      !retrieve the name of the relevant file by combining base file name with
+      !month and full file path:
+      filename = trim(micro_p3_lookup_dir)//'/'//trim(base_file_name)//trim(mon_str)//'.nc'  
 
-   call cam_pio_closefile(nccn_ncid)
+      grid_id = cam_grid_id('physgrid')
+
+      call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
+
+      call cam_pio_openfile(nccn_ncid,filename,PIO_NOWRITE)
+
+      call infld('CCN3', nccn_ncid, dim1name, dim2name, 1, pcols, begchunk, &
+          &endchunk,nccn_next_month, found, gridname='physgrid')
+
+      call cam_pio_closefile(nccn_ncid)
+        
+      mon_ccn(:,:,2) = nccn_next_month
+
+      current_month = month  
+
+   end if
+
+   !interpolate between mon_ccn(:,:,1) and mon_ccn(:,:,2) based on current date
+
+   fraction_of_month = (day*3600.0*24.0 + tod)/(3600*24*30) !tod is in seconds
+
+   nccn_prescribed = mon_ccn(:,:,1)*(1-fraction_of_month) + mon_ccn(:,:,2)*(fraction_of_month)
+
 
   end subroutine get_prescribed_CCN
     
@@ -1118,9 +1215,9 @@ end subroutine micro_p3_readnl
          liq_ice_exchange(its:ite,kts:kte),& ! OUT sum of liq-ice phase change tendenices   
          vap_liq_exchange(its:ite,kts:kte),& ! OUT sun of vap-liq phase change tendencies
          vap_ice_exchange(its:ite,kts:kte),& ! OUT sum of vap-ice phase change tendencies
-         col_location(its:ite,:3)          & ! IN column locations
+         col_location(its:ite,:3),          & ! IN column locations
          log_prescribeCCN,                 & !IN  .true. = prescribe CCN
-         nccn_prescribed(its:ite,kts:kte    & !IN prescribed CCN concentration
+         nccn_prescribed(its:ite,kts:kte)    & !IN prescribed CCN concentration
          )
 
     p3_main_outputs(:,:,:) = -999._rtype

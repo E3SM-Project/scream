@@ -341,7 +341,7 @@ contains
        pres, pdel, dzq, ncnuc, exner, inv_exner, inv_lcldm, inv_icldm, inv_rcldm, xxlv, xxls, xlf, &
        t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, acn, qv, th, qc, nc, qr, nr, &
        qitot, nitot, qirim, birim, qc_incld, qr_incld, qitot_incld, qirim_incld, &
-       nc_incld, nr_incld, nitot_incld, birim_incld, log_nucleationPossible, log_hydrometeorsPresent)
+       nc_incld, nr_incld, nitot_incld, birim_incld, log_nucleationPossible, log_hydrometeorsPresent,log_prescribeCCN,nccn_prescribed)
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
     use micro_p3_iso_f, only: p3_main_pre_main_loop_f
@@ -359,9 +359,12 @@ contains
 
     real(rtype), intent(inout), dimension(kts:kte) :: t, rho, inv_rho, qvs, qvi, supi, rhofacr, rhofaci, &
          acn, qv, th, qc, nc, qr, nr, qitot, nitot, qirim, birim, qc_incld, qr_incld, qitot_incld, &
-         qirim_incld, nc_incld, nr_incld, nitot_incld, birim_incld
+         qirim_incld, nc_incld, nr_incld, nitot_incld,birim_incld
+
+    real(rtype),intent(in), dimension(kts:kte) :: nccn_prescribed
 
     logical(btype), intent(out) :: log_nucleationPossible, log_hydrometeorsPresent
+    logical(btype), intent(in) :: log_prescribeCCN
 
     ! locals
     integer :: k
@@ -472,7 +475,7 @@ contains
        qirim, birim, xxlv, xxls, xlf, qc_incld, qr_incld, qitot_incld, qirim_incld, nc_incld, nr_incld, &
        nitot_incld, birim_incld, mu_c, nu, lamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, cmeiout, prain, &
        nevapr, prer_evap, vap_liq_exchange, vap_ice_exchange, liq_ice_exchange, pratot, &
-       prctot, p3_tend_out, log_hydrometeorsPresent)
+       prctot, p3_tend_out, log_hydrometeorsPresent,log_prescribeCCN)
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
     !use micro_p3_iso_f, only: p3_main_main_loop_f
@@ -483,7 +486,7 @@ contains
     ! args
 
     integer, intent(in) :: kts, kte, kbot, ktop, kdir
-    logical(btype), intent(in) :: log_predictNc
+    logical(btype), intent(in) :: log_predictNc, log_prescribeCCN
     real(rtype), intent(in) :: dt, odt
 
     real(rtype), intent(in), dimension(kts:kte) :: pres, pdel, dzq, ncnuc, exner, inv_exner, inv_lcldm, inv_icldm,   &
@@ -498,6 +501,7 @@ contains
     real(rtype), intent(inout), dimension(kts:kte,49) :: p3_tend_out ! micro physics tendencies
 
     logical(btype), intent(inout) :: log_hydrometeorsPresent
+
 
     ! -------- locals ------- !
 
@@ -774,7 +778,7 @@ contains
       ! deposition/condensation-freezing nucleation
       call ice_nucleation(t(k),inv_rho(k),&
            nitot(k),naai(k),supi(k),odt,log_predictNc,&
-           qinuc, ninuc)
+           qinuc, ninuc, log_prescribeCCN)
 
       !................
       ! cloud water autoconversion
@@ -861,7 +865,7 @@ contains
       call update_prognostic_liquid(qcacc, ncacc, qcaut, ncautc, ncautr, ncslf,  &
            qrevp, nrevp, nrslf,                                                  &
            log_predictNc, inv_rho(k), exner(k), xxlv(k), dt,                     &
-           th(k), qv(k), qc(k), nc(k), qr(k), nr(k))
+           th(k), qv(k), qc(k), nc(k), qr(k), nr(k),log_prescribeCCN)
 
       !==
       ! AaronDonahue - Add extra variables needed from microphysics by E3SM:
@@ -1177,7 +1181,7 @@ contains
             pres(i,:), pdel(i,:), dzq(i,:), ncnuc(i,:), exner(i,:), inv_exner(i,:), inv_lcldm(i,:), inv_icldm(i,:), inv_rcldm(i,:), xxlv(i,:), xxls(i,:), xlf(i,:), &
             t(i,:), rho(i,:), inv_rho(i,:), qvs(i,:), qvi(i,:), supi(i,:), rhofacr(i,:), rhofaci(i,:), acn(i,:), qv(i,:), th(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), &
             qitot(i,:), nitot(i,:), qirim(i,:), birim(i,:), qc_incld(i,:), qr_incld(i,:), qitot_incld(i,:), qirim_incld(i,:), &
-            nc_incld(i,:), nr_incld(i,:), nitot_incld(i,:), birim_incld(i,:), log_nucleationPossible, log_hydrometeorsPresent)
+            nc_incld(i,:), nr_incld(i,:), nitot_incld(i,:), birim_incld(i,:), log_nucleationPossible, log_hydrometeorsPresent,log_prescribeCCN,nccn_prescribed(i,:))
 
 !      if (debug_ON) then
 !         tmparr1(i,:) = th(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
@@ -1195,7 +1199,7 @@ contains
             qirim(i,:), birim(i,:), xxlv(i,:), xxls(i,:), xlf(i,:), qc_incld(i,:), qr_incld(i,:), qitot_incld(i,:), qirim_incld(i,:), nc_incld(i,:), nr_incld(i,:), &
             nitot_incld(i,:), birim_incld(i,:), mu_c(i,:), nu(i,:), lamc(i,:), cdist(i,:), cdist1(i,:), cdistr(i,:), mu_r(i,:), lamr(i,:), logn0r(i,:), cmeiout(i,:), prain(i,:), &
             nevapr(i,:), prer_evap(i,:), vap_liq_exchange(i,:), vap_ice_exchange(i,:), liq_ice_exchange(i,:), pratot(i,:), &
-            prctot(i,:), p3_tend_out(i,:,:), log_hydrometeorsPresent)
+            prctot(i,:), p3_tend_out(i,:,:), log_hydrometeorsPresent,log_prescribeCCN)
 
       ! measure microphysics processes tendency output
       p3_tend_out(i,:,42) = ( qc(i,:)    - qc_old(i,:) ) * odt    ! Liq. microphysics tendency, measure
@@ -2787,7 +2791,7 @@ end subroutine rain_immersion_freezing
 
 
 subroutine ice_nucleation(t,inv_rho,nitot,naai,supi,odt,log_predictNc,    &
-   qinuc,ninuc)
+   qinuc,ninuc,log_prescribeCCN)
 
    !................................................................
    ! deposition/condensation-freezing nucleation
@@ -2805,7 +2809,7 @@ subroutine ice_nucleation(t,inv_rho,nitot,naai,supi,odt,log_predictNc,    &
    real(rtype), intent(in) :: naai
    real(rtype), intent(in) :: supi
    real(rtype), intent(in) :: odt
-   logical(btype), intent(in) :: log_predictNc
+   logical(btype), intent(in) :: log_predictNc,log_prescribeCCN
 
    real(rtype), intent(inout) :: qinuc
    real(rtype), intent(inout) :: ninuc
@@ -2816,7 +2820,7 @@ subroutine ice_nucleation(t,inv_rho,nitot,naai,supi,odt,log_predictNc,    &
 #ifdef SCREAM_CONFIG_IS_CMAKE
     if (use_cxx) then
        call ice_nucleation_f(t,inv_rho,nitot,naai,supi,odt,log_predictNc,    &
-                             qinuc,ninuc)
+                             qinuc,ninuc,log_prescribeCCN)
        return
     endif
 #endif
@@ -3417,7 +3421,7 @@ end subroutine update_prognostic_ice
 subroutine update_prognostic_liquid(qcacc,ncacc,qcaut,ncautc,ncautr,ncslf,    &
     qrevp,nrevp,nrslf,                                                        &
     log_predictNc,inv_rho,exner,xxlv,dt,                                      &
-    th,qv,qc,nc,qr,nr)
+    th,qv,qc,nc,qr,nr,log_prescribeCCN)
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
    use micro_p3_iso_f, only: update_prognostic_liquid_f
@@ -3437,7 +3441,7 @@ subroutine update_prognostic_liquid(qcacc,ncacc,qcaut,ncautc,ncautr,ncslf,    &
    real(rtype), intent(in) :: nrslf
 
 
-   logical(btype), intent(in) :: log_predictNc
+   logical(btype), intent(in) :: log_predictNc,log_prescribeCCN
    real(rtype), intent(in) :: inv_rho
    real(rtype), intent(in) :: exner
    real(rtype), intent(in) :: xxlv
@@ -3463,7 +3467,7 @@ subroutine update_prognostic_liquid(qcacc,ncacc,qcaut,ncautc,ncautr,ncslf,    &
    qc = qc + (-qcacc-qcaut)*dt
    qr = qr + (qcacc+qcaut-qrevp)*dt
 
-   if (log_predictNc or. log_prescribeCCN) then
+   if (log_predictNc .or. log_prescribeCCN) then
       nc = nc + (-ncacc-ncautc+ncslf)*dt
    else
       nc = nccnst*inv_rho
