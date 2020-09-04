@@ -474,7 +474,9 @@ static void run_bfb_p3_main()
     std::make_pair(1.00000000E+06 , 1.00000000E+06), // ni
     std::make_pair(0              , 1.00000000E-02), // bm
     std::make_pair(0              , 5.00000000E-02), // qv
-    std::make_pair(6.72653866E+02 , 1.07954335E+03), // th
+    std::make_pair(6.72653866E+02 , 1.07954335E+03), // th PMC - these values seem insane!!!
+    std::make_pair(0              , 5.00000000E-2),  // qv_prev
+    std::make_pair(150            , 350) //t_prev
   };
 
   P3MainData isds_fortran[] = {
@@ -507,7 +509,7 @@ static void run_bfb_p3_main()
       d.precip_ice_surf, d.its, d.ite, d.kts, d.kte, d.diag_effc, d.diag_effi,
       d.rho_qi, d.do_predict_nc, d.dpres, d.exner, d.cmeiout, d.precip_total_tend,
       d.nevapr, d.qr_evap_tend, d.precip_liq_flux, d.precip_ice_flux, d.cld_frac_r, d.cld_frac_l, d.cld_frac_i, d.mu_c,
-      d.lamc, d.liq_ice_exchange, d.vap_liq_exchange, d.vap_ice_exchange);
+      d.lamc, d.liq_ice_exchange, d.vap_liq_exchange, d.vap_ice_exchange, d.qv_prev, d.t_prev);
     d.transpose<ekat::util::TransposeDirection::f2c>();
   }
 

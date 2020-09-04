@@ -993,7 +993,10 @@ void Functions<S,D>
     const auto olatent_heat_vapor  = ekat::util::subview(latent_heat_vapor, i);
     const auto olatent_heat_sublim = ekat::util::subview(latent_heat_sublim, i);
     const auto olatent_heat_fusion = ekat::util::subview(latent_heat_fusion, i);
+    const auto oqv_prev = ekat::util::subview(qv_prev, i);
+    const auto ot_prev = ekat::util::subview(t_prev, i);
 
+    
     // Need to watch out for race conditions with these shared variables
     bool &nucleationPossible  = bools(i, 0);
     bool &hydrometeorsPresent = bools(i, 1);
@@ -1034,7 +1037,7 @@ void Functions<S,D>
       team, nk_pack, infrastructure.predictNc, infrastructure.dt, inv_dt,
       dnu, itab, itabcol, revap_table, opres, odpres, odz, onc_nuceat_tend, oexner,
       inv_exner, inv_cld_frac_l, inv_cld_frac_i, inv_cld_frac_r, oni_activated, oinv_qc_relvar, ocld_frac_i,
-      ocld_frac_l, ocld_frac_r, qv_prev, t_prev, t, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn,
+      ocld_frac_l, ocld_frac_r, oqv_prev, ot_prev, t, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn,
       oqv, oth, oqc, onc, oqr, onr, oqi, oni, oqm, obm, olatent_heat_vapor,
       olatent_heat_sublim, olatent_heat_fusion, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld,
       nr_incld, ni_incld, bm_incld, omu_c, nu, olamc, cdist, cdist1, cdistr,

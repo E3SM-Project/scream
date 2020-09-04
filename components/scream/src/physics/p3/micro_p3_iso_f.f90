@@ -410,7 +410,7 @@ subroutine  update_prognostic_ice_f(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
     ! arguments:
     real(kind=c_real), value, intent(in) :: qr_incld,qc_incld,nr_incld,qi_incld, &
          cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i, &
-         ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,d
+         ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,dt
 
     real(kind=c_real), intent(out) :: qr2qv_evap_tend, nr_evap_tend
 
@@ -607,20 +607,21 @@ subroutine  update_prognostic_ice_f(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
       pres,dz,nc_nuceat_tend,ni_activated,inv_qc_relvar,it,precip_liq_surf,precip_ice_surf,its,ite,kts,kte,diag_ze,diag_effc,     &
       diag_effi,diag_vmi,diag_di,rho_qi,do_predict_nc, &
       dpres,exner,cmeiout,precip_total_tend,nevapr,qr_evap_tend,precip_liq_flux,precip_ice_flux,cld_frac_r,cld_frac_l,cld_frac_i,  &
-      pratot,prctot,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, vap_ice_exchange) bind(C)
+      pratot,prctot,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, vap_ice_exchange, qv_prev, t_prev) bind(C)
 
    use iso_c_binding
 
    ! args
 
+   integer(kind=c_int), value, intent(in)  :: its, ite, kts, kte, it
    real(kind=c_real), intent(inout), dimension(its:ite,kts:kte) :: qc, nc, qr, nr, qi, qm, ni, bm, qv, th
-   real(kind=c_real), intent(in),  dimension(its:ite,kts:kte) :: pres, dz, nc_nuceat_tend, ni_activated, dpres, exner, cld_frac_i, cld_frac_l, cld_frac_r, inv_qc_relvar
+   real(kind=c_real), intent(in),  dimension(its:ite,kts:kte) :: pres, dz, nc_nuceat_tend, ni_activated, dpres, exner, cld_frac_i, cld_frac_l, cld_frac_r, inv_qc_relvar, qv_prev, t_prev
    real(kind=c_real), intent(out), dimension(its:ite,kts:kte) :: diag_ze, diag_effc, diag_effi, diag_vmi, diag_di, rho_qi, mu_c, &
         lamc, cmeiout, precip_total_tend, nevapr, qr_evap_tend, pratot, prctot, liq_ice_exchange, vap_liq_exchange, vap_ice_exchange
    real(kind=c_real), intent(out), dimension(its:ite,kts:kte+1) :: precip_liq_flux, precip_ice_flux
    real(kind=c_real), intent(out), dimension(its:ite) :: precip_liq_surf, precip_ice_surf
 
-   integer(kind=c_int), value, intent(in)  :: its, ite, kts, kte, it
+
    logical(kind=c_bool), value, intent(in) :: do_predict_nc
    real(kind=c_real), value, intent(in)    :: dt
 

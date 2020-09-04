@@ -15,7 +15,7 @@ void Functions<S,D>
   const Spack& cld_frac_l, const Spack& cld_frac_r, const Spack& qv, const Spack& qv_prev,
   const Spack& qv_sat_l, const Spack& qv_sat_i, const Spack& ab, const Spack& abi,
   const Spack& epsr, const Spack& epsi_tot, const Spack& t, const Spack& t_prev,
-  const Spack& latent_heat_sublim, const Spack& dqsdt, const Spack& dt,
+  const Spack& latent_heat_sublim, const Spack& dqsdt, const Scalar dt,
   Spack& qr2qv_evap_tend, Spack& nr_evap_tend,
   const Smask& context)
 {

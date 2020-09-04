@@ -804,7 +804,8 @@ Real* qi, Real* ni, Real* qm, Real* bm, Real* qc, Real* nc, Real* qr, Real* nr);
 struct EvapRainData
 {
   // Inputs
-  Real qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, cld_frac_r, qv_sat_l, ab, epsr, qv;
+  Real qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, cld_frac_r, qv, qv_prev,
+    qv_sat_l, qv_sat_i, ab, abi, epsr, epsi_tot, t, t_prev, latent_heat_sublim, dqsdt, dt;
 
   //Outs
   Real qr2qv_evap_tend, nr_evap_tend;
@@ -1224,12 +1225,12 @@ void p3_main_part3_f(
 
 struct P3MainData
 {
-  static constexpr size_t NUM_ARRAYS = 36;
-  static constexpr size_t NUM_INPUT_ARRAYS = 20;
+  static constexpr size_t NUM_ARRAYS = 38;
+  static constexpr size_t NUM_INPUT_ARRAYS = 22;
 
   // Inputs
   Int its, ite, kts, kte, it;
-  Real* pres, *dz, *nc_nuceat_tend, *ni_activated, *dpres, *exner, *cld_frac_i, *cld_frac_l, *cld_frac_r, *inv_qc_relvar;
+  Real* pres, *dz, *nc_nuceat_tend, *ni_activated, *dpres, *exner, *cld_frac_i, *cld_frac_l, *cld_frac_r, *inv_qc_relvar, qv_prev, t_prev;
   Real dt;
   bool do_predict_nc;
 
@@ -1285,6 +1286,7 @@ struct P3MainData
     transpose<D>(vap_ice_exchange, d_trans.vap_ice_exchange, m_ni, m_nk);
     transpose<D>(precip_liq_flux, d_trans.precip_liq_flux, m_ni, m_nk+1);
     transpose<D>(precip_ice_flux, d_trans.precip_ice_flux, m_ni, m_nk+1);
+    transpose<D>(qv_prev, d_trans.qv_prev, m_ni, m_nk);
 
     *this = std::move(d_trans);
   }
@@ -1314,7 +1316,7 @@ void p3_main_f(
   Real* diag_effi, Real* rho_qi, bool do_predict_nc, Real* dpres, Real* exner,
   Real* cmeiout, Real* precip_total_tend, Real* nevapr, Real* qr_evap_tend, Real* precip_liq_flux,
   Real* precip_ice_flux, Real* cld_frac_r, Real* cld_frac_l, Real* cld_frac_i, Real* mu_c, Real* lamc,
-  Real* liq_ice_exchange, Real* vap_liq_exchange, Real* vap_ice_exchange);
+  Real* liq_ice_exchange, Real* vap_liq_exchange, Real* vap_ice_exchange, Real* qv_prev, Real* t_prev);
 }
 
 }  // namespace p3
