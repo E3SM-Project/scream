@@ -339,7 +339,63 @@ struct SHOCClipthirdmomsData : public SHOCDataBase {
   { SHOCDataBase::operator=(rhs); return *this; }
 };//SHOCClipthirdmomsData
 
+<<<<<<< HEAD
 struct SHOCSecondMomentSrfData : public PhysicsTestData {
+=======
+struct SHOCAAdiagthirdmomsData
+{
+  // inputs
+  Real omega0, omega1, omega2, x0, x1, y0, y1;
+  
+  // outputs
+  Real aa0, aa1;
+
+};
+
+struct SHOCFtermdiagthirdmomsData
+{
+  // inputs
+  Real thedz, thedz2, bet2, iso, isosqrt, wthl_sec, wthl_sec_kc;
+  Real wthl_sec_kb, thl_sec, thl_sec_kc, thl_sec_kb, w_sec;
+  Real w_sec_kc, w_sec_zi, tke, tke_kc;
+  
+  // outputs
+  Real f0, f1, f2, f3, f4, f5;
+
+};
+
+struct SHOCOmegadiagthirdmomsData
+{
+  // inputs
+  Real buoy_sgs2, f3, f4;
+  
+  // outputs
+  Real omega0, omega1, omega2;
+
+};
+
+struct SHOCXYdiagthirdmomsData
+{
+  // inputs
+  Real buoy_sgs2, f0, f1, f2;
+  
+  // outputs
+  Real x0, y0, x1, y1;
+
+};
+
+struct SHOCFterminputthirdmomsData
+{
+  // inputs
+  Real dz_zi, dz_zt, dz_zt_kc, isotropy_zi, brunt_zi, thetal_zi;
+  
+  // outputs
+  Real thedz, thedz2, iso, isosqrt, buoy_sgs2, bet2;
+
+};
+
+struct SHOCSecondMomentSrfData : public SHOCDataBase {
+>>>>>>> boilerplate for third moment tests
   // Inputs
   Real *wthl, *uw, *vw;
 
