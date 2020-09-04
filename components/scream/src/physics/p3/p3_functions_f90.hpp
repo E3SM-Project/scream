@@ -1226,11 +1226,11 @@ void p3_main_part3_f(
 struct P3MainData
 {
   static constexpr size_t NUM_ARRAYS = 38;
-  static constexpr size_t NUM_INPUT_ARRAYS = 22;
+  static constexpr size_t NUM_INPUT_ARRAYS = 24;
 
   // Inputs
   Int its, ite, kts, kte, it;
-  Real* pres, *dz, *nc_nuceat_tend, *ni_activated, *dpres, *exner, *cld_frac_i, *cld_frac_l, *cld_frac_r, *inv_qc_relvar, qv_prev, t_prev;
+  Real* pres, *dz, *nc_nuceat_tend, *ni_activated, *dpres, *exner, *cld_frac_i, *cld_frac_l, *cld_frac_r, *inv_qc_relvar, *qv_prev, *t_prev;
   Real dt;
   bool do_predict_nc;
 
@@ -1287,6 +1287,7 @@ struct P3MainData
     transpose<D>(precip_liq_flux, d_trans.precip_liq_flux, m_ni, m_nk+1);
     transpose<D>(precip_ice_flux, d_trans.precip_ice_flux, m_ni, m_nk+1);
     transpose<D>(qv_prev, d_trans.qv_prev, m_ni, m_nk);
+    transpose<D>(t_prev, d_trans.t_prev, m_ni, m_nk);
 
     *this = std::move(d_trans);
   }

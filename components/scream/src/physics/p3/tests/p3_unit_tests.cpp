@@ -852,7 +852,14 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
       const Int offset = i * Spack::n;
 
       // Init pack inputs
-      Spack qr_incld, qc_incld, nr_incld, qi_incld, cld_frac_l, cld_frac_r, qv_sat_l, ab, epsr, qv, qr2qv_evap_tend, nr_evap_tend;
+      Spack qr_incld,qc_incld,nr_incld,qi_incld,
+	cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i,
+	ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt;
+
+      Scalar dt;
+      
+      // Init pack outputs
+      Spack qr2qv_evap_tend, nr_evap_tend;
 
       for (Int s = 0, vs = offset; s < Spack::n; ++s, ++vs) {
         qr_incld[s]    = espd_device(vs).qr_incld;
@@ -861,17 +868,26 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
         qi_incld[s] = espd_device(vs).qi_incld;
         cld_frac_l[s]       = espd_device(vs).cld_frac_l;
         cld_frac_r[s]       = espd_device(vs).cld_frac_r;
+	qv[s] = espd_device(vs).qv;
+	qv_prev = espd_device(vs).qv_prev;
         qv_sat_l[s]         = espd_device(vs).qv_sat_l;
+	qv_sat_i[s]    = espd_device(vs).qv_sat_i;
         ab[s]          = espd_device(vs).ab;
+	abi[s]         = espd_device(vs).abi;
         epsr[s]        = espd_device(vs).epsr;
-        qv[s]          = espd_device(vs).qv;
-        qr2qv_evap_tend[s]       = espd_device(vs).qr2qv_evap_tend;
-        nr_evap_tend[s]       = espd_device(vs).nr_evap_tend;
+	epsi_tot[s]    = espd_device(vs).epsi_tot;
+	t[s]           = espd_device(vs).t;
+	t_prev[s]      = espd_device(vs).t_prev;
+	latent_heat_sublim[s]=espd_device(vs).latent_heat_sublim;
+        //qr2qv_evap_tend[s]       = espd_device(vs).qr2qv_evap_tend; //PMC shouldn't have to init output vars.
+        //nr_evap_tend[s]       = espd_device(vs).nr_evap_tend;
       }
 
-      Functions::evaporate_rain(qr_incld, qc_incld, nr_incld, qi_incld,  cld_frac_l, cld_frac_r, qv_sat_l, ab,
-                                            epsr, qv, qr2qv_evap_tend, nr_evap_tend);
-
+      Functions::evaporate_rain(qr_incld,qc_incld,nr_incld,qi_incld,
+				cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i,
+				ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,dt,
+				qr2qv_evap_tend,nr_evap_tend);
+				
       // Copy results back into views
       for (Int s = 0, vs = offset; s < Spack::n; ++s, ++vs) {
         espd_device(vs).qr_incld    = qr_incld[s];

@@ -993,9 +993,8 @@ void Functions<S,D>
     const auto olatent_heat_vapor  = ekat::util::subview(latent_heat_vapor, i);
     const auto olatent_heat_sublim = ekat::util::subview(latent_heat_sublim, i);
     const auto olatent_heat_fusion = ekat::util::subview(latent_heat_fusion, i);
-    const auto oqv_prev = ekat::util::subview(qv_prev, i);
-    const auto ot_prev = ekat::util::subview(t_prev, i);
-
+    const auto oqv_prev            = ekat::util::subview(diagnostic_inputs.qv_prev, i);
+    const auto ot_prev             = ekat::util::subview(diagnostic_inputs.t_prev, i);
     
     // Need to watch out for race conditions with these shared variables
     bool &nucleationPossible  = bools(i, 0);

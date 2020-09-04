@@ -621,7 +621,6 @@ subroutine  update_prognostic_ice_f(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
    real(kind=c_real), intent(out), dimension(its:ite,kts:kte+1) :: precip_liq_flux, precip_ice_flux
    real(kind=c_real), intent(out), dimension(its:ite) :: precip_liq_surf, precip_ice_surf
 
-
    logical(kind=c_bool), value, intent(in) :: do_predict_nc
    real(kind=c_real), value, intent(in)    :: dt
 
