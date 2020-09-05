@@ -339,9 +339,6 @@ struct SHOCClipthirdmomsData : public SHOCDataBase {
   { SHOCDataBase::operator=(rhs); return *this; }
 };//SHOCClipthirdmomsData
 
-<<<<<<< HEAD
-struct SHOCSecondMomentSrfData : public PhysicsTestData {
-=======
 struct SHOCAAdiagthirdmomsData
 {
   // inputs
@@ -384,6 +381,16 @@ struct SHOCXYdiagthirdmomsData
 
 };
 
+struct SHOCW3diagthirdmomsData
+{
+  // inputs
+  Real aa0, aa1, x0, x1, f5;
+  
+  // outputs
+  Real w3;
+
+};
+
 struct SHOCFterminputthirdmomsData
 {
   // inputs
@@ -394,8 +401,7 @@ struct SHOCFterminputthirdmomsData
 
 };
 
-struct SHOCSecondMomentSrfData : public SHOCDataBase {
->>>>>>> boilerplate for third moment tests
+struct SHOCSecondMomentSrfData : public PhysicsTestData {
   // Inputs
   Real *wthl, *uw, *vw;
 
