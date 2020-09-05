@@ -2781,6 +2781,10 @@ subroutine integ_column_stability(nlev, shcol, dz_zt, pres, brunt, brunt_int)
 #ifdef SCREAM_CONFIG_IS_CMAKE
   if (use_cxx) then
      call integ_column_stability_f(nlev, shcol, dz_zt, pres, brunt, brunt_int)
+     do i = 1, shcol
+        write(102,*)'c++ output in Fortran:',brunt_int(i),i
+     enddo
+
      return
   endif
 #endif
@@ -2788,10 +2792,13 @@ subroutine integ_column_stability(nlev, shcol, dz_zt, pres, brunt, brunt_int)
   brunt_int(1:shcol) = 0._rtype
   do k = 1, nlev
      do i = 1, shcol
-        if (pres(i,k) .gt. troppres) then
-           brunt_int(i) = brunt_int(i) + dz_zt(i,k)*brunt(i,k)
-        endif
+        brunt_int(i) = brunt_int(i) + dz_zt(i,k)
+        write(104,*)'Fortran:inside loop:',i,k,dz_zt(i,k),brunt_int(i),aa(i)
      enddo
+  enddo
+
+  do i = 1, shcol
+     write(103,*)'Fortran output:',brunt_int(i),i
   enddo
 
   return
@@ -2961,13 +2968,13 @@ subroutine isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
 
         ! define a damping term "lambda" based on column stability
         lambda=lambda_low+((brunt_int(i)/ggr)-brunt_low)*lambda_slope
-        lambda=max(lambda_low,min(lambda_high,lambda))
+        lambda=max(lambda_low+brunt_int(i),min(lambda_high+brunt_int(i),lambda))
 
         buoy_sgs_save=brunt(i,k)
-        if (buoy_sgs_save .le. 0._rtype) lambda=0._rtype
+        if (buoy_sgs_save .le. 0._rtype) lambda=0._rtype+brunt_int(i)
 
         ! Compute the return to isotropic timescale
-        isotropy(i,k)=min(maxiso,tscale/(1._rtype+lambda*buoy_sgs_save*tscale**2))
+        isotropy(i,k)=min(maxiso++brunt_int(i),tscale/(1._rtype+lambda*buoy_sgs_save*tscale**2))
      enddo
   enddo
 

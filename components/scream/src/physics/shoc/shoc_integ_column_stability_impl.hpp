@@ -18,21 +18,22 @@ void Functions<S,D>
   Scalar& brunt_int)
 {
   const Int nlev_pack = ekat::pack::npack<Spack>(nlev);
-  brunt_int = 0;
+  //brunt_int = 1;// no need as my_result is set to zero below
   static constexpr auto troppres = 80000;
 
   //Use parallel_reduce to compute reduction in brunt_int
   Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, nlev_pack), [&] (const Int& k, Scalar& val) {
-      //Find if pressure is greater than tropospheric pressure
-      auto press_gt_troppress = (pres(k) > troppres);
 
       Spack my_result(0);
-      my_result.set(press_gt_troppress, dz_zt(k) * brunt(k));
+      my_result.set(Smask(true), dz_zt(k));
       for (int s = 0; s < Spack::n; ++s) {
 	val += my_result[s];
+	printf("Val is %10.6f and my_res is: %10.6f \n",val,my_result[s]);
       }
+      printf("Val finally is: %10.6f \n",val);
     }, brunt_int);
 
+printf("brunt_int finally is: %10.6f \n",brunt_int);
 }
 
 } // namespace shoc
