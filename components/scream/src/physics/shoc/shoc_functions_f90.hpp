@@ -381,6 +381,16 @@ struct SHOCXYdiagthirdmomsData
 
 };
 
+struct SHOCW3diagthirdmomsData
+{
+  // inputs
+  Real aa0, aa1, x0, x1, f5;
+  
+  // outputs
+  Real w3;
+
+};
+
 struct SHOCFterminputthirdmomsData
 {
   // inputs
