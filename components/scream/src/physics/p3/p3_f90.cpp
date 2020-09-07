@@ -129,6 +129,9 @@ void p3_init () {
 
 void p3_main (const FortranData& d, bool use_fortran) {
   if (use_fortran) {
+
+    printf("Entering p3_main_c\n");
+    
     p3_main_c(d.qc.data(), d.nc.data(), d.qr.data(), d.nr.data(),
               d.th.data(), d.qv.data(), d.dt, d.qi.data(),
               d.qm.data(), d.ni.data(), d.bm.data(),
@@ -141,8 +144,13 @@ void p3_main (const FortranData& d, bool use_fortran) {
               d.cld_frac_i.data(), d.mu_c.data(), d.lamc.data(),
               d.liq_ice_exchange.data(),
               d.vap_liq_exchange.data(),d.vap_ice_exchange.data(),d.qv_prev.data(),d.t_prev.data());
+
+    printf("Exiting p3_main_c\n");
+    
   }
   else {
+    printf("Entering p3_main_f\n");
+    
     p3_main_f(d.qc.data(), d.nc.data(), d.qr.data(), d.nr.data(), d.th.data(),
               d.qv.data(), d.dt, d.qi.data(), d.qm.data(), d.ni.data(),
               d.bm.data(), d.pres.data(), d.dz.data(), d.nc_nuceat_tend.data(),
@@ -154,6 +162,8 @@ void p3_main (const FortranData& d, bool use_fortran) {
               d.cld_frac_r.data(), d.cld_frac_l.data(), d.cld_frac_i.data(), d.mu_c.data(),
               d.lamc.data(), d.liq_ice_exchange.data(), d.vap_liq_exchange.data(),
               d.vap_ice_exchange.data(),d.qv_prev.data(),d.t_prev.data() );
+
+    printf("Exiting p3_main_f.\n");
   }
 }
 

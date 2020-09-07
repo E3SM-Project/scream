@@ -896,7 +896,7 @@ void Functions<S,D>
   view_dnu_table dnu;
   init_kokkos_ice_lookup_tables(itab, itabcol);
   init_kokkos_tables(vn_table, vm_table, revap_table, mu_r_table, dnu);
-
+  
   // per-column bools
   view_2d<bool> bools("bools", nj, 2);
 
@@ -1030,6 +1030,8 @@ void Functions<S,D>
       return; // this is how you do a "continue" in a kokkos lambda
     }
 
+    printf("Entering part2\n");
+    
     // ------------------------------------------------------------------------------------------
     // main k-loop (for processes):
     p3_main_part2(
@@ -1048,6 +1050,8 @@ void Functions<S,D>
     //      a problem; those values get clipped to zero in the sedimentation section (if necessary).
     //      (This is not done above simply for efficiency purposes.)
 
+    printf("Exiting part2\n");
+    
     if (!hydrometeorsPresent) return;
 
     // -----------------------------------------------------------------------------------------
@@ -1102,6 +1106,8 @@ void Functions<S,D>
     //          ice properties are computed after merging
 
     // PMC nCat deleted nCat>1 stuff
+
+    printf("Exiting p3_main\n");
 
 #ifndef NDEBUG
     Kokkos::parallel_for(

@@ -3298,7 +3298,7 @@ subroutine rain_evap_tscale_weight(dt_over_tau,weight)
   real(rtype), intent(in) :: dt_over_tau  !microphysics timestep divided by effective evap timescale
   real(rtype), intent(out) :: weight
   
-  weight=(1._rtype - exp(-dt_over_tau) )/dt_over_tau
+  weight=(1._rtype - bfb_exp(-dt_over_tau) )/dt_over_tau
 
   return
 end subroutine rain_evap_tscale_weight
@@ -3463,14 +3463,19 @@ qr2qv_evap_tend,nr_evap_tend)
       end if
       
       !Limit evap from exceeding saturation deficit. Analytic integration
-      !would prevent this from happening if A_c was included in microphysics
-      !timestepping.
+      !would prevent this from happening if A_c was part of microphysics
+      !timestepping, but it isn't.
       qr2qv_evap_tend = min(qr2qv_evap_tend,-ssat_r*inv_dt/ab)
+
+      !To maintain equilibrium, the equilibrium evaporation tendency must be
+      !negative (adding mass) if A_c (other processes) are losing mass. We don't
+      !allow rain evap to also condense by forcing qr2qv_evap_tend to be positive
+      qr2qv_evap_tend = max(0._rtype, qr2qv_evap_tend)
       
       !Evap rate so far is an average over the rainy area outside clouds.
       !Turn this into an average over the entire raining area
       qr2qv_evap_tend = qr2qv_evap_tend*(cld_frac_r-cld_frac)/cld_frac_r
-
+      
       !Let nr remove drops proportionally to mass change
       nr_evap_tend = qr2qv_evap_tend*(nr_incld/qr_incld)
 

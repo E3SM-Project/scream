@@ -62,6 +62,15 @@ void Functions<S,D>
   if(qr_incld_gt_qsmall.any()){
     nr_evap_tend.set(qr_incld_gt_qsmall, qr2qv_evap_tend*(nr_incld/qr_incld));
   }
+
+  /*
+  for (int i=0;i<=Spack::n;i++) {
+      printf("================\n");
+      printf("C++, qr2qv_evap_tend[i] = %e\n",qr2qv_evap_tend[i]);
+      printf("================\n");
+    };
+  */
+
 }
 
 

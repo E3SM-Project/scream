@@ -3530,10 +3530,11 @@ void p3_main_f(
   for (size_t i = 0; i < P3MainData::NUM_ARRAYS; ++i) dim1_sizes[i] = nj;
   for (size_t i = 0; i < P3MainData::NUM_ARRAYS; ++i) dim2_sizes[i] = nk;
 
-  dim2_sizes[32] = nk+1; // precip_liq_flux
-  dim2_sizes[33] = nk+1; // precip_ice_flux
-  dim1_sizes[34] = 1; dim2_sizes[34] = nj; // precip_liq_surf
-  dim1_sizes[35] = 1; dim2_sizes[35] = nj; // precip_ice_surf
+  //PMC - hardcoding the index for each variable is very brittle :-(.
+  dim2_sizes[34] = nk+1; // precip_liq_flux
+  dim2_sizes[35] = nk+1; // precip_ice_flux
+  dim1_sizes[36] = 1; dim2_sizes[36] = nj; // precip_liq_surf
+  dim1_sizes[37] = 1; dim2_sizes[37] = nj; // precip_ice_surf
 
   // Initialize outputs to avoid uninitialized read warnings in memory checkers
   for (size_t i = P3MainData::NUM_INPUT_ARRAYS; i < P3MainData::NUM_ARRAYS; ++i) {
@@ -3546,44 +3547,44 @@ void p3_main_f(
 
   int counter = 0;
   view_2d
-    pres_d                 (temp_d[counter++]),
+    pres_d                 (temp_d[counter++]), //0
     dz_d                   (temp_d[counter++]),
     nc_nuceat_tend_d       (temp_d[counter++]),
     ni_activated_d         (temp_d[counter++]),
-    dpres_d                (temp_d[counter++]),
-    exner_d                (temp_d[counter++]),
+    dpres_d                (temp_d[counter++]), 
+    exner_d                (temp_d[counter++]), //5
     cld_frac_i_d           (temp_d[counter++]),
     cld_frac_l_d           (temp_d[counter++]),
     cld_frac_r_d           (temp_d[counter++]),
-    inv_qc_relvar_d        (temp_d[counter++]),
-    qc_d                   (temp_d[counter++]),
+    inv_qc_relvar_d        (temp_d[counter++]), 
+    qc_d                   (temp_d[counter++]), //10
     nc_d                   (temp_d[counter++]),
     qr_d                   (temp_d[counter++]),
     nr_d                   (temp_d[counter++]),
-    qi_d                   (temp_d[counter++]),
-    qm_d                   (temp_d[counter++]),
+    qi_d                   (temp_d[counter++]), 
+    qm_d                   (temp_d[counter++]), //15
     ni_d                   (temp_d[counter++]),
     bm_d                   (temp_d[counter++]),
     qv_d                   (temp_d[counter++]),
-    th_d                   (temp_d[counter++]),
-    qv_prev_d              (temp_d[counter++]),
+    th_d                   (temp_d[counter++]), 
+    qv_prev_d              (temp_d[counter++]), //20
     t_prev_d               (temp_d[counter++]),
     diag_effc_d            (temp_d[counter++]),
     diag_effi_d            (temp_d[counter++]),
-    rho_qi_d               (temp_d[counter++]),
-    mu_c_d                 (temp_d[counter++]),
+    rho_qi_d               (temp_d[counter++]), 
+    mu_c_d                 (temp_d[counter++]), //25
     lamc_d                 (temp_d[counter++]),
     cmeiout_d              (temp_d[counter++]),
     precip_total_tend_d    (temp_d[counter++]),
-    nevapr_d               (temp_d[counter++]),
-    qr_evap_tend_d         (temp_d[counter++]),
+    nevapr_d               (temp_d[counter++]), 
+    qr_evap_tend_d         (temp_d[counter++]), //30
     liq_ice_exchange_d     (temp_d[counter++]),
     vap_liq_exchange_d     (temp_d[counter++]),
     vap_ice_exchange_d     (temp_d[counter++]),
-    precip_liq_flux_d      (temp_d[counter++]),
-    precip_ice_flux_d      (temp_d[counter++]),
+    precip_liq_flux_d      (temp_d[counter++]), 
+    precip_ice_flux_d      (temp_d[counter++]), //35
     precip_liq_surf_temp_d (temp_d[counter++]),
-    precip_ice_surf_temp_d (temp_d[counter++]);
+    precip_ice_surf_temp_d (temp_d[counter++]); //37
 
   // Special cases: precip_liq_surf=1d<scalar>(ni), precip_ice_surf=1d<scalar>(ni), col_location=2d<scalar>(nj, 3)
   sview_1d precip_liq_surf_d("precip_liq_surf_d", nj), precip_ice_surf_d("precip_ice_surf_d", nj);
@@ -3613,38 +3614,45 @@ void p3_main_f(
   P3F::P3HistoryOnly history_only{liq_ice_exchange_d, vap_liq_exchange_d,
                                   vap_ice_exchange_d};
 
+  printf("Entering C++ p3_main from p3_main_f.\n");
+  
   P3F::p3_main(prog_state, diag_inputs, diag_outputs, infrastructure,
                history_only, nj, nk);
 
+  printf("Exiting C++ p3_main from p3_main_f.\n");
+  
   Kokkos::parallel_for(nj, KOKKOS_LAMBDA(const Int& i) {
     precip_liq_surf_temp_d(0, i / Spack::n)[i % Spack::n] = precip_liq_surf_d(i);
     precip_ice_surf_temp_d(0, i / Spack::n)[i % Spack::n] = precip_ice_surf_d(i);
   });
 
   // Sync back to host
-  Kokkos::Array<view_2d, P3MainData::NUM_ARRAYS - 10> inout_views = {
-    qc_d, nc_d, qr_d, nr_d, qi_d, qm_d, ni_d, bm_d, qv_d, th_d,
-    diag_effc_d, diag_effi_d, rho_qi_d, mu_c_d, lamc_d, cmeiout_d, precip_total_tend_d,
-    nevapr_d, qr_evap_tend_d, liq_ice_exchange_d, vap_liq_exchange_d,
-    vap_ice_exchange_d, precip_liq_flux_d, precip_ice_flux_d, precip_liq_surf_temp_d, precip_ice_surf_temp_d
+  Kokkos::Array<view_2d, P3MainData::NUM_ARRAYS - 12> inout_views = {
+    qc_d, nc_d, qr_d, nr_d, qi_d, qm_d, ni_d, bm_d, qv_d, th_d, //10 in this row
+    diag_effc_d, diag_effi_d, rho_qi_d, mu_c_d, lamc_d, cmeiout_d, precip_total_tend_d, // 7 in this row
+    nevapr_d, qr_evap_tend_d, liq_ice_exchange_d, vap_liq_exchange_d, // 4 in this row
+    vap_ice_exchange_d, precip_liq_flux_d, precip_ice_flux_d, precip_liq_surf_temp_d, precip_ice_surf_temp_d //5 in this row. 26 total
   };
-  Kokkos::Array<size_t,  P3MainData::NUM_ARRAYS - 10> dim1_sizes_out;
-  Kokkos::Array<size_t,  P3MainData::NUM_ARRAYS - 10> dim2_sizes_out;
-  for (size_t i = 0; i < P3MainData::NUM_ARRAYS - 10; ++i) dim1_sizes_out[i] = nj;
-  for (size_t i = 0; i < P3MainData::NUM_ARRAYS - 10; ++i) dim2_sizes_out[i] = nk;
-
+  Kokkos::Array<size_t,  P3MainData::NUM_ARRAYS - 12> dim1_sizes_out;
+  Kokkos::Array<size_t,  P3MainData::NUM_ARRAYS - 12> dim2_sizes_out;
+  for (size_t i = 0; i < P3MainData::NUM_ARRAYS - 12; ++i) dim1_sizes_out[i] = nj;
+  for (size_t i = 0; i < P3MainData::NUM_ARRAYS - 12; ++i) dim2_sizes_out[i] = nk;
 
   dim2_sizes_out[22] = nk+1; // precip_liq_flux
   dim2_sizes_out[23] = nk+1; // precip_ice_flux
   dim1_sizes_out[24] = 1; dim2_sizes_out[24] = nj; // precip_liq_surf
   dim1_sizes_out[25] = 1; dim2_sizes_out[25] = nj; // precip_ice_surf
 
+  printf("in p3_main_f, about to device_to_host\n");
+  
   ekat::pack::device_to_host({
       qc, nc, qr, nr, qi, qm, ni, bm, qv, th, diag_effc, diag_effi,
       rho_qi, mu_c, lamc, cmeiout, precip_total_tend, nevapr, qr_evap_tend, liq_ice_exchange,
       vap_liq_exchange, vap_ice_exchange, precip_liq_flux, precip_ice_flux, precip_liq_surf, precip_ice_surf
     },
     dim1_sizes_out, dim2_sizes_out, inout_views, true);
+
+  printf("Exiting p3_main_f\n");
 }
 
 } // namespace p3
