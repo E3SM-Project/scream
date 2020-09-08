@@ -92,13 +92,6 @@ void Functions<S,D>
   constexpr Scalar QSMALL   = C::QSMALL;
   constexpr Scalar Tmelt  = C::Tmelt;
   constexpr Scalar inv_cp = 1/C::Cpair;
-
-  printf("ccccccccccccc\n");
-  printf("Spack::n = %d\n",Spack::n);
-  for (int i=0;i<=Spack::n;i++) {
-    printf("qr2qv_evap_tend[i] = %e\n",qr2qv_evap_tend[i]);
-  };
-
   
   //Compute absolute supersaturation.
   //Ignore the difference between clear-sky and cell-ave qv and T
@@ -106,7 +99,6 @@ void Functions<S,D>
   //subgrid variability
   Spack ssat_r = qv - qv_sat_l;
 
-  
   //Cloud fraction in clear-sky conditions has been set to mincld
   //to avoid divide-by-zero problems. Because rain evap only happens
   //in rainy portions outside cloud, setting clear-sky cloud fraction
@@ -167,47 +159,30 @@ void Functions<S,D>
 
       qr2qv_evap_tend.set(!qr_tiny && is_rain_evap,
 			  instant_tend*tscale_weight
-			  + equilib_tend*(1-tscale_weight) );
-
-      printf("----------------\n");
-      for (int i=0;i<=Spack::n;i++) {
-	printf("C++, qr2qv_evap_tend[i] = %e\n",qr2qv_evap_tend[i]);
-	printf("C++, equilib_tend = %e\n",equilib_tend[i]);
-	printf("A_c,ab,tau_eff,tau_r = %e, %e, %e, %e\n",A_c[i], ab[i], tau_eff[i], tau_r[i]);
-	printf("t_atm,A,B=%e, %e, %e\n",t_atm[i],(qv[i] - qv_prev[i])*inv_dt,dqsdt[i]*(t_atm[i]-t_atm_prev[i])*inv_dt );
-	printf("dqsdt,t_atm_prev[i],inv_dt=%e %e %e\n",dqsdt[i],t_atm_prev[i],inv_dt);
-	printf("C++, is_rain_evap = %d\n",is_rain_evap[i]);
-      };
-
-      
+			  + equilib_tend*(1-tscale_weight) );   
     }
-
+    
     //Limit evap from exceeding saturation deficit. Analytic integration
     //would prevent this from happening if A_c was part of microphysics
     //timestepping, but it isn't.
-    qr2qv_evap_tend.set(is_rain_evap && qr2qv_evap_tend < -ssat_r*inv_dt/ab, -ssat_r*inv_dt/ab );
-
+    const Smask is_overevap=qr2qv_evap_tend > -ssat_r*inv_dt/ab && is_rain_evap;
+    qr2qv_evap_tend.set(is_overevap, -ssat_r*inv_dt/ab );
+    
     //To maintain equilibrium, the equilibrium evaporation tendency must be
     //negative (adding mass) if A_c (other processes) are losing mass. We don't
     //allow rain evap to also condense by forcing qr2qv_evap_tend to be positive
-    qr2qv_evap_tend.set(is_rain_evap && qr2qv_evap_tend<0,0);
-      
+    qr2qv_evap_tend.set(is_rain_evap && (qr2qv_evap_tend<0), 0);
+
     //Evap rate so far is an average over the rainy area outside clouds.
     //Turn this into an average over the entire raining area
     qr2qv_evap_tend.set(is_rain_evap, qr2qv_evap_tend*(cld_frac_r-cld_frac)/cld_frac_r);
       
     //Let nr remove drops proportionally to mass change
     nr_evap_tend.set(is_rain_evap, qr2qv_evap_tend*(nr_incld/qr_incld));
-
-    printf("================\n");
-    for (int i=0;i<=Spack::n;i++) {
-      printf("C++, qr2qv_evap_tend[i] = %e\n",qr2qv_evap_tend[i]);
-    };
     
-  } //end if (rain_evap.any())
+  } //end if (rain_evap.any()) 
 } //end evaporate rain
     
-
 
 } // namespace p3
 } // namespace scream

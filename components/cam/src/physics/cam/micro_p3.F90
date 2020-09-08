@@ -3459,9 +3459,9 @@ qr2qv_evap_tend,nr_evap_tend)
          
          qr2qv_evap_tend = instant_evap_tend*tscale_weight &
               + equilib_evap_tend*(1._rtype-tscale_weight)
-
+         
       end if
-      
+
       !Limit evap from exceeding saturation deficit. Analytic integration
       !would prevent this from happening if A_c was part of microphysics
       !timestepping, but it isn't.
@@ -3478,8 +3478,6 @@ qr2qv_evap_tend,nr_evap_tend)
       
       !Let nr remove drops proportionally to mass change
       nr_evap_tend = qr2qv_evap_tend*(nr_incld/qr_incld)
-
-      print*,'F90, qr2qv_evap_tend = ',qr2qv_evap_tend
       
    end if !cld_frac_r>cldfrac and ssat_r<0
    

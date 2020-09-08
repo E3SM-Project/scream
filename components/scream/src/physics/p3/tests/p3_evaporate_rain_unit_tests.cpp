@@ -21,28 +21,155 @@ namespace unit_test {
 template <typename D>
 struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
 {
-  static void evaporate_rain_unit_bfb_tests(){
+
+  static void run_property(){
+
+    //TEST WEIGHTING TIMESCALE
+    //========================
+    //dt/tau ~ 0 => weight => 1. A value of exactly 0 would cause div by 0 though.
+    Spack wt;
+    Functions::rain_evap_tscale_weight(Spack(1e-8),wt);
+    for (Int s = 0; s < max_pack_size; ++s) {
+      REQUIRE( wt[s] > 0 ); //always true
+      REQUIRE( wt[s] < 1 ); //always true
+      REQUIRE( 1-wt[s] < 1e-8 );
+    }
+
+    //dt/tau->inf => weight => 0.
+    Functions::rain_evap_tscale_weight(Spack(1e15),wt);
+    for (Int s = 0; s < max_pack_size; ++s) {
+      REQUIRE( wt[s] > 0 ); //always true
+      REQUIRE( wt[s] < 1 ); //always true
+      REQUIRE( wt[s] < 1e-8 );
+    }
+      
+    //TEST EQUILIB EVAP RATE:
+    //=======================
+    //if A_c=0, equilibrium evap rate should be zero
+    Spack tend;    
+    Functions::rain_evap_equilib_tend(Spack(0),Spack(1),Spack(1),Spack(1),tend);
+    for (Int s = 0; s < max_pack_size; ++s) {
+      REQUIRE( tend[s] == 0 );
+    }
+
+    //if tau_eff==tau_r, equilibrium should be -A_c/ab
+    Spack A_c(2);
+    Spack ab(1.2);
+    Functions::rain_evap_equilib_tend(A_c,ab,Spack(1),Spack(1),tend);
+    for (Int s = 0; s < max_pack_size; ++s) {
+      REQUIRE( std::abs(tend[s] + A_c[s]/ab[s]) < 1e-8 );
+    }
+      
+    //TEST INSTANTANEOUS EVAP RATE:
+    //=============================
+    //when ssat_r=0, tend should be zero.
+    Functions::rain_evap_instant_tend(Spack(0),ab,Spack(1),tend);
+    for (Int s = 0; s < max_pack_size; ++s) {
+      REQUIRE( tend[s] == 0 );
+    }
+
+    //when tau_r=>inf, tend should approach 0.
+    Functions::rain_evap_instant_tend(Spack(-1e-3),ab,Spack(1e12),tend);
+    for (Int s = 0; s < max_pack_size; ++s) {
+      REQUIRE( tend[s] > 0 ); //always true for ssat_r<0.
+      REQUIRE( tend[s] < 1e-8 );
+    }
+    
+    //TEST ACTUAL EVAP FUNCTION:
+    //==========================
+    //first, establish reasonable values to use as default:
+    Spack qr_incld(1e-4);
+    Spack qc_incld(1e-4);
+    Spack nr_incld(1e7);
+    Spack qi_incld(1e-4);
+    Spack cld_frac_l(0.1);
+    Spack cld_frac_r(0.9);
+    Spack qv(5e-4);
+    Spack qv_prev(1e-3);
+    Spack qv_sat_l(1e-3); //must be > qv for subsat
+    Spack qv_sat_i(6e-4); //making slightly higher than qv
+    Spack abi(1.2);
+    Spack epsr(1./20.);
+    Spack epsi_tot(1./60.);
+    Spack t(287);
+    Spack t_prev(285);
+    Spack latent_heat_sublim(3.34e5);
+    Spack dqsdt(1e-3);
+    Scalar dt=60;
+    Spack qrtend;
+    Spack nrtend;
+    
+    //if qr_incld is too small, evap rate should be zero.
+    constexpr Scalar QSMALL   = C::QSMALL;
+    Functions::evaporate_rain(Spack(QSMALL/2),qc_incld,nr_incld,qi_incld, //qr_incld->QSMALL/2
+			      cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i,
+			      ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,dt,
+			      qrtend,nrtend);
+    for (Int s = 0; s < max_pack_size; ++s) {
+      REQUIRE( qrtend[s] == 0 );
+      REQUIRE( nrtend[s] == 0 );
+    }
+
+    //if qr_incld is small enough but not too small, evap rate should be qr_incld/dt.
+    Spack qr_tiny=Spack(5e-13);
+    Functions::evaporate_rain(qr_tiny,qc_incld,nr_incld,qi_incld, //qr_incld->_tiny
+				cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i,
+				ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,dt,
+				qrtend,nrtend);
+    for (Int s = 0; s < max_pack_size; ++s) {
+      REQUIRE( std::abs(qrtend[s] - qr_tiny[s]/dt
+			*(cld_frac_r[s]-cld_frac_l[s])/cld_frac_r[s])<1e-8 );
+     
+      REQUIRE( std::abs(nrtend[s] - qrtend[s]*nr_incld[s]/qr_tiny[s]) < 1e-8 );//always true
+    }
+
+    //if no rainy areas outside cloud, don't evap
+    Functions::evaporate_rain(qr_incld,qc_incld,nr_incld,qi_incld,
+			      cld_frac_r,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i, //cld_frac_l->_r
+			      ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,dt,
+			      qrtend,nrtend);
+    for (Int s = 0; s < max_pack_size; ++s) {
+      REQUIRE( qrtend[s] == 0 );
+      REQUIRE( nrtend[s] == 0 );
+    }
+
+    //no evap if supersaturated
+    Functions::evaporate_rain(qr_incld,qc_incld,nr_incld,qi_incld,
+			      //set qv->qv_sat_l*2 in next line to ensure supersaturated.
+			      cld_frac_l,cld_frac_r,qv_sat_l*2,qv_prev,qv_sat_l,qv_sat_i,
+			      ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,dt,
+			      qrtend,nrtend);
+    for (Int s = 0; s < max_pack_size; ++s) {
+      REQUIRE( qrtend[s] == 0 );
+      REQUIRE( nrtend[s] == 0 );
+    }
+    
+    
+  }; //end run_property
+    
+  static void run_bfb(){
     
     //fortran generated data is input to the following
     //This subroutine has 20 args, only 18 are supplied here for invoking it as last 2 are intent-outs
+    //note that dt is the same val for each row - this is needed since dt is a scalar and all rows are executed simultaneously on CPU in C++.
     EvapRainData espd[max_pack_size] = {
-    //qr_incld,     qc_incld,    nr_incld,    qi_incld,    cld_frac_l,  cld_frac_r,  qv,          qv_prev,     qv_sat_l,    qv_sat_i,    ab,          abi,         epsr,        epsi_tot,    t,           t_prev,      latent_heat_sublim, dqsdt
-      {3.447210e-03,7.568759e-03,1.282462e+07,4.559716e-03,2.181899e-01,4.996576e-01,1.355174e-03,7.689148e-03,3.109884e-03,8.479143e-03,1.323354e+00,1.801880e+00,7.912440e+02,4.717223e+02,2.788412e+02,2.304422e+02,3.376491e+05,3.185133e-03,6.303449e+02,},
-      {7.713538e-03,1.421715e-03,1.500325e+07,3.424152e-04,7.246117e-01,9.761673e-02,3.144175e-03,3.480243e-03,6.210449e-03,5.644419e-03,1.020853e+00,1.123862e+00,9.815444e+02,5.866347e+02,1.005243e+02,2.664643e+02,3.382550e+05,3.459718e-03,3.346337e+02,},
-      {1.108357e-03,7.919448e-03,7.522689e+05,4.003924e-03,4.391406e-01,5.353028e-01,9.714450e-03,8.163269e-03,7.232859e-03,3.540476e-04,1.613577e+00,1.365200e+00,9.686382e+02,9.874188e+01,3.080983e+02,2.462458e+02,3.331664e+05,6.260869e-03,1.129514e+02,},
-      {8.763366e-03,5.775320e-03,4.081757e+07,4.872870e-03,9.093062e-01,8.637157e-01,5.111261e-06,3.510804e-03,7.919468e-03,2.164816e-03,1.111913e+00,1.457051e+00,4.440636e+02,3.745193e+02,1.495478e+02,2.390320e+02,3.272279e+05,3.685088e-03,1.564749e+03,},
-      {1.772029e-03,9.813384e-04,6.163759e+05,6.511990e-03,5.961482e-01,2.418172e-01,6.505523e-03,1.566927e-03,2.162630e-03,8.318588e-03,1.742185e+00,1.773503e+00,5.219377e+01,1.346690e+02,1.225765e+02,1.770784e+02,3.640150e+05,3.694893e-03,1.739467e+03,},
-      {2.120679e-03,8.847332e-03,1.831657e+07,8.027861e-03,3.950421e-03,4.655730e-01,1.258581e-03,1.156046e-03,4.378864e-03,2.513115e-03,1.042896e+00,1.513305e+00,6.661906e+02,9.245433e+02,1.651056e+02,1.242327e+02,3.620034e+05,1.663144e-03,5.727666e+02,},
-      {6.818583e-03,4.402694e-03,9.635189e+07,1.215843e-03,7.442543e-01,9.732511e-01,9.959752e-03,6.339721e-03,6.630242e-03,3.272258e-03,1.929628e+00,1.219269e+00,3.573017e+02,6.716209e+02,1.173579e+02,1.438046e+02,3.220013e+05,3.378694e-03,1.248869e+03,},
-      {4.682860e-04,1.241868e-05,5.672542e+07,5.023443e-03,3.341924e-01,5.611753e-01,1.540110e-03,6.376444e-03,1.069738e-03,6.207760e-03,1.531449e+00,1.745637e+00,6.867427e+02,5.414631e+02,3.453410e+02,2.398160e+02,3.701868e+05,1.279460e-03,6.330565e+02,},
-      {9.565079e-03,5.340370e-03,5.688460e+07,3.615027e-03,8.522408e-01,3.928986e-01,8.402562e-03,6.102022e-03,1.424570e-03,6.383195e-03,1.524161e+00,1.578820e+00,6.580376e+02,8.870888e+02,2.226693e+02,2.003213e+02,3.757752e+05,5.097239e-03,3.384718e+02,},
-      {3.250646e-03,2.675118e-03,1.815107e+07,7.853088e-03,9.806948e-01,7.486889e-01,3.255975e-03,8.011100e-03,3.417518e-03,6.616311e-04,1.456686e+00,1.901345e+00,3.438521e+02,3.756087e+02,1.249969e+02,3.129243e+02,3.792944e+05,1.431032e-03,1.056702e+03,},
-      {2.368164e-03,6.522920e-03,9.013133e+06,3.347165e-03,5.839828e-01,9.744957e-01,3.529294e-03,4.658068e-03,5.006151e-03,9.455110e-03,1.152108e+00,1.033423e+00,2.548847e+02,6.425814e+02,3.434567e+02,1.980667e+02,3.794830e+05,5.189345e-03,1.224861e+03,},
-      {1.195296e-03,6.032559e-03,8.642695e+06,9.974985e-03,6.349056e-01,8.434733e-01,1.116853e-04,5.921699e-03,9.604646e-03,6.112554e-03,1.994160e+00,1.517046e+00,5.212776e+01,3.082936e+02,2.951571e+02,1.349963e+02,3.409254e+05,7.670154e-03,2.924272e+02,},
-      {1.679714e-03,9.615619e-03,3.118296e+07,8.024876e-03,3.137640e-01,9.696389e-01,2.687520e-03,3.426577e-03,9.123650e-03,6.113998e-03,1.505228e+00,1.080199e+00,2.957088e+01,1.899326e+02,1.774232e+02,1.056878e+02,3.379270e+05,2.822660e-03,4.617910e+02,},
-      {2.503130e-03,3.617091e-03,9.913080e+06,6.901550e-03,5.781765e-01,1.999869e-01,6.985166e-03,1.190207e-03,7.204522e-03,1.357847e-03,1.459423e+00,1.821947e+00,4.741279e+02,6.710361e+02,2.176799e+02,2.688688e+02,3.622164e+05,5.888658e-03,1.427060e+03,},
-      {3.627839e-03,5.863559e-03,8.680482e+07,5.928597e-03,2.893065e-01,6.883180e-01,4.446598e-03,8.259366e-03,7.609455e-03,3.984928e-03,1.015280e+00,1.838312e+00,2.369260e+02,6.717340e+02,3.355737e+02,1.851869e+02,3.638496e+05,6.984012e-03,1.017520e+03,},
-      {1.222023e-04,5.561842e-03,3.750663e+07,8.378003e-03,5.483419e-01,7.604896e-01,8.352532e-03,4.889095e-03,6.985609e-03,1.998668e-03,1.552162e+00,1.105295e+00,5.962036e+02,3.634128e+02,2.942480e+02,2.131546e+02,3.507114e+05,7.215172e-03,1.589544e+03}
+    //qr_incld,     qc_incld,    nr_incld,    qi_incld,    cld_frac_l,  cld_frac_r,  qv,          qv_prev,     qv_sat_l,    qv_sat_i,    ab,          abi,         epsr,        epsi_tot,    t,           t_prev,      lat_ht_sublim, dqsdt,     dt
+      {4.634940e-03,1.215335e-03,6.073270e+07,3.594486e-04,9.508937e-01,6.134229e-01,2.747871e-03,9.911238e-03,5.913313e-03,1.057645e-03,1.782748e+00,1.571392e+00,3.868229e+02,2.248689e+02,3.101180e+02,1.395063e+02,3.335413e+05,5.494606e-03,6.000000e+02},
+      {6.175320e-03,4.432407e-03,8.029967e+07,1.905151e-03,5.190099e-01,3.031070e-01,4.172977e-05,7.315360e-03,7.280063e-03,1.378543e-03,1.461443e+00,1.507382e+00,8.452377e+02,1.971876e+02,2.389249e+02,1.497752e+02,3.578466e+05,5.107905e-03,6.000000e+02},
+      {4.519798e-03,7.348916e-03,7.420725e+07,2.220971e-03,1.882608e-01,2.934182e-01,4.957590e-03,2.550256e-03,3.136926e-03,4.498115e-03,1.433526e+00,1.207516e+00,9.716844e+02,5.602546e+01,1.389465e+02,1.075863e+02,3.570404e+05,6.771428e-03,6.000000e+02},
+      {7.169182e-03,6.657331e-03,9.807967e+07,7.981196e-03,2.914473e-01,6.375719e-03,2.420032e-03,1.223012e-03,7.685516e-03,5.207024e-03,1.644865e+00,1.433872e+00,3.825069e+02,6.550300e+02,1.833466e+02,1.741918e+02,3.295800e+05,3.792982e-03,6.000000e+02},
+      {1.103118e-03,9.158125e-03,3.136196e+07,4.286154e-03,2.699078e-01,4.668103e-01,9.645460e-03,6.379119e-03,8.283285e-03,3.342400e-03,1.546698e+00,1.417916e+00,9.289270e+02,9.844129e+02,2.543202e+02,1.932996e+02,3.327786e+05,2.693119e-03,6.000000e+02},
+      {4.308000e-03,8.168535e-03,7.439969e+07,5.131497e-03,6.851225e-01,8.298025e-01,4.331812e-03,2.814373e-03,3.592807e-03,1.527499e-03,1.856943e+00,1.003269e+00,9.165690e+02,9.379921e+02,2.163204e+02,3.165814e+02,3.874371e+05,6.801393e-03,6.000000e+02},
+      {5.128909e-03,3.318968e-03,4.664041e+07,8.737282e-03,2.585907e-01,6.297295e-02,8.747418e-03,2.710437e-03,2.164895e-03,9.455725e-03,1.241506e+00,1.561393e+00,2.492674e+02,6.546182e+02,2.228772e+02,2.147968e+02,3.590381e+05,5.903261e-03,6.000000e+02},
+      {7.677170e-03,6.069057e-05,6.404241e+07,3.094233e-03,3.755403e-01,5.026876e-01,4.723817e-03,1.204228e-03,2.156526e-03,8.194797e-03,1.361509e+00,1.772751e+00,6.420537e+01,4.043364e+02,2.133110e+02,3.314521e+02,3.427004e+05,2.996696e-03,6.000000e+02},
+      {9.999294e-03,3.138400e-03,2.355097e+07,9.897893e-03,7.667177e-01,9.739270e-01,4.221430e-03,3.570130e-03,8.370033e-03,9.527208e-03,1.597218e+00,1.111438e+00,7.832357e+02,8.364566e+02,2.854867e+02,2.340771e+02,3.198709e+05,7.235757e-03,6.000000e+02},
+      {8.841793e-03,3.530456e-03,9.618284e+07,9.311658e-03,3.458590e-01,6.978258e-01,1.279864e-03,4.652008e-03,1.869728e-03,8.931663e-03,1.712564e+00,1.223882e+00,9.692403e+02,2.358558e+02,3.204043e+02,1.827677e+02,3.220502e+05,7.646405e-03,6.000000e+02},
+      {1.425612e-03,6.653411e-04,2.843806e+07,1.922560e-03,9.100262e-01,1.096264e-02,8.973183e-03,9.857420e-03,6.221419e-03,8.133433e-03,1.815337e+00,1.885506e+00,5.508742e+02,1.612139e+02,2.798523e+02,2.631136e+02,3.045141e+05,4.148666e-03,6.000000e+02},
+      {4.125177e-04,4.056163e-03,2.716439e+07,6.484214e-03,1.658752e-01,2.859102e-01,8.724081e-03,6.282997e-03,7.313187e-03,6.049825e-03,1.140910e+00,1.145941e+00,7.490652e+02,5.011633e+02,1.986541e+02,2.745566e+02,3.371001e+05,6.784784e-03,6.000000e+02},
+      {5.010628e-03,2.863789e-04,8.953841e+07,3.953058e-03,1.135952e-01,9.718675e-01,5.846157e-03,5.743094e-03,2.842649e-03,8.155366e-03,1.227867e+00,1.894249e+00,1.161776e+02,3.578576e+02,1.240083e+02,1.639791e+02,3.167181e+05,4.497257e-03,6.000000e+02},
+      {9.487866e-03,6.584660e-03,6.149682e+06,9.413342e-03,8.757261e-01,6.503885e-01,8.078922e-03,3.489665e-03,3.059596e-03,9.285703e-03,1.192620e+00,1.967205e+00,5.085628e+02,3.741816e+01,1.196252e+02,2.904002e+02,3.637035e+05,2.566077e-03,6.000000e+02},
+      {3.241928e-03,7.024929e-03,2.212493e+07,8.600485e-03,3.963690e-01,4.834201e-01,3.736511e-03,5.724475e-03,4.790239e-03,2.766218e-03,1.151150e+00,1.150516e+00,2.089426e+02,8.666450e+02,1.898220e+02,2.862496e+02,3.056143e+05,7.039800e-03,6.000000e+02},
+      {4.617594e-03,3.157739e-03,5.569465e+07,8.221076e-03,7.918279e-01,9.995014e-01,8.338309e-04,1.319707e-03,2.896082e-03,4.359171e-03,1.007827e+00,1.812954e+00,5.332209e+02,2.973599e+02,3.271466e+02,2.622351e+02,3.821569e+05,1.407429e-03,6.000000e+02}
     };
 
     // Sync to device
@@ -61,7 +188,7 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
     // Run the lookup from a kernel and copy results back to host
     Kokkos::parallel_for(RangePolicy(0, num_test_itrs), KOKKOS_LAMBDA(const Int& i) {
       const Int offset = i * Spack::n;
-
+      
       // Init pack inputs
       Spack qr_incld,qc_incld,nr_incld,qi_incld,
 	cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i,
@@ -80,7 +207,7 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
         cld_frac_l[s]       = espd_device(vs).cld_frac_l;
         cld_frac_r[s]       = espd_device(vs).cld_frac_r;
 	qv[s] = espd_device(vs).qv;
-	qv_prev = espd_device(vs).qv_prev;
+	qv_prev[s] = espd_device(vs).qv_prev;
         qv_sat_l[s]         = espd_device(vs).qv_sat_l;
 	qv_sat_i[s]    = espd_device(vs).qv_sat_i;
         ab[s]          = espd_device(vs).ab;
@@ -95,7 +222,7 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
         //qr2qv_evap_tend[s]       = espd_device(vs).qr2qv_evap_tend; //PMC shouldn't have to init output vars.
         //nr_evap_tend[s]       = espd_device(vs).nr_evap_tend;
       }
-
+      
       Functions::evaporate_rain(qr_incld,qc_incld,nr_incld,qi_incld,
 				cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i,
 				ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,dt,
@@ -126,11 +253,8 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
       REQUIRE(espd[s].qr2qv_evap_tend == espd_host(s).qr2qv_evap_tend);
       REQUIRE(espd[s].nr_evap_tend == espd_host(s).nr_evap_tend);
     }
-  }
+  } // end run_bfb
 
-  static void run_bfb(){
-    evaporate_rain_unit_bfb_tests();
-  }
 
 }; //TestEvapSublPrecip UnitWrap
   
@@ -140,8 +264,16 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
 
 namespace {
 
-  TEST_CASE("p3_evaporate_rain_test", "[p3_unit_tests]"){
-  scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestEvapSublPrecip::run_bfb();
+  TEST_CASE("p3_evaporate_rain_property", "p3_unit_tests")
+  {
+    using TestStruct = scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestEvapSublPrecip;
+    TestStruct::run_property();
+  }
+  
+  TEST_CASE("p3_evaporate_rain_test", "p3_unit_tests")
+  {
+    using TestStruct = scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestEvapSublPrecip;
+    TestStruct::run_bfb();
 }
 
-}// anonymous namespace
+}// end anonymous namespace
