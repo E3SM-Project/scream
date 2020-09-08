@@ -10,7 +10,7 @@
 
 ### BASIC INFO ABOUT RUN
 set my_npes        = 64
-set job_name       = test_prescribed_CCN_3
+set job_name       = test_prescribed_CCN_4
 #set compset        = FC5AV1C-L
 set compset        = FSCREAM-LR
 set resolution     = ne30_ne30
@@ -27,7 +27,7 @@ set tag_name       = default
 set case_name = ${machine}.${tag_name}.${job_name}.${resolution}
 
 ### BUILD OPTIONS
-set debug_compile  = false
+set debug_compile  = true
 set old_executable = false
 
 ### AUTOMATIC DELETION OPTIONS

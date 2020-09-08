@@ -352,8 +352,8 @@ end subroutine micro_p3_readnl
     
     !needed for prescribed CCN option:
     character(len=20) :: base_file_name
-    character(len=100) :: filename, filename_next_month
-    character(len=8) :: mon_str, next_mon_str
+    character(len=500) :: filename, filename_next_month
+    character(len=15) :: mon_str, next_mon_str
     character(len=8) :: dim1name, dim2name
     type(file_desc_t), pointer :: nccn_ncid
     integer :: year, month, day, tod, next_month, grid_id
@@ -797,8 +797,8 @@ end subroutine micro_p3_readnl
    character*(*), intent(in)    :: micro_p3_lookup_dir                !directory of the lookup tables
 
    !internal variables
-   character(len=20) :: base_file_name 
-   character(len=100) :: filename
+   character(len=100) :: base_file_name 
+   character(len=500) :: filename
    character(len=8) :: mon_str
    character(len=8) :: dim1name, dim2name
    type(file_desc_t), pointer :: nccn_ncid
