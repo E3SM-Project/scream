@@ -767,11 +767,19 @@ contains
  subroutine shoc_diag_second_moments_ubycond_c(shcol, thl, qw, wthl, wqw, qwthl, uw, vw, wtke) bind(C)
    use shoc, only: diag_second_moments_ubycond
 
-   ! argmens
    integer(kind=c_int), value, intent(in) :: shcol
    real(kind=c_real), intent(out)  :: thl(shcol), qw(shcol), qwthl(shcol),wthl(shcol),wqw(shcol), uw(shcol), vw(shcol), wtke(shcol)
 
    call diag_second_moments_ubycond(shcol, thl, qw, wthl, wqw, qwthl, uw, vw, wtke)
  end subroutine shoc_diag_second_moments_ubycond_c
 
+ subroutine shoc_pblintd_cldcheck_c(shcol, nlev, nlevi, zi, cldn, pblh) bind(C)
+   use shoc, only: pblintd_cldcheck
+
+   integer(kind=c_int), value, intent(in) :: shcol, nlev, nlevi
+   real(kind=c_real), intent(in) :: zi(shcol, nlevi), cldn(shcol, nlev)
+   real(kind=c_real), intent(inout) :: pblh(shcol)
+
+   call pblintd_cldcheck(shcol, nlev, nlevi, zi, cldn, pblh)
+ end subroutine shoc_pblintd_cldcheck_c
 end module shoc_iso_c
