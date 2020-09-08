@@ -137,29 +137,32 @@ void Functions<S,D>
       eps_eff.set(not_freezing,epsr);
       A_c.set(not_freezing, (qv - qv_prev)*inv_dt - dqsdt*(t_atm-t_atm_prev)*inv_dt );
     }
-
+    
     //Set lower bound on eps_eff to prevent division by zero
     eps_eff.set(eps_eff<1e-20 && context, 1e-20);
     const Spack tau_eff = 1/eps_eff;
 
     //If qr is posive but tiny, evap all qr if subsaturated at all.
-    const Smask qr_tiny = qr_incld < 1e-12 && qv/qv_sat_l < 0.999 && is_rain_evap; 
-    if (qr_tiny.any()){
-      qr2qv_evap_tend.set(qr_tiny,qr_incld*inv_dt );
+    Smask is_qr_tiny = qr_incld < 1e-12 && qv/qv_sat_l < 0.999;
+    const Smask not_qr_tiny = !is_qr_tiny && is_rain_evap;
+    is_qr_tiny = is_qr_tiny && is_rain_evap; 
+    if (is_qr_tiny.any()){
+      qr2qv_evap_tend.set(is_qr_tiny,qr_incld*inv_dt );
     }
 
     //If qr is reasonably big, compute timestep-averaged evap rate as the weighted ave of
     //instantaneous and equilibrium evap rates with weighting timescale tscale_weight. L'Hospital's
     //rull shows tscale_weight is 1 in the limit of small dt. It approaches 0 as dt gets big.
-    if (!qr_tiny.any() && is_rain_evap.any()){
+    if (not_qr_tiny.any()){
       Spack tscale_weight, equilib_tend, instant_tend;
       rain_evap_tscale_weight(dt/tau_eff,tscale_weight,is_rain_evap);
       rain_evap_equilib_tend(A_c,ab,tau_eff,tau_r,equilib_tend,is_rain_evap);
       rain_evap_instant_tend(ssat_r, ab, tau_r,instant_tend,is_rain_evap);
 
-      qr2qv_evap_tend.set(!qr_tiny && is_rain_evap,
+      qr2qv_evap_tend.set(not_qr_tiny,
 			  instant_tend*tscale_weight
 			  + equilib_tend*(1-tscale_weight) );   
+
     }
     
     //Limit evap from exceeding saturation deficit. Analytic integration
@@ -180,7 +183,7 @@ void Functions<S,D>
     //Let nr remove drops proportionally to mass change
     nr_evap_tend.set(is_rain_evap, qr2qv_evap_tend*(nr_incld/qr_incld));
     
-  } //end if (rain_evap.any()) 
+  } //end if (rain_evap.any()    
 } //end evaporate rain
     
 
