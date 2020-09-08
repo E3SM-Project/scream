@@ -32,6 +32,23 @@ struct SHOCGridData : public PhysicsTestData {
   PTD_ASSIGN_OP(SHOCGridData, 0);
 };
 
+//Create data structure to hold data for shoc_tke
+struct SHOCTkeData : public PhysicsTestData {
+  // Inputs
+  Real dtime; 
+  Real *wthv_sec, *shoc_mix, *dz_zi, *u_wind, *v_wind, *pblh;
+  Real *brunt, *obklen, *zt_grid, *zi_grid, *dz_zt, *pres;
+
+  // Output
+  Real *tke, *tkh, *tk, *isotropy;
+
+  SHOCTkeData(Int shcol_, Int nlev_, Int nlevi_, Real dtime_) :
+    PhysicsTestData(shcol_, nlev_, nlevi_, {&wthv_sec, &shoc_mix, &dz_zt, &pres, &u_wind, &v_wind, &zt_grid, &brunt, &tke, &tk, &tkh, &isotropy}, {&dz_zi, &zi_grid}, {&obklen, &pblh}), dtime(dtime_) {}
+
+  PTD_DATA_COPY_CTOR(SHOCTkeData, 4);
+  PTD_ASSIGN_OP(SHOCTkeData, 1, dtime);
+};//SHOCTkeData
+
 //Create data structure to hold data for integ_column_stability
 struct SHOCColstabData : public PhysicsTestData {
   // Inputs
@@ -585,27 +602,41 @@ struct SHOCSecondMomentUbycondData : public SHOCDataBase {
 // locations of the cell center (location of thermodynaics quantities), cell
 // interfaces, and pressure gradient the functon returns dz_zi, dz_zt,
 // and density.
-void shoc_grid                      (SHOCGridData &d);
-void update_host_dse                (SHOCEnergydseData &d);
-void shoc_energy_integrals          (SHOCEnergyintData &d);
-void shoc_energy_total_fixer        (SHOCEnergytotData &d);
-void shoc_energy_threshold_fixer    (SHOCEnergythreshfixerData &d);
-void shoc_energy_dse_fixer          (SHOCEnergydsefixerData &d);
-void calc_shoc_vertflux             (SHOCVertfluxData &d);
-void calc_shoc_varorcovar           (SHOCVarorcovarData &d);
-void integ_column_stability         (SHOCColstabData &d);
-void compute_shr_prod               (SHOCTkeshearData &d);
-void isotropic_ts                   (SHOCIsotropicData &d);
-void adv_sgs_tke                    (SHOCAdvsgstkeData &d);
-void eddy_diffusivities             (SHOCEddydiffData &d);
-void compute_brunt_shoc_length      (SHOCBruntlengthData &d);
-void compute_l_inf_shoc_length      (SHOCInflengthData &d);
-void compute_conv_vel_shoc_length   (SHOCConvvelData &d);
-void compute_conv_time_shoc_length  (SHOCConvtimeData &d);
-void compute_shoc_mix_shoc_length   (SHOCMixlengthData &d);
-void check_length_scale_shoc_length (SHOCMixcheckData &d);
-void shoc_diag_second_moments_srf   (SHOCSecondMomentSrfData& d);
-void linear_interp                  (SHOCLinearintData &d);
+void shoc_grid                                      (SHOCGridData &d);
+void update_host_dse                                (SHOCEnergydseData &d);
+void shoc_energy_integrals                          (SHOCEnergyintData &d);
+void shoc_energy_total_fixer                        (SHOCEnergytotData &d);
+void shoc_energy_threshold_fixer                    (SHOCEnergythreshfixerData &d);
+void shoc_energy_dse_fixer                          (SHOCEnergydsefixerData &d);
+void calc_shoc_vertflux                             (SHOCVertfluxData &d);
+void calc_shoc_varorcovar                           (SHOCVarorcovarData &d);
+void integ_column_stability                         (SHOCColstabData &d);
+void shoc_tke                                       (SHOCTkeData &d);
+void compute_shr_prod                               (SHOCTkeshearData &d);
+void isotropic_ts                                   (SHOCIsotropicData &d);
+void adv_sgs_tke                                    (SHOCAdvsgstkeData &d);
+void eddy_diffusivities                             (SHOCEddydiffData &d);
+void compute_brunt_shoc_length                      (SHOCBruntlengthData &d);
+void compute_l_inf_shoc_length                      (SHOCInflengthData &d);
+void compute_conv_vel_shoc_length                   (SHOCConvvelData &d);
+void compute_conv_time_shoc_length                  (SHOCConvtimeData &d);
+void compute_shoc_mix_shoc_length                   (SHOCMixlengthData &d);
+void check_length_scale_shoc_length                 (SHOCMixcheckData &d);
+void shoc_diag_second_moments_srf                   (SHOCSecondMomentSrfData& d);
+void linear_interp                                  (SHOCLinearintData &d);
+void shoc_assumed_pdf_tilda_to_real                 (SHOCPDFtildaData &d);
+void shoc_assumed_pdf_vv_parameters                 (SHOCPDFvvparamData &d);
+void shoc_assumed_pdf_thl_parameters                (SHOCPDFthlparamData &d);
+void shoc_assumed_pdf_qw_parameters                 (SHOCPDFqwparamData &d);
+void shoc_assumed_pdf_inplume_correlations          (SHOCPDFinplumeData &d);
+void shoc_assumed_pdf_compute_temperature           (SHOCPDFcomptempData &d);
+void shoc_assumed_pdf_compute_qs                    (SHOCPDFcompqsData &d);
+void shoc_assumed_pdf_compute_s                     (SHOCPDFcompsData &d);
+void shoc_assumed_pdf_compute_sgs_liquid            (SHOCPDFcompsgsliqData &d);
+void shoc_assumed_pdf_compute_cloud_liquid_variance (SHOCPDFcompcloudvarData &d);
+void shoc_assumed_pdf_compute_liquid_water_flux     (SHOCPDFcompliqfluxData &d);
+void shoc_assumed_pdf_compute_buoyancy_flux         (SHOCPDFcompbuoyfluxData &d);
+void shoc_diag_second_moments_ubycond               (SHOCSecondMomentUbycondData& d);
 
 //
 // _f functions decls
