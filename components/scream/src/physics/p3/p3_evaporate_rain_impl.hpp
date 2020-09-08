@@ -88,11 +88,18 @@ void Functions<S,D>
   qr2qv_evap_tend = 0;
   nr_evap_tend = 0;
   const Spack tau_r(1/epsr);
-  const Spack inv_dt(1/dt);
+  const Scalar inv_dt = 1/dt;
   constexpr Scalar QSMALL   = C::QSMALL;
   constexpr Scalar Tmelt  = C::Tmelt;
   constexpr Scalar inv_cp = 1/C::Cpair;
 
+  printf("ccccccccccccc\n");
+  printf("Spack::n = %d\n",Spack::n);
+  for (int i=0;i<=Spack::n;i++) {
+    printf("qr2qv_evap_tend[i] = %e\n",qr2qv_evap_tend[i]);
+  };
+
+  
   //Compute absolute supersaturation.
   //Ignore the difference between clear-sky and cell-ave qv and T
   //because micro lacks the info to reliably reconstruct macrophys
@@ -161,6 +168,18 @@ void Functions<S,D>
       qr2qv_evap_tend.set(!qr_tiny && is_rain_evap,
 			  instant_tend*tscale_weight
 			  + equilib_tend*(1-tscale_weight) );
+
+      printf("----------------\n");
+      for (int i=0;i<=Spack::n;i++) {
+	printf("C++, qr2qv_evap_tend[i] = %e\n",qr2qv_evap_tend[i]);
+	printf("C++, equilib_tend = %e\n",equilib_tend[i]);
+	printf("A_c,ab,tau_eff,tau_r = %e, %e, %e, %e\n",A_c[i], ab[i], tau_eff[i], tau_r[i]);
+	printf("t_atm,A,B=%e, %e, %e\n",t_atm[i],(qv[i] - qv_prev[i])*inv_dt,dqsdt[i]*(t_atm[i]-t_atm_prev[i])*inv_dt );
+	printf("dqsdt,t_atm_prev[i],inv_dt=%e %e %e\n",dqsdt[i],t_atm_prev[i],inv_dt);
+	printf("C++, is_rain_evap = %d\n",is_rain_evap[i]);
+      };
+
+      
     }
 
     //Limit evap from exceeding saturation deficit. Analytic integration
@@ -180,10 +199,9 @@ void Functions<S,D>
     //Let nr remove drops proportionally to mass change
     nr_evap_tend.set(is_rain_evap, qr2qv_evap_tend*(nr_incld/qr_incld));
 
+    printf("================\n");
     for (int i=0;i<=Spack::n;i++) {
-      printf("================\n");
       printf("C++, qr2qv_evap_tend[i] = %e\n",qr2qv_evap_tend[i]);
-      printf("================\n");
     };
     
   } //end if (rain_evap.any())

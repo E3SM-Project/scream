@@ -24,9 +24,9 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
   static void evaporate_rain_unit_bfb_tests(){
     
     //fortran generated data is input to the following
-    //This subroutine has 12 args, only 10 are supplied here for invoking it as last 2 are intent-outs
+    //This subroutine has 20 args, only 18 are supplied here for invoking it as last 2 are intent-outs
     EvapRainData espd[max_pack_size] = {
-    //qr_incld,     qc_incld,    nr_incld,    qi_incld,    cld_frac_l,  cld_frac_r,  qv,          qv_prev,     qv_sat_l,    qv_sat_i,    ab,          abi,         epsr,        epsi_tot,    t,           t_prev,      latent_heat_sublim, dqsdt,dt
+    //qr_incld,     qc_incld,    nr_incld,    qi_incld,    cld_frac_l,  cld_frac_r,  qv,          qv_prev,     qv_sat_l,    qv_sat_i,    ab,          abi,         epsr,        epsi_tot,    t,           t_prev,      latent_heat_sublim, dqsdt
       {3.447210e-03,7.568759e-03,1.282462e+07,4.559716e-03,2.181899e-01,4.996576e-01,1.355174e-03,7.689148e-03,3.109884e-03,8.479143e-03,1.323354e+00,1.801880e+00,7.912440e+02,4.717223e+02,2.788412e+02,2.304422e+02,3.376491e+05,3.185133e-03,6.303449e+02,},
       {7.713538e-03,1.421715e-03,1.500325e+07,3.424152e-04,7.246117e-01,9.761673e-02,3.144175e-03,3.480243e-03,6.210449e-03,5.644419e-03,1.020853e+00,1.123862e+00,9.815444e+02,5.866347e+02,1.005243e+02,2.664643e+02,3.382550e+05,3.459718e-03,3.346337e+02,},
       {1.108357e-03,7.919448e-03,7.522689e+05,4.003924e-03,4.391406e-01,5.353028e-01,9.714450e-03,8.163269e-03,7.232859e-03,3.540476e-04,1.613577e+00,1.365200e+00,9.686382e+02,9.874188e+01,3.080983e+02,2.462458e+02,3.331664e+05,6.260869e-03,1.129514e+02,},
@@ -90,6 +90,8 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
 	t[s]           = espd_device(vs).t;
 	t_prev[s]      = espd_device(vs).t_prev;
 	latent_heat_sublim[s]=espd_device(vs).latent_heat_sublim;
+	dqsdt[s]=espd_device(vs).dqsdt;
+	dt=espd_device(vs).dt;
         //qr2qv_evap_tend[s]       = espd_device(vs).qr2qv_evap_tend; //PMC shouldn't have to init output vars.
         //nr_evap_tend[s]       = espd_device(vs).nr_evap_tend;
       }
