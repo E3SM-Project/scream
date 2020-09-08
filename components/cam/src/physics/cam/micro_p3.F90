@@ -3479,6 +3479,8 @@ qr2qv_evap_tend,nr_evap_tend)
       !Let nr remove drops proportionally to mass change
       nr_evap_tend = qr2qv_evap_tend*(nr_incld/qr_incld)
 
+      print*,'F90, qr2qv_evap_tend = ',qr2qv_evap_tend
+      
    end if !cld_frac_r>cldfrac and ssat_r<0
    
    return

@@ -641,6 +641,24 @@ struct Functions
                                   const Spack& ni_incld, Spack& ni_selfcollect_tend,
                                   const Smask& context = Smask(true));
 
+  // helper fn for evaporate_rain
+  KOKKOS_FUNCTION
+  static void rain_evap_tscale_weight(const Spack& dt_over_tau,
+				      Spack& weight,
+				      const Smask& context=Smask(true));
+
+  // helper fn for evaporate_rain
+  KOKKOS_FUNCTION
+  static void rain_evap_equilib_tend(const Spack& A_c,const Spack& ab,
+				     const Spack& tau_eff,const Spack& tau_r,
+				     Spack& tend,const Smask& context=Smask(true));
+
+  // helper fn for evaporate_rain
+  KOKKOS_FUNCTION
+  static void rain_evap_instant_tend(const Spack& ssat_r, const Spack& ab,
+				     const Spack& tau_r,
+				     Spack& tend, const Smask& context=Smask(true));
+  
   // TODO (comments)
   KOKKOS_FUNCTION
   static void evaporate_rain(const Spack& qr_incld, const Spack& qc_incld, const Spack& nr_incld, const Spack& qi_incld,
