@@ -3613,13 +3613,9 @@ void p3_main_f(
                                        do_predict_nc, col_location_d};
   P3F::P3HistoryOnly history_only{liq_ice_exchange_d, vap_liq_exchange_d,
                                   vap_ice_exchange_d};
-
-  printf("Entering C++ p3_main from p3_main_f.\n");
   
   P3F::p3_main(prog_state, diag_inputs, diag_outputs, infrastructure,
                history_only, nj, nk);
-
-  printf("Exiting C++ p3_main from p3_main_f.\n");
   
   Kokkos::parallel_for(nj, KOKKOS_LAMBDA(const Int& i) {
     precip_liq_surf_temp_d(0, i / Spack::n)[i % Spack::n] = precip_liq_surf_d(i);
@@ -3642,8 +3638,6 @@ void p3_main_f(
   dim2_sizes_out[23] = nk+1; // precip_ice_flux
   dim1_sizes_out[24] = 1; dim2_sizes_out[24] = nj; // precip_liq_surf
   dim1_sizes_out[25] = 1; dim2_sizes_out[25] = nj; // precip_ice_surf
-
-  printf("in p3_main_f, about to device_to_host\n");
   
   ekat::pack::device_to_host({
       qc, nc, qr, nr, qi, qm, ni, bm, qv, th, diag_effc, diag_effi,
@@ -3651,8 +3645,6 @@ void p3_main_f(
       vap_liq_exchange, vap_ice_exchange, precip_liq_flux, precip_ice_flux, precip_liq_surf, precip_ice_surf
     },
     dim1_sizes_out, dim2_sizes_out, inout_views, true);
-
-  printf("Exiting p3_main_f\n");
 }
 
 } // namespace p3

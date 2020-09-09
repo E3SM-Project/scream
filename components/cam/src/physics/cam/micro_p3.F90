@@ -737,7 +737,7 @@ contains
            cld_frac_l(k),cld_frac_r(k),qv(k),qv_prev(k),qv_sat_l(k),qv_sat_i(k), &
            ab,abi,epsr,epsi_tot,t(k),t_prev(k),latent_heat_sublim(k),dqsdt,dt,&
            qr2qv_evap_tend,nr_evap_tend)
-
+      
       call ice_deposition_sublimation(qi_incld(k), ni_incld(k), t(k), &
            qv_sat_l(k),qv_sat_i(k),epsi,abi,qv(k), &
            qidep,qi2qv_sublim_tend,ni_sublim_tend,qiberg)
@@ -3377,7 +3377,7 @@ qr2qv_evap_tend,nr_evap_tend)
    nr_evap_tend = 0.0_rtype
    tau_r = 1._rtype/epsr
    inv_dt=1._rtype/dt
-
+   
    !Compute absolute supersaturation.
    !Ignore the difference between clear-sky and cell-ave qv and T
    !because micro lacks the info to reliably reconstruct macrophys
@@ -3398,7 +3398,7 @@ qr2qv_evap_tend,nr_evap_tend)
    !Only evaporate in the rainy area outside cloud when subsaturated
    !Note: ignoring case where cell initially supersaturated but other processes would make
    !it subsaturated within 1 timestep.
-   if (cld_frac_r > cld_frac .and. ssat_r<0._rtype) then
+   if (cld_frac_r > cld_frac .and. ssat_r<0._rtype .and. qr_incld >= qsmall ) then
       
       !Compute total effective inverse saturation removal timescale eps_eff
       !qc saturation is handled by macrophysics so the qc saturation removal timescale is
@@ -3426,15 +3426,11 @@ qr2qv_evap_tend,nr_evap_tend)
       endif
       
       !Now compute evap rate
-      
-      !If no rain to evap, set tend to 0
-      !Note: qr2qv_evap_tend was already initialized to 0 at the
-      !beginning of this function so this is a bit redundant 
-      if (qr_incld < qsmall ) then
-         qr2qv_evap_tend = 0._rtype
 
+      !note that qr_incld<qsmall => qr2qv_evap_tend already initialized to zero above.
+      
       !If there's negligible qr and conditions are subsaturated, evaporate all qr
-      elseif (qr_incld < 1e-12_rtype .and. qv/qv_sat_l < 0.999_rtype) then
+      if (qr_incld < 1e-12_rtype .and. qv/qv_sat_l < 0.999_rtype) then
          qr2qv_evap_tend = qr_incld*inv_dt
          
       !If sizable qr, compute tend. 
@@ -3478,7 +3474,8 @@ qr2qv_evap_tend,nr_evap_tend)
       
       !Let nr remove drops proportionally to mass change
       nr_evap_tend = qr2qv_evap_tend*(nr_incld/qr_incld)
-      
+
+
    end if !cld_frac_r>cldfrac and ssat_r<0
    
    return

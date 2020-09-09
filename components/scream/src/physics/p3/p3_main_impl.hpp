@@ -540,7 +540,7 @@ void Functions<S,D>
 		     cld_frac_l(k),cld_frac_r(k),qv(k),qv_prev(k),qv_sat_l(k),qv_sat_i(k),
 		     ab,abi,epsr,epsi_tot,t(k),t_prev(k),latent_heat_sublim(k),dqsdt,dt,
 		     qr2qv_evap_tend,nr_evap_tend, not_skip_micro);
-
+      
       ice_deposition_sublimation(
         qi_incld(k), ni_incld(k), t(k), qv_sat_l(k), qv_sat_i(k), epsi, abi, qv(k),
         qv2qi_vapdep_tend, qi2qv_sublim_tend, ni_sublim_tend, qc2qi_berg_tend, not_skip_micro);
@@ -1029,8 +1029,6 @@ void Functions<S,D>
     if (!(nucleationPossible || hydrometeorsPresent)) {
       return; // this is how you do a "continue" in a kokkos lambda
     }
-
-    printf("Entering part2\n");
     
     // ------------------------------------------------------------------------------------------
     // main k-loop (for processes):
@@ -1049,8 +1047,6 @@ void Functions<S,D>
     //NOTE: At this point, it is possible to have negative (but small) nc, nr, ni.  This is not
     //      a problem; those values get clipped to zero in the sedimentation section (if necessary).
     //      (This is not done above simply for efficiency purposes.)
-
-    printf("Exiting part2\n");
     
     if (!hydrometeorsPresent) return;
 
@@ -1106,8 +1102,6 @@ void Functions<S,D>
     //          ice properties are computed after merging
 
     // PMC nCat deleted nCat>1 stuff
-
-    printf("Exiting p3_main\n");
 
 #ifndef NDEBUG
     Kokkos::parallel_for(
