@@ -29,14 +29,14 @@ void P3InputsInitializer::initialize_fields ()
   count += m_fields.count("dp");
   count += m_fields.count("zi");
   count += m_fields.count("qv_prev");
-  count += m_fields.count("t_prev");
+  count += m_fields.count("T_prev");
   
   if (count==0) {
     return;
   }
 
   EKAT_REQUIRE_MSG (count==10,
-    "Error! P3InputsInitializer is expected to init 'q','T','ast','ni_activated','nc_nuceat_tend','pmid','dp','zi','qv_prev','t_prev'.\n"
+    "Error! P3InputsInitializer is expected to init 'q','T','ast','ni_activated','nc_nuceat_tend','pmid','dp','zi','qv_prev','T_prev'.\n"
     "       Only " + std::to_string(count) + " of those have been found.\n"
     "       Please, check the atmosphere processes you are using,"
     "       and make sure they agree on who's initializing each field.\n");
@@ -51,7 +51,7 @@ void P3InputsInitializer::initialize_fields ()
   auto d_dpres  = m_fields.at("dp").get_view();
   auto d_zi    = m_fields.at("zi").get_view();
   auto d_qv_prev = m_fields.at("qv_prev").get_view();
-  auto d_t_prev = m_fields.at("t_prev").get_view();
+  auto d_t_prev  = m_fields.at("T_prev").get_view();
   
   // Create host mirrors
   auto h_q     = Kokkos::create_mirror_view(d_q);
