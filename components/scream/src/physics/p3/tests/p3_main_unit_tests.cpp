@@ -50,7 +50,7 @@ static void run_phys()
 
 static void run_bfb_p3_main_part1()
 {
-  constexpr Scalar = C::QSMALL;
+  constexpr Scalar qsmall = C::QSMALL; //PMC wouldn't it make more sense to define qsmall at a higher level since used in part1, part2, and part3?
   constexpr Scalar zerodegc   = C::ZeroDegC;
   constexpr Scalar sup_upper = -0.05;
   constexpr Scalar sup_lower = -0.1;

@@ -18,7 +18,7 @@ void P3InputsInitializer::add_field (const field_type &f)
 void P3InputsInitializer::initialize_fields ()
 {
   // Safety check: if we're asked to init anything at all,
-  // then we should have been asked to init 7 fields.
+  // then we should have been asked to init 10 fields.
   int count = 0;
   count += m_fields.count("q");
   count += m_fields.count("T");
@@ -36,7 +36,7 @@ void P3InputsInitializer::initialize_fields ()
   }
 
   EKAT_REQUIRE_MSG (count==10,
-    "Error! P3InputsInitializer is expected to init 'q','T','ast','ni_activated','nc_nuceat_tend','pmid','dp','zi'.\n"
+    "Error! P3InputsInitializer is expected to init 'q','T','ast','ni_activated','nc_nuceat_tend','pmid','dp','zi','qv_prev','t_prev'.\n"
     "       Only " + std::to_string(count) + " of those have been found.\n"
     "       Please, check the atmosphere processes you are using,"
     "       and make sure they agree on who's initializing each field.\n");
@@ -89,6 +89,8 @@ void P3InputsInitializer::initialize_fields ()
   Kokkos::deep_copy(d_pmid,h_pmid);
   Kokkos::deep_copy(d_dpres,h_dpres);
   Kokkos::deep_copy(d_zi,h_zi);
+  Kokkos::deep_copy(d_qv_prev,h_qv_prev);
+  Kokkos::deep_copy(d_t_prev,h_t_prev);
 
   // If we are in charge of init-ing FQ as well, init it to 0.
   if (m_fields.count("FQ")==1) {

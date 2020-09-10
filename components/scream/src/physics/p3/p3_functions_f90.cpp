@@ -755,7 +755,7 @@ P3MainPart2Data::P3MainPart2Data(
     &qv, &th, &qc, &nc, &qr, &nr, &qi, &ni, &qm, &bm, &latent_heat_vapor, &latent_heat_sublim, &latent_heat_fusion, &qc_incld, &qr_incld,
     &qi_incld, &qm_incld, &nc_incld, &nr_incld, &ni_incld, &bm_incld, &mu_c, &nu, &lamc, &cdist, &cdist1,
     &cdistr, &mu_r, &lamr, &logn0r, &cmeiout, &precip_total_tend, &nevapr, &qr_evap_tend, &vap_liq_exchange,
-    &vap_ice_exchange, &liq_ice_exchange, &pratot, &prctot}),
+      &vap_ice_exchange, &liq_ice_exchange, &pratot, &prctot}),
   kts(kts_), kte(kte_), kbot(kbot_), ktop(ktop_), kdir(kdir_),
   do_predict_nc(do_predict_nc_), dt(dt_), inv_dt(1 / dt)
 {}
@@ -800,15 +800,14 @@ void p3_main_part3(P3MainPart3Data& d)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-//This ver is for allowable ranges for testing
 P3MainData::P3MainData(
   Int its_, Int ite_, Int kts_, Int kte_, Int it_, Real dt_, bool do_predict_nc_) :
   PhysicsTestData( (ite_ - its_) + 1, (kte_ - kts_) + 1, (kte_ - kts_) + 2, {
     &pres, &dz, &nc_nuceat_tend, &ni_activated, &dpres, &exner, &cld_frac_i, &cld_frac_l, &cld_frac_r,
-    &inv_qc_relvar, &qc, &nc, &qr, &nr, &qi, &qm, &ni, &bm, &qv, &th,
+    &inv_qc_relvar, &qc, &nc, &qr, &nr, &qi, &qm, &ni, &bm, &qv, &th, &qv_prev, &t_prev,
     &diag_effc, &diag_effi, &rho_qi, &mu_c, &lamc, &cmeiout, &precip_total_tend, &nevapr,
     &qr_evap_tend, &liq_ice_exchange, &vap_liq_exchange, &vap_ice_exchange, &precip_liq_flux,
-    &precip_ice_flux &qv_prev, &t_prev},
+    &precip_ice_flux},
     {&precip_liq_surf, &precip_ice_surf}), // these two are (ni, nk+1)
   its(its_), ite(ite_), kts(kts_), kte(kte_), it(it_), dt(dt_), do_predict_nc(do_predict_nc_)
 {}

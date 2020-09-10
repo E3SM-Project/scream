@@ -39,7 +39,7 @@ TEST_CASE("p3-stand-alone", "") {
   std::string fname = "input.yaml";
   ekat::ParameterList ad_params("Atmosphere Driver");
   REQUIRE_NOTHROW ( parse_yaml_file(fname,ad_params) );
-
+  
   // Need to register products in the factory *before* we create any AtmosphereProcessGroup,
   // which rely on factory for process creation. The initialize method of the AD does that.
   auto& proc_factory = AtmosphereProcessFactory::instance();
