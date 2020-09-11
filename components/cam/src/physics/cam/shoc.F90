@@ -2793,7 +2793,7 @@ subroutine integ_column_stability(nlev, shcol, dz_zt, pres, brunt, brunt_int)
   do k = 1, nlev
      do i = 1, shcol
         brunt_int(i) = brunt_int(i) + dz_zt(i,k)
-        write(104,*)'Fortran:inside loop:',i,k,dz_zt(i,k),brunt_int(i),aa(i)
+        write(104,*)'Fortran:inside loop:',i,k,dz_zt(i,k),brunt_int(i)
      enddo
   enddo
 

@@ -33,7 +33,7 @@ void Functions<S,D>
       printf("Val finally is: %10.6f \n",val);
     }, brunt_int);
 
-printf("brunt_int finally is: %10.6f \n",brunt_int);
+  printf("brunt_int finally is: %10.6f and team: %d, %d \n",brunt_int, nlev_pack, nlev);
 }
 
 } // namespace shoc
