@@ -371,11 +371,10 @@ struct SHOCClipthirdmomsData : public SHOCDataBase {
   Real *w3;
 
   SHOCClipthirdmomsData(Int shcol_, Int nlevi_) :
-    SHOCDataBase(shcol_, 0, nlevi_, {}, {&w_sec_zi, &w3}, {}) {}
-  SHOCClipthirdmomsData(const SHOCClipthirdmomsData &rhs) :
-    SHOCDataBase(rhs, {}, {&w_sec_zi, &w3}, {}) {}
-  SHOCClipthirdmomsData &operator=(const SHOCClipthirdmomsData &rhs)
-  { SHOCDataBase::operator=(rhs); return *this; }
+    PhysicsTestData(shcol_, nlevi_,{&w_sec_zi, &w3}){}
+
+  SHOC_NO_SCALAR(SHOCClipthirdmomsData, 2);
+
 };//SHOCClipthirdmomsData
 
 struct SHOCAAdiagthirdmomsData
