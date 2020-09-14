@@ -46,12 +46,28 @@ interface
  subroutine shoc_diag_second_moments_ubycond_f(shcol, thl, qw, wthl, wqw, qwthl, uw, vw, wtke) bind(C)
    use iso_c_binding
 
-   ! argmens
+   ! arguments
    integer(kind=c_int), value, intent(in) :: shcol
    real(kind=c_real), intent(out)  :: thl(shcol), qw(shcol), qwthl(shcol),wthl(shcol),wqw(shcol), &
         uw(shcol), vw(shcol), wtke(shcol)
 
  end subroutine shoc_diag_second_moments_ubycond_f
+
+ subroutine adv_sgs_tke_f(nlev, shcol, dtime, shoc_mix, wthv_sec, sterm_zt, tk, tke, a_diss) bind(C)
+    use iso_c_binding
+
+    !arguments
+    integer(kind=c_int), value, intent(in) :: nlev, shcol
+
+    real(kind=c_real),   value, intent(in)    :: dtime
+    real(kind=c_real),          intent(in)    :: shoc_mix(shcol,nlev)
+    real(kind=c_real),          intent(in)    :: wthv_sec(shcol,nlev)
+    real(kind=c_real),          intent(in)    :: sterm_zt(shcol,nlev)
+    real(kind=c_real),          intent(in)    :: tk(shcol,nlev)
+    real(kind=c_real),          intent(inout) :: tke(shcol,nlev)
+    real(kind=c_real),          intent(out)   :: a_diss(shcol,nlev)
+
+ end subroutine adv_sgs_tke_f
 
 end interface
 

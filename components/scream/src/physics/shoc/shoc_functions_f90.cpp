@@ -88,33 +88,33 @@ void compute_shoc_mix_shoc_length_c(Int nlev, Int shcol, Real *tke, Real* brunt,
 
 void check_length_scale_shoc_length_c(Int nlev, Int shcol, Real *host_dx,
                                     Real *host_dy, Real *shoc_mix);
-				    
+
 void clipping_diag_third_shoc_moments_c(Int nlevi, Int shcol, Real *w_sec_zi,
-                                    Real *w3);	
-				    
+                                    Real *w3);
+
 void fterms_input_for_diag_third_shoc_moment_c(Real dz_zi, Real dz_zt, Real dz_zt_kc,
                                     Real isotropy_zi, Real brunt_zi, Real thetal_zi,
-                                    Real *thedz, Real *thedz2, Real *iso, 
-                                    Real *isosqrd, Real *buoy_sgs2, Real *bet2);				    			
-void f0_to_f5_diag_third_shoc_moment_c(Real thedz, Real thedz2, Real bet2, Real iso, 
-                                    Real isosqrd, Real wthl_sec, Real wthl_sec_kc, 
-				    Real wthl_sec_kb, Real thl_sec, Real thl_sec_kc, 
+                                    Real *thedz, Real *thedz2, Real *iso,
+                                    Real *isosqrd, Real *buoy_sgs2, Real *bet2);
+void f0_to_f5_diag_third_shoc_moment_c(Real thedz, Real thedz2, Real bet2, Real iso,
+                                    Real isosqrd, Real wthl_sec, Real wthl_sec_kc,
+				    Real wthl_sec_kb, Real thl_sec, Real thl_sec_kc,
 				    Real thl_sec_kb, Real w_sec, Real w_sec_kc, Real w_sec_zi,
-                                    Real tke, Real tke_kc, Real *f0, Real *f1, 
+                                    Real tke, Real tke_kc, Real *f0, Real *f1,
                                     Real *f2, Real *f3, Real *f4, Real *f5);
-				    
+
 void omega_terms_diag_third_shoc_moment_c(Real buoy_sgs2, Real f3, Real f4,
                                     Real *omega0, Real *omega1, Real *omega2);
-				    
-void x_y_terms_diag_third_shoc_moment_c(Real buoy_sgs2, Real f0, Real f1, Real f2, 
+
+void x_y_terms_diag_third_shoc_moment_c(Real buoy_sgs2, Real f0, Real f1, Real f2,
                                     Real *x0, Real *y0, Real *x1, Real *y1);
-				    
-void aa_terms_diag_third_shoc_moment_c(Real omega0, Real omega1, Real omega2, 
-                                    Real x0, Real x1, Real y0, Real y1, 
+
+void aa_terms_diag_third_shoc_moment_c(Real omega0, Real omega1, Real omega2,
+                                    Real x0, Real x1, Real y0, Real y1,
 				    Real *aa0, Real *aa1);
-				    
-void w3_diag_third_shoc_moment_c(Real aa0, Real aa1, Real x0, 
-                                    Real x1, Real f5, Real *w3);				    		   				   			    				    
+
+void w3_diag_third_shoc_moment_c(Real aa0, Real aa1, Real x0,
+                                    Real x1, Real f5, Real *w3);
 void shoc_diag_second_moments_srf_c(Int shcol, Real* wthl, Real* uw, Real* vw,
                                    Real* ustar2, Real* wstar);
 
@@ -638,6 +638,13 @@ void shoc_diag_second_moments_ubycond_f(Int shcol, Real* thl, Real* qw, Real* wt
   Kokkos::Array<view_1d, 8> host_views = {thl_d, qw_d, qwthl_d, wthl_d, wqw_d, uw_d, vw_d, wtke_d};
 
   ekat::pack::device_to_host({thl, qw, qwthl, wthl, wqw, uw, vw, wtke}, shcol, host_views);
+}
+
+void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, const Real *shoc_mix, const Real *wthv_sec,
+                   const Real *sterm_zt, const Real *tk, Real *tke, Real *a_diss)
+{
+
+
 }
 
 

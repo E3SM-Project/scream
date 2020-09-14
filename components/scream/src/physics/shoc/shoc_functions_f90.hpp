@@ -616,6 +616,8 @@ void shoc_diag_second_moments_srf_f(Int shcol, Real* wthl, Real* uw, Real* vw,
                           Real* ustar2, Real* wstar);
 void shoc_diag_second_moments_ubycond_f(Int shcol, Real* thl, Real* qw, Real* wthl,
                           Real* wqw, Real* qwthl, Real* uw, Real* vw, Real* wtke);
+void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, const Real *shoc_mix, const Real *wthv_sec,
+                   const Real *sterm_zt, const Real *tk, Real *tke, Real *a_diss);
 
 }
 
