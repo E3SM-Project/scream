@@ -1,9 +1,7 @@
 #ifndef SHOC_CONSTANTS_HPP
 #define SHOC_CONSTANTS_HPP
 
-#include "share/scream_types.hpp"
-
-#include <vector>
+//#include "share/scream_types.hpp"
 
 namespace scream {
 namespace shoc {
@@ -18,9 +16,8 @@ namespace shoc {
 template <typename Scalar>
 struct Constants
 {
-
   static constexpr Scalar mintke = 0.0004; // Minimum TKE [m2/s2]
-  static constexpr Scalar maxtke = 50.0; // Maximum TKE [m2/s2]
+  static constexpr Scalar maxtke = 50.0;   // Maximum TKE [m2/s2]
 };
 
 

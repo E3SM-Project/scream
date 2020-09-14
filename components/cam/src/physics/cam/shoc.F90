@@ -2873,8 +2873,8 @@ subroutine adv_sgs_tke(nlev, shcol, dtime, shoc_mix, wthv_sec, &
   if (use_cxx) then
      call adv_sgs_tke_f(nlev, shcol, dtime, shoc_mix, wthv_sec, &
           sterm_zt, tk, tke, a_diss)
+     return
   endif
-  return
 #endif
 
   Cs=0.15_rtype
