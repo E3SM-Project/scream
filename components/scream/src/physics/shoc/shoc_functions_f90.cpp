@@ -644,6 +644,34 @@ void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, const Real *shoc_mix, const 
                    const Real *sterm_zt, const Real *tk, Real *tke, Real *a_diss)
 {
 
+  using SHF = Functions<Real, DefaultDevice>;
+
+  using Spack      = typename SHF::Spack;
+  using view_2d    = typename SHF::view_2d<Spack>;
+  using KT         = typename SHF::KT;
+  using ExeSpace   = typename KT::ExeSpace;
+  using MemberType = typename SHF::MemberType;
+
+  static constexpr Int num_arrays = 6;
+
+  Kokkos::Array<view_2d, num_arrays> temp_d;
+  Kokkos::Array<size_t, num_arrays> dim1_sizes     = {shcol,    shcol,    shcol,    shcol, shcol, shcol };
+  Kokkos::Array<size_t, num_arrays> dim2_sizes     = {nlev,     nlev,     nlev,     nlev,  nlev,  nlev  };
+  Kokkos::Array<const Real*, num_arrays> ptr_array = {shoc_mix, wthv_sec, sterm_zt, tk,    tke,   a_diss};
+
+  // Sync to device
+  ekat::pack::host_to_device(ptr_array, dim1_sizes, dim2_sizes, temp_d, true);
+
+  view_2d
+    shoc_mix_d(temp_d[0]),
+    wthv_sec_d(temp_d[1]),
+    sterm_zt_d(temp_d[2]),
+    tk_d      (temp_d[3]),
+    tke_d     (temp_d[4]),
+    a_diss_d  (temp_d[5]);
+
+  const Int nk_pack = ekat::pack::npack<Spack>(nlev);
+  const auto policy = ekat::util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
 
 }
 
