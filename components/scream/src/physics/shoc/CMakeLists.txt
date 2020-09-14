@@ -17,12 +17,14 @@ set(SHOC_SRCS
   scream_shoc_interface.F90
   shoc_diag_second_moments_srf.cpp
   shoc_diag_second_moments_ubycond.cpp
+  shoc_adv_sgs_tke.cpp
 )
 
 set(SHOC_HEADERS
   shoc.hpp
   atmosphere_macrophysics.hpp
   scream_shoc_interface.hpp
+  shoc_constants.hpp
 )
 
 # Add ETI source files if not on CUDA

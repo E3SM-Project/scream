@@ -2,6 +2,8 @@
 #define SHOC_FUNCTIONS_HPP
 
 #include "physics/share/physics_constants.hpp"
+#include "shoc_constants.hpp"
+
 
 #include "share/scream_types.hpp"
 
@@ -44,7 +46,8 @@ struct Functions
 
   using KT = ekat::KokkosTypes<Device>;
 
-  using C = physics::Constants<Scalar>;
+  using C  = physics::Constants<Scalar>;
+  using SC = shoc::Constants<Scalar>;
 
   template <typename S>
   using view_1d = typename KT::template view_1d<S>;
@@ -85,6 +88,18 @@ struct Functions
   static void shoc_diag_second_moments_ubycond(
     Scalar& thl_sec, Scalar& qw_sec, Scalar& wthl_sec, Scalar& wqw_sec,
     Scalar& qwthl_sec, Scalar& uw_sec, Scalar& vw_sec, Scalar& wtke_sec);
+
+  KOKKOS_FUNCTION
+  static void adv_sgs_tke(
+    const MemberType& team,
+    const Int& nlev,
+    const Real& dtime,
+    const uview_1d<const Spack>& shoc_mix,
+    const uview_1d<const Spack>& wthv_sec,
+    const uview_1d<const Spack>& sterm_zt,
+    const uview_1d<const Spack>& tk,
+    const uview_1d<Spack>& tke,
+    const uview_1d<Spack>& a_diss);
 
 }; // struct Functions
 

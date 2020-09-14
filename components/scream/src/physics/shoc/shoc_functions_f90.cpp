@@ -673,6 +673,22 @@ void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, const Real *shoc_mix, const 
   const Int nk_pack = ekat::pack::npack<Spack>(nlev);
   const auto policy = ekat::util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
 
+  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+    const Int i = team.league_rank();
+
+    const auto oshoc_mix_d = ekat::util::subview(shoc_mix_d ,i);
+    const auto owthv_sec_d = ekat::util::subview(wthv_sec_d ,i);
+    const auto osterm_zt_d = ekat::util::subview(sterm_zt_d ,i);
+    const auto otk_d       = ekat::util::subview(tk_d ,i);
+    const auto otke_d      = ekat::util::subview(tke_d ,i);
+    const auto oa_diss_d   = ekat::util::subview(a_diss_d ,i);
+
+    SHF::adv_sgs_tke(team, nlev, dtime, oshoc_mix_d, owthv_sec_d, osterm_zt_d, otk_d, otke_d, oa_diss_d);
+  });
+
+  // Sync back to host
+  //////Kokkos::Array<view_2d, 1> inout_views = {vertflux_d};
+  /////ekat::pack::device_to_host({vertflux}, {shcol}, {nlevi}, inout_views, true);
 }
 
 
