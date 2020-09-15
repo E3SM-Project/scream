@@ -536,6 +536,11 @@ void calc_shoc_vertflux_f(Int shcol, Int nlev, Int nlevi, Real *tkh_zi,
     invar_d   (temp_d[2]),
     vertflux_d(temp_d[3]);
 
+  //std::cout<<"tkh_zi:"<<tkh_zi_d(0,0).data<<std::endl;
+  //printf("tkh_zi:%10.6f, dz_zi:%10.6f \n",tkh_zi_d(0,0)[0],dz_zi_d(0,0));
+  //printf("------tkh_zi:%10.6f, dz_zi:%10.6f \n",tkh_zi_d(0,1),dz_zi_d(0,1));
+
+
   const Int nk_pack = ekat::pack::npack<Spack>(nlev);
   const auto policy = ekat::util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
@@ -640,10 +645,11 @@ void shoc_diag_second_moments_ubycond_f(Int shcol, Real* thl, Real* qw, Real* wt
   ekat::pack::device_to_host({thl, qw, qwthl, wthl, wqw, uw, vw, wtke}, shcol, host_views);
 }
 
-void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, const Real *shoc_mix, const Real *wthv_sec,
-                   const Real *sterm_zt, const Real *tk, Real *tke, Real *a_diss)
+void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, Real *shoc_mix, Real *wthv_sec,
+                   Real *sterm_zt, Real *tk, Real *tke, Real *a_diss)
 {
 
+  //printf("shoc_mix:%10.6f, tke(k):%10.6f \n",shoc_mix[0,0],tke[0,0]);
   using SHF = Functions<Real, DefaultDevice>;
 
   using Spack      = typename SHF::Spack;
@@ -670,6 +676,12 @@ void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, const Real *shoc_mix, const 
     tke_d     (temp_d[4]),
     a_diss_d  (temp_d[5]);
 
+  for(int i=0; i<shcol; ++i){
+    for (int k=0; k<nlev; ++k){
+      //printf("shoc_mix:%15.9f, tke(k):%e, %d, %d \n",shoc_mix_d(i,k)[0],tke_d(i,k)[0],i,k);
+    }
+  }
+
   const Int nk_pack = ekat::pack::npack<Spack>(nlev);
   const auto policy = ekat::util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
 
@@ -687,8 +699,8 @@ void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, const Real *shoc_mix, const 
   });
 
   // Sync back to host
-  //////Kokkos::Array<view_2d, 1> inout_views = {vertflux_d};
-  /////ekat::pack::device_to_host({vertflux}, {shcol}, {nlevi}, inout_views, true);
+  Kokkos::Array<view_2d, 2> inout_views = {tke_d, a_diss_d};
+  ekat::pack::device_to_host({tke, a_diss}, {shcol}, {nlev}, inout_views, true);
 }
 
 

@@ -170,7 +170,56 @@ struct UnitWrap::UnitTest<D>::TestShocAdvSgsTke {
 
   static void run_bfb()
   {
-    // TODO
+    SHOCAdvsgstkeData SDS_f90[] = {
+      //               shcol, nlev, dtime
+      SHOCAdvsgstkeData(10, 71,  1),
+      SHOCAdvsgstkeData(10, 12, 10),
+      SHOCAdvsgstkeData(7,  16, 15),
+      SHOCAdvsgstkeData(2,   7, 30),
+    };
+
+    static constexpr Int num_runs = sizeof(SDS_f90) / sizeof(SHOCAdvsgstkeData);
+
+    // Generate random input data
+    for (auto& d : SDS_f90) {
+      d.randomize();
+    }
+
+    ;;;;;;;
+    // Create copies of data for use by cxx. Needs to happen before fortran calls so that
+    // inout data is in original state
+    SHOCAdvsgstkeData SDS_cxx[] = {
+      SHOCAdvsgstkeData(SDS_f90[0]),
+      SHOCAdvsgstkeData(SDS_f90[1]),
+      SHOCAdvsgstkeData(SDS_f90[2]),
+      SHOCAdvsgstkeData(SDS_f90[3]),
+    };
+
+    // Assume all data is in C layout
+
+    // Get data from fortran
+    for (auto& d : SDS_f90) {
+      // expects data in C layout
+      adv_sgs_tke(d);
+    }
+
+    // Get data from cxx
+    for (auto& d : SDS_cxx) {
+      d.transpose<ekat::util::TransposeDirection::c2f>();
+      // expects data in fortran layout
+      adv_sgs_tke_f(d.nlev(), d.shcol(), d.dtime, d.shoc_mix, d.wthv_sec, d.sterm_zt, d.tk, d.tke, d.a_diss);
+      d.transpose<ekat::util::TransposeDirection::f2c>();
+    }
+
+    // Verify BFB results, all data should be in C layout
+    for (Int i = 0; i < num_runs; ++i) {
+      SHOCAdvsgstkeData& d_f90 = SDS_f90[i];
+      SHOCAdvsgstkeData& d_cxx = SDS_cxx[i];
+      for (Int k = 0; k < d_f90.total1x3(); ++k) {
+        REQUIRE(d_f90.tke[k]    == d_cxx.tke[k]);
+        REQUIRE(d_f90.a_diss[k] == d_cxx.a_diss[k]);
+      }
+    }
   }
 };
 

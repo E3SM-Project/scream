@@ -30,7 +30,7 @@ void Functions<S,D>
 
   static constexpr Scalar Cs = sp(0.15);
   static constexpr Scalar Ck = sp(0.1);
-  static constexpr Scalar Ce = pow(Ck,3)/pow(Cs,4); //BALLI: use bfb func in fortran
+  static constexpr Scalar Ce = pow(Ck,3)/pow(Cs,4);
 
   static constexpr Scalar Ce1 = Ce/sp(0.7)*sp(0.19);
   static constexpr Scalar Ce2 = Ce/sp(0.7)*sp(0.51);
@@ -49,7 +49,9 @@ void Functions<S,D>
     const auto a_prod_sh = tk(k)*sterm_zt(k);
 
     // Dissipation term
-    a_diss(k) = Cee/shoc_mix(k)*pow(tke(k),sp(1.5)); //BALLI- bfb func
+    a_diss(k) = Cee/shoc_mix(k)*pow(tke(k),sp(1.5));
+    //a_diss(k) = pow(tke(k),sp(1.5));
+    //printf("adiss: %.16e, Cee: %20.16f, shoc_mix:%20.15f, tke(k):%.16e \n",a_diss(k)[0],Cee,shoc_mix(k)[0],tke(k)[0]);
 
     //compute total production and tak max(0, total production)
     auto prodTotal = a_prod_sh + a_prod_bu;
@@ -58,7 +60,9 @@ void Functions<S,D>
     // March equation forward one timestep
     auto tke_tmp1 = tke(k) + dtime * (prodTotal - a_diss(k));
     tke_tmp1.set(tke_tmp1 < mintke, mintke);
-    tke(k).set(tke_tmp1>maxtke, maxtke);
+    tke_tmp1.set(tke_tmp1>maxtke, maxtke);
+    tke(k) = tke_tmp1;//.set(tke_tmp1>maxtke, maxtke);
+    printf("tke(k):%.16E adiss:%.16E, %.16E ,%d \n",tke(k)[0], a_diss(k)[0],dtime*(prodTotal-a_diss(k)),k);
   });
 }
     
