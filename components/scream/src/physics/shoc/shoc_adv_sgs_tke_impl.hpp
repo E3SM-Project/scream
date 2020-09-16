@@ -50,57 +50,21 @@ void Functions<S,D>
 
     // Dissipation term
     a_diss(k) = Cee/shoc_mix(k)*pow(tke(k),sp(1.5));
-    //a_diss(k) = pow(tke(k),sp(1.5));
-    //printf("adiss: %.16e, Cee: %20.16f, shoc_mix:%20.15f, tke(k):%.16e \n",a_diss(k)[0],Cee,shoc_mix(k)[0],tke(k)[0]);
 
     //compute total production and tak max(0, total production)
     auto prodTotal = a_prod_sh + a_prod_bu;
     prodTotal.set(prodTotal < 0, 0);
 
-    // March equation forward one timestep
+    // March equation forward one timestep BALLI: clean this up!!
     auto tke_tmp1 = tke(k) + dtime * (prodTotal - a_diss(k));
     tke_tmp1.set(tke_tmp1 < mintke, mintke);
     tke_tmp1.set(tke_tmp1>maxtke, maxtke);
     tke(k) = tke_tmp1;//.set(tke_tmp1>maxtke, maxtke);
-    //printf("tke(k):%.16E adiss:%.16E, %.16E ,%d \n",tke(k)[0], a_diss(k)[0],dtime*(prodTotal-a_diss(k)),k);
   });
 }
 
-  } // namespace shoc
+} // namespace shoc
 } // namespace scream
 
 #endif
 
-
-/*
- Cs=0.15_rtype
-  Ck=0.1_rtype
-  Ce=Ck**3/Cs**4
-
-  Ce1=Ce/0.7_rtype*0.19_rtype
-  Ce2=Ce/0.7_rtype*0.51_rtype
-  Cee=Ce1+Ce2
-
-  do k = 1, nlev
-       do i = 1, shcol
-
-        ! Compute buoyant production term
-            a_prod_bu=(ggr/basetemp)*wthv_sec(i,k)
-
-            tke(i,k)=max(0._rtype,tke(i,k))
-
-            ! Shear production term, use diffusivity from
-        !  previous timestep
-            a_prod_sh=tk(i,k)*sterm_zt(i,k)
-
-        ! Dissipation term
-            a_diss(i,k)=Cee/shoc_mix(i,k)*tke(i,k)**1.5
-
-        ! March equation forward one timestep
-            tke(i,k)=max(mintke,tke(i,k)+dtime* &
-                         (max(0._rtype,a_prod_sh+a_prod_bu)-a_diss(i,k)))
-
-            tke(i,k)=min(tke(i,k),maxtke)
-     enddo
-  enddo
-*/

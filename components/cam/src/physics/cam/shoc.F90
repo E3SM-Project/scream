@@ -2838,7 +2838,6 @@ subroutine adv_sgs_tke(nlev, shcol, dtime, shoc_mix, wthv_sec, &
   use shoc_iso_f, only: adv_sgs_tke_f
 #endif
 
-
   implicit none
 
   !intent -ins
@@ -2873,11 +2872,6 @@ subroutine adv_sgs_tke(nlev, shcol, dtime, shoc_mix, wthv_sec, &
   if (use_cxx) then
      call adv_sgs_tke_f(nlev, shcol, dtime, shoc_mix, wthv_sec, &
           sterm_zt, tk, tke, a_diss)
-     do k = 1, nlev
-        do i = 1, shcol
-           write(102,*)i,k,a_diss(i,k)
-        enddo
-     enddo
      return
   endif
 #endif
@@ -2904,22 +2898,14 @@ subroutine adv_sgs_tke(nlev, shcol, dtime, shoc_mix, wthv_sec, &
 
         ! Dissipation term
         a_diss(i,k)=Cee/shoc_mix(i,k)*bfb_pow(tke(i,k),1.5)
-        !write(104,*)i,k,a_diss(i,k),Cee,shoc_mix(i,k),tke(i,k)
 
         ! March equation forward one timestep
         tke(i,k)=max(mintke,tke(i,k)+dtime* &
 	  (max(0._rtype,a_prod_sh+a_prod_bu)-a_diss(i,k)))
 
         tke(i,k)=min(tke(i,k),maxtke)
-        write(104,*)i,k,tke(i,k),a_diss(i,k), dtime*(max(0._rtype,a_prod_sh+a_prod_bu)-a_diss(i,k))
      enddo
   enddo
-  do k = 1, nlev
-     do i = 1, shcol
-        write(103,*)i,k,a_diss(i,k)
-     enddo
-  enddo
-
 
   return
 

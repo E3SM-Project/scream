@@ -185,7 +185,6 @@ struct UnitWrap::UnitTest<D>::TestShocAdvSgsTke {
       d.randomize();
     }
 
-    ;;;;;;;
     // Create copies of data for use by cxx. Needs to happen before fortran calls so that
     // inout data is in original state
     SHOCAdvsgstkeData SDS_cxx[] = {

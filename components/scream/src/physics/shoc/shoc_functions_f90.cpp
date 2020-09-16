@@ -536,11 +536,6 @@ void calc_shoc_vertflux_f(Int shcol, Int nlev, Int nlevi, Real *tkh_zi,
     invar_d   (temp_d[2]),
     vertflux_d(temp_d[3]);
 
-  //std::cout<<"tkh_zi:"<<tkh_zi_d(0,0).data<<std::endl;
-  //printf("tkh_zi:%10.6f, dz_zi:%10.6f \n",tkh_zi_d(0,0)[0],dz_zi_d(0,0));
-  //printf("------tkh_zi:%10.6f, dz_zi:%10.6f \n",tkh_zi_d(0,1),dz_zi_d(0,1));
-
-
   const Int nk_pack = ekat::pack::npack<Spack>(nlev);
   const auto policy = ekat::util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
@@ -649,7 +644,6 @@ void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, Real *shoc_mix, Real *wthv_s
                    Real *sterm_zt, Real *tk, Real *tke, Real *a_diss)
 {
 
-  //printf("shoc_mix:%10.6f, tke(k):%10.6f \n",shoc_mix[0,0],tke[0,0]);
   using SHF = Functions<Real, DefaultDevice>;
 
   using Spack      = typename SHF::Spack;
@@ -675,12 +669,6 @@ void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, Real *shoc_mix, Real *wthv_s
     tk_d      (temp_d[3]),
     tke_d     (temp_d[4]),
     a_diss_d  (temp_d[5]);
-
-  for(int i=0; i<shcol; ++i){
-    for (int k=0; k<nlev; ++k){
-      //printf("shoc_mix:%15.9f, tke(k):%e, %d, %d \n",shoc_mix_d(i,k)[0],tke_d(i,k)[0],i,k);
-    }
-  }
 
   const Int nk_pack = ekat::pack::npack<Spack>(nlev);
   const auto policy = ekat::util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);

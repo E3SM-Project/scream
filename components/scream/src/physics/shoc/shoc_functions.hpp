@@ -4,7 +4,6 @@
 #include "physics/share/physics_constants.hpp"
 #include "shoc_constants.hpp"
 
-
 #include "share/scream_types.hpp"
 
 #include "ekat/ekat_pack_kokkos.hpp"
