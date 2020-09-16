@@ -22,12 +22,15 @@ void Functions<S,D>
   const uview_1d<Spack>& a_diss)
 {
 
+  //constants shared between physics
   static constexpr auto ggr      = C::gravit;
   static constexpr auto basetemp = C::basetemp;
 
+  //constants shared within SHOC only
   static constexpr auto mintke   = SC::mintke;
   static constexpr auto maxtke   = SC::maxtke;
 
+  //Local constants
   static constexpr Scalar Cs = sp(0.15);
   static constexpr Scalar Ck = sp(0.1);
   static constexpr Scalar Ce = pow(Ck,3)/pow(Cs,4);
@@ -40,26 +43,33 @@ void Functions<S,D>
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev_pack), [&] (const Int& k) {
 
     // Find max(0,tke)
-    tke(k).set(tke(k)<0,0);
+    tke(k).set(tke(k)<0, 0);
 
     // Compute buoyant production term
-    const auto a_prod_bu = (ggr/basetemp)*wthv_sec(k);
+    const auto a_prod_bu = (ggr/basetemp) * wthv_sec(k);
 
     // Shear production term, use diffusivity from previous timestep
-    const auto a_prod_sh = tk(k)*sterm_zt(k);
+    const auto a_prod_sh = tk(k) * sterm_zt(k);
 
     // Dissipation term
     a_diss(k) = Cee/shoc_mix(k)*pow(tke(k),sp(1.5));
 
-    //compute total production and tak max(0, total production)
+    //compute total production and take max(0, total production)
     auto prodTotal = a_prod_sh + a_prod_bu;
-    prodTotal.set(prodTotal < 0, 0);
+    prodTotal.set(prodTotal < 0, 0); //take max(0, prodTotal)
 
-    // March equation forward one timestep BALLI: clean this up!!
-    auto tke_tmp1 = tke(k) + dtime * (prodTotal - a_diss(k));
-    tke_tmp1.set(tke_tmp1 < mintke, mintke);
-    tke_tmp1.set(tke_tmp1>maxtke, maxtke);
-    tke(k) = tke_tmp1;//.set(tke_tmp1>maxtke, maxtke);
+
+    //-----------------------------------------------------
+    // March equation forward one timestep
+    //-----------------------------------------------------
+    tke(k) = tke(k) + dtime * (prodTotal - a_diss(k));
+
+    //Take max(mintke, tke_tmp1)
+    tke(k).set(tke(k) < mintke, mintke);
+
+    //Take min(tke,maxtke)
+    tke(k).set(tke(k)>maxtke, maxtke);
+
   });
 }
 
@@ -67,4 +77,3 @@ void Functions<S,D>
 } // namespace scream
 
 #endif
-

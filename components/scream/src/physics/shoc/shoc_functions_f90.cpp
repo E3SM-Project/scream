@@ -654,10 +654,10 @@ void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, Real *shoc_mix, Real *wthv_s
 
   static constexpr Int num_arrays = 6;
 
-  Kokkos::Array<view_2d, num_arrays> temp_d;
-  Kokkos::Array<size_t, num_arrays> dim1_sizes     = {shcol,    shcol,    shcol,    shcol, shcol, shcol };
-  Kokkos::Array<size_t, num_arrays> dim2_sizes     = {nlev,     nlev,     nlev,     nlev,  nlev,  nlev  };
-  Kokkos::Array<const Real*, num_arrays> ptr_array = {shoc_mix, wthv_sec, sterm_zt, tk,    tke,   a_diss};
+  Kokkos::Array<view_2d,     num_arrays> temp_d;
+  Kokkos::Array<size_t,      num_arrays> dim1_sizes = {shcol,    shcol,    shcol,    shcol, shcol, shcol };
+  Kokkos::Array<size_t,      num_arrays> dim2_sizes = {nlev,     nlev,     nlev,     nlev,  nlev,  nlev  };
+  Kokkos::Array<const Real*, num_arrays> ptr_array  = {shoc_mix, wthv_sec, sterm_zt, tk,    tke,   a_diss};
 
   // Sync to device
   ekat::pack::host_to_device(ptr_array, dim1_sizes, dim2_sizes, temp_d, true);
