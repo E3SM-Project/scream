@@ -2870,16 +2870,16 @@ subroutine adv_sgs_tke(nlev, shcol, dtime, shoc_mix, wthv_sec, &
   real(rtype) :: Ck, Cs, Ce, Ce1, Ce2, Cee
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
-  if (use_cxx) then
-     call adv_sgs_tke_f(nlev, shcol, dtime, shoc_mix, wthv_sec, &
-          sterm_zt, tk, tke, a_diss)
-     do k = 1, nlev
-        do i = 1, shcol
-           write(102,*)i,k,a_diss(i,k)
-        enddo
-     enddo
-     return
-  endif
+  !if (use_cxx) then
+  !   call adv_sgs_tke_f(nlev, shcol, dtime, shoc_mix, wthv_sec, &
+  !        sterm_zt, tk, tke, a_diss)
+  !   do k = 1, nlev
+  !      do i = 1, shcol
+  !         write(102,*)i,k,a_diss(i,k)
+  !      enddo
+  !   enddo
+  !   return
+  !endif
 #endif
 
   Cs=0.15_rtype

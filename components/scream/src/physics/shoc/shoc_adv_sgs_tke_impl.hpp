@@ -62,10 +62,10 @@ void Functions<S,D>
     tke_tmp1.set(tke_tmp1 < mintke, mintke);
     tke_tmp1.set(tke_tmp1>maxtke, maxtke);
     tke(k) = tke_tmp1;//.set(tke_tmp1>maxtke, maxtke);
-    printf("tke(k):%.16E adiss:%.16E, %.16E ,%d \n",tke(k)[0], a_diss(k)[0],dtime*(prodTotal-a_diss(k)),k);
+    //printf("tke(k):%.16E adiss:%.16E, %.16E ,%d \n",tke(k)[0], a_diss(k)[0],dtime*(prodTotal-a_diss(k)),k);
   });
 }
-    
+
   } // namespace shoc
 } // namespace scream
 
