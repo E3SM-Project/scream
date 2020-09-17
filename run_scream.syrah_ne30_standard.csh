@@ -944,6 +944,7 @@ cat <<EOF >> user_nl_cam
  nhtfrq = $atm_output_freq
  mfilt  = $records_per_atm_output_file
  log_prescribeCCN = .true.
+ micro_p3_lookup_dir = '/g/g12/beydoun1/scream_develop/scream/components/scream/data'
 EOF
 
 cat <<EOF >> user_nl_clm

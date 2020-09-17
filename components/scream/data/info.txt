@@ -1,0 +1,108 @@
+netcdf prescribed_CCN_file_7 {
+dimensions:
+	ncol = 48602 ;
+	nv = 1 ;
+	lev = 72 ;
+	ilev = 73 ;
+	nbnd = 2 ;
+variables:
+	double lat(ncol) ;
+		lat:long_name = "Latitude" ;
+		lat:standard_name = "latitude" ;
+		lat:units = "degrees_north" ;
+		lat:axis = "Y" ;
+		lat:valid_min = -90. ;
+		lat:valid_max = 90. ;
+		lat:bounds = "lat_vertices" ;
+	double lon(ncol) ;
+		lon:long_name = "Longitude" ;
+		lon:standard_name = "longitude" ;
+		lon:units = "degrees_east" ;
+		lon:axis = "X" ;
+		lon:valid_min = 0. ;
+		lon:valid_max = 360. ;
+		lon:bounds = "lon_vertices" ;
+	double lat_vertices(ncol, nv) ;
+		lat_vertices:long_name = "Gridcell latitude vertices" ;
+	double lon_vertices(ncol, nv) ;
+		lon_vertices:long_name = "Gridcell longitude vertices" ;
+	double area(ncol) ;
+		area:long_name = "Solid angle subtended by gridcell" ;
+		area:standard_name = "area" ;
+		area:units = "steradian" ;
+		area:cell_methods = "lat, lon: sum" ;
+		area:coordinates = "lat lon" ;
+	float CCN3(lev, ncol) ;
+		CCN3:mdims = 9 ;
+		CCN3:units = "#/cm3" ;
+		CCN3:long_name = "CCN concentration at S=0.1%" ;
+		CCN3:cell_methods = "time: mean" ;
+		CCN3:cell_measures = "area: area" ;
+		CCN3:coordinates = "lat lon" ;
+	double P0 ;
+		P0:long_name = "reference pressure" ;
+		P0:units = "Pa" ;
+	float PS(ncol) ;
+		PS:units = "Pa" ;
+		PS:long_name = "Surface pressure" ;
+		PS:cell_methods = "time: mean" ;
+		PS:cell_measures = "area: area" ;
+		PS:coordinates = "lat lon" ;
+	double hyai(ilev) ;
+		hyai:long_name = "hybrid A coefficient at layer interfaces" ;
+	double hyam(lev) ;
+		hyam:long_name = "hybrid A coefficient at layer midpoints" ;
+	double hybi(ilev) ;
+		hybi:long_name = "hybrid B coefficient at layer interfaces" ;
+	double hybm(lev) ;
+		hybm:long_name = "hybrid B coefficient at layer midpoints" ;
+	double ilev(ilev) ;
+		ilev:long_name = "hybrid level at interfaces (1000*(A+B))" ;
+		ilev:units = "hPa" ;
+		ilev:positive = "down" ;
+		ilev:standard_name = "atmosphere_hybrid_sigma_pressure_coordinate" ;
+		ilev:formula_terms = "a: hyai b: hybi p0: P0 ps: PS" ;
+	double lev(lev) ;
+		lev:long_name = "hybrid level at midpoints (1000*(A+B))" ;
+		lev:units = "hPa" ;
+		lev:positive = "down" ;
+		lev:standard_name = "atmosphere_hybrid_sigma_pressure_coordinate" ;
+		lev:formula_terms = "a: hyam b: hybm p0: P0 ps: PS" ;
+	double time ;
+		time:long_name = "time" ;
+		time:units = "days since 0001-01-01 00:00:00" ;
+		time:calendar = "noleap" ;
+		time:bounds = "time_bnds" ;
+		time:cell_methods = "time: mean" ;
+	double time_bnds(nbnd) ;
+		time_bnds:long_name = "time interval endpoints" ;
+		time_bnds:cell_methods = "time: mean" ;
+
+// global attributes:
+		:ne = 120 ;
+		:np = 4 ;
+		:Conventions = "CF-1.0" ;
+		:source = "CAM" ;
+		:case = "cori-knl.20190214_maint-1.0.F2010-CMIP6-HR.dailySST.noCNT.ne120_oRRS18v3" ;
+		:title = "UNSET" ;
+		:logname = "tang30" ;
+		:host = "cori06" ;
+		:Version = "$Name$" ;
+		:revision_Id = "$Id$" ;
+		:initial_file = "/project/projectdirs/acme/inputdata/atm/cam/inic/homme/cori-knl.20190214_maint-1.0.F2010-CMIP6-HR.noCNT.ARE.nudgeUV.ne120_oRRS18v3.cam.i.2011-01-01-00000.nc" ;
+		:topography_file = "/project/projectdirs/acme/inputdata/atm/cam/topo/USGS-gtopo30_ne120np4_16xdel2-PFC-consistentSGH.nc" ;
+		:time_period_freq = "month_1" ;
+		:history = "Wed Sep  9 15:29:12 2020: ncwa -a time prescribed_CCN_file_7.nc prescribed_CCN_file_7.nc\n",
+			"Fri Sep  4 13:45:36 2020: ncks --map=map_ne120np1_to_ne30np4_mono.nc monthly_means07.nc prescribed_CCN_file_7.nc\n",
+			"Mon Jun 15 12:28:07 2020: ncra CCN3107.nc CCN3207.nc CCN3307.nc CCN3407.nc CCN3507.nc monthly_means07.nc\n",
+			"Mon Jun 15 12:16:38 2020: ncks -v CCN3 cori-knl.20190214_maint-1.0.F2010-CMIP6-HR.dailySST.noCNT.ne120_oRRS18v3.cam.h0.0001-07.nc CCN3107.nc\n",
+			"Mon Nov 25 15:55:30 2019: ncks -O -t 2 --no_tmp_fl --gaa remap_script=ncremap --gaa remap_command=\'/export/baldwin32/anaconda3/envs/cwl/bin/ncremap -m /export/zender1/data/maps/map_ne120np4_to_cmip6_720x1440_aave.20181001.nc -O /p/user_pub/e3sm/baldwin32/highres/cori-knl.20190214_maint-1.0.F2010-CMIP6-HR.dailySST.noCNT.ne120_oRRS18v3/720x1440\' --gaa remap_hostname=acme1 --gaa remap_version=4.8.1 --hdr_pad=10000 --rgr lat_nm_out=lat#lon_nm_out=lon --map=/export/zender1/data/maps/map_ne120np4_to_cmip6_720x1440_aave.20181001.nc /p/user_pub/e3sm/baldwin32/highres/cori-knl.20190214_maint-1.0.F2010-CMIP6-HR.dailySST.noCNT.ne120_oRRS18v3/native/archive/atm/hist/cori-knl.20190214_maint-1.0.F2010-CMIP6-HR.dailySST.noCNT.ne120_oRRS18v3.cam.h0.0001-07.nc /p/user_pub/e3sm/baldwin32/highres/cori-knl.20190214_maint-1.0.F2010-CMIP6-HR.dailySST.noCNT.ne120_oRRS18v3/720x1440/cori-knl.20190214_maint-1.0.F2010-CMIP6-HR.dailySST.noCNT.ne120_oRRS18v3.cam.h0.0001-07.nc" ;
+		:remap_script = "ncremap" ;
+		:remap_command = "\'/export/baldwin32/anaconda3/envs/cwl/bin/ncremap -m /export/zender1/data/maps/map_ne120np4_to_cmip6_720x1440_aave.20181001.nc -O /p/user_pub/e3sm/baldwin32/highres/cori-knl.20190214_maint-1.0.F2010-CMIP6-HR.dailySST.noCNT.ne120_oRRS18v3/720x1440\'" ;
+		:remap_hostname = "acme1" ;
+		:remap_version = "4.8.1" ;
+		:NCO = "netCDF Operators version 4.7.9 (Homepage = http://nco.sf.net, Code = http://github.com/nco/nco)" ;
+		:nco_openmp_thread_number = 16 ;
+		:map_file = "/export/zender1/data/maps/map_ne120np4_to_cmip6_720x1440_aave.20181001.nc" ;
+		:input_file = "/p/user_pub/e3sm/baldwin32/highres/cori-knl.20190214_maint-1.0.F2010-CMIP6-HR.dailySST.noCNT.ne120_oRRS18v3/native/archive/atm/hist/cori-knl.20190214_maint-1.0.F2010-CMIP6-HR.dailySST.noCNT.ne120_oRRS18v3.cam.h0.0001-07.nc" ;
+}

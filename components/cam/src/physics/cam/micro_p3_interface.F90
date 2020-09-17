@@ -96,7 +96,8 @@ module micro_p3_interface
       accre_enhan_idx,    &
       current_month      !Needed for prescribed CCN option     
 
-   real(rtype):: mon_ccn(pcols,pver,2) !need to figure this out
+   !real(rtype):: mon_ccn(pcols,pver,2) !need to figure this out
+   real(rtype):: mon_ccn(pcols,pver,2)
 
 ! Physics buffer indices for fields registered by other modules
    integer :: &
@@ -353,9 +354,9 @@ end subroutine micro_p3_readnl
     !needed for prescribed CCN option:
     character(len=20) :: base_file_name
     character(len=500) :: filename, filename_next_month
-    character(len=15) :: mon_str, next_mon_str
-    character(len=8) :: dim1name, dim2name
-    type(file_desc_t), pointer :: nccn_ncid
+    character(len=20) :: mon_str, next_mon_str
+    character(len=20) :: dim1name, dim2name, dim3name
+    type(file_desc_t) :: nccn_ncid
     integer :: year, month, day, tod, next_month, grid_id
     logical :: found = .false.
  
@@ -674,28 +675,55 @@ end subroutine micro_p3_readnl
  
       !assign base_file_name the name of the CCN file being used 
       base_file_name = "prescribed_CCN_file_"
+      write(iulog,*) , mon_str
+      write(iulog,*) , next_mon_str
 
+      mon_str = adjustl(mon_str)
+      next_mon_str = adjustl(next_mon_str)
       !retrieve the name of the relevant file by combining base file name with
       !month and full file path:
       filename = trim(micro_p3_lookup_dir)//'/'//trim(base_file_name)//trim(mon_str)//'.nc'
 
       filename_next_month = trim(micro_p3_lookup_dir)//'/'//trim(base_file_name)//trim(next_mon_str)//'.nc'
+      write(iulog,*) 'file path is', filename
 
       grid_id = cam_grid_id('physgrid')
 
       call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
 
+      write(iulog,*) 'dim1name is', dim1name     
+
+      write(iulog,*) 'dim2name is', dim2name
+
+      write(iulog,*) 'pcols is', pcols
+ 
+      write(iulog,*) 'pver is', pver
+
+      write(iulog,*) 'begchunk is', begchunk
+
+      write(iulog,*) 'endchunk is', endchunk
+
+      write(iulog,*) 'psubcols is', psubcols
+
+      !write(iulog,*) 'dim3name is', dim3name
+
       call cam_pio_openfile(nccn_ncid,filename,PIO_NOWRITE)
 
-      call infld('CCN3', nccn_ncid, dim1name, dim2name, 1, pcols, begchunk, &
-          &endchunk,mon_ccn(:,:,1), found, gridname='physgrid')
+      !call infld('CCN3', nccn_ncid, dim1name,'lev', 1, pcols,1,pver,&
+      !     mon_ccn(:,:,1), found, gridname='physgrid')
+
+      !call infld('CCN3', nccn_ncid, dim1name,'lev', 1, pver,begchunk,endchunk,&
+      !     mon_ccn(:,:,1), found, gridname='physgrid')
+
+      call infld('CCN3',nccn_ncid,dim1name,'lev',dim2name,1,pcols,1,pver,begchunk,endchunk,&
+           mon_ccn(:,:,1), found, gridname='physgrid')
 
       call cam_pio_closefile(nccn_ncid)
 
       call cam_pio_openfile(nccn_ncid,filename_next_month,PIO_NOWRITE)
 
-      call infld('CCN3', nccn_ncid, dim1name, dim2name, 1, pcols, begchunk, &
-          &endchunk,mon_ccn(:,:,2), found, gridname='physgrid')
+      call infld('CCN3', nccn_ncid, dim1name, dim2name, 1, pcols,1,pver, &
+           mon_ccn(:,:,2), found, gridname='physgrid')
 
       call cam_pio_closefile(nccn_ncid)
    
@@ -801,7 +829,7 @@ end subroutine micro_p3_readnl
    character(len=500) :: filename
    character(len=8) :: mon_str
    character(len=8) :: dim1name, dim2name
-   type(file_desc_t), pointer :: nccn_ncid
+   type(file_desc_t) :: nccn_ncid
    integer :: year, month, day, tod, next_month, grid_id
    logical :: found = .false.
    real(rtype),dimension(its:ite,kts:kte) :: nccn_next_month
