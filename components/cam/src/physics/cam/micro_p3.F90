@@ -1893,7 +1893,7 @@ contains
        endif
 
        cdist  = nc*(mu_c+1._rtype)/lamc
-       cdist1 = nc*cld_frac_l/bfb_gamma(mu_c+1._rtype)
+       cdist1 = nc/bfb_gamma(mu_c+1._rtype)
 
     else
 
@@ -1950,7 +1950,7 @@ contains
           nr   = bfb_exp(3._rtype*bfb_log(lamr)+bfb_log(qr)+bfb_log(bfb_gamma(mu_r+1._rtype))-bfb_log(bfb_gamma(mu_r+4._rtype)))/(cons1)
        endif
 
-       cdistr  = nr*cld_frac_r/bfb_gamma(mu_r+1._rtype)
+       cdistr  = nr/bfb_gamma(mu_r+1._rtype)
        logn0r  = bfb_log10(nr)+(mu_r+1._rtype)*bfb_log10(lamr)-bfb_log10(bfb_gamma(mu_r+1._rtype)) !note: logn0r is calculated as log10(n0r)
 
     else
