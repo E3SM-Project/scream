@@ -32,7 +32,7 @@
 #  define bfb_log(val) log(val)
 #  define bfb_log10(val) log10(val)
 #  define bfb_exp(val) exp(val)
-#  define bfb_expm1(val) (1.0 - exp(val))
+#  define bfb_expm1(val) (exp(val) - 1)
 #  define bfb_tanh(val) tanh(val)
 #  define bfb_sqrt(val) sqrt(val)
 #  define bfb_tanh(val) tanh(val)

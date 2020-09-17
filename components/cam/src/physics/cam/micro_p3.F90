@@ -3298,8 +3298,8 @@ subroutine rain_evap_tscale_weight(dt_over_tau,weight)
   real(rtype), intent(in) :: dt_over_tau  !microphysics timestep divided by effective evap timescale
   real(rtype), intent(out) :: weight
 
-  !expm1 is 1-exp(x). This impl is more accurate than exp near x=0.
-  weight=- bfb_expm1(-dt_over_tau)/dt_over_tau
+  !expm1 is exp(x)-1. This impl is more accurate than exp near x=0.
+  weight= -bfb_expm1(-dt_over_tau)/dt_over_tau
 
   return
 end subroutine rain_evap_tscale_weight
