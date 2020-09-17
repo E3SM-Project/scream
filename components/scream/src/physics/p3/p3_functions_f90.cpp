@@ -2586,6 +2586,7 @@ static Scalar wrap_name(Scalar input) {                 \
   cuda_wrap_single_arg(cxx_log, std::log)
   cuda_wrap_single_arg(cxx_log10, std::log10)
   cuda_wrap_single_arg(cxx_exp, std::exp)
+  cuda_wrap_single_arg(cxx_expm1, std::expm1)
 
 #undef cuda_wrap_single_arg
 };

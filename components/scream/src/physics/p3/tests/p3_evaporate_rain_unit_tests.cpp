@@ -29,19 +29,17 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
     //dt/tau ~ 0 => weight => 1. A value of exactly 0 would cause div by 0 though.
     Spack wt;
     Functions::rain_evap_tscale_weight(Spack(1e-8),wt);
-    for (Int s = 0; s < max_pack_size; ++s) {
-      REQUIRE( wt[s] > 0 ); //always true
-      REQUIRE( wt[s] < 1 ); //always true
-      REQUIRE( 1-wt[s] < 1e-8 );
-    }
+    printf("wt[0] = %e\n",wt[0]);
+    
+    REQUIRE( wt[0] >= 0 ); //always true
+    REQUIRE( wt[0] <= 1 ); //always true
+    REQUIRE( 1-wt[0] < 1e-8 );
 
     //dt/tau->inf => weight => 0.
     Functions::rain_evap_tscale_weight(Spack(1e15),wt);
-    for (Int s = 0; s < max_pack_size; ++s) {
-      REQUIRE( wt[s] > 0 ); //always true
-      REQUIRE( wt[s] < 1 ); //always true
-      REQUIRE( wt[s] < 1e-8 );
-    }
+    REQUIRE( wt[0] >= 0 ); //always true
+    REQUIRE( wt[0] <= 1 ); //always true
+    REQUIRE( wt[0] < 1e-8 );
       
     //TEST EQUILIB EVAP RATE:
     //=======================

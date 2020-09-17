@@ -59,7 +59,7 @@ module micro_p3
   ! Bit-for-bit math functions.
 #ifdef SCREAM_CONFIG_IS_CMAKE
   use physics_share_f2c, only: cxx_pow, cxx_sqrt, cxx_cbrt, cxx_gamma, cxx_log, &
-                                 cxx_log10, cxx_exp, cxx_tanh
+                                 cxx_log10, cxx_exp, cxx_expm1, cxx_tanh
 #endif
 
   implicit none
@@ -3297,8 +3297,9 @@ subroutine rain_evap_tscale_weight(dt_over_tau,weight)
 
   real(rtype), intent(in) :: dt_over_tau  !microphysics timestep divided by effective evap timescale
   real(rtype), intent(out) :: weight
-  
-  weight=(1._rtype - bfb_exp(-dt_over_tau) )/dt_over_tau
+
+  !expm1 is 1-exp(x). This impl is more accurate than exp near x=0.
+  weight=- bfb_expm1(-dt_over_tau)/dt_over_tau
 
   return
 end subroutine rain_evap_tscale_weight

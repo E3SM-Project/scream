@@ -18,7 +18,8 @@ void Functions<S,D>
     blend to get the timestep-average rain evaporation rate
   */
 
-  weight.set(context, (1 - exp(-dt_over_tau) )/dt_over_tau );
+  //weight.set(context, (1 - exp(-dt_over_tau) )/dt_over_tau );
+  weight.set(context, -expm1(-dt_over_tau)/dt_over_tau );
   
 } //end tscale_weight
 
