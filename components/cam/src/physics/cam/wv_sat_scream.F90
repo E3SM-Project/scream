@@ -13,11 +13,16 @@ module wv_sat_scream
   ! get real kind from utils
   use physics_utils,  only: rtype
   use micro_p3_utils, only: zerodegc
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use physics_share_f2c, only: cxx_pow, cxx_sqrt, cxx_cbrt, cxx_gamma, cxx_log, &
+                                 cxx_log10, cxx_exp, cxx_tanh
+#endif
+
 
   implicit none
   private
 
-  public:: qv_sat
+  public:: qv_sat, MurphyKoop_svp
 
 contains
 
@@ -34,16 +39,12 @@ contains
     implicit none
 
     !Calling parameters:
-    real(rtype)    :: t_atm  !temperature [K]
-    real(rtype)    :: p_atm  !pressure    [Pa]
-    integer :: i_wrt  !index, 0 = w.r.t. liquid, 1 = w.r.t. ice
+    real(rtype), intent(in)    :: t_atm  !temperature [K]
+    real(rtype), intent(in)    :: p_atm  !pressure    [Pa]
+    integer, intent(in) :: i_wrt  !index, 0 = w.r.t. liquid, 1 = w.r.t. ice
 
     !Local variables:
     real(rtype)            :: e_pres         !saturation vapor pressure [Pa]
-
-    !------------------
-    !Check if temprature is within legitimate range
-    call check_temp(t_atm, "qv_sat")
 
     !e_pres = polysvp1(t_atm,i_wrt)
     e_pres = MurphyKoop_svp(t_atm,i_wrt)
@@ -86,6 +87,10 @@ contains
     real(rtype), parameter :: lq(10) = (/54.842763_rtype, 6763.22_rtype, 4.210_rtype, &
          0.000367_rtype, 0.0415_rtype, 218.8_rtype, 53.878_rtype, 1331.22_rtype,       &
          9.44523_rtype, 0.014025_rtype /)
+
+    !------------------
+    !Check if temprature is within legitimate range
+    call check_temp(t, "MurphyKoop_svp")
 
     logt = bfb_log(t)
 
@@ -153,6 +158,11 @@ contains
     real(rtype) dt
 
     !-------------------------------------------
+
+    !------------------
+    !Check if temprature is within legitimate range
+    call check_temp(t, "polysvp1")
+
 
     if (i_type.eq.1 .and. t.lt.zerodegc) then
        ! ICE
