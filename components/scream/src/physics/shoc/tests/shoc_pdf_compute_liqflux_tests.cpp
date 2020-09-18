@@ -92,7 +92,7 @@ struct UnitWrap::UnitTest<D>::TestShocPdfCompLiqFlux {
     shoc_assumed_pdf_compute_liquid_water_flux(SDS);
 
     // Verify the result.  Liquid water flux should be positive
-    //REQUIRE(SDS.wqls > 0); !BSINGH Temporarily commented out
+    REQUIRE(SDS.wqls > 0);
 
     // TEST THREE
     // negatively skewed test.  Given conditions indicative of negative
