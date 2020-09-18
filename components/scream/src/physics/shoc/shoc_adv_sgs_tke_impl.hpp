@@ -5,7 +5,7 @@
 #include "shoc_constants.hpp" // for ETI only but harmless for GPU
 
 namespace scream {
-  namespace shoc {
+namespace shoc {
 
 template<typename S, typename D>
 KOKKOS_FUNCTION
@@ -33,11 +33,11 @@ void Functions<S,D>
   //Local constants
   static constexpr Scalar Cs = sp(0.15);
   static constexpr Scalar Ck = sp(0.1);
-  static constexpr Scalar Ce = pow(Ck,3)/pow(Cs,4);
+  Scalar Ce = pow(Ck,3)/pow(Cs,4);
 
-  static constexpr Scalar Ce1 = Ce/sp(0.7)*sp(0.19);
-  static constexpr Scalar Ce2 = Ce/sp(0.7)*sp(0.51);
-  static constexpr Scalar Cee = Ce1 + Ce2;
+  Scalar Ce1 = Ce/sp(0.7)*sp(0.19);
+  Scalar Ce2 = Ce/sp(0.7)*sp(0.51);
+  Scalar Cee = Ce1 + Ce2;
 
   const Int nlev_pack = ekat::pack::npack<Spack>(nlev);
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev_pack), [&] (const Int& k) {
@@ -60,7 +60,7 @@ void Functions<S,D>
 
 
     //-----------------------------------------------------
-    // March equation forward one timestep
+    // March tke equation forward one timestep
     //-----------------------------------------------------
     tke(k) = tke(k) + dtime * (prodTotal - a_diss(k));
 
