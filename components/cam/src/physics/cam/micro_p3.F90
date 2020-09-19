@@ -953,14 +953,21 @@ contains
    real(rtype)    :: table_val_ice_reflectivity   ! reflectivity                         See lines  731 -  808  refl
    real(rtype)    :: table_val_ice_mean_diam   ! mass-weighted mean diameter          See lines 1212 - 1279  dmm
    real(rtype)    :: table_val_ice_bulk_dens   ! mass-weighted mean particle density  See lines 1212 - 1279  rhomm
-
+   real(rtype)    :: qc_incld
+   real(rtype)    :: nc_incld
+   real(rtype)    :: qr_incld
+   real(rtype)    :: nr_incld
+   
    k_loop_final_diagnostics:  do k = kbot,ktop,kdir
 
       ! cloud:
       if (qc(k).ge.qsmall) then
-         call get_cloud_dsd2(qc(k),nc(k),mu_c(k),rho(k),nu(k),dnu,lamc(k),  &
+         qc_incld = qc(k)/cld_frac_l(k)
+         nc_incld = nc(k)/cld_frac_l(k)
+         call get_cloud_dsd2(qc_incld,nc_incld,mu_c(k),rho(k),nu(k),dnu,lamc(k),  &
               tmp1,tmp2,cld_frac_l(k))
          diag_effc(k) = 0.5_rtype*(mu_c(k)+3._rtype)/lamc(k)
+         nc(k) = nc_incld*cld_frac_l(k) !limiters in dsd2 may change nc_incld. Enforcing consistency here.
       else
          qv(k) = qv(k)+qc(k)
          th(k) = th(k)-exner(k)*qc(k)*latent_heat_vapor(k)*inv_cp
@@ -971,10 +978,15 @@ contains
 
       ! rain:
       if (qr(k).ge.qsmall) then
+         qr_incld = qr(k)/cld_frac_r(k)
+         nr_incld = nr(k)/cld_frac_r(k)
+         call get_rain_dsd2(qr_incld,nr_incld,mu_r(k),lamr(k),tmp1,tmp2,cld_frac_r(k))
+         nr(k) = nr_incld*cld_frac_r(k) !limiters might change nc_incld... enforcing consistency
 
-         call get_rain_dsd2(qr(k),nr(k),mu_r(k),lamr(k),tmp1,tmp2,cld_frac_r(k))
-
-         ze_rain(k) = nr(k)*(mu_r(k)+6._rtype)*(mu_r(k)+5._rtype)*(mu_r(k)+4._rtype)*           &
+         !Note that integrating over the drop-size PDF as done here should only be done to in-cloud
+         !quantities but radar reflectivity is likely meant to be a cell ave. Thus nr in the next line
+         !really should be cld_frac_r * nr/cld_frac_r. Not doing that since cld_frac_r cancels out.
+         ze_rain(k) = nr*(mu_r(k)+6._rtype)*(mu_r(k)+5._rtype)*(mu_r(k)+4._rtype)*           &
               (mu_r(k)+3._rtype)*(mu_r(k)+2._rtype)*(mu_r(k)+1._rtype)/bfb_pow(lamr(k), 6._rtype)
          ze_rain(k) = max(ze_rain(k),1.e-22_rtype)
       else
@@ -987,6 +999,7 @@ contains
 
       ! ice:
 
+      !BUG BELOW: *all* of this qi stuff needs to be incld. will fix in future PR.
       call impose_max_total_Ni(ni(k),max_total_Ni,inv_rho(k))
 
       qi_not_small:  if (qi(k).ge.qsmall) then
