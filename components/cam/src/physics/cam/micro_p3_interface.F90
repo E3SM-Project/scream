@@ -94,10 +94,14 @@ module micro_p3_interface
       cmeliq_idx,         &
       relvar_idx,         &
       accre_enhan_idx,    &
-      current_month      !Needed for prescribed CCN option     
+      mon_ccn_1_idx,      &
+      mon_ccn_2_idx,      &
+      current_month      !Needed for prescribed CCN option    
+      
 
    !real(rtype):: mon_ccn(pcols,pver,2) !need to figure this out
    real(rtype):: mon_ccn(pcols,pver,2)
+   real(rtype):: ccn_values(pcols,pver,40)
 
 ! Physics buffer indices for fields registered by other modules
    integer :: &
@@ -294,6 +298,11 @@ end subroutine micro_p3_readnl
  
    call pbuf_add_field('RELVAR',     'global',dtype_r8,(/pcols,pver/),   relvar_idx)
    call pbuf_add_field('ACCRE_ENHAN','global',dtype_r8,(/pcols,pver/), accre_enhan_idx)
+
+   !! for prescribed CCN
+   call pbuf_add_field('MON_CCN_1',  'global', dtype_r8,(/pcols,pver/),mon_ccn_1_idx)
+   call pbuf_add_field('MON_CCN_2',  'global', dtype_r8,(/pcols,pver/),mon_ccn_2_idx)
+
 
    if (masterproc) write(iulog,'(A20)') '    P3 register finished'
   end subroutine micro_p3_register
@@ -716,7 +725,11 @@ end subroutine micro_p3_readnl
       !     mon_ccn(:,:,1), found, gridname='physgrid')
 
       call infld('CCN3',nccn_ncid,dim1name,'lev',dim2name,1,pcols,1,pver,begchunk,endchunk,&
-           mon_ccn(:,:,1), found, gridname='physgrid')
+           ccn_values, found, gridname='physgrid')
+
+      !call pbuf_set_field(pbuf2d, mon_ccn_1_idx, ccn_values,(/pcols,pver/))
+
+      !call pbuf_set_field(pbuf2d, mon_ccn_1_idx, ccn_values)
 
       call cam_pio_closefile(nccn_ncid)
 
