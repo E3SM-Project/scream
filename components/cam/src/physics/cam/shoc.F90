@@ -1348,7 +1348,7 @@ subroutine calc_shoc_varorcovar(&
       return
    endif
 #endif
-   
+
   do k=2,nlev
 
     kt=k-1 ! define upper grid point indicee
@@ -2533,7 +2533,7 @@ subroutine shoc_assumed_pdf_compute_s(&
   real(rtype), intent(out) :: std_s
   real(rtype), intent(out) :: qn
   real(rtype), intent(out) :: C
-  
+
   ! local variables
   real(rtype) :: cthl, cqt
 
@@ -2910,6 +2910,10 @@ subroutine isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
   ! moments in SHOC
   !------------------------------------------------------------
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use shoc_iso_f, only: isotropic_ts_f
+#endif
+
   implicit none
 
   !intent-ins
@@ -2938,6 +2942,14 @@ subroutine isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
   real(rtype), parameter :: lambda_slope = 0.65_rtype
   real(rtype), parameter :: brunt_low    = 0.02_rtype
   real(rtype), parameter :: maxiso       = 20000.0_rtype ! Return to isotropic timescale [s]
+
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   if (use_cxx) then
+      call isotropic_ts_f(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
+      return
+   endif
+#endif
 
   do k = 1, nlev
      do i = 1, shcol

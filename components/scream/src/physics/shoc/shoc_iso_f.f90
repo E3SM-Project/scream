@@ -15,6 +15,21 @@ module shoc_iso_f
 
 interface
 
+  subroutine isotropic_ts_f(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy) bind (C)
+    use iso_c_binding
+
+    implicit none
+
+    integer(kind=c_int), intent(in), value :: nlev, shcol
+    real(kind=c_real), intent(in) :: brunt_int(shcol)
+    real(kind=c_real), intent(in) :: tke(shcol,nlev)
+    real(kind=c_real), intent(in) :: a_diss(shcol,nlev)
+    real(kind=c_real), intent(in) :: brunt(shcol,nlev)
+
+    real(kind=c_real), intent(out) :: isotropy(shcol,nlev)
+
+  end subroutine isotropic_ts_f
+
   subroutine calc_shoc_varorcovar_f(shcol, nlev, nlevi, tunefac, isotropy_zi, tkh_zi, dz_zi, invar1, invar2, varorcovar) bind (C)
     use iso_c_binding
 
@@ -31,7 +46,7 @@ interface
     real(kind=c_real), intent(inout) :: varorcovar(shcol,nlevi)
 
   end subroutine calc_shoc_varorcovar_f
-  
+
   subroutine calc_shoc_vertflux_f(shcol, nlev, nlevi, tkh_zi, dz_zi, invar, vertflux) bind (C)
     use iso_c_binding
 

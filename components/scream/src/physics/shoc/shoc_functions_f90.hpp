@@ -690,6 +690,8 @@ void shoc_diag_second_moments_ubycond               (SHOCSecondMomentUbycondData
 //
 extern "C" {
 
+void isotropic_ts_f(Int nlev, Int shcol, Real *brunt_int, Real *tke, Real *a_diss,
+                    Real *brunt, Real *isotropy);
 void calc_shoc_varorcovar_f(Int shcol, Int nlev, Int nlevi, Real tunefac,
                             Real *isotropy_zi, Real *tkh_zi, Real *dz_zi,
                             Real *invar1, Real *invar2, Real *varorcovar);
