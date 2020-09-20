@@ -126,11 +126,8 @@ struct Functions
 # include "shoc_calc_shoc_vertflux_impl.hpp"
 # include "shoc_diag_second_moments_srf_impl.hpp"
 # include "shoc_diag_second_moments_ubycond_impl.hpp"
-<<<<<<< HEAD
 # include "shoc_pblintd_cldcheck_impl.hpp"
-=======
 # include "shoc_update_host_dse_impl.hpp"
->>>>>>> port update_host_dse
 #endif
 
 #endif

@@ -52,11 +52,11 @@ static void run_pblintd_cldcheck_bfb()
   }
 
   for (auto& d : cldcheck_data_cxx) {
-    shoc_pblintd_cldcheck_f(d.shcol, d.nlev, d.nlevi, d.zi, d.cldn, d.pblh);
+    shoc_pblintd_cldcheck_f(d.shcol(), d.nlev(), d.nlevi(), d.zi, d.cldn, d.pblh);
   }
 
   for (Int i = 0; i < num_runs; ++i) {
-    Int shcol = cldcheck_data_cxx[i].shcol;
+    Int shcol = cldcheck_data_cxx[i].shcol();
     for (Int k = 0; k < shcol; ++k) {
       REQUIRE(cldcheck_data_f90[i].pblh[k]  == cldcheck_data_cxx[i].pblh[k]);
     }

@@ -66,7 +66,7 @@ struct UnitWrap {
     struct TestShocIntColStab;
     struct TestShocIsotropicTs;
     struct TestShocShearProd;
-    struct TestShocVarorcovar;
+    struct TestShocVarorCovar;
     struct TestShocLength;
     struct TestCompBruntShocLength;
     struct TestCheckShocLength;
@@ -76,7 +76,6 @@ struct UnitWrap {
     struct TestFtermInputThirdMoms;
     struct TestFtermdiagThirdMoms;
     struct TestOmegadiagThirdMoms;
-    struct TestW3diagThirdMoms;
     struct TestXYdiagThirdMoms;
     struct TestCompShocConvTime;
     struct TestCompShocConvVel;

@@ -41,11 +41,7 @@ struct UnitWrap::UnitTest<D>::TestClipThirdMoms {
     // Define a local logical
     bool w3_large;
 
-<<<<<<< HEAD
-    // Initialize data structure for bridgeing to F90
-=======
     // Initialize data structure for bridging to F90
->>>>>>> update to PR 570, but still with errors
     SHOCClipthirdmomsData SDS(shcol, nlevi);
 
     // Test that the inputs are reasonable.

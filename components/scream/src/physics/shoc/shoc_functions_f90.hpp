@@ -360,7 +360,7 @@ struct SHOCMixcheckData : public PhysicsTestData {
 };//SHOCMixcheckData
 
 //Create data structure to hold data for clipping_diag_third_shoc_moments
-struct SHOCClipthirdmomsData : public SHOCDataBase {
+struct SHOCClipthirdmomsData : public PhysicsTestData {
   // Inputs
   Real *w_sec_zi;
 
@@ -639,8 +639,7 @@ struct SHOCPblintdCldCheckData : public PhysicsTestData {
   SHOCPblintdCldCheckData(Int shcol_, Int nlev_, Int nlevi_) :
     PhysicsTestData(shcol_, nlev_, nlevi_, {&cldn}, {&zi}, {&pblh}) {}
 
-  PTD_DATA_COPY_CTOR(SHOCPblintdCldCheckData, 3);
-  PTD_ASSIGN_OP(SHOCPblintdCldCheckData, 0);
+  SHOC_NO_SCALAR(SHOCPblintdCldCheckData, 3);
 };
 
 //
@@ -651,6 +650,7 @@ struct SHOCPblintdCldCheckData : public PhysicsTestData {
 // locations of the cell center (location of thermodynaics quantities), cell
 // interfaces, and pressure gradient the functon returns dz_zi, dz_zt,
 // and density.
+
 void shoc_grid                                      (SHOCGridData &d);
 void update_host_dse                                (SHOCEnergydseData &d);
 void shoc_energy_integrals                          (SHOCEnergyintData &d);
@@ -673,6 +673,13 @@ void compute_conv_vel_shoc_length                   (SHOCConvvelData &d);
 void compute_conv_time_shoc_length                  (SHOCConvtimeData &d);
 void compute_shoc_mix_shoc_length                   (SHOCMixlengthData &d);
 void check_length_scale_shoc_length                 (SHOCMixcheckData &d);
+void fterms_input_for_diag_third_shoc_moment        (SHOCFterminputthirdmomsData &d);
+void aa_terms_diag_third_shoc_moment                (SHOCAAdiagthirdmomsData &d);
+void f0_to_f5_diag_third_shoc_moment                (SHOCFtermdiagthirdmomsData &d);
+void omega_terms_diag_third_shoc_moment             (SHOCOmegadiagthirdmomsData &d);
+void x_y_terms_diag_third_shoc_moment               (SHOCXYdiagthirdmomsData &d);
+void w3_diag_third_shoc_moment                      (SHOCW3diagthirdmomsData &d);
+void clipping_diag_third_shoc_moments               (SHOCClipthirdmomsData &d);
 void shoc_diag_second_moments_srf                   (SHOCSecondMomentSrfData& d);
 void diag_third_shoc_moments                        (SHOCDiagThirdMomData &d);
 void compute_diag_third_shoc_moment                 (SHOCCompThirdMomData &d);

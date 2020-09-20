@@ -583,9 +583,9 @@ void shoc_diag_second_moments_ubycond(SHOCSecondMomentUbycondData& d)
 
 void shoc_pblintd_cldcheck(SHOCPblintdCldCheckData& d)
 {
-  shoc_init(d.nlev, true);
+  shoc_init(64, true);
   d.transpose<ekat::util::TransposeDirection::c2f>();
-  shoc_pblintd_cldcheck_c(d.shcol, d.nlev, d.nlevi, d.zi, d.cldn, d.pblh);
+  shoc_pblintd_cldcheck_c(d.shcol(), d.nlev(), d.nlevi(), d.zi, d.cldn, d.pblh);
   d.transpose<ekat::util::TransposeDirection::f2c>();
 }
 
