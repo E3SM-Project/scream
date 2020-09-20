@@ -109,6 +109,13 @@ struct Functions
     const Scalar& phis,
     const uview_1d<Spack>& host_dse);
 
+  KOKKOS_FUNCTION
+  static void shoc_diag_second_moments_lbycond(
+    const Scalar& wthl_sfc, const Scalar& wqw_sfc, const Scalar& uw_sfc, const Scalar& vw_sfc,
+    const Scalar& ustar2, const Scalar& wstar,
+    Scalar& wthl_sec, Scalar& wqw_sec, Scalar& uw_sec, Scalar& vw_sec,
+    Scalar& wtke_sec, Scalar& thl_sec, Scalar& qw_sec, Scalar& qwthl_sec);
+
 }; // struct Functions
 
 } // namespace shoc
@@ -122,6 +129,7 @@ struct Functions
 # include "shoc_diag_second_moments_srf_impl.hpp"
 # include "shoc_diag_second_moments_ubycond_impl.hpp"
 # include "shoc_update_host_dse_impl.hpp"
+# include "shoc_diag_second_moments_lbycond_impl.hpp"
 #endif
 
 #endif

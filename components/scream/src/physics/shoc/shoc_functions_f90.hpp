@@ -629,6 +629,19 @@ struct SHOCSecondMomentUbycondData : public PhysicsTestData {
   SHOC_NO_SCALAR(SHOCSecondMomentUbycondData, 1);
 };
 
+struct SHOCSecondMomLbycondData : public PhysicsTestData {
+  // inputs
+  Real *wthl, *wqw, *uw, *vw, *ustar2, *wstar;
+ 
+  // outputs
+  Real *wthlo, *wqwo, *uwo, *vwo, *wtkeo, *thlo, *qwo, *qwthlo;
+
+  SHOCSecondMomLbycondData(Int shcol_) :
+      PhysicsTestData(shcol_, {&wthl, &wqw, &uw, &vw, &ustar2, &wstar, &wthlo, &wqwo, &uwo, &vwo, &wtkeo, &thlo, &qwo, &qwthlo}) {}
+
+  SHOC_NO_SCALAR(SHOCSecondMomLbycondData, 1);
+};
+
 //
 // Glue functions to call fortran from from C++ with the Data struct
 //
@@ -684,6 +697,7 @@ void shoc_assumed_pdf_compute_cloud_liquid_variance (SHOCPDFcompcloudvarData &d)
 void shoc_assumed_pdf_compute_liquid_water_flux     (SHOCPDFcompliqfluxData &d);
 void shoc_assumed_pdf_compute_buoyancy_flux         (SHOCPDFcompbuoyfluxData &d);
 void shoc_diag_second_moments_ubycond               (SHOCSecondMomentUbycondData& d);
+void shoc_diag_second_moments_lbycond               (SHOCSecondMomLbycondData& d);
 
 //
 // _f functions decls
@@ -701,7 +715,8 @@ void shoc_diag_second_moments_ubycond_f(Int shcol, Real* thl, Real* qw, Real* wt
                           Real* wqw, Real* qwthl, Real* uw, Real* vw, Real* wtke);
 void update_host_dse_f(Int shcol, Int nlev, Real* thlm, Real* shoc_ql, Real* exner, Real* zt_grid,
                        Real* phis, Real* host_dse);
-
+void shoc_diag_second_moments_lbycond_f(Int shcol, Real* wthl, Real* wqw, Real* uw, Real* vw, Real* ustar2, Real* wstar,
+                         Real* wthlo, Real* wqwo, Real* uwo, Real* vwo, Real* wtkeo, Real* thlo, Real* qwo, Real* qwthlo);
 }
 
 }  // namespace shoc
