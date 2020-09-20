@@ -343,7 +343,7 @@ TEST_CASE("shoc_varorcovar_property", "shoc")
 
 TEST_CASE("shoc_varorcovar_bfb", "shoc")
 {
-  using TestStruct = scream::shoc::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestShocVarorcovar;
+  using TestStruct = scream::shoc::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestShocVarorCovar;
   
   TestStruct::run_bfb();
 }

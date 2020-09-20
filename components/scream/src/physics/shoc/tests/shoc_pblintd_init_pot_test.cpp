@@ -35,8 +35,8 @@ static void run_pblintd_init_pot_bfb()
 
   static constexpr Int num_runs = sizeof(pblintd_init_pot_data_f90) / sizeof(SHOCPblintdInitPotData);
 
-  for (Int i = 0; i < num_runs; ++i) {
-    pblintd_init_pot_data_f90[i].randomize({ {-1, 1} });
+  for (auto& d : pblintd_init_pot_data_f90) {
+    d.randomize();
   }
 
   SHOCPblintdInitPotData pblintd_init_pot_data_cxx[] = {
@@ -46,19 +46,18 @@ static void run_pblintd_init_pot_bfb()
     SHOCPblintdInitPotData(pblintd_init_pot_data_f90[3]),
   };
 
-  for (Int i = 0; i < num_runs; ++i) {
+  for (auto& d : pblintd_init_pot_data_f90) {
     // expects data in C layout
-    shoc_pblintd_init_pot(pblintd_init_pot_data_f90[i]);
+    shoc_pblintd_init_pot(d);
+  }
+
+  for (auto& d : pblintd_init_pot_data_cxx) {
+    shoc_pblintd_init_pot_f(d.shcol(), d.nlev(), d.thl, d.ql, d.q, d.thv);
   }
 
   for (Int i = 0; i < num_runs; ++i) {
-    SHOCPblintdInitPotData& d = pblintd_init_pot_data_cxx[i];
-    shoc_pblintd_init_pot_f(d.shcol, d.nlev, d.thl, d.ql, d.q, d.thv);
-  }
-
-  for (Int i = 0; i < num_runs; ++i) {
-    Int shcol = pblintd_init_pot_data_cxx[i].shcol;
-    Int nlev  = pblintd_init_pot_data_cxx[i].nlev;
+    Int shcol = pblintd_init_pot_data_cxx[i].shcol();
+    Int nlev  = pblintd_init_pot_data_cxx[i].nlev();
     for (Int j = 0; j < shcol; ++j ) {
       for (Int k = 0; k < nlev; ++k) {
         REQUIRE(pblintd_init_pot_data_f90[i].thv[j*k] == pblintd_init_pot_data_cxx[i].thv[j*k]);

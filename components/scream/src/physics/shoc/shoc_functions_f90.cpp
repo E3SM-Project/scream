@@ -486,9 +486,9 @@ void linear_interp(SHOCLinearintData& d)
 
 void shoc_pblintd_init_pot(SHOCPblintdInitPotData& d)
 {
-  shoc_init(d.nlev, true);
+  shoc_init(d.nlev(), true);
   d.transpose<ekat::util::TransposeDirection::c2f>();
-  shoc_pblintd_init_pot_c(d.shcol, d.nlev, d.thl, d.ql, d.q, d.thv);
+  shoc_pblintd_init_pot_c(d.shcol(), d.nlev(), d.thl, d.ql, d.q, d.thv);
   d.transpose<ekat::util::TransposeDirection::f2c>();
 }
 

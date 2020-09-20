@@ -360,7 +360,7 @@ struct SHOCMixcheckData : public PhysicsTestData {
 };//SHOCMixcheckData
 
 //Create data structure to hold data for clipping_diag_third_shoc_moments
-struct SHOCClipthirdmomsData : public SHOCDataBase {
+struct SHOCClipthirdmomsData : public PhysicsTestData {
   // Inputs
   Real *w_sec_zi;
 
@@ -372,7 +372,6 @@ struct SHOCClipthirdmomsData : public SHOCDataBase {
 
   PTD_STD_DEF(SHOCClipthirdmomsData, 2, 0);
   PTD_DIM_RENAME(2, shcol, nlevi);
-
 };//SHOCClipthirdmomsData
 
 struct SHOCAAdiagthirdmomsData
@@ -497,7 +496,7 @@ struct SHOCLinearintData : public PhysicsTestData {
   SHOC_SCALARS(SHOCLinearintData, 3, 1, minthresh);
 };//SHOCLinearintData
 
-struct SHOCPblintdInitPotData : public SHOCDataBase {
+struct SHOCPblintdInitPotData : public PhysicsTestData {
   // inputs
   Real *thl, *ql, *q;
 
@@ -505,9 +504,9 @@ struct SHOCPblintdInitPotData : public SHOCDataBase {
   Real *thv;
 
   SHOCPblintdInitPotData(Int shcol_, Int nlev_) :
-    SHOCDataBase(shcol_, nlev_, 0, {&thl, &ql, &q, &thv}, {}, {}) {}
-  SHOCPblintdInitPotData(const SHOCPblintdInitPotData &rhs) : SHOCDataBase(rhs, {&thl, &ql, &q, &thv}, {}, {}) {}
-  SHOCPblintdInitPotData &operator=(const SHOCPblintdInitPotData &rhs) { SHOCDataBase::operator=(rhs); return *this; }
+    PhysicsTestData(shcol_, nlev_, {&thl, &ql, &q, &thv}) {}
+
+  SHOC_NO_SCALAR(SHOCPblintdInitPotData, 2);
 }; 
 
 //Create data structure to hold data for shoc_assumed_pdf_tilda_to_real
@@ -632,7 +631,7 @@ struct SHOCPDFcompbuoyfluxData
   Real wthv_sec;
 };
 
-struct SHOCSecondMomentUbycondData : public SHOCDataBase {
+struct SHOCSecondMomentUbycondData : public PhysicsTestData {
   // Outputs
   Real *thl, *qw, *wthl, *wqw, *qwthl, *uw, *vw, *wtke;
 
@@ -650,6 +649,7 @@ struct SHOCSecondMomentUbycondData : public SHOCDataBase {
 // locations of the cell center (location of thermodynaics quantities), cell
 // interfaces, and pressure gradient the functon returns dz_zi, dz_zt,
 // and density.
+
 void shoc_grid                                      (SHOCGridData &d);
 void update_host_dse                                (SHOCEnergydseData &d);
 void shoc_energy_integrals                          (SHOCEnergyintData &d);
@@ -672,6 +672,13 @@ void compute_conv_vel_shoc_length                   (SHOCConvvelData &d);
 void compute_conv_time_shoc_length                  (SHOCConvtimeData &d);
 void compute_shoc_mix_shoc_length                   (SHOCMixlengthData &d);
 void check_length_scale_shoc_length                 (SHOCMixcheckData &d);
+void fterms_input_for_diag_third_shoc_moment        (SHOCFterminputthirdmomsData &d);
+void aa_terms_diag_third_shoc_moment                (SHOCAAdiagthirdmomsData &d);
+void f0_to_f5_diag_third_shoc_moment                (SHOCFtermdiagthirdmomsData &d);
+void omega_terms_diag_third_shoc_moment             (SHOCOmegadiagthirdmomsData &d);
+void x_y_terms_diag_third_shoc_moment               (SHOCXYdiagthirdmomsData &d);
+void w3_diag_third_shoc_moment                      (SHOCW3diagthirdmomsData &d);
+void clipping_diag_third_shoc_moments               (SHOCClipthirdmomsData &d);
 void shoc_diag_second_moments_srf                   (SHOCSecondMomentSrfData& d);
 void diag_third_shoc_moments                        (SHOCDiagThirdMomData &d);
 void compute_diag_third_shoc_moment                 (SHOCCompThirdMomData &d);
@@ -689,6 +696,7 @@ void shoc_assumed_pdf_compute_cloud_liquid_variance (SHOCPDFcompcloudvarData &d)
 void shoc_assumed_pdf_compute_liquid_water_flux     (SHOCPDFcompliqfluxData &d);
 void shoc_assumed_pdf_compute_buoyancy_flux         (SHOCPDFcompbuoyfluxData &d);
 void shoc_diag_second_moments_ubycond               (SHOCSecondMomentUbycondData& d);
+void shoc_pblintd_init_pot                          (SHOCPblintdInitPotData &d);
 
 //
 // _f functions decls
