@@ -199,7 +199,11 @@ void shoc_assumed_pdf_compute_buoyancy_flux_c(Real wthlsec, Real epsterm, Real w
 void shoc_diag_second_moments_ubycond_c(Int shcol, Real* thl, Real* qw, Real* wthl,
                                        Real* wqw, Real* qwthl, Real* uw, Real* vw,
                                        Real* wtke);
+
+void shoc_pblintd_cldcheck_c(Int shcol, Int nlev, Int nlevi, Real* zi, Real* cldn, Real* pblh);
+
 }
+
 
 namespace scream {
 namespace shoc {
@@ -579,6 +583,14 @@ void shoc_diag_second_moments_ubycond(SHOCSecondMomentUbycondData& d)
   d.transpose<ekat::util::TransposeDirection::f2c>();
 }
 
+void shoc_pblintd_cldcheck(SHOCPblintdCldCheckData& d)
+{
+  shoc_init(64, true);
+  d.transpose<ekat::util::TransposeDirection::c2f>();
+  shoc_pblintd_cldcheck_c(d.shcol(), d.nlev(), d.nlevi(), d.zi, d.cldn, d.pblh);
+  d.transpose<ekat::util::TransposeDirection::f2c>();
+}
+
 //
 // _f function definitions. These expect data in C layout
 //
@@ -818,6 +830,40 @@ void update_host_dse_f(Int shcol, Int nlev, Real* thlm, Real* shoc_ql, Real* exn
   ekat::pack::device_to_host({host_dse}, {shcol}, {nlev}, inout_views, true);
 }
 
+void shoc_pblintd_cldcheck_f(Int shcol, Int nlev, Int nlevi, Real* zi, Real* cldn, Real* pblh) {
+  using SHOC = Functions<Real, DefaultDevice>;
+  using Pack1      = typename ekat::pack::Pack<Real, 1>;
+  using Scalar     = typename SHOC::Scalar;
+  using view_2d    = typename SHOC::view_2d<Pack1>;
+  using view_1d    = typename SHOC::view_1d<Pack1>;
+
+  Kokkos::Array<view_2d, 2> cldcheck_2d;
+  ekat::pack::host_to_device({zi, cldn}, {shcol, shcol}, {nlevi, nlev}, cldcheck_2d, false);
+
+  view_2d
+         zi_2d  (cldcheck_2d[0]),
+         cldn_2d(cldcheck_2d[1]);
+
+  Kokkos::Array<view_1d, 1> cldcheck_1d;
+  ekat::pack::host_to_device({pblh}, shcol, cldcheck_1d);
+
+  view_1d pblh_1d (cldcheck_1d[0]);
+
+  Kokkos::parallel_for("pblintd_cldcheck", shcol, KOKKOS_LAMBDA (const int& i) {
+
+     Scalar zi_s   = zi_2d(i, nlev-1)[0];
+     Scalar cldn_s = cldn_2d(i, nlev-1)[0];
+     Scalar pblh_s = pblh_1d(i)[0];
+
+     SHOC::shoc_pblintd_cldcheck(zi_s, cldn_s, pblh_s);
+
+     pblh_1d(i)[0] = pblh_s;
+  });
+
+  Kokkos::Array<view_1d, 1> host_views = {pblh_1d};
+
+  ekat::pack::device_to_host({pblh}, shcol, host_views);
+}
 
 } // namespace shoc
 } // namespace scream

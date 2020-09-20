@@ -109,6 +109,11 @@ struct Functions
     const Scalar& phis,
     const uview_1d<Spack>& host_dse);
 
+  KOKKOS_FUNCTION
+  static void shoc_pblintd_cldcheck(
+    const Scalar& zi, const Scalar& cldn,
+    Scalar& pblh);
+
 }; // struct Functions
 
 } // namespace shoc
@@ -122,6 +127,7 @@ struct Functions
 # include "shoc_diag_second_moments_srf_impl.hpp"
 # include "shoc_diag_second_moments_ubycond_impl.hpp"
 # include "shoc_update_host_dse_impl.hpp"
+# include "shoc_pblintd_cldcheck_impl.hpp"
 #endif
 
 #endif
