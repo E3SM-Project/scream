@@ -4140,7 +4140,7 @@ subroutine pblintd_cldcheck(      &
     !
     !---------------------------Local workspace-----------------------------
     !
-    integer  :: i,k                       ! longitude index
+    integer  :: i                       ! longitude index
     logical  :: cldcheck(shcol)      ! True=>if cloud in lowest layer
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then

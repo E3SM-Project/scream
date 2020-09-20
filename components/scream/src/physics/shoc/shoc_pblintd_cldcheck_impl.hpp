@@ -28,8 +28,8 @@ void Functions<S,D>
     //
   
     auto cldcheck = false;
-    if (cldn >= sp(0.)) cldcheck = true;
-    if (cldcheck) pblh = max(pblh, zi + sp(50.));
+    if (cldn >= 0) cldcheck = true;
+    if (cldcheck) pblh = max(pblh, zi + 50);
 }
 } // namespace shoc
 } // namespace scream
