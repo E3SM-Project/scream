@@ -2,13 +2,16 @@
 #define SCREAM_FIELD_UTILS_HPP
 
 #include "field_tag.hpp"
-#include "ekat/util/scream_std_utils.hpp"
+#include "ekat/std_meta/ekat_std_utils.hpp"
 
 namespace scream {
 
 // How a field has to be init-ed
+// Note: internally, Value still creates a FieldInitializer object, but can be done
+//       behind the scenes by the infrastructure
 enum class InitType {
-  Zero,         // Should be zero-ed out
+  // NotNeeded,    // No initialization is needed for this field
+  Value,        // Should be inited to a specific value
   Initializer,  // A FieldInitializer object should take care of this
   None          // No initialization is needed/expected
 };
@@ -16,8 +19,9 @@ enum class InitType {
 inline std::string e2str (const InitType e) {
   std::string s;
   switch (e) {
+    // case InitType::NotNeeded:   s = "NotNeeded";    break;
     case InitType::None:        s = "None";         break;
-    case InitType::Zero:        s = "Zero";         break;
+    case InitType::Value:       s = "Value";        break;
     case InitType::Initializer: s = "Initializer";  break;
     default: s = "INVALID";
   }
@@ -37,7 +41,8 @@ enum class LayoutType {
 };
 
 inline LayoutType get_layout_type (const std::vector<FieldTag>& field_tags) {
-  using util::erase;
+  using ekat::util::erase;
+  using ekat::util::count;
 
   auto tags = field_tags;
 
@@ -51,9 +56,9 @@ inline LayoutType get_layout_type (const std::vector<FieldTag>& field_tags) {
   constexpr auto VAR  = FieldTag::Variable;
   constexpr auto VL   = FieldTag::VerticalLevel;
 
-  const int n_element = util::count(tags,EL);
-  const int n_column  = util::count(tags,COL);
-  const int ngp       = util::count(tags,GP);
+  const int n_element = count(tags,EL);
+  const int n_column  = count(tags,COL);
+  const int ngp       = count(tags,GP);
 
   // Start from undefined/invalid
   LayoutType result = LayoutType::Invalid;

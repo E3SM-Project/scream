@@ -15,6 +15,8 @@ set(SHOC_SRCS
   ${SCREAM_BASE_DIR}/../cam/src/physics/cam/shoc.F90
   atmosphere_macrophysics.cpp
   scream_shoc_interface.F90
+  shoc_diag_second_moments_srf.cpp
+  shoc_diag_second_moments_ubycond.cpp
 )
 
 set(SHOC_HEADERS
@@ -26,16 +28,18 @@ set(SHOC_HEADERS
 # Add ETI source files if not on CUDA
 if (NOT CUDA_BUILD)
   list(APPEND SHOC_SRCS
-      )
+    shoc_calc_shoc_varorcovar.cpp
+    shoc_calc_shoc_vertflux.cpp
+  )
 endif()
 
 add_library(shoc ${SHOC_SRCS})
 target_include_directories(shoc PUBLIC ${SCREAM_INCLUDE_DIRS})
-target_include_directories(shoc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../common)
+target_include_directories(shoc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../share)
 target_include_directories(shoc SYSTEM PUBLIC ${SCREAM_TPL_INCLUDE_DIRS} ${CIMEROOT}/src/share/include)
 set_target_properties(shoc PROPERTIES
   Fortran_MODULE_DIRECTORY ${SCREAM_F90_MODULES})
-target_link_libraries(shoc physics_common scream_share ${SCREAM_TPL_LIBRARIES})
+target_link_libraries(shoc physics_share scream_share ${SCREAM_TPL_LIBRARIES})
 
 if (NOT SCREAM_LIB_ONLY)
   add_subdirectory(tests)

@@ -4,10 +4,12 @@
 #include "share/grid/abstract_grid.hpp"
 #include "share/grid/remap/abstract_remapper.hpp"
 #include "share/grid/remap/identity_remapper.hpp"
-#include "ekat/util/scream_factory.hpp"
-#include "ekat/util/string_utils.hpp"
-#include "ekat/scream_parameter_list.hpp"
-#include "ekat/scream_assert.hpp"
+
+#include "ekat/util/ekat_factory.hpp"
+#include "ekat/util/ekat_string_utils.hpp"
+#include "ekat/ekat_parameter_list.hpp"
+#include "ekat/ekat_assert.hpp"
+#include "ekat/mpi/ekat_comm.hpp"
 
 #include <map>
 #include <set>
@@ -37,18 +39,20 @@ public:
     return get_grid("Reference");
   }
 
-  void build_grids (const std::set<std::string>& grid_names) {
+  void build_grids (const std::set<std::string>& grid_names,
+                    const std::string& reference_grid) {
     for (const auto& name : grid_names) {
       build_grid(name);
     }
+    build_grid(reference_grid);
   }
 
   remapper_ptr_type
   create_remapper (const grid_ptr_type from_grid,
                    const grid_ptr_type to_grid) const {
-    scream_require_msg( supports_grid(from_grid->name()),
+    EKAT_REQUIRE_MSG( supports_grid(from_grid->name()),
                         "Error! Source grid '" + from_grid->name() + "' is not supported.\n");
-    scream_require_msg( supports_grid(to_grid->name()),
+    EKAT_REQUIRE_MSG( supports_grid(to_grid->name()),
                         "Error! Target grid '" + to_grid->name() + "' is not supported.\n");
 
     remapper_ptr_type remapper;
@@ -60,7 +64,7 @@ public:
       remapper = do_create_remapper(from_grid,to_grid);
     }
 
-    scream_require_msg(
+    EKAT_REQUIRE_MSG(
       remapper!=nullptr,
       "Error! A remapper from grid '" + from_grid->name() + "' to grid '" + to_grid->name() + "' is not available.\n"
       "       Perhaps you forgot to add it creation to the implementation of the grids manager?\n");
@@ -68,9 +72,9 @@ public:
     return remapper;
   }
 
-  virtual void build_grid (const std::string& grid_name) = 0;
-
 protected:
+
+  virtual void build_grid (const std::string& grid_name) = 0;
 
   virtual remapper_ptr_type
   do_create_remapper (const grid_ptr_type from_grid,
@@ -103,22 +107,19 @@ protected:
 inline GridsManager::grid_ptr_type
 GridsManager::get_grid(const std::string& name) const
 {
-  scream_require_msg (supports_grid(name),
+  EKAT_REQUIRE_MSG (supports_grid(name),
                       "Error! Grids manager '" + this->name() + "' does not provide grid '" + name + "'.\n"
                       "       Supported grids are: " + print_supported_grids()  + "\n");
 
   return get_repo().at(name);
 }
 
-// Forward declarations
-class Comm;
-
 // A short name for the factory for grid managers
 using GridsManagerFactory 
-    = util::Factory<GridsManager,
-                    util::CaseInsensitiveString,
+    = ekat::util::Factory<GridsManager,
+                    ekat::util::CaseInsensitiveString,
                     std::shared_ptr<GridsManager>,
-                    const Comm&,const ParameterList&>;
+                    const ekat::Comm&,const ekat::ParameterList&>;
 
 } // namespace scream
 

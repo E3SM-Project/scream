@@ -3,9 +3,9 @@ if (NOT DEFINED PROJECT_NAME)
   cmake_policy(SET CMP0057 NEW)
   set(CIME_BUILD FALSE)
 else()
-  find_path(CXX_PATH ${MPICXX})
-  set(CMAKE_CXX_COMPILER ${CXX_PATH}/${MPICXX} CACHE STRING "" FORCE)
   set(CIME_BUILD TRUE)
+  set (SCREAM_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+  set (SCREAM_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.12.0")
@@ -15,9 +15,10 @@ if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.12.0")
 endif()
 
 # Add the ./cmake folder to cmake path. Also add EKAT's cmake folder
+set (EKAT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../externals/ekat)
 list(APPEND CMAKE_MODULE_PATH
      ${CMAKE_CURRENT_SOURCE_DIR}/cmake
-     ${CMAKE_CURRENT_SOURCE_DIR}/ekat/cmake
+     ${EKAT_SOURCE_DIR}/cmake
 )
 include(EkatMpiUtils)
 
@@ -27,7 +28,7 @@ include(EkatMpiUtils)
 DisableMpiCxxBindings()
 
 if (KOKKOS_ENABLE_CUDA)
-  set (KOKKOS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../externals/kokkos)
+  set (Kokkos_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../externals/kokkos)
   include (EkatSetNvccWrapper)
   EkatSetNvccWrapper()
 endif()
@@ -109,6 +110,7 @@ set(DEFAULT_LIB_ONLY FALSE)
 if (CIME_BUILD)
   set(DEFAULT_LIB_ONLY TRUE)
 endif()
+set(DEFAULT_NUM_VERTICAL_LEV 72)
 
 set(SCREAM_MIMIC_GPU ${DEFAULT_MIMIC_GPU} CACHE BOOL "Mimic GPU to correctness-test inter-column parallelism on non-GPU platform")
 set(SCREAM_PACK_CHECK_BOUNDS FALSE CACHE BOOL "If defined, scream::pack objects check indices against bounds")
@@ -116,6 +118,16 @@ set(SCREAM_TEST_DATA_DIR ${CMAKE_CURRENT_BINARY_DIR}/data CACHE FILEPATH "Locati
 set(SCREAM_MPI_ERRORS_ARE_FATAL TRUE CACHE BOOL "Whether MPI errors should abort (default TRUE). If false, errors should be handled.")
 set(SCREAM_MPIRUN_EXE ${DEFAULT_MPIRUN_EXE} CACHE STRING "The executable name for mpirun")
 set(SCREAM_LIB_ONLY ${DEFAULT_LIB_ONLY} CACHE BOOL "Only build libraries, no exes")
+
+# Assuming SCREAM_LIB_ONLY is FALSE (else, no exec is built at all), we provide the option
+# of building only baseline-related execs. By default, this option is off (menaing "build everything).
+# However, when generating baselines, this can be useful to reduce the amount of stuff compiled.
+set(SCREAM_BASELINES_ONLY FALSE CACHE BOOL "Whether building only baselines-related executables")
+
+# Set number of vertical levels
+set(SCREAM_NUM_VERTICAL_LEV ${DEFAULT_NUM_VERTICAL_LEV} CACHE STRING
+    "The number of levels used in the vertical grid."
+)
 
 ## Work out pack sizes.
 # Determine the master pack size.
@@ -161,15 +173,17 @@ set(SCREAM_TEST_THREAD_INC 1 CACHE STRING "Thread count increment for threaded t
 
 # Proecess the EKAT package
 set (YAMLCPP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../externals/yaml-cpp)
-set (EKAT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ekat)
+
+# Whether to disable warnings from tpls.
+set (SCREAM_DISABLE_TPL_WARNINGS ON CACHE BOOL "")
 
 include(Ekat)
-if (SCREAM_DOUBLE_PRECISION)
-  buildEkat("DOUBLE" PREFIX "SCREAM")
-else()
-  buildEkat("SINGLE" PREFIX "SCREAM")
-endif()
+set (EKAT_ENABLE_TESTS OFF CACHE BOOL "Whether to build EKAT's tests. Off by default.")
+buildEkat(${EKAT_SOURCE_DIR} PREFIX "SCREAM")
 
+# Init scream TPLs info to whatever EKAT set.
+set (SCREAM_TPL_LIBRARIES ${EKAT_TPL_LIBRARIES} CACHE INTERNAL "TPL libs that SCREAM targets can link to")
+set (SCREAM_TPL_INCLUDE_DIRS ${EKAT_TPL_INCLUDE_DIRS} CACHE INTERNAL "TPL include dirs that SCREAM targets can use")
 
 # Set compiler-specific flags
 include(EkatSetCompilerFlags)
@@ -195,6 +209,7 @@ print_var(CUDA_BUILD)
 print_var(SCREAM_DOUBLE_PRECISION)
 print_var(SCREAM_MIMIC_GPU)
 print_var(SCREAM_FPE)
+print_var(SCREAM_NUM_VERTICAL_LEV)
 print_var(SCREAM_PACK_SIZE)
 print_var(SCREAM_SMALL_PACK_SIZE)
 print_var(SCREAM_POSSIBLY_NO_PACK_SIZE)
@@ -203,6 +218,8 @@ print_var(SCREAM_LINK_FLAGS)
 print_var(SCREAM_FPMODEL)
 print_var(SCREAM_MPIRUN_EXE)
 print_var(SCREAM_LIB_ONLY)
+print_var(SCREAM_TPL_LIBRARIES)
+print_var(SCREAM_TPL_INCLUDE_DIRS)
 
 # This must be done using add_definitions because it is used to determine
 # whether to include scream_config.h.
@@ -211,6 +228,13 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/scream_config.h.in ${CMAKE_CURREN
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/scream_config.f.in ${CMAKE_CURRENT_BINARY_DIR}/src/scream_config.f)
 
 set(SCREAM_DYNAMICS_DYCORE "NONE" CACHE STRING "The name of the dycore to be used for dynamics. If NONE, then any code/test requiring dynamics is disabled.")
+
+if (CIME_BUILD)
+  if ("${SCREAM_DYN_TARGET}" STREQUAL "preqx_kokkos")
+    set (SCREAM_DYNAMICS_DYCORE "Homme")
+  endif()
+endif()
+
 string(TOUPPER "${SCREAM_DYNAMICS_DYCORE}" SCREAM_DYNAMICS_DYCORE)
 if (NOT ${SCREAM_DOUBLE_PRECISION})
   # Homme cannot handle single precision, for now. This causes tests to fail.

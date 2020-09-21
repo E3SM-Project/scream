@@ -1,8 +1,7 @@
 #ifndef SCREAM_P3_F90_HPP
 #define SCREAM_P3_F90_HPP
 
-#include "ekat/util/scream_utils.hpp"
-#include "ekat/scream_types.hpp"
+#include "share/scream_types.hpp"
 
 #include <memory>
 #include <vector>
@@ -21,21 +20,21 @@ struct FortranData {
   using Array2 = typename KT::template lview<Scalar**>;
   using Array3 = typename KT::template lview<Scalar***>;
 
-  bool log_predictNc;
+  bool do_predict_nc;
   const Int ncol, nlev;
 
   // In
   Real dt;
   Int it;
-  Array2 qv, th, pres, dzq, ncnuc, naai, qc_relvar, qc, nc, qr, nr,  qitot,
-    nitot, qirim, birim, pdel, exner;
+  Array2 qv, th, pres, dz, nc_nuceat_tend, ni_activated, inv_qc_relvar, qc, nc, qr, nr,  qi,
+    ni, qm, bm, dpres, exner;
   // Out
-  Array1 prt_liq, prt_sol;
-  Array2 diag_ze, diag_effc, diag_effi, diag_vmi, diag_di, diag_rhoi, cmeiout, prain, nevapr, prer_evap, rflx, sflx, rcldm, lcldm, icldm;
-  Array2 pratot, prctot;
+  Array1 precip_liq_surf, precip_ice_surf;
+  Array2 diag_effc, diag_effi, rho_qi, cmeiout, precip_total_tend, nevapr, qr_evap_tend,
+         precip_liq_flux, precip_ice_flux, cld_frac_r, cld_frac_l, cld_frac_i;
   Array3 p3_tend_out;
   Array2 mu_c, lamc;
-  Array2 liq_ice_exchange,vap_liq_exchange,vap_ice_exchange,vap_cld_exchange;
+  Array2 liq_ice_exchange,vap_liq_exchange,vap_ice_exchange;
 
   FortranData(Int ncol, Int nlev);
 };
@@ -62,8 +61,8 @@ private:
   void init(const FortranData::Ptr& d);
 };
 
-void p3_init(bool use_fortran=false);
-void p3_main(const FortranData& d);
+void p3_init();
+void p3_main(const FortranData& d, bool use_fortran=false);
 
 // We will likely want to remove these checks in the future, as we're not tied
 // to the exact implementation or arithmetic in P3. For now, these checks are
@@ -72,7 +71,7 @@ void p3_main(const FortranData& d);
 Int check_against_python(const FortranData& d);
 
 int test_FortranData();
-int test_p3_init(bool use_fortran);
+int test_p3_init();
 int test_p3_ic(bool use_fortran);
 
 }  // namespace p3

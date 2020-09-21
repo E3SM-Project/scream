@@ -1,10 +1,8 @@
 #include "catch2/catch.hpp"
 
-#include "ekat/scream_types.hpp"
-#include "ekat/util/scream_utils.hpp"
-#include "ekat/scream_kokkos.hpp"
-#include "ekat/scream_pack.hpp"
-#include "ekat/util/scream_kokkos_utils.hpp"
+#include "share/scream_types.hpp"
+#include "ekat/ekat_pack.hpp"
+#include "ekat/kokkos/ekat_kokkos_utils.hpp"
 #include "physics/p3/p3_functions.hpp"
 #include "physics/p3/p3_functions_f90.hpp"
 #include "physics/p3/p3_f90.hpp"
@@ -61,12 +59,10 @@ struct UnitWrap::UnitTest<D>::TestTable3 {
   KOKKOS_FUNCTION static Spack interp (const view_2d_table& table, const Scalar& mu_r,
                                        const Scalar& lamr) {
     // Init the pack to all the same value, and compute in every pack slot.
-    Smask qr_gt_small(true);
     Spack mu_r_p(mu_r), lamr_p(lamr);
     Table3 t3;
-    Functions::lookup(qr_gt_small, mu_r_p, lamr_p, t3);
-    Spack val(qr_gt_small, Functions::apply_table(qr_gt_small, table, t3));
-    return val;
+    Functions::lookup(mu_r_p, lamr_p, t3);
+    return Functions::apply_table(table, t3);
   }
 
   static void run () {
@@ -105,7 +101,7 @@ struct UnitWrap::UnitTest<D>::TestTable3 {
           const auto val = interp(vm_table, mu_r, lamr);
           return std::log(val[0]);
         };
-        slope = util::max(slope, std::abs((eval(i+1) - eval(i))/delta));
+        slope = ekat::util::max(slope, std::abs((eval(i+1) - eval(i))/delta));
       };
 
       Scalar max_slope;
@@ -150,7 +146,7 @@ struct UnitWrap::UnitTest<D>::TestTable3 {
           const auto val = interp(vm_table, mu_r, lamr);
           return std::log(val[0]);
         };
-        slope = util::max(slope, std::abs((eval(i+1) - eval(i))/delta));
+        slope = ekat::util::max(slope, std::abs((eval(i+1) - eval(i))/delta));
       };
 
       Scalar max_slope;
@@ -171,7 +167,7 @@ namespace {
 
 TEST_CASE("p3_tables", "[p3_functions]")
 {
-  scream::p3::p3_init(true); // need fortran table data
+  scream::p3::p3_init(); // need fortran table data
 
   scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestTable3::run();
 }

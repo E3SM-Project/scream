@@ -24,15 +24,28 @@ save
 
 ! SHORTWAVE DATA
 
-! number of shorwave spectral intervals
+! Number of spectral intervals
 integer, parameter, public :: nswbands = 14
+integer, parameter, public :: nlwbands = 16
 
 ! Wavenumbers of band boundaries
 !
 ! Note: Currently rad_solar_var extends the lowest band down to
 ! 100 cm^-1 if it is too high to cover the far-IR. Any changes meant
 ! to affect IR solar variability should take note of this.
-real(r8), dimension(nswbands) :: wavenum_sw_lower, wavenum_sw_upper
+!real(r8), dimension(nswbands) :: wavenum_sw_lower, wavenum_sw_upper
+real(r8) :: wavenum_sw_lower(nswbands) = & ! in cm^-1
+  (/ 820._r8, 2680._r8, 3250._r8, 4000._r8, 4650._r8, 5150._r8, 6150._r8, &
+    7700._r8, 8050._r8,12850._r8,16000._r8,22650._r8,29000._r8,38000._r8/)
+real(r8) :: wavenum_sw_upper(nswbands) = & ! in cm^-1
+  (/2680._r8, 3250._r8, 4000._r8, 4650._r8, 5150._r8, 6150._r8, 7700._r8, &
+    8050._r8,12850._r8,16000._r8,22650._r8,29000._r8,38000._r8,50000._r8/)
+real(r8) :: wavenum_lw_lower(nlwbands) = &! Longwave spectral band limits (cm-1)
+    (/   10._r8,  250._r8, 500._r8,   630._r8,  700._r8,  820._r8,  980._r8, 1080._r8, &
+       1180._r8, 1390._r8, 1480._r8, 1800._r8, 2080._r8, 2250._r8, 2390._r8, 2680._r8 /)
+real(r8) :: wavenum_lw_upper(nlwbands) = &! Longwave spectral band limits (cm-1)
+    (/  250._r8,  500._r8,  630._r8,  700._r8,  820._r8,  980._r8, 1080._r8, 1180._r8, &
+       1390._r8, 1480._r8, 1800._r8, 2080._r8, 2250._r8, 2390._r8, 2680._r8, 3250._r8 /)
 
 ! Solar irradiance at 1 A.U. in W/m^2 assumed by radiation code
 ! Rescaled so that sum is precisely 1368.22 and fractional amounts sum to 1.0
@@ -70,12 +83,6 @@ integer, parameter, public :: nrh = 1000
 integer, parameter, public :: idx_lw_diag = 7 ! index to (H20 window) LW band
 
 integer, parameter, public :: rrtmg_lw_cloudsim_band = 6  ! rrtmg band for 10.5 micron
-
-! number of lw bands
-integer, parameter, public :: nlwbands = 16
-
-real(r8), dimension(nlwbands) :: wavenum_lw_lower, wavenum_lw_upper
-
 
 !These can go away when old camrt disappears
 ! Index of volc. abs., H2O non-window
@@ -115,9 +122,14 @@ public :: get_number_sw_bands, &
           set_lw_spectral_boundaries, &
           get_sw_spectral_boundaries, &
           get_lw_spectral_boundaries, &
+          get_sw_spectral_midpoints, &
+          get_lw_spectral_midpoints, &
           get_ref_solar_band_irrad, &
           get_ref_total_solar_irrad, &
           get_solar_band_fraction_irrad, &
+          get_band_index_sw, &
+          get_band_index_lw, &
+          test_get_band_index, &
           check_wavenumber_bounds
 
 contains
@@ -196,7 +208,7 @@ end subroutine
 subroutine get_lw_spectral_boundaries(lower_bounds, upper_bounds, units)
    ! provide spectral boundaries of each longwave band
 
-   real(r8), intent(out) :: lower_bounds(nlwbands), upper_bounds(nlwbands)
+   real(r8), intent(inout) :: lower_bounds(nlwbands), upper_bounds(nlwbands)
    character(*), intent(in) :: units ! requested units
 
    select case (units)
@@ -226,7 +238,7 @@ end subroutine get_lw_spectral_boundaries
 subroutine get_sw_spectral_boundaries(lower_bounds, upper_bounds, units)
    ! provide spectral boundaries of each shortwave band
 
-   real(r8), intent(out) :: lower_bounds(nswbands), upper_bounds(nswbands)
+   real(r8), intent(inout) :: lower_bounds(nswbands), upper_bounds(nswbands)
    character(*), intent(in) :: units ! requested units
 
    select case (units)
@@ -250,6 +262,131 @@ subroutine get_sw_spectral_boundaries(lower_bounds, upper_bounds, units)
    end select
 
 end subroutine get_sw_spectral_boundaries
+
+!------------------------------------------------------------------------------
+
+subroutine get_sw_spectral_midpoints(band_midpoints, units)
+   character(len=*), intent(in) :: units
+   real(r8), intent(out) :: band_midpoints(nswbands)
+   real(r8), dimension(nswbands) :: lower_bounds, upper_bounds
+   integer :: i
+
+   ! Get band limits
+   call get_sw_spectral_boundaries(lower_bounds, upper_bounds, units)
+
+   ! Compute band midpoints
+   band_midpoints = 0._r8
+   do i = 1,nswbands
+      band_midpoints(i) = (lower_bounds(i) + upper_bounds(i)) / 2._r8
+   end do
+end subroutine get_sw_spectral_midpoints
+
+!----------------------------------------------------------------------------
+
+subroutine get_lw_spectral_midpoints(band_midpoints, units)
+   character(len=*), intent(in) :: units
+   real(r8), intent(out) :: band_midpoints(nlwbands)
+   real(r8), dimension(nlwbands) :: lower_bounds, upper_bounds
+   integer :: i
+
+   ! Get band limits
+   call get_lw_spectral_boundaries(lower_bounds, upper_bounds, units)
+
+   ! Compute band midpoints
+   band_midpoints = 0._r8
+   do i = 1,nlwbands
+      band_midpoints(i) = (lower_bounds(i) + upper_bounds(i)) / 2._r8
+   end do
+end subroutine get_lw_spectral_midpoints
+
+!----------------------------------------------------------------------------
+
+integer function get_band_index_sw(band, units) result(band_index)
+   use assertions, only: assert
+   real(r8), intent(in) :: band
+   character(len=*), intent(in) :: units
+   real(r8) :: band_wavenum
+   integer :: idx
+   character(len=128) :: err
+
+   ! Spectral bands are in wavenumber, so look for band in wavenumber space
+   select case (units)
+   case ('inv_cm','cm^-1','cm-1')
+      band_wavenum = band
+   case('m','meter','meters')
+      band_wavenum = 1.e-2_r8 / band
+   case('nm','nanometer','nanometers')
+      band_wavenum = 1.e7_r8/band
+   case('um','micrometer','micrometers','micron','microns')
+      band_wavenum = 1.e4_r8/band
+   case('cm','centimeter','centimeters')
+      band_wavenum  = 1._r8/band
+   case default
+      call endrun('get_band_index_sw: spectral units not acceptable'//units)
+   end select
+
+   ! Look for band
+   band_index = -1
+   do idx = 1,size(wavenum_sw_lower)
+      if (band_wavenum > wavenum_sw_lower(idx) .and. band_wavenum <= wavenum_sw_upper(idx)) then
+         band_index = idx
+         exit
+      end if
+   end do
+
+   ! Make sure we found a valid band
+   write(err,*) 'get_band_index_sw: index not found for', band, trim(units)
+   call assert(band_index > 0, err)
+end function get_band_index_sw
+
+!-------------------------------------------------------------------------------
+
+integer function get_band_index_lw(band, units) result(band_index)
+   use assertions, only: assert
+   real(r8), intent(in) :: band
+   character(len=*), intent(in) :: units
+   real(r8) :: band_wavenum
+   integer :: idx
+   character(len=128) :: err
+
+   ! Spectral bands are in wavenumber, so look for band in wavenumber space
+   select case (units)
+   case ('inv_cm','cm^-1','cm-1')
+      band_wavenum = band
+   case('m','meter','meters')
+      band_wavenum = 1.e-2_r8 / band
+   case('nm','nanometer','nanometers')
+      band_wavenum = 1.e7_r8/band
+   case('um','micrometer','micrometers','micron','microns')
+      band_wavenum = 1.e4_r8/band
+   case('cm','centimeter','centimeters')
+      band_wavenum  = 1._r8/band
+   case default
+      call endrun('get_band_index_lw: spectral units not acceptable'//units)
+   end select
+
+   ! Look for band
+   band_index = -1
+   do idx = 1,size(wavenum_lw_lower)
+      if (band_wavenum > wavenum_lw_lower(idx) .and. band_wavenum <= wavenum_lw_upper(idx)) then
+         band_index = idx
+         exit
+      end if
+   end do
+
+   ! Make sure we found a valid band
+   write(err,*) 'get_band_index_lw: index not found for', band, trim(units)
+   call assert(band_index > 0, err)
+end function get_band_index_lw
+
+!-------------------------------------------------------------------------------
+
+! Unit test for get_band_index function
+subroutine test_get_band_index()
+   use assertions, only: assert
+   call assert(get_band_index_sw(0.67_r8, 'micron') == 10, 'get_band_index_sw(0.67 micron) /= 10')
+   call assert(get_band_index_lw(10.5_r8, 'micron') == 6 , 'get_band_index_lw(10.5 micron) /= 6' )
+end subroutine
 
 !------------------------------------------------------------------------------
 
