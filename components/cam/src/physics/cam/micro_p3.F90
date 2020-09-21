@@ -1048,7 +1048,7 @@ contains
          ze_ice(k) = max(ze_ice(k),1.e-22_rtype)
 
          !above formula for ze only makes sense for in-cloud vals, but users expect cell-ave output.
-         ze_ice(k) = ze_ice(k)*cld_frac_i
+         ze_ice(k) = ze_ice(k)*cld_frac_i(k)
 
       else
 
@@ -1381,7 +1381,7 @@ contains
        ! final checks to ensure consistency of mass/number
        ! and compute diagnostic fields for output
        call p3_main_part3(kts, kte, kbot, ktop, kdir, &
-            exner(i,:), cld_frac_l(i,:), cld_frac_r(i,:), &
+            exner(i,:), cld_frac_l(i,:), cld_frac_r(i,:), cld_frac_i(i,:), &
             rho(i,:), inv_rho(i,:), rhofaci(i,:), qv(i,:), th(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), qi(i,:), ni(i,:), &
             qm(i,:), bm(i,:), latent_heat_vapor(i,:), latent_heat_sublim(i,:), &
             mu_c(i,:), nu(i,:), lamc(i,:), mu_r(i,:), lamr(i,:), vap_liq_exchange(i,:), &
