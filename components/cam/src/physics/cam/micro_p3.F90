@@ -361,7 +361,7 @@ contains
          acn, qv, th, qc, nc, qr, nr, qi, ni, qm, bm, qc_incld, qr_incld, qi_incld, &
          qm_incld, nc_incld, nr_incld, ni_incld, bm_incld
 
-    logical(btype), intent(out) :: is_nucleat_possible, is_hydromet_present, log_hydrometeorsPresent
+    logical(btype), intent(out) :: is_nucleat_possible, is_hydromet_present
     logical(btype), intent(in) :: log_prescribeCCN
 
 
@@ -455,7 +455,7 @@ contains
 
     enddo k_loop_1
 
-  END SUBROUTINE p3_main_part
+  END SUBROUTINE p3_main_part1
 
 
   SUBROUTINE p3_main_part2(kts, kte, kbot, ktop, kdir, do_predict_nc, dt, inv_dt, &

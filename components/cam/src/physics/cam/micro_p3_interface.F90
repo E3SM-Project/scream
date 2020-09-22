@@ -93,8 +93,8 @@ module micro_p3_interface
       
 
    !real(rtype):: mon_ccn(pcols,pver,2) !need to figure this out
-   real(rtype):: mon_ccn(pcols,pver,2)
-   real(rtype):: ccn_values(pcols,pver,40)
+   !real(rtype):: mon_ccn(pcols,pver,2)
+   !real(rtype):: ccn_values(pcols,pver,40)
 
 ! Physics buffer indices for fields registered by other modules
    integer :: &
@@ -361,6 +361,9 @@ end subroutine micro_p3_readnl
     type(file_desc_t) :: nccn_ncid
     integer :: year, month, day, tod, next_month, grid_id
     logical :: found = .false.
+    real(rtype), pointer :: ccn_values(:,:,:)
+
+    nullify(ccn_values)
  
     call micro_p3_utils_init(cpair,rair,rh2o,rhoh2o,mwh2o,mwdry,gravit,latvap,latice, &
              cpliq,tmelt,pi,iulog,masterproc)
@@ -690,6 +693,8 @@ end subroutine micro_p3_readnl
 
       call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
 
+      write(iulog,*) 'current month is', current_month
+
       write(iulog,*) 'dim1name is', dim1name     
 
       write(iulog,*) 'dim2name is', dim2name
@@ -714,20 +719,34 @@ end subroutine micro_p3_readnl
       !call infld('CCN3', nccn_ncid, dim1name,'lev', 1, pver,begchunk,endchunk,&
       !     mon_ccn(:,:,1), found, gridname='physgrid')
 
+      allocate(ccn_values(pcols,pver,begchunk:endchunk))
+
       call infld('CCN3',nccn_ncid,dim1name,'lev',dim2name,1,pcols,1,pver,begchunk,endchunk,&
            ccn_values, found, gridname='physgrid')
 
-      !call pbuf_set_field(pbuf2d, mon_ccn_1_idx, ccn_values,(/pcols,pver/))
+      write(iulog,*) 'CCN file read in', ccn_values(1,65,begchunk)
 
-      !call pbuf_set_field(pbuf2d, mon_ccn_1_idx, ccn_values)
+      !call pbuf_set_field(pbuf2d, mon_ccn_1_idx, ccn_values,(/pcols,pver,1/))
+
+      call pbuf_set_field(pbuf2d, mon_ccn_1_idx, ccn_values)
+
+      deallocate(ccn_values)   
+
+      allocate(ccn_values(pcols,pver,begchunk:endchunk))
 
       call cam_pio_closefile(nccn_ncid)
 
       call cam_pio_openfile(nccn_ncid,filename_next_month,PIO_NOWRITE)
 
-      call infld('CCN3', nccn_ncid, dim1name, dim2name, 1, pcols,1,pver, &
-           mon_ccn(:,:,2), found, gridname='physgrid')
+      call infld('CCN3',nccn_ncid,dim1name,'lev',dim2name,1,pcols,1,pver,begchunk,endchunk,&
+           ccn_values, found, gridname='physgrid')
 
+      write(iulog,*) 'CCN second file read in', ccn_values(1,65,begchunk)
+
+      call pbuf_set_field(pbuf2d, mon_ccn_2_idx, ccn_values)
+     
+      deallocate(ccn_values)
+ 
       call cam_pio_closefile(nccn_ncid)
    
   end if
@@ -812,7 +831,7 @@ end subroutine micro_p3_readnl
    
   !subroutine read_in_monthly_CCN(nccn_monthly,micro_p3_lookup_dir,its,ite,kts,kte)
 
-  subroutine get_prescribed_CCN(nccn_prescribed,micro_p3_lookup_dir,its,ite,kts,kte)
+  subroutine get_prescribed_CCN(nccn_prescribed,micro_p3_lookup_dir,its,ite,kts,kte,pbuf)
    
     use pio,              only: file_desc_t,pio_nowrite
     use cam_pio_utils,    only: cam_pio_openfile,cam_pio_closefile
@@ -826,24 +845,38 @@ end subroutine micro_p3_readnl
    integer,intent(in) :: its,ite,kts,kte        
    real(rtype),dimension(its:ite,kts:kte),intent(inout)  :: nccn_prescribed
    character*(*), intent(in)    :: micro_p3_lookup_dir                !directory of the lookup tables
+   type(physics_buffer_desc),   pointer       :: pbuf(:)
+
 
    !internal variables
    character(len=100) :: base_file_name 
    character(len=500) :: filename
-   character(len=8) :: mon_str
-   character(len=8) :: dim1name, dim2name
+   character(len=20) :: mon_str
+   character(len=20) :: dim1name, dim2name
    type(file_desc_t) :: nccn_ncid
    integer :: year, month, day, tod, next_month, grid_id
    logical :: found = .false.
    real(rtype),dimension(its:ite,kts:kte) :: nccn_next_month
    real(rtype) :: fraction_of_month
+   real(rtype), pointer :: mon_ccn_1(:,:) !until I sort out initialization
+   real(rtype), pointer :: mon_ccn_2(:,:)
+   real(rtype), pointer :: ccn_values(:,:,:)
 
+   nullify(ccn_values)
+  
+ 
    !get current time step's date
    call get_curr_date(year,month,day,tod)
 
-   if (current_month .ne. month) then 
+   !populate mon_ccn_1 and mon_ccn_2 with corresponding pbuf variables
 
-      mon_ccn(:,:,1) = mon_ccn(:,:,2)
+   call pbuf_get_field(pbuf,mon_ccn_1_idx, mon_ccn_1)
+
+   call pbuf_get_field(pbuf,mon_ccn_2_idx, mon_ccn_2)
+
+  ! if (current_month .ne. month) then 
+
+      mon_ccn_1 = mon_ccn_2
 
       if (month==12) then
          next_month = 1
@@ -852,6 +885,8 @@ end subroutine micro_p3_readnl
       end if
 
       write(mon_str,*) next_month
+
+      mon_str = adjustl(mon_str)
 
       !assign base_file_name the name of the CCN file being used 
       base_file_name = "prescribed_CCN_file_"
@@ -866,23 +901,32 @@ end subroutine micro_p3_readnl
 
       call cam_pio_openfile(nccn_ncid,filename,PIO_NOWRITE)
 
-      call infld('CCN3', nccn_ncid, dim1name, dim2name, 1, pcols, begchunk, &
-          &endchunk,nccn_next_month, found, gridname='physgrid')
+      allocate(ccn_values(pcols,pver,begchunk:endchunk))
+
+      call infld('CCN3',nccn_ncid,dim1name,'lev',dim2name,1,pcols,1,pver,begchunk,endchunk,&
+           ccn_values, found, gridname='physgrid')
 
       call cam_pio_closefile(nccn_ncid)
-        
-      mon_ccn(:,:,2) = nccn_next_month
+   
+      call pbuf_set_field(pbuf, mon_ccn_1_idx, mon_ccn_1)
+     
+      call pbuf_set_field(pbuf, mon_ccn_2_idx, ccn_values)
 
-      current_month = month  
+      deallocate(ccn_values)
 
-   end if
+      current_month = month 
 
-   !interpolate between mon_ccn(:,:,1) and mon_ccn(:,:,2) based on current date
+      call pbuf_get_field(pbuf,mon_ccn_2_idx, mon_ccn_2)
+
+   !end if
+   
+   !interpolate between mon_ccn_1 and mon_ccn_1 to calculate nccn_prescribed based on current date
 
    fraction_of_month = (day*3600.0*24.0 + tod)/(3600*24*30) !tod is in seconds
 
-   nccn_prescribed = mon_ccn(:,:,1)*(1-fraction_of_month) + mon_ccn(:,:,2)*(fraction_of_month)
+   nccn_prescribed = mon_ccn_1*(1-fraction_of_month) + mon_ccn_2*(fraction_of_month)
 
+   write(iulog,*) 'nccn_prescribed', nccn_prescribed(1,65)
 
   end subroutine get_prescribed_CCN
     
@@ -1187,7 +1231,7 @@ end subroutine micro_p3_readnl
     p3_main_inputs(1,pver+1,5) = state%zi(1,pver+1)
 
     !read in prescribed CCN if log_prescribeCCN is true
-    if (log_prescribeCCN) call get_prescribed_CCN(nccn_prescribed,micro_p3_lookup_dir,its,ite,kts,kte)
+    if (log_prescribeCCN) call get_prescribed_CCN(nccn_prescribed,micro_p3_lookup_dir,its,ite,kts,kte,pbuf)
 
     ! CALL P3
     !==============

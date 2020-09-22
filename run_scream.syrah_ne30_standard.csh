@@ -9,13 +9,13 @@
 ###===================================================================
 
 ### BASIC INFO ABOUT RUN
-set my_npes        = 64
-set job_name       = test_prescribed_CCN_4
+set my_npes        = 256
+set job_name       = test_prescribed_CCN_5
 #set compset        = FC5AV1C-L
 set compset        = F2000-SCREAM-LR
 set resolution     = ne30_ne30
 set machine        = syrah
-set walltime       = 00:15:00
+set walltime       = 00:50:00
 setenv project       cbronze
 
 ### SOURCE CODE OPTIONS
@@ -38,7 +38,7 @@ set seconds_before_delete_run_dir    = -1
 
 ### SUBMIT OPTIONS
 set submit_run       = true
-set debug_queue      = true
+set debug_queue      = false
 
 ### PROCESSOR CONFIGURATION
 set processor_config = customlc
