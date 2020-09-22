@@ -36,7 +36,8 @@ module micro_p3_interface
   use time_manager,   only: is_first_step
   use perf_mod,       only: t_startf, t_stopf
   use micro_p3_utils, only: p3_qc_autocon_expon, p3_qc_accret_expon
-       
+  use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp,psubcols
+     
   implicit none
   save
 
@@ -85,7 +86,10 @@ module micro_p3_interface
       qr_evap_tend_idx,      &
       cmeliq_idx,         &
       relvar_idx,         &
-      accre_enhan_idx     
+      accre_enhan_idx,    &
+      mon_ccn_1_idx,      &
+      mon_ccn_2_idx,      &
+      current_month      !Needed for prescribed CCN option        
 
 ! Physics buffer indices for fields registered by other modules
    integer :: &
@@ -118,6 +122,8 @@ module micro_p3_interface
    logical            :: micro_aerosolactivation = .false.   ! Use aerosol activation
    logical            :: micro_subgrid_cloud     = .false.   ! Use subgrid cloudiness
    logical            :: micro_tend_output       = .false.   ! Default microphysics tendencies to output file
+   logical            :: do_prescribed_CCN        = .false.   ! Use prescribed CCN
+
    contains
 !===============================================================================
 subroutine micro_p3_readnl(nlfile)
@@ -134,7 +140,7 @@ subroutine micro_p3_readnl(nlfile)
 
   namelist /micro_nl/ &
        micro_p3_tableversion, micro_p3_lookup_dir, micro_aerosolactivation, micro_subgrid_cloud, &
-       micro_tend_output, p3_qc_autocon_expon, p3_qc_accret_expon
+       do_prescribed_CCN, micro_tend_output, p3_qc_autocon_expon, p3_qc_accret_expon
 
   !-----------------------------------------------------------------------------
 
@@ -156,6 +162,7 @@ subroutine micro_p3_readnl(nlfile)
      write(iulog,'(A20,1x,A100)') 'micro_p3_lookup_dir: ',     micro_p3_lookup_dir
      write(iulog,'(A30,1x,L)')    'micro_aerosolactivation: ', micro_aerosolactivation
      write(iulog,'(A30,1x,L)')    'micro_subgrid_cloud: ',     micro_subgrid_cloud
+     write(iulog,'(A30,1x,L)')    'do_prescribed_CCN: ',        do_prescribed_CCN
      write(iulog,'(A30,1x,L)')    'micro_tend_output: ',       micro_tend_output
      write(iulog,'(A30,1x,8e12.4)') 'p3_qc_autocon_expon',        p3_qc_autocon_expon
      write(iulog,'(A30,1x,8e12.4)') 'p3_qc_accret_expon',         p3_qc_accret_expon
@@ -168,6 +175,7 @@ subroutine micro_p3_readnl(nlfile)
   call mpibcast(micro_p3_lookup_dir,     len(micro_p3_lookup_dir),   mpichar, 0, mpicom)
   call mpibcast(micro_aerosolactivation, 1,                          mpilog,  0, mpicom)
   call mpibcast(micro_subgrid_cloud,     1,                          mpilog,  0, mpicom)
+  call mpibcast(do_prescribed_CCN,     1,                          mpilog,  0,    mpicom)
   call mpibcast(micro_tend_output,       1,                          mpilog,  0, mpicom)
   call mpibcast(p3_qc_autocon_expon,      1,                          mpir8,   0, mpicom)
   call mpibcast(p3_qc_accret_expon,       1,                          mpir8,   0, mpicom)
@@ -280,6 +288,10 @@ end subroutine micro_p3_readnl
    call pbuf_add_field('RELVAR',     'global',dtype_r8,(/pcols,pver/),   relvar_idx)
    call pbuf_add_field('ACCRE_ENHAN','global',dtype_r8,(/pcols,pver/), accre_enhan_idx)
 
+   !! for prescribed CCN
+   call pbuf_add_field('MON_CCN_1',  'global', dtype_r8,(/pcols,pver/),mon_ccn_1_idx)
+   call pbuf_add_field('MON_CCN_2',  'global', dtype_r8,(/pcols,pver/),mon_ccn_2_idx)
+
    if (masterproc) write(iulog,'(A20)') '    P3 register finished'
   end subroutine micro_p3_register
 
@@ -318,6 +330,15 @@ end subroutine micro_p3_readnl
     use cam_history,    only: addfld, add_default, horiz_only
     use cam_history_support, only: add_hist_coord 
     use micro_p3_utils, only: micro_p3_utils_init
+    use time_manager,     only: get_curr_date  !needed for intializing current_month current_month
+    use pio,            only: file_desc_t, pio_nowrite
+    use cam_pio_utils,    only: cam_pio_openfile,cam_pio_closefile
+    use cam_grid_support, only: cam_grid_check, cam_grid_id
+    use cam_grid_support, only: cam_grid_get_dim_names
+    use ncdio_atm,       only: infld
+    use time_manager,   only: get_curr_date
+    use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp, psubcols
+
 
     type(physics_buffer_desc),  pointer :: pbuf2d(:,:)
     integer        :: m, mm
@@ -327,6 +348,18 @@ end subroutine micro_p3_readnl
     logical :: history_budget       ! Output tendencies and state variables for CAM4
     integer :: budget_histfile      ! output history file number for budget fields
                                    ! temperature, water vapor, cloud ice and cloud
+
+    !needed for prescribed CCN option:
+    character(len=20) :: base_file_name
+    character(len=500) :: filename, filename_next_month
+    character(len=20) :: mon_str, next_mon_str
+    character(len=20) :: dim1name, dim2name
+    type(file_desc_t) :: nccn_ncid
+    integer :: year, month, day, tod, next_month, grid_id
+    logical :: found = .false.
+    real(rtype), pointer :: ccn_values(:,:,:)
+
+    nullify(ccn_values)
 
     call micro_p3_utils_init(cpair,rair,rh2o,rhoh2o,mwh2o,mwdry,gravit,latvap,latice, &
              cpliq,tmelt,pi,iulog,masterproc)
@@ -623,6 +656,69 @@ end subroutine micro_p3_readnl
       end if
    end if
 
+   if (do_prescribed_CCN) then !intialize mon_ccn_1 and mon_ccn_2
+
+      !find current_month
+      call get_curr_date(year,month,day,tod)
+      current_month = month
+      if (month==12) then
+         next_month = 1
+      else
+         next_month = month + 1
+      end if
+
+      write(mon_str,*) current_month
+      write(next_mon_str,*) next_month
+
+      !assign base_file_name the name of the CCN file being used 
+      base_file_name = "prescribed_CCN_file_"
+
+      mon_str = adjustl(mon_str)
+      next_mon_str = adjustl(next_mon_str)
+      !retrieve the name of the relevant file by combining base file name with
+      !month and full file path:
+      filename = trim(micro_p3_lookup_dir)//'/'//trim(base_file_name)//trim(mon_str)//'.nc'
+
+      filename_next_month = trim(micro_p3_lookup_dir)//'/'//trim(base_file_name)//trim(next_mon_str)//'.nc'
+
+      write(iulog,*) 'file path is', filename
+
+      grid_id = cam_grid_id('physgrid')
+
+      call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
+
+      call cam_pio_openfile(nccn_ncid,filename,PIO_NOWRITE)
+
+      allocate(ccn_values(pcols,pver,begchunk:endchunk))
+
+      call infld('CCN3',nccn_ncid,dim1name,'lev',dim2name,1,pcols,1,pver,begchunk,endchunk,&
+           ccn_values, found, gridname='physgrid')
+
+      write(iulog,*) 'CCN file read in', ccn_values(1,65,begchunk)
+
+      call pbuf_set_field(pbuf2d, mon_ccn_1_idx, ccn_values)
+
+      deallocate(ccn_values)
+
+      allocate(ccn_values(pcols,pver,begchunk:endchunk))
+
+      call cam_pio_closefile(nccn_ncid)
+
+      call cam_pio_openfile(nccn_ncid,filename_next_month,PIO_NOWRITE)
+
+      call infld('CCN3',nccn_ncid,dim1name,'lev',dim2name,1,pcols,1,pver,begchunk,endchunk,&
+           ccn_values, found, gridname='physgrid')
+
+      write(iulog,*) 'CCN second file read in', ccn_values(1,65,begchunk)
+
+      call pbuf_set_field(pbuf2d, mon_ccn_2_idx, ccn_values)
+
+      deallocate(ccn_values)
+
+      call cam_pio_closefile(nccn_ncid)
+  
+   endif
+
   end subroutine micro_p3_init
 
   !================================================================================================
@@ -699,6 +795,103 @@ end subroutine micro_p3_readnl
        return
     end subroutine get_cloud_fraction
 
+    subroutine get_prescribed_CCN(nccn_prescribed,micro_p3_lookup_dir,its,ite,kts,kte,pbuf,lchnk)
+
+       use pio,              only: file_desc_t,pio_nowrite
+       use cam_pio_utils,    only: cam_pio_openfile,cam_pio_closefile
+       use cam_grid_support, only: cam_grid_check, cam_grid_id
+       use cam_grid_support, only: cam_grid_get_dim_names
+       use ncdio_atm,        only: infld
+       use time_manager,     only: get_curr_date
+       use ppgrid,           only: begchunk, endchunk, pcols, pver, pverp, psubcols
+
+      !INOUT/OUTPUT VARIABLES
+      integer,intent(in) :: its,ite,kts,kte,lchnk
+      real(rtype),dimension(its:ite,kts:kte),intent(inout)  :: nccn_prescribed
+      character*(*), intent(in)    :: micro_p3_lookup_dir                !directory of the lookup tables
+      type(physics_buffer_desc),   pointer       :: pbuf(:)
+
+
+      !internal variables
+      character(len=100) :: base_file_name
+      character(len=500) :: filename
+      character(len=20) :: mon_str
+      character(len=20) :: dim1name, dim2name
+      type(file_desc_t) :: nccn_ncid
+      integer :: year, month, day, tod, next_month, grid_id
+      logical :: found = .false.
+      real(rtype),dimension(its:ite,kts:kte) :: nccn_next_month
+      real(rtype) :: fraction_of_month
+      real(rtype), pointer :: mon_ccn_1(:,:)
+      real(rtype), pointer :: mon_ccn_2(:,:)
+      real(rtype), pointer :: ccn_values(:,:,:)
+
+      nullify(ccn_values)
+
+     !get current time step's date
+      call get_curr_date(year,month,day,tod)
+
+     !populate mon_ccn_1 and mon_ccn_2 with corresponding pbuf variables
+
+     call pbuf_get_field(pbuf,mon_ccn_1_idx, mon_ccn_1)
+
+     call pbuf_get_field(pbuf,mon_ccn_2_idx, mon_ccn_2)
+
+     if (current_month .ne. month) then
+
+         mon_ccn_1 = mon_ccn_2
+
+         if (month==12) then
+            next_month = 1
+         else
+            next_month = month + 1
+         end if
+
+         write(mon_str,*) next_month
+
+         mon_str = adjustl(mon_str)
+
+         !assign base_file_name the name of the CCN file being used 
+         base_file_name = "prescribed_CCN_file_"
+
+         !retrieve the name of the relevant file by combining base file name with
+         !month and full file path:
+         filename = trim(micro_p3_lookup_dir)//'/'//trim(base_file_name)//trim(mon_str)//'.nc'
+
+         grid_id = cam_grid_id('physgrid')
+
+         call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
+
+         call cam_pio_openfile(nccn_ncid,filename,PIO_NOWRITE)
+
+         allocate(ccn_values(pcols,pver,begchunk:endchunk))
+
+         call infld('CCN3',nccn_ncid,dim1name,'lev',dim2name,1,pcols,1,pver,begchunk,endchunk,&
+           ccn_values, found, gridname='physgrid')
+
+         call cam_pio_closefile(nccn_ncid)
+
+         mon_ccn_2 = ccn_values(:,:,lchnk)
+
+         deallocate(ccn_values)
+
+         current_month = month
+
+      end if
+
+      !interpolate between mon_ccn_1 and mon_ccn_1 to calculate nccn_prescribed
+      !based on current date
+
+      fraction_of_month = (day*3600.0*24.0 + tod)/(3600*24*30) !tod is in seconds
+
+      nccn_prescribed = mon_ccn_1*(1-fraction_of_month) + mon_ccn_2*(fraction_of_month)
+
+      !write(iulog,*) 'nccn_prescribed', nccn_prescribed(1,65)
+
+    end subroutine get_prescribed_CCN
+
+
+
   !================================================================================================
   subroutine micro_p3_tend(state, ptend, dtime, pbuf)
 
@@ -751,6 +944,10 @@ end subroutine micro_p3_readnl
     real(rtype), dimension(pcols,pver) :: vap_liq_exchange ! sum of vap-liq phase change tendenices
     real(rtype), dimension(pcols,pver) :: vap_ice_exchange ! sum of vap-ice phase change tendenices
     real(rtype) :: dummy_out(pcols,pver)    ! dummy_output variable for p3_main to replace unused variables.
+
+    !Prescribed CCN concentration
+    real(rtype), dimension(pcols,pver) :: nccn_prescribed
+
 
     ! PBUF Variables
     real(rtype), pointer :: ast(:,:)      ! Relative humidity cloud fraction
@@ -997,6 +1194,9 @@ end subroutine micro_p3_readnl
     end do
     p3_main_inputs(1,pver+1,5) = state%zi(1,pver+1)
 
+    !read in prescribed CCN if log_prescribeCCN is true
+    if (do_prescribed_CCN) call get_prescribed_CCN(nccn_prescribed,micro_p3_lookup_dir,its,ite,kts,kte,pbuf,lchnk)
+
     ! CALL P3
     !==============
     ! TODO: get proper value for 'it' from time module
@@ -1054,7 +1254,9 @@ end subroutine micro_p3_readnl
          liq_ice_exchange(its:ite,kts:kte),& ! OUT sum of liq-ice phase change tendenices   
          vap_liq_exchange(its:ite,kts:kte),& ! OUT sun of vap-liq phase change tendencies
          vap_ice_exchange(its:ite,kts:kte),& ! OUT sum of vap-ice phase change tendencies
-         col_location(its:ite,:3)          & ! IN column locations
+         col_location(its:ite,:3),          & ! IN column locations
+         do_prescribed_CCN,                 & !IN  .true. = prescribe CCN
+         nccn_prescribed(its:ite,kts:kte)    & !IN prescribed CCN concentration
          )
 
     p3_main_outputs(:,:,:) = -999._rtype
