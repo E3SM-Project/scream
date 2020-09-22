@@ -9,13 +9,13 @@
 ###===================================================================
 
 ### BASIC INFO ABOUT RUN
-set my_npes        = 256
+set my_npes        = 128
 set job_name       = test_prescribed_CCN_5
 #set compset        = FC5AV1C-L
 set compset        = F2000-SCREAM-LR
 set resolution     = ne30_ne30
 set machine        = syrah
-set walltime       = 00:50:00
+set walltime       = 00:08:00
 setenv project       cbronze
 
 ### SOURCE CODE OPTIONS
@@ -27,7 +27,7 @@ set tag_name       = default
 set case_name = ${machine}.${tag_name}.${job_name}.${resolution}
 
 ### BUILD OPTIONS
-set debug_compile  = true
+set debug_compile  = false
 set old_executable = false
 
 ### AUTOMATIC DELETION OPTIONS

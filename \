@@ -89,8 +89,14 @@ module micro_p3_interface
       accre_enhan_idx,    &
       mon_ccn_1_idx,      &
       mon_ccn_2_idx,      &
+      mon_ccn_t_idx,      &
       current_month      !Needed for prescribed CCN option    
       
+
+   !real(rtype):: mon_ccn(pcols,pver,2) !need to figure this out
+   !real(rtype):: mon_ccn(pcols,pver,2)
+   !real(rtype):: ccn_values(pcols,pver,40)
+
 ! Physics buffer indices for fields registered by other modules
    integer :: &
       ast_idx = -1            
@@ -290,6 +296,8 @@ end subroutine micro_p3_readnl
    !! for prescribed CCN
    call pbuf_add_field('MON_CCN_1',  'global', dtype_r8,(/pcols,pver/),mon_ccn_1_idx)
    call pbuf_add_field('MON_CCN_2',  'global', dtype_r8,(/pcols,pver/),mon_ccn_2_idx)
+   call pbuf_add_field('MON_CCN_T',  'global', dtype_r8,(/pcols,pver/),mon_ccn_t_idx)
+
 
    if (masterproc) write(iulog,'(A20)') '    P3 register finished'
   end subroutine micro_p3_register
@@ -655,9 +663,9 @@ end subroutine micro_p3_readnl
    end if
 
 
-   if (log_prescribeCCN) then !intialize mon_ccn_1 and mon_ccn_2
+   if (log_prescribeCCN) then !intialize mon_ccn
 
-      !find current_month
+      !intialize current_month
       call get_curr_date(year,month,day,tod)
       current_month = month
       if (month==12) then
@@ -671,6 +679,8 @@ end subroutine micro_p3_readnl
  
       !assign base_file_name the name of the CCN file being used 
       base_file_name = "prescribed_CCN_file_"
+      write(iulog,*) , mon_str
+      write(iulog,*) , next_mon_str
 
       mon_str = adjustl(mon_str)
       next_mon_str = adjustl(next_mon_str)
@@ -685,7 +695,31 @@ end subroutine micro_p3_readnl
 
       call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
 
+      write(iulog,*) 'current month is', current_month
+
+      write(iulog,*) 'dim1name is', dim1name     
+
+      write(iulog,*) 'dim2name is', dim2name
+
+      write(iulog,*) 'pcols is', pcols
+ 
+      write(iulog,*) 'pver is', pver
+
+      write(iulog,*) 'begchunk is', begchunk
+
+      write(iulog,*) 'endchunk is', endchunk
+
+      write(iulog,*) 'psubcols is', psubcols
+
+      !write(iulog,*) 'dim3name is', dim3name
+
       call cam_pio_openfile(nccn_ncid,filename,PIO_NOWRITE)
+
+      !call infld('CCN3', nccn_ncid, dim1name,'lev', 1, pcols,1,pver,&
+      !     mon_ccn(:,:,1), found, gridname='physgrid')
+
+      !call infld('CCN3', nccn_ncid, dim1name,'lev', 1, pver,begchunk,endchunk,&
+      !     mon_ccn(:,:,1), found, gridname='physgrid')
 
       allocate(ccn_values(pcols,pver,begchunk:endchunk))
 
@@ -693,6 +727,8 @@ end subroutine micro_p3_readnl
            ccn_values, found, gridname='physgrid')
 
       write(iulog,*) 'CCN file read in', ccn_values(1,65,begchunk)
+
+      !call pbuf_set_field(pbuf2d, mon_ccn_1_idx, ccn_values,(/pcols,pver,1/))
 
       call pbuf_set_field(pbuf2d, mon_ccn_1_idx, ccn_values)
 
@@ -824,8 +860,9 @@ end subroutine micro_p3_readnl
    logical :: found = .false.
    real(rtype),dimension(its:ite,kts:kte) :: nccn_next_month
    real(rtype) :: fraction_of_month
-   real(rtype), pointer :: mon_ccn_1(:,:) 
+   real(rtype), pointer :: mon_ccn_1(:,:) !until I sort out initialization
    real(rtype), pointer :: mon_ccn_2(:,:)
+   real(rtype), pointer :: mon_ccn_t(:,:)
    real(rtype), pointer :: ccn_values(:,:,:)
 
 
@@ -841,7 +878,7 @@ end subroutine micro_p3_readnl
 
    call pbuf_get_field(pbuf,mon_ccn_2_idx, mon_ccn_2)
 
-   if (current_month .ne. month) then 
+  ! if (current_month .ne. month) then 
 
       mon_ccn_1 = mon_ccn_2
 
@@ -875,13 +912,21 @@ end subroutine micro_p3_readnl
 
       call cam_pio_closefile(nccn_ncid)
   
+      write(iulog,*) 'lchnk is', lchnk
+
+      !call pbuf_set_field(pbuf, mon_ccn_1_idx, mon_ccn_1)     
+
+      !call pbuf_set_field(pbuf, mon_ccn_2_idx, ccn_values)
+
       mon_ccn_2 = ccn_values(:,:,lchnk)    
 
       deallocate(ccn_values)
 
       current_month = month 
 
-   end if
+      !call pbuf_get_field(pbuf,mon_ccn_t_idx, mon_ccn_t)
+
+   !end if
    
    !interpolate between mon_ccn_1 and mon_ccn_1 to calculate nccn_prescribed based on current date
 
