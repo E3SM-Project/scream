@@ -40,14 +40,6 @@ void Functions<S,D>
   w3(nlevi_pack-1)[last_pack_entry] = 0.0;
 
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev_pack), [&] (const Int& k) {
-    // Local variables
-    Spack
-      thedz, thedz2, iso, isosqrd, buoy_sgs2, bet2,
-      f0, f1, f2, f3, f4, f5,
-      omega0, omega1, omega2,
-      x0, x1, y0, y1,
-      aa0, aa1;
-
     // Constants
     const auto c_diag_3rd_mom = scream::shoc::Constants<Scalar>::c_diag_3rd_mom;
     const Scalar a0 = (sp(0.52)*std::pow(c_diag_3rd_mom,-2.0))/(c_diag_3rd_mom-2.0);
@@ -79,13 +71,13 @@ void Functions<S,D>
     ekat::pack::index_and_shift<-1>(s_tke, range_pack2, tke_k, tke_km1);
 
     // Compute inputs for computing f0 to f5 terms
-    thedz  = 1/dz_zi(k);
-    thedz2 = 1/(dz_zt_k+dz_zt_km1);
+    const auto thedz  = 1/dz_zi(k);
+    const auto thedz2 = 1/(dz_zt_k+dz_zt_km1);
 
-    iso       = isotropy_zi(k);
-    isosqrd   = ekat::pack::square(iso);
-    buoy_sgs2 = isosqrd*brunt_zi(k);
-    bet2      = C::gravit/thetal_zi(k);
+    const auto iso       = isotropy_zi(k);
+    const auto isosqrd   = ekat::pack::square(iso);
+    const auto buoy_sgs2 = isosqrd*brunt_zi(k);
+    const auto bet2      = C::gravit/thetal_zi(k);
 
     // Compute f0 to f5 terms
     const Spack thl_sec_diff = thl_sec_km1 - thl_sec_kp1;
@@ -93,27 +85,27 @@ void Functions<S,D>
     const Spack wsec_diff = w_sec_km1 - w_sec(k);
     const Spack tke_diff = tke_km1 - tke(k);
 
-    f0 = thedz2*ekat::pack::cube(bet2)*((iso*iso)*(iso*iso))*wthl_sec_k*thl_sec_diff;
-    f1 = thedz2*ekat::pack::square(bet2)*ekat::pack::cube(iso)*(wthl_sec_k*wthl_sec_diff+sp(0.5)*w_sec_zi(k)*thl_sec_diff);
-    f2 = thedz*bet2*isosqrd*wthl_sec_k*wsec_diff+2.0*thedz2*bet2*isosqrd*w_sec_zi(k)*wthl_sec_diff;
-    f3 = thedz2*bet2*isosqrd*w_sec_zi(k)*wthl_sec_diff+thedz*bet2*isosqrd*(wthl_sec_k*tke_diff);
-    f4 = thedz*iso*w_sec_zi(k)*(wsec_diff+tke_diff);
-    f5 = thedz*iso*w_sec_zi(k)*wsec_diff;
+    const auto f0 = thedz2*ekat::pack::cube(bet2)*((iso*iso)*(iso*iso))*wthl_sec_k*thl_sec_diff;
+    const auto f1 = thedz2*ekat::pack::square(bet2)*ekat::pack::cube(iso)*(wthl_sec_k*wthl_sec_diff+sp(0.5)*w_sec_zi(k)*thl_sec_diff);
+    const auto f2 = thedz*bet2*isosqrd*wthl_sec_k*wsec_diff+2.0*thedz2*bet2*isosqrd*w_sec_zi(k)*wthl_sec_diff;
+    const auto f3 = thedz2*bet2*isosqrd*w_sec_zi(k)*wthl_sec_diff+thedz*bet2*isosqrd*(wthl_sec_k*tke_diff);
+    const auto f4 = thedz*iso*w_sec_zi(k)*(wsec_diff+tke_diff);
+    const auto f5 = thedz*iso*w_sec_zi(k)*wsec_diff;
 
     // Compute omega terms
-    omega0 = a4/Spack(1.0-a5*buoy_sgs2);
-    omega1 = omega0/(2.0*c_diag_3rd_mom);
-    omega2 = omega1*f3+sp(5.0/4.0)*omega0*f4;
+    const auto omega0 = a4/Spack(1.0-a5*buoy_sgs2);
+    const auto omega1 = omega0/(2.0*c_diag_3rd_mom);
+    const auto omega2 = omega1*f3+sp(5.0/4.0)*omega0*f4;
 
     // Compute the x0, y0, x1, y1 terms
-    x0 = (a2*buoy_sgs2*(Spack(1.0)-a3*buoy_sgs2))/(Spack(1.0)-(a1+a3)*buoy_sgs2);
-    y0 = (2.0*a2*buoy_sgs2*x0)/(Spack(1.0)-a3*buoy_sgs2);
-    x1 = (a0*f0+a1*f1+a2*(Spack(1.0)-a3*buoy_sgs2)*f2)/(Spack(1.0)-(a1+a3)*buoy_sgs2);
-    y1 = (2.0*a2*(buoy_sgs2*x1+(a0/a1)*f0+f1))/(Spack(1.0)-a3*buoy_sgs2);
+    const auto x0 = (a2*buoy_sgs2*(Spack(1.0)-a3*buoy_sgs2))/(Spack(1.0)-(a1+a3)*buoy_sgs2);
+    const auto y0 = (2.0*a2*buoy_sgs2*x0)/(Spack(1.0)-a3*buoy_sgs2);
+    const auto x1 = (a0*f0+a1*f1+a2*(Spack(1.0)-a3*buoy_sgs2)*f2)/(Spack(1.0)-(a1+a3)*buoy_sgs2);
+    const auto y1 = (2.0*a2*(buoy_sgs2*x1+(a0/a1)*f0+f1))/(Spack(1.0)-a3*buoy_sgs2);
 
     // Compute the aa0, aa1 terms
-    aa0 = omega0*x0+omega1*y0;
-    aa1 = omega0*x1+omega1*y1+omega2;
+    const auto aa0 = omega0*x0+omega1*y0;
+    const auto aa1 = omega0*x1+omega1*y1+omega2;
 
     // Finally, compute the third moment of w
     w3(k).set(range_pack1 > 0 && range_pack1 < nlev,

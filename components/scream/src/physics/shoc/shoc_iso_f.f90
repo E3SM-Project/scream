@@ -71,9 +71,9 @@ interface
  end subroutine shoc_diag_second_moments_ubycond_f
 
 subroutine compute_diag_third_shoc_moment_f(shcol, nlev, nlevi, w_sec, thl_sec, &
-                                            qw_sec, qwthl_sec, wthl_sec, tke, dz_zt, &
-                                            dz_zi, zt_grid, zi_grid, isotropy_zi, &
-                                            brunt_zi, w_sec_zi, thetal_zi, wthv_sec_zi, &
+                                            wthl_sec, tke, dz_zt, &
+                                            dz_zi, isotropy_zi, &
+                                            brunt_zi, w_sec_zi, thetal_zi, &
                                             w3) bind(C)
   use iso_c_binding
 
@@ -82,19 +82,14 @@ subroutine compute_diag_third_shoc_moment_f(shcol, nlev, nlevi, w_sec, thl_sec, 
   integer(kind=c_int), intent(in), value :: nlevi
   real(kind=c_real), intent(in) :: w_sec(shcol,nlev)
   real(kind=c_real), intent(in) :: thl_sec(shcol,nlevi)
-  real(kind=c_real), intent(in) :: qw_sec(shcol,nlevi)
-  real(kind=c_real), intent(in) :: qwthl_sec(shcol,nlevi)
   real(kind=c_real), intent(in) :: wthl_sec(shcol,nlevi)
   real(kind=c_real), intent(in) :: tke(shcol,nlev)
   real(kind=c_real), intent(in) :: dz_zt(shcol,nlev)
   real(kind=c_real), intent(in) :: dz_zi(shcol,nlevi)
-  real(kind=c_real), intent(in) :: zt_grid(shcol,nlev)
-  real(kind=c_real), intent(in) :: zi_grid(shcol,nlevi)
   real(kind=c_real), intent(in) :: isotropy_zi(shcol,nlevi)
   real(kind=c_real), intent(in) :: brunt_zi(shcol,nlevi)
   real(kind=c_real), intent(in) :: w_sec_zi(shcol,nlevi)
   real(kind=c_real), intent(in) :: thetal_zi(shcol,nlevi)
-  real(kind=c_real), intent(in) :: wthv_sec_zi(shcol,nlevi)
 
   real(kind=c_real), intent(out) :: w3(shcol,nlevi)
 

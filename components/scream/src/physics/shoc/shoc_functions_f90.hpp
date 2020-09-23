@@ -488,15 +488,15 @@ struct SHOCDiagThirdMomData : public PhysicsTestData {
 //Create data structure to hold data for compute_diag_third_shoc_moment
 struct SHOCCompThirdMomData : public PhysicsTestData {
   // Inputs
-  Real *w_sec, *thl_sec, *qw_sec, *qwthl_sec, *wthl_sec, *tke, *dz_zt;
-  Real *dz_zi, *zt_grid, *zi_grid, *isotropy_zi, *brunt_zi, *w_sec_zi;
-  Real *thetal_zi, *wthv_sec_zi;
+  Real *w_sec, *thl_sec, *wthl_sec, *tke, *dz_zt;
+  Real *dz_zi, *isotropy_zi, *brunt_zi, *w_sec_zi;
+  Real *thetal_zi;
 
   // Output
   Real *w3;
 
   SHOCCompThirdMomData(Int shcol_, Int nlev_, Int nlevi_) :
-    PhysicsTestData(shcol_, nlev_, nlevi_, {&w_sec, &tke, &dz_zt, &zt_grid}, {&thl_sec, &wthl_sec, &qw_sec, &qwthl_sec, &zi_grid, &isotropy_zi, &dz_zi, &brunt_zi, &w_sec_zi, &thetal_zi, &wthv_sec_zi, &w3}) {}
+    PhysicsTestData(shcol_, nlev_, nlevi_, {&w_sec, &tke, &dz_zt}, {&thl_sec, &wthl_sec, &isotropy_zi, &dz_zi, &brunt_zi, &w_sec_zi, &thetal_zi, &w3}) {}
 
   SHOC_NO_SCALAR(SHOCCompThirdMomData, 3);
 };//SHOCCompThirdMomData
@@ -734,11 +734,10 @@ void shoc_diag_second_moments_srf_f(Int shcol, Real* wthl, Real* uw, Real* vw,
 void shoc_diag_second_moments_ubycond_f(Int shcol, Real* thl, Real* qw, Real* wthl,
                           Real* wqw, Real* qwthl, Real* uw, Real* vw, Real* wtke);
 void compute_diag_third_shoc_moment_f(Int shcol, Int nlev, Int nlevi, Real* w_sec,
-                                      Real* thl_sec, Real* qw_sec, Real* qwthl_sec,
-                                      Real* wthl_sec, Real* tke, Real* dz_zt,
-                                      Real* dz_zi, Real* zt_grid, Real* zi_grid,
-                                      Real* isotropy_zi, Real* brunt_zi, Real* w_sec_zi,
-                                      Real* thetal_zi, Real* wthv_sec_zi, Real* w3);
+                                      Real* thl_sec, Real* wthl_sec, Real* tke,
+                                      Real* dz_zt, Real* dz_zi, Real* isotropy_zi,
+                                      Real* brunt_zi, Real* w_sec_zi, Real* thetal_zi,
+                                      Real* w3);
 void update_host_dse_f(Int shcol, Int nlev, Real* thlm, Real* shoc_ql, Real* exner, Real* zt_grid,
                        Real* phis, Real* host_dse);
 void shoc_pblintd_init_pot_f(Int shcol, Int nlev, Real* thl, Real* ql, Real* q, Real* thv);

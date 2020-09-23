@@ -146,12 +146,10 @@ void diag_third_shoc_moments_c(Int shoc, Int nlev, Int nlevi, Real *w_sec,
                                Real *zi_grid, Real *w3);
 
 void compute_diag_third_shoc_moment_c(Int shcol, Int nlev, Int nlevi, Real *w_sec,
-                                      Real *thl_sec, Real *qw_sec, Real *qwthl_sec,
-                                      Real *wthl_sec, Real *tke, Real *dz_zt, 
-                                      Real *dz_zi, Real *zt_grid, Real *zi_grid,
-                                      Real *isotropy_zi, Real *brunt_zi, 
-                                      Real *w_sec_zi, Real *thetal_zi, 
-                                      Real *wthv_sec_zi, Real *w3);
+                                      Real *thl_sec, Real *wthl_sec, Real *tke,
+                                      Real *dz_zt, Real *dz_zi, Real *isotropy_zi,
+                                      Real *brunt_zi,  Real *w_sec_zi, Real *thetal_zi,
+                                      Real *w3);
 
 void linear_interp_c(Real *x1, Real *x2, Real *y1, Real *y2, Int km1,
                      Int km2, Int ncol, Real minthresh);
@@ -487,10 +485,8 @@ void compute_diag_third_shoc_moment(SHOCCompThirdMomData &d) {
   shoc_init(d.nlev(), true);
   d.transpose<ekat::TransposeDirection::c2f>();
   compute_diag_third_shoc_moment_c(d.shcol(),d.nlev(),d.nlevi(),d.w_sec,d.thl_sec,
-                                   d.qw_sec,d.qwthl_sec,d.wthl_sec,d.tke,d.dz_zt,
-                                   d.dz_zi,d.zt_grid,d.zi_grid,d.isotropy_zi,
-                                   d.brunt_zi,d.w_sec_zi,d.thetal_zi,d.wthv_sec_zi,
-                                   d.w3);
+                                   d.wthl_sec,d.tke,d.dz_zt,d.dz_zi,d.isotropy_zi,
+                                   d.brunt_zi,d.w_sec_zi,d.thetal_zi,d.w3);
   d.transpose<ekat::TransposeDirection::f2c>();
 }
 
@@ -794,19 +790,11 @@ void shoc_diag_second_moments_ubycond_f(Int shcol, Real* thl, Real* qw, Real* wt
 }
 
 void compute_diag_third_shoc_moment_f(Int shcol, Int nlev, Int nlevi, Real* w_sec,
-                                      Real* thl_sec, Real* qw_sec, Real* qwthl_sec,
-                                      Real* wthl_sec, Real* tke, Real* dz_zt,
-                                      Real* dz_zi, Real* zt_grid, Real* zi_grid,
-                                      Real* isotropy_zi, Real* brunt_zi, Real* w_sec_zi,
-                                      Real* thetal_zi, Real* wthv_sec_zi, Real* w3)
+                                      Real* thl_sec, Real* wthl_sec, Real* tke,
+                                      Real* dz_zt, Real* dz_zi, Real* isotropy_zi,
+                                      Real* brunt_zi, Real* w_sec_zi, Real* thetal_zi,
+                                      Real* w3)
 {
-  // These inputs are unused in the Fortran implementation
-  (void)qw_sec;
-  (void)qwthl_sec;
-  (void)zt_grid;
-  (void)zi_grid;
-  (void)wthv_sec_zi;
-
   using SHF = Functions<Real, DefaultDevice>;
 
   using Spack      = typename SHF::Spack;
