@@ -29,7 +29,6 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
     //dt/tau ~ 0 => weight => 1. A value of exactly 0 would cause div by 0 though.
     Spack wt;
     Functions::rain_evap_tscale_weight(Spack(1e-8),wt);
-    printf("wt[0] = %e\n",wt[0]);
     
     REQUIRE( wt[0] >= 0 ); //always true
     REQUIRE( wt[0] <= 1 ); //always true
@@ -46,32 +45,24 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
     //if A_c=0, equilibrium evap rate should be zero
     Spack tend;    
     Functions::rain_evap_equilib_tend(Spack(0),Spack(1),Spack(1),Spack(1),tend);
-    for (Int s = 0; s < max_pack_size; ++s) {
-      REQUIRE( tend[s] == 0 );
-    }
+    REQUIRE( std::abs(tend[0])<1e-8 );
 
     //if tau_eff==tau_r, equilibrium should be -A_c/ab
     Spack A_c(2);
     Spack ab(1.2);
     Functions::rain_evap_equilib_tend(A_c,ab,Spack(1),Spack(1),tend);
-    for (Int s = 0; s < max_pack_size; ++s) {
-      REQUIRE( std::abs(tend[s] + A_c[s]/ab[s]) < 1e-8 );
-    }
+    REQUIRE( std::abs(tend[0] + A_c[0]/ab[0]) < 1e-8 );
       
     //TEST INSTANTANEOUS EVAP RATE:
     //=============================
     //when ssat_r=0, tend should be zero.
     Functions::rain_evap_instant_tend(Spack(0),ab,Spack(1),tend);
-    for (Int s = 0; s < max_pack_size; ++s) {
-      REQUIRE( tend[s] == 0 );
-    }
+    REQUIRE( tend[0] == 0 );
 
     //when tau_r=>inf, tend should approach 0.
     Functions::rain_evap_instant_tend(Spack(-1e-3),ab,Spack(1e12),tend);
-    for (Int s = 0; s < max_pack_size; ++s) {
-      REQUIRE( tend[s] > 0 ); //always true for ssat_r<0.
-      REQUIRE( tend[s] < 1e-8 );
-    }
+    REQUIRE( tend[0] > 0 ); //always true for ssat_r<0.
+    REQUIRE( tend[0] < 1e-8 );
     
     //TEST ACTUAL EVAP FUNCTION:
     //==========================
@@ -103,10 +94,8 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
 			      cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i,
 			      ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,dt,
 			      qrtend,nrtend);
-    for (Int s = 0; s < max_pack_size; ++s) {
-      REQUIRE( qrtend[s] == 0 );
-      REQUIRE( nrtend[s] == 0 );
-    }
+    REQUIRE( std::abs(qrtend[0])<1e-8 );
+    REQUIRE( std::abs(nrtend[0])<1e-8 );
 
     //if qr_incld is small enough but not too small, evap rate should be qr_incld/dt.
     Spack qr_tiny=Spack(5e-13);
@@ -114,22 +103,17 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
 				cld_frac_l,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i,
 				ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,dt,
 				qrtend,nrtend);
-    for (Int s = 0; s < max_pack_size; ++s) {
-      REQUIRE( std::abs(qrtend[s] - qr_tiny[s]/dt
-			*(cld_frac_r[s]-cld_frac_l[s])/cld_frac_r[s])<1e-8 );
-     
-      REQUIRE( std::abs(nrtend[s] - qrtend[s]*nr_incld[s]/qr_tiny[s]) < 1e-8 );//always true
-    }
+      REQUIRE( std::abs(qrtend[0] - qr_tiny[0]/dt
+			*(cld_frac_r[0]-cld_frac_l[0])/cld_frac_r[0])<1e-8 );
+      REQUIRE( std::abs(nrtend[0] - qrtend[0]*nr_incld[0]/qr_tiny[0]) < 1e-8 );//always true
 
     //if no rainy areas outside cloud, don't evap
     Functions::evaporate_rain(qr_incld,qc_incld,nr_incld,qi_incld,
 			      cld_frac_r,cld_frac_r,qv,qv_prev,qv_sat_l,qv_sat_i, //cld_frac_l->_r
 			      ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,dt,
 			      qrtend,nrtend);
-    for (Int s = 0; s < max_pack_size; ++s) {
-      REQUIRE( qrtend[s] == 0 );
-      REQUIRE( nrtend[s] == 0 );
-    }
+    REQUIRE( std::abs(qrtend[0])<1e-8 );
+    REQUIRE( std::abs(nrtend[0])<1e-8 );
 
     //no evap if supersaturated
     Functions::evaporate_rain(qr_incld,qc_incld,nr_incld,qi_incld,
@@ -137,11 +121,8 @@ struct UnitWrap::UnitTest<D>::TestEvapSublPrecip
 			      cld_frac_l,cld_frac_r,qv_sat_l*2,qv_prev,qv_sat_l,qv_sat_i,
 			      ab,abi,epsr,epsi_tot,t,t_prev,latent_heat_sublim,dqsdt,dt,
 			      qrtend,nrtend);
-    for (Int s = 0; s < max_pack_size; ++s) {
-      REQUIRE( qrtend[s] == 0 );
-      REQUIRE( nrtend[s] == 0 );
-    }
-    
+    REQUIRE( std::abs(qrtend[0])<1e-8 );
+    REQUIRE( std::abs(nrtend[0])<1e-8 );
     
   }; //end run_property
     
