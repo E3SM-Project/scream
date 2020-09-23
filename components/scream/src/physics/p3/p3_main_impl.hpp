@@ -434,9 +434,9 @@ void Functions<S,D>
         nr_incld(k).set(qi_gt_small, max(nr_incld(k), nsmall));
 
         const auto rhop = calc_bulk_rho_rime(qi_incld(k), qm_incld(k), bm_incld(k), qi_gt_small);
-        qi(k) = qi_incld(k)*cld_frac_i(k);
-        qm(k) = qm_incld(k)*cld_frac_i(k);
-        bm(k) = bm_incld(k)*cld_frac_i(k);
+        qi(k).set(qi_gt_small, qi_incld(k)*cld_frac_i(k) );
+        qm(k).set(qi_gt_small, qm_incld(k)*cld_frac_i(k) );
+        bm(k).set(qi_gt_small, bm_incld(k)*cld_frac_i(k) );
 
         TableIce table_ice;
         lookup_ice(qi_incld(k), ni_incld(k), qm_incld(k), rhop, table_ice, qi_gt_small);
@@ -813,9 +813,9 @@ void Functions<S,D>
       auto bm_incld = bm(k)/cld_frac_i(k);
 
       const auto rhop = calc_bulk_rho_rime(qi_incld, qm_incld, bm_incld, qi_gt_small);
-      qi(k) = qi_incld*cld_frac_i(k);
-      qm(k) = qm_incld*cld_frac_i(k);
-      bm(k) = bm_incld*cld_frac_i(k);
+      qi(k).set(qi_gt_small, qi_incld*cld_frac_i(k) );
+      qm(k).set(qi_gt_small, qm_incld*cld_frac_i(k) );
+      bm(k).set(qi_gt_small, bm_incld*cld_frac_i(k) );
 
       TableIce table_ice;
       lookup_ice(qi_incld, ni_incld, qm_incld, rhop, table_ice, qi_gt_small);
