@@ -986,7 +986,7 @@ contains
          !Note that integrating over the drop-size PDF as done here should only be done to in-cloud
          !quantities but radar reflectivity is likely meant to be a cell ave. Thus nr in the next line
          !really should be cld_frac_r * nr/cld_frac_r. Not doing that since cld_frac_r cancels out.
-         ze_rain(k) = nr*(mu_r(k)+6._rtype)*(mu_r(k)+5._rtype)*(mu_r(k)+4._rtype)*           &
+         ze_rain(k) = nr(k)*(mu_r(k)+6._rtype)*(mu_r(k)+5._rtype)*(mu_r(k)+4._rtype)*           &
               (mu_r(k)+3._rtype)*(mu_r(k)+2._rtype)*(mu_r(k)+1._rtype)/bfb_pow(lamr(k), 6._rtype)
          ze_rain(k) = max(ze_rain(k),1.e-22_rtype)
       else

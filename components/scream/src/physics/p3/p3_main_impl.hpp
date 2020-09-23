@@ -770,7 +770,7 @@ void Functions<S,D>
 
       get_cloud_dsd2(qc_incld, nc_incld, mu_c(k), rho(k), nu(k), dnu, lamc(k), ignore1, ignore2, cld_frac_l(k), qc_gt_small);
 
-      nc(k).set(qc_gt_small,nc_incld/cld_frac_l(k)); //cld_dsd2 might have changed incld nc... need consistency.
+      nc(k).set(qc_gt_small,nc_incld*cld_frac_l(k)); //cld_dsd2 might have changed incld nc... need consistency.
       diag_effc(k)       .set(qc_gt_small, sp(0.5) * (mu_c(k) + 3) / lamc(k));
       qv(k)              .set(qc_small, qv(k)+qc(k));
       th(k)              .set(qc_small, th(k)-exner(k)*qc(k)*latent_heat_vapor(k)*inv_cp);
@@ -789,12 +789,12 @@ void Functions<S,D>
       get_rain_dsd2(
         qr_incld, nr_incld, mu_r(k), lamr(k), ignore1, ignore2, cld_frac_r(k), qr_gt_small);
 
-      nr(k).set(qc_gt_small,nr_incld/cld_frac_r(k)); //rain_dsd2 might have changed incld nr... need consistency.
+      nr(k).set(qr_gt_small,nr_incld*cld_frac_r(k)); //rain_dsd2 might have changed incld nr... need consistency.
 
       //Note that integrating over the drop-size PDF as done here should only be done to in-cloud
       //quantities but radar reflectivity is likely meant to be a cell ave. Thus nr in the next line
       //really should be cld_frac_r * nr/cld_frac_r. Not doing that since cld_frac_r cancels out.
-      ze_rain(k).set(qr_gt_small, nr*(mu_r(k)+6)*(mu_r(k)+5)*(mu_r(k)+4)*
+      ze_rain(k).set(qr_gt_small, nr(k)*(mu_r(k)+6)*(mu_r(k)+5)*(mu_r(k)+4)*
                      (mu_r(k)+3)*(mu_r(k)+2)*(mu_r(k)+1)/pow(lamr(k), sp(6.0))); // once f90 is gone, 6 can be int
       ze_rain(k).set(qr_gt_small, max(ze_rain(k), sp(1.e-22)));
 
