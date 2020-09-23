@@ -1595,6 +1595,10 @@ subroutine compute_diag_third_shoc_moment(&
           wthv_sec_zi,&                       ! Input
           w3)                                 ! Output
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use shoc_iso_f, only: compute_diag_third_shoc_moment_f
+#endif
+  
   implicit none
 ! INPUT VARIABLES
   ! number of SHOC columns
@@ -1642,6 +1646,19 @@ subroutine compute_diag_third_shoc_moment(&
   real(rtype) :: buoy_sgs2, bet2
   real(rtype) :: f0, f1, f2, f3, f4, f5
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  if (use_cxx) then
+    call compute_diag_third_shoc_moment_f(shcol,nlev,nlevi, &                 ! Input
+                                          w_sec,thl_sec, qw_sec, qwthl_sec,&  ! Input
+                                          wthl_sec, tke, dz_zt, dz_zi,&       ! Input
+                                          zt_grid,zi_grid, isotropy_zi,&      ! Input
+                                          brunt_zi,w_sec_zi,thetal_zi,&       ! Input
+                                          wthv_sec_zi,&                       ! Input
+                                          w3)                                 ! Output
+    return
+  endif
+#endif
+  
   ! set lower condition
   w3(:,nlevi) = 0._rtype
 
@@ -1787,7 +1804,6 @@ subroutine omega_terms_diag_third_shoc_moment(&
 
   !intent-out
   real(rtype), intent(out) :: omega0, omega1, omega2
-
 
   real(rtype), parameter :: a4=2.4_rtype/(3._rtype*c_diag_3rd_mom+5._rtype)
   real(rtype), parameter :: a5=0.6_rtype/(c_diag_3rd_mom*(3._rtype+5._rtype*c_diag_3rd_mom))

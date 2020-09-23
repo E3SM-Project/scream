@@ -793,6 +793,91 @@ void shoc_diag_second_moments_ubycond_f(Int shcol, Real* thl, Real* qw, Real* wt
   ekat::device_to_host({thl, qw, qwthl, wthl, wqw, uw, vw, wtke}, shcol, host_views);
 }
 
+void compute_diag_third_shoc_moment_f(Int shcol, Int nlev, Int nlevi, Real* w_sec,
+                                      Real* thl_sec, Real* qw_sec, Real* qwthl_sec,
+                                      Real* wthl_sec, Real* tke, Real* dz_zt,
+                                      Real* dz_zi, Real* zt_grid, Real* zi_grid,
+                                      Real* isotropy_zi, Real* brunt_zi, Real* w_sec_zi,
+                                      Real* thetal_zi, Real* wthv_sec_zi, Real* w3)
+{
+  // These inputs are unused in the Fortran implementation
+  (void)qw_sec;
+  (void)qwthl_sec;
+  (void)zt_grid;
+  (void)zi_grid;
+  (void)wthv_sec_zi;
+
+  using SHF = Functions<Real, DefaultDevice>;
+
+  using Spack      = typename SHF::Spack;
+  using view_2d    = typename SHF::view_2d<Spack>;
+  using KT         = typename SHF::KT;
+  using ExeSpace   = typename KT::ExeSpace;
+  using MemberType = typename SHF::MemberType;
+
+  Kokkos::Array<view_2d, 11> temp_d;
+  Kokkos::Array<size_t, 11> dim1_sizes     = {shcol,       shcol,
+                                              shcol,       shcol,
+                                              shcol,       shcol,
+                                              shcol,       shcol,
+                                              shcol,       shcol,
+                                              shcol};
+  Kokkos::Array<size_t, 11> dim2_sizes     = {nlev,        nlevi,
+                                              nlevi,       nlev,
+                                              nlev,        nlevi,
+                                              nlevi,       nlevi,
+                                              nlevi,       nlevi,
+                                              nlevi};
+  Kokkos::Array<const Real*, 11> ptr_array = {w_sec,       thl_sec,
+                                              wthl_sec,    tke,
+                                              dz_zt,       dz_zi,
+                                              isotropy_zi, brunt_zi,
+                                              w_sec_zi,    thetal_zi,
+                                              w3};
+
+  // Sync to device
+  ekat::pack::host_to_device(ptr_array, dim1_sizes, dim2_sizes, temp_d, true);
+
+  view_2d
+    w_sec_d      (temp_d[0]),
+    thl_sec_d    (temp_d[1]),
+    wthl_sec_d   (temp_d[2]),
+    tke_d        (temp_d[3]),
+    dz_zt_d      (temp_d[4]),
+    dz_zi_d      (temp_d[5]),
+    isotropy_zi_d(temp_d[6]),
+    brunt_zi_d   (temp_d[7]),
+    w_sec_zi_d   (temp_d[8]),
+    thetal_zi_d  (temp_d[9]),
+    w3_d         (temp_d[10]);
+
+  const Int nk_pack = ekat::pack::npack<Spack>(nlev);
+  const auto policy = ekat::util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
+  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+    const Int i = team.league_rank();
+
+    const auto w_sec_s       = ekat::util::subview(w_sec_d, i);
+    const auto thl_sec_s     = ekat::util::subview(thl_sec_d, i);
+    const auto wthl_sec_s    = ekat::util::subview(wthl_sec_d, i);
+    const auto tke_s         = ekat::util::subview(tke_d, i);
+    const auto dz_zt_s       = ekat::util::subview(dz_zt_d, i);
+    const auto dz_zi_s       = ekat::util::subview(dz_zi_d, i);
+    const auto isotropy_zi_s = ekat::util::subview(isotropy_zi_d, i);
+    const auto brunt_zi_s    = ekat::util::subview(brunt_zi_d, i);
+    const auto w_sec_zi_s    = ekat::util::subview(w_sec_zi_d, i);
+    const auto thetal_zi_s   = ekat::util::subview(thetal_zi_d, i);
+    const auto w3_s          = ekat::util::subview(w3_d, i);
+
+    SHF::compute_diag_third_shoc_moment(team, nlev, nlevi, w_sec_s, thl_sec_s,
+                                        wthl_sec_s, tke_s, dz_zt_s, dz_zi_s, isotropy_zi_s,
+                                        brunt_zi_s, w_sec_zi_s, thetal_zi_s, w3_s);
+  });
+
+  // Sync back to host
+  Kokkos::Array<view_2d, 1> inout_views = {w3_d};
+  ekat::pack::device_to_host({w3}, {shcol}, {nlevi}, inout_views, true);
+}
+
 void update_host_dse_f(Int shcol, Int nlev, Real* thlm, Real* shoc_ql, Real* exner, Real* zt_grid,
                        Real* phis, Real* host_dse)
 {

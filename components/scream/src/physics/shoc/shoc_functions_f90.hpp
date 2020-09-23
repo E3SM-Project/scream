@@ -733,6 +733,12 @@ void shoc_diag_second_moments_srf_f(Int shcol, Real* wthl, Real* uw, Real* vw,
                           Real* ustar2, Real* wstar);
 void shoc_diag_second_moments_ubycond_f(Int shcol, Real* thl, Real* qw, Real* wthl,
                           Real* wqw, Real* qwthl, Real* uw, Real* vw, Real* wtke);
+void compute_diag_third_shoc_moment_f(Int shcol, Int nlev, Int nlevi, Real* w_sec,
+                                      Real* thl_sec, Real* qw_sec, Real* qwthl_sec,
+                                      Real* wthl_sec, Real* tke, Real* dz_zt,
+                                      Real* dz_zi, Real* zt_grid, Real* zi_grid,
+                                      Real* isotropy_zi, Real* brunt_zi, Real* w_sec_zi,
+                                      Real* thetal_zi, Real* wthv_sec_zi, Real* w3);
 void update_host_dse_f(Int shcol, Int nlev, Real* thlm, Real* shoc_ql, Real* exner, Real* zt_grid,
                        Real* phis, Real* host_dse);
 void shoc_pblintd_init_pot_f(Int shcol, Int nlev, Real* thl, Real* ql, Real* q, Real* thv);

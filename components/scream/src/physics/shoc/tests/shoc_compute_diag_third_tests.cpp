@@ -204,7 +204,58 @@ struct UnitWrap::UnitTest<D>::TestShocCompDiagThird {
 
   static void run_bfb()
   {
-    // TODO
+    SHOCCompThirdMomData SDS_f90[] = {
+      //               shcol, nlev, nlevi
+      SHOCCompThirdMomData(10, 71, 72),
+      SHOCCompThirdMomData(10, 12, 13),
+      SHOCCompThirdMomData(7,  16, 17),
+      SHOCCompThirdMomData(2, 7, 8)
+    };
+
+    static constexpr Int num_runs = sizeof(SDS_f90) / sizeof(SHOCCompThirdMomData);
+
+    // Generate random input data
+    for (auto& d : SDS_f90) {
+      d.randomize();
+    }
+
+    // Create copies of data for use by cxx. Needs to happen before fortran calls so that
+    // inout data is in original state
+    SHOCCompThirdMomData SDS_cxx[] = {
+      SHOCCompThirdMomData(SDS_f90[0]),
+      SHOCCompThirdMomData(SDS_f90[1]),
+      SHOCCompThirdMomData(SDS_f90[2]),
+      SHOCCompThirdMomData(SDS_f90[3]),
+    };
+
+    // Assume all data is in C layout
+
+    // Get data from fortran
+    for (auto& d : SDS_f90) {
+      // expects data in C layout
+      compute_diag_third_shoc_moment(d);
+    }
+
+    // Get data from cxx
+    for (auto& d : SDS_cxx) {
+      d.transpose<ekat::util::TransposeDirection::c2f>();
+      // expects data in fortran layout
+      compute_diag_third_shoc_moment_f(d.shcol(),d.nlev(),d.nlevi(),d.w_sec,d.thl_sec,
+                                       d.qw_sec,d.qwthl_sec,d.wthl_sec,d.tke,d.dz_zt,
+                                       d.dz_zi,d.zt_grid,d.zi_grid,d.isotropy_zi,
+                                       d.brunt_zi,d.w_sec_zi,d.thetal_zi,d.wthv_sec_zi,
+                                       d.w3);
+      d.transpose<ekat::util::TransposeDirection::f2c>();
+    }
+
+    // Verify BFB results, all data should be in C layout
+    for (Int i = 0; i < num_runs; ++i) {
+      SHOCCompThirdMomData& d_f90 = SDS_f90[i];
+      SHOCCompThirdMomData& d_cxx = SDS_cxx[i];
+      for (Int k = 0; k < d_f90.total1x2(); ++k) {
+        REQUIRE(d_f90.w3[k] == d_cxx.w3[k]);
+      }
+    }
   }
 };
 

@@ -1,0 +1,130 @@
+#ifndef SHOC_COMPUTE_DIAG_THIRD_SHOC_MOMENT_IMPL_HPP
+#define SHOC_COMPUTE_DIAG_THIRD_SHOC_MOMENT_IMPL_HPP
+
+#include "shoc_functions.hpp" // for ETI only but harmless for GPU
+
+namespace scream {
+namespace shoc {
+
+template<typename S, typename D>
+KOKKOS_FUNCTION
+void Functions<S,D>
+::compute_diag_third_shoc_moment(
+  const MemberType& team,
+  const Int& nlev,
+  const Int& nlevi,
+  const uview_1d<const Spack>& w_sec,
+  const uview_1d<const Spack>& thl_sec,
+  const uview_1d<const Spack>& wthl_sec,
+  const uview_1d<const Spack>& tke,
+  const uview_1d<const Spack>& dz_zt,
+  const uview_1d<const Spack>& dz_zi,
+  const uview_1d<const Spack>& isotropy_zi,
+  const uview_1d<const Spack>& brunt_zi,
+  const uview_1d<const Spack>& w_sec_zi,
+  const uview_1d<const Spack>& thetal_zi,
+  const uview_1d<Spack>& w3)
+{
+  const Int nlev_pack = ekat::pack::npack<Spack>(nlev);
+  const Int nlevi_pack = ekat::pack::npack<Spack>(nlevi);
+
+  // Scalarize views for shifts
+  const auto s_dz_zt = scalarize(dz_zt);
+  const auto s_wthl_sec = scalarize(wthl_sec);
+  const auto s_thl_sec = scalarize(thl_sec);
+  const auto s_w_sec = scalarize(w_sec);
+  const auto s_tke = scalarize(tke);
+
+  // Set lower condition: w3(i,nlevi) = 0
+  const Int last_pack_entry = (nlevi%Spack::n == 0 ? Spack::n-1 : nlevi%Spack::n-1);
+  w3(nlevi_pack-1)[last_pack_entry] = 0.0;
+
+  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev_pack), [&] (const Int& k) {
+    // Local variables
+    Spack
+      thedz, thedz2, iso, isosqrd, buoy_sgs2, bet2,
+      f0, f1, f2, f3, f4, f5,
+      omega0, omega1, omega2,
+      x0, x1, y0, y1,
+      aa0, aa1;
+
+    // Constants
+    const auto c_diag_3rd_mom = scream::shoc::Constants<Scalar>::c_diag_3rd_mom;
+    const Scalar a0 = (sp(0.52)*std::pow(c_diag_3rd_mom,-2.0))/(c_diag_3rd_mom-2.0);
+    const Scalar a1 = sp(0.87)/(c_diag_3rd_mom*c_diag_3rd_mom);
+    const Scalar a2 = sp(0.5)/c_diag_3rd_mom;
+    const Scalar a3 = sp(0.6)/(c_diag_3rd_mom*(c_diag_3rd_mom-2.0));
+    const Scalar a4 = sp(2.4)/(3.0*c_diag_3rd_mom+5.0);
+    const Scalar a5 = sp(0.6)/(c_diag_3rd_mom*(3.0+5.0*c_diag_3rd_mom));
+
+    // Calculate shifts
+    Spack
+      dz_zt_k,    dz_zt_km1,
+      wthl_sec_k, wthl_sec_km1, wthl_sec_kp1,
+      thl_sec_k,  thl_sec_km1,  thl_sec_kp1,
+      w_sec_k,    w_sec_km1,
+      tke_k,      tke_km1;
+
+    auto range_pack1 = ekat::pack::range<IntSmallPack>(k*Spack::n);
+    auto range_pack2 = range_pack1;
+    // index for _km1 should never go below 0 and _kp1 should never go above nlevi
+    range_pack2.set(range_pack1 < 1 || range_pack1 >= nlevi, 1);
+
+    ekat::pack::index_and_shift<-1>(s_dz_zt, range_pack2, dz_zt_k, dz_zt_km1);
+    ekat::pack::index_and_shift<-1>(s_wthl_sec, range_pack2, wthl_sec_k, wthl_sec_km1);
+    ekat::pack::index_and_shift<1> (s_wthl_sec, range_pack2, wthl_sec_k, wthl_sec_kp1);
+    ekat::pack::index_and_shift<-1>(s_thl_sec, range_pack2, thl_sec_k, thl_sec_km1);
+    ekat::pack::index_and_shift<1> (s_thl_sec, range_pack2, thl_sec_k, thl_sec_kp1);
+    ekat::pack::index_and_shift<-1>(s_w_sec, range_pack2, w_sec_k, w_sec_km1);
+    ekat::pack::index_and_shift<-1>(s_tke, range_pack2, tke_k, tke_km1);
+
+    // Compute inputs for computing f0 to f5 terms
+    thedz  = 1/dz_zi(k);
+    thedz2 = 1/(dz_zt_k+dz_zt_km1);
+
+    iso       = isotropy_zi(k);
+    isosqrd   = ekat::pack::square(iso);
+    buoy_sgs2 = isosqrd*brunt_zi(k);
+    bet2      = C::gravit/thetal_zi(k);
+
+    // Compute f0 to f5 terms
+    const Spack thl_sec_diff = thl_sec_km1 - thl_sec_kp1;
+    const Spack wthl_sec_diff = wthl_sec_km1 - wthl_sec_kp1;
+    const Spack wsec_diff = w_sec_km1 - w_sec(k);
+    const Spack tke_diff = tke_km1 - tke(k);
+
+    f0 = thedz2*ekat::pack::cube(bet2)*((iso*iso)*(iso*iso))*wthl_sec_k*thl_sec_diff;
+    f1 = thedz2*ekat::pack::square(bet2)*ekat::pack::cube(iso)*(wthl_sec_k*wthl_sec_diff+sp(0.5)*w_sec_zi(k)*thl_sec_diff);
+    f2 = thedz*bet2*isosqrd*wthl_sec_k*wsec_diff+2.0*thedz2*bet2*isosqrd*w_sec_zi(k)*wthl_sec_diff;
+    f3 = thedz2*bet2*isosqrd*w_sec_zi(k)*wthl_sec_diff+thedz*bet2*isosqrd*(wthl_sec_k*tke_diff);
+    f4 = thedz*iso*w_sec_zi(k)*(wsec_diff+tke_diff);
+    f5 = thedz*iso*w_sec_zi(k)*wsec_diff;
+
+    // Compute omega terms
+    omega0 = a4/Spack(1.0-a5*buoy_sgs2);
+    omega1 = omega0/(2.0*c_diag_3rd_mom);
+    omega2 = omega1*f3+sp(5.0/4.0)*omega0*f4;
+
+    // Compute the x0, y0, x1, y1 terms
+    x0 = (a2*buoy_sgs2*(Spack(1.0)-a3*buoy_sgs2))/(Spack(1.0)-(a1+a3)*buoy_sgs2);
+    y0 = (2.0*a2*buoy_sgs2*x0)/(Spack(1.0)-a3*buoy_sgs2);
+    x1 = (a0*f0+a1*f1+a2*(Spack(1.0)-a3*buoy_sgs2)*f2)/(Spack(1.0)-(a1+a3)*buoy_sgs2);
+    y1 = (2.0*a2*(buoy_sgs2*x1+(a0/a1)*f0+f1))/(Spack(1.0)-a3*buoy_sgs2);
+
+    // Compute the aa0, aa1 terms
+    aa0 = omega0*x0+omega1*y0;
+    aa1 = omega0*x1+omega1*y1+omega2;
+
+    // Finally, compute the third moment of w
+    w3(k).set(range_pack1 > 0 && range_pack1 < nlev,
+              (aa1-sp(1.2)*x1-sp(1.5)*f5)/(Spack(c_diag_3rd_mom)-sp(1.2)*x0+aa0));
+  });
+
+  // Set upper condition: w3(i,0) = 0
+  w3(0)[0] = 0.0;
+}
+
+} // namespace shoc
+} // namespace scream
+
+#endif
