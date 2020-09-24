@@ -31,16 +31,16 @@ struct Functions
   using Device = DeviceT;
 
   template <typename S>
-  using BigPack = ekat::pack::Pack<S,SCREAM_PACK_SIZE>;
+  using BigPack = ekat::Pack<S,SCREAM_PACK_SIZE>;
   template <typename S>
-  using SmallPack = ekat::pack::Pack<S,SCREAM_SMALL_PACK_SIZE>;
+  using SmallPack = ekat::Pack<S,SCREAM_SMALL_PACK_SIZE>;
 
   using IntSmallPack = SmallPack<Int>;
   using Pack = BigPack<Scalar>;
   using Spack = SmallPack<Scalar>;
 
-  using Mask  = ekat::pack::Mask<Pack::n>;
-  using Smask = ekat::pack::Mask<Spack::n>;
+  using Mask  = ekat::Mask<Pack::n>;
+  using Smask = ekat::Mask<Spack::n>;
 
   using KT = ekat::KokkosTypes<Device>;
 
@@ -55,10 +55,10 @@ struct Functions
   using view_1d_ptr_array = typename KT::template view_1d_ptr_carray<S, N>;
 
   template <typename S>
-  using uview_1d = typename ekat::util::template Unmanaged<view_1d<S> >;
+  using uview_1d = typename ekat::template Unmanaged<view_1d<S> >;
 
   template <typename S>
-  using uview_2d = typename ekat::util::template Unmanaged<view_2d<S> >;
+  using uview_2d = typename ekat::template Unmanaged<view_2d<S> >;
 
   using MemberType = typename KT::MemberType;
 
@@ -67,6 +67,18 @@ struct Functions
   //
   // --------- Functions ---------
   //
+  KOKKOS_FUNCTION
+  static void calc_shoc_varorcovar(
+    const MemberType&            team,
+    const Int&                   nlev, 
+    const Scalar&                tunefac,
+    const uview_1d<const Spack>& isotropy_zi, 
+    const uview_1d<const Spack>& tkh_zi,
+    const uview_1d<const Spack>& dz_zi,
+    const uview_1d<const Spack>& invar1, 
+    const uview_1d<const Spack>& invar2, 
+    const uview_1d<Spack>&       varorcovar);
+
   KOKKOS_FUNCTION
   static void calc_shoc_vertflux(
     const MemberType& team,
@@ -86,6 +98,23 @@ struct Functions
     Scalar& thl_sec, Scalar& qw_sec, Scalar& wthl_sec, Scalar& wqw_sec,
     Scalar& qwthl_sec, Scalar& uw_sec, Scalar& vw_sec, Scalar& wtke_sec);
 
+  KOKKOS_FUNCTION
+  static void update_host_dse(
+    const MemberType& team,
+    const Int& nlev,
+    const uview_1d<const Spack>& thlm,
+    const uview_1d<const Spack>& shoc_ql,
+    const uview_1d<const Spack>& exner,
+    const uview_1d<const Spack>& zt_grid,
+    const Scalar& phis,
+    const uview_1d<Spack>& host_dse);
+
+  KOKKOS_FUNCTION
+  static void shoc_pblintd_init_pot(
+    const MemberType& team, const Int& nlev,
+    const view_1d<const Spack>& thl, const view_1d<const Spack>& ql, const view_1d<const Spack>& q,
+    const view_1d<Spack>& thv);
+
 }; // struct Functions
 
 } // namespace shoc
@@ -94,9 +123,12 @@ struct Functions
 // If a GPU build, make all code available to the translation unit; otherwise,
 // ETI is used.
 #ifdef KOKKOS_ENABLE_CUDA
+# include "shoc_calc_shoc_varorcovar_impl.hpp"
 # include "shoc_calc_shoc_vertflux_impl.hpp"
 # include "shoc_diag_second_moments_srf_impl.hpp"
 # include "shoc_diag_second_moments_ubycond_impl.hpp"
+# include "shoc_update_host_dse_impl.hpp"
+# include "shoc_pblintd_init_pot_impl.hpp"
 #endif
 
 #endif
