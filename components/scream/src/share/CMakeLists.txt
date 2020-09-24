@@ -26,4 +26,5 @@ set_target_properties(scream_share PROPERTIES
 if (NOT SCREAM_LIB_ONLY)
   add_subdirectory(tests)
 endif()
-  add_subdirectory(io)
+
+add_subdirectory(io)
