@@ -19,12 +19,12 @@ void Functions<S,D>
 
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlevi_pack), [&] (const Int& k) {
     const auto w3clip = scream::shoc::Constants<Scalar>::w3clip;
-    Spack tsign(1.0);
+    Spack tsign(1);
 
     const auto theterm = w_sec_zi(k);
-    const auto cond    = w3clip*ekat::pack::sqrt(2.0*ekat::pack::cube(theterm));
+    const auto cond    = w3clip*ekat::pack::sqrt(2*ekat::pack::cube(theterm));
 
-    tsign.set(w3(k)<0, -1.0);
+    tsign.set(w3(k)<0, -1);
     w3(k).set(tsign*w3(k) > cond, tsign*cond);
   });
 }
