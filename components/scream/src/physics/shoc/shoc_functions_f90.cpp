@@ -26,6 +26,13 @@ void shoc_grid_c(int shcol, int nlev, int nlevi, Real *zt_grid, Real *zi_grid,
 void update_host_dse_c(Int shcol, Int nlev, Real *thlm, Real *shoc_ql,
                        Real *exner, Real *zt_grid, Real *phis, Real *host_dse);
 
+void shoc_energy_fixer_c(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv,
+                         Real *zt_grid, Real *zi_grid, Real *se_b, Real *ke_b,
+                         Real *wv_b, Real *wl_b, Real *se_a, Real *ke_a, 
+                         Real *wv_a, Real *wl_a, Real *wthl_sfc, Real *wqw_sfc,
+                         Real *pdel, Real *rho_zt, Real *tke, Real *pint, 
+                         Real *host_dse);
+
 void shoc_energy_integrals_c(Int shcol, Int nlev, Real *host_dse, Real *pdel,
                              Real *rtm, Real *rcm, Real *u_wind, Real *v_wind,
                              Real *se_int, Real *ke_int, Real *wv_int, Real *wl_int);
@@ -242,6 +249,17 @@ void update_host_dse(SHOCEnergydseData &d) {
   d.transpose<ekat::TransposeDirection::c2f>();
   update_host_dse_c(d.shcol(), d.nlev(), d.thlm, d.shoc_ql, d.exner,
                     d.zt_grid, d.phis, d.host_dse);
+  d.transpose<ekat::TransposeDirection::f2c>();
+}
+
+void shoc_energy_fixer(SHOCEnergyfixerData &d){
+  shoc_init(d.nlev(), true);
+  d.transpose<ekat::TransposeDirection::c2f>();
+  shoc_energy_fixer_c(d.shcol(), d.nlev(), d.nlevi(), d.dtime, d.nadv,
+                      d.zt_grid, d.zi_grid, d.se_b, d.ke_b, d.wv_b,
+                      d.wl_b, d.se_a, d.ke_a, d.wv_a, d.wl_a, d.wthl_sfc,
+                      d.wqw_sfc, d.pdel, d.rho_zt, d.tke, d.pint,
+                      d.host_dse);
   d.transpose<ekat::TransposeDirection::f2c>();
 }
 
@@ -585,9 +603,9 @@ void shoc_diag_second_moments_ubycond(SHOCSecondMomentUbycondData& d)
 void shoc_pblintd_init_pot(SHOCPblintdInitPotData& d)
 {
   shoc_init(d.nlev(), true);
-  d.transpose<ekat::util::TransposeDirection::c2f>();
+  d.transpose<ekat::TransposeDirection::c2f>();
   shoc_pblintd_init_pot_c(d.shcol(), d.nlev(), d.thl, d.ql, d.q, d.thv);
-  d.transpose<ekat::util::TransposeDirection::f2c>();
+  d.transpose<ekat::TransposeDirection::f2c>();
 }
 
 //
@@ -841,7 +859,7 @@ void shoc_pblintd_init_pot_f(Int shcol, Int nlev, Real *thl, Real* ql, Real* q,
   static constexpr Int num_arrays = 3;
 
   Kokkos::Array<view_2d, num_arrays> temp_d;
-  ekat::pack::host_to_device({thl, ql, q}, shcol, nlev, temp_d, true);
+  ekat::host_to_device({thl, ql, q}, shcol, nlev, temp_d, true);
 
   view_2d thl_d(temp_d[0]),
           ql_d (temp_d[1]),
@@ -849,21 +867,21 @@ void shoc_pblintd_init_pot_f(Int shcol, Int nlev, Real *thl, Real* ql, Real* q,
 
   view_2d thv_d("thv", shcol, nlev);
 
-  const Int nlev_pack = ekat::pack::npack<Spack>(nlev);
-  const auto policy = ekat::util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_pack);
+  const Int nlev_pack = ekat::npack<Spack>(nlev);
+  const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_pack);
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
     const Int i = team.league_rank();
 
-    const auto thl_1d = ekat::util::subview(thl_d, i);
-    const auto ql_1d  = ekat::util::subview(ql_d, i);
-    const auto q_1d   = ekat::util::subview(q_d, i);
-    const auto thv_1d = ekat::util::subview(thv_d, i);
+    const auto thl_1d = ekat::subview(thl_d, i);
+    const auto ql_1d  = ekat::subview(ql_d, i);
+    const auto q_1d   = ekat::subview(q_d, i);
+    const auto thv_1d = ekat::subview(thv_d, i);
 
     SHOC::shoc_pblintd_init_pot(team, nlev, thl_1d, ql_1d, q_1d, thv_1d);
   });
 
   Kokkos::Array<view_2d, 1> inout_views = {thv_d};
-  ekat::pack::device_to_host({thv}, {shcol}, {nlev}, inout_views, true);
+  ekat::device_to_host<int,1>({thv}, {shcol}, {nlev}, inout_views, true);
 }
 
 } // namespace shoc
