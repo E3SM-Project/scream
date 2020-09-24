@@ -32,6 +32,7 @@ if (NOT CUDA_BUILD)
     shoc_update_host_dse.cpp
     shoc_calc_shoc_varorcovar.cpp
     shoc_calc_shoc_vertflux.cpp
+    shoc_clipping_diag_third_shoc_moments.cpp
   )
 endif()
 

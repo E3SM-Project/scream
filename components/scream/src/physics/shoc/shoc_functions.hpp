@@ -2,6 +2,7 @@
 #define SHOC_FUNCTIONS_HPP
 
 #include "physics/share/physics_constants.hpp"
+#include "physics/shoc/shoc_constants.hpp"
 
 #include "share/scream_types.hpp"
 
@@ -99,6 +100,13 @@ struct Functions
     Scalar& qwthl_sec, Scalar& uw_sec, Scalar& vw_sec, Scalar& wtke_sec);
 
   KOKKOS_FUNCTION
+  static void clipping_diag_third_shoc_moments(
+    const MemberType& team,
+    const Int& nlevi,
+    const uview_1d<const Spack>& w_sec_zi,
+    const uview_1d<Spack>& w3);
+
+  KOKKOS_FUNCTION
   static void update_host_dse(
     const MemberType& team,
     const Int& nlev,
@@ -121,6 +129,7 @@ struct Functions
 # include "shoc_calc_shoc_vertflux_impl.hpp"
 # include "shoc_diag_second_moments_srf_impl.hpp"
 # include "shoc_diag_second_moments_ubycond_impl.hpp"
+# include "shoc_clipping_diag_third_shoc_moments_impl.hpp"
 # include "shoc_update_host_dse_impl.hpp"
 #endif
 
