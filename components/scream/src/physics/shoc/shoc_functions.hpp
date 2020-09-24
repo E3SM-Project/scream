@@ -67,17 +67,28 @@ struct Functions
   //
   // --------- Functions ---------
   //
+
+  KOKKOS_FUNCTION
+  static void isotropic_ts(
+    const MemberType&            team,
+    const Int&                   nlev,
+    const Scalar&                brunt_int,
+    const uview_1d<const Spack>& tke,
+    const uview_1d<const Spack>& a_diss,
+    const uview_1d<const Spack>& brunt_s,
+    const uview_1d<Spack>&       isotropy);
+
   KOKKOS_FUNCTION
   static void calc_shoc_varorcovar(
     const MemberType&            team,
-    const Int&                   nlev, 
+    const Int&                   nlev,
     const Scalar&                tunefac,
-    const uview_1d<const Spack>& isotropy_zi, 
+    const uview_1d<const Spack>& isotropy_zi,
     const uview_1d<const Spack>& tkh_zi,
     const uview_1d<const Spack>& dz_zi,
-    const uview_1d<const Spack>& invar1, 
-    const uview_1d<const Spack>& invar2, 
-    const uview_1d<Spack>&       varorcovar);
+    const uview_1d<const Spack>& invar1,
+    const uview_1d<const Spack>& invar2,
+    const uview_1d<Spack>&       varorcovar5B);
 
   KOKKOS_FUNCTION
   static void calc_shoc_vertflux(
@@ -117,6 +128,7 @@ struct Functions
 // If a GPU build, make all code available to the translation unit; otherwise,
 // ETI is used.
 #ifdef KOKKOS_ENABLE_CUDA
+# include "shoc_isotropic_ts_impl.hpp"
 # include "shoc_calc_shoc_varorcovar_impl.hpp"
 # include "shoc_calc_shoc_vertflux_impl.hpp"
 # include "shoc_diag_second_moments_srf_impl.hpp"

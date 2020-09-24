@@ -586,9 +586,63 @@ void shoc_diag_second_moments_ubycond(SHOCSecondMomentUbycondData& d)
 void isotropic_ts_f(Int nlev, Int shcol, Real *brunt_int, Real *tke, Real *a_diss,
                     Real *brunt, Real *isotropy)
 {
+  using SHF = Functions<Real, DefaultDevice>;
+
+  using Scalar     = typename SHF::Scalar;
+  using Pack1d     = typename ekat::pack::Pack<Real,1>;
+  using view_1d    = typename SHF::view_1d<Pack1d>;
+  using Spack      = typename SHF::Spack;
+  using view_2d    = typename SHF::view_2d<Spack>;
+  using KT         = typename SHF::KT;
+  using ExeSpace   = typename KT::ExeSpace;
+  using MemberType = typename SHF::MemberType;
+
+  Kokkos::Array<view_1d, 1> temp_1d_d;
+
+  static constexpr Int num_arrays = 4;
+
+  Kokkos::Array<view_2d, num_arrays> temp_2d_d;
+  Kokkos::Array<size_t,  num_arrays> dim1_sizes    = {shcol, shcol,  shcol, shcol   };
+  Kokkos::Array<size_t,  num_arrays> dim2_sizes    = {nlev,  nlev,   nlev,  nlev    };
+  Kokkos::Array<const Real*, num_arrays> ptr_array = {tke,   a_diss, brunt, isotropy};
+
+  // Sync to device
+  ekat::pack::host_to_device({brunt_int}, shcol, temp_1d_d); // 1d
+  ekat::pack::host_to_device(ptr_array, dim1_sizes, dim2_sizes, temp_2d_d, true); // 2d
+
+  view_1d
+    brunt_int_d (temp_1d_d[0]);
+
+  view_2d
+    tke_d      (temp_2d_d[0]),
+    a_diss_d   (temp_2d_d[1]),
+    brunt_d    (temp_2d_d[2]),
+    isotropy_d (temp_2d_d[3]);
+
+  const Int nk_pack = ekat::pack::npack<Spack>(nlev);
+  const auto policy = ekat::util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
+  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+
+      const Int i = team.league_rank();
+
+      //for 1d column dimensioned variables
+      const Scalar brunt_int_s{brunt_int_d(i)[0]};
+
+      //for 2d column and level dimensioned variables
+      const auto tke_s       = ekat::util::subview(tke_d,      i);
+      const auto a_diss_s    = ekat::util::subview(a_diss_d,   i);
+      const auto brunt_s     = ekat::util::subview(brunt_d,    i);
+      const auto isotropy_s  = ekat::util::subview(isotropy_d, i);
+
+      //SHF:: isotropic_ts_f(team, nlev, brunt_int_s, tke_s, a_diss_s,
+      //                     brunt_s, isotropy_s)
+
+    });
+
+  // Sync back to host
+  Kokkos::Array<view_2d, 1> inout_views = {isotropy_d};
+  ekat::pack::device_to_host({isotropy}, {shcol}, {nlev}, inout_views, true);
 }
-
-
 
 void calc_shoc_varorcovar_f(Int shcol, Int nlev, Int nlevi, Real tunefac,
                             Real *isotropy_zi, Real *tkh_zi, Real *dz_zi,
