@@ -25,8 +25,8 @@ void Functions<S,D>
   const uview_1d<const Spack>& thetal_zi,
   const uview_1d<Spack>& w3)
 {
-  const Int nlev_pack = ekat::pack::npack<Spack>(nlev);
-  const Int nlevi_pack = ekat::pack::npack<Spack>(nlevi);
+  const Int nlev_pack = ekat::npack<Spack>(nlev);
+  const Int nlevi_pack = ekat::npack<Spack>(nlevi);
 
   // Scalarize views for shifts
   const auto s_dz_zt = scalarize(dz_zt);
@@ -57,25 +57,25 @@ void Functions<S,D>
       w_sec_k,    w_sec_km1,
       tke_k,      tke_km1;
 
-    auto range_pack1 = ekat::pack::range<IntSmallPack>(k*Spack::n);
+    auto range_pack1 = ekat::range<IntSmallPack>(k*Spack::n);
     auto range_pack2 = range_pack1;
     // index for _km1 should never go below 0 and _kp1 should never go above nlevi
     range_pack2.set(range_pack1 < 1 || range_pack1 >= nlevi, 1);
 
-    ekat::pack::index_and_shift<-1>(s_dz_zt, range_pack2, dz_zt_k, dz_zt_km1);
-    ekat::pack::index_and_shift<-1>(s_wthl_sec, range_pack2, wthl_sec_k, wthl_sec_km1);
-    ekat::pack::index_and_shift<1> (s_wthl_sec, range_pack2, wthl_sec_k, wthl_sec_kp1);
-    ekat::pack::index_and_shift<-1>(s_thl_sec, range_pack2, thl_sec_k, thl_sec_km1);
-    ekat::pack::index_and_shift<1> (s_thl_sec, range_pack2, thl_sec_k, thl_sec_kp1);
-    ekat::pack::index_and_shift<-1>(s_w_sec, range_pack2, w_sec_k, w_sec_km1);
-    ekat::pack::index_and_shift<-1>(s_tke, range_pack2, tke_k, tke_km1);
+    ekat::index_and_shift<-1>(s_dz_zt, range_pack2, dz_zt_k, dz_zt_km1);
+    ekat::index_and_shift<-1>(s_wthl_sec, range_pack2, wthl_sec_k, wthl_sec_km1);
+    ekat::index_and_shift<1> (s_wthl_sec, range_pack2, wthl_sec_k, wthl_sec_kp1);
+    ekat::index_and_shift<-1>(s_thl_sec, range_pack2, thl_sec_k, thl_sec_km1);
+    ekat::index_and_shift<1> (s_thl_sec, range_pack2, thl_sec_k, thl_sec_kp1);
+    ekat::index_and_shift<-1>(s_w_sec, range_pack2, w_sec_k, w_sec_km1);
+    ekat::index_and_shift<-1>(s_tke, range_pack2, tke_k, tke_km1);
 
     // Compute inputs for computing f0 to f5 terms
     const auto thedz  = 1/dz_zi(k);
     const auto thedz2 = 1/(dz_zt_k+dz_zt_km1);
 
     const auto iso       = isotropy_zi(k);
-    const auto isosqrd   = ekat::pack::square(iso);
+    const auto isosqrd   = ekat::square(iso);
     const auto buoy_sgs2 = isosqrd*brunt_zi(k);
     const auto bet2      = C::gravit/thetal_zi(k);
 
@@ -85,8 +85,8 @@ void Functions<S,D>
     const Spack wsec_diff = w_sec_km1 - w_sec(k);
     const Spack tke_diff = tke_km1 - tke(k);
 
-    const auto f0 = thedz2*ekat::pack::cube(bet2)*((iso*iso)*(iso*iso))*wthl_sec_k*thl_sec_diff;
-    const auto f1 = thedz2*ekat::pack::square(bet2)*ekat::pack::cube(iso)*(wthl_sec_k*wthl_sec_diff+sp(0.5)*w_sec_zi(k)*thl_sec_diff);
+    const auto f0 = thedz2*ekat::cube(bet2)*((iso*iso)*(iso*iso))*wthl_sec_k*thl_sec_diff;
+    const auto f1 = thedz2*ekat::square(bet2)*ekat::cube(iso)*(wthl_sec_k*wthl_sec_diff+sp(0.5)*w_sec_zi(k)*thl_sec_diff);
     const auto f2 = thedz*bet2*isosqrd*wthl_sec_k*wsec_diff+2*thedz2*bet2*isosqrd*w_sec_zi(k)*wthl_sec_diff;
     const auto f3 = thedz2*bet2*isosqrd*w_sec_zi(k)*wthl_sec_diff+thedz*bet2*isosqrd*(wthl_sec_k*tke_diff);
     const auto f4 = thedz*iso*w_sec_zi(k)*(wsec_diff+tke_diff);

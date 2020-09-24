@@ -252,13 +252,13 @@ void update_host_dse(SHOCEnergydseData &d) {
 
 void shoc_energy_fixer(SHOCEnergyfixerData &d){
   shoc_init(d.nlev(), true);
-  d.transpose<ekat::util::TransposeDirection::c2f>();
+  d.transpose<ekat::TransposeDirection::c2f>();
   shoc_energy_fixer_c(d.shcol(), d.nlev(), d.nlevi(), d.dtime, d.nadv,
                       d.zt_grid, d.zi_grid, d.se_b, d.ke_b, d.wv_b,
                       d.wl_b, d.se_a, d.ke_a, d.wv_a, d.wl_a, d.wthl_sfc,
                       d.wqw_sfc, d.pdel, d.rho_zt, d.tke, d.pint,
                       d.host_dse);
-  d.transpose<ekat::util::TransposeDirection::f2c>();
+  d.transpose<ekat::TransposeDirection::f2c>();
 }
 
 void shoc_energy_integrals(SHOCEnergyintData &d) {
@@ -824,7 +824,7 @@ void compute_diag_third_shoc_moment_f(Int shcol, Int nlev, Int nlevi, Real* w_se
                                               w3};
 
   // Sync to device
-  ekat::pack::host_to_device(ptr_array, dim1_sizes, dim2_sizes, temp_d, true);
+  ekat::host_to_device(ptr_array, dim1_sizes, dim2_sizes, temp_d, true);
 
   view_2d
     w_sec_d      (temp_d[0]),
@@ -839,22 +839,22 @@ void compute_diag_third_shoc_moment_f(Int shcol, Int nlev, Int nlevi, Real* w_se
     thetal_zi_d  (temp_d[9]),
     w3_d         (temp_d[10]);
 
-  const Int nk_pack = ekat::pack::npack<Spack>(nlev);
-  const auto policy = ekat::util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
+  const Int nk_pack = ekat::npack<Spack>(nlev);
+  const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
     const Int i = team.league_rank();
 
-    const auto w_sec_s       = ekat::util::subview(w_sec_d, i);
-    const auto thl_sec_s     = ekat::util::subview(thl_sec_d, i);
-    const auto wthl_sec_s    = ekat::util::subview(wthl_sec_d, i);
-    const auto tke_s         = ekat::util::subview(tke_d, i);
-    const auto dz_zt_s       = ekat::util::subview(dz_zt_d, i);
-    const auto dz_zi_s       = ekat::util::subview(dz_zi_d, i);
-    const auto isotropy_zi_s = ekat::util::subview(isotropy_zi_d, i);
-    const auto brunt_zi_s    = ekat::util::subview(brunt_zi_d, i);
-    const auto w_sec_zi_s    = ekat::util::subview(w_sec_zi_d, i);
-    const auto thetal_zi_s   = ekat::util::subview(thetal_zi_d, i);
-    const auto w3_s          = ekat::util::subview(w3_d, i);
+    const auto w_sec_s       = ekat::subview(w_sec_d, i);
+    const auto thl_sec_s     = ekat::subview(thl_sec_d, i);
+    const auto wthl_sec_s    = ekat::subview(wthl_sec_d, i);
+    const auto tke_s         = ekat::subview(tke_d, i);
+    const auto dz_zt_s       = ekat::subview(dz_zt_d, i);
+    const auto dz_zi_s       = ekat::subview(dz_zi_d, i);
+    const auto isotropy_zi_s = ekat::subview(isotropy_zi_d, i);
+    const auto brunt_zi_s    = ekat::subview(brunt_zi_d, i);
+    const auto w_sec_zi_s    = ekat::subview(w_sec_zi_d, i);
+    const auto thetal_zi_s   = ekat::subview(thetal_zi_d, i);
+    const auto w3_s          = ekat::subview(w3_d, i);
 
     SHF::compute_diag_third_shoc_moment(team, nlev, nlevi, w_sec_s, thl_sec_s,
                                         wthl_sec_s, tke_s, dz_zt_s, dz_zi_s, isotropy_zi_s,
@@ -863,7 +863,7 @@ void compute_diag_third_shoc_moment_f(Int shcol, Int nlev, Int nlevi, Real* w_se
 
   // Sync back to host
   Kokkos::Array<view_2d, 1> inout_views = {w3_d};
-  ekat::pack::device_to_host({w3}, {shcol}, {nlevi}, inout_views, true);
+  ekat::device_to_host<int,1>({w3}, {shcol}, {nlevi}, inout_views, true);
 }
 
 void update_host_dse_f(Int shcol, Int nlev, Real* thlm, Real* shoc_ql, Real* exner, Real* zt_grid,

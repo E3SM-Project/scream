@@ -224,14 +224,14 @@ struct UnitWrap::UnitTest<D>::TestShocCompDiagThird {
 
     // Get data from cxx
     for (auto& d : SDS_cxx) {
-      d.transpose<ekat::util::TransposeDirection::c2f>();
+      d.transpose<ekat::TransposeDirection::c2f>();
       // expects data in fortran layout
       compute_diag_third_shoc_moment_f(d.shcol(),d.nlev(),d.nlevi(),d.w_sec,d.thl_sec,
                                        d.wthl_sec,d.tke,d.dz_zt,
                                        d.dz_zi,d.isotropy_zi,
                                        d.brunt_zi,d.w_sec_zi,d.thetal_zi,
                                        d.w3);
-      d.transpose<ekat::util::TransposeDirection::f2c>();
+      d.transpose<ekat::TransposeDirection::f2c>();
     }
 
     // Verify BFB results, all data should be in C layout
