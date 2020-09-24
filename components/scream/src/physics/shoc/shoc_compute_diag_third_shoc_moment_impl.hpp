@@ -37,17 +37,17 @@ void Functions<S,D>
 
   // Set lower condition: w3(i,nlevi) = 0
   const Int last_pack_entry = (nlevi%Spack::n == 0 ? Spack::n-1 : nlevi%Spack::n-1);
-  w3(nlevi_pack-1)[last_pack_entry] = 0.0;
+  w3(nlevi_pack-1)[last_pack_entry] = 0;
 
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev_pack), [&] (const Int& k) {
     // Constants
     const auto c_diag_3rd_mom = scream::shoc::Constants<Scalar>::c_diag_3rd_mom;
-    const Scalar a0 = (sp(0.52)*std::pow(c_diag_3rd_mom,-2.0))/(c_diag_3rd_mom-2.0);
+    const Scalar a0 = (sp(0.52)*std::pow(c_diag_3rd_mom,-2))/(c_diag_3rd_mom-2);
     const Scalar a1 = sp(0.87)/(c_diag_3rd_mom*c_diag_3rd_mom);
     const Scalar a2 = sp(0.5)/c_diag_3rd_mom;
-    const Scalar a3 = sp(0.6)/(c_diag_3rd_mom*(c_diag_3rd_mom-2.0));
-    const Scalar a4 = sp(2.4)/(3.0*c_diag_3rd_mom+5.0);
-    const Scalar a5 = sp(0.6)/(c_diag_3rd_mom*(3.0+5.0*c_diag_3rd_mom));
+    const Scalar a3 = sp(0.6)/(c_diag_3rd_mom*(c_diag_3rd_mom-2));
+    const Scalar a4 = sp(2.4)/(3*c_diag_3rd_mom+5);
+    const Scalar a5 = sp(0.6)/(c_diag_3rd_mom*(3+5*c_diag_3rd_mom));
 
     // Calculate shifts
     Spack
@@ -87,21 +87,21 @@ void Functions<S,D>
 
     const auto f0 = thedz2*ekat::pack::cube(bet2)*((iso*iso)*(iso*iso))*wthl_sec_k*thl_sec_diff;
     const auto f1 = thedz2*ekat::pack::square(bet2)*ekat::pack::cube(iso)*(wthl_sec_k*wthl_sec_diff+sp(0.5)*w_sec_zi(k)*thl_sec_diff);
-    const auto f2 = thedz*bet2*isosqrd*wthl_sec_k*wsec_diff+2.0*thedz2*bet2*isosqrd*w_sec_zi(k)*wthl_sec_diff;
+    const auto f2 = thedz*bet2*isosqrd*wthl_sec_k*wsec_diff+2*thedz2*bet2*isosqrd*w_sec_zi(k)*wthl_sec_diff;
     const auto f3 = thedz2*bet2*isosqrd*w_sec_zi(k)*wthl_sec_diff+thedz*bet2*isosqrd*(wthl_sec_k*tke_diff);
     const auto f4 = thedz*iso*w_sec_zi(k)*(wsec_diff+tke_diff);
     const auto f5 = thedz*iso*w_sec_zi(k)*wsec_diff;
 
     // Compute omega terms
-    const auto omega0 = a4/Spack(1.0-a5*buoy_sgs2);
-    const auto omega1 = omega0/(2.0*c_diag_3rd_mom);
+    const auto omega0 = a4/Spack(1-a5*buoy_sgs2);
+    const auto omega1 = omega0/(2*c_diag_3rd_mom);
     const auto omega2 = omega1*f3+sp(5.0/4.0)*omega0*f4;
 
     // Compute the x0, y0, x1, y1 terms
-    const auto x0 = (a2*buoy_sgs2*(Spack(1.0)-a3*buoy_sgs2))/(Spack(1.0)-(a1+a3)*buoy_sgs2);
-    const auto y0 = (2.0*a2*buoy_sgs2*x0)/(Spack(1.0)-a3*buoy_sgs2);
-    const auto x1 = (a0*f0+a1*f1+a2*(Spack(1.0)-a3*buoy_sgs2)*f2)/(Spack(1.0)-(a1+a3)*buoy_sgs2);
-    const auto y1 = (2.0*a2*(buoy_sgs2*x1+(a0/a1)*f0+f1))/(Spack(1.0)-a3*buoy_sgs2);
+    const auto x0 = (a2*buoy_sgs2*(Spack(1)-a3*buoy_sgs2))/(Spack(1)-(a1+a3)*buoy_sgs2);
+    const auto y0 = (2*a2*buoy_sgs2*x0)/(Spack(1)-a3*buoy_sgs2);
+    const auto x1 = (a0*f0+a1*f1+a2*(Spack(1)-a3*buoy_sgs2)*f2)/(Spack(1)-(a1+a3)*buoy_sgs2);
+    const auto y1 = (2*a2*(buoy_sgs2*x1+(a0/a1)*f0+f1))/(Spack(1)-a3*buoy_sgs2);
 
     // Compute the aa0, aa1 terms
     const auto aa0 = omega0*x0+omega1*y0;
@@ -113,7 +113,7 @@ void Functions<S,D>
   });
 
   // Set upper condition: w3(i,0) = 0
-  w3(0)[0] = 0.0;
+  w3(0)[0] = 0;
 }
 
 } // namespace shoc
