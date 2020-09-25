@@ -959,6 +959,10 @@ contains
    real(rtype)    :: table_val_ice_mean_diam   ! mass-weighted mean diameter          See lines 1212 - 1279  dmm
    real(rtype)    :: table_val_ice_bulk_dens   ! mass-weighted mean particle density  See lines 1212 - 1279  rhomm
 
+   real(rtype)    :: qc_incld     !in-cloud qi
+   real(rtype)    :: nc_incld     !in-cloud ni
+   real(rtype)    :: qr_incld     !in-cloud qi
+   real(rtype)    :: nr_incld     !in-cloud ni
    real(rtype)    :: qi_incld     !in-cloud qi
    real(rtype)    :: ni_incld     !in-cloud ni
    real(rtype)    :: qm_incld     !in-cloud qm
