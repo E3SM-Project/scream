@@ -134,7 +134,7 @@ void Functions<S,D>
   hydrometeorsPresent = false;
   team.team_barrier();
 
-  const Int nk_pack = ekat::pack::npack<Spack>(nk);
+  const Int nk_pack = ekat::npack<Spack>(nk);
 
   //
   // calculate some time-varying atmospheric variables
@@ -147,7 +147,7 @@ void Functions<S,D>
   Kokkos::parallel_for(
     Kokkos::TeamThreadRange(team, nk_pack), [&] (Int k) {
 
-    const auto range_pack = ekat::pack::range<IntSmallPack>(k*Spack::n);
+    const auto range_pack = ekat::range<IntSmallPack>(k*Spack::n);
     const auto range_mask = range_pack < nk;
 
     rho(k)          = dpres(k)/dz(k) / g;
@@ -328,7 +328,7 @@ void Functions<S,D>
     }
 
     //compute mask to identify padded values in packs, which are undefined
-    const auto range_pack = ekat::pack::range<IntSmallPack>(k*Spack::n);
+    const auto range_pack = ekat::range<IntSmallPack>(k*Spack::n);
     const auto range_mask = range_pack < nk;
 
     // All microphysics tendencies will be computed as IN-CLOUD, they will be mapped back to cell-average later.
@@ -434,6 +434,9 @@ void Functions<S,D>
         nr_incld(k).set(qi_gt_small, max(nr_incld(k), nsmall));
 
         const auto rhop = calc_bulk_rho_rime(qi_incld(k), qm_incld(k), bm_incld(k), qi_gt_small);
+        qi(k).set(qi_gt_small, qi_incld(k)*cld_frac_i(k) );
+        qm(k).set(qi_gt_small, qm_incld(k)*cld_frac_i(k) );
+        bm(k).set(qi_gt_small, bm_incld(k)*cld_frac_i(k) );
 
         TableIce table_ice;
         lookup_ice(qi_incld(k), ni_incld(k), qm_incld(k), rhop, table_ice, qi_gt_small);
@@ -712,6 +715,7 @@ void Functions<S,D>
   const uview_1d<const Spack>& exner,
   const uview_1d<const Spack>& cld_frac_l,
   const uview_1d<const Spack>& cld_frac_r,
+  const uview_1d<const Spack>& cld_frac_i,
   const uview_1d<Spack>& rho,
   const uview_1d<Spack>& inv_rho,
   const uview_1d<Spack>& rhofaci,
@@ -815,12 +819,19 @@ void Functions<S,D>
 
       // impose lower limits to prevent taking log of # < 0
       ni(k) = max(ni(k), nsmall);
-      nr(k)    = max(nr(k), nsmall);
 
-      const auto rhop = calc_bulk_rho_rime(qi(k), qm(k), bm(k), qi_gt_small);
+      auto qi_incld = qi(k)/cld_frac_i(k);
+      auto ni_incld = ni(k)/cld_frac_i(k);
+      auto qm_incld = qm(k)/cld_frac_i(k);
+      auto bm_incld = bm(k)/cld_frac_i(k);
+
+      const auto rhop = calc_bulk_rho_rime(qi_incld, qm_incld, bm_incld, qi_gt_small);
+      qi(k).set(qi_gt_small, qi_incld*cld_frac_i(k) );
+      qm(k).set(qi_gt_small, qm_incld*cld_frac_i(k) );
+      bm(k).set(qi_gt_small, bm_incld*cld_frac_i(k) );
 
       TableIce table_ice;
-      lookup_ice(qi(k), ni(k), qm(k), rhop, table_ice, qi_gt_small);
+      lookup_ice(qi_incld, ni_incld, qm_incld, rhop, table_ice, qi_gt_small);
 
       table_val_qi_fallspd.set(qi_gt_small, apply_table_ice(1,  itab, table_ice, qi_gt_small));
       table_val_ice_eff_rad.set(qi_gt_small, apply_table_ice(5,  itab, table_ice, qi_gt_small));
@@ -832,8 +843,8 @@ void Functions<S,D>
 
       // impose mean ice size bounds (i.e. apply lambda limiters)
       // note that the Nmax and Nmin are normalized and thus need to be multiplied by existing N
-      ni(k).set(qi_gt_small, min(ni(k), table_val_ni_lammax * ni(k)));
-      ni(k).set(qi_gt_small, max(ni(k), table_val_ni_lammin * ni(k)));
+      ni_incld.set(qi_gt_small, min(ni_incld, table_val_ni_lammax * ni_incld));
+      ni_incld.set(qi_gt_small, max(ni_incld, table_val_ni_lammin * ni_incld));
 
       // --this should already be done in s/r 'calc_bulkRhoRime'
       const auto qm_small = qm(k) < qsmall && qi_gt_small;
@@ -847,15 +858,18 @@ void Functions<S,D>
       rho_qi(k).set(qi_gt_small, table_val_ice_bulk_dens);
 
       // note factor of air density below is to convert from m^6/kg to m^6/m^3
-      ze_ice(k).set(qi_gt_small, ze_ice(k) + sp(0.1892)*table_val_ice_reflectivity*ni(k)*rho(k)); // sum contribution from each ice category (note: 0.1892 = 0.176/0.93);
+      ze_ice(k).set(qi_gt_small, ze_ice(k) + sp(0.1892)*table_val_ice_reflectivity*ni_incld*rho(k));   // sum contribution from each ice category (note: 0.1892 = 0.176/0.93);
       ze_ice(k).set(qi_gt_small, max(ze_ice(k), sp(1.e-22)));
 
-      qv(k)     .set(qi_small, qv(k) + qi(k));
-      th(k)     .set(qi_small, th(k) - exner(k)*qi(k)*latent_heat_sublim(k)*inv_cp);
-      qi(k)  .set(qi_small, 0);
-      ni(k)  .set(qi_small, 0);
-      qm(k)  .set(qi_small, 0);
-      bm(k)  .set(qi_small, 0);
+      //above formula for ze only makes sense for in-cloud vals, but users expect cell-ave output.
+      ze_ice(k).set(qi_gt_small, ze_ice(k)*cld_frac_i(k));
+
+      qv(k).set(qi_small, qv(k) + qi(k));
+      th(k).set(qi_small, th(k) - exner(k)*qi(k)*latent_heat_sublim(k)*inv_cp);
+      qi(k).set(qi_small, 0);
+      ni(k).set(qi_small, 0);
+      qm(k).set(qi_small, 0);
+      bm(k).set(qi_small, 0);
       diag_di(k).set(qi_small, 0);
     }
 
@@ -886,8 +900,8 @@ void Functions<S,D>
 
   get_latent_heat(nj, nk, latent_heat_vapor, latent_heat_sublim, latent_heat_fusion);
 
-  const Int nk_pack = ekat::pack::npack<Spack>(nk);
-  const auto policy = ekat::util::ExeSpaceUtils<ExeSpace>::get_default_team_policy(nj, nk_pack);
+  const Int nk_pack = ekat::npack<Spack>(nk);
+  const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(nj, nk_pack);
 
   ekat::WorkspaceManager<Spack, Device> workspace_mgr(nk_pack, 47, policy);
 
@@ -965,44 +979,44 @@ void Functions<S,D>
 
     // Get single-column subviews of all inputs, shouldn't need any i-indexing
     // after this.
-    const auto opres               = ekat::util::subview(diagnostic_inputs.pres, i);
-    const auto odz                 = ekat::util::subview(diagnostic_inputs.dz, i);
-    const auto onc_nuceat_tend     = ekat::util::subview(diagnostic_inputs.nc_nuceat_tend, i);
-    const auto oni_activated       = ekat::util::subview(diagnostic_inputs.ni_activated, i);
-    const auto oinv_qc_relvar      = ekat::util::subview(diagnostic_inputs.inv_qc_relvar, i);
-    const auto odpres              = ekat::util::subview(diagnostic_inputs.dpres, i);
-    const auto oexner              = ekat::util::subview(diagnostic_inputs.exner, i);
-    const auto ocld_frac_i         = ekat::util::subview(diagnostic_inputs.cld_frac_i, i);
-    const auto ocld_frac_l         = ekat::util::subview(diagnostic_inputs.cld_frac_l, i);
-    const auto ocld_frac_r         = ekat::util::subview(diagnostic_inputs.cld_frac_r, i);
-    const auto ocol_location       = ekat::util::subview(infrastructure.col_location, i);
-    const auto oqc                 = ekat::util::subview(prognostic_state.qc, i);
-    const auto onc                 = ekat::util::subview(prognostic_state.nc, i);
-    const auto oqr                 = ekat::util::subview(prognostic_state.qr, i);
-    const auto onr                 = ekat::util::subview(prognostic_state.nr, i);
-    const auto oqi                 = ekat::util::subview(prognostic_state.qi, i);
-    const auto oqm                 = ekat::util::subview(prognostic_state.qm, i);
-    const auto oni                 = ekat::util::subview(prognostic_state.ni, i);
-    const auto obm                 = ekat::util::subview(prognostic_state.bm, i);
-    const auto oqv                 = ekat::util::subview(prognostic_state.qv, i);
-    const auto oth                 = ekat::util::subview(prognostic_state.th, i);
-    const auto odiag_effc          = ekat::util::subview(diagnostic_outputs.diag_effc, i);
-    const auto odiag_effi          = ekat::util::subview(diagnostic_outputs.diag_effi, i);
-    const auto orho_qi             = ekat::util::subview(diagnostic_outputs.rho_qi, i);
-    const auto omu_c               = ekat::util::subview(diagnostic_outputs.mu_c, i);
-    const auto olamc               = ekat::util::subview(diagnostic_outputs.lamc, i);
-    const auto ocmeiout            = ekat::util::subview(diagnostic_outputs.cmeiout, i);
-    const auto oprecip_total_tend  = ekat::util::subview(diagnostic_outputs.precip_total_tend, i);
-    const auto onevapr             = ekat::util::subview(diagnostic_outputs.nevapr, i);
-    const auto oqr_evap_tend       = ekat::util::subview(diagnostic_outputs.qr_evap_tend, i);
-    const auto oprecip_liq_flux    = ekat::util::subview(diagnostic_outputs.precip_liq_flux, i);
-    const auto oprecip_ice_flux    = ekat::util::subview(diagnostic_outputs.precip_ice_flux, i);
-    const auto oliq_ice_exchange   = ekat::util::subview(history_only.liq_ice_exchange, i);
-    const auto ovap_liq_exchange   = ekat::util::subview(history_only.vap_liq_exchange, i);
-    const auto ovap_ice_exchange   = ekat::util::subview(history_only.vap_ice_exchange, i);
-    const auto olatent_heat_vapor  = ekat::util::subview(latent_heat_vapor, i);
-    const auto olatent_heat_sublim = ekat::util::subview(latent_heat_sublim, i);
-    const auto olatent_heat_fusion = ekat::util::subview(latent_heat_fusion, i);
+    const auto opres               = ekat::subview(diagnostic_inputs.pres, i);
+    const auto odz                 = ekat::subview(diagnostic_inputs.dz, i);
+    const auto onc_nuceat_tend     = ekat::subview(diagnostic_inputs.nc_nuceat_tend, i);
+    const auto oni_activated       = ekat::subview(diagnostic_inputs.ni_activated, i);
+    const auto oinv_qc_relvar      = ekat::subview(diagnostic_inputs.inv_qc_relvar, i);
+    const auto odpres              = ekat::subview(diagnostic_inputs.dpres, i);
+    const auto oexner              = ekat::subview(diagnostic_inputs.exner, i);
+    const auto ocld_frac_i         = ekat::subview(diagnostic_inputs.cld_frac_i, i);
+    const auto ocld_frac_l         = ekat::subview(diagnostic_inputs.cld_frac_l, i);
+    const auto ocld_frac_r         = ekat::subview(diagnostic_inputs.cld_frac_r, i);
+    const auto ocol_location       = ekat::subview(infrastructure.col_location, i);
+    const auto oqc                 = ekat::subview(prognostic_state.qc, i);
+    const auto onc                 = ekat::subview(prognostic_state.nc, i);
+    const auto oqr                 = ekat::subview(prognostic_state.qr, i);
+    const auto onr                 = ekat::subview(prognostic_state.nr, i);
+    const auto oqi                 = ekat::subview(prognostic_state.qi, i);
+    const auto oqm                 = ekat::subview(prognostic_state.qm, i);
+    const auto oni                 = ekat::subview(prognostic_state.ni, i);
+    const auto obm                 = ekat::subview(prognostic_state.bm, i);
+    const auto oqv                 = ekat::subview(prognostic_state.qv, i);
+    const auto oth                 = ekat::subview(prognostic_state.th, i);
+    const auto odiag_effc          = ekat::subview(diagnostic_outputs.diag_effc, i);
+    const auto odiag_effi          = ekat::subview(diagnostic_outputs.diag_effi, i);
+    const auto orho_qi             = ekat::subview(diagnostic_outputs.rho_qi, i);
+    const auto omu_c               = ekat::subview(diagnostic_outputs.mu_c, i);
+    const auto olamc               = ekat::subview(diagnostic_outputs.lamc, i);
+    const auto ocmeiout            = ekat::subview(diagnostic_outputs.cmeiout, i);
+    const auto oprecip_total_tend  = ekat::subview(diagnostic_outputs.precip_total_tend, i);
+    const auto onevapr             = ekat::subview(diagnostic_outputs.nevapr, i);
+    const auto oqr_evap_tend       = ekat::subview(diagnostic_outputs.qr_evap_tend, i);
+    const auto oprecip_liq_flux    = ekat::subview(diagnostic_outputs.precip_liq_flux, i);
+    const auto oprecip_ice_flux    = ekat::subview(diagnostic_outputs.precip_ice_flux, i);
+    const auto oliq_ice_exchange   = ekat::subview(history_only.liq_ice_exchange, i);
+    const auto ovap_liq_exchange   = ekat::subview(history_only.vap_liq_exchange, i);
+    const auto ovap_ice_exchange   = ekat::subview(history_only.vap_ice_exchange, i);
+    const auto olatent_heat_vapor  = ekat::subview(latent_heat_vapor, i);
+    const auto olatent_heat_sublim = ekat::subview(latent_heat_sublim, i);
+    const auto olatent_heat_fusion = ekat::subview(latent_heat_fusion, i);
 
     // Need to watch out for race conditions with these shared variables
     bool &nucleationPossible  = bools(i, 0);
@@ -1096,7 +1110,7 @@ void Functions<S,D>
     // and compute diagnostic fields for output
     //
     p3_main_part3(
-      team, nk_pack, dnu, itab, oexner, ocld_frac_l, ocld_frac_r,
+      team, nk_pack, dnu, itab, oexner, ocld_frac_l, ocld_frac_r, ocld_frac_i,
       rho, inv_rho, rhofaci, oqv, oth, oqc, onc, oqr, onr, oqi, oni,
       oqm, obm, olatent_heat_vapor, olatent_heat_sublim, omu_c, nu, olamc, mu_r, lamr,
       ovap_liq_exchange, ze_rain, ze_ice, diag_vmi, odiag_effi, diag_di,

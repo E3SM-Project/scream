@@ -2,6 +2,7 @@
 #define SHOC_FUNCTIONS_HPP
 
 #include "physics/share/physics_constants.hpp"
+#include "physics/shoc/shoc_constants.hpp"
 
 #include "share/scream_types.hpp"
 
@@ -31,16 +32,16 @@ struct Functions
   using Device = DeviceT;
 
   template <typename S>
-  using BigPack = ekat::pack::Pack<S,SCREAM_PACK_SIZE>;
+  using BigPack = ekat::Pack<S,SCREAM_PACK_SIZE>;
   template <typename S>
-  using SmallPack = ekat::pack::Pack<S,SCREAM_SMALL_PACK_SIZE>;
+  using SmallPack = ekat::Pack<S,SCREAM_SMALL_PACK_SIZE>;
 
   using IntSmallPack = SmallPack<Int>;
   using Pack = BigPack<Scalar>;
   using Spack = SmallPack<Scalar>;
 
-  using Mask  = ekat::pack::Mask<Pack::n>;
-  using Smask = ekat::pack::Mask<Spack::n>;
+  using Mask  = ekat::Mask<Pack::n>;
+  using Smask = ekat::Mask<Spack::n>;
 
   using KT = ekat::KokkosTypes<Device>;
 
@@ -55,10 +56,10 @@ struct Functions
   using view_1d_ptr_array = typename KT::template view_1d_ptr_carray<S, N>;
 
   template <typename S>
-  using uview_1d = typename ekat::util::template Unmanaged<view_1d<S> >;
+  using uview_1d = typename ekat::template Unmanaged<view_1d<S> >;
 
   template <typename S>
-  using uview_2d = typename ekat::util::template Unmanaged<view_2d<S> >;
+  using uview_2d = typename ekat::template Unmanaged<view_2d<S> >;
 
   using MemberType = typename KT::MemberType;
 
@@ -109,6 +110,23 @@ struct Functions
     const Scalar& phis,
     const uview_1d<Spack>& host_dse);
 
+  KOKKOS_FUNCTION
+  static void shoc_pblintd_init_pot(
+    const MemberType& team, const Int& nlev,
+    const view_1d<const Spack>& thl, const view_1d<const Spack>& ql, const view_1d<const Spack>& q,
+    const view_1d<Spack>& thv);
+
+  KOKKOS_FUNCTION
+  static void compute_shoc_mix_shoc_length(
+    const MemberType&            team,
+    const Int&                   nlev,
+    const uview_1d<const Spack>& tke,
+    const uview_1d<const Spack>& brunt,
+    const Scalar&                tscale,
+    const uview_1d<const Spack>& zt_grid,
+    const Scalar&                l_inf,
+    const uview_1d<Spack>&       shoc_mix);
+
 }; // struct Functions
 
 } // namespace shoc
@@ -122,6 +140,8 @@ struct Functions
 # include "shoc_diag_second_moments_srf_impl.hpp"
 # include "shoc_diag_second_moments_ubycond_impl.hpp"
 # include "shoc_update_host_dse_impl.hpp"
+# include "shoc_pblintd_init_pot_impl.hpp"
+# include "shoc_compute_shoc_mix_shoc_length_impl.hpp"
 #endif
 
 #endif

@@ -17,6 +17,7 @@ set(SHOC_SRCS
   scream_shoc_interface.F90
   shoc_diag_second_moments_srf.cpp
   shoc_diag_second_moments_ubycond.cpp
+  shoc_pblintd_init_pot.cpp
 )
 
 set(SHOC_HEADERS
@@ -32,6 +33,7 @@ if (NOT CUDA_BUILD)
     shoc_update_host_dse.cpp
     shoc_calc_shoc_varorcovar.cpp
     shoc_calc_shoc_vertflux.cpp
+    shoc_compute_shoc_mix_shoc_length.cpp
   )
 endif()
 
