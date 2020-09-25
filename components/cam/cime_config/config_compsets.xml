@@ -604,37 +604,6 @@
       <values>
         <value compset="_CAM5%SCREAM-HR-DYAMOND1">$DIN_LOC_ROOT/ocn/docn7/domain.ocn.2560x5136.200505.nc</value>
         <value compset="_CAM5%SCREAM-LR-DYAMOND1">$DIN_LOC_ROOT/ocn/docn7/domain.ocn.2560x5136.200505.nc</value>
-      </values>
-    </entry> 
-
-    <entry id="SSTICE_YEAR_ALIGN">
-      <values>
-        <value compset="_CAM5%SCREAM-HR-DYAMOND1">2016</value>
-        <value compset="_CAM5%SCREAM-HR-DYAMOND1">2016</value>
-      </values>
-    </entry> 
-
-    <entry id="SSTICE_YEAR_START">
-      <values>
-        <value compset="_CAM5%SCREAM-HR-DYAMOND1">2016</value>
-        <value compset="_CAM5%SCREAM-LR-DYAMOND1">2016</value>
-      </values>
-    </entry> 
-
-    <entry id="SSTICE_YEAR_END">
-      <values>
-        <value compset="_CAM5%SCREAM-HR-DYAMOND1">2016</value>
-        <value compset="_CAM5%SCREAM-LR-DYAMOND1">2016</value>
-      </values>
-    </entry>
-
-    <entry id="SSTICE_DATA_FILENAME">
-      <values>
-      </values>
-    </entry> 
-
-    <entry id="SSTICE_GRID_FILENAME">
-      <values>
         <value compset="_CAM5%SCREAM-HR-DYAMOND2">$DIN_LOC_ROOT/ocn/docn7/domain.ocn.360x720.200505.nc</value>
         <value compset="_CAM5%SCREAM-LR-DYAMOND2">$DIN_LOC_ROOT/ocn/docn7/domain.ocn.360x720.200505.nc</value>
       </values>
@@ -642,6 +611,8 @@
 
     <entry id="SSTICE_YEAR_ALIGN">
       <values>
+        <value compset="_CAM5%SCREAM-HR-DYAMOND1">2016</value>
+        <value compset="_CAM5%SCREAM-HR-DYAMOND1">2016</value>
         <value compset="_CAM5%SCREAM-HR-DYAMOND2">2020</value>
         <value compset="_CAM5%SCREAM-HR-DYAMOND2">2020</value>
       </values>
@@ -649,6 +620,8 @@
 
     <entry id="SSTICE_YEAR_START">
       <values>
+        <value compset="_CAM5%SCREAM-HR-DYAMOND1">2016</value>
+        <value compset="_CAM5%SCREAM-LR-DYAMOND1">2016</value>
         <value compset="_CAM5%SCREAM-HR-DYAMOND2">2020</value>
         <value compset="_CAM5%SCREAM-LR-DYAMOND2">2020</value>
       </values>
@@ -656,11 +629,12 @@
 
     <entry id="SSTICE_YEAR_END">
       <values>
+        <value compset="_CAM5%SCREAM-HR-DYAMOND1">2016</value>
+        <value compset="_CAM5%SCREAM-LR-DYAMOND1">2016</value>
         <value compset="_CAM5%SCREAM-HR-DYAMOND2">2020</value>
         <value compset="_CAM5%SCREAM-LR-DYAMOND2">2020</value>
       </values>
     </entry>
-
     
   </entries>
 
