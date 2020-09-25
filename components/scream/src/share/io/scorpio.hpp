@@ -141,7 +141,7 @@ inline void AtmosphereOutput::init(const FieldRepository<Real, device_type>& fie
   for (int var_i=0; var_i<var_params.get<Int>("Number of Fields");++var_i)
   {
     /* Determine the variable name */
-    std::string var_name = var_params.get<std::string>(ekat::util::strint("field",var_i+1));
+    std::string var_name = var_params.get<std::string>(ekat::strint("field",var_i+1));
     /* Find the <FieldIdentifier,Field> pair that corresponds with this variable name on the appropriate grid */
     add_identifier(field_repo,var_name);
   }
