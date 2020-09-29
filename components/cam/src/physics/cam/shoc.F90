@@ -624,7 +624,7 @@ subroutine update_prognostics_implicit( &
   real(rtype) :: rho_zi(shcol,nlevi)
 
   real(rtype) :: flux_dummy(shcol)
-  real(rtype) :: ksrf(shcol), wtke_flux(shcol)
+  real(rtype) :: ksrf(shcol), wtke_sfc(shcol)
 
   real(rtype) :: ca(shcol,nlev) ! superdiagonal for solver
   real(rtype) :: cc(shcol,nlev) ! subdiagonal for solver
@@ -642,19 +642,19 @@ subroutine update_prognostics_implicit( &
   call compute_tmpi(nlevi, shcol, dtime, rho_zi, dz_zi, tmpi)
 
   ! compute 1/dp term, needed in diffusion solver
-  call dp_inverse(nlev, nlevi, shcol, rho_zt, dz_zt, rdp_zt)
+  call dp_inverse(nlev, shcol, rho_zt, dz_zt, rdp_zt)
 
   ! compute terms needed for the implicit surface stress (ksrf)
-  ksrf(1:shcol)      = impli_srf_stress_term(shcol, nlev, nlevi, rho_zi, &
-      uw_sfc, vw_sfc, u_wind, v_wind)
+  ksrf(1:shcol)      = impli_srf_stress_term(shcol, rho_zi(:,nlevi), &
+                         uw_sfc, vw_sfc, u_wind(:,nlev), v_wind(:,nlev))
 
-  !compute term needed for tke flux calc (wtke_flux)
-  wtke_flux(1:shcol) = tke_srf_flux_term(shcol, uw_sfc, vw_sfc)
+  !compute term needed for tke flux calc (wtke_sfc)
+  wtke_sfc(1:shcol) = tke_srf_flux_term(shcol, uw_sfc, vw_sfc)
 
   ! compute surface fluxes for liq. potential temp, water and tke
-  call sfc_fluxes(shcol, nlev, nlevi, dtime, rho_zi, rdp_zt, &
-       wthl_sfc, wqw_sfc, wtke_flux, &
-       thetal, qw, tke)
+  call sfc_fluxes(shcol, dtime, rho_zi(:,nlevi), rdp_zt(:,nlev), &
+                  wthl_sfc, wqw_sfc, wtke_sfc, thetal(:,nlev), &
+                  qw(:,nlev), tke(:,nlev))
 
   ! Call decomp for momentum variables
   call vd_shoc_decomp(shcol,nlev,nlevi,tk_zi,tmpi,rdp_zt,dtime,&
@@ -717,10 +717,10 @@ subroutine compute_tmpi(nlevi, shcol, dtime, rho_zi, dz_zi, tmpi)
 
 end subroutine compute_tmpi
 
-subroutine dp_inverse(nlev, nlevi, shcol, rho_zt, dz_zt, rdp_zt)
+subroutine dp_inverse(nlev, shcol, rho_zt, dz_zt, rdp_zt)
 
   !intent-ins
-  integer,     intent(in) :: nlev, nlevi, shcol
+  integer,     intent(in) :: nlev, shcol
   ! Air density on thermo grid [kg/m3]
   real(rtype), intent(in) :: rho_zt(shcol,nlev)
   ! height thickness centered on thermo grid [m]
@@ -740,22 +740,22 @@ subroutine dp_inverse(nlev, nlevi, shcol, rho_zt, dz_zt, rdp_zt)
 
 end subroutine dp_inverse
 
-pure function impli_srf_stress_term(shcol, nlev, nlevi, rho_zi, uw_sfc, &
-     vw_sfc, u_wind, v_wind) result (ksrf)
+pure function impli_srf_stress_term(shcol, rho_zi_sfc, uw_sfc, &
+     vw_sfc, u_wind_sfc, v_wind_sfc) result (ksrf)
 
   !intent-ins
-  integer,     intent(in) :: shcol, nlev, nlevi
+  integer,     intent(in) :: shcol
 
   !air density at interfaces [kg/m3]
-  real(rtype), intent(in) :: rho_zi(shcol,nlevi)
+  real(rtype), intent(in) :: rho_zi_sfc(shcol)
   !vertical zonal momentum flux at surface [m3/s3]
   real(rtype), intent(in) :: uw_sfc(shcol)
   !vertical meridional momentum flux at surface [m3/s3]
   real(rtype), intent(in) :: vw_sfc(shcol)
   !zonal wind [m/s]
-  real(rtype), intent(in) :: u_wind(shcol,nlev)
+  real(rtype), intent(in) :: u_wind_sfc(shcol)
   !meridional wind [m/s]
-  real(rtype), intent(in) :: v_wind(shcol,nlev)
+  real(rtype), intent(in) :: v_wind_sfc(shcol)
 
   !function return value
   real(rtype) :: ksrf(shcol)
@@ -765,23 +765,22 @@ pure function impli_srf_stress_term(shcol, nlev, nlevi, rho_zi, uw_sfc, &
 
   real(rtype) :: taux, tauy !stresses (N/m2)
   real(rtype) :: ws         !wind speed (m/s)
-  real(rtype) :: rho, tau, uw, vw, rho_zi_srf(shcol)
+  real(rtype) :: rho, tau, uw, vw
 
   real(rtype), parameter :: wsmin    = 1._rtype    ! Minimum wind speed for ksrfturb computation [ m/s ]
   real(rtype), parameter :: ksrfmin  = 1.e-4_rtype ! Minimum surface drag coefficient  [ kg/s/m^2 ]
 
   !store surface values of rho in a 1d array
-  rho_zi_srf(1:shcol) = rho_zi(1:shcol,nlevi)
 
   do i = 1, shcol
-     rho          = rho_zi_srf(i)
+     rho          = rho_zi_sfc(i)
      uw           = uw_sfc(i)
      vw           = vw_sfc(i)
 
      taux         = rho*uw ! stress in N/m2
      tauy         = rho*vw ! stress in N/m2
      ! compute the wind speed
-     ws           = max(sqrt(u_wind(i,nlev)**2._rtype + v_wind(i,nlev)**2._rtype),wsmin)
+     ws           = max(sqrt(u_wind_sfc(i)**2._rtype + v_wind_sfc(i)**2._rtype),wsmin)
      tau          = sqrt( taux**2._rtype + tauy**2._rtype )
      ksrf(i)      = max(tau/ws, ksrfmin)
   enddo
@@ -789,7 +788,7 @@ pure function impli_srf_stress_term(shcol, nlev, nlevi, rho_zi, uw_sfc, &
   return
 end function impli_srf_stress_term
 
-pure function tke_srf_flux_term(shcol, uw_sfc, vw_sfc) result(wtke_flux)
+pure function tke_srf_flux_term(shcol, uw_sfc, vw_sfc) result(wtke_sfc)
 
   !intent-ins
   integer,     intent(in) :: shcol
@@ -800,7 +799,7 @@ pure function tke_srf_flux_term(shcol, uw_sfc, vw_sfc) result(wtke_flux)
   real(rtype), intent(in) :: vw_sfc(shcol)
 
   !function return value
-  real(rtype) :: wtke_flux(shcol)
+  real(rtype) :: wtke_sfc(shcol)
 
   !local vars
   integer :: i
@@ -813,40 +812,40 @@ pure function tke_srf_flux_term(shcol, uw_sfc, vw_sfc) result(wtke_flux)
      uw           = uw_sfc(i)
      vw           = vw_sfc(i)
      ustar        = max(sqrt(sqrt(uw**2._rtype + vw**2._rtype)),ustarmin)
-     wtke_flux(i) = ustar**3
+     wtke_sfc(i) = ustar**3
   enddo
 
   return
 end function tke_srf_flux_term
 
 
-subroutine sfc_fluxes(shcol, nlev, nlevi, dtime, rho_zi, rdp_zt, &
-     wthl_sfc, wqw_sfc, wtke_flux, thetal, qw, tke)
+subroutine sfc_fluxes(shcol, dtime, rho_zi_sfc, rdp_zt_sfc, wthl_sfc,  &
+                      wqw_sfc, wtke_sfc, thetal, qw, tke)
 
   implicit none
 
   !intent-ins
-  integer,     intent(in) :: shcol, nlev, nlevi
+  integer,     intent(in) :: shcol
   !time step [s]
   real(rtype), intent(in) :: dtime
   !air density at interfaces [kg/m3]
-  real(rtype), intent(in) :: rho_zi(shcol,nlevi)
+  real(rtype), intent(in) :: rho_zi_sfc(shcol)
   !inverse of dp
-  real(rtype), intent(in) :: rdp_zt(shcol,nlev)
+  real(rtype), intent(in) :: rdp_zt_sfc(shcol)
   !vertical heat flux at surface [K m/s]
   real(rtype), intent(in) :: wthl_sfc(shcol)
   !vertical moisture flux at surface [kg/kg m/s]
   real(rtype), intent(in) :: wqw_sfc(shcol)
   !vertical tke flux at surface [m3/s3]
-  real(rtype), intent(in) :: wtke_flux(shcol)
+  real(rtype), intent(in) :: wtke_sfc(shcol)
 
   !intent-inouts
   !liquid water potential temperature [K]
-  real(rtype), intent(inout) :: thetal(shcol,nlev)
+  real(rtype), intent(inout) :: thetal(shcol)
   !total water mixing ratio [kg/kg]
-  real(rtype), intent(inout) :: qw(shcol,nlev)
+  real(rtype), intent(inout) :: qw(shcol)
   !turbulent kinetic energy [m2/s2]
-  real(rtype), intent(inout) :: tke(shcol,nlev)
+  real(rtype), intent(inout) :: tke(shcol)
 
   !local variables
   integer :: i
@@ -854,11 +853,11 @@ subroutine sfc_fluxes(shcol, nlev, nlevi, dtime, rho_zi, rdp_zt, &
 
   ! Apply the surface fluxes explicitly for temperature and moisture
   do i = 1, shcol
-     cmnfac       =  dtime * (ggr * rho_zi(i,nlevi) * rdp_zt(i,nlev)) !a common factor for the following 3 equations
+     cmnfac       =  dtime * (ggr * rho_zi_sfc(i) * rdp_zt_sfc(i)) !a common factor for the following 3 equations
 
-     thetal(i,nlev) = thetal(i,nlev) + cmnfac * wthl_sfc(i)
-     qw(i,nlev)     = qw(i,nlev)     + cmnfac * wqw_sfc(i)
-     tke(i,nlev)    = tke(i,nlev)    + cmnfac * wtke_flux(i)
+     thetal(i) = thetal(i) + cmnfac * wthl_sfc(i)
+     qw(i)     = qw(i)     + cmnfac * wqw_sfc(i)
+     tke(i)    = tke(i)    + cmnfac * wtke_sfc(i)
   enddo
 
 end subroutine sfc_fluxes
@@ -1348,7 +1347,7 @@ subroutine calc_shoc_varorcovar(&
       return
    endif
 #endif
-   
+
   do k=2,nlev
 
     kt=k-1 ! define upper grid point indicee
@@ -2467,6 +2466,7 @@ subroutine shoc_assumed_pdf_compute_qs(&
   Tl1_1,Tl1_2,pval,&   ! Input
   qs1,beta1,qs2,beta2) ! Ouput
 
+  use wv_sat_scream, only: MurphyKoop_svp
   implicit none
 
   ! intent-in
@@ -2481,6 +2481,7 @@ subroutine shoc_assumed_pdf_compute_qs(&
   real(rtype), intent(out) ::   beta2
 
   ! local vars
+  integer, parameter :: liquid = 0   ! liquid flag for MurphyKoop
   real(rtype) :: esval1_1
   real(rtype) :: esval1_2
   real(rtype) :: lstarn1
@@ -2489,7 +2490,7 @@ subroutine shoc_assumed_pdf_compute_qs(&
   esval1_1=0._rtype
   esval1_2=0._rtype
 
-  esval1_1=esatw_shoc(Tl1_1)*100._rtype
+  esval1_1=MurphyKoop_svp(Tl1_1, liquid)
   lstarn1=lcond
 
   qs1=0.622_rtype*esval1_1/max(esval1_1,pval-esval1_1)
@@ -2502,7 +2503,7 @@ subroutine shoc_assumed_pdf_compute_qs(&
     qs2=qs1
     beta2=beta1
   else
-    esval1_2=esatw_shoc(Tl1_2)*100._rtype
+    esval1_2=MurphyKoop_svp(Tl1_2, liquid)
     qs2=0.622_rtype*esval1_2/max(esval1_2,pval-esval1_2)
     beta2=(rgas/rv)*(lstarn2/(rgas*Tl1_2))*(lstarn2/(cp*Tl1_2))
   endif
@@ -2533,7 +2534,7 @@ subroutine shoc_assumed_pdf_compute_s(&
   real(rtype), intent(out) :: std_s
   real(rtype), intent(out) :: qn
   real(rtype), intent(out) :: C
-  
+
   ! local variables
   real(rtype) :: cthl, cqt
 
@@ -3060,6 +3061,10 @@ subroutine check_tke(&
              shcol,nlev,& ! Input
              tke)         ! Input/Output
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use shoc_iso_f, only: check_tke_f
+#endif
+
   implicit none
   ! Make sure TKE falls within reasonable bounds
   ! If not, then clip
@@ -3073,6 +3078,14 @@ subroutine check_tke(&
 
 ! LOCAL VARIABLES
   integer :: i, k
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   if (use_cxx) then
+      call check_tke_f(shcol,nlev, & ! Input
+           tke)                      ! Input/Output
+      return
+   endif
+#endif
 
   do k=1,nlev
     do i=1,shcol
@@ -3399,7 +3412,7 @@ subroutine shoc_energy_integrals(&
     do i=1,shcol
        rvm = rtm(i,k) - rcm(i,k) ! compute water vapor
        se_int(i) = se_int(i) + host_dse(i,k)*pdel(i,k)/ggr
-       ke_int(i) = ke_int(i) + 0.5_rtype*(u_wind(i,k)**2+v_wind(i,k)**2)*pdel(i,k)/ggr
+       ke_int(i) = ke_int(i) + 0.5_rtype*(bfb_square(u_wind(i,k))+bfb_square(v_wind(i,k)))*pdel(i,k)/ggr
        wv_int(i) = wv_int(i) + rvm*pdel(i,k)/ggr
        wl_int(i) = wl_int(i) + rcm(i,k)*pdel(i,k)/ggr
     enddo
@@ -3666,7 +3679,7 @@ subroutine shoc_energy_threshold_fixer(&
   real(rtype), intent(in) :: te_b(shcol)
 
 
-  ! INPUT VARIABLES
+  ! OUTPUT VARIABLES
   real(rtype), intent(out) :: se_dis(shcol)
   integer, intent(out) :: shoctop(shcol)
 
@@ -3911,6 +3924,9 @@ subroutine pblintd_init_pot(&
        shcol,nlev,&             ! Input
        thl,ql,q,&               ! Input
        thv)                     ! Output
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use shoc_iso_f, only: shoc_pblintd_init_pot_f
+#endif
     !------------------------------Arguments--------------------------------
     !
     ! Input arguments
@@ -3929,6 +3945,13 @@ subroutine pblintd_init_pot(&
     integer  :: k                       ! level index
     real(rtype) :: th
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   if (use_cxx) then
+      call shoc_pblintd_init_pot_f(shcol,nlev,thl,ql,q,&               ! Input
+                                   thv)                     ! Output
+      return
+   endif
+#endif
     ! Compute virtual potential temperature
     do k=1,nlev
       do i=1,shcol
@@ -4244,35 +4267,6 @@ subroutine linear_interp(x1,x2,y1,y2,km1,km2,ncol,minthresh)
 
 end subroutine linear_interp
 
-!==============================================================
-!
-! Saturation vapor pressure and mixing ratio.
-! Based on Flatau et.al, (JAM, 1992:1507) - valid for T > -80C
-! sat. vapor over ice below -80C - used Murphy and Koop (2005)
-! For water below -80C simply assumed esw/esi = 2.
-! des/dT below -80C computed as a finite difference of es
-
-real(rtype) function esatw_shoc(t)
-   implicit none
-   real(rtype) t    ! temperature (K)
-   real(rtype) a0,a1,a2,a3,a4,a5,a6,a7,a8
-   data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
-        6.105851_rtype, 0.4440316_rtype, 0.1430341e-1_rtype, &
-        0.2641412e-3_rtype, 0.2995057e-5_rtype, 0.2031998e-7_rtype, &
-        0.6936113e-10_rtype, 0.2564861e-13_rtype,-0.3704404e-15_rtype/
-!         6.11239921, 0.443987641, 0.142986287e-1, &
-!       0.264847430e-3, 0.302950461e-5, 0.206739458e-7, &
-!       0.640689451e-10, -0.952447341e-13,-0.976195544e-15/
-   real(rtype) dt
-   dt = t-273.16_rtype
-   if(dt.gt.-80._rtype) then
-      esatw_shoc = a0 + dt*(a1+dt*(a2+dt*(a3+dt*(a4+dt*(a5+dt*(a6+dt*(a7+a8*dt)))))))
-   else
-      esatw_shoc = 2._rtype*0.01_rtype*exp(9.550426_rtype - 5723.265_rtype/t + 3.53068_rtype*Log(t) - 0.00728332_rtype*t)
-   end if
-end
-
-
 subroutine compute_brunt_shoc_length(nlev,nlevi,shcol,dz_zt,thv,thv_zi,brunt)
 
   !=========================================================
@@ -4386,7 +4380,12 @@ end subroutine compute_conv_time_shoc_length
 
 subroutine compute_shoc_mix_shoc_length(nlev,shcol,tke,brunt,tscale,zt_grid,l_inf,shoc_mix)
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use shoc_iso_f, only: compute_shoc_mix_shoc_length_f
+#endif
+
   implicit none
+
   integer, intent(in) :: nlev, shcol
   ! turbulent kinetic energy [m^2/s^2]
   real(rtype), intent(in) :: tke(shcol,nlev)
@@ -4405,6 +4404,14 @@ subroutine compute_shoc_mix_shoc_length(nlev,shcol,tke,brunt,tscale,zt_grid,l_in
   real(rtype) :: brunt2(shcol,nlev)
   integer k, i
   real(rtype) :: tkes
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  if (use_cxx) then
+    call compute_shoc_mix_shoc_length_f(nlev,shcol,tke,brunt,tscale,zt_grid,l_inf,& !Input
+                                        shoc_mix) ! Ouptut
+    return
+  endif
+#endif
 
   brunt2(:,:) = 0.0
 
