@@ -658,9 +658,9 @@ void shoc_diag_second_moments_ubycond(SHOCSecondMomentUbycondData& d)
 void shoc_pblintd_cldcheck(SHOCPblintdCldCheckData& d)
 {
   shoc_init(d.nlev(), true);
-  d.transpose<ekat::util::TransposeDirection::c2f>();
+  d.transpose<ekat::TransposeDirection::c2f>();
   shoc_pblintd_cldcheck_c(d.shcol(), d.nlev(), d.nlevi(), d.zi, d.cldn, d.pblh);
-  d.transpose<ekat::util::TransposeDirection::f2c>();
+  d.transpose<ekat::TransposeDirection::f2c>();
 }
 
 void shoc_pblintd_init_pot(SHOCPblintdInitPotData& d)
@@ -913,20 +913,23 @@ void update_host_dse_f(Int shcol, Int nlev, Real* thlm, Real* shoc_ql, Real* exn
 
 void shoc_pblintd_cldcheck_f(Int shcol, Int nlev, Int nlevi, Real* zi, Real* cldn, Real* pblh) {
   using SHOC = Functions<Real, DefaultDevice>;
-  using Pack1      = typename ekat::pack::Pack<Real, 1>;
+  using Pack1      = typename ekat::Pack<Real, 1>;
   using Scalar     = typename SHOC::Scalar;
   using view_2d    = typename SHOC::view_2d<Pack1>;
   using view_1d    = typename SHOC::view_1d<Pack1>;
 
+  Kokkos::Array<size_t, 2> dim1  = {shcol, shcol};
+  Kokkos::Array<size_t, 2> dim2  = {nlevi,  nlev};
+
   Kokkos::Array<view_2d, 2> cldcheck_2d;
-  ekat::pack::host_to_device({zi, cldn}, {shcol, shcol}, {nlevi, nlev}, cldcheck_2d, false);
+  ekat::host_to_device({zi, cldn}, dim1, dim2, cldcheck_2d, false);
 
   view_2d
          zi_2d  (cldcheck_2d[0]),
          cldn_2d(cldcheck_2d[1]);
 
   Kokkos::Array<view_1d, 1> cldcheck_1d;
-  ekat::pack::host_to_device({pblh}, shcol, cldcheck_1d);
+  ekat::host_to_device({pblh}, shcol, cldcheck_1d);
 
   view_1d pblh_1d (cldcheck_1d[0]);
 
@@ -943,7 +946,7 @@ void shoc_pblintd_cldcheck_f(Int shcol, Int nlev, Int nlevi, Real* zi, Real* cld
 
   Kokkos::Array<view_1d, 1> host_views = {pblh_1d};
 
-  ekat::pack::device_to_host({pblh}, shcol, host_views);
+  ekat::device_to_host({pblh}, shcol, host_views);
 }
   
 void shoc_pblintd_init_pot_f(Int shcol, Int nlev, Real *thl, Real* ql, Real* q,
