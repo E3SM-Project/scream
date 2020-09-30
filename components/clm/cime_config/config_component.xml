@@ -89,6 +89,8 @@
       <value compset="2010_CAM5%CMIP6-HR_CLM">2010_CMIP6HR_control</value>
       <value compset="2010_CAM5.*SCREAM-LR" >2010_CMIP6_control</value>
       <value compset="2010_CAM5.*SCREAM-HR" >2010_CMIP6_control</value>
+      <value compset="2010_CAM5.*SCREAM-LR-DYAMOND2" >2010_dy2scream_control</value>
+      <value compset="2010_CAM5.*SCREAM-HR-DYAMOND2" >2010_dy2scream_control</value>
       <value compset="2000_CAM5.*SCREAM-LR" >2000_control</value>
       <value compset="2000_CAM5.*SCREAM-HR" >2000_control</value>
       <!-- superfast chemistry compsets (use CMIP6 land configuration)-->
