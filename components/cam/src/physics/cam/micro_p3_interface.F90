@@ -330,14 +330,13 @@ end subroutine micro_p3_readnl
     use cam_history,    only: addfld, add_default, horiz_only
     use cam_history_support, only: add_hist_coord 
     use micro_p3_utils, only: micro_p3_utils_init
-    use time_manager,     only: get_curr_date  !needed for intializing current_month current_month
     use pio,            only: file_desc_t, pio_nowrite
     use cam_pio_utils,    only: cam_pio_openfile,cam_pio_closefile
     use cam_grid_support, only: cam_grid_check, cam_grid_id
     use cam_grid_support, only: cam_grid_get_dim_names
     use ncdio_atm,       only: infld
     use time_manager,   only: get_curr_date
-    use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp, psubcols
+    !use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp, psubcols
 
 
     type(physics_buffer_desc),  pointer :: pbuf2d(:,:)
@@ -803,7 +802,7 @@ end subroutine micro_p3_readnl
        use cam_grid_support, only: cam_grid_get_dim_names
        use ncdio_atm,        only: infld
        use time_manager,     only: get_curr_date
-       use ppgrid,           only: begchunk, endchunk, pcols, pver, pverp, psubcols
+       !use ppgrid,           only: begchunk, endchunk, pcols, pver, pverp, psubcols
 
       !INOUT/OUTPUT VARIABLES
       integer,intent(in) :: its,ite,kts,kte,lchnk
@@ -825,8 +824,12 @@ end subroutine micro_p3_readnl
       real(rtype), pointer :: mon_ccn_1(:,:)
       real(rtype), pointer :: mon_ccn_2(:,:)
       real(rtype), pointer :: ccn_values(:,:,:)
+      real(rtype), dimension(12):: days_per_month 
 
       nullify(ccn_values)
+
+     !fill days_per_month
+     days_per_month = (/31,28,31,30,31,30,31,31,30,31,30,31/)
 
      !get current time step's date
       call get_curr_date(year,month,day,tod)
@@ -882,7 +885,7 @@ end subroutine micro_p3_readnl
       !interpolate between mon_ccn_1 and mon_ccn_1 to calculate nccn_prescribed
       !based on current date
 
-      fraction_of_month = (day*3600.0*24.0 + tod)/(3600*24*30) !tod is in seconds
+      fraction_of_month = (day*3600.0*24.0 + tod)/(3600*24*days_per_month(current_month)) !tod is in seconds
 
       nccn_prescribed = mon_ccn_1*(1-fraction_of_month) + mon_ccn_2*(fraction_of_month)
 

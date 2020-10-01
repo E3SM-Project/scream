@@ -406,15 +406,13 @@ contains
       !--- Apply droplet activation here (before other microphysical processes) for consistency with qc increase by saturation
       !    adjustment already applied in macrophysics. If prescribed drop number is used, this is also a good place to
       !    prescribe that value
-          if (.not.(do_predict_nc) .and. .not.(do_prescribed_CCN)) then
-            nc(k) = nccnst*inv_rho(k)
+          if (do_prescribed_CCN) then
+             nc(k) = max(nc(k),nccn_prescribed(k))
+          else if (do_predict_nc) then
+             nc(k) = max(nc(k) + nc_nuceat_tend(k) * dt,0.0_rtype)
           else
-            if (.not. (do_prescribed_CCN)) then
-               nc(k) = max(nc(k) + nc_nuceat_tend(k) * dt,0.0_rtype)
-            else
-               nc(k) = max(nc(k),nccn_prescribed(k))
-            endif
-          endif
+             nc(k) = nccnst*inv_rho(k)
+          endif 
        endif
 
        if (qr(k).lt.qsmall) then
