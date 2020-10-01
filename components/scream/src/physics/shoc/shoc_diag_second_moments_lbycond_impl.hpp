@@ -3,7 +3,6 @@
 #define SHOC_DIAG_SECOND_MOMENTS_LBYCOND_IMPL_HPP
 
 #include "shoc_functions.hpp" // for ETI only but harmless for GPU
-#include "physics_functions.hpp" // also for ETI not on GPUs
 
 namespace scream {
 namespace shoc {
