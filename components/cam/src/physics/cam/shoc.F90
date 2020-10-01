@@ -965,9 +965,9 @@ subroutine diag_second_shoc_moments(&
   ! Diagnose the second order moments flux,
   !  for the lower boundary
   call diag_second_moments_lbycond(&
-     shcol, num_tracer,&                             ! Input
+     shcol, &                                        ! Input
      wthl_sfc, wqw_sfc, uw_sfc, vw_sfc,&             ! Input
-     wtracer_sfc,ustar2,wstar,&                      ! Input
+     ustar2,wstar,&                                  ! Input
      wthl_sec(:shcol,nlevi),wqw_sec(:shcol,nlevi),&  ! Output
      uw_sec(:shcol,nlevi), vw_sec(:shcol,nlevi),&    ! Output
      wtke_sec(:shcol,nlevi), thl_sec(:shcol,nlevi),& ! Output
@@ -1069,9 +1069,9 @@ end subroutine diag_second_moments_srf
 !  lower boundary conditions
 
 subroutine diag_second_moments_lbycond(&
-         shcol,num_tracer,&                           ! Input
+         shcol,&                                      ! Input
          wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &         ! Input
-         wtracer_sfc,ustar2,wstar,&                   ! Input
+         ustar2,wstar,&                               ! Input
          wthl_sec,wqw_sec,&                           ! Output
          uw_sec, vw_sec, wtke_sec,&                   ! Output
          thl_sec,qw_sec,qwthl_sec)                    ! Output
@@ -1089,8 +1089,6 @@ subroutine diag_second_moments_lbycond(&
 ! INPUT VARIABLES
   ! number of SHOC columns
   integer, intent(in) :: shcol
-  ! number of tracers
-  integer, intent(in) :: num_tracer
 
   ! Surface sensible heat flux [K m/s]
   real(rtype), intent(in) :: wthl_sfc(shcol)
@@ -1100,8 +1098,6 @@ subroutine diag_second_moments_lbycond(&
   real(rtype), intent(in) :: uw_sfc(shcol)
   ! Surface momentum flux (v-direction) [m2/s2]
   real(rtype), intent(in) :: vw_sfc(shcol)
-  ! Tracer flux [varies m/s]
-  real(rtype), intent(in) :: wtracer_sfc(shcol,num_tracer)
   ! Surface friction velocity squared [m4/s4]
   real(rtype), intent(in) :: ustar2(shcol)
   ! Surface convective velocity scale [m/s]
@@ -1137,7 +1133,7 @@ subroutine diag_second_moments_lbycond(&
   !  moments at the surface
   do i=1,shcol
 
-    uf = sqrt(ustar2(i) + 0.3_rtype * wstar(i) * wstar(i))
+    uf = bfb_sqrt(ustar2(i) + 0.3_rtype * wstar(i) * wstar(i))
     uf = max(ufmin,uf)
 
     ! Diagnose thermodynamics variances and covariances
@@ -1152,7 +1148,7 @@ subroutine diag_second_moments_lbycond(&
     wqw_sec(i) = wqw_sfc(i)
     uw_sec(i) = uw_sfc(i)
     vw_sec(i) = vw_sfc(i)
-    wtke_sec(i) = bfb_cube(max(sqrt(ustar2(i)),0.01_rtype))
+    wtke_sec(i) = bfb_cube(max(bfb_sqrt(ustar2(i)),0.01_rtype))
 
   enddo ! end i loop (column loop)
   return

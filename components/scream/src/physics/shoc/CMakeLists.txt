@@ -19,6 +19,7 @@ set(SHOC_SRCS
   shoc_diag_second_moments_ubycond.cpp
   shoc_pblintd_init_pot.cpp
   shoc_check_tke.cpp
+  shoc_diag_second_moments_lbycond.cpp
 )
 
 set(SHOC_HEADERS

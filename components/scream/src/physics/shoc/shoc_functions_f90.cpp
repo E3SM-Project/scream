@@ -230,6 +230,9 @@ void shoc_diag_second_moments_ubycond_c(Int shcol, Real* thl, Real* qw, Real* wt
 
 void shoc_pblintd_init_pot_c(Int shcol, Int nlev, Real* thl, Real* ql, Real* q, Real* thv);
 
+void shoc_diag_second_moments_lbycond_c(Int shcol, Real* wthl, Real* wqw, Real* uw, Real* vw, Real* ustar2, Real* wstar,
+                                        Real* wthlo, Real* wqwo, Real* uwo, Real* vwo, Real* wtkeo, Real* thlo, Real* qwo, Real* qwthlo);
+
 } // end _c function decls
 
 namespace scream {
@@ -672,6 +675,15 @@ void shoc_pblintd_init_pot(SHOCPblintdInitPotData& d)
   shoc_init(d.nlev(), true);
   d.transpose<ekat::TransposeDirection::c2f>();
   shoc_pblintd_init_pot_c(d.shcol(), d.nlev(), d.thl, d.ql, d.q, d.thv);
+  d.transpose<ekat::TransposeDirection::f2c>();
+}
+
+void shoc_diag_second_moments_lbycond(SHOCSecondMomLbycondData& d)
+{
+  shoc_init(64, true);
+  d.transpose<ekat::TransposeDirection::c2f>();
+  shoc_diag_second_moments_lbycond_c(d.shcol(), d.wthl, d.wqw, d.uw, d.vw, d.ustar2, d.wstar,
+                                     d.wthlo, d.wqwo, d.uwo, d.vwo, d.wtkeo, d.thlo, d.qwo, d.qwthlo);
   d.transpose<ekat::TransposeDirection::f2c>();
 }
 
@@ -1230,6 +1242,70 @@ void shoc_energy_integrals_f(Int shcol, Int nlev, Real *host_dse, Real *pdel,
   // Sync back to host
   Kokkos::Array<view_1d, 4> inout_views = {se_int_d, ke_int_d, wv_int_d, wl_int_d};
   ekat::device_to_host<int,4>({se_int,ke_int,wv_int,wl_int},shcol,inout_views);
+}
+
+void shoc_diag_second_moments_lbycond_f(Int shcol, Real* wthl, Real* wqw, Real* uw, Real* vw, Real* ustar2, Real* wstar,
+                        Real* wthlo, Real* wqwo, Real* uwo, Real* vwo, Real* wtkeo, Real* thlo, Real* qwo, Real* qwthlo)
+{
+  using SHOC       = Functions<Real, DefaultDevice>;
+  using Scalar     = typename SHOC::Scalar;
+  using Pack1      = typename ekat::Pack<Real, 1>;
+  using view_1d    = typename SHOC::view_1d<Pack1>;
+
+  Kokkos::Array<view_1d, 6> lbycond_d;
+  ekat::host_to_device({wthl, wqw, uw, vw, ustar2, wstar}, shcol, lbycond_d);
+
+  // inputs
+  view_1d wthl_d  (lbycond_d[0]),
+          wqw_d   (lbycond_d[1]),
+          uw_d    (lbycond_d[2]),
+          vw_d    (lbycond_d[3]),
+          ustar2_d(lbycond_d[4]),
+          wstar_d (lbycond_d[5]);
+
+  // outputs
+  view_1d wthlo_d  ("wthl", shcol),
+          wqwo_d   ("wqw" , shcol),
+          uwo_d    ("uw"  , shcol),
+          vwo_d    ("vw"  , shcol),
+          wtkeo_d  ("wtke", shcol),
+          thlo_d   ("thl" , shcol),
+          qwo_d    ("qw"  , shcol),
+          qwthlo_d ("qwthl", shcol);
+
+  Kokkos::parallel_for("parallel_moments_lbycond", shcol, KOKKOS_LAMBDA (const int& i) {
+
+    Scalar wthl_s{wthl_d(i)[0]},
+           wqw_s{wqw_d(i)[0]},
+           uw_s{uw_d(i)[0]},
+           vw_s{vw_d(i)[0]},
+           ustar2_s{ustar2_d(i)[0]},
+           wstar_s{wstar_d(i)[0]};
+
+    Scalar wthlo_s{0.},
+           wqwo_s{0.},
+           uwo_s{0.},
+           vwo_s{0.},
+           wtkeo_s{0.},
+           thlo_s{0.},
+           qwo_s{0.},
+           qwthlo_s{0.};
+
+    SHOC::shoc_diag_second_moments_lbycond(wthl_s, wqw_s, uw_s, vw_s, ustar2_s, wstar_s,
+                                          wthlo_s, wqwo_s, uwo_s, vwo_s, wtkeo_s, thlo_s, qwo_s, qwthlo_s);
+
+    wthlo_d  (i)[0] = wthlo_s;
+    wqwo_d   (i)[0] = wqwo_s;
+    uwo_d    (i)[0] = uwo_s;
+    vwo_d    (i)[0] = vwo_s;
+    wtkeo_d  (i)[0] = wtkeo_s;
+    thlo_d   (i)[0] = thlo_s;
+    qwo_d    (i)[0] = qwo_s;
+    qwthlo_d (i)[0] = qwthlo_s;
+  });
+
+  Kokkos::Array<view_1d, 8> host_views = {wthlo_d, wqwo_d, uwo_d, vwo_d, wtkeo_d, thlo_d, qwo_d, qwthlo_d};
+  ekat::device_to_host({wthlo, wqwo, uwo, vwo, wtkeo, thlo, qwo, qwthlo}, shcol, host_views);
 }
 
 } // namespace shoc
