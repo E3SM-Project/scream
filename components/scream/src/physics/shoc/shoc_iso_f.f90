@@ -189,6 +189,16 @@ subroutine shoc_energy_integrals_f(shcol, nlev, host_dse, pdel,&
 
 end subroutine shoc_energy_integrals_f
 
+subroutine shoc_diag_second_moments_lbycond_f(shcol, wthl, wqw, uw, vw, ustar2, wstar, &
+           wthlo, wqwo, uwo, vwo, wtkeo, thlo, qwo, qwthlo) bind(C)
+ use iso_c_binding
+
+ integer(kind=c_int), value, intent(in) :: shcol
+ real(kind=c_real), intent(in)  :: wthl(shcol), wqw(shcol), uw(shcol), vw(shcol), ustar2(shcol), wstar(shcol)
+ real(kind=c_real), intent(out) :: wthlo(shcol), wqwo(shcol), uwo(shcol), vwo(shcol), wtkeo(shcol), thlo(shcol), qwo(shcol), qwthlo(shcol)
+
+end subroutine shoc_diag_second_moments_lbycond_f
+
 end interface
 
 end module shoc_iso_f

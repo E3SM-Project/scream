@@ -756,6 +756,19 @@ struct SHOCPblintdInitPotData : public PhysicsTestData {
   SHOC_NO_SCALAR(SHOCPblintdInitPotData, 2);
 };
 
+struct SHOCSecondMomLbycondData : public PhysicsTestData {
+  // inputs
+  Real *wthl, *wqw, *uw, *vw, *ustar2, *wstar;
+
+  // outputs
+  Real *wthlo, *wqwo, *uwo, *vwo, *wtkeo, *thlo, *qwo, *qwthlo;
+
+  SHOCSecondMomLbycondData(Int shcol_) :
+      PhysicsTestData(shcol_, {&wthl, &wqw, &uw, &vw, &ustar2, &wstar, &wthlo, &wqwo, &uwo, &vwo, &wtkeo, &thlo, &qwo, &qwthlo}) {}
+
+  SHOC_NO_SCALAR(SHOCSecondMomLbycondData, 1);
+};
+
 // Glue functions to call fortran from from C++ with the Data struct
 void shoc_grid                                      (SHOCGridData &d);
 void update_host_dse                                (SHOCEnergydseData &d);
@@ -811,6 +824,7 @@ void shoc_assumed_pdf_compute_liquid_water_flux     (SHOCPDFcompliqfluxData &d);
 void shoc_assumed_pdf_compute_buoyancy_flux         (SHOCPDFcompbuoyfluxData &d);
 void shoc_diag_second_moments_ubycond               (SHOCSecondMomentUbycondData& d);
 void shoc_pblintd_init_pot                          (SHOCPblintdInitPotData &d);
+void shoc_diag_second_moments_lbycond               (SHOCSecondMomLbycondData& d);
 
 extern "C" { // _f function decls
 
@@ -840,7 +854,8 @@ void clipping_diag_third_shoc_moments_f(Int nlevi, Int shcol, Real *w_sec_zi,
 void shoc_energy_integrals_f(Int shcol, Int nlev, Real *host_dse, Real *pdel,
                              Real *rtm, Real *rcm, Real *u_wind, Real *v_wind,
                              Real *se_int, Real *ke_int, Real *wv_int, Real *wl_int);
-
+void shoc_diag_second_moments_lbycond_f(Int shcol, Real* wthl, Real* wqw, Real* uw, Real* vw, Real* ustar2, Real* wstar,
+                         Real* wthlo, Real* wqwo, Real* uwo, Real* vwo, Real* wtkeo, Real* thlo, Real* qwo, Real* qwthlo);
 } // end _f function decls
 
 }  // namespace shoc
