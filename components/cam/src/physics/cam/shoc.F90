@@ -1141,8 +1141,8 @@ subroutine diag_second_moments_lbycond(&
     uf = max(ufmin,uf)
 
     ! Diagnose thermodynamics variances and covariances
-    thl_sec(i) = 0.4_rtype * a_const * (wthl_sfc(i)/uf)**2
-    qw_sec(i) = 0.4_rtype * a_const * (wqw_sfc(i)/uf)**2
+    thl_sec(i) = 0.4_rtype * a_const * bfb_square(wthl_sfc(i)/uf)
+    qw_sec(i) = 0.4_rtype * a_const * bfb_square(wqw_sfc(i)/uf)
     qwthl_sec(i) = 0.2_rtype * a_const * (wthl_sfc(i)/uf) * &
                          (wqw_sfc(i)/uf)
 
@@ -1152,7 +1152,7 @@ subroutine diag_second_moments_lbycond(&
     wqw_sec(i) = wqw_sfc(i)
     uw_sec(i) = uw_sfc(i)
     vw_sec(i) = vw_sfc(i)
-    wtke_sec(i) = max(sqrt(ustar2(i)),0.01_rtype)**3
+    wtke_sec(i) = bfb_cube(max(sqrt(ustar2(i)),0.01_rtype))
 
   enddo ! end i loop (column loop)
   return
@@ -4215,6 +4215,11 @@ end subroutine pblintd_cldcheck
   ! Linear interpolation to get values on various grids
 
 subroutine linear_interp(x1,x2,y1,y2,km1,km2,ncol,minthresh)
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use shoc_iso_f, only: linear_interp_f
+#endif
+
     implicit none
 
     integer, intent(in) :: km1, km2
@@ -4225,6 +4230,13 @@ subroutine linear_interp(x1,x2,y1,y2,km1,km2,ncol,minthresh)
     real(rtype), intent(out) :: y2(ncol,km2)
 
     integer :: k1, k2, i
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   if (use_cxx) then
+      call linear_interp_f(x1,x2,y1,y2,km1,km2,ncol,minthresh)
+      return
+   endif
+#endif
 
 #if 1
     !i = check_grid(x1,x2,km1,km2,ncol)
@@ -4248,7 +4260,7 @@ subroutine linear_interp(x1,x2,y1,y2,km1,km2,ncol,minthresh)
        end do
        k2 = km2
        do i = 1,ncol
-          y2(i,k2) = y1(i,km1) + (y1(i,km1)-y1(i,km1-1))*(x2(i,k2)-x1(i,km1))/(x1(i,km1)-x1(i,km1-1))
+          y2(i,k2) = y1(i,km1-1) + (y1(i,km1)-y1(i,km1-1))*(x2(i,k2)-x1(i,km1-1))/(x1(i,km1)-x1(i,km1-1))
        end do
     else
        print *,km1,km2
