@@ -1083,7 +1083,9 @@ subroutine diag_second_moments_lbycond(&
   !  to the surface fluxes for the host model, while the
   !  thermodynamic variances and covariances are computed
   !  according to that of Andre et al. 1978.
-
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use shoc_iso_f, only: shoc_diag_second_moments_lbycond_f
+#endif
   implicit none
 
 ! INPUT VARIABLES
@@ -1124,6 +1126,19 @@ subroutine diag_second_moments_lbycond(&
 ! LOCAL VARIABLES
   integer :: i, p
   real(rtype) :: uf
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   if (use_cxx) then
+      call shoc_diag_second_moments_lbycond_f(     &
+                shcol,           &                           ! Input
+                wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &         ! Input
+                ustar2,wstar,            &                   ! Input
+                wthl_sec,wqw_sec,&                           ! Output
+                uw_sec, vw_sec, wtke_sec,&                   ! Output
+                thl_sec,qw_sec,qwthl_sec)                    ! Output
+      return
+   endif
+#endif
 
   ! Constants to parameterize surface variances
   real(rtype), parameter :: a_const = 1.8_rtype
