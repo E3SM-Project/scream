@@ -348,7 +348,7 @@ contains
        t_atm, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn, qv, th_atm, &
        qc, nc, qr, nr, &
        qi, ni, qm, bm, qc_incld, qr_incld, qi_incld, qm_incld, &
-       nc_incld, nr_incld, ni_incld, bm_incld, is_nucleat_possible, is_hydromet_present)
+       nc_incld, nr_incld, ni_incld, bm_incld, is_nucleat_possible, is_hydromet_present,do_prescribed_CCN,nccn_prescribed)
 
     implicit none
 
@@ -359,13 +359,14 @@ contains
     real(rtype), intent(in) :: dt
 
     real(rtype), intent(in), dimension(kts:kte) :: pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, &
-         inv_cld_frac_l, inv_cld_frac_i, inv_cld_frac_r, latent_heat_vapor, latent_heat_sublim, xlf
+         inv_cld_frac_l, inv_cld_frac_i, inv_cld_frac_r, latent_heat_vapor, latent_heat_sublim, xlf, nccn_prescribed
 
     real(rtype), intent(inout), dimension(kts:kte) :: t_atm, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, &
          acn, qv, th_atm, qc, nc, qr, nr, qi, ni, qm, bm, qc_incld, qr_incld, qi_incld, &
          qm_incld, nc_incld, nr_incld, ni_incld, bm_incld
 
     logical(btype), intent(out) :: is_nucleat_possible, is_hydromet_present
+    logical(btype), intent(in) :: do_prescribed_CCN
 
     ! locals
     integer :: k
@@ -407,10 +408,13 @@ contains
       !--- Apply droplet activation here (before other microphysical processes) for consistency with qc increase by saturation
       !    adjustment already applied in macrophysics. If prescribed drop number is used, this is also a good place to
       !    prescribe that value
-          if (.not.(do_predict_nc)) then
-            nc(k) = nccnst*inv_rho(k)
+
+          if (do_prescribed_CCN) then
+             nc(k) = max(nc(k),nccn_prescribed(k))
+          else if (do_predict_nc) then
+             nc(k) = max(nc(k) + nc_nuceat_tend(k) * dt,0.0_rtype)
           else
-            nc(k) = max(nc(k) + nc_nuceat_tend(k) * dt,0.0_rtype)
+             nc(k) = nccnst*inv_rho(k)
           endif
        endif
 
@@ -462,14 +466,14 @@ contains
        qm, bm, latent_heat_vapor, latent_heat_sublim, xlf, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld, nr_incld, &
        ni_incld, bm_incld, mu_c, nu, lamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, qv2qi_depos_tend, precip_total_tend, &
        nevapr, qr_evap_tend, vap_liq_exchange, vap_ice_exchange, liq_ice_exchange, pratot, &
-       prctot, p3_tend_out, is_hydromet_present)
+       prctot, p3_tend_out, is_hydromet_present, do_prescribed_CCN)
 
     implicit none
 
     ! args
 
     integer, intent(in) :: kts, kte, kbot, ktop, kdir
-    logical(btype), intent(in) :: do_predict_nc
+    logical(btype), intent(in) :: do_predict_nc, do_prescribed_CCN
     real(rtype), intent(in) :: dt, inv_dt
 
     real(rtype), intent(in), dimension(kts:kte) :: pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, inv_cld_frac_l,  &
@@ -753,7 +757,7 @@ contains
       ! deposition/condensation-freezing nucleation
       call ice_nucleation(t_atm(k),inv_rho(k),&
            ni(k),ni_activated(k),qv_supersat_i(k),inv_dt,do_predict_nc,&
-           qinuc, ni_nucleat_tend)
+           qinuc, ni_nucleat_tend, do_prescribed_CCN)
 
       !................
       ! cloud water autoconversion
@@ -844,7 +848,7 @@ contains
       call update_prognostic_liquid(qc2qr_accret_tend, nc_accret_tend, qc2qr_autoconv_tend, nc2nr_autoconv_tend, ncautr, &
            nc_selfcollect_tend, qr2qv_evap_tend, nr_evap_tend, nr_selfcollect_tend,           &
            do_predict_nc, inv_rho(k), exner(k), latent_heat_vapor(k), dt,                     &
-           th_atm(k), qv(k), qc(k), nc(k), qr(k), nr(k))
+           th_atm(k), qv(k), qc(k), nc(k), qr(k), nr(k), do_prescribed_CCN)
 
       !==
       ! AaronDonahue - Add extra variables needed from microphysics by E3SM:
@@ -1108,7 +1112,7 @@ contains
        diag_eff_radius_qi,rho_qi,do_predict_nc, &
        dpres,exner,qv2qi_depos_tend,precip_total_tend,nevapr,qr_evap_tend,precip_liq_flux,precip_ice_flux,cld_frac_r,cld_frac_l,cld_frac_i,  &
        p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-       vap_ice_exchange,qv_prev,t_prev,col_location)
+       vap_ice_exchange,qv_prev,t_prev,col_location, do_prescribed_CCN,nccn_prescribed)
 
     !----------------------------------------------------------------------------------------!
     !                                                                                        !
@@ -1174,6 +1178,11 @@ contains
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: liq_ice_exchange ! sum of liq-ice phase change tendenices
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: vap_liq_exchange ! sum of vap-liq phase change tendenices
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: vap_ice_exchange ! sum of vap-ice phase change tendenices
+
+    ! INPUT for prescribed CCN option
+    logical(btype), intent(in)                                  :: do_prescribed_CCN
+    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: nccn_prescribed
+
     ! INPUT needed for PBUF variables used by other parameterizations
 
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: cld_frac_i, cld_frac_l, cld_frac_r ! Ice, Liquid and Rain cloud fraction
@@ -1319,7 +1328,7 @@ contains
             rhofaci(i,:), acn(i,:), qv(i,:), th_atm(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), &
             qi(i,:), ni(i,:), qm(i,:), bm(i,:), qc_incld(i,:), qr_incld(i,:), &
             qi_incld(i,:), qm_incld(i,:), nc_incld(i,:), nr_incld(i,:), &
-            ni_incld(i,:), bm_incld(i,:), is_nucleat_possible, is_hydromet_present)
+            ni_incld(i,:), bm_incld(i,:), is_nucleat_possible, is_hydromet_present, do_prescribed_CCN, nccn_prescribed(i,:))
 
 !      if (debug_ON) then
 !         tmparr1(i,:) = th_atm(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
@@ -1341,7 +1350,7 @@ contains
             bm_incld(i,:), mu_c(i,:), nu(i,:), lamc(i,:), cdist(i,:), cdist1(i,:), &
             cdistr(i,:), mu_r(i,:), lamr(i,:), logn0r(i,:), qv2qi_depos_tend(i,:), precip_total_tend(i,:), &
             nevapr(i,:), qr_evap_tend(i,:), vap_liq_exchange(i,:), vap_ice_exchange(i,:), &
-            liq_ice_exchange(i,:), pratot(i,:), prctot(i,:), p3_tend_out(i,:,:), is_hydromet_present)
+            liq_ice_exchange(i,:), pratot(i,:), prctot(i,:), p3_tend_out(i,:,:), is_hydromet_present, do_prescribed_CCN)
 
        ! measure microphysics processes tendency output
        p3_tend_out(i,:,42) = ( qc(i,:)    - qc_old(i,:) ) * inv_dt    ! Liq. microphysics tendency, measure
@@ -2516,7 +2525,7 @@ end subroutine rain_immersion_freezing
 
 
 subroutine ice_nucleation(t_atm,inv_rho,ni,ni_activated,qv_supersat_i,inv_dt,do_predict_nc,    &
-   qinuc,ni_nucleat_tend)
+   qinuc,ni_nucleat_tend, do_prescribed_CCN)
 
    !................................................................
    ! deposition/condensation-freezing nucleation
@@ -2531,7 +2540,7 @@ subroutine ice_nucleation(t_atm,inv_rho,ni,ni_activated,qv_supersat_i,inv_dt,do_
    real(rtype), intent(in) :: ni_activated
    real(rtype), intent(in) :: qv_supersat_i
    real(rtype), intent(in) :: inv_dt
-   logical(btype), intent(in) :: do_predict_nc
+   logical(btype), intent(in) :: do_predict_nc, do_prescribed_CCN
 
    real(rtype), intent(inout) :: qinuc
    real(rtype), intent(inout) :: ni_nucleat_tend
@@ -2540,7 +2549,7 @@ subroutine ice_nucleation(t_atm,inv_rho,ni,ni_activated,qv_supersat_i,inv_dt,do_
    real(rtype) :: dum, N_nuc, Q_nuc
 
    if ( t_atm .lt.T_icenuc .and. qv_supersat_i.ge.0.05_rtype) then
-      if(.not. do_predict_nc) then
+      if(.not. do_predict_nc .or. do_prescribed_CCN) then
 !         ! dum = exp(-0.639+0.1296*100.*qv_supersat_i(i,k))*1000.*inv_rho(i,k)  !Meyers et al. (1992)
          dum = 0.005_rtype*bfb_exp(0.304_rtype*(T_zerodegc-t_atm))*1000._rtype*inv_rho   !Cooper (1986)
          dum = min(dum,100.e3_rtype*inv_rho)
@@ -3012,7 +3021,7 @@ end subroutine update_prognostic_ice
 subroutine update_prognostic_liquid(qc2qr_accret_tend,nc_accret_tend,qc2qr_autoconv_tend,nc2nr_autoconv_tend, &
      ncautr,nc_selfcollect_tend, qr2qv_evap_tend,nr_evap_tend,nr_selfcollect_tend,         &
     do_predict_nc,inv_rho,exner,latent_heat_vapor,dt,                                      &
-    th_atm,qv,qc,nc,qr,nr)
+    th_atm,qv,qc,nc,qr,nr,do_prescribed_CCN)
 
    !-- warm-phase only processes:
    implicit none
@@ -3028,7 +3037,7 @@ subroutine update_prognostic_liquid(qc2qr_accret_tend,nc_accret_tend,qc2qr_autoc
    real(rtype), intent(in) :: nr_selfcollect_tend
 
 
-   logical(btype), intent(in) :: do_predict_nc
+   logical(btype), intent(in) :: do_predict_nc, do_prescribed_CCN
    real(rtype), intent(in) :: inv_rho
    real(rtype), intent(in) :: exner
    real(rtype), intent(in) :: latent_heat_vapor
@@ -3044,7 +3053,7 @@ subroutine update_prognostic_liquid(qc2qr_accret_tend,nc_accret_tend,qc2qr_autoc
    qc = qc + (-qc2qr_accret_tend-qc2qr_autoconv_tend)*dt
    qr = qr + (qc2qr_accret_tend+qc2qr_autoconv_tend-qr2qv_evap_tend)*dt
 
-   if (do_predict_nc) then
+   if (do_predict_nc .or. do_prescribed_CCN) then
       nc = nc + (-nc_accret_tend-nc2nr_autoconv_tend+nc_selfcollect_tend)*dt
    else
       nc = nccnst*inv_rho
