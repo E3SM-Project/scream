@@ -4,6 +4,7 @@ SET (NEED_LIBS shoc physics_share scream_share)
 set(SHOC_TESTS_SRCS
     shoc_tests.cpp
     shoc_grid_tests.cpp
+    shoc_diag_obklen_tests.cpp
     shoc_impli_comp_tmpi_tests.cpp
     shoc_impli_dp_inverse_tests.cpp
     shoc_impli_sfc_fluxes_tests.cpp
@@ -42,6 +43,7 @@ set(SHOC_TESTS_SRCS
     shoc_linear_interp_tests.cpp
     shoc_diag_third_tests.cpp
     shoc_compute_diag_third_tests.cpp
+    shoc_assumed_pdf_tests.cpp
     shoc_pdf_tildatoreal_tests.cpp
     shoc_pdf_vv_parameters_tests.cpp
     shoc_pdf_thl_parameters_tests.cpp
