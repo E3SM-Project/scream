@@ -17,6 +17,8 @@ set(SHOC_SRCS
   scream_shoc_interface.F90
   shoc_diag_second_moments_srf.cpp
   shoc_diag_second_moments_ubycond.cpp
+  shoc_pblintd_init_pot.cpp
+  shoc_check_tke.cpp
 )
 
 set(SHOC_HEADERS
@@ -32,7 +34,12 @@ if (NOT CUDA_BUILD)
     shoc_update_host_dse.cpp
     shoc_calc_shoc_varorcovar.cpp
     shoc_calc_shoc_vertflux.cpp
-  )
+    shoc_linear_interp.cpp
+    shoc_compute_shoc_mix_shoc_length.cpp
+    shoc_compute_diag_third_shoc_moment.cpp
+    shoc_clipping_diag_third_shoc_moments.cpp
+    shoc_energy_integrals.cpp
+  ) # SHOC ETI SRCS
 endif()
 
 add_library(shoc ${SHOC_SRCS})
@@ -46,4 +53,3 @@ target_link_libraries(shoc physics_share scream_share ${SCREAM_TPL_LIBRARIES})
 if (NOT SCREAM_LIB_ONLY)
   add_subdirectory(tests)
 endif()
-

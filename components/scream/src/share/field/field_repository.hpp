@@ -62,6 +62,9 @@ public:
 
   // Deduce the pack size from the scalar type (which must be of type Pack<ScalarType,N>, for some int N>0, or ScalarType)
   template<typename RequestedValueType = scalar_type>
+  void register_field (const identifier_type& identifier, const std::initializer_list<std::string>& groups_names);
+
+  template<typename RequestedValueType = scalar_type>
   void register_field (const identifier_type& identifier, const std::set<std::string>& groups_names);
 
   template<typename RequestedValueType = scalar_type>
@@ -136,6 +139,13 @@ register_field (const identifier_type& id, const std::string& group_name) {
 template<typename ScalarType, typename Device>
 template<typename RequestedValueType>
 void FieldRepository<ScalarType,Device>::
+register_field (const identifier_type& id, const std::initializer_list<std::string>& groups_names) {
+  register_field<RequestedValueType>(id,std::set<std::string>(groups_names));
+}
+
+template<typename ScalarType, typename Device>
+template<typename RequestedValueType>
+void FieldRepository<ScalarType,Device>::
 register_field (const identifier_type& id, const std::set<std::string>& groups_names) {
 
   using ekat::ScalarTraits;
@@ -175,7 +185,7 @@ register_field (const identifier_type& id, const std::set<std::string>& groups_n
   // Finally, add the field to the given groups
   for (const auto& group_name : groups_names) {
     // First, make sure it's not a reserved group
-    EKAT_REQUIRE_MSG(!ekat::util::contains(m_reserved_groups,group_name),"");
+    EKAT_REQUIRE_MSG(!ekat::contains(m_reserved_groups,group_name),"");
 
     // Add the group name to the field tracking of all the fields with that name
     // Remember: fields with the same name can differ only because of tags/extents (i.e., different grids).

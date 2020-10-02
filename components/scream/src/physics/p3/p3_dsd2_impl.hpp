@@ -16,7 +16,7 @@ KOKKOS_FUNCTION
 void Functions<S,D>::
 get_cloud_dsd2(
   const Spack& qc, Spack& nc, Spack& mu_c, const Spack& rho, Spack& nu,
-  const view_dnu_table& dnu, Spack& lamc, Spack& cdist, Spack& cdist1, const Spack& cld_frac_l,
+  const view_dnu_table& dnu, Spack& lamc, Spack& cdist, Spack& cdist1, 
   const Smask& context)
 {
   lamc.set(context   , 0);
@@ -47,7 +47,7 @@ get_cloud_dsd2(
     if (P3C::iparam == 1) {
       IntSmallPack dumi = IntSmallPack(mu_c) - 1;
       Spack dnu0, dnu1;
-      ekat::pack::index_and_shift<1>(dnu, dumi, dnu0, dnu1);
+      ekat::index_and_shift<1>(dnu, dumi, dnu0, dnu1);
       nu.set(qc_gt_small, dnu0 + (dnu1 - dnu0) * (mu_c - Spack(dumi) - 1));
     }
 
@@ -67,7 +67,7 @@ get_cloud_dsd2(
     nc.set(min_or_max, 6 * (lamc * lamc * lamc) * qc / (C::Pi * C::RHO_H2O * (mu_c + 3) * (mu_c + 2) * (mu_c + 1)));
 
     cdist.set(qc_gt_small, nc * (mu_c+1) / lamc);
-    cdist1.set(qc_gt_small, nc * cld_frac_l / tgamma(mu_c + 1));
+    cdist1.set(qc_gt_small, nc / tgamma(mu_c + 1));
   }
 }
 
@@ -75,7 +75,7 @@ template <typename S, typename D>
 void Functions<S,D>::
 get_rain_dsd2 (
   const Spack& qr, Spack& nr, Spack& mu_r,
-  Spack& lamr, Spack& cdistr, Spack& logn0r, const Spack& cld_frac_r,
+  Spack& lamr, Spack& cdistr, Spack& logn0r, 
   const Smask& context)
 {
   constexpr auto nsmall = C::NSMALL;
@@ -125,7 +125,7 @@ get_rain_dsd2 (
       }
     }
 
-    cdistr.set(qr_gt_small, nr*cld_frac_r/tgamma(mu_r + 1));
+    cdistr.set(qr_gt_small, nr/tgamma(mu_r + 1));
     // note: logn0r is calculated as log10(n0r)
     logn0r.set(qr_gt_small, log10(nr) + (mu_r + 1) * log10(lamr) - log10(tgamma(mu_r+1)));
   }

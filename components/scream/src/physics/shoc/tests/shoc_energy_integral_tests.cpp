@@ -40,8 +40,8 @@ struct UnitWrap::UnitTest<D>::TestShocEnergyInt {
     //   or moisture result in zero integral outputs.  If the
     //   column is positive then verify that wl_int >= wv_int
 
-    // Define host model dry static energy [K]
-    static constexpr Real host_dse[nlev] = {350.0, 325.0, 315.0, 310.0, 300.0};
+    // Define host model dry static energy [J kg-1]
+    static constexpr Real host_dse[nlev] = {350e3, 325e3, 315e3, 310e3, 300e3};
     // Defin the pressure difference [hPa] (converted to Pa later)
     static constexpr Real pdel[nlev]={100.0, 75.0, 50.0, 25.0, 10.0};
     // Define zonal wind on nlev grid [m/s]
@@ -129,7 +129,59 @@ struct UnitWrap::UnitTest<D>::TestShocEnergyInt {
 
   static void run_bfb()
   {
-    // TODO
+    SHOCEnergyintData SDS_f90[] = {
+      //               shcol, nlev
+      SHOCEnergyintData(10, 71),
+      SHOCEnergyintData(10, 12),
+      SHOCEnergyintData(7,  16),
+      SHOCEnergyintData(2, 7),
+    };
+
+    static constexpr Int num_runs = sizeof(SDS_f90) / sizeof(SHOCEnergyintData);
+
+    // Generate random input data
+    for (auto& d : SDS_f90) {
+      d.randomize();
+    }
+
+    // Create copies of data for use by cxx. Needs to happen before fortran calls so that
+    // inout data is in original state
+    SHOCEnergyintData SDS_cxx[] = {
+      SHOCEnergyintData(SDS_f90[0]),
+      SHOCEnergyintData(SDS_f90[1]),
+      SHOCEnergyintData(SDS_f90[2]),
+      SHOCEnergyintData(SDS_f90[3]),
+    };
+
+    // Assume all data is in C layout
+
+    // Get data from fortran
+    for (auto& d : SDS_f90) {
+      // expects data in C layout
+      shoc_energy_integrals(d);
+    }
+
+    // Get data from cxx
+    for (auto& d : SDS_cxx) {
+      d.transpose<ekat::TransposeDirection::c2f>();
+      // expects data in fortran layout
+      shoc_energy_integrals_f(d.shcol(), d.nlev(), d.host_dse, d.pdel,
+                              d.rtm, d.rcm, d.u_wind, d.v_wind,
+                              d.se_int, d.ke_int, d.wv_int, d.wl_int);
+      d.transpose<ekat::TransposeDirection::f2c>();
+    }
+
+    // Verify BFB results, all data should be in C layout
+    for (Int i = 0; i < num_runs; ++i) {
+      SHOCEnergyintData& d_f90 = SDS_f90[i];
+      SHOCEnergyintData& d_cxx = SDS_cxx[i];
+      for (Int c = 0; c < d_f90.dim1; ++c) {
+        REQUIRE(d_f90.se_int[c] == d_cxx.se_int[c]);
+        REQUIRE(d_f90.ke_int[c] == d_cxx.ke_int[c]);
+        REQUIRE(d_f90.wv_int[c] == d_cxx.wv_int[c]);
+        REQUIRE(d_f90.wl_int[c] == d_cxx.wl_int[c]);
+      }
+    }
   }
 };
 

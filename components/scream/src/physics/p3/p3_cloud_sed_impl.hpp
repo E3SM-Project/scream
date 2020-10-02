@@ -80,18 +80,18 @@ void Functions<S,D>
       team.team_barrier();
 
       // Convert top/bot to pack indices
-      ekat::util::set_min_max(k_qxbot, k_qxtop, kmin, kmax, Spack::n);
+      ekat::impl::set_min_max(k_qxbot, k_qxtop, kmin, kmax, Spack::n);
 
       Kokkos::parallel_reduce(
         Kokkos::TeamThreadRange(team, kmax-kmin+1), [&] (int pk_, Scalar& lmax) {
           const int pk = kmin + pk_;
-          const auto range_pack = ekat::pack::range<IntSmallPack>(pk*Spack::n);
+          const auto range_pack = ekat::range<IntSmallPack>(pk*Spack::n);
           const auto range_mask = range_pack >= kmin_scalar && range_pack <= kmax_scalar;
           const auto qc_gt_small = range_mask && qc_incld(pk) > qsmall;
           if (qc_gt_small.any()) {
             // compute Vq, Vn
             Spack nu, cdist, cdist1, dum;
-            get_cloud_dsd2(qc_incld(pk), nc_incld(pk), mu_c(pk), rho(pk), nu, dnu, lamc(pk), cdist, cdist1, cld_frac_l(pk), qc_gt_small);
+            get_cloud_dsd2(qc_incld(pk), nc_incld(pk), mu_c(pk), rho(pk), nu, dnu, lamc(pk), cdist, cdist1, qc_gt_small);
 
 	    //get_cloud_dsd2 keeps the drop-size distribution within reasonable
 	    //bounds by modifying nc_incld. The next line maintains consistency
