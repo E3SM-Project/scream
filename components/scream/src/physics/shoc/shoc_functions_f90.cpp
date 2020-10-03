@@ -1285,5 +1285,11 @@ void shoc_energy_integrals_f(Int shcol, Int nlev, Real *host_dse, Real *pdel,
   ekat::device_to_host<int,4>({se_int,ke_int,wv_int,wl_int},shcol,inout_views);
 }
 
+void eddy_diffusivities_f(Int nlev, Int shcol, Real* obklen, Real* pblh, Real* zt_grid,
+                          Real* shoc_mix, Real* sterm_zt, Real* isotropy, Real* tke,
+                          Real* tkh, Real* tk)
+{
+  // TODO
+}
 } // namespace shoc
 } // namespace scream

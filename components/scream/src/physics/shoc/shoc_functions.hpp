@@ -183,6 +183,20 @@ struct Functions
     Scalar&                      ke_int,
     Scalar&                      wv_int,
     Scalar&                      wl_int);
+
+  KOKKOS_FUNCTION
+  static void eddy_diffusivities(
+    const Int&                   nlev,
+    const Int&                   shcol,
+    const uview_1d<const Spack>& obklen,
+    const uview_1d<const Spack>& pblh,
+    const uview_1d<const Spack>& zt_grid,
+    const uview_1d<const Spack>& shoc_mix,
+    const uview_1d<const Spack>& sterm_zt,
+    const uview_1d<const Spack>& isotropy,
+    const uview_1d<const Spack>& tke,
+    const uview_1d<Spack>&       tkh,
+    const uview_1d<Spack>&       tk);
 }; // struct Functions
 
 } // namespace shoc
@@ -203,6 +217,7 @@ struct Functions
 # include "shoc_linear_interp_impl.hpp"
 # include "shoc_clipping_diag_third_shoc_moments_impl.hpp"
 # include "shoc_energy_integrals_impl.hpp"
+# include "shoc_eddy_diffusivities_impl.hpp"
 #endif // KOKKOS_ENABLE_CUDA
 
 #endif

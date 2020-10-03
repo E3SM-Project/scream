@@ -2986,6 +2986,10 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
   ! Compute eddy diffusivity for heat and momentum
   !------------------------------------------------------------
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use shoc_iso_f, only: check_tke_f
+#endif
+
   implicit none
 
   !intent-ins
@@ -3032,6 +3036,15 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
   real(rtype), parameter :: Ckm_s_def = 1.0_rtype
   ! Minimum allowable value for stability diffusivities
   real(rtype), parameter :: Ck_s_min = 0.1_rtype
+
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  if (use_cxx) then
+     call eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
+          shoc_mix, sterm_zt, isotropy, tke, tkh, tk)
+     return
+  endif
+#endif
 
   !store zt_grid at nlev in 1d array
   zt_grid_1d(1:shcol) = zt_grid(1:shcol,nlev)

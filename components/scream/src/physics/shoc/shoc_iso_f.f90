@@ -189,6 +189,15 @@ subroutine shoc_energy_integrals_f(shcol, nlev, host_dse, pdel,&
 
 end subroutine shoc_energy_integrals_f
 
+subroutine eddy_diffusivities_f(nlev, shcol, obklen, pblh, zt_grid, shoc_mix, sterm_zt, isotropy, tke, tkh, tk) bind(C)
+    use iso_c_binding
+
+    integer(kind=c_int) , value, intent(in) :: nlev, shcol
+    real(kind=c_real) , intent(in), dimension(shcol) :: obklen, pblh
+    real(kind=c_real) , intent(in), dimension(shcol, nlev) :: zt_grid, shoc_mix, sterm_zt, isotropy, tke
+    real(kind=c_real) , intent(out), dimension(shcol, nlev) :: tkh, tk
+
+  end subroutine eddy_diffusivities_f
 end interface
 
 end module shoc_iso_f
