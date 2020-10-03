@@ -126,6 +126,43 @@ TEST_CASE("field", "") {
     // Trying to reshape into something that the allocation cannot accommodate should throw
     REQUIRE_THROWS (f1.get_reshaped_view<Pack<Real,32>***>());
   }
+
+  // Check whether we can correctly manipulate a field with two scalar types.
+  SECTION ("reshape and reduce with multiple scalar types") {
+    Field<Pack<Real,4>,Device> f1 (fid);
+    f1.allocate_view();
+
+    auto v1d = f1.get_view();
+
+    // Reshape the field to a view of Reals, and fill it with ones.
+    // Here we use the field's layout to determine the extents of the relevant
+    // views, since the view's extents include padding introduced by Packs.
+    auto v3d_1 = f1.get_reshaped_view<Real***>();
+    auto layout = f1.get_header().get_identifier().get_layout();
+    int num_reals = 0;
+    for (int i = 0; i < layout.dim(0); ++i) {
+      for (int j = 0; j < layout.dim(1); ++j) {
+        for (int k = 0; k < layout.dim(2); ++k, ++num_reals) {
+          v3d_1(i, j, k) = 1;
+        }
+      }
+    }
+
+    // Reshape the field back to Packs and reduce to demonstrate that we get
+    // the desired sum.
+    auto v3d_2 = f1.get_reshaped_view<Pack<Real,4>***>();
+    int num_packs = 0;
+    for (int i = 0; i < layout.dim(0); ++i) {
+      for (int j = 0; j < layout.dim(1); ++j) {
+        for (int k = 0; k < layout.dim(2); ++k, ++num_packs) {
+          Real sum = ekat::reduce_sum(v3d_2(i, j, k));
+          if (num_packs <= num_reals/4) {
+            REQUIRE(ekat::reduce_sum(v3d_2(i, j, k)) == 4);
+          }
+        }
+      }
+    }
+  }
 }
 
 TEST_CASE("field_repo", "") {
