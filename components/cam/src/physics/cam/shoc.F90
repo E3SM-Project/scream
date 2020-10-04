@@ -2987,7 +2987,7 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
   !------------------------------------------------------------
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
-    use shoc_iso_f, only: check_tke_f
+    use shoc_iso_f, only: eddy_diffusivities_f
 #endif
 
   implicit none
@@ -3040,7 +3040,7 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
   if (use_cxx) then
-     call eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
+     call eddy_diffusivities_f(nlev, shcol, obklen, pblh, zt_grid, &
           shoc_mix, sterm_zt, isotropy, tke, tkh, tk)
      return
   endif

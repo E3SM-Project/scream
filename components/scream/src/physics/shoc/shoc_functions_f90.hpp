@@ -771,19 +771,6 @@ struct SHOCPblintdInitPotData : public PhysicsTestData {
   SHOC_NO_SCALAR(SHOCPblintdInitPotData, 2);
 };
 
-struct EddyDiffusivitiesData : public PhysicsTestData {
-  // Inputs
-  Int nlev, shcol;
-  Real *obklen, *pblh, *zt_grid, *shoc_mix, *sterm_zt, *isotropy, *tke;
-
-  // Outputs
-  Real *tkh, *tk;
-
-  EddyDiffusivitiesData(Int shcol_, Int nlev_) :
-    PhysicsTestData(shcol_, nlev_, {&zt_grid, &shoc_mix, &sterm_zt, &isotropy, &tke, &tkh, &tk}, {&obklen, &pblh}) {}
-
-  SHOC_NO_SCALAR(EddyDiffusivitiesData, 2)
-};
 // Glue functions to call fortran from from C++ with the Data struct
 void shoc_grid                                      (SHOCGridData &d);
 void shoc_diag_obklen                               (SHOCObklenData &d);
