@@ -189,6 +189,14 @@ subroutine shoc_energy_integrals_f(shcol, nlev, host_dse, pdel,&
 
 end subroutine shoc_energy_integrals_f
 
+subroutine shoc_pblintd_cldcheck_f(shcol, nlev, nlevi, zi, cldn, pblh) bind(C)
+  use iso_c_binding
+
+  integer(kind=c_int), value, intent(in) :: shcol, nlev, nlevi
+  real(kind=c_real), intent(in) :: zi(shcol, nlevi), cldn(shcol, nlev)
+  real(kind=c_real), intent(inout) :: pblh(shcol)
+end subroutine shoc_pblintd_cldcheck_f
+
 end interface
 
 end module shoc_iso_f
