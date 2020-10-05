@@ -243,6 +243,31 @@ struct Functions
     Scalar&       ustar,
     Scalar&       kbfs,
     Scalar&       obklen);
+
+  KOKKOS_FUNCTION
+  static void shoc_energy_fixer(
+    const MemberType&            team,
+    const Int&                   nlev,
+    const Int&                   nlevi,
+    const Scalar&                dtime,
+    const Int&                   nadv,
+    const uview_1d<const Spack>& zt_grid,
+    const uview_1d<const Spack>& zi_grid,
+    const Scalar&                se_b,
+    const Scalar&                ke_b,
+    const Scalar&                wv_b,
+    const Scalar&                wl_b,
+    const Scalar&                se_a,
+    const Scalar&                ke_a,
+    const Scalar&                wv_a,
+    const Scalar&                wl_a,
+    const Scalar&                wthl_sfc,
+    const Scalar&                wqw_sfc,
+    const uview_1d<const Spack>& rho_zt,
+    const uview_1d<const Spack>& tke,
+    const uview_1d<const Spack>& pint,
+    const uview_1d<Spack>&       rho_zi,
+    const uview_1d<Spack>&       host_dse);
 }; // struct Functions
 
 } // namespace shoc
@@ -271,6 +296,7 @@ struct Functions
 # include "shoc_check_length_scale_shoc_length_impl.hpp"
 # include "shoc_compute_conv_vel_shoc_length_impl.hpp"
 # include "shoc_diag_obklen_impl.hpp"
+# include "shoc_energy_fixer_impl.hpp"
 #endif // KOKKOS_ENABLE_CUDA
 
 #endif
