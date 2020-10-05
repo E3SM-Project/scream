@@ -29,7 +29,7 @@ void Functions<S,D>
   
     auto cldcheck = false;
     if (cldn >= 0) cldcheck = true;
-    if (cldcheck) pblh = max(pblh, zi + 50);
+    if (cldcheck) pblh = std::max(pblh, zi + 50);
 }
 } // namespace shoc
 } // namespace scream
