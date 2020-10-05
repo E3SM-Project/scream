@@ -27,7 +27,7 @@ void Functions<S,D>
   const auto ufmin = 0.01;
 
   auto uf = sqrt(ustar2+sp(0.3)*wstar*wstar);
-  uf = max(ufmin,uf);
+  uf = std::max(ufmin,uf);
 
   // Diagnose thermodynamics variances and covariances
   thl_sec   = sp(0.4)*sp(1.8)*((wthl_sfc/uf)*(wthl_sfc/uf));
@@ -41,7 +41,7 @@ void Functions<S,D>
   uw_sec   = uw_sfc;
   vw_sec   = vw_sfc;
 
-  wtke_sec = max(sqrt(ustar2),ufmin)*max(sqrt(ustar2),ufmin)*max(sqrt(ustar2),ufmin);
+  wtke_sec = std::max(sqrt(ustar2),ufmin)*std::max(sqrt(ustar2),ufmin)*std::max(sqrt(ustar2),ufmin);
 }
 } // namespace shoc
 } // namespace scream
