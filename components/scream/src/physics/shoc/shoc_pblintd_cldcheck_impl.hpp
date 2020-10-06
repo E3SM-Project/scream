@@ -26,10 +26,10 @@ void Functions<S,D>
     // If  any cloud is diagnosed in the lowest level, set pblh to 50 meters 
     // higher than top interface of lowest level
     //
-  
+
     auto cldcheck = false;
     if (cldn >= 0) cldcheck = true;
-    if (cldcheck) pblh = std::max(pblh, zi + 50);
+    if (cldcheck) pblh = ekat::impl::max<Scalar>(pblh, zi + sp(50));
 }
 } // namespace shoc
 } // namespace scream

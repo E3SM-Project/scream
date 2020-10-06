@@ -72,14 +72,16 @@ contains
        thetal, qw, u_wind, v_wind, wthv_sec
     real(kind=c_real), intent(inout), dimension(shcol, nlev, num_qtracers) :: qtracers
     real(kind=c_real), intent(inout), dimension(shcol, nlev) :: tk, tkh
+    real(kind=c_real), intent(inout), dimension(shcol, nlev) :: shoc_cldfrac, shoc_ql
 
-    real(kind=c_real), intent(out), dimension(shcol, nlev) :: shoc_cldfrac, shoc_ql
+    real(kind=c_real), intent(inout), dimension(shcol, nlev) :: shoc_mix, w_sec
+    real(kind=c_real), intent(inout), dimension(shcol, nlevi) :: thl_sec, qw_sec, &
+        qwthl_sec, wthl_sec, wqw_sec, wtke_sec, uw_sec, vw_sec, w3
+    real(kind=c_real), intent(inout), dimension(shcol, nlev) :: wqls_sec, isotropy, &
+         brunt
+
     real(kind=c_real), intent(out), dimension(shcol) :: pblh
-    real(kind=c_real), intent(out), dimension(shcol, nlev) :: shoc_mix, w_sec
-    real(kind=c_real), intent(out), dimension(shcol, nlevi) :: thl_sec, qw_sec, &
-       qwthl_sec, wthl_sec, wqw_sec, wtke_sec, uw_sec, vw_sec, w3
-    real(kind=c_real), intent(out), dimension(shcol, nlev) :: wqls_sec, isotropy, &
-         brunt,shoc_ql2
+    real(kind=c_real), intent(out), dimension(shcol, nlev) :: shoc_ql2
 
     call shoc_main(shcol, nlev, nlevi, dtime, nadv, host_dx, host_dy, thv,   &
      zt_grid, zi_grid, pres, presi, pdel, wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &
@@ -87,6 +89,7 @@ contains
      qw, u_wind, v_wind, qtracers, wthv_sec, tkh, tk, shoc_ql, shoc_cldfrac, &
      pblh, shoc_mix, isotropy, w_sec, thl_sec, qw_sec, qwthl_sec, wthl_sec,  &
      wqw_sec, wtke_sec, uw_sec, vw_sec, w3, wqls_sec, brunt,shoc_ql2 )
+
   end subroutine shoc_main_c
 
   subroutine shoc_use_cxx_c(arg_use_cxx) bind(C)

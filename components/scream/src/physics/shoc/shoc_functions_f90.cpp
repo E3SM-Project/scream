@@ -1295,11 +1295,11 @@ void shoc_energy_integrals_f(Int shcol, Int nlev, Real *host_dse, Real *pdel,
 }
 
 void shoc_pblintd_cldcheck_f(Int shcol, Int nlev, Int nlevi, Real* zi, Real* cldn, Real* pblh) {
-  using SHOC = Functions<Real, DefaultDevice>;
-  using Pack1      = typename ekat::Pack<Real, 1>;
-  using Scalar     = typename SHOC::Scalar;
-  using view_2d    = typename SHOC::view_2d<Pack1>;
-  using view_1d    = typename SHOC::view_1d<Pack1>;
+  using SHOC    = Functions<Real, DefaultDevice>;
+  using Pack1   = typename ekat::Pack<Real, 1>;
+  using Scalar  = typename SHOC::Scalar;
+  using view_2d = typename SHOC::view_2d<Pack1>;
+  using view_1d = typename SHOC::view_1d<Pack1>;
 
   Kokkos::Array<size_t, 2> dim1  = {shcol, shcol};
   Kokkos::Array<size_t, 2> dim2  = {nlevi,  nlev};
@@ -1325,11 +1325,12 @@ void shoc_pblintd_cldcheck_f(Int shcol, Int nlev, Int nlevi, Real* zi, Real* cld
      SHOC::shoc_pblintd_cldcheck(zi_s, cldn_s, pblh_s);
 
      pblh_1d(i)[0] = pblh_s;
+
   });
 
   Kokkos::Array<view_1d, 1> host_views = {pblh_1d};
 
-  ekat::device_to_host({pblh}, shcol, host_views);
+  ekat::device_to_host<int,1>({pblh}, shcol, host_views);
 }
 
 } // namespace shoc

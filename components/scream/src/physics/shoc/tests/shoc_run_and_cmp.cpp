@@ -121,6 +121,7 @@ struct Baseline {
   Int run_and_cmp (const std::string& filename, const double& tol, bool use_fortran) {
     auto fid = ekat::FILEPtr(fopen(filename.c_str(), "r"));
     EKAT_REQUIRE_MSG( fid, "generate_baseline can't read " << filename);
+
     Int nerr = 0, ne;
     int case_num = 0;
     for (auto ps : params_) {
@@ -138,8 +139,11 @@ struct Baseline {
           std::cout << "--- checking case # " << case_num << ", timestep # = " << (it+1)*ps.nadv
                      << " ---\n" << std::flush;
           read(fid, d_ref);
+
           shoc_main(*d);
+
           ne = compare(tol, d_ref, d);
+
           if (ne) std::cout << "Ref impl failed.\n";
           nerr += ne;
         }
