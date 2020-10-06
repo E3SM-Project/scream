@@ -1289,7 +1289,22 @@ void eddy_diffusivities_f(Int nlev, Int shcol, Real* obklen, Real* pblh, Real* z
                           Real* shoc_mix, Real* sterm_zt, Real* isotropy, Real* tke,
                           Real* tkh, Real* tk)
 {
-  // TODO
+  using SHF = Functions<Real, DefaultDevice>;
+
+  using Scalar     = typename SHF::Scalar;
+  using Spack      = typename SHF::Spack;
+  using Pack1d     = typename ekat::Pack<Real,1>;
+  using view_1d    = typename SHF::view_1d<Pack1d>;
+  using view_2d    = typename SHF::view_2d<Spack>;
+  using KT         = typename SHF::KT;
+  using ExeSpace   = typename KT::ExeSpace;
+  using MemberType = typename SHF::MemberType;
+
+  Kokkos::Array<view_2d, 6> temp_d;
+  Kokkos::Array<int, 6> dim1_sizes        = {shcol,   shcol, shcol, shcol, shcol,  shcol};
+  Kokkos::Array<int, 6> dim2_sizes        = {nlev,     nlev, nlev,  nlev,  nlev,   nlev};
+  Kokkos::Array<const Real*, 6> ptr_array = {host_dse, pdel, rtm,   rcm,   u_wind, v_wind};
+
 }
 } // namespace shoc
 } // namespace scream
