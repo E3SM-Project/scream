@@ -43,6 +43,21 @@ struct SHOCGridData : public PhysicsTestData {
   SHOC_NO_SCALAR(SHOCGridData, 3);
 };
 
+struct SHOCObklenData : public PhysicsTestData {
+  // Inputs
+  Real *uw_sfc, *vw_sfc, *wthl_sfc, *wqw_sfc, *thl_sfc;
+  Real *cldliq_sfc, *qv_sfc;
+
+  // Outputs
+  Real *ustar, *kbfs, *obklen;
+
+  SHOCObklenData(Int shcol_) :
+  PhysicsTestData(shcol_, {&uw_sfc, &vw_sfc, &wthl_sfc, &wqw_sfc, &thl_sfc, &cldliq_sfc, &qv_sfc, &ustar, &kbfs, &obklen}){}
+
+  SHOC_NO_SCALAR(SHOCObklenData, 1);
+
+};
+
 //Create data structure to hold data for compute_tmpi
 struct SHOCComptmpiData : public PhysicsTestData {
   //Inputs
@@ -771,6 +786,7 @@ struct SHOCSecondMomLbycondData : public PhysicsTestData {
 
 // Glue functions to call fortran from from C++ with the Data struct
 void shoc_grid                                      (SHOCGridData &d);
+void shoc_diag_obklen                               (SHOCObklenData &d);
 void update_host_dse                                (SHOCEnergydseData &d);
 void shoc_energy_fixer                              (SHOCEnergyfixerData &d);
 void shoc_energy_integrals                          (SHOCEnergyintData &d);
@@ -856,6 +872,14 @@ void shoc_energy_integrals_f(Int shcol, Int nlev, Real *host_dse, Real *pdel,
                              Real *se_int, Real *ke_int, Real *wv_int, Real *wl_int);
 void shoc_diag_second_moments_lbycond_f(Int shcol, Real* wthl, Real* wqw, Real* uw, Real* vw, Real* ustar2, Real* wstar,
                          Real* wthlo, Real* wqwo, Real* uwo, Real* vwo, Real* wtkeo, Real* thlo, Real* qwo, Real* qwthlo);
+void compute_brunt_shoc_length_f(Int nlev, Int nlevi, Int shcol, Real* dz_zt, Real* thv,
+                                 Real* thv_zi, Real* brunt);
+void check_length_scale_shoc_length_f(Int nlev, Int shcol, Real* host_dx, Real* host_dy,
+                                      Real* shoc_mix);
+void compute_conv_vel_shoc_length_f(Int nlev, Int shcol, Real *pblh, Real *zt_grid,
+                                    Real *dz_zt, Real *thv, Real *wthv_sec,
+                                    Real *conv_vel);
+
 } // end _f function decls
 
 }  // namespace shoc

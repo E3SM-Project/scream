@@ -152,14 +152,22 @@ struct Functions
     const uview_1d<Spack>& tke);
 
   KOKKOS_FUNCTION
-  static void linear_interp(const uview_1d<const Spack>& x1, const uview_1d<const Spack>& x2, const uview_1d<const Spack>& y1, const uview_1d<Spack>& y2, const Int& km1, const Int& km2, const Int& ncol, const Spack& minthresh);
+  static void clipping_diag_third_shoc_moments(
+    const MemberType& team,
+    const Int& nlevi,
+    const uview_1d<const Spack>& w_sec_zi,
+    const uview_1d<Spack>& w3);
 
   KOKKOS_FUNCTION
-   static void clipping_diag_third_shoc_moments(
-     const MemberType& team,
-     const Int& nlevi,
-     const uview_1d<const Spack>& w_sec_zi,
-     const uview_1d<Spack>& w3);
+  static void linear_interp(
+    const MemberType& team,
+    const uview_1d<const Spack>& x1,
+    const uview_1d<const Spack>& x2,
+    const uview_1d<const Spack>& y1,
+    const uview_1d<Spack>& y2,
+    const Int& km1,
+    const Int& km2,
+    const Scalar& minthresh);
 
   KOKKOS_FUNCTION
   static void shoc_energy_integrals(
@@ -182,6 +190,35 @@ struct Functions
     const Scalar& ustar2, const Scalar& wstar,
     Scalar& wthl_sec, Scalar& wqw_sec, Scalar& uw_sec, Scalar& vw_sec,
     Scalar& wtke_sec, Scalar& thl_sec, Scalar& qw_sec, Scalar& qwthl_sec);
+   
+  KOKKOS_FUNCTION
+  static void compute_brunt_shoc_length(
+    const MemberType&            team,
+    const Int&                   nlev,
+    const Int&                   nlevi,
+    const uview_1d<const Spack>& dz_zt,
+    const uview_1d<const Spack>& thv,
+    const uview_1d<const Spack>& thv_zi,
+    const uview_1d<Spack>&       brunt);
+
+  KOKKOS_FUNCTION
+  static void check_length_scale_shoc_length(
+    const MemberType&      team,
+    const Int&             nlev,
+    const Scalar&          host_dx,
+    const Scalar&          host_dy,
+    const uview_1d<Spack>& shoc_mix);
+
+  KOKKOS_FUNCTION
+  static void compute_conv_vel_shoc_length(
+    const MemberType&            team,
+    const Int&                   nlev,
+    const Scalar&                pblh,
+    const uview_1d<const Spack>& zt_grid,
+    const uview_1d<const Spack>& dz_zt,
+    const uview_1d<const Spack>& thv,
+    const uview_1d<const Spack>& wthv_sec,
+    Scalar&                      conv_vel);
 
 }; // struct Functions
 
@@ -204,6 +241,9 @@ struct Functions
 # include "shoc_clipping_diag_third_shoc_moments_impl.hpp"
 # include "shoc_energy_integrals_impl.hpp"
 # include "shoc_diag_second_moments_lbycond_impl.hpp"
+# include "shoc_compute_brunt_shoc_length_impl.hpp"
+# include "shoc_check_length_scale_shoc_length_impl.hpp"
+# include "shoc_compute_conv_vel_shoc_length_impl.hpp"
 #endif // KOKKOS_ENABLE_CUDA
 
 #endif

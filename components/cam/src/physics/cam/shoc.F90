@@ -3827,9 +3827,9 @@ subroutine shoc_diag_obklen(&
   do i=1,shcol
     th_sfc = thl_sfc(i) + (lcond/cp)*cldliq_sfc(i)
     thv_sfc = th_sfc*(1._rtype+eps*qv_sfc(i)-cldliq_sfc(i))
-    ustar(i) = max(sqrt(uw_sfc(i)**2 + vw_sfc(i)**2),ustar_min)
+    ustar(i) = max(bfb_sqrt(bfb_square(uw_sfc(i)) + bfb_square(vw_sfc(i))),ustar_min)
     kbfs(i) = wthl_sfc(i)+eps*th_sfc*wqw_sfc(i)
-    obklen(i) = -thv_sfc*ustar(i)**3/(ggr*vk*(kbfs(i)+sign(1.e-10_rtype,kbfs(i))))
+    obklen(i) = -thv_sfc*bfb_cube(ustar(i))/(ggr*vk*(kbfs(i)+sign(1.e-10_rtype,kbfs(i))))
   enddo
 
   return
@@ -3999,7 +3999,7 @@ subroutine pblintd_init_pot(&
     do k=1,nlev
       do i=1,shcol
         th=thl(i,k)+(lcond/cp)*ql(i,k)
-        thv(i,k)=th+(1._rtype+eps*q(i,k)-ql(i,k))
+        thv(i,k)=th*(1._rtype+eps*q(i,k)-ql(i,k))
       enddo
     enddo
 
@@ -4228,6 +4228,11 @@ end subroutine pblintd_cldcheck
   ! Linear interpolation to get values on various grids
 
 subroutine linear_interp(x1,x2,y1,y2,km1,km2,ncol,minthresh)
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use shoc_iso_f, only: linear_interp_f
+#endif
+
     implicit none
 
     integer, intent(in) :: km1, km2
@@ -4238,6 +4243,13 @@ subroutine linear_interp(x1,x2,y1,y2,km1,km2,ncol,minthresh)
     real(rtype), intent(out) :: y2(ncol,km2)
 
     integer :: k1, k2, i
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   if (use_cxx) then
+      call linear_interp_f(x1,x2,y1,y2,km1,km2,ncol,minthresh)
+      return
+   endif
+#endif
 
 #if 1
     !i = check_grid(x1,x2,km1,km2,ncol)
@@ -4261,7 +4273,7 @@ subroutine linear_interp(x1,x2,y1,y2,km1,km2,ncol,minthresh)
        end do
        k2 = km2
        do i = 1,ncol
-          y2(i,k2) = y1(i,km1) + (y1(i,km1)-y1(i,km1-1))*(x2(i,k2)-x1(i,km1))/(x1(i,km1)-x1(i,km1-1))
+          y2(i,k2) = y1(i,km1-1) + (y1(i,km1)-y1(i,km1-1))*(x2(i,k2)-x1(i,km1-1))/(x1(i,km1)-x1(i,km1-1))
        end do
     else
        print *,km1,km2
@@ -4306,6 +4318,10 @@ subroutine compute_brunt_shoc_length(nlev,nlevi,shcol,dz_zt,thv,thv_zi,brunt)
   !
   ! Computes the brunt_visala frequency
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use shoc_iso_f, only: compute_brunt_shoc_length_f
+#endif
+  
   implicit none
   integer, intent(in) :: nlev, nlevi, shcol
   ! Grid difference centereted on thermo grid [m]
@@ -4318,6 +4334,13 @@ subroutine compute_brunt_shoc_length(nlev,nlevi,shcol,dz_zt,thv,thv_zi,brunt)
   real(rtype), intent(out) :: brunt(shcol, nlev)
   integer k, i
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  if (use_cxx) then
+    call compute_brunt_shoc_length_f(nlev,nlevi,shcol,dz_zt,thv,thv_zi,brunt)
+    return
+  endif
+#endif
+  
   do k=1,nlev
     do i=1,shcol
       brunt(i,k) = (ggr/thv(i,k)) * (thv_zi(i,k) - thv_zi(i,k+1))/dz_zt(i,k)
@@ -4343,7 +4366,7 @@ subroutine compute_l_inf_shoc_length(nlev,shcol,zt_grid,dz_zt,tke,l_inf)
 
   do k=1,nlev
     do i=1,shcol
-        tkes=sqrt(tke(i,k))
+        tkes=bfb_sqrt(tke(i,k))
         numer(i)=numer(i)+tkes*zt_grid(i,k)*dz_zt(i,k)
         denom(i)=denom(i)+tkes*dz_zt(i,k)
     enddo
@@ -4361,6 +4384,10 @@ subroutine compute_conv_vel_shoc_length(nlev,shcol,pblh,zt_grid,dz_zt,thv,wthv_s
   ! determine the convective velocity scale of
   !   the planetary boundary layer
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use shoc_iso_f, only: compute_conv_vel_shoc_length_f
+#endif
+
   implicit none
   integer, intent(in) :: nlev, shcol
 ! Planetary boundary layer (PBL) height [m]
@@ -4371,6 +4398,15 @@ subroutine compute_conv_vel_shoc_length(nlev,shcol,pblh,zt_grid,dz_zt,thv,wthv_s
   real(rtype), intent(in) :: wthv_sec(shcol,nlev)
   real(rtype), intent(inout) :: conv_vel(shcol)
   integer k, i
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  if (use_cxx) then
+     call compute_conv_vel_shoc_length_f(nlev,shcol,pblh,zt_grid,dz_zt,thv,wthv_sec,&  ! Input
+                                         conv_vel)                                     ! Output)
+     return
+  endif
+#endif
+
   conv_vel(:) = 0._rtype
 
   do k=nlev,1,-1
@@ -4466,6 +4502,10 @@ subroutine check_length_scale_shoc_length(nlev,shcol,host_dx,host_dy,shoc_mix)
   ! Do checks on the length scale.  Make sure it is not
   !  larger than the grid mesh of the host model.
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use shoc_iso_f, only: check_length_scale_shoc_length_f
+#endif
+
   implicit none
   integer, intent(in) :: nlev, shcol
   real(rtype), intent(in) :: host_dx(shcol), host_dy(shcol)
@@ -4473,11 +4513,18 @@ subroutine check_length_scale_shoc_length(nlev,shcol,host_dx,host_dy,shoc_mix)
   real(rtype), intent(inout) :: shoc_mix(shcol, nlev)
   integer k, i
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  if (use_cxx) then
+    call check_length_scale_shoc_length_f(nlev,shcol,host_dx,host_dy,shoc_mix)
+    return
+  endif
+#endif
+  
   do k=1,nlev
     do i=1,shcol
       shoc_mix(i,k)=min(maxlen,shoc_mix(i,k))
       shoc_mix(i,k)=max(minlen,shoc_mix(i,k))
-      shoc_mix(i,k)=min(sqrt(host_dx(i)*host_dy(i)),shoc_mix(i,k))
+      shoc_mix(i,k)=min(bfb_sqrt(host_dx(i)*host_dy(i)),shoc_mix(i,k))
     enddo
   enddo
 

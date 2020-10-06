@@ -126,7 +126,7 @@ void Functions<S,D>
   constexpr Scalar rho_600mb    = C::RHO_600MB;
   constexpr Scalar rho_h2o      = C::RHO_H2O;
   constexpr Scalar nccnst       = C::NCCNST;
-  constexpr Scalar t_zerodegc     = C::t_zerodegc;
+  constexpr Scalar T_zerodegc     = C::T_zerodegc;
   constexpr Scalar qsmall       = C::QSMALL;
   constexpr Scalar inv_cp       = C::INV_CP;
 
@@ -162,7 +162,7 @@ void Functions<S,D>
     Spack dum  = sp(1.496e-6) * pow(T_atm(k), sp(1.5)) / (T_atm(k) + 120); // this is mu
     acn(k)     = g * rho_h2o / (18 * dum); // 'a' parameter for droplet fallspeed (Stokes' law)
 
-    if ( (T_atm(k) < t_zerodegc && qv_supersat_i(k) >= -0.05).any() ) {
+    if ( (T_atm(k) < T_zerodegc && qv_supersat_i(k) >= -0.05).any() ) {
       nucleationPossible = true;
     }
 
@@ -208,7 +208,7 @@ void Functions<S,D>
       hydrometeorsPresent = true; // final update
     }
 
-    drymass = (qi(k) >= qsmall && qi(k) < 1.e-8 && T_atm(k) >= t_zerodegc);
+    drymass = (qi(k) >= qsmall && qi(k) < 1.e-8 && T_atm(k) >= T_zerodegc);
     qr(k).set(drymass, qr(k) + qi(k));
     th_atm(k).set(drymass, th_atm(k) - exner(k) * qi(k) * latent_heat_fusion(k) * inv_cp);
     qi(k).set(drymass, 0);
@@ -307,7 +307,7 @@ void Functions<S,D>
 {
   constexpr Scalar qsmall       = C::QSMALL;
   constexpr Scalar nsmall       = C::NSMALL;
-  constexpr Scalar t_zerodegc     = C::t_zerodegc;
+  constexpr Scalar T_zerodegc     = C::T_zerodegc;
   constexpr Scalar max_total_ni = C::max_total_ni;
   constexpr Scalar f1r          = C::f1r;
   constexpr Scalar f2r          = C::f2r;
@@ -323,7 +323,7 @@ void Functions<S,D>
 
     // if relatively dry and no hydrometeors at this level, skip to end of k-loop (i.e. skip this level)
     const auto skip_all = !(qc(k) >= qsmall || qr(k) >= qsmall || qi(k) >= qsmall) &&
-      (T_atm(k) < t_zerodegc && qv_supersat_i(k) < -0.05);
+      (T_atm(k) < T_zerodegc && qv_supersat_i(k) < -0.05);
     const auto not_skip_all = !skip_all;
     if (skip_all.all()) {
       return; // skip all process rates
@@ -887,7 +887,7 @@ void Functions<S,D>
 }
 
 template <typename S, typename D>
-void Functions<S,D>
+Int Functions<S,D>
 ::p3_main(
   const P3PrognosticState& prognostic_state,
   const P3DiagnosticInputs& diagnostic_inputs,
@@ -926,6 +926,9 @@ void Functions<S,D>
 
   // per-column bools
   view_2d<bool> bools("bools", nj, 2);
+
+  // we do not want to measure init stuff
+  auto start = std::chrono::steady_clock::now();
 
   // p3_main loop
   Kokkos::parallel_for(
@@ -1141,6 +1144,11 @@ void Functions<S,D>
                  team, ocol_location);
 #endif
   });
+  Kokkos::fence();
+
+  auto finish = std::chrono::steady_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
+  return duration.count();
 }
 
 } // namespace p3
