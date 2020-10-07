@@ -3814,9 +3814,9 @@ subroutine shoc_diag_obklen(&
   do i=1,shcol
     th_sfc = thl_sfc(i) + (lcond/cp)*cldliq_sfc(i)
     thv_sfc = th_sfc*(1._rtype+eps*qv_sfc(i)-cldliq_sfc(i))
-    ustar(i) = max(sqrt(uw_sfc(i)**2 + vw_sfc(i)**2),ustar_min)
+    ustar(i) = max(bfb_sqrt(bfb_square(uw_sfc(i)) + bfb_square(vw_sfc(i))),ustar_min)
     kbfs(i) = wthl_sfc(i)+eps*th_sfc*wqw_sfc(i)
-    obklen(i) = -thv_sfc*ustar(i)**3/(ggr*vk*(kbfs(i)+sign(1.e-10_rtype,kbfs(i))))
+    obklen(i) = -thv_sfc*bfb_cube(ustar(i))/(ggr*vk*(kbfs(i)+sign(1.e-10_rtype,kbfs(i))))
   enddo
 
   return
@@ -3986,7 +3986,7 @@ subroutine pblintd_init_pot(&
     do k=1,nlev
       do i=1,shcol
         th=thl(i,k)+(lcond/cp)*ql(i,k)
-        thv(i,k)=th+(1._rtype+eps*q(i,k)-ql(i,k))
+        thv(i,k)=th*(1._rtype+eps*q(i,k)-ql(i,k))
       enddo
     enddo
 
@@ -4305,6 +4305,10 @@ subroutine compute_brunt_shoc_length(nlev,nlevi,shcol,dz_zt,thv,thv_zi,brunt)
   !
   ! Computes the brunt_visala frequency
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use shoc_iso_f, only: compute_brunt_shoc_length_f
+#endif
+  
   implicit none
   integer, intent(in) :: nlev, nlevi, shcol
   ! Grid difference centereted on thermo grid [m]
@@ -4317,6 +4321,13 @@ subroutine compute_brunt_shoc_length(nlev,nlevi,shcol,dz_zt,thv,thv_zi,brunt)
   real(rtype), intent(out) :: brunt(shcol, nlev)
   integer k, i
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  if (use_cxx) then
+    call compute_brunt_shoc_length_f(nlev,nlevi,shcol,dz_zt,thv,thv_zi,brunt)
+    return
+  endif
+#endif
+  
   do k=1,nlev
     do i=1,shcol
       brunt(i,k) = (ggr/thv(i,k)) * (thv_zi(i,k) - thv_zi(i,k+1))/dz_zt(i,k)
@@ -4330,6 +4341,10 @@ subroutine compute_l_inf_shoc_length(nlev,shcol,zt_grid,dz_zt,tke,l_inf)
   !=========================================================
   !
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use shoc_iso_f, only: compute_l_inf_shoc_length_f
+#endif
+ 
   implicit none
   integer, intent(in) :: nlev, shcol
   real(rtype), intent(in) :: zt_grid(shcol,nlev), dz_zt(shcol,nlev), tke(shcol,nlev)
@@ -4337,12 +4352,19 @@ subroutine compute_l_inf_shoc_length(nlev,shcol,zt_grid,dz_zt,tke,l_inf)
   real(rtype) :: tkes, numer(shcol), denom(shcol)
   integer k, i
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  if (use_cxx) then
+    call compute_l_inf_shoc_length_f(nlev,shcol,zt_grid,dz_zt,tke,l_inf)
+    return
+  endif
+#endif
+
   numer(:) = 0._rtype
   denom(:) = 0._rtype
 
   do k=1,nlev
     do i=1,shcol
-        tkes=sqrt(tke(i,k))
+        tkes=bfb_sqrt(tke(i,k))
         numer(i)=numer(i)+tkes*zt_grid(i,k)*dz_zt(i,k)
         denom(i)=denom(i)+tkes*dz_zt(i,k)
     enddo
@@ -4360,6 +4382,10 @@ subroutine compute_conv_vel_shoc_length(nlev,shcol,pblh,zt_grid,dz_zt,thv,wthv_s
   ! determine the convective velocity scale of
   !   the planetary boundary layer
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use shoc_iso_f, only: compute_conv_vel_shoc_length_f
+#endif
+
   implicit none
   integer, intent(in) :: nlev, shcol
 ! Planetary boundary layer (PBL) height [m]
@@ -4370,6 +4396,15 @@ subroutine compute_conv_vel_shoc_length(nlev,shcol,pblh,zt_grid,dz_zt,thv,wthv_s
   real(rtype), intent(in) :: wthv_sec(shcol,nlev)
   real(rtype), intent(inout) :: conv_vel(shcol)
   integer k, i
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  if (use_cxx) then
+     call compute_conv_vel_shoc_length_f(nlev,shcol,pblh,zt_grid,dz_zt,thv,wthv_sec,&  ! Input
+                                         conv_vel)                                     ! Output)
+     return
+  endif
+#endif
+
   conv_vel(:) = 0._rtype
 
   do k=nlev,1,-1
@@ -4465,6 +4500,10 @@ subroutine check_length_scale_shoc_length(nlev,shcol,host_dx,host_dy,shoc_mix)
   ! Do checks on the length scale.  Make sure it is not
   !  larger than the grid mesh of the host model.
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use shoc_iso_f, only: check_length_scale_shoc_length_f
+#endif
+
   implicit none
   integer, intent(in) :: nlev, shcol
   real(rtype), intent(in) :: host_dx(shcol), host_dy(shcol)
@@ -4472,11 +4511,18 @@ subroutine check_length_scale_shoc_length(nlev,shcol,host_dx,host_dy,shoc_mix)
   real(rtype), intent(inout) :: shoc_mix(shcol, nlev)
   integer k, i
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  if (use_cxx) then
+    call check_length_scale_shoc_length_f(nlev,shcol,host_dx,host_dy,shoc_mix)
+    return
+  endif
+#endif
+  
   do k=1,nlev
     do i=1,shcol
       shoc_mix(i,k)=min(maxlen,shoc_mix(i,k))
       shoc_mix(i,k)=max(minlen,shoc_mix(i,k))
-      shoc_mix(i,k)=min(sqrt(host_dx(i)*host_dy(i)),shoc_mix(i,k))
+      shoc_mix(i,k)=min(bfb_sqrt(host_dx(i)*host_dy(i)),shoc_mix(i,k))
     enddo
   enddo
 
