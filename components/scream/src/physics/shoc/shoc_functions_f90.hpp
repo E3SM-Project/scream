@@ -99,8 +99,8 @@ struct SHOCSfcfluxesData : public PhysicsTestData {
   //In/Outputs
   Real *thetal, *qw, *tke, *tracer;
 
-  SHOCSfcfluxesData(Int shcol_, Int nlev_, Real dtime_) :
-    PhysicsTestData(shcol_, nlev_, {&rdp_zt_sfc, &rho_zi_sfc, &wthl_sfc, &wqw_sfc, &wtke_sfc, &thetal, &qw, &tke}, {&wtracer_sfc, &tracer}), dtime(dtime_) {}
+  SHOCSfcfluxesData(Int shcol_, Int num_tracer_, Real dtime_) :
+    PhysicsTestData(shcol_, num_tracer_, {&wtracer_sfc, &tracer}, {&rdp_zt_sfc, &rho_zi_sfc, &wthl_sfc, &wqw_sfc, &wtke_sfc, &thetal, &qw, &tke}), dtime(dtime_) {}
 
 //  SHOC_SCALARS(SHOCSfcfluxesData, 1, 1, dtime);
     PTD_STD_DEF(SHOCSfcfluxesData, 2, 1, dtime);
