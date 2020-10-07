@@ -342,13 +342,13 @@ contains
 
   !==========================================================================================!
 
-  SUBROUTINE p3_main_part1(kts, kte, kbot, ktop, kdir, do_predict_nc, dt, &
-       pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, inv_cld_frac_l, inv_cld_frac_i, &
-       inv_cld_frac_r, latent_heat_vapor, latent_heat_sublim, xlf, &
+  SUBROUTINE p3_main_part1(kts, kte, kbot, ktop, kdir, do_predict_nc, do_prescribed_CCN, dt, &
+       pres, dpres, dz, nc_nuceat_tend, nccn_prescribed, exner, inv_exner, inv_cld_frac_l, inv_cld_frac_i, &
+       inv_cld_frac_r, latent_heat_vapor, latent_heat_sublim, xlf,  &
        t_atm, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn, qv, th_atm, &
        qc, nc, qr, nr, &
        qi, ni, qm, bm, qc_incld, qr_incld, qi_incld, qm_incld, &
-       nc_incld, nr_incld, ni_incld, bm_incld, is_nucleat_possible, is_hydromet_present,do_prescribed_CCN,nccn_prescribed)
+       nc_incld, nr_incld, ni_incld, bm_incld, is_nucleat_possible, is_hydromet_present)
 
     implicit none
 
@@ -459,14 +459,14 @@ contains
 
   END SUBROUTINE p3_main_part1
 
-  SUBROUTINE p3_main_part2(kts, kte, kbot, ktop, kdir, do_predict_nc, dt, inv_dt, &
+  SUBROUTINE p3_main_part2(kts, kte, kbot, ktop, kdir, do_predict_nc, do_prescribed_CCN, dt, inv_dt, &
        pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, inv_cld_frac_l, inv_cld_frac_i, inv_cld_frac_r, ni_activated, &
        inv_qc_relvar, cld_frac_i, cld_frac_l, cld_frac_r, qv_prev, t_prev, &
        t_atm, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn, qv, th_atm, qc, nc, qr, nr, qi, ni, &
        qm, bm, latent_heat_vapor, latent_heat_sublim, xlf, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld, nr_incld, &
        ni_incld, bm_incld, mu_c, nu, lamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, qv2qi_depos_tend, precip_total_tend, &
        nevapr, qr_evap_tend, vap_liq_exchange, vap_ice_exchange, liq_ice_exchange, pratot, &
-       prctot, p3_tend_out, is_hydromet_present, do_prescribed_CCN)
+       prctot, p3_tend_out, is_hydromet_present)
 
     implicit none
 
@@ -756,8 +756,8 @@ contains
       !................................................................
       ! deposition/condensation-freezing nucleation
       call ice_nucleation(t_atm(k),inv_rho(k),&
-           ni(k),ni_activated(k),qv_supersat_i(k),inv_dt,do_predict_nc,&
-           qinuc, ni_nucleat_tend, do_prescribed_CCN)
+           ni(k),ni_activated(k),qv_supersat_i(k),inv_dt,do_predict_nc, do_prescribed_CCN, &
+           qinuc, ni_nucleat_tend)
 
       !................
       ! cloud water autoconversion
@@ -847,8 +847,8 @@ contains
       !-- warm-phase only processes:
       call update_prognostic_liquid(qc2qr_accret_tend, nc_accret_tend, qc2qr_autoconv_tend, nc2nr_autoconv_tend, ncautr, &
            nc_selfcollect_tend, qr2qv_evap_tend, nr_evap_tend, nr_selfcollect_tend,           &
-           do_predict_nc, inv_rho(k), exner(k), latent_heat_vapor(k), dt,                     &
-           th_atm(k), qv(k), qc(k), nc(k), qr(k), nr(k), do_prescribed_CCN)
+           do_predict_nc, do_prescribed_CCN, inv_rho(k), exner(k), latent_heat_vapor(k), dt,                     &
+           th_atm(k), qv(k), qc(k), nc(k), qr(k), nr(k))
 
       !==
       ! AaronDonahue - Add extra variables needed from microphysics by E3SM:
@@ -1108,11 +1108,15 @@ contains
   !==========================================================================================!
 
   SUBROUTINE p3_main(qc,nc,qr,nr,th_atm,qv,dt,qi,qm,ni,bm,   &
-       pres,dz,nc_nuceat_tend,ni_activated,inv_qc_relvar,it,precip_liq_surf,precip_ice_surf,its,ite,kts,kte,diag_eff_radius_qc,     &
-       diag_eff_radius_qi,rho_qi,do_predict_nc, &
+       pres,dz,nc_nuceat_tend,nccn_prescribed,ni_activated,inv_qc_relvar,it,precip_liq_surf,precip_ice_surf,its,ite,kts,kte,diag_eff_radius_qc,     &
+       diag_eff_radius_qi,rho_qi,do_predict_nc, do_prescribed_CCN, &
        dpres,exner,qv2qi_depos_tend,precip_total_tend,nevapr,qr_evap_tend,precip_liq_flux,precip_ice_flux,cld_frac_r,cld_frac_l,cld_frac_i,  &
        p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-       vap_ice_exchange,qv_prev,t_prev,col_location, do_prescribed_CCN,nccn_prescribed)
+       vap_ice_exchange,qv_prev,t_prev,col_location, &
+#ifdef SCREAM_CONFIG_IS_CMAKE
+       elapsed_s &
+#endif
+      )
 
     !----------------------------------------------------------------------------------------!
     !                                                                                        !
@@ -1148,6 +1152,7 @@ contains
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: pres       ! pressure                         Pa
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: dz        ! vertical grid spacing            m
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: nc_nuceat_tend      ! IN ccn activated number tendency kg-1 s-1
+    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: nccn_prescribed
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: ni_activated       ! IN actived ice nuclei concentration  1/kg
     real(rtype), intent(in)                                     :: dt         ! model time step                  s
 
@@ -1181,7 +1186,6 @@ contains
 
     ! INPUT for prescribed CCN option
     logical(btype), intent(in)                                  :: do_prescribed_CCN
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: nccn_prescribed
 
     ! INPUT needed for PBUF variables used by other parameterizations
 
@@ -1333,14 +1337,14 @@ contains
 
 !      if (debug_ON) call check_values(qv,T,i,it,debug_ABORT,100,col_location)
 
-       call p3_main_part1(kts, kte, kbot, ktop, kdir, do_predict_nc, dt, &
-            pres(i,:), dpres(i,:), dz(i,:), nc_nuceat_tend(i,:), exner(i,:), inv_exner(i,:), &
+       call p3_main_part1(kts, kte, kbot, ktop, kdir, do_predict_nc, do_prescribed_CCN, dt, &
+            pres(i,:), dpres(i,:), dz(i,:), nc_nuceat_tend(i,:), nccn_prescribed(i,:), exner(i,:), inv_exner(i,:), &
             inv_cld_frac_l(i,:), inv_cld_frac_i(i,:), inv_cld_frac_r(i,:), latent_heat_vapor(i,:), latent_heat_sublim(i,:), xlf(i,:), &
             t_atm(i,:), rho(i,:), inv_rho(i,:), qv_sat_l(i,:), qv_sat_i(i,:), qv_supersat_i(i,:), rhofacr(i,:), &
             rhofaci(i,:), acn(i,:), qv(i,:), th_atm(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), &
             qi(i,:), ni(i,:), qm(i,:), bm(i,:), qc_incld(i,:), qr_incld(i,:), &
             qi_incld(i,:), qm_incld(i,:), nc_incld(i,:), nr_incld(i,:), &
-            ni_incld(i,:), bm_incld(i,:), is_nucleat_possible, is_hydromet_present, do_prescribed_CCN, nccn_prescribed(i,:))
+            ni_incld(i,:), bm_incld(i,:), is_nucleat_possible, is_hydromet_present)
 
 !      if (debug_ON) then
 !         tmparr1(i,:) = th_atm(i,:)*inv_exner(i,:)!(pres(i,:)*1.e-5)**(rd*inv_cp)
@@ -1350,7 +1354,7 @@ contains
        !jump to end of i-loop if is_nucleat_possible=.false.  (i.e. skip everything)
        if (.not. (is_nucleat_possible .or. is_hydromet_present)) goto 333
 
-       call p3_main_part2(kts, kte, kbot, ktop, kdir, do_predict_nc, dt, inv_dt, &
+       call p3_main_part2(kts, kte, kbot, ktop, kdir, do_predict_nc, do_prescribed_CCN, dt, inv_dt, &
             pres(i,:), dpres(i,:), dz(i,:), nc_nuceat_tend(i,:), exner(i,:), inv_exner(i,:), &
             inv_cld_frac_l(i,:), inv_cld_frac_i(i,:), inv_cld_frac_r(i,:), ni_activated(i,:), inv_qc_relvar(i,:), &
             cld_frac_i(i,:), cld_frac_l(i,:), cld_frac_r(i,:), qv_prev(i,:), t_prev(i,:), &
@@ -1362,7 +1366,7 @@ contains
             bm_incld(i,:), mu_c(i,:), nu(i,:), lamc(i,:), cdist(i,:), cdist1(i,:), &
             cdistr(i,:), mu_r(i,:), lamr(i,:), logn0r(i,:), qv2qi_depos_tend(i,:), precip_total_tend(i,:), &
             nevapr(i,:), qr_evap_tend(i,:), vap_liq_exchange(i,:), vap_ice_exchange(i,:), &
-            liq_ice_exchange(i,:), pratot(i,:), prctot(i,:), p3_tend_out(i,:,:), is_hydromet_present, do_prescribed_CCN)
+            liq_ice_exchange(i,:), pratot(i,:), prctot(i,:), p3_tend_out(i,:,:), is_hydromet_present)
 
        ! measure microphysics processes tendency output
        p3_tend_out(i,:,42) = ( qc(i,:)    - qc_old(i,:) ) * inv_dt    ! Liq. microphysics tendency, measure
@@ -2542,8 +2546,8 @@ qr2qi_immers_freeze_tend, nr2ni_immers_freeze_tend)
 end subroutine rain_immersion_freezing
 
 
-subroutine ice_nucleation(t_atm,inv_rho,ni,ni_activated,qv_supersat_i,inv_dt,do_predict_nc,    &
-   qinuc,ni_nucleat_tend, do_prescribed_CCN)
+subroutine ice_nucleation(t_atm,inv_rho,ni,ni_activated,qv_supersat_i,inv_dt,do_predict_nc, do_prescribed_CCN,   &
+   qinuc,ni_nucleat_tend)
 
    !................................................................
    ! deposition/condensation-freezing nucleation
@@ -3038,8 +3042,8 @@ end subroutine update_prognostic_ice
 
 subroutine update_prognostic_liquid(qc2qr_accret_tend,nc_accret_tend,qc2qr_autoconv_tend,nc2nr_autoconv_tend, &
      ncautr,nc_selfcollect_tend, qr2qv_evap_tend,nr_evap_tend,nr_selfcollect_tend,         &
-    do_predict_nc,inv_rho,exner,latent_heat_vapor,dt,                                      &
-    th_atm,qv,qc,nc,qr,nr,do_prescribed_CCN)
+    do_predict_nc, do_prescribed_CCN, inv_rho,exner,latent_heat_vapor,dt,                                      &
+    th_atm,qv,qc,nc,qr,nr)
 
    !-- warm-phase only processes:
    implicit none

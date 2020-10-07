@@ -1204,7 +1204,8 @@ end subroutine micro_p3_readnl
          pres(its:ite,kts:kte),       & ! IN     pressure at cell midpoints       Pa
          dz(its:ite,kts:kte),        & ! IN     vertical grid spacing            m
          npccn(its:ite,kts:kte),      & ! IN ccn activation number tendency kg-1 s-1
-         ni_activated(its:ite,kts:kte),       & ! IN activated ice nuclei concentration kg-1
+         nccn_prescribed(its:ite,kts:kte), & ! IN ccn prescribed concentration
+         ni_activated(its:ite,kts:kte),    & ! IN activated ice nuclei concentration kg-1
          relvar(its:ite,kts:kte),     & ! IN cloud liquid relative variance
          it,                          & ! IN     time step counter NOTE: starts at 1 for first time step
          precip_liq_surf(its:ite),            & ! OUT    surface liquid precip rate       m s-1
@@ -1217,6 +1218,7 @@ end subroutine micro_p3_readnl
          rei(its:ite,kts:kte),        & ! OUT    effective radius, ice            m
          rho_qi(its:ite,kts:kte),  & ! OUT    bulk density of ice              kg m-3
          do_predict_nc,               & ! IN     .true.=prognostic Nc, .false.=specified Nc
+         do_prescribed_CCN,           & ! IN
          ! AaronDonahue new stuff
          state%pdel(its:ite,kts:kte), & ! IN pressure level thickness for computing total mass
          exner(its:ite,kts:kte),      & ! IN exner values
@@ -1238,8 +1240,6 @@ end subroutine micro_p3_readnl
          qv_prev(its:ite,kts:kte),         & ! IN  qv at end of prev p3_main call   kg kg-1
          t_prev(its:ite,kts:kte),          & ! IN  t at end of prev p3_main call    K
          col_location(its:ite,:3),          & ! IN column locations
-         do_prescribed_CCN,                 & !IN  .true. = prescribe CCN
-         nccn_prescribed(its:ite,kts:kte)    & !IN prescribed CCN concentration
          )
 
     p3_main_outputs(:,:,:) = -999._rtype
