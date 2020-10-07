@@ -25,6 +25,7 @@ struct UnitWrap::UnitTest<D>::TestImpSfcFluxes {
   static void run_property()
   {
     static constexpr Int shcol = 5;
+    static constexpr Int num_tracer = 10;
 
     // Tests for the SHOC subroutine
     //   sfc_fluxes
@@ -56,7 +57,7 @@ struct UnitWrap::UnitTest<D>::TestImpSfcFluxes {
     static constexpr Real dtime = 300;
 
     // Initialize data structure for bridging to F90
-    SHOCSfcfluxesData SDS(shcol, dtime);
+    SHOCSfcfluxesData SDS(shcol, num_tracer, dtime);
 
     // Test that the inputs are reasonable.
     REQUIRE(SDS.shcol() == shcol);
