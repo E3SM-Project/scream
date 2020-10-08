@@ -17,7 +17,7 @@ module shoc
 
 ! Bit-for-bit math functions.
 #ifdef SCREAM_CONFIG_IS_CMAKE
-  use physics_share_f2c, only: cxx_pow, cxx_sqrt, cxx_cbrt, cxx_gamma, cxx_log, &
+  use physics_share_f2c, only: cxx_pow, cxx_max, cxx_sqrt, cxx_cbrt, cxx_gamma, cxx_log, &
                                cxx_log10, cxx_exp
 #endif
 
@@ -4211,7 +4211,7 @@ subroutine pblintd_cldcheck(      &
     do i=1,shcol
        cldcheck(i) = .false.
        if (cldn(i,nlev).ge.0.0_rtype) cldcheck(i) = .true.
-       if (cldcheck(i)) pblh(i) = max(pblh(i),zi(i,nlev) + 50._rtype)
+       if (cldcheck(i)) pblh(i) = bfb_max(pblh(i),zi(i,nlev) + 50._rtype)
     end do
     return
 end subroutine pblintd_cldcheck

@@ -18,6 +18,7 @@
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
 #  define bfb_pow(base, exp) cxx_pow(base, exp)
+#  define bfb_max(val1, val2) cxx_max(val1, val2)
 #  define bfb_sqrt(base) cxx_sqrt(base)
 #  define bfb_cbrt(base) cxx_cbrt(base)
 #  define bfb_gamma(val) cxx_gamma(val)
@@ -28,6 +29,7 @@
 #  define bfb_tanh(val) cxx_tanh(val)
 #else
 #  define bfb_pow(base, exp) (base)**(exp)
+#  define bfb_max(val1, val2) max(val1, val2)
 #  define bfb_cbrt(base) (base)**thrd
 #  define bfb_gamma(val) gamma(val)
 #  define bfb_log(val) log(val)

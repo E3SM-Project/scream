@@ -31,6 +31,16 @@ struct CudaWrap
     return result;
   }
 
+  static Scalar cxx_max(Scalar val1, Scalar val2)
+  {
+    Scalar result;
+    Kokkos::parallel_reduce(1, KOKKOS_LAMBDA(const Int&, Scalar& value) {
+        value = ekat::impl::max<Scalar>(val1, val2);
+    }, result);
+
+    return result;
+  }
+
 #define cuda_wrap_single_arg(wrap_name, func_call)      \
 static Scalar wrap_name(Scalar input) {                 \
   Scalar result;                                        \
@@ -60,6 +70,15 @@ Real cxx_pow(Real base, Real exp)
   return CudaWrap<Real, DefaultDevice>::cxx_pow(base, exp);
 #else
   return std::pow(base, exp);
+#endif
+}
+
+Real cxx_max(Real val1, Real val2)
+{
+#ifdef KOKKOS_ENABLE_CUDA
+  return CudaWrap<Real, DefaultDevice>::cxx_max(val1, val2);
+#else
+  return std::max(val1, val2);
 #endif
 }
 

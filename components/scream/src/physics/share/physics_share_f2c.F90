@@ -32,6 +32,17 @@ interface
     real(kind=c_real)               :: cxx_pow
   end function cxx_pow
 
+  function cxx_max(a, b) bind(C)
+    use iso_c_binding
+
+    !arguments:
+    real(kind=c_real), value, intent(in)  :: a
+    real(kind=c_real), value, intent(in)  :: b
+
+    ! return
+    real(kind=c_real)               :: cxx_max
+  end function cxx_max
+
   function cxx_sqrt(base) bind(C)
     use iso_c_binding
 

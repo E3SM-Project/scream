@@ -8,6 +8,7 @@ using scream::Real;
 extern "C" {
 
 Real cxx_pow(Real base, Real exp);
+Real cxx_max(Real val1, Real val2);
 Real cxx_sqrt(Real base);
 Real cxx_cbrt(Real base);
 Real cxx_gamma(Real input);
