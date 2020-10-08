@@ -102,9 +102,8 @@ struct SHOCSfcfluxesData : public PhysicsTestData {
   SHOCSfcfluxesData(Int shcol_, Int num_tracer_, Real dtime_) :
     PhysicsTestData(shcol_, num_tracer_, {&wtracer_sfc, &tracer}, {&rdp_zt_sfc, &rho_zi_sfc, &wthl_sfc, &wqw_sfc, &wtke_sfc, &thetal, &qw, &tke}), dtime(dtime_) {}
 
-//  SHOC_SCALARS(SHOCSfcfluxesData, 1, 1, dtime);
     PTD_STD_DEF(SHOCSfcfluxesData, 2, 1, dtime);
-    PTD_DIM_RENAME(2, shcol, num_tracer)  
+    PTD_DIM_RENAME(2, shcol, num_tracer)
 
 }; // SHOCSfcfluxesData
 
