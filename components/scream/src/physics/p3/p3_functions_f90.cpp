@@ -2927,7 +2927,7 @@ void p3_main_part2_f(
     mu_r_d              (temp_d[50]),
     lamr_d              (temp_d[51]),
     logn0r_d            (temp_d[52]),
-    qv2qi_depos_tend_d           (temp_d[53]),
+    qv2qi_depos_tend_d  (temp_d[53]),
     precip_total_tend_d (temp_d[54]),
     nevapr_d            (temp_d[55]),
     qr_evap_tend_d      (temp_d[56]),

@@ -344,7 +344,7 @@ contains
 
   SUBROUTINE p3_main_part1(kts, kte, kbot, ktop, kdir, do_predict_nc, do_prescribed_CCN, dt, &
        pres, dpres, dz, nc_nuceat_tend, nccn_prescribed, exner, inv_exner, inv_cld_frac_l, inv_cld_frac_i, &
-       inv_cld_frac_r, latent_heat_vapor, latent_heat_sublim, xlf,  &
+       inv_cld_frac_r, latent_heat_vapor, latent_heat_sublim, latent_heat_fusion,  &
        t_atm, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn, qv, th_atm, &
        qc, nc, qr, nr, &
        qi, ni, qm, bm, qc_incld, qr_incld, qi_incld, qm_incld, &
@@ -359,7 +359,7 @@ contains
     real(rtype), intent(in) :: dt
 
     real(rtype), intent(in), dimension(kts:kte) :: pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, &
-         inv_cld_frac_l, inv_cld_frac_i, inv_cld_frac_r, latent_heat_vapor, latent_heat_sublim, xlf, nccn_prescribed
+         inv_cld_frac_l, inv_cld_frac_i, inv_cld_frac_r, latent_heat_vapor, latent_heat_sublim, latent_heat_fusion, nccn_prescribed
 
     real(rtype), intent(inout), dimension(kts:kte) :: t_atm, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, &
          acn, qv, th_atm, qc, nc, qr, nr, qi, ni, qm, bm, qc_incld, qr_incld, qi_incld, &
@@ -442,7 +442,7 @@ contains
        if (qi(k).ge.qsmall .and. qi(k).lt.1.e-8_rtype .and.             &
             t_atm(k).ge.T_zerodegc) then
           qr(k) = qr(k) + qi(k)
-          th_atm(k) = th_atm(k) - exner(k)*qi(k)*xlf(k)*inv_cp
+          th_atm(k) = th_atm(k) - exner(k)*qi(k)*latent_heat_fusion(k)*inv_cp
           qi(k) = 0._rtype
           ni(k) = 0._rtype
           qm(k) = 0._rtype
@@ -463,7 +463,7 @@ contains
        pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, inv_cld_frac_l, inv_cld_frac_i, inv_cld_frac_r, ni_activated, &
        inv_qc_relvar, cld_frac_i, cld_frac_l, cld_frac_r, qv_prev, t_prev, &
        t_atm, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn, qv, th_atm, qc, nc, qr, nr, qi, ni, &
-       qm, bm, latent_heat_vapor, latent_heat_sublim, xlf, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld, nr_incld, &
+       qm, bm, latent_heat_vapor, latent_heat_sublim, latent_heat_fusion, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld, nr_incld, &
        ni_incld, bm_incld, mu_c, nu, lamc, cdist, cdist1, cdistr, mu_r, lamr, logn0r, qv2qi_depos_tend, precip_total_tend, &
        nevapr, qr_evap_tend, vap_liq_exchange, vap_ice_exchange, liq_ice_exchange, pratot, &
        prctot, p3_tend_out, is_hydromet_present)
@@ -480,7 +480,7 @@ contains
          inv_cld_frac_i, inv_cld_frac_r, ni_activated, inv_qc_relvar, cld_frac_i, cld_frac_l, cld_frac_r, qv_prev, t_prev
 
     real(rtype), intent(inout), dimension(kts:kte) :: t_atm, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn,        &
-         qv, th_atm, qc, nc, qr, nr, qi, ni, qm, bm, latent_heat_vapor, latent_heat_sublim, xlf, qc_incld, qr_incld,                    &
+         qv, th_atm, qc, nc, qr, nr, qi, ni, qm, bm, latent_heat_vapor, latent_heat_sublim, latent_heat_fusion, qc_incld, qr_incld,                    &
          qi_incld, qm_incld, nc_incld, nr_incld, ni_incld, bm_incld, mu_c, nu, lamc, cdist, cdist1,      &
          cdistr, mu_r, lamr, logn0r, qv2qi_depos_tend, precip_total_tend, nevapr, qr_evap_tend, vap_liq_exchange,                            &
          vap_ice_exchange, liq_ice_exchange, pratot, prctot
@@ -691,14 +691,14 @@ contains
       !............................................................
       ! melting
       call ice_melting(rho(k),t_atm(k),pres(k),rhofaci(k),&
-           table_val_qi2qr_melting,table_val_qi2qr_vent_melt,latent_heat_vapor(k),xlf(k),dv,sc,mu,kap,&
+           table_val_qi2qr_melting,table_val_qi2qr_vent_melt,latent_heat_vapor(k),latent_heat_fusion(k),dv,sc,mu,kap,&
            qv(k),qi_incld(k),ni_incld(k),&
            qi2qr_melt_tend,ni2nr_melt_tend)
 
       !............................................................
       ! calculate wet growth
       call ice_cldliq_wet_growth(rho(k),t_atm(k),pres(k),rhofaci(k),&
-           table_val_qi2qr_melting,table_val_qi2qr_vent_melt,latent_heat_vapor(k),xlf(k),dv,kap,mu,sc,&
+           table_val_qi2qr_melting,table_val_qi2qr_vent_melt,latent_heat_vapor(k),latent_heat_fusion(k),dv,kap,mu,sc,&
            qv(k),qc_incld(k),qi_incld(k),ni_incld(k),qr_incld(k),log_wetgrowth,&
            qrcol,qccol,qwgrth,nr_ice_shed_tend,qc2qr_ice_shed_tend)
 
@@ -840,7 +840,7 @@ contains
            nc_collect_tend, nc2ni_immers_freeze_tend, ncshdc, &
            qrcol, nr_collect_tend,  qr2qi_immers_freeze_tend, nr2ni_immers_freeze_tend, nr_ice_shed_tend, &
            qi2qr_melt_tend, ni2nr_melt_tend, qi2qv_sublim_tend, qidep, qinuc, ni_nucleat_tend, ni_selfcollect_tend, &
-           ni_sublim_tend, qiberg, exner(k), latent_heat_sublim(k), xlf(k), &
+           ni_sublim_tend, qiberg, exner(k), latent_heat_sublim(k), latent_heat_fusion(k), &
            do_predict_nc, log_wetgrowth, dt, nmltratio, rho_qm_cloud, &
            th_atm(k), qv(k), qi(k), ni(k), qm(k), bm(k), qc(k), nc(k), qr(k), nr(k) )
 
@@ -1232,7 +1232,7 @@ contains
     real(rtype), dimension(its:ite,kts:kte) :: nc_incld, nr_incld, ni_incld, bm_incld ! In cloud number concentrations
 
     real(rtype), dimension(its:ite,kts:kte)      :: inv_dz,inv_rho,ze_ice,ze_rain,prec,rho,       &
-         rhofacr,rhofaci,acn,latent_heat_sublim,latent_heat_vapor,xlf,qv_sat_l,qv_sat_i,qv_supersat_i,       &
+         rhofacr,rhofaci,acn,latent_heat_sublim,latent_heat_vapor,latent_heat_fusion,qv_sat_l,qv_sat_i,qv_supersat_i,       &
          tmparr1,inv_exner
 
     ! -- scalar locals -- !
@@ -1312,7 +1312,7 @@ contains
     t_atm       = th_atm    *inv_exner    !compute temperature from theta (value at beginning of microphysics step)
     qv      = max(qv,0._rtype)        !clip water vapor to prevent negative values passed in (beginning of microphysics)
     ! AaronDonahue added this load of latent heat to be consistent with E3SM, since the inconsistentcy was causing water conservation errors.
-    call get_latent_heat(its,ite,kts,kte,latent_heat_vapor,latent_heat_sublim,xlf)
+    call get_latent_heat(its,ite,kts,kte,latent_heat_vapor,latent_heat_sublim,latent_heat_fusion)
 
    ! initialize microphysics processes tendency output
     qc_old = qc         ! Liq. microphysics tendency, initialize
@@ -1339,7 +1339,7 @@ contains
 
        call p3_main_part1(kts, kte, kbot, ktop, kdir, do_predict_nc, do_prescribed_CCN, dt, &
             pres(i,:), dpres(i,:), dz(i,:), nc_nuceat_tend(i,:), nccn_prescribed(i,:), exner(i,:), inv_exner(i,:), &
-            inv_cld_frac_l(i,:), inv_cld_frac_i(i,:), inv_cld_frac_r(i,:), latent_heat_vapor(i,:), latent_heat_sublim(i,:), xlf(i,:), &
+            inv_cld_frac_l(i,:), inv_cld_frac_i(i,:), inv_cld_frac_r(i,:), latent_heat_vapor(i,:), latent_heat_sublim(i,:), latent_heat_fusion(i,:), &
             t_atm(i,:), rho(i,:), inv_rho(i,:), qv_sat_l(i,:), qv_sat_i(i,:), qv_supersat_i(i,:), rhofacr(i,:), &
             rhofaci(i,:), acn(i,:), qv(i,:), th_atm(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), &
             qi(i,:), ni(i,:), qm(i,:), bm(i,:), qc_incld(i,:), qr_incld(i,:), &
@@ -1361,7 +1361,7 @@ contains
             t_atm(i,:), rho(i,:), inv_rho(i,:), qv_sat_l(i,:), &
             qv_sat_i(i,:), qv_supersat_i(i,:), rhofacr(i,:), rhofaci(i,:), acn(i,:), qv(i,:), th_atm(i,:), &
             qc(i,:), nc(i,:), qr(i,:), nr(i,:), qi(i,:), ni(i,:), qm(i,:), &
-            bm(i,:), latent_heat_vapor(i,:), latent_heat_sublim(i,:), xlf(i,:), qc_incld(i,:), qr_incld(i,:), &
+            bm(i,:), latent_heat_vapor(i,:), latent_heat_sublim(i,:), latent_heat_fusion(i,:), qc_incld(i,:), qr_incld(i,:), &
             qi_incld(i,:), qm_incld(i,:), nc_incld(i,:), nr_incld(i,:), ni_incld(i,:), &
             bm_incld(i,:), mu_c(i,:), nu(i,:), lamc(i,:), cdist(i,:), cdist1(i,:), &
             cdistr(i,:), mu_r(i,:), lamr(i,:), logn0r(i,:), qv2qi_depos_tend(i,:), precip_total_tend(i,:), &
@@ -1428,7 +1428,7 @@ contains
        !.......................................
        ! homogeneous freezing of cloud and rain
 
-       call homogeneous_freezing(kts,kte,ktop,kbot,kdir,t_atm(i,:),exner(i,:),xlf(i,:),  &
+       call homogeneous_freezing(kts,kte,ktop,kbot,kdir,t_atm(i,:),exner(i,:),latent_heat_fusion(i,:),  &
          qc(i,:),nc(i,:),qr(i,:),nr(i,:),qi(i,:),ni(i,:),qm(i,:),bm(i,:),th_atm(i,:))
 
        !...................................................
@@ -2185,7 +2185,7 @@ end subroutine ice_self_collection
 !PMC note - indentation pattern changes here.
 
 subroutine ice_melting(rho,t_atm,pres,rhofaci,    &
-table_val_qi2qr_melting,table_val_qi2qr_vent_melt,latent_heat_vapor,xlf,dv,sc,mu,kap,qv,qi_incld,ni_incld,    &
+table_val_qi2qr_melting,table_val_qi2qr_vent_melt,latent_heat_vapor,latent_heat_fusion,dv,sc,mu,kap,qv,qi_incld,ni_incld,    &
            qi2qr_melt_tend,ni2nr_melt_tend)
    ! melting
    ! need to add back accelerated melting due to collection of ice mass by rain (pracsw1)
@@ -2202,7 +2202,7 @@ table_val_qi2qr_melting,table_val_qi2qr_vent_melt,latent_heat_vapor,xlf,dv,sc,mu
    real(rtype), intent(in) :: table_val_qi2qr_melting ! melting
    real(rtype), intent(in) :: table_val_qi2qr_vent_melt ! melting (ventilation term)
    real(rtype), intent(in) :: latent_heat_vapor
-   real(rtype), intent(in) :: xlf
+   real(rtype), intent(in) :: latent_heat_fusion
    real(rtype), intent(in) :: dv
    real(rtype), intent(in) :: sc
    real(rtype), intent(in) :: mu
@@ -2220,7 +2220,7 @@ table_val_qi2qr_melting,table_val_qi2qr_vent_melt,latent_heat_vapor,xlf,dv,sc,mu
       qsat0 = qv_sat( T_zerodegc,pres,0 )
 
       qi2qr_melt_tend = ((table_val_qi2qr_melting+table_val_qi2qr_vent_melt*bfb_cbrt(sc)*bfb_sqrt(rhofaci*rho/mu))*((t_atm-   &
-      T_zerodegc)*kap-rho*latent_heat_vapor*dv*(qsat0-qv))*2._rtype*pi/xlf)*ni_incld
+      T_zerodegc)*kap-rho*latent_heat_vapor*dv*(qsat0-qv))*2._rtype*pi/latent_heat_fusion)*ni_incld
 
       qi2qr_melt_tend = max(qi2qr_melt_tend,0._rtype)
       ni2nr_melt_tend = qi2qr_melt_tend*(ni_incld/qi_incld)
@@ -2233,7 +2233,7 @@ end subroutine ice_melting
 
 
 subroutine ice_cldliq_wet_growth(rho,t_atm,pres,rhofaci,    &
-table_val_qi2qr_melting,table_val_qi2qr_vent_melt,latent_heat_vapor,xlf,dv,kap,mu,sc,    &
+table_val_qi2qr_melting,table_val_qi2qr_vent_melt,latent_heat_vapor,latent_heat_fusion,dv,kap,mu,sc,    &
 qv,qc_incld,qi_incld,ni_incld,qr_incld,    &
            log_wetgrowth,qrcol,qccol,qwgrth,nr_ice_shed_tend,qc2qr_ice_shed_tend)
 
@@ -2246,7 +2246,7 @@ qv,qc_incld,qi_incld,ni_incld,qr_incld,    &
    real(rtype), intent(in) :: table_val_qi2qr_melting ! melting
    real(rtype), intent(in) :: table_val_qi2qr_vent_melt ! melting (ventilation term)
    real(rtype), intent(in) :: latent_heat_vapor
-   real(rtype), intent(in) :: xlf
+   real(rtype), intent(in) :: latent_heat_fusion
    real(rtype), intent(in) :: dv
    real(rtype), intent(in) :: kap
    real(rtype), intent(in) :: mu
@@ -2271,7 +2271,7 @@ qv,qc_incld,qi_incld,ni_incld,qr_incld,    &
 
       qwgrth = ((table_val_qi2qr_melting + table_val_qi2qr_vent_melt*bfb_cbrt(sc)*bfb_sqrt(rhofaci*rho/mu))*       &
       2._rtype*pi*(rho*latent_heat_vapor*dv*(qsat0-qv)-(t_atm-T_zerodegc)*           &
-      kap)/(xlf+cpw*(t_atm-T_zerodegc)))*ni_incld
+      kap)/(latent_heat_fusion+cpw*(t_atm-T_zerodegc)))*ni_incld
 
       qwgrth = max(qwgrth,0._rtype)
       dum    = max(0._rtype,(qccol+qrcol)-qwgrth)
@@ -2933,7 +2933,7 @@ subroutine update_prognostic_ice(qc2qi_hetero_freeze_tend,qccol,qc2qr_ice_shed_t
    nc_collect_tend,nc2ni_immers_freeze_tend,ncshdc,    &
    qrcol,nr_collect_tend,qr2qi_immers_freeze_tend,nr2ni_immers_freeze_tend,nr_ice_shed_tend,    &
    qi2qr_melt_tend,ni2nr_melt_tend,qi2qv_sublim_tend,qidep,qinuc,ni_nucleat_tend,ni_selfcollect_tend,ni_sublim_tend,qiberg,    &
-   exner,latent_heat_sublim,xlf,    &
+   exner,latent_heat_sublim,latent_heat_fusion,    &
    do_predict_nc,log_wetgrowth,dt,nmltratio,rho_qm_cloud,    &
    th_atm,qv,qi,ni,qm,bm,qc,nc,qr,nr)
 
@@ -2963,7 +2963,7 @@ subroutine update_prognostic_ice(qc2qi_hetero_freeze_tend,qccol,qc2qr_ice_shed_t
    real(rtype), intent(in) :: ni_sublim_tend
    real(rtype), intent(in) :: qiberg
    real(rtype), intent(in) :: exner
-   real(rtype), intent(in) :: xlf
+   real(rtype), intent(in) :: latent_heat_fusion
    real(rtype), intent(in) :: latent_heat_sublim
 
    logical(btype), intent(in) :: do_predict_nc
@@ -3037,7 +3037,7 @@ subroutine update_prognostic_ice(qc2qi_hetero_freeze_tend,qccol,qc2qr_ice_shed_t
    qv = qv + (-qidep+qi2qv_sublim_tend-qinuc)*dt
 
    th_atm = th_atm + exner*((qidep-qi2qv_sublim_tend+qinuc)*latent_heat_sublim*inv_cp +(qrcol+qccol+   &
-       qc2qi_hetero_freeze_tend+qr2qi_immers_freeze_tend-qi2qr_melt_tend+qiberg)* xlf*inv_cp)*dt
+       qc2qi_hetero_freeze_tend+qr2qi_immers_freeze_tend-qi2qr_melt_tend+qiberg)* latent_heat_fusion*inv_cp)*dt
 end subroutine update_prognostic_ice
 
 subroutine update_prognostic_liquid(qc2qr_accret_tend,nc_accret_tend,qc2qr_autoconv_tend,nc2nr_autoconv_tend, &
@@ -3950,7 +3950,7 @@ subroutine calc_first_order_upwind_step(kts, kte, kdir, kbot, k_qxtop, dt_sub, r
 
 end subroutine calc_first_order_upwind_step
 
-subroutine homogeneous_freezing(kts,kte,ktop,kbot,kdir,t_atm,exner,xlf,    &
+subroutine homogeneous_freezing(kts,kte,ktop,kbot,kdir,t_atm,exner,latent_heat_fusion,    &
    qc,nc,qr,nr,qi,ni,qm,bm,th_atm)
 
    !.......................................
@@ -3961,7 +3961,7 @@ subroutine homogeneous_freezing(kts,kte,ktop,kbot,kdir,t_atm,exner,xlf,    &
    integer, intent(in) :: ktop, kbot, kdir
    real(rtype), intent(in), dimension(kts:kte) :: t_atm
    real(rtype), intent(in), dimension(kts:kte) :: exner
-   real(rtype), intent(in), dimension(kts:kte) :: xlf
+   real(rtype), intent(in), dimension(kts:kte) :: latent_heat_fusion
 
    real(rtype), intent(inout), dimension(kts:kte) :: qc
    real(rtype), intent(inout), dimension(kts:kte) :: nc
@@ -3987,7 +3987,7 @@ subroutine homogeneous_freezing(kts,kte,ktop,kbot,kdir,t_atm,exner,xlf,    &
          qi(k) = qi(k) + Q_nuc
          bm(k) = bm(k) + Q_nuc*inv_rho_rimeMax
          ni(k) = ni(k) + N_nuc
-         th_atm(k) = th_atm(k) + exner(k)*Q_nuc*xlf(k)*inv_cp
+         th_atm(k) = th_atm(k) + exner(k)*Q_nuc*latent_heat_fusion(k)*inv_cp
          qc(k) = 0._rtype
          nc(k) = 0._rtype
 
@@ -4001,7 +4001,7 @@ subroutine homogeneous_freezing(kts,kte,ktop,kbot,kdir,t_atm,exner,xlf,    &
          qi(k) = qi(k) + Q_nuc
          bm(k) = bm(k) + Q_nuc*inv_rho_rimeMax
          ni(k) = ni(k) + N_nuc
-         th_atm(k) = th_atm(k) + exner(k)*Q_nuc*xlf(k)*inv_cp
+         th_atm(k) = th_atm(k) + exner(k)*Q_nuc*latent_heat_fusion(k)*inv_cp
          qr(k) = 0._rtype
          nr(k) = 0._rtype
       endif

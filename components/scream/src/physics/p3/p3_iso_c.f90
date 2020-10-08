@@ -881,7 +881,7 @@ subroutine  update_prognostic_ice_c(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
 
    !arguments
    integer(kind=c_int), value, intent(in) :: kts, kte, kbot, ktop, kdir
-   logical(kind=c_bool), value, intent(in) :: do_predict_nc
+   logical(kind=c_bool), value, intent(in) :: do_predict_nc, do_prescribed_CCN
    real(kind=c_real), value, intent(in) :: dt, inv_dt
 
    real(kind=c_real), intent(in), dimension(kts:kte) :: pres, dpres, dz, nc_nuceat_tend, exner, inv_exner, inv_cld_frac_l, inv_cld_frac_i, &
@@ -894,7 +894,6 @@ subroutine  update_prognostic_ice_c(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
         vap_ice_exchange, liq_ice_exchange, pratot, prctot
 
    logical(kind=c_bool), intent(out) :: is_hydromet_present
-   logical(kind=c_bool), intent(out) :: do_prescribed_CCN
 
    ! throwaway
    real(kind=c_real), dimension(kts:kte,49) :: p3_tend_out

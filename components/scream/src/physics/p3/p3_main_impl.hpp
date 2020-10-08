@@ -80,6 +80,7 @@ void Functions<S,D>
   const uview_1d<const Spack>& dpres,
   const uview_1d<const Spack>& dz,
   const uview_1d<const Spack>& nc_nuceat_tend,
+  const uview_1d<const Spack>& nccn_prescribed,
   const uview_1d<const Spack>& exner,
   const uview_1d<const Spack>& inv_exner,
   const uview_1d<const Spack>& inv_cld_frac_l,
@@ -88,7 +89,6 @@ void Functions<S,D>
   const uview_1d<const Spack>& latent_heat_vapor,
   const uview_1d<const Spack>& latent_heat_sublim,
   const uview_1d<const Spack>& latent_heat_fusion,
-  const uview_1d<const Spack>& nccn_prescribed,
   const uview_1d<Spack>& T_atm,
   const uview_1d<Spack>& rho,
   const uview_1d<Spack>& inv_rho,
@@ -314,7 +314,7 @@ void Functions<S,D>
 {
   constexpr Scalar qsmall       = C::QSMALL;
   constexpr Scalar nsmall       = C::NSMALL;
-  constexpr Scalar T_zerodegc     = C::T_zerodegc;
+  constexpr Scalar T_zerodegc   = C::T_zerodegc;
   constexpr Scalar max_total_ni = C::max_total_ni;
   constexpr Scalar f1r          = C::f1r;
   constexpr Scalar f2r          = C::f2r;
