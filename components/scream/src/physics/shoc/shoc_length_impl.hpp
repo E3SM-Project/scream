@@ -36,6 +36,7 @@ void Functions<S,D>::shoc_length(
 
   // Interpolate virtual potential temperature onto interface grid
   linear_interp(team,zt_grid,zi_grid,thv,thv_zi,nlev,nlevi,0);
+  team.team_barrier();
 
   // Define the brunt vaisalia frequency
   compute_brunt_shoc_length(team,nlev,nlevi,dz_zt,thv,thv_zi,brunt);
