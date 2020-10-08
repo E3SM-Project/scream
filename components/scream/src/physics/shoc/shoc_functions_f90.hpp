@@ -784,8 +784,7 @@ struct SHOCPblintdCldCheckData : public PhysicsTestData {
 
   SHOC_NO_SCALAR(SHOCPblintdCldCheckData, 3);
 };
- 
-=======
+
 struct DiagSecondMomentsLbycondData : public PhysicsTestData {
   // Inputs
   Real *wthl_sfc, *wqw_sfc, *uw_sfc, *vw_sfc, *ustar2, *wstar;
@@ -798,6 +797,7 @@ struct DiagSecondMomentsLbycondData : public PhysicsTestData {
 
   SHOC_NO_SCALAR(DiagSecondMomentsLbycondData, 1)
 };
+
 struct DiagSecondMomentsData : public PhysicsTestData {
   // Inputs
   Real *thetal, *qw, *u_wind, *v_wind, *tke, *isotropy, *tkh, *tk, *dz_zi, *zt_grid, *zi_grid, *shoc_mix;
