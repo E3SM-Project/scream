@@ -274,6 +274,31 @@ subroutine shoc_diag_obklen_f(shcol, uw_sfc, vw_sfc, wthl_sfc, wqw_sfc, thl_sfc,
 
 end subroutine shoc_diag_obklen_f
 
+subroutine compute_conv_time_shoc_length_f(shcol, pblh, conv_vel, tscale) bind(C)
+
+  use iso_c_binding
+
+  integer(kind=c_int) , value, intent(in) :: shcol
+  real(kind=c_real) , intent(in), dimension(shcol) :: pblh
+  real(kind=c_real) , intent(inout), dimension(shcol) :: conv_vel, tscale
+
+end subroutine compute_conv_time_shoc_length_f
+
+subroutine shoc_length_f(shcol, nlev, nlevi, host_dx, host_dy, pblh, tke,&
+                         zt_grid, zi_grid, dz_zt, wthv_sec,&
+                         thv, brunt, shoc_mix) bind(C)
+  use iso_c_binding
+
+  integer(kind=c_int) , value, intent(in) :: shcol, nlev, nlevi
+
+  real(kind=c_real) , intent(in), dimension(shcol) :: host_dx, host_dy, pblh
+
+  real(kind=c_real) , intent(in), dimension(shcol, nlev) :: tke, zt_grid, dz_zt, wthv_sec, thv
+  real(kind=c_real) , intent(in), dimension(shcol, nlevi) :: zi_grid
+  real(kind=c_real) , intent(out), dimension(shcol, nlev) :: brunt, shoc_mix
+
+end subroutine shoc_length_f
+
 end interface
 
 end module shoc_iso_f

@@ -376,14 +376,14 @@ struct SHOCVarorcovarData : public PhysicsTestData {
 //Create data structure to hold data for shoc_length
 struct SHOCLengthData : public PhysicsTestData {
   // Inputs
-  Real *tke, *host_dx, *host_dy, *pblh, *zt_grid, *zi_grid;
-  Real *dz_zt, *dz_zi, *wthv_sec, *thetal, *thv;
+  Real *host_dx, *host_dy, *pblh, *tke, *zt_grid, *zi_grid;
+  Real *dz_zt, *wthv_sec, *thv;
 
   // Outputs
   Real *brunt, *shoc_mix;
 
   SHOCLengthData(Int shcol_, Int nlev_, Int nlevi_) :
-    PhysicsTestData(shcol_, nlev_, nlevi_, {&tke, &zt_grid, &dz_zt, &wthv_sec, &thetal, &thv, &brunt, &shoc_mix}, {&zi_grid, &dz_zi}, {&host_dx, &host_dy, &pblh}) {}
+    PhysicsTestData(shcol_, nlev_, nlevi_, {&tke, &zt_grid, &dz_zt, &wthv_sec, &thv, &brunt, &shoc_mix}, {&zi_grid}, {&host_dx, &host_dy, &pblh}) {}
 
   SHOC_NO_SCALAR(SHOCLengthData, 3);
 };//SHOCLengthData
@@ -914,6 +914,10 @@ void diag_second_shoc_moments_f(Int shcol, Int nlev, Int nlevi, Real* thetal, Re
 void shoc_diag_obklen_f(Int shcol, Real* uw_sfc, Real* vw_sfc, Real* wthl_sfc, Real* wqw_sfc,
                         Real* thl_sfc, Real* cldliq_sfc, Real* qv_sfc, Real* ustar, Real* kbfs, Real* obklen);
 
+void compute_conv_time_shoc_length_f(Int shcol, Real* pblh, Real* conv_vel, Real* tscale);
+void shoc_length_f(Int shcol, Int nlev, Int nlevi, Real* host_dx, Real* host_dy,
+                   Real* pblh, Real* tke, Real* zt_grid, Real* zi_grid, Real* dz_zt,
+                   Real* wthv_sec, Real* thv, Real* brunt, Real* shoc_mix);
 } // end _f function decls
 
 }  // namespace shoc

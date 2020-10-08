@@ -64,20 +64,11 @@ struct UnitWrap::UnitTest<D>::TestShocLength {
     // Grid stuff to compute based on zi_grid
     Real zt_grid[nlev];
     Real dz_zt[nlev];
-    Real dz_zi[nlevi];
     // Compute heights on midpoint grid
     for(Int n = 0; n < nlev; ++n) {
       zt_grid[n] = 0.5*(zi_grid[n]+zi_grid[n+1]);
       dz_zt[n] = zi_grid[n] - zi_grid[n+1];
-      if (n == 0){
-        dz_zi[n] = 0;
-      }
-      else{
-        dz_zi[n] = zt_grid[n-1] - zt_grid[n];
-      }
     }
-    // set upper condition for dz_zi
-    dz_zi[nlevi-1] = zt_grid[nlev-1];
 
     // Initialize data structure for bridging to F90
     SHOCLengthData SDS(shcol, nlev, nlevi);
@@ -105,7 +96,6 @@ struct UnitWrap::UnitTest<D>::TestShocLength {
         const auto offset = n + s * nlevi;
 
         SDS.zi_grid[offset] = zi_grid[n];
-        SDS.dz_zi[offset] = dz_zi[n];
       }
     }
 
@@ -135,7 +125,6 @@ struct UnitWrap::UnitTest<D>::TestShocLength {
         const auto offset = n + s * nlev;
 
         REQUIRE(SDS.zi_grid[offset] >= 0);
-        REQUIRE(SDS.dz_zi[offset] >= 0);
       }
     }
 
@@ -207,9 +196,58 @@ struct UnitWrap::UnitTest<D>::TestShocLength {
 
   static void run_bfb()
   {
-    // TODO
-  }
+    SHOCLengthData SDS_f90[] = {
+      //          shcol, nlev, nlevi
+      SHOCLengthData(10, 71, 72),
+      SHOCLengthData(10, 12, 13),
+      SHOCLengthData(7,  16, 17),
+      SHOCLengthData(2, 7, 8),
+    };
 
+    static constexpr Int num_runs = sizeof(SDS_f90) / sizeof(SHOCLengthData);
+
+    // Generate random input data
+    for (auto& d : SDS_f90) {
+      d.randomize();
+    }
+
+    // Create copies of data for use by cxx. Needs to happen before fortran calls so that
+    // inout data is in original state
+    SHOCLengthData SDS_cxx[] = {
+      SHOCLengthData(SDS_f90[0]),
+      SHOCLengthData(SDS_f90[1]),
+      SHOCLengthData(SDS_f90[2]),
+      SHOCLengthData(SDS_f90[3]),
+    };
+
+    // Assume all data is in C layout
+
+    // Get data from fortran
+    for (auto& d : SDS_f90) {
+      // expects data in C layout
+      shoc_length(d);
+    }
+
+    // Get data from cxx
+    for (auto& d : SDS_cxx) {
+      d.transpose<ekat::TransposeDirection::c2f>();
+      // expects data in fortran layout
+      shoc_length_f(d.shcol(),d.nlev(),d.nlevi(),d.host_dx,d.host_dy,
+                    d.pblh,d.tke,d.zt_grid,d.zi_grid,d.dz_zt,
+                    d.wthv_sec,d.thv,d.brunt,d.shoc_mix);
+      d.transpose<ekat::TransposeDirection::f2c>();
+    }
+
+    // Verify BFB results, all data should be in C layout
+    for (Int i = 0; i < num_runs; ++i) {
+      SHOCLengthData& d_f90 = SDS_f90[i];
+      SHOCLengthData& d_cxx = SDS_cxx[i];
+      for (Int k = 0; k < d_f90.total1x2(); ++k) {
+        REQUIRE(d_f90.brunt[k] == d_cxx.brunt[k]);
+        REQUIRE(d_f90.shoc_mix[k] == d_cxx.shoc_mix[k]);
+      }
+    }
+  }
 };
 
 }  // namespace unit_test
