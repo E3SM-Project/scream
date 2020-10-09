@@ -1630,7 +1630,7 @@ void shoc_pblintd_cldcheck_f(Int shcol, Int nlev, Int nlevi, Real* zi, Real* cld
   Kokkos::Array<size_t, 2> dim2  = {nlevi,  nlev};
 
   Kokkos::Array<view_2d, 2> cldcheck_2d;
-  ekat::host_to_device({zi, cldn}, dim1, dim2, cldcheck_2d, false);
+  ekat::host_to_device({zi, cldn}, dim1, dim2, cldcheck_2d, true);
 
   view_2d
          zi_2d  (cldcheck_2d[0]),
