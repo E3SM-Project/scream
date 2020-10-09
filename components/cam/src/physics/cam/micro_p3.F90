@@ -1199,7 +1199,7 @@ contains
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: inv_qc_relvar
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
-    real(rtype), intent(out) :: elapsed_s ! duration of main loop in seconds
+    real(rtype), optional, intent(out) :: elapsed_s ! duration of main loop in seconds
 #endif
 
     !
@@ -1466,7 +1466,9 @@ contains
 #ifdef SCREAM_CONFIG_IS_CMAKE
     call system_clock(clock_count2, clock_count_rate, clock_count_max)
     clock_count_diff = clock_count2 - clock_count1
-    elapsed_s = real(clock_count_diff) / real(clock_count_rate)
+    if (present(elapsed_s) then 
+      elapsed_s = real(clock_count_diff) / real(clock_count_rate)
+    endif
 #endif
 
     !PMC deleted "if WRF" stuff
