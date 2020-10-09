@@ -1112,9 +1112,9 @@ contains
        diag_eff_radius_qi,rho_qi,do_predict_nc, do_prescribed_CCN, &
        dpres,exner,qv2qi_depos_tend,precip_total_tend,nevapr,qr_evap_tend,precip_liq_flux,precip_ice_flux,cld_frac_r,cld_frac_l,cld_frac_i,  &
        p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-       vap_ice_exchange,qv_prev,t_prev,col_location, &
+       vap_ice_exchange,qv_prev,t_prev,col_location &
 #ifdef SCREAM_CONFIG_IS_CMAKE
-       elapsed_s &
+       ,elapsed_s &
 #endif
       )
 
