@@ -1466,7 +1466,7 @@ contains
 #ifdef SCREAM_CONFIG_IS_CMAKE
     call system_clock(clock_count2, clock_count_rate, clock_count_max)
     clock_count_diff = clock_count2 - clock_count1
-    if (present(elapsed_s) then 
+    if (present(elapsed_s)) then 
       elapsed_s = real(clock_count_diff) / real(clock_count_rate)
     endif
 #endif
