@@ -1018,6 +1018,24 @@ contains
 
    end subroutine set_available_gases
 
+   subroutine get_aerosol_optics_from_file(aero_optical_property)
+      use pio,            only: file_desc_t, pio_nowrite
+      use cam_pio_utils,    only: cam_pio_openfile,cam_pio_closefile
+      use cam_grid_support, only: cam_grid_check, cam_grid_id, cam_grid_get_dim_names
+      use ncdio_atm,       only: infld
+      use time_manager,   only: get_curr_date
+
+      real(rtype), intent(inout) :: aero_optical_property(pcols,pver,begchunk:endchunk)
+     !internal variables
+      character(len=100) :: base_file_name
+      character(len=500) :: filename
+      character(len=20) :: dim1name, dim2name
+      character(len=20) :: mon_str
+      type(file_desc_t) :: nccn_ncid
+      integer :: year, month, day, tod, next_month, grid_id
+      logical :: found = .false.
+
+      
 
    !===============================================================================
         
@@ -1317,12 +1335,18 @@ contains
                   aer_tau_bnd_sw = 0._r8
                   aer_ssa_bnd_sw = 0._r8
                   aer_asm_bnd_sw = 0._r8
-                  call set_aerosol_optics_sw( &
-                     icall, state, pbuf, &
-                     night_indices(1:nnight), &
-                     is_cmip6_volc, &
-                     aer_tau_bnd_sw, aer_ssa_bnd_sw, aer_asm_bnd_sw &
-                  )
+                  if (do_SPA_optics) .then.
+                     call get_aerosol_optics_from_file(aer_tau_bnd_sw)
+                     call get_aerosol_optics_from_file(aer_ssa_bnd_sw)
+                     call get_aerosol_optics_from_file(aer_asm_bnd_sw)
+                  else 
+                     call set_aerosol_optics_sw( &
+                          icall, state, pbuf, &
+                          night_indices(1:nnight), &
+                          is_cmip6_volc, &
+                          aer_tau_bnd_sw, aer_ssa_bnd_sw, aer_asm_bnd_sw &
+                          )
+                  end if
                   ! Now reorder bands to be consistent with RRTMGP
                   ! TODO: fix the input files themselves!
                   do icol = 1,size(aer_tau_bnd_sw,1)

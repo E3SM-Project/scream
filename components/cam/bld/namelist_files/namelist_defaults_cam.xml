@@ -1043,6 +1043,8 @@
 <p3_qc_autoCon_Expon    		      >  2.47   </p3_qc_autoCon_Expon>
 <p3_qc_accret_Expon    		      >  1.15   </p3_qc_accret_Expon>
 
+<do_SPA_optics                       > .false.   </do_SPA_optics>
+
 <rrtmg_temp_fix                      > .false.      </rrtmg_temp_fix>
 
 <micro_mg_precip_frac_method                  >  max_overlap </micro_mg_precip_frac_method>
