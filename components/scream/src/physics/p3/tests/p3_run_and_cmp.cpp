@@ -93,13 +93,19 @@ static Int compare (const std::string& label, const Scalar* a,
 }
 
 struct Baseline {
-  Baseline (const Int nsteps=6, const Int ncol=3, const Int repeat=0, const std::string predict_nc="both") :
+  Baseline (const Int nsteps=6, const Int ncol=3, const Int repeat=0, const std::string predict_nc="both", const std::string prescribed_ccn="both") :
     m_ic_ncol(ncol), m_repeat(repeat)
   {
-    for (const bool do_predict_nc : {true, false}) {
-      if (predict_nc == "both" || ( (do_predict_nc and predict_nc == "yes") || (!do_predict_nc and predict_nc == "no") )) {
-        //                 initial condit,     dt,  nsteps, prescribe or predict nc
-        params_.push_back({ic::Factory::mixed, 300, nsteps, do_predict_nc});
+    for (const bool do_prescribed_CCN : {true, false}) {
+      for (const bool do_predict_nc : {true, false}) {
+        if (predict_nc == "both" || ( (do_predict_nc and predict_nc == "yes") || (!do_predict_nc and predict_nc == "no") )) {
+          //                 initial condit,     dt,  nsteps, prescribe or predict nc
+          params_.push_back({ic::Factory::mixed, 300, nsteps, do_predict_nc});
+        }
+        if (prescribed_ccn == "both" || ( (do_prescribed_CCN and prescribed_ccn == "yes") || (!do_prescribed_CCN and prescribed_ccn == "no") )) {
+          //                 initial condit,     dt,  nsteps, prescribe ccn
+          params_.push_back({ic::Factory::mixed, 300, nsteps, do_prescribed_CCN});
+        }
       }
     }
   }
@@ -188,12 +194,14 @@ private:
     Real dt;
     Int it;
     bool do_predict_nc;
+    bool do_prescribed_CCN;
   };
 
   static void set_params (const ParamSet& ps, FortranData& d) {
     d.dt = ps.dt;
     d.it = ps.it;
     d.do_predict_nc = ps.do_predict_nc;
+    d.do_prescribed_CCN = ps.do_prescribed_CCN;
   }
 
   std::vector<ParamSet> params_;
@@ -247,7 +255,8 @@ int main (int argc, char** argv) {
       "  -s <steps>      Number of timesteps. Default=6.\n";
       "  -i <cols>       Number of columns. Default=6.\n";
       "  -r <repeat>     Number of repetitions, implies timing run (generate + no I/O). Default=0.\n"
-      "  -p <predict_nc> yes|no|both. Default=both.\n";
+      "  -p <predict_nc>  yes|no|both. Default=both.\n";
+      "  -c <prescribed_ccn> yes|no|both. Default=both.\n";
     return 1;
   }
 
@@ -257,6 +266,7 @@ int main (int argc, char** argv) {
   Int ncol = 3;
   Int repeat = 0;
   std::string predict_nc = "both";
+  std::string prescribed_ccn = "both";
   for (int i = 1; i < argc-1; ++i) {
     if (ekat::argv_matches(argv[i], "-g", "--generate")) generate = true;
     if (ekat::argv_matches(argv[i], "-f", "--fortran")) use_fortran = true;
@@ -290,6 +300,13 @@ int main (int argc, char** argv) {
       EKAT_REQUIRE_MSG(predict_nc == "yes" || predict_nc == "no" || predict_nc == "both",
                        "Predict option value must be one of yes|no|both");
     }
+    if (ekat::argv_matches(argv[i], "-c", "--prescribed-ccn")) {
+      expect_another_arg(i, argc);
+      ++i;
+      prescribed_ccn = std::string(argv[i]);
+      EKAT_REQUIRE_MSG(prescribed_ccn == "yes" || prescribed_ccn == "no" || prescribed_ccn == "both",
+                       "Prescribed CCN option value must be one of yes|no|both");
+    }
   }
 
   // Decorate baseline name with precision.
@@ -297,7 +314,7 @@ int main (int argc, char** argv) {
   baseline_fn += std::to_string(sizeof(scream::Real));
 
   scream::initialize_scream_session(argc, argv); {
-    Baseline bln(timesteps, ncol, repeat, predict_nc);
+    Baseline bln(timesteps, ncol, repeat, predict_nc, prescribed_ccn);
     if (generate) {
       std::cout << "Generating to " << baseline_fn << "\n";
       nerr += bln.generate_baseline(baseline_fn, use_fortran);
