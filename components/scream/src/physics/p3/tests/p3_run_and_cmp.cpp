@@ -98,13 +98,10 @@ struct Baseline {
   {
     for (const bool do_prescribed_CCN : {true, false}) {
       for (const bool do_predict_nc : {true, false}) {
-        if (predict_nc == "both" || ( (do_predict_nc and predict_nc == "yes") || (!do_predict_nc and predict_nc == "no") )) {
-          //                 initial condit,     dt,  nsteps, prescribe or predict nc
-          params_.push_back({ic::Factory::mixed, 300, nsteps, do_predict_nc});
-        }
-        if (prescribed_ccn == "both" || ( (do_prescribed_CCN and prescribed_ccn == "yes") || (!do_prescribed_CCN and prescribed_ccn == "no") )) {
-          //                 initial condit,     dt,  nsteps, prescribe ccn
-          params_.push_back({ic::Factory::mixed, 300, nsteps, do_prescribed_CCN});
+        if ((predict_nc == "both"    || ( (do_predict_nc and predict_nc == "yes")         || (!do_predict_nc and predict_nc == "no") )) || 
+           (prescribed_ccn == "both" || ( (do_prescribed_CCN and prescribed_ccn == "yes") || (!do_prescribed_CCN and prescribed_ccn == "no") ))) {
+          //                 initial condit,     dt,  nsteps, prescribe or predict nc, prescribe CCN or not
+          params_.push_back({ic::Factory::mixed, 300, nsteps, do_predict_nc, do_prescribed_CCN});
         }
       }
     }
