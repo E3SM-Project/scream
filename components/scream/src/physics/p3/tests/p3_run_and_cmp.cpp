@@ -93,16 +93,29 @@ static Int compare (const std::string& label, const Scalar* a,
 }
 
 struct Baseline {
-  Baseline (const Int nsteps=6, const Int ncol=3, const Int repeat=0, const std::string predict_nc="both", const std::string prescribed_ccn="both") :
+  Baseline (const Int nsteps=6, const Int ncol=3, const Int repeat=0, const std::string predict_nc="both", const std::string prescribed_CCN="both") :
     m_ic_ncol(ncol), m_repeat(repeat)
   {
-    for (const bool do_prescribed_CCN : {true, false}) {
-      for (const bool do_predict_nc : {true, false}) {
-        if ((predict_nc == "both"    || ( (do_predict_nc and predict_nc == "yes")         || (!do_predict_nc and predict_nc == "no") )) || 
-           (prescribed_ccn == "both" || ( (do_prescribed_CCN and prescribed_ccn == "yes") || (!do_prescribed_CCN and prescribed_ccn == "no") ))) {
-          //                 initial condit,     dt,  nsteps, prescribe or predict nc, prescribe CCN or not
-          params_.push_back({ic::Factory::mixed, 300, nsteps, do_predict_nc, do_prescribed_CCN});
-        }
+
+    //If predict_nc="both", start looping at i_start=0 (false) and end after i_start=1 (true)
+    //otherwise, modify start and end to only loop over case of interest. Test that predict_nc
+    //is only yes, no, or both is done below so not bothering here.
+    int i_start=0;
+    int i_end=2;     
+    if (predict_nc == "yes") {i_start=1;}
+    if (predict_nc == "no" ) {i_end=1;}
+
+    //Like above, get indexing for prescribe_CCN options
+    int j_start=0;
+    int j_end=2;     
+    if (prescribed_CCN == "yes") {j_start=1;}
+    if (prescribed_CCN == "no" ) {j_end=1;}
+   
+    
+    for (int i = i_start; i < i_end; ++i) { // predict_nc is false or true
+      for (int j = j_start; j< j_end; ++j) { //prescribed_CCN is false or true
+	//                 initial condit,     dt,  nsteps, prescribe or predict nc, prescribe CCN or not
+	params_.push_back({ic::Factory::mixed, 300, nsteps, i,                       j });
       }
     }
   }
