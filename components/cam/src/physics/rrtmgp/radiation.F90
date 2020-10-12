@@ -35,6 +35,12 @@ module radiation
    use radiation_utils, only: compress_day_columns, expand_day_columns, &
                               handle_error
 
+   use pio,            only: file_desc_t, pio_nowrite
+   use cam_pio_utils,    only: cam_pio_openfile,cam_pio_closefile
+   use cam_grid_support, only: cam_grid_check, cam_grid_id,cam_grid_get_dim_names
+   use ncdio_atm,       only: infld
+   use time_manager,   only: get_curr_date
+
    implicit none
    private
    save
@@ -186,6 +192,8 @@ module radiation
    ! Indices to pbuf fields
    integer :: cldfsnow_idx = 0
 
+   !needed for SPA
+   integer :: aero_tau_bnd_lw_mon_1,aero_tau_bnd_lw_mon_2, current_month
    !============================================================================
 
 contains
@@ -321,6 +329,10 @@ contains
          call pbuf_add_field('LU', 'global', dtype_r8, (/pcols,pverp,nlwbands/), idx)
          call pbuf_add_field('LD', 'global', dtype_r8, (/pcols,pverp,nlwbands/), idx)
       end if
+
+      !for SPA
+      call pbuf_add_field('aero_tau_bnd_lw_mon_1', 'global', dtype_r8, (/pcols,pverp,nlwbands/), aero_tau_bnd_lw_mon_1_idx)
+      call pbuf_add_field('aero_tau_bnd_lw_mon_2', 'global', dtype_r8,(/pcols,pverp,nlwbands/), aero_tau_bnd_lw_mon_2_idx)
 
    end subroutine radiation_register
 
@@ -871,6 +883,26 @@ contains
                      sampling_seq='rad_lwsw', flag_xyfill=.true.)
       endif
 
+      if (do_SPA) then !initialize SPA
+         !find current_month
+         call get_curr_date(year,month,day,tod)
+         current_month = month
+         if (month==12) then
+            next_month = 1
+         else
+            next_month = month + 1
+         end if
+         allocate(aerosol_optical_property(pcols,pver,nlwbands,begchunk:endchunk))
+         call get_aerosol_optical_property_from_file(current_month,'aer_tau_bnd_lw','lwband',nlwbands,aerosol_optical_property)
+         call pbuf_set_field(pbuf, aer_tau_bnd_lw_1_idx, aerosol_optical_property)
+         deallocate(aerosol_optical_property)
+         allocate(aerosol_optical_property(pcols,pver,nlwbands,begchunk:endchunk))
+         call get_aerosol_optical_property_from_file(next_month,'aer_tau_bnd_lw','lwband',nlwbands,aerosol_optical_property)
+         call pbuf_set_field(pbuf, aer_tau_bnd_lw_2_idx,aerosol_optical_property)
+         deallocate(aerosol_optical_property)
+ 
+     endif
+
    end subroutine radiation_init
 
 
@@ -1018,14 +1050,16 @@ contains
 
    end subroutine set_available_gases
 
-   subroutine get_aerosol_optics_from_file(aero_optical_property)
+   subroutine get_aerosol_optics_from_file(month_int,aerosol_optical_property_str,band_identifier,nbands,aerosol_optical_property)
       use pio,            only: file_desc_t, pio_nowrite
       use cam_pio_utils,    only: cam_pio_openfile,cam_pio_closefile
       use cam_grid_support, only: cam_grid_check, cam_grid_id, cam_grid_get_dim_names
       use ncdio_atm,       only: infld
       use time_manager,   only: get_curr_date
 
-      real(rtype), intent(inout) :: aero_optical_property(pcols,pver,begchunk:endchunk)
+      integer, intent(in) :: month_int, nbands !nbands is either nswbands or nlwbands
+      character*(*), intent(in) :: aero_optical_property_str, band_identifier
+      real(rtype), intent(inout) :: aero_optical_property(pcols,pver,nbands,begchunk:endchunk)
      !internal variables
       character(len=100) :: base_file_name
       character(len=500) :: filename
@@ -1033,9 +1067,37 @@ contains
       character(len=20) :: mon_str
       type(file_desc_t) :: nccn_ncid
       integer :: year, month, day, tod, next_month, grid_id
-      logical :: found = .false.
+      logical :: found = .false.    
 
-      
+      write(mon_str,*) month_int
+
+      !assign base_file_name the name of the CCN file being used 
+      base_file_name = "prescribed_aerosol_optics_file_"
+
+      mon_str = adjustl(mon_str)
+
+     !assign base_file_name the name of the CCN file being used
+      base_file_name = "prescribed_aerosol_optics_file_"
+
+     !retrieve the name of the relevant file by combining base file name !with
+     !!month and full file path:
+      filename = trim(optics_lookup_dir)//'/'//trim(base_file_name)//trim(mon_str)//'.nc'
+
+      grid_id = cam_grid_id('physgrid')
+
+      call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
+
+      call cam_pio_openfile(nccn_ncid,filename,PIO_NOWRITE)
+
+      call infld(aerosol_optical_property_str,nccn_ncid,dim1name,'lev',band_identifier,dim2name,,1,pcols,1,pver,1,nbands,begchunk,endchunk,&
+           aerosol_optical_property, found, gridname='physgrid')
+
+      call cam_pio_closefile(nccn_ncid)
+
+    end subroutine get_aerosol_optics_from_file 
+
+          
+
 
    !===============================================================================
         
@@ -1335,18 +1397,44 @@ contains
                   aer_tau_bnd_sw = 0._r8
                   aer_ssa_bnd_sw = 0._r8
                   aer_asm_bnd_sw = 0._r8
-                  if (do_SPA_optics) .then.
-                     call get_aerosol_optics_from_file(aer_tau_bnd_sw)
-                     call get_aerosol_optics_from_file(aer_ssa_bnd_sw)
-                     call get_aerosol_optics_from_file(aer_asm_bnd_sw)
-                  else 
+                  !if (do_SPA_optics) .then.
+                  !   call get_curr_date(year,month,day,tod)
+                  !   call pbuf_get_field(pbuf,mon_aer_tau_bnd_sw_1_idx,mon_aer_tau_bnd_sw_1)
+                  !   call pbuf_get_field(pbuf,mon_aer_tau_bnd_sw_2_idx,mon_aer_tau_bnd_sw_2)
+                  !   call pbuf_get_field(pbuf,mon_aer_ssa_bnd_sw_1_idx,mon_aer_ssa_bnd_sw_1)
+                  !   call pbuf_get_field(pbuf,mon_aer_ssa_bnd_sw_2_idx,mon_aer_ssa_bnd_sw_2)
+                  !   call pbuf_get_field(pbuf,mon_aer_asm_bnd_sw_1_idx,mon_aer_asm_bnd_sw_1)
+                  !   call pbuf_get_field(pbuf,mon_aer_asm_bnd_sw_2_idx,mon_aer_asm_bnd_sw_2)
+                  !   if (current_month .ne. month) then
+                  !       mon_aer_tau_bnd_sw_1 = mon_aer_tau_bnd_sw_2
+
+                   !     if (month==12) then
+                   !        next_month = 1
+                   !     else
+                   !        next_month = month + 1
+                   !     end if
+
+                    !    allocate(aerosol_sw_1(pcols,pver,begchunk:endchunk))
+
+                     !   call get_sw_aerosol_optics_from_file(next_month,aerosol_sw_1,aerosol_sw_2,aerosol_sw_3)
+
+                      !  mon_aer_tau_bnd_sw_2 = aerosol_sw_1(:,:,state%lchnk)
+
+                       ! deallocate(aerosol_sw_1)
+
+                        !current_month = month
+
+                     !end if
+
+
+                  !else 
                      call set_aerosol_optics_sw( &
                           icall, state, pbuf, &
                           night_indices(1:nnight), &
                           is_cmip6_volc, &
                           aer_tau_bnd_sw, aer_ssa_bnd_sw, aer_asm_bnd_sw &
                           )
-                  end if
+                  !end if
                   ! Now reorder bands to be consistent with RRTMGP
                   ! TODO: fix the input files themselves!
                   do icol = 1,size(aer_tau_bnd_sw,1)
@@ -1440,7 +1528,31 @@ contains
                if (do_aerosol_rad) then
                   call t_startf('rad_aer_optics_lw')
                   aer_tau_bnd_lw = 0._r8
-                  call aer_rad_props_lw(is_cmip6_volc, icall, state, pbuf, aer_tau_bnd_lw)
+                  if (do_SPA_optics) then
+                     !get current time step's date
+                     call get_curr_date(year,month,day,tod)
+                     !populate mon_ccn_1 and mon_ccn_2 with corresponding pbuf variables
+                     call pbuf_get_field(pbuf,aer_tau_bnd_lw_mon_1_idx, aer_tau_bnd_lw_mon_1)
+                     call pbuf_get_field(pbuf,aer_tau_bnd_lw_mon_2_idx, aer_tau_bnd_lw_mon_2)
+                     if (current_month .ne. month) then
+                        aer_tau_bnd_lw_mon_1 = aer_tau_bnd_lw_mon_2
+                        if (month==12) then
+                           next_month = 1
+                        else
+                           next_month = month + 1
+                        end if
+                        allocate(aerosol_optical_property(pcols,pver,nlwbands,begchunk:endchunk))
+                        call get_aerosol_optical_property_from_file(next_month,'aer_tau_bnd_lw','lwband',nlwbands,aerosol_optical_property)
+                        aer_tau_bnd_lw_mon_2 = aerosol_optical_property(:,:,state%lchnk)
+                        deallocate(aerosol_optical_property)
+                        current_month = month
+                     end if
+                     !interpolate between two months to calculate prescribed aerosol optical property based on current date
+                     fraction_of_month = (day*3600.0*24.0 + tod)/(3600*24*days_per_month(current_month)) !tod is in seconds
+                     aer_tau_bnd_lw = aer_tau_bnd_lw_mon_1*(1-fraction_of_month) + aer_tau_bnd_lw_mon_2*(fraction_of_month)
+                  else
+                     call aer_rad_props_lw(is_cmip6_volc, icall, state, pbuf, aer_tau_bnd_lw)
+                  end if
                   call t_stopf('rad_aer_optics_lw')
                else
                   aer_tau_bnd_lw = 0
