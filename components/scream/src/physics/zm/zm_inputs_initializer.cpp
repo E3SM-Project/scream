@@ -222,7 +222,7 @@ void ZMInputsInitializer :: initialize_fields(){
 
   for (int i = 0; i < zm_inputs.size(); i++){
     //Get and store device view using input name
-    Kokkos::View<Real*, Kokkos::LayoutRight, HostDevice> d_v = m_fields.at(zm_inputs[i]).get_view();
+    Kokkos::View<Real*, Kokkos::LayoutRight, DefaultDevice> d_v = m_fields.at(zm_inputs[i]).get_view();
     //Create and store host mirrors using device views
     Kokkos::View<scream::Real*, Kokkos::LayoutRight, HostDevice> h_m = Kokkos::create_mirror_view(d_v);
     //Create and store host mirrors raw pointers
