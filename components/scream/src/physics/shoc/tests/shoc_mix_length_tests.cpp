@@ -40,13 +40,13 @@ struct UnitWrap::UnitTest<D>::TestCompShocMixLength {
     // Define the brunt vasailla frequency [s-1]
     static constexpr Real brunt_cons = 0.001;
     // Define the assymptoic length [m]
-    static constexpr Real l_inf = 100.0;
+    static constexpr Real l_inf = 100;
     // Define the overturning timescale [s]
-    static constexpr Real tscale = 300.0;
+    static constexpr Real tscale = 300;
     // Define the heights on the zt grid [m]
-    static constexpr Real zt_grid[nlev] = {5000.0, 3000.0, 2000.0, 1000.0, 500.0};
+    static constexpr Real zt_grid[nlev] = {5000, 3000, 2000, 1000, 500};
 
-    // Initialize data structure for bridgeing to F90
+    // Initialize data structure for bridging to F90
     SHOCMixlengthData SDS(shcol, nlev);
 
     // Test that the inputs are reasonable.
@@ -59,13 +59,13 @@ struct UnitWrap::UnitTest<D>::TestCompShocMixLength {
       SDS.l_inf[s] = l_inf;
       SDS.tscale[s] = tscale;
       for(Int n = 0; n < nlev; ++n) {
-	const auto offset = n + s * nlev;
+        const auto offset = n + s * nlev;
 
-	// for the subsequent columns, increase
-	//  the amount of TKE
-	SDS.tke[offset] = (1.0+s)*tke_cons;
-	SDS.brunt[offset] = brunt_cons;
-	SDS.zt_grid[offset] = zt_grid[n];
+        // for the subsequent columns, increase
+        //  the amount of TKE
+        SDS.tke[offset] = (1.0+s)*tke_cons;
+        SDS.brunt[offset] = brunt_cons;
+        SDS.zt_grid[offset] = zt_grid[n];
       }
     }
 
@@ -73,23 +73,23 @@ struct UnitWrap::UnitTest<D>::TestCompShocMixLength {
 
     // Be sure that relevant variables are greater than zero
     for(Int s = 0; s < shcol; ++s) {
-      REQUIRE(SDS.l_inf[s] > 0.0);
-      REQUIRE(SDS.tscale[s] > 0.0);
+      REQUIRE(SDS.l_inf[s] > 0);
+      REQUIRE(SDS.tscale[s] > 0);
       for(Int n = 0; n < nlev; ++n) {
-	const auto offset = n + s * nlev;
-	REQUIRE(SDS.tke[offset] > 0.0);
-	REQUIRE(SDS.zt_grid[offset] > 0.0);
-	if (s < shcol-1){
+        const auto offset = n + s * nlev;
+        REQUIRE(SDS.tke[offset] > 0);
+        REQUIRE(SDS.zt_grid[offset] > 0);
+        if (s < shcol-1){
           // Verify that tke is larger column by column
           const auto offsets = n + (s+1) * nlev;
           REQUIRE(SDS.tke[offset] < SDS.tke[offsets]);
-	}
+        }
       }
 
       // Check that zt increases upward
       for(Int n = 0; n < nlev - 1; ++n) {
-	const auto offset = n + s * nlev;
-	REQUIRE(SDS.zt_grid[offset + 1] - SDS.zt_grid[offset] < 0.0);
+        const auto offset = n + s * nlev;
+        REQUIRE(SDS.zt_grid[offset + 1] - SDS.zt_grid[offset] < 0);
       }
     }
 
@@ -99,27 +99,77 @@ struct UnitWrap::UnitTest<D>::TestCompShocMixLength {
     // Check the results
     for(Int s = 0; s < shcol; ++s) {
       for(Int n = 0; n < nlev; ++n) {
-	const auto offset = n + s * nlev;
-	// Validate shoc_mix greater than zero everywhere
-	REQUIRE(SDS.shoc_mix[offset] > 0.0);
-	if (s < shcol-1){
+        const auto offset = n + s * nlev;
+        // Validate shoc_mix greater than zero everywhere
+        REQUIRE(SDS.shoc_mix[offset] > 0);
+        if (s < shcol-1){
           // Verify that mixing length increases column by column
           const auto offsets = n + (s+1) * nlev;
           REQUIRE(SDS.shoc_mix[offset] < SDS.shoc_mix[offsets]);
-	}
+        }
       }
 
       // Check that mixing length increases upward
       for(Int n = 0; n < nlev - 1; ++n) {
-	const auto offset = n + s * nlev;
-	REQUIRE(SDS.shoc_mix[offset + 1] - SDS.shoc_mix[offset] < 0.0);
+        const auto offset = n + s * nlev;
+        REQUIRE(SDS.shoc_mix[offset + 1] - SDS.shoc_mix[offset] < 0);
       }
     }
   }
 
   static void run_bfb()
   {
-    // TODO
+    SHOCMixlengthData SDS_f90[] = {
+      //               shcol, nlev
+      SHOCMixlengthData(10, 71),
+      SHOCMixlengthData(10, 12),
+      SHOCMixlengthData(7,  16),
+      SHOCMixlengthData(2, 7)
+    };
+
+    static constexpr Int num_runs = sizeof(SDS_f90) / sizeof(SHOCMixlengthData);
+
+    // Generate random input data
+    for (auto& d : SDS_f90) {
+      d.randomize();
+    }
+
+    // Create copies of data for use by cxx. Needs to happen before fortran calls so that
+    // inout data is in original state
+    SHOCMixlengthData SDS_cxx[] = {
+      SHOCMixlengthData(SDS_f90[0]),
+      SHOCMixlengthData(SDS_f90[1]),
+      SHOCMixlengthData(SDS_f90[2]),
+      SHOCMixlengthData(SDS_f90[3]),
+    };
+
+    // Assume all data is in C layout
+
+    // Get data from fortran
+    for (auto& d : SDS_f90) {
+      // expects data in C layout
+      compute_shoc_mix_shoc_length(d);
+    }
+
+    // Get data from cxx
+    for (auto& d : SDS_cxx) {
+      d.transpose<ekat::TransposeDirection::c2f>();
+      // expects data in fortran layout
+      compute_shoc_mix_shoc_length_f(d.nlev(), d.shcol(),
+                                     d.tke, d.brunt,
+                                     d.tscale, d.zt_grid,
+                                     d.l_inf, d.shoc_mix);
+      d.transpose<ekat::TransposeDirection::f2c>();
+    }
+
+    // Verify BFB results, all data should be in C layout
+    for (Int i = 0; i < num_runs; ++i) {
+      SHOCMixlengthData& d_f90 = SDS_f90[i];
+      SHOCMixlengthData& d_cxx = SDS_cxx[i];
+      for (Int k = 0; k < d_f90.total1x2(); ++k) {
+        REQUIRE(d_f90.shoc_mix[k] == d_cxx.shoc_mix[k]);
+      }
+    }
   }
 };
 

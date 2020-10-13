@@ -3,7 +3,7 @@
 #define SHOC_PBLINTD_INIT_POT_IMPL_HPP
 
 #include "shoc_functions.hpp" // for ETI only but harmless for GPU
-#include "physics_functions.hpp" // also for ETI not on GPUs
+#include "physics/share/physics_functions.hpp" // also for ETI not on GPUs
 
 namespace scream {
 namespace shoc {
@@ -26,7 +26,7 @@ void Functions<S,D>
 
    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev_pack), [&] (const int& k) {
      auto th = thl(k) + (lcond/cp)*ql(k);
-     thv(k) = th + (one + eps*q(k) - ql(k));
+     thv(k) = th * (one + eps*q(k) - ql(k));
    });
 }
 

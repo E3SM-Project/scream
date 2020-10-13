@@ -62,6 +62,9 @@ public:
 
   // Deduce the pack size from the scalar type (which must be of type Pack<ScalarType,N>, for some int N>0, or ScalarType)
   template<typename RequestedValueType = scalar_type>
+  void register_field (const identifier_type& identifier, const std::initializer_list<std::string>& groups_names);
+
+  template<typename RequestedValueType = scalar_type>
   void register_field (const identifier_type& identifier, const std::set<std::string>& groups_names);
 
   template<typename RequestedValueType = scalar_type>
@@ -78,6 +81,7 @@ public:
   // Query for a particular field or group of fields
   bool has_field (const identifier_type& identifier) const;
   const field_type& get_field (const identifier_type& identifier) const;
+  const field_type& get_field(const std::string name,const std::string grid) const;
   const groups_map_type& get_field_groups () const { return m_field_groups; }
 
   // Iterators, to allow range for loops over the repo.
@@ -131,6 +135,13 @@ register_field (const identifier_type& id, const std::string& group_name) {
   std::set<std::string> group_name_set;
   group_name_set.insert(group_name);
   register_field<RequestedValueType>(id,group_name_set);
+}
+
+template<typename ScalarType, typename Device>
+template<typename RequestedValueType>
+void FieldRepository<ScalarType,Device>::
+register_field (const identifier_type& id, const std::initializer_list<std::string>& groups_names) {
+  register_field<RequestedValueType>(id,std::set<std::string>(groups_names));
 }
 
 template<typename ScalarType, typename Device>
@@ -216,6 +227,28 @@ FieldRepository<ScalarType,Device>::get_field (const identifier_type& id) const 
   auto it = map->second.find(id);
   EKAT_REQUIRE_MSG(it!=map->second.end(), "Error! Field not found.\n");
   return it->second;
+}
+
+template<typename ScalarType, typename Device>
+const typename FieldRepository<ScalarType,Device>::field_type&
+FieldRepository<ScalarType,Device>::get_field (const std::string name, const std::string grid) const {
+  EKAT_REQUIRE_MSG(m_repo_state==RepoState::Closed,"Error! You are not allowed to grab fields from the repo until after the registration phase is completed.\n");
+
+  // Keep track of the number of fields found for this name/grid combo
+  std::vector<identifier_type> f_matches;
+  //  Search field repo for field matching this name.
+  const auto& map = m_fields.find(name);
+  EKAT_REQUIRE_MSG(map!=m_fields.end(), "Error! get_field: " + name + " not found.\n");
+  //  Search subset of field repo for matching gridname.
+  for (const auto& it : map->second)
+  {
+    if ( it.first.get_grid_name()==grid) {f_matches.push_back(it.first);}
+  }
+  // Check to make sure a) the field was found on this grid, and b) only once.
+  EKAT_REQUIRE_MSG(f_matches.size()!=0, "Error! get_field: " + name + " not found on grid " + grid + ".\n");
+  EKAT_REQUIRE_MSG(f_matches.size()==1, "Error! get_field: " + name + " found " + std::to_string(f_matches.size()) + " matches on grid " + grid + ".\n");
+  // Use this field id to grab field itself.
+  return get_field(f_matches[0]);
 }
 
 template<typename ScalarType, typename Device>

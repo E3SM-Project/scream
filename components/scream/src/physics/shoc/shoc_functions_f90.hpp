@@ -43,6 +43,100 @@ struct SHOCGridData : public PhysicsTestData {
   SHOC_NO_SCALAR(SHOCGridData, 3);
 };
 
+struct SHOCObklenData : public PhysicsTestData {
+  // Inputs
+  Real *uw_sfc, *vw_sfc, *wthl_sfc, *wqw_sfc, *thl_sfc;
+  Real *cldliq_sfc, *qv_sfc;
+
+  // Outputs
+  Real *ustar, *kbfs, *obklen;
+
+  SHOCObklenData(Int shcol_) :
+  PhysicsTestData(shcol_, {&uw_sfc, &vw_sfc, &wthl_sfc, &wqw_sfc, &thl_sfc, &cldliq_sfc, &qv_sfc, &ustar, &kbfs, &obklen}){}
+
+  SHOC_NO_SCALAR(SHOCObklenData, 1);
+
+};
+
+//Create data structure to hold data for compute_tmpi
+struct SHOCComptmpiData : public PhysicsTestData {
+  //Inputs
+  Real dtime;
+  Real *rho_zi, *dz_zi;
+
+  //Outputs
+  Real *tmpi;
+
+  SHOCComptmpiData(Int shcol_, Int nlevi_, Real dtime_) :
+    PhysicsTestData(shcol_, nlevi_, {&rho_zi, &dz_zi, &tmpi}), dtime(dtime_) {}
+
+//  SHOC_SCALARS(SHOCComptmpiData, 2, 1, dtime);
+  PTD_STD_DEF(SHOCComptmpiData, 2, 1, dtime);
+  PTD_DIM_RENAME(2, shcol, nlevi);
+
+}; // SHOCComptmpiData
+
+//Create data structure to hold data for dp_inverse
+struct SHOCDpinverseData : public PhysicsTestData {
+  //Inputs
+  Real *rho_zt, *dz_zt;
+
+  //Outputs
+  Real *rdp_zt;
+
+  SHOCDpinverseData(Int shcol_, Int nlev_) :
+    PhysicsTestData(shcol_, nlev_, {&rho_zt, &dz_zt, &rdp_zt}) {}
+
+  SHOC_NO_SCALAR(SHOCDpinverseData, 2);
+
+}; // SHOCDpinverseData
+
+//Create data structure to hold data for sfc_fluxes
+struct SHOCSfcfluxesData : public PhysicsTestData {
+  //Inputs
+  Real dtime;
+  Real *rdp_zt_sfc, *rho_zi_sfc, *wthl_sfc, *wqw_sfc, *wtke_sfc;
+
+  //In/Outputs
+  Real *thetal, *qw, *tke;
+
+  SHOCSfcfluxesData(Int shcol_, Real dtime_) :
+    PhysicsTestData(shcol_, {&rdp_zt_sfc, &rho_zi_sfc, &wthl_sfc, &wqw_sfc, &wtke_sfc, &thetal, &qw, &tke}), dtime(dtime_) {}
+
+  SHOC_SCALARS(SHOCSfcfluxesData, 1, 1, dtime);
+
+}; // SHOCSfcfluxesData
+
+//Create data structure to hold data for impli_srf_stress_term
+struct SHOCImplsrfstressData : public PhysicsTestData {
+  //Inputs
+  Real *rho_zi_sfc, *uw_sfc, *vw_sfc, *u_wind_sfc, *v_wind_sfc;
+
+  //Outputs
+  Real *ksrf;
+
+  SHOCImplsrfstressData(Int shcol_) :
+    PhysicsTestData(shcol_, {&rho_zi_sfc, &uw_sfc, &vw_sfc, &u_wind_sfc, &v_wind_sfc, &ksrf}) {}
+
+  SHOC_NO_SCALAR(SHOCImplsrfstressData, 1);
+
+}; // SHOCImplsrfstressData
+
+//Create data structure to hold data for tke_srf_flux_term
+struct SHOCTkesrffluxData : public PhysicsTestData {
+  //Inputs
+  Real *uw_sfc, *vw_sfc;
+
+  //Outputs
+  Real *wtke_sfc;
+
+  SHOCTkesrffluxData(Int shcol_) :
+    PhysicsTestData(shcol_, {&uw_sfc, &vw_sfc, &wtke_sfc}) {}
+
+  SHOC_NO_SCALAR(SHOCTkesrffluxData, 1);
+
+}; // SHOCTkesrffluxData
+
 //Create data structure to hold data for check_tke
 struct SHOCCheckTkeData : public PhysicsTestData {
 
@@ -58,7 +152,7 @@ struct SHOCCheckTkeData : public PhysicsTestData {
 //Create data structure to hold data for shoc_tke
 struct SHOCTkeData : public PhysicsTestData {
   // Inputs
-  Real dtime; 
+  Real dtime;
   Real *wthv_sec, *shoc_mix, *dz_zi, *u_wind, *v_wind, *pblh;
   Real *brunt, *obklen, *zt_grid, *zi_grid, *dz_zt, *pres;
 
@@ -398,7 +492,7 @@ struct SHOCAAdiagthirdmomsData
 {
   // inputs
   Real omega0, omega1, omega2, x0, x1, y0, y1;
-  
+
   // outputs
   Real aa0, aa1;
 
@@ -410,7 +504,7 @@ struct SHOCFtermdiagthirdmomsData
   Real thedz, thedz2, bet2, iso, isosqrd, wthl_sec, wthl_sec_kc;
   Real wthl_sec_kb, thl_sec, thl_sec_kc, thl_sec_kb, w_sec;
   Real w_sec_kc, w_sec_zi, tke, tke_kc;
-  
+
   // outputs
   Real f0, f1, f2, f3, f4, f5;
 
@@ -420,7 +514,7 @@ struct SHOCOmegadiagthirdmomsData
 {
   // inputs
   Real buoy_sgs2, f3, f4;
-  
+
   // outputs
   Real omega0, omega1, omega2;
 
@@ -430,7 +524,7 @@ struct SHOCXYdiagthirdmomsData
 {
   // inputs
   Real buoy_sgs2, f0, f1, f2;
-  
+
   // outputs
   Real x0, y0, x1, y1;
 
@@ -440,7 +534,7 @@ struct SHOCW3diagthirdmomsData
 {
   // inputs
   Real aa0, aa1, x0, x1, f5;
-  
+
   // outputs
   Real w3;
 
@@ -450,7 +544,7 @@ struct SHOCFterminputthirdmomsData
 {
   // inputs
   Real dz_zi, dz_zt, dz_zt_kc, isotropy_zi, brunt_zi, thetal_zi;
-  
+
   // outputs
   Real thedz, thedz2, iso, isosqrd, buoy_sgs2, bet2;
 
@@ -458,13 +552,13 @@ struct SHOCFterminputthirdmomsData
 
 struct SHOCSecondMomentSrfData : public PhysicsTestData {
   // Inputs
-  Real *wthl, *uw, *vw;
+  Real *wthl_sfc, *uw_sfc, *vw_sfc;
 
   // out
   Real *ustar2, *wstar;
 
   SHOCSecondMomentSrfData(Int shcol_) :
-    PhysicsTestData(shcol_, {&wthl, &uw, &vw, &ustar2, &wstar}) {}
+    PhysicsTestData(shcol_, {&wthl_sfc, &uw_sfc, &vw_sfc, &ustar2, &wstar}) {}
 
   SHOC_NO_SCALAR(SHOCSecondMomentSrfData, 1);
 };
@@ -488,21 +582,21 @@ struct SHOCDiagThirdMomData : public PhysicsTestData {
 //Create data structure to hold data for compute_diag_third_shoc_moment
 struct SHOCCompThirdMomData : public PhysicsTestData {
   // Inputs
-  Real *w_sec, *thl_sec, *qw_sec, *qwthl_sec, *wthl_sec, *tke, *dz_zt;
-  Real *dz_zi, *zt_grid, *zi_grid, *isotropy_zi, *brunt_zi, *w_sec_zi;
-  Real *thetal_zi, *wthv_sec_zi;
+  Real *w_sec, *thl_sec, *wthl_sec, *tke, *dz_zt;
+  Real *dz_zi, *isotropy_zi, *brunt_zi, *w_sec_zi;
+  Real *thetal_zi;
 
   // Output
   Real *w3;
 
   SHOCCompThirdMomData(Int shcol_, Int nlev_, Int nlevi_) :
-    PhysicsTestData(shcol_, nlev_, nlevi_, {&w_sec, &tke, &dz_zt, &zt_grid}, {&thl_sec, &wthl_sec, &qw_sec, &qwthl_sec, &zi_grid, &isotropy_zi, &dz_zi, &brunt_zi, &w_sec_zi, &thetal_zi, &wthv_sec_zi, &w3}) {}
+    PhysicsTestData(shcol_, nlev_, nlevi_, {&w_sec, &tke, &dz_zt}, {&thl_sec, &wthl_sec, &isotropy_zi, &dz_zi, &brunt_zi, &w_sec_zi, &thetal_zi, &w3}) {}
 
   SHOC_NO_SCALAR(SHOCCompThirdMomData, 3);
 };//SHOCCompThirdMomData
 
 //Create data structure to hold data for linear_interp
-struct SHOCLinearintData : public PhysicsTestData {
+struct SHOCLinearInterpData : public PhysicsTestData {
   // Inputs
   Real minthresh;
   Real *x1, *x2, *y1;
@@ -510,11 +604,27 @@ struct SHOCLinearintData : public PhysicsTestData {
   // In/out
   Real *y2;
 
-  SHOCLinearintData(Int shcol_, Int nlev_, Int nlevi_, Real minthresh_) :
+  SHOCLinearInterpData(Int shcol_, Int nlev_, Int nlevi_, Real minthresh_) :
     PhysicsTestData(shcol_, nlev_, nlevi_, {&x1, &y1}, {&x2, &y2}), minthresh(minthresh_) {}
 
-  SHOC_SCALARS(SHOCLinearintData, 3, 1, minthresh);
-};//SHOCLinearintData
+  SHOC_SCALARS(SHOCLinearInterpData, 3, 1, minthresh);
+};//SHOCLinearInterpData
+
+//Create data structure to hold data for compute_shr_prod
+struct SHOCAssumedpdfData : public PhysicsTestData {
+  // Inputs
+  Real *thetal, *qw, *w_field, *thl_sec, *qw_sec, *wthl_sec, *w_sec;
+  Real *wqw_sec, *qwthl_sec, *w3, *pres, *zt_grid, *zi_grid;
+
+  // Outputs
+  Real *shoc_cldfrac, *shoc_ql, *wqls, *wthv_sec, *shoc_ql2;
+
+  //functions to initialize data
+  SHOCAssumedpdfData(Int shcol_, Int nlev_, Int nlevi_) :
+    PhysicsTestData(shcol_, nlev_, nlevi_, {&thetal, &qw, &w_field, &w_sec, &pres, &zt_grid, &shoc_cldfrac, &shoc_ql, &wqls, &wthv_sec, &shoc_ql2}, {&w3, &thl_sec, &qw_sec, &wthl_sec, &wqw_sec, &qwthl_sec, &zi_grid}) {}
+
+  SHOC_NO_SCALAR(SHOCAssumedpdfData, 3);
+};//SHOCAssumedpdfData
 
 //Create data structure to hold data for shoc_assumed_pdf_tilda_to_real
 struct SHOCPDFtildaData
@@ -640,10 +750,11 @@ struct SHOCPDFcompbuoyfluxData
 
 struct SHOCSecondMomentUbycondData : public PhysicsTestData {
   // Outputs
-  Real *thl, *qw, *wthl, *wqw, *qwthl, *uw, *vw, *wtke;
+  Real *thl_sec, *qw_sec, *wthl_sec, *wqw_sec, *qwthl_sec;
+  Real *uw_sec, *vw_sec, *wtke_sec;
 
   SHOCSecondMomentUbycondData(Int shcol_) :
-    PhysicsTestData(shcol_, {&thl, &qw, &wthl, &wqw, &qwthl, &uw, &vw, &wtke}) {}
+    PhysicsTestData(shcol_, {&thl_sec, &qw_sec, &wthl_sec, &wqw_sec, &qwthl_sec, &uw_sec, &vw_sec, &wtke_sec}) {}
 
   SHOC_NO_SCALAR(SHOCSecondMomentUbycondData, 1);
 };
@@ -661,16 +772,62 @@ struct SHOCPblintdInitPotData : public PhysicsTestData {
   SHOC_NO_SCALAR(SHOCPblintdInitPotData, 2);
 };
 
-//
+struct DiagSecondMomentsLbycondData : public PhysicsTestData {
+  // Inputs
+  Real *wthl_sfc, *wqw_sfc, *uw_sfc, *vw_sfc, *ustar2, *wstar;
+
+  // Outputs
+  Real *wthl_sec, *wqw_sec, *uw_sec, *vw_sec, *wtke_sec, *thl_sec, *qw_sec, *qwthl_sec;
+
+  DiagSecondMomentsLbycondData(Int shcol_) :
+    PhysicsTestData(shcol_, {&wthl_sfc, &wqw_sfc, &uw_sfc, &vw_sfc, &ustar2, &wstar, &wthl_sec, &wqw_sec, &uw_sec, &vw_sec, &wtke_sec, &thl_sec, &qw_sec, &qwthl_sec}) {}
+
+  SHOC_NO_SCALAR(DiagSecondMomentsLbycondData, 1)
+};
+struct DiagSecondMomentsData : public PhysicsTestData {
+  // Inputs
+  Real *thetal, *qw, *u_wind, *v_wind, *tke, *isotropy, *tkh, *tk, *dz_zi, *zt_grid, *zi_grid, *shoc_mix;
+
+  // Inputs/Outputs
+  Real *thl_sec, *qw_sec, *wthl_sec, *wqw_sec, *qwthl_sec, *uw_sec, *vw_sec, *wtke_sec;
+
+  // Outputs
+  Real *w_sec;
+
+  DiagSecondMomentsData(Int shcol_, Int nlev_, Int nlevi_) :
+    PhysicsTestData(shcol_, nlev_, nlevi_, {&thetal, &qw, &u_wind, &v_wind, &tke, &isotropy, &tkh, &tk, &zt_grid, &shoc_mix, &w_sec}, {&dz_zi, &zi_grid, &thl_sec, &qw_sec, &wthl_sec, &wqw_sec, &qwthl_sec, &uw_sec, &vw_sec, &wtke_sec}) {}
+
+  SHOC_NO_SCALAR(DiagSecondMomentsData, 3)
+};
+struct DiagSecondShocMomentsData : public PhysicsTestData {
+  // Inputs
+  Real *thetal, *qw, *u_wind, *v_wind, *tke, *isotropy, *tkh, *tk, *dz_zi, *zt_grid, *zi_grid, *shoc_mix, *wthl_sfc, *wqw_sfc, *uw_sfc, *vw_sfc;
+
+  // Outputs
+  Real *thl_sec, *qw_sec, *wthl_sec, *wqw_sec, *qwthl_sec, *uw_sec, *vw_sec, *wtke_sec, *w_sec;
+
+  DiagSecondShocMomentsData(Int shcol_, Int nlev_, Int nlevi_) :
+    PhysicsTestData(shcol_, nlev_, nlevi_, {&thetal, &qw, &u_wind, &v_wind, &tke, &isotropy, &tkh, &tk, &zt_grid, &shoc_mix, &w_sec}, {&dz_zi, &zi_grid, &thl_sec, &qw_sec, &wthl_sec, &wqw_sec, &qwthl_sec, &uw_sec, &vw_sec, &wtke_sec}, {&wthl_sfc, &wqw_sfc, &uw_sfc, &vw_sfc}) {}
+
+  SHOC_NO_SCALAR(DiagSecondShocMomentsData, 3)
+};
+
+struct SHOCPblintdCldCheckData : public PhysicsTestData {
+  // inputs
+ Real *zi, *cldn;
+
+ // outputs
+  Real *pblh;
+
+  SHOCPblintdCldCheckData(Int shcol_, Int nlev_, Int nlevi_) :
+     PhysicsTestData(shcol_, nlev_, nlevi_, {&cldn}, {&zi}, {&pblh}) {}
+
+  SHOC_NO_SCALAR(SHOCPblintdCldCheckData, 3);
+};
+
 // Glue functions to call fortran from from C++ with the Data struct
-//
-
-// This function initialzes the grid used by shoc. Given the
-// locations of the cell center (location of thermodynaics quantities), cell
-// interfaces, and pressure gradient the functon returns dz_zi, dz_zt,
-// and density.
-
 void shoc_grid                                      (SHOCGridData &d);
+void shoc_diag_obklen                               (SHOCObklenData &d);
 void update_host_dse                                (SHOCEnergydseData &d);
 void shoc_energy_fixer                              (SHOCEnergyfixerData &d);
 void shoc_energy_integrals                          (SHOCEnergyintData &d);
@@ -679,6 +836,11 @@ void shoc_energy_threshold_fixer                    (SHOCEnergythreshfixerData &
 void shoc_energy_dse_fixer                          (SHOCEnergydsefixerData &d);
 void calc_shoc_vertflux                             (SHOCVertfluxData &d);
 void calc_shoc_varorcovar                           (SHOCVarorcovarData &d);
+void compute_tmpi                                   (SHOCComptmpiData &d);
+void dp_inverse                                     (SHOCDpinverseData &d);
+void sfc_fluxes                                     (SHOCSfcfluxesData &d);
+void impli_srf_stress_term                          (SHOCImplsrfstressData &d);
+void tke_srf_flux_term                              (SHOCTkesrffluxData &d);
 void integ_column_stability                         (SHOCColstabData &d);
 void check_tke                                      (SHOCCheckTkeData &d);
 void shoc_tke                                       (SHOCTkeData &d);
@@ -701,9 +863,10 @@ void x_y_terms_diag_third_shoc_moment               (SHOCXYdiagthirdmomsData &d)
 void w3_diag_third_shoc_moment                      (SHOCW3diagthirdmomsData &d);
 void clipping_diag_third_shoc_moments               (SHOCClipthirdmomsData &d);
 void shoc_diag_second_moments_srf                   (SHOCSecondMomentSrfData& d);
+void linear_interp                                  (SHOCLinearInterpData &d);
 void diag_third_shoc_moments                        (SHOCDiagThirdMomData &d);
 void compute_diag_third_shoc_moment                 (SHOCCompThirdMomData &d);
-void linear_interp                                  (SHOCLinearintData &d);
+void shoc_assumed_pdf                               (SHOCAssumedpdfData &d);
 void shoc_assumed_pdf_tilda_to_real                 (SHOCPDFtildaData &d);
 void shoc_assumed_pdf_vv_parameters                 (SHOCPDFvvparamData &d);
 void shoc_assumed_pdf_thl_parameters                (SHOCPDFthlparamData &d);
@@ -718,11 +881,12 @@ void shoc_assumed_pdf_compute_liquid_water_flux     (SHOCPDFcompliqfluxData &d);
 void shoc_assumed_pdf_compute_buoyancy_flux         (SHOCPDFcompbuoyfluxData &d);
 void shoc_diag_second_moments_ubycond               (SHOCSecondMomentUbycondData& d);
 void shoc_pblintd_init_pot                          (SHOCPblintdInitPotData &d);
+void shoc_pblintd_cldcheck                          (SHOCPblintdCldCheckData& d);
 
-//
-// _f functions decls
-//
-extern "C" {
+void diag_second_moments_lbycond(DiagSecondMomentsLbycondData& d);
+void diag_second_moments(DiagSecondMomentsData& d);
+void diag_second_shoc_moments(DiagSecondShocMomentsData& d);
+extern "C" { // _f function decls
 
 void calc_shoc_varorcovar_f(Int shcol, Int nlev, Int nlevi, Real tunefac,
                             Real *isotropy_zi, Real *tkh_zi, Real *dz_zi,
@@ -735,8 +899,38 @@ void shoc_diag_second_moments_ubycond_f(Int shcol, Real* thl, Real* qw, Real* wt
                           Real* wqw, Real* qwthl, Real* uw, Real* vw, Real* wtke);
 void update_host_dse_f(Int shcol, Int nlev, Real* thlm, Real* shoc_ql, Real* exner, Real* zt_grid,
                        Real* phis, Real* host_dse);
+void compute_diag_third_shoc_moment_f(Int shcol, Int nlev, Int nlevi, Real* w_sec,
+                                      Real* thl_sec, Real* wthl_sec, Real* tke,
+                                      Real* dz_zt, Real* dz_zi, Real* isotropy_zi,
+                                      Real* brunt_zi, Real* w_sec_zi, Real* thetal_zi,
+                                      Real* w3);
 void shoc_pblintd_init_pot_f(Int shcol, Int nlev, Real* thl, Real* ql, Real* q, Real* thv);
-}
+void compute_shoc_mix_shoc_length_f(Int nlev, Int shcol, Real* tke, Real* brunt,
+                                    Real* tscale, Real* zt_grid, Real* l_inf, Real* shoc_mix);
+void check_tke_f(Int shcol, Int nlev, Real* tke);
+void linear_interp_f(Real* x1, Real* x2, Real* y1, Real* y2, Int km1, Int km2, Int ncol, Real minthresh);
+void clipping_diag_third_shoc_moments_f(Int nlevi, Int shcol, Real *w_sec_zi,
+                                        Real *w3);
+void shoc_energy_integrals_f(Int shcol, Int nlev, Real *host_dse, Real *pdel,
+                             Real *rtm, Real *rcm, Real *u_wind, Real *v_wind,
+                             Real *se_int, Real *ke_int, Real *wv_int, Real *wl_int);
+void compute_brunt_shoc_length_f(Int nlev, Int nlevi, Int shcol, Real* dz_zt, Real* thv,
+                                 Real* thv_zi, Real* brunt);
+void compute_l_inf_shoc_length_f(Int nlev, Int shcol, Real *zt_grid, Real *dz_zt,
+                                 Real *tke, Real *l_inf);
+void check_length_scale_shoc_length_f(Int nlev, Int shcol, Real* host_dx, Real* host_dy,
+                                      Real* shoc_mix);
+void compute_conv_vel_shoc_length_f(Int nlev, Int shcol, Real *pblh, Real *zt_grid,
+                                    Real *dz_zt, Real *thv, Real *wthv_sec,
+                                    Real *conv_vel);
+void diag_second_moments_lbycond_f(Int shcol, Real* wthl_sfc, Real* wqw_sfc, Real* uw_sfc, Real* vw_sfc, Real* ustar2, Real* wstar, Real* wthl_sec, Real* wqw_sec, Real* uw_sec, Real* vw_sec, Real* wtke_sec, Real* thl_sec, Real* qw_sec, Real* qwthl_sec);
+void diag_second_moments_f(Int shcol, Int nlev, Int nlevi, Real* thetal, Real* qw, Real* u_wind, Real* v_wind, Real* tke, Real* isotropy, Real* tkh, Real* tk, Real* dz_zi, Real* zt_grid, Real* zi_grid, Real* shoc_mix, Real* thl_sec, Real* qw_sec, Real* wthl_sec, Real* wqw_sec, Real* qwthl_sec, Real* uw_sec, Real* vw_sec, Real* wtke_sec, Real* w_sec);
+void diag_second_shoc_moments_f(Int shcol, Int nlev, Int nlevi, Real* thetal, Real* qw, Real* u_wind, Real* v_wind, Real* tke, Real* isotropy, Real* tkh, Real* tk, Real* dz_zi, Real* zt_grid, Real* zi_grid, Real* shoc_mix, Real* wthl_sfc, Real* wqw_sfc, Real* uw_sfc, Real* vw_sfc, Real* thl_sec, Real* qw_sec, Real* wthl_sec, Real* wqw_sec, Real* qwthl_sec, Real* uw_sec, Real* vw_sec, Real* wtke_sec, Real* w_sec);
+void shoc_diag_obklen_f(Int shcol, Real* uw_sfc, Real* vw_sfc, Real* wthl_sfc, Real* wqw_sfc,
+                        Real* thl_sfc, Real* cldliq_sfc, Real* qv_sfc, Real* ustar, Real* kbfs, Real* obklen);
+void shoc_pblintd_cldcheck_f(Int shcol, Int nlev, Int nlevi, Real* zi, Real* cldn, Real* pblh);
+
+} // end _f function decls
 
 }  // namespace shoc
 }  // namespace scream
