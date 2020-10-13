@@ -171,10 +171,6 @@ macro (CreateDynamicsLib HOMME_TARGET NP PLEV QSIZE USE_PIO USE_ENERGY)
         ${EXEC_INCLUDE_DIRS}        # This comes from PREQX_KOKKOS_SETUP
         ${dynLibDir}                # For config.h
     )
-    target_include_directories(
-        ${dynLibName} SYSTEM PUBLIC
-        ${SCREAM_TPL_INCLUDE_DIRS}
-    )
     set_target_properties (${dynLibName}
       PROPERTIES
       ARCHIVE_OUTPUT_DIRECTORY "${dynLibDir}"
