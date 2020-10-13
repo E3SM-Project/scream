@@ -247,6 +247,12 @@ struct Functions
     Scalar&       ustar,
     Scalar&       kbfs,
     Scalar&       obklen);
+
+  KOKKOS_FUNCTION
+  static void shoc_pblintd_cldcheck(
+    const Scalar& zi, const Scalar& cldn,
+    Scalar& pblh);
+
 }; // struct Functions
 
 } // namespace shoc
@@ -275,6 +281,7 @@ struct Functions
 # include "shoc_check_length_scale_shoc_length_impl.hpp"
 # include "shoc_compute_conv_vel_shoc_length_impl.hpp"
 # include "shoc_diag_obklen_impl.hpp"
+# include "shoc_pblintd_cldcheck_impl.hpp"
 #endif // KOKKOS_ENABLE_CUDA
 
 #endif
