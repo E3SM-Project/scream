@@ -2930,7 +2930,7 @@ subroutine isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
   real(rtype) :: tscale, lambda, buoy_sgs_save
 
   !Parameters
-  real(rtype), parameter :: lambda_low   = 0.001_rtype
+  real(rtype), parameter :: lambda_low   = 0.04_rtype
   real(rtype), parameter :: lambda_high  = 0.04_rtype
   real(rtype), parameter :: lambda_slope = 0.65_rtype
   real(rtype), parameter :: brunt_low    = 0.02_rtype
