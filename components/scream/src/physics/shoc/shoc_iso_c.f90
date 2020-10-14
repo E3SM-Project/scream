@@ -403,7 +403,7 @@ contains
   subroutine shoc_energy_fixer_c(shcol, nlev, nlevi, dtime, nadv, &
                                  zt_grid, zi_grid, se_b, ke_b, wv_b, &
                                  wl_b, se_a, ke_a, wv_a, wl_a, wthl_sfc, &
-                                 wqw_sfc, pdel, rho_zt, tke, pint, &
+                                 wqw_sfc, rho_zt, tke, pint, &
                                  host_dse) bind (C)
     use shoc, only: shoc_energy_fixer
 
@@ -424,7 +424,6 @@ contains
     real(kind=c_real), intent(in) :: wl_a(shcol)
     real(kind=c_real), intent(in) :: wthl_sfc(shcol)
     real(kind=c_real), intent(in) :: wqw_sfc(shcol)
-    real(kind=c_real), intent(in) :: pdel(shcol,nlev)
     real(kind=c_real), intent(in) :: rho_zt(shcol,nlev)
     real(kind=c_real), intent(in) :: tke(shcol,nlev)
     real(kind=c_real), intent(in) :: pint(shcol,nlevi)
@@ -434,7 +433,7 @@ contains
     call shoc_energy_fixer(shcol, nlev, nlevi, dtime, nadv, &
                            zt_grid, zi_grid, se_b, ke_b, wv_b, &
                            wl_b, se_a, ke_a, wv_a, wl_a, wthl_sfc, &
-                           wqw_sfc, pdel, rho_zt, tke, pint, &
+                           wqw_sfc, rho_zt, tke, pint, &
                            host_dse)
 
   end subroutine shoc_energy_fixer_c
@@ -562,18 +561,18 @@ contains
 
   end subroutine calc_shoc_vertflux_c
 
-  subroutine shoc_length_c(shcol, nlev, nlevi, tke, host_dx, host_dy, pblh, &
-                zt_grid, zi_grid, dz_zt, dz_zi, thetal, wthv_sec, thv, &
+  subroutine shoc_length_c(shcol, nlev, nlevi, host_dx, host_dy, pblh, &
+                tke, zt_grid, zi_grid, dz_zt, dz_zi, thetal, wthv_sec, thv, &
 		brunt, shoc_mix) bind (C)
     use shoc, only: shoc_length
 
     integer(kind=c_int), intent(in), value :: shcol
     integer(kind=c_int), intent(in), value :: nlev
     integer(kind=c_int), intent(in), value :: nlevi
-    real(kind=c_real), intent(in) :: tke(shcol,nlev)
     real(kind=c_real), intent(in) :: host_dx(shcol)
     real(kind=c_real), intent(in) :: host_dy(shcol)
     real(kind=c_real), intent(in) :: pblh(shcol)
+    real(kind=c_real), intent(in) :: tke(shcol,nlev)
     real(kind=c_real), intent(in) :: zt_grid(shcol,nlev)
     real(kind=c_real), intent(in) :: zi_grid(shcol,nlevi)
     real(kind=c_real), intent(in) :: dz_zt(shcol,nlev)
@@ -585,8 +584,8 @@ contains
     real(kind=c_real), intent(out) :: brunt(shcol,nlev)
     real(kind=c_real), intent(out) :: shoc_mix(shcol,nlev)
 
-    call shoc_length(shcol, nlev, nlevi, tke, host_dx, host_dy, pblh, &
-                zt_grid, zi_grid, dz_zt, dz_zi, thetal, wthv_sec, thv, &
+    call shoc_length(shcol, nlev, nlevi, host_dx, host_dy, pblh, &
+                tke, zt_grid, zi_grid, dz_zt, dz_zi, thetal, wthv_sec, thv, &
 		brunt, shoc_mix)
 
   end subroutine shoc_length_c
@@ -1296,4 +1295,15 @@ contains
 
     call diag_second_shoc_moments(shcol, nlev, nlevi, thetal, qw, u_wind, v_wind, tke, isotropy, tkh, tk, dz_zi, zt_grid, zi_grid, shoc_mix, wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, thl_sec, qw_sec, wthl_sec, wqw_sec, qwthl_sec, uw_sec, vw_sec, wtke_sec, w_sec)
   end subroutine diag_second_shoc_moments_c
+
+  subroutine shoc_pblintd_cldcheck_c(shcol, nlev, nlevi, zi, cldn, pblh) bind(C)
+    use shoc, only: pblintd_cldcheck
+
+    integer(kind=c_int), value, intent(in) :: shcol, nlev, nlevi
+    real(kind=c_real), intent(in) :: zi(shcol, nlevi), cldn(shcol, nlev)
+    real(kind=c_real), intent(inout) :: pblh(shcol)
+
+    call pblintd_cldcheck(shcol, nlev, nlevi, zi, cldn, pblh)
+  end subroutine shoc_pblintd_cldcheck_c
+
 end module shoc_iso_c

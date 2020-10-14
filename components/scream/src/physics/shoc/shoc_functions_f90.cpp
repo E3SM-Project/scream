@@ -34,7 +34,7 @@ void shoc_energy_fixer_c(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv,
                          Real *zt_grid, Real *zi_grid, Real *se_b, Real *ke_b,
                          Real *wv_b, Real *wl_b, Real *se_a, Real *ke_a,
                          Real *wv_a, Real *wl_a, Real *wthl_sfc, Real *wqw_sfc,
-                         Real *pdel, Real *rho_zt, Real *tke, Real *pint,
+                         Real *rho_zt, Real *tke, Real *pint,
                          Real *host_dse);
 
 void shoc_energy_integrals_c(Int shcol, Int nlev, Real *host_dse, Real *pdel,
@@ -104,8 +104,8 @@ void eddy_diffusivities_c(Int nlev, Int shcol, Real *obklen, Real *pblh,
 void calc_shoc_vertflux_c(Int shcol, Int nlev, Int nlevi, Real *tkh_zi,
 			  Real *dz_zi, Real *invar, Real *vertflux);
 
-void shoc_length_c(Int shcol, Int nlev, Int nlevi, Real *tke, Real *host_dx,
-                   Real *host_dy, Real *pblh, Real *zt_grid, Real *zi_grid,
+void shoc_length_c(Int shcol, Int nlev, Int nlevi, Real *host_dx,
+                   Real *host_dy, Real *pblh, Real *tke, Real *zt_grid, Real *zi_grid,
                    Real *dz_zt, Real *dz_zi, Real *thetal, Real *wthv_sec,
                    Real *thv, Real *brunt, Real *shoc_mix);
 
@@ -253,7 +253,9 @@ void diag_second_shoc_moments_c(Int shcol, Int nlev, Int nlevi, Real *thetal,
                                 Real *wthl_sfc, Real *wqw_sfc, Real *uw_sfc, 
                                 Real *vw_sfc, Real *thl_sec, Real *qw_sec, 
                                 Real *wthl_sec, Real *wqw_sec, Real *qwthl_sec, 
-                                Real *uw_sec, Real *vw_sec, Real *wtke_sec, Real *w_sec);                         
+                                Real *uw_sec, Real *vw_sec, Real *wtke_sec, Real *w_sec);                        
+
+void shoc_pblintd_cldcheck_c(Int shcol, Int nlev, Int nlevi, Real* zi, Real* cldn, Real* pblh); 
 
 } // end _c function decls
 
@@ -350,7 +352,7 @@ void shoc_energy_fixer(SHOCEnergyfixerData &d){
   shoc_energy_fixer_c(d.shcol(), d.nlev(), d.nlevi(), d.dtime, d.nadv,
                       d.zt_grid, d.zi_grid, d.se_b, d.ke_b, d.wv_b,
                       d.wl_b, d.se_a, d.ke_a, d.wv_a, d.wl_a, d.wthl_sfc,
-                      d.wqw_sfc, d.pdel, d.rho_zt, d.tke, d.pint,
+                      d.wqw_sfc, d.rho_zt, d.tke, d.pint,
                       d.host_dse);
   d.transpose<ekat::TransposeDirection::f2c>();
 }
@@ -459,8 +461,8 @@ void eddy_diffusivities(SHOCEddydiffData &d) {
 void shoc_length(SHOCLengthData &d){
   shoc_init(d.nlev(), true);
   d.transpose<ekat::TransposeDirection::c2f>();
-  shoc_length_c(d.shcol(),d.nlev(),d.nlevi(),d.tke,d.host_dx,d.host_dy,
-                d.pblh,d.zt_grid,d.zi_grid,d.dz_zt,d.dz_zi,d.thetal,
+  shoc_length_c(d.shcol(),d.nlev(),d.nlevi(),d.host_dx,d.host_dy,
+                d.pblh,d.tke,d.zt_grid,d.zi_grid,d.dz_zt,d.dz_zi,d.thetal,
                 d.wthv_sec,d.thv,d.brunt,d.shoc_mix);
   d.transpose<ekat::TransposeDirection::f2c>();
 }
@@ -730,6 +732,15 @@ void diag_second_shoc_moments(DiagSecondShocMomentsData& d)
   diag_second_shoc_moments_c(d.shcol(), d.nlev(), d.nlevi(), d.thetal, d.qw, d.u_wind, d.v_wind, d.tke, d.isotropy, d.tkh, d.tk, d.dz_zi, d.zt_grid, d.zi_grid, d.shoc_mix, d.wthl_sfc, d.wqw_sfc, d.uw_sfc, d.vw_sfc, d.thl_sec, d.qw_sec, d.wthl_sec, d.wqw_sec, d.qwthl_sec, d.uw_sec, d.vw_sec, d.wtke_sec, d.w_sec);
   d.transpose<ekat::TransposeDirection::f2c>();
 }
+
+void shoc_pblintd_cldcheck(SHOCPblintdCldCheckData& d)
+{
+  shoc_init(d.nlev(), true);
+  d.transpose<ekat::TransposeDirection::c2f>();
+  shoc_pblintd_cldcheck_c(d.shcol(), d.nlev(), d.nlevi(), d.zi, d.cldn, d.pblh);
+  d.transpose<ekat::TransposeDirection::f2c>();
+}
+
 // end _c impls
 
 //
@@ -1606,6 +1617,245 @@ void shoc_diag_obklen_f(Int shcol, Real* uw_sfc, Real* vw_sfc, Real* wthl_sfc, R
   // Sync back to host
   Kokkos::Array<view_1d, 3> inout_views = {ustar_d, kbfs_d, obklen_d};
   ekat::device_to_host<int,3>({ustar, kbfs, obklen}, shcol, inout_views);
+}
+
+void shoc_pblintd_cldcheck_f(Int shcol, Int nlev, Int nlevi, Real* zi, Real* cldn, Real* pblh) {
+  using SHOC    = Functions<Real, DefaultDevice>;
+  using Pack1   = typename ekat::Pack<Real, 1>;
+  using Scalar  = typename SHOC::Scalar;
+  using view_2d = typename SHOC::view_2d<Pack1>;
+  using view_1d = typename SHOC::view_1d<Pack1>;
+
+  Kokkos::Array<size_t, 2> dim1  = {shcol, shcol};
+  Kokkos::Array<size_t, 2> dim2  = {nlevi,  nlev};
+
+  Kokkos::Array<view_2d, 2> cldcheck_2d;
+  ekat::host_to_device({zi, cldn}, dim1, dim2, cldcheck_2d, true);
+
+  view_2d
+         zi_2d  (cldcheck_2d[0]),
+         cldn_2d(cldcheck_2d[1]);
+
+  Kokkos::Array<view_1d, 1> cldcheck_1d;
+  ekat::host_to_device({pblh}, shcol, cldcheck_1d);
+
+  view_1d pblh_1d (cldcheck_1d[0]);
+
+  Kokkos::parallel_for("pblintd_cldcheck", shcol, KOKKOS_LAMBDA (const int& i) {
+
+     Scalar zi_s   = zi_2d(i, nlev-1)[0];
+     Scalar cldn_s = cldn_2d(i, nlev-1)[0];
+     Scalar pblh_s = pblh_1d(i)[0];
+
+     SHOC::shoc_pblintd_cldcheck(zi_s, cldn_s, pblh_s);
+
+     pblh_1d(i)[0] = pblh_s;
+
+  });
+
+  Kokkos::Array<view_1d, 1> host_views = {pblh_1d};
+
+  ekat::device_to_host<int,1>({pblh}, shcol, host_views);
+}
+
+void compute_conv_time_shoc_length_f(Int shcol, Real *pblh, Real *conv_vel, Real *tscale)
+{
+  using SHF       = Functions<Real, DefaultDevice>;
+  using Scalar     = typename SHF::Scalar;
+  using Pack1      = typename ekat::Pack<Real, 1>;
+  using view_1d    = typename SHF::view_1d<Pack1>;
+
+  Kokkos::Array<view_1d, 3> temp_d;
+  ekat::host_to_device({pblh, conv_vel, tscale}, shcol, temp_d);
+
+  view_1d
+    pblh_d(temp_d[0]),
+    conv_vel_d(temp_d[1]),
+    tscale_d(temp_d[2]);
+
+  Kokkos::parallel_for("compute_conv_time_shoc_length", shcol, KOKKOS_LAMBDA (const int& i) {
+
+     Scalar pblh_s{pblh_d(i)[0]};
+     Scalar conv_vel_s{conv_vel_d(i)[0]};
+     Scalar tscale_s{tscale_d(i)[0]};
+
+     SHF::compute_conv_time_shoc_length(pblh_s, conv_vel_s, tscale_s);
+
+     conv_vel_d(i)[0] = conv_vel_s;
+     tscale_d(i)[0]  = tscale_s;
+   });
+
+  Kokkos::Array<view_1d, 2> inout_views = {conv_vel_d, tscale_d};
+  ekat::device_to_host({conv_vel, tscale}, shcol, inout_views);
+}
+
+void shoc_length_f(Int shcol, Int nlev, Int nlevi, Real* host_dx, Real* host_dy, Real* pblh, Real* tke,
+                   Real* zt_grid, Real* zi_grid, Real*dz_zt, Real* dz_zi, Real* wthv_sec, Real*thetal,
+                   Real* thv, Real*brunt, Real* shoc_mix)
+{
+  using SHF = Functions<Real, DefaultDevice>;
+
+  using Scalar     = typename SHF::Scalar;
+  using Spack      = typename SHF::Spack;
+  using Pack1d     = typename ekat::Pack<Real,1>;
+  using view_1d    = typename SHF::view_1d<Pack1d>;
+  using view_2d    = typename SHF::view_2d<Spack>;
+  using KT         = typename SHF::KT;
+  using ExeSpace   = typename KT::ExeSpace;
+  using MemberType = typename SHF::MemberType;
+
+  Kokkos::Array<view_1d, 3> temp_1d_d;
+  Kokkos::Array<view_2d, 10> temp_2d_d;
+  Kokkos::Array<int, 10> dim1_sizes = {shcol, shcol, shcol, shcol, shcol,
+                                       shcol, shcol, shcol, shcol, shcol};
+  Kokkos::Array<int, 10> dim2_sizes = {nlev, nlev, nlevi, nlev, nlevi,
+                                       nlev, nlev, nlev,  nlev, nlev};
+  Kokkos::Array<const Real*, 10> ptr_array = {tke,      zt_grid, zi_grid, dz_zt, dz_zi,
+                                              wthv_sec, thetal,  thv,     brunt, shoc_mix};
+  // Sync to device
+  ekat::host_to_device({host_dx, host_dy, pblh}, shcol, temp_1d_d);
+  ekat::host_to_device(ptr_array, dim1_sizes, dim2_sizes, temp_2d_d, true);
+
+  // inputs
+  view_1d
+    host_dx_d(temp_1d_d[0]),
+    host_dy_d(temp_1d_d[1]),
+    pblh_d(temp_1d_d[2]);
+
+  view_2d
+    tke_d(temp_2d_d[0]),
+    zt_grid_d(temp_2d_d[1]),
+    zi_grid_d(temp_2d_d[2]),
+    dz_zt_d(temp_2d_d[3]),
+    dz_zi_d(temp_2d_d[4]),
+    wthv_sec_d(temp_2d_d[5]),
+    thetal_d(temp_2d_d[6]),
+    thv_d(temp_2d_d[7]),
+    brunt_d(temp_2d_d[8]),
+    shoc_mix_d(temp_2d_d[9]);
+
+  // Local variable
+  view_2d thv_zi_d("thv_zi", shcol, ekat::npack<Spack>(nlevi));
+
+  const Int nk_pack = ekat::npack<Spack>(nlev);
+  const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
+  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+    const Int i = team.league_rank();
+
+    // Inputs
+    const Scalar host_dx_s{host_dx_d(i)[0]};
+    const Scalar host_dy_s{host_dy_d(i)[0]};
+    const Scalar pblh_s{pblh_d(i)[0]};
+
+    const auto tke_s = ekat::subview(tke_d, i);
+    const auto zt_grid_s = ekat::subview(zt_grid_d, i);
+    const auto zi_grid_s = ekat::subview(zi_grid_d, i);
+    const auto dz_zt_s = ekat::subview(dz_zt_d, i);
+    const auto dz_zi_s = ekat::subview(dz_zi_d, i);
+    const auto wthv_sec_s = ekat::subview(wthv_sec_d, i);
+    const auto thetal_s = ekat::subview(thetal_d, i);
+    const auto thv_s = ekat::subview(thv_d, i);
+    const auto thv_zi_s = ekat::subview(thv_zi_d, i);
+    const auto brunt_s = ekat::subview(brunt_d, i);
+    const auto shoc_mix_s = ekat::subview(shoc_mix_d, i);
+
+    SHF::shoc_length(team,nlev,nlevi,host_dx_s,host_dy_s,pblh_s,tke_s,
+                     zt_grid_s,zi_grid_s,dz_zt_s,dz_zi_s,wthv_sec_s,
+                     thetal_s,thv_s,thv_zi_s,brunt_s,shoc_mix_s);
+  });
+
+  // Sync back to host
+  Kokkos::Array<view_2d, 2> out_views = {brunt_d,shoc_mix_d};
+  ekat::device_to_host<int,2>({brunt,shoc_mix},shcol,nlev,out_views,true);
+}
+
+void shoc_energy_fixer_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Real* zt_grid,
+                         Real* zi_grid, Real* se_b, Real* ke_b, Real* wv_b, Real* wl_b,
+                         Real* se_a, Real* ke_a, Real* wv_a, Real* wl_a, Real* wthl_sfc,
+                         Real* wqw_sfc, Real* rho_zt, Real* tke, Real* pint,
+                         Real* host_dse)
+{
+  using SHF = Functions<Real, DefaultDevice>;
+
+  using Scalar     = typename SHF::Scalar;
+  using Spack      = typename SHF::Spack;
+  using Pack1d     = typename ekat::Pack<Real,1>;
+  using view_1d    = typename SHF::view_1d<Pack1d>;
+  using view_2d    = typename SHF::view_2d<Spack>;
+  using KT         = typename SHF::KT;
+  using ExeSpace   = typename KT::ExeSpace;
+  using MemberType = typename SHF::MemberType;
+
+  Kokkos::Array<view_1d, 10> temp_1d_d;
+  Kokkos::Array<const Real*, 10> ptr_array_1d = {se_b, ke_b, wv_b, wl_b,     se_a,
+                                                 ke_a, wv_a, wl_a, wthl_sfc, wqw_sfc};
+  Kokkos::Array<view_2d, 6> temp_2d_d;
+  Kokkos::Array<int, 6> dim1_sizes           = {shcol,   shcol,   shcol,
+                                                shcol,   shcol,   shcol};
+  Kokkos::Array<int, 6> dim2_sizes           = {nlev,    nlevi,   nlevi,
+                                                nlev,    nlev,    nlev};
+  Kokkos::Array<const Real*, 6> ptr_array_2d = {zt_grid, zi_grid, pint,
+                                                rho_zt,  tke,     host_dse};
+
+  // Sync to device
+  ekat::host_to_device(ptr_array_1d, shcol, temp_1d_d);
+  ekat::host_to_device(ptr_array_2d, dim1_sizes, dim2_sizes, temp_2d_d, true);
+
+  view_1d
+    se_b_d(temp_1d_d[0]),
+    ke_b_d(temp_1d_d[1]),
+    wv_b_d(temp_1d_d[2]),
+    wl_b_d(temp_1d_d[3]),
+    se_a_d(temp_1d_d[4]),
+    ke_a_d(temp_1d_d[5]),
+    wv_a_d(temp_1d_d[6]),
+    wl_a_d(temp_1d_d[7]),
+    wthl_sfc_d(temp_1d_d[8]),
+    wqw_sfc_d(temp_1d_d[9]);
+
+  view_2d
+    zt_grid_d(temp_2d_d[0]),
+    zi_grid_d(temp_2d_d[1]),
+    pint_d(temp_2d_d[2]),
+    rho_zt_d(temp_2d_d[3]),
+    tke_d(temp_2d_d[4]),
+    host_dse_d(temp_2d_d[5]);
+
+  // Local variable
+  view_2d rho_zi_d("rho_zi", shcol, ekat::npack<Spack>(nlevi));
+
+  const Int nk_pack = ekat::npack<Spack>(nlev);
+  const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
+  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+    const Int i = team.league_rank();
+
+    const Scalar se_b_s{se_b_d(i)[0]};
+    const Scalar ke_b_s{ke_b_d(i)[0]};
+    const Scalar wv_b_s{wv_b_d(i)[0]};
+    const Scalar wl_b_s{wl_b_d(i)[0]};
+    const Scalar se_a_s{se_a_d(i)[0]};
+    const Scalar ke_a_s{ke_a_d(i)[0]};
+    const Scalar wv_a_s{wv_a_d(i)[0]};
+    const Scalar wl_a_s{wl_a_d(i)[0]};
+    const Scalar wthl_sfc_s{wthl_sfc_d(i)[0]};
+    const Scalar wqw_sfc_s{wqw_sfc_d(i)[0]};
+
+    const auto zt_grid_s = ekat::subview(zt_grid_d, i);
+    const auto zi_grid_s = ekat::subview(zi_grid_d, i);
+    const auto pint_s = ekat::subview(pint_d, i);
+    const auto rho_zt_s = ekat::subview(rho_zt_d, i);
+    const auto tke_s = ekat::subview(tke_d, i);
+    const auto rho_zi_s = ekat::subview(rho_zi_d, i);
+    const auto host_dse_s = ekat::subview(host_dse_d, i);
+
+    SHF::shoc_energy_fixer(team,nlev,nlevi,dtime,nadv,zt_grid_s,zi_grid_s,se_b_s,
+                           ke_b_s,wv_b_s,wl_b_s,se_a_s,ke_a_s,wv_a_s,wl_a_s,
+                           wthl_sfc_s,wqw_sfc_s,rho_zt_s,tke_s,pint_s,rho_zi_s,host_dse_s);
+  });
+
+  // Sync back to host
+  Kokkos::Array<view_2d, 1> inout_views = {host_dse_d};
+  ekat::device_to_host<int,1>({host_dse}, {shcol}, {nlev}, inout_views, true);
 }
 
 } // namespace shoc

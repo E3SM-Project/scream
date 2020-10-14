@@ -274,6 +274,65 @@ subroutine shoc_diag_obklen_f(shcol, uw_sfc, vw_sfc, wthl_sfc, wqw_sfc, thl_sfc,
 
 end subroutine shoc_diag_obklen_f
 
+subroutine shoc_pblintd_cldcheck_f(shcol, nlev, nlevi, zi, cldn, pblh) bind(C)
+  use iso_c_binding
+
+  integer(kind=c_int), value, intent(in) :: shcol, nlev, nlevi
+  real(kind=c_real), intent(in) :: zi(shcol, nlevi), cldn(shcol, nlev)
+  real(kind=c_real), intent(inout) :: pblh(shcol)
+end subroutine shoc_pblintd_cldcheck_f
+
+subroutine compute_conv_time_shoc_length_f(shcol,pblh,conv_vel,tscale) bind (C)
+  use iso_c_binding
+
+  integer(kind=c_int), intent(in), value :: shcol
+  real(kind=c_real), intent(in) :: pblh(shcol)
+  real(kind=c_real), intent(inout) :: conv_vel(shcol)
+  real(kind=c_real), intent(out) :: tscale(shcol)
+
+end subroutine compute_conv_time_shoc_length_f
+
+subroutine shoc_length_f(shcol, nlev, nlevi, host_dx, host_dy, pblh, &
+                         tke, zt_grid, zi_grid, dz_zt, dz_zi, wthv_sec, thetal, thv, &
+                         brunt, shoc_mix) bind (C)
+  use iso_c_binding
+
+  integer(kind=c_int), intent(in), value :: shcol
+  integer(kind=c_int), intent(in), value :: nlev
+  integer(kind=c_int), intent(in), value :: nlevi
+
+  real(kind=c_real), intent(in) :: host_dx(shcol)
+  real(kind=c_real), intent(in) :: host_dy(shcol)
+  real(kind=c_real), intent(in) :: pblh(shcol)
+
+  real(kind=c_real), intent(in) :: tke(shcol,nlev)
+  real(kind=c_real), intent(in) :: zt_grid(shcol,nlev)
+  real(kind=c_real), intent(in) :: zi_grid(shcol,nlevi)
+  real(kind=c_real), intent(in) :: dz_zt(shcol,nlev)
+  real(kind=c_real), intent(in) :: dz_zi(shcol,nlevi)
+  real(kind=c_real), intent(in) :: wthv_sec(shcol,nlev)
+  real(kind=c_real), intent(in) :: thetal(shcol,nlev)
+  real(kind=c_real), intent(in) :: thv(shcol,nlev)
+
+  real(kind=c_real), intent(out) :: brunt(shcol,nlev)
+  real(kind=c_real), intent(out) :: shoc_mix(shcol,nlev)
+
+end subroutine shoc_length_f
+
+subroutine shoc_energy_fixer_f(shcol, nlev, nlevi, dtime, nadv, zt_grid, zi_grid,&
+                               se_b, ke_b, wv_b, wl_b, se_a, ke_a, wv_a, wl_a,&
+                               wthl_sfc, wqw_sfc, rho_zt, tke, pint, host_dse) bind(C)
+  use iso_c_binding
+
+  integer(kind=c_int) , value, intent(in) :: shcol, nlev, nlevi, nadv
+  real(kind=c_real) , value, intent(in) :: dtime
+  real(kind=c_real) , intent(in), dimension(shcol, nlev) :: zt_grid, rho_zt, tke
+  real(kind=c_real) , intent(in), dimension(shcol, nlevi) :: zi_grid, pint
+  real(kind=c_real) , intent(in), dimension(shcol) :: se_b, ke_b, wv_b, wl_b, se_a, ke_a, wv_a, wl_a, wthl_sfc, wqw_sfc
+  real(kind=c_real) , intent(inout), dimension(shcol, nlev) :: host_dse
+
+end subroutine shoc_energy_fixer_f
+
 end interface
 
 end module shoc_iso_f

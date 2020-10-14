@@ -29,6 +29,7 @@ public  :: shoc_init, shoc_main
 logical :: use_cxx = .true.
 
 real(rtype), parameter, public :: largeneg = -99999999.99_rtype
+real(rtype), parameter, public :: pi = 3.14159265_rtype ! Pi
 
 !=========================================================
 ! Physical constants used in SHOC
@@ -385,9 +386,9 @@ subroutine shoc_main ( &
 
     ! Update the turbulent length scale
     call shoc_length(&
-       shcol,nlev,nlevi,tke,&               ! Input
+       shcol,nlev,nlevi,&               ! Input
        host_dx,host_dy,pblh,&               ! Input
-       zt_grid,zi_grid,dz_zt,dz_zi,&        ! Input
+       tke,zt_grid,zi_grid,dz_zt,dz_zi,&        ! Input
        thetal,wthv_sec,thv,&                ! Input
        brunt,shoc_mix)                      ! Output
 
@@ -467,7 +468,7 @@ subroutine shoc_main ( &
      zt_grid,zi_grid,&                     ! Input
      se_b,ke_b,wv_b,wl_b,&                 ! Input
      se_a,ke_a,wv_a,wl_a,&                 ! Input
-     wthl_sfc,wqw_sfc,pdel,&               ! Input
+     wthl_sfc,wqw_sfc,&                    ! Input
      rho_zt,tke,presi,&                    ! Input
      host_dse)                             ! Input/Output
 
@@ -2045,15 +2046,11 @@ subroutine shoc_assumed_pdf(&
   real(rtype) :: qwthl_sec_zt(shcol,nlev)
   real(rtype) :: qw_sec_zt(shcol,nlev)
 
-  ! define these so they don't have to be computed more than once
-  real(rtype), parameter :: sqrt2 = sqrt(2._rtype)
-  real(rtype), parameter :: sqrtpi = sqrt(2._rtype*3.14_rtype)
-
   epsterm=rgas/rv
 
   thl_tol=1.e-2_rtype
   rt_tol=1.e-4_rtype
-  w_tol_sqd=(2.e-2_rtype)**2
+  w_tol_sqd=bfb_square(2.e-2_rtype)
   w_thresh=0.0_rtype
 
   ! Initialize cloud variables to zero
@@ -2089,9 +2086,9 @@ subroutine shoc_assumed_pdf(&
 
       ! Compute square roots of some variables so we don't
       !  have to compute these again
-      sqrtw2 = sqrt(w_sec(i,k))
-      sqrtthl = max(thl_tol,sqrt(thlsec))
-      sqrtqt = max(rt_tol,sqrt(qwsec))
+      sqrtw2 = bfb_sqrt(w_sec(i,k))
+      sqrtthl = max(thl_tol,bfb_sqrt(thlsec))
+      sqrtqt = max(rt_tol,bfb_sqrt(qwsec))
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !  FIND PARAMETERS FOR VERTICAL VELOCITY
@@ -2243,9 +2240,10 @@ subroutine shoc_assumed_pdf_vv_parameters(&
   real(rtype) :: sqrtw2t
 
   ! parameters
-  real(rtype), parameter :: w_tol_sqd=(2.e-2_rtype)**2
+  real(rtype) :: w_tol_sqd
+  w_tol_sqd = bfb_square(2.e-2_rtype)
 
-  Skew_w=w3var/w_sec**(3./2.)
+  Skew_w=w3var/bfb_sqrt(bfb_cube(w_sec))
 
   if (w_sec .le. w_tol_sqd) then
     Skew_w=0._rtype
@@ -2259,12 +2257,12 @@ subroutine shoc_assumed_pdf_vv_parameters(&
     w2_1=0.4_rtype
     w2_2=0.4_rtype
 
-    a=max(0.01_rtype,min(0.5_rtype*(1._rtype-Skew_w*sqrt(1._rtype/(4._rtype*(1._rtype-w2_1)**3+Skew_w**2))),0.99_rtype))
+    a=max(0.01_rtype,min(0.5_rtype*(1._rtype-Skew_w*bfb_sqrt(1._rtype/(4._rtype*bfb_cube(1._rtype-w2_1)+bfb_square(Skew_w)))),0.99_rtype))
 
-    sqrtw2t=sqrt(1._rtype-w2_1)
+    sqrtw2t=bfb_sqrt(1._rtype-w2_1)
 
-    w1_1=sqrt((1._rtype-a)/a)*sqrtw2t
-    w1_2=-1._rtype*sqrt(a/(1._rtype-a))*sqrtw2t
+    w1_1=bfb_sqrt((1._rtype-a)/a)*sqrtw2t
+    w1_2=-1._rtype*bfb_sqrt(a/(1._rtype-a))*sqrtw2t
 
     w2_1=w2_1*w_sec
     w2_2=w2_2*w_sec
@@ -2313,7 +2311,7 @@ subroutine shoc_assumed_pdf_thl_parameters(&
 
   corrtest1=max(-1._rtype,min(1._rtype,wthlsec/(sqrtw2*sqrtthl)))
 
-  if (thlsec .le. thl_tol**2 .or. abs(w1_2-w1_1) .le. w_thresh) then
+  if (thlsec .le. bfb_square(thl_tol) .or. abs(w1_2-w1_1) .le. w_thresh) then
     thl1_1=thl_first
     thl1_2=thl_first
     thl2_1=0._rtype
@@ -2339,20 +2337,20 @@ subroutine shoc_assumed_pdf_thl_parameters(&
       Skew_thl = 0.0_rtype
     endif
 
-    thl2_1=min(100._rtype,max(0._rtype,(3._rtype*thl1_2*(1._rtype-a*thl1_1**2-(1._rtype-a)*thl1_2**2) &
-            -(Skew_thl-a*thl1_1**3-(1._rtype-a)*thl1_2**3))/ &
+    thl2_1=min(100._rtype,max(0._rtype,(3._rtype*thl1_2*(1._rtype-a*bfb_square(thl1_1)-(1._rtype-a)*bfb_square(thl1_2)) &
+            -(Skew_thl-a*bfb_cube(thl1_1)-(1._rtype-a)*bfb_cube(thl1_2)))/ &
             (3._rtype*a*(thl1_2-thl1_1))))*thlsec
 
-    thl2_2=min(100._rtype,max(0._rtype,(-3._rtype*thl1_1*(1._rtype-a*thl1_1**2-(1._rtype-a)*thl1_2**2) &
-      +(Skew_thl-a*thl1_1**3-(1._rtype-a)*thl1_2**3))/ &
+    thl2_2=min(100._rtype,max(0._rtype,(-3._rtype*thl1_1*(1._rtype-a*bfb_square(thl1_1)-(1._rtype-a)*bfb_square(thl1_2)) &
+      +(Skew_thl-a*bfb_cube(thl1_1)-(1._rtype-a)*bfb_cube(thl1_2)))/ &
       (3._rtype*(1._rtype-a)*(thl1_2-thl1_1))))*thlsec
 
 
     thl1_1=thl1_1*sqrtthl+thl_first
     thl1_2=thl1_2*sqrtthl+thl_first
 
-    sqrtthl2_1=sqrt(thl2_1)
-    sqrtthl2_2=sqrt(thl2_2)
+    sqrtthl2_1=bfb_sqrt(thl2_1)
+    sqrtthl2_2=bfb_sqrt(thl2_2)
 
   endif
 
@@ -2396,7 +2394,7 @@ subroutine shoc_assumed_pdf_qw_parameters(&
   corrtest2=max(-1.0_rtype,min(1.0_rtype,wqwsec/(sqrtw2*sqrtqt)))
 
 
-  if (qwsec .le. rt_tol**2 .or. abs(w1_2-w1_1) .le. w_thresh) then
+  if (qwsec .le. bfb_square(rt_tol) .or. abs(w1_2-w1_1) .le. w_thresh) then
     qw1_1=qw_first
     qw1_2=qw_first
     qw2_1=0._rtype
@@ -2417,19 +2415,19 @@ subroutine shoc_assumed_pdf_qw_parameters(&
     else
       Skew_qw=((1.2_rtype*Skew_w)/0.2_rtype)*(tsign-0.2_rtype)
     endif
-     qw2_1=min(100._rtype,max(0._rtype,(3._rtype*qw1_2*(1._rtype-a*qw1_1**2-(1._rtype-a)*qw1_2**2) &
-      -(Skew_qw-a*qw1_1**3-(1._rtype-a)*qw1_2**3))/ &
+     qw2_1=min(100._rtype,max(0._rtype,(3._rtype*qw1_2*(1._rtype-a*bfb_square(qw1_1)-(1._rtype-a)*bfb_square(qw1_2)) &
+      -(Skew_qw-a*bfb_cube(qw1_1)-(1._rtype-a)*bfb_cube(qw1_2)))/ &
       (3._rtype*a*(qw1_2-qw1_1))))*qwsec
 
-    qw2_2=min(100._rtype,max(0._rtype,(-3._rtype*qw1_1*(1._rtype-a*qw1_1**2-(1._rtype-a)*qw1_2**2) &
-      +(Skew_qw-a*qw1_1**3-(1._rtype-a)*qw1_2**3))/ &
+    qw2_2=min(100._rtype,max(0._rtype,(-3._rtype*qw1_1*(1._rtype-a*bfb_square(qw1_1)-(1._rtype-a)*bfb_square(qw1_2)) &
+      +(Skew_qw-a*bfb_cube(qw1_1)-(1._rtype-a)*bfb_cube(qw1_2)))/ &
       (3._rtype*(1._rtype-a)*(qw1_2-qw1_1))))*qwsec
 
     qw1_1=qw1_1*sqrtqt+qw_first
     qw1_2=qw1_2*sqrtqt+qw_first
 
-    sqrtqw2_1=sqrt(qw2_1)
-    sqrtqw2_2=sqrt(qw2_2)
+    sqrtqw2_1=bfb_sqrt(qw2_1)
+    sqrtqw2_2=bfb_sqrt(qw2_2)
 
   endif
 
@@ -2507,7 +2505,7 @@ subroutine shoc_assumed_pdf_compute_temperature(&
   ! intent-out
   real(rtype), intent(out) :: Tl1
 
-  TL1 = thl1/((basepres/pval)**(rgas/cp))
+  TL1 = thl1/(bfb_pow(basepres/pval,(rgas/cp)))
 
 end subroutine shoc_assumed_pdf_compute_temperature
 
@@ -2585,26 +2583,28 @@ subroutine shoc_assumed_pdf_compute_s(&
   real(rtype), intent(out) :: C
 
   ! local variables
-  real(rtype) :: cthl, cqt
+  real(rtype) :: cthl, cqt, tmp_val
 
   ! Parameters
-  real(rtype), parameter :: sqrt2 = sqrt(2._rtype)
-  real(rtype), parameter :: sqrtpi = sqrt(2._rtype*3.14_rtype)
+  real(rtype) :: sqrt2, sqrt2pi
+  sqrt2 = bfb_sqrt(2._rtype)
+  sqrt2pi = bfb_sqrt(2._rtype*pi)
 
   s=qw1-qs1*((1._rtype+beta*qw1)/(1._rtype+beta*qs1))
-  cthl=((1._rtype+beta*qw1)/(1._rtype+beta*qs1)**2)*(cp/lcond) &
-    *beta*qs1*(pval/basepres)**(rgas/cp)
+  cthl=((1._rtype+beta*qw1)/bfb_square(1._rtype+beta*qs1))*(cp/lcond) &
+    *beta*qs1*bfb_pow(pval/basepres, (rgas/cp))
 
   cqt=1._rtype/(1._rtype+beta*qs1)
-  std_s=sqrt(max(0._rtype,cthl**2*thl2+cqt**2*qw2-2._rtype*cthl &
-    *sqrtthl2*cqt*sqrtqw2*r_qwthl))
+  tmp_val=max(0._rtype,bfb_square(cthl)*thl2+bfb_square(cqt)*qw2-2._rtype*cthl &
+    *sqrtthl2*cqt*sqrtqw2*r_qwthl)
+  std_s=bfb_sqrt(tmp_val)
 
   qn=0._rtype
   C=0._rtype
 
   if (std_s .ne. 0.0_rtype) then
     C=0.5_rtype*(1._rtype+erf(s/(sqrt2*std_s)))
-    IF (C .ne. 0._rtype) qn=s*C+(std_s/sqrtpi)*exp(-0.5_rtype*(s/std_s)**2)
+    IF (C .ne. 0._rtype) qn=s*C+(std_s/sqrt2pi)*exp(-0.5_rtype*bfb_square(s/std_s))
   else
     if (s .gt. 0._rtype) then
       C=1.0_rtype
@@ -2655,8 +2655,8 @@ subroutine shoc_assumed_pdf_compute_cloud_liquid_variance(&
   ! intent-out
   real(rtype), intent(out) :: shoc_ql2
 
-  shoc_ql2 = a * ( s1*ql1 + C1*std_s1**2.0 )                  &
-    + ( 1._rtype-a ) * ( s2*ql2 + C2*std_s2**2.0 ) - shoc_ql**2.0
+  shoc_ql2 = a * ( s1*ql1 + C1*bfb_square(std_s1) )                  &
+    + ( 1._rtype-a ) * ( s2*ql2 + C2*bfb_square(std_s2) ) - bfb_square(shoc_ql)
   shoc_ql2 = max( 0._rtype, shoc_ql2 )
 
 end subroutine shoc_assumed_pdf_compute_cloud_liquid_variance
@@ -2699,7 +2699,7 @@ subroutine shoc_assumed_pdf_compute_buoyancy_flux(&
   real(rtype), intent(out) :: wthv_sec
 
   wthv_sec=wthlsec+((1._rtype-epsterm)/epsterm)*basetemp*wqwsec &
-  +((lcond/cp)*(basepres/pval)**(rgas/cp)-(1._rtype/epsterm)*basetemp)*wqls
+  +((lcond/cp)*bfb_pow(basepres/pval,(rgas/cp))-(1._rtype/epsterm)*basetemp)*wqls
 
 end subroutine shoc_assumed_pdf_compute_buoyancy_flux
 
@@ -3148,15 +3148,19 @@ end subroutine check_tke
 ! Compute the turbulent length scale
 
 subroutine shoc_length(&
-         shcol,nlev,nlevi,tke,&        ! Input
+         shcol,nlev,nlevi,&        ! Input
          host_dx,host_dy,pblh,&        ! Input
-         zt_grid,zi_grid,dz_zt,dz_zi,& ! Input
+         tke,zt_grid,zi_grid,dz_zt,dz_zi,& ! Input
          thetal,wthv_sec,thv,&         ! Input
          brunt,shoc_mix)               ! Output
 
   ! Purpose of this subroutine is to compute the SHOC
   !  mixing length scale, which is used to compute the
   !  turbulent dissipation in the SGS TKE equation
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use shoc_iso_f, only: shoc_length_f
+#endif
 
   implicit none
 
@@ -3201,6 +3205,18 @@ subroutine shoc_length(&
   real(rtype) :: conv_vel(shcol), tscale(shcol)
   real(rtype) :: thv_zi(shcol,nlevi)
   real(rtype) :: l_inf(shcol)
+
+  integer :: i,k
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   if (use_cxx) then
+      call shoc_length_f(shcol,nlev,nlevi,host_dx,host_dy,pblh,tke,&
+                         zt_grid,zi_grid,dz_zt,dz_zi,wthv_sec,thetal,&
+                         thv,brunt,shoc_mix)
+
+      return
+   endif
+#endif
 
   ! Interpolate virtual potential temperature onto interface grid
   call linear_interp(zt_grid,zi_grid,thv,thv_zi,nlev,nlevi,shcol,0._rtype)
@@ -3551,9 +3567,13 @@ subroutine shoc_energy_fixer(&
          zt_grid,zi_grid,&              ! Input
          se_b,ke_b,wv_b,wl_b,&          ! Input
          se_a,ke_a,wv_a,wl_a,&          ! Input
-         wthl_sfc,wqw_sfc,pdel,&        ! Input
+         wthl_sfc,wqw_sfc,&             ! Input
          rho_zt,tke,pint,&              ! Input
          host_dse)                      ! Input/Output
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use shoc_iso_f, only: shoc_energy_fixer_f
+#endif
 
   implicit none
 
@@ -3588,8 +3608,6 @@ subroutine shoc_energy_fixer(&
   real(rtype), intent(in) :: wthl_sfc(shcol)
   ! Surface latent heat flux [kg/kg m/s]
   real(rtype), intent(in) :: wqw_sfc(shcol)
-  ! pressure differenes [Pa]
-  real(rtype), intent(in) :: pdel(shcol,nlev)
   ! heights on midpoint grid [m]
   real(rtype), intent(in) :: zt_grid(shcol,nlev)
   ! heights on interface grid [m]
@@ -3608,6 +3626,19 @@ subroutine shoc_energy_fixer(&
   ! LOCAL VARIABLES
   real(rtype) :: se_dis(shcol), te_a(shcol), te_b(shcol)
   integer :: shoctop(shcol)
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   if (use_cxx) then
+      call shoc_energy_fixer_f(shcol,nlev,nlevi,dtime,nadv,& ! Input
+                              zt_grid,zi_grid,&              ! Input
+                              se_b,ke_b,wv_b,wl_b,&          ! Input
+                              se_a,ke_a,wv_a,wl_a,&          ! Input
+                              wthl_sfc,wqw_sfc,&             ! Input
+                              rho_zt,tke,pint,&              ! Input
+                              host_dse)                      ! Input/Output
+      return
+   endif
+#endif
 
   call shoc_energy_total_fixer(&
          shcol,nlev,nlevi,dtime,nadv,&  ! Input
@@ -4220,6 +4251,11 @@ subroutine pblintd_cldcheck(      &
                    shcol,nlev,nlevi, &                  ! Input
                    zi,cldn,          &                  ! Input
                    pblh)                                ! InOutput
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use shoc_iso_f, only: shoc_pblintd_cldcheck_f
+#endif
+
     !------------------------------Arguments--------------------------------
     ! Input arguments
     !
@@ -4238,6 +4274,14 @@ subroutine pblintd_cldcheck(      &
     !
     integer  :: i                       ! longitude index
     logical  :: cldcheck(shcol)      ! True=>if cloud in lowest layer
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   if (use_cxx) then
+      call shoc_pblintd_cldcheck_f(shcol, nlev, nlevi, zi, cldn, pblh)
+      return
+   endif
+#endif
+
     !
     ! Final requirement on PBL heightis that it must be greater than the depth
     ! of the lowest model level if there is any cloud diagnosed in
@@ -4468,6 +4512,10 @@ subroutine compute_conv_time_shoc_length(shcol,pblh,conv_vel,tscale)
   !  convective velocity scale is zero then
   !  set to a minimum threshold
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use shoc_iso_f, only: compute_conv_time_shoc_length_f
+#endif
+
   implicit none
   integer, intent(in) :: shcol
 ! Planetary boundary layer (PBL) height [m]
@@ -4478,6 +4526,13 @@ subroutine compute_conv_time_shoc_length(shcol,pblh,conv_vel,tscale)
   real(rtype), intent(inout) ::  tscale(shcol)
 
   integer i
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  if (use_cxx) then
+    call compute_conv_time_shoc_length_f(shcol,pblh,conv_vel,tscale)
+    return
+  endif
+#endif
 
   do i=1,shcol
     conv_vel(i) = bfb_pow(max(0._rtype,conv_vel(i)), (1._rtype/3._rtype))
