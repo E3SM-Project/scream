@@ -25,7 +25,7 @@ void Functions<S,D>
 
   const auto ufmin = 0.01;
 
-  auto uf = sqrt(ustar2+sp(0.3)*wstar*wstar);
+  auto uf = std::sqrt(ustar2+sp(0.3)*wstar*wstar);
   uf = ekat::impl::max<Scalar>(ufmin,uf);
 
   // Diagnose thermodynamics variances and covariances
