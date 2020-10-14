@@ -1261,15 +1261,17 @@ contains
 
  end subroutine shoc_pblintd_init_pot_c
 
-  subroutine diag_second_moments_lbycond_c(shcol, wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, ustar2, wstar, wthl_sec, wqw_sec, uw_sec, vw_sec, wtke_sec, thl_sec, qw_sec, qwthl_sec) bind(C)
+ subroutine diag_second_moments_lbycond_c(shcol, wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, ustar2, wstar, & 
+    wthl_sec, wqw_sec, uw_sec, vw_sec, wtke_sec, thl_sec, qw_sec, qwthl_sec) bind(C)
     use shoc, only : diag_second_moments_lbycond
 
     integer(kind=c_int) , value, intent(in) :: shcol
     real(kind=c_real) , intent(in), dimension(shcol) :: wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, ustar2, wstar
     real(kind=c_real) , intent(out), dimension(shcol) :: wthl_sec, wqw_sec, uw_sec, vw_sec, wtke_sec, thl_sec, qw_sec, qwthl_sec
 
-    call diag_second_moments_lbycond(shcol, wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, ustar2, wstar, wthl_sec, wqw_sec, uw_sec, vw_sec, wtke_sec, thl_sec, qw_sec, qwthl_sec)
-  end subroutine diag_second_moments_lbycond_c
+    call diag_second_moments_lbycond(shcol, wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, ustar2, wstar, & 
+         wthl_sec, wqw_sec, uw_sec, vw_sec, wtke_sec, thl_sec, qw_sec, qwthl_sec)
+ end subroutine diag_second_moments_lbycond_c
   
   subroutine diag_second_moments_c(shcol, nlev, nlevi, thetal, qw, u_wind, v_wind, tke, isotropy, tkh, tk, dz_zi, zt_grid, zi_grid, shoc_mix, thl_sec, qw_sec, wthl_sec, wqw_sec, qwthl_sec, uw_sec, vw_sec, wtke_sec, w_sec) bind(C)
     use shoc, only : diag_second_moments
