@@ -360,13 +360,15 @@ subroutine shoc_main ( &
     call shoc_grid( &
        shcol,nlev,nlevi,&                   ! Input
        zt_grid,zi_grid,pdel,&               ! Input
-       dz_zt,dz_zi,rho_zt)          ! Output
+       dz_zt,dz_zi,rho_zt)                  ! Output
 
     ! Compute the planetary boundary layer height, which is an
     !   input needed for the length scale calculation.
     
     ! Update SHOC water vapor, to be used by the next two routines
-    shoc_qv(:shcol,:nlev) = qw(:shcol,:nlev) - shoc_ql(:shcol,:nlev)
+    call compute_shoc_vapor(&
+       shcol,nlev,qw,shoc_ql,&              ! Input
+       shoc_qv)                             ! Output
 
     call shoc_diag_obklen(&
        shcol,uw_sfc,vw_sfc,&                          ! Input
@@ -477,7 +479,9 @@ subroutine shoc_main ( &
   !  may require this variable.
   
   ! Update SHOC water vapor, to be used by the next two routines
-  shoc_qv(:shcol,:nlev) = qw(:shcol,:nlev) - shoc_ql(:shcol,:nlev)  
+  call compute_shoc_vapor(&
+     shcol,nlev,qw,shoc_ql,&              ! Input
+     shoc_qv)                             ! Output
   
   call shoc_diag_obklen(&
      shcol,uw_sfc,vw_sfc,&                          ! Input
@@ -558,6 +562,46 @@ subroutine shoc_grid( &
   return
 
 end subroutine shoc_grid
+
+!==============================================================
+! Compute vapor from SHOC prognostic/diagnostic variables
+
+subroutine compute_shoc_vapor( &
+          shcol,nlev,qw,ql,&           ! Input
+          qv)                          ! Output
+
+  ! Purpose of this subroutine is to compute water vapor
+  !   based on SHOC's prognostic total water mixing ratio
+  !   and diagnostic cloud water mixing ratio.
+
+  implicit none
+
+! INPUT VARIABLES
+  ! number of columns [-]
+  integer, intent(in) :: shcol
+  ! number of mid-point levels [-]
+  integer, intent(in) :: nlev
+  ! total water mixing ratio [kg/kg]
+  real(rtype), intent(in) :: qw(shcol,nlev)
+  ! cloud water mixing ratio [kg/kg]
+  real(rtype), intent(in) :: ql(shcol,nlev)
+
+! OUTPUT VARIABLES
+  ! water vapor mixing ratio [kg/kg]
+  real(rtype), intent(out) :: qv(shcol,nlev)
+
+! LOCAL VARIABLES
+  integer :: i, k
+
+  do k = 1, nlev
+    do i = 1, shcol
+      qv(i,k) = qw(i,k) - ql(i,k)
+    enddo
+  enddo
+
+  return
+
+end subroutine compute_shoc_vapor
 
 !==============================================================
 ! Update T, q, tracers, tke, u, and v based on implicit diffusion
