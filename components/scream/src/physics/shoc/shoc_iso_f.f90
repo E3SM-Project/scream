@@ -46,27 +46,27 @@ interface
 
   end subroutine calc_shoc_vertflux_f
 
-  subroutine shoc_diag_second_moments_srf_f(shcol, wthl, uw, vw, ustar2, wstar) bind(C)
+  subroutine shoc_diag_second_moments_srf_f(shcol, wthl_sfc, uw_sfc, vw_sfc, ustar2, wstar) bind(C)
     use iso_c_binding
 
     integer(kind=c_int), value, intent(in) :: shcol
 
     ! arguments
-    real(kind=c_real), intent(in) :: wthl(shcol)
-    real(kind=c_real), intent(in) :: uw(shcol)
-    real(kind=c_real), intent(in) :: vw(shcol)
+    real(kind=c_real), intent(in) :: wthl_sfc(shcol)
+    real(kind=c_real), intent(in) :: uw_sfc(shcol)
+    real(kind=c_real), intent(in) :: vw_sfc(shcol)
     real(kind=c_real), intent(out) :: ustar2(shcol)
     real(kind=c_real), intent(out) :: wstar(shcol)
 
   end subroutine shoc_diag_second_moments_srf_f
 
-  subroutine shoc_diag_second_moments_ubycond_f(shcol, thl, qw, wthl, wqw, qwthl, uw, vw, wtke) bind(C)
+  subroutine shoc_diag_second_moments_ubycond_f(shcol, thl_sec, qw_sec, wthl_sec, wqw_sec, qwthl_sec, uw_sec, vw_sec, wtke_sec) bind(C)
     use iso_c_binding
 
     ! argmens
     integer(kind=c_int), value, intent(in) :: shcol
-    real(kind=c_real), intent(out)  :: thl(shcol), qw(shcol), qwthl(shcol),wthl(shcol),wqw(shcol), &
-         uw(shcol), vw(shcol), wtke(shcol)
+    real(kind=c_real), intent(out)  :: thl_sec(shcol), qw_sec(shcol), qwthl_sec(shcol),wthl_sec(shcol),wqw_sec(shcol), &
+         uw_sec(shcol), vw_sec(shcol), wtke_sec(shcol)
 
   end subroutine shoc_diag_second_moments_ubycond_f
 
@@ -150,10 +150,10 @@ interface
   subroutine linear_interp_f(x1, x2, y1, y2, km1, km2, ncol, minthresh) bind(C)
     use iso_c_binding
 
+    integer(kind=c_int) , value, intent(in) :: km1, km2, ncol
     real(kind=c_real) , intent(in), dimension(ncol, km1) :: x1, y1
     real(kind=c_real) , intent(in), dimension(ncol, km2) :: x2
     real(kind=c_real) , intent(out), dimension(ncol, km2) :: y2
-    integer(kind=c_int) , value, intent(in) :: km1, km2, ncol
     real(kind=c_real) , value, intent(in) :: minthresh
   end subroutine linear_interp_f
 
@@ -188,6 +188,35 @@ subroutine shoc_energy_integrals_f(shcol, nlev, host_dse, pdel,&
   real(kind=c_real), intent(out) :: wl_int(shcol)
 
 end subroutine shoc_energy_integrals_f
+
+subroutine diag_second_moments_lbycond_f(shcol, wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, ustar2, wstar, & 
+  wthl_sec, wqw_sec, uw_sec, vw_sec, wtke_sec, thl_sec, qw_sec, qwthl_sec) bind(C)
+  use iso_c_binding
+
+  integer(kind=c_int) , value, intent(in) :: shcol
+  real(kind=c_real) , intent(in), dimension(shcol) :: wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, ustar2, wstar
+  real(kind=c_real) , intent(out), dimension(shcol) :: wthl_sec, wqw_sec, uw_sec, vw_sec, wtke_sec, thl_sec, qw_sec, qwthl_sec
+end subroutine diag_second_moments_lbycond_f
+
+  subroutine diag_second_moments_f(shcol, nlev, nlevi, thetal, qw, u_wind, v_wind, tke, isotropy, tkh, tk, dz_zi, zt_grid, zi_grid, shoc_mix, thl_sec, qw_sec, wthl_sec, wqw_sec, qwthl_sec, uw_sec, vw_sec, wtke_sec, w_sec) bind(C)
+    use iso_c_binding
+
+    integer(kind=c_int) , value, intent(in) :: shcol, nlev, nlevi
+    real(kind=c_real) , intent(in), dimension(shcol, nlev) :: thetal, qw, u_wind, v_wind, tke, isotropy, tkh, tk, zt_grid, shoc_mix
+    real(kind=c_real) , intent(in), dimension(shcol, nlevi) :: dz_zi, zi_grid
+    real(kind=c_real) , intent(inout), dimension(shcol, nlevi) :: thl_sec, qw_sec, wthl_sec, wqw_sec, qwthl_sec, uw_sec, vw_sec, wtke_sec
+    real(kind=c_real) , intent(out), dimension(shcol, nlev) :: w_sec
+  end subroutine diag_second_moments_f
+  subroutine diag_second_shoc_moments_f(shcol, nlev, nlevi, thetal, qw, u_wind, v_wind, tke, isotropy, tkh, tk, dz_zi, zt_grid, zi_grid, shoc_mix, wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, thl_sec, qw_sec, wthl_sec, wqw_sec, qwthl_sec, uw_sec, vw_sec, wtke_sec, w_sec) bind(C)
+    use iso_c_binding
+
+    integer(kind=c_int) , value, intent(in) :: shcol, nlev, nlevi
+    real(kind=c_real) , intent(in), dimension(shcol, nlev) :: thetal, qw, u_wind, v_wind, tke, isotropy, tkh, tk, zt_grid, shoc_mix
+    real(kind=c_real) , intent(in), dimension(shcol, nlevi) :: dz_zi, zi_grid
+    real(kind=c_real) , intent(in), dimension(shcol) :: wthl_sfc, wqw_sfc, uw_sfc, vw_sfc
+    real(kind=c_real) , intent(out), dimension(shcol, nlevi) :: thl_sec, qw_sec, wthl_sec, wqw_sec, qwthl_sec, uw_sec, vw_sec, wtke_sec
+    real(kind=c_real) , intent(out), dimension(shcol, nlev) :: w_sec
+  end subroutine diag_second_shoc_moments_f
 
 subroutine compute_brunt_shoc_length_f(nlev, nlevi, shcol, dz_zt, thv, thv_zi, brunt) bind(C)
   use iso_c_binding
@@ -247,6 +276,72 @@ subroutine shoc_diag_obklen_f(shcol, uw_sfc, vw_sfc, wthl_sfc, wqw_sfc, thl_sfc,
 
 end subroutine shoc_diag_obklen_f
 
+subroutine shoc_pblintd_cldcheck_f(shcol, nlev, nlevi, zi, cldn, pblh) bind(C)
+  use iso_c_binding
+
+  integer(kind=c_int), value, intent(in) :: shcol, nlev, nlevi
+  real(kind=c_real), intent(in) :: zi(shcol, nlevi), cldn(shcol, nlev)
+  real(kind=c_real), intent(inout) :: pblh(shcol)
+end subroutine shoc_pblintd_cldcheck_f
+
+subroutine compute_conv_time_shoc_length_f(shcol,pblh,conv_vel,tscale) bind (C)
+  use iso_c_binding
+
+  integer(kind=c_int), intent(in), value :: shcol
+  real(kind=c_real), intent(in) :: pblh(shcol)
+  real(kind=c_real), intent(inout) :: conv_vel(shcol)
+  real(kind=c_real), intent(out) :: tscale(shcol)
+
+end subroutine compute_conv_time_shoc_length_f
+
+subroutine shoc_length_f(shcol, nlev, nlevi, host_dx, host_dy, pblh, &
+                         tke, zt_grid, zi_grid, dz_zt, dz_zi, wthv_sec, thetal, thv, &
+                         brunt, shoc_mix) bind (C)
+  use iso_c_binding
+
+  integer(kind=c_int), intent(in), value :: shcol
+  integer(kind=c_int), intent(in), value :: nlev
+  integer(kind=c_int), intent(in), value :: nlevi
+
+  real(kind=c_real), intent(in) :: host_dx(shcol)
+  real(kind=c_real), intent(in) :: host_dy(shcol)
+  real(kind=c_real), intent(in) :: pblh(shcol)
+
+  real(kind=c_real), intent(in) :: tke(shcol,nlev)
+  real(kind=c_real), intent(in) :: zt_grid(shcol,nlev)
+  real(kind=c_real), intent(in) :: zi_grid(shcol,nlevi)
+  real(kind=c_real), intent(in) :: dz_zt(shcol,nlev)
+  real(kind=c_real), intent(in) :: dz_zi(shcol,nlevi)
+  real(kind=c_real), intent(in) :: wthv_sec(shcol,nlev)
+  real(kind=c_real), intent(in) :: thetal(shcol,nlev)
+  real(kind=c_real), intent(in) :: thv(shcol,nlev)
+
+  real(kind=c_real), intent(out) :: brunt(shcol,nlev)
+  real(kind=c_real), intent(out) :: shoc_mix(shcol,nlev)
+
+end subroutine shoc_length_f
+
+subroutine shoc_energy_fixer_f(shcol, nlev, nlevi, dtime, nadv, zt_grid, zi_grid,&
+                               se_b, ke_b, wv_b, wl_b, se_a, ke_a, wv_a, wl_a,&
+                               wthl_sfc, wqw_sfc, rho_zt, tke, pint, host_dse) bind(C)
+  use iso_c_binding
+
+  integer(kind=c_int) , value, intent(in) :: shcol, nlev, nlevi, nadv
+  real(kind=c_real) , value, intent(in) :: dtime
+  real(kind=c_real) , intent(in), dimension(shcol, nlev) :: zt_grid, rho_zt, tke
+  real(kind=c_real) , intent(in), dimension(shcol, nlevi) :: zi_grid, pint
+  real(kind=c_real) , intent(in), dimension(shcol) :: se_b, ke_b, wv_b, wl_b, se_a, ke_a, wv_a, wl_a, wthl_sfc, wqw_sfc
+  real(kind=c_real) , intent(inout), dimension(shcol, nlev) :: host_dse
+
+end subroutine shoc_energy_fixer_f
+
+  subroutine compute_shoc_vapor_f(shcol, nlev, qw, ql, qv) bind(C)
+    use iso_c_binding
+
+    integer(kind=c_int) , value, intent(in) :: shcol, nlev
+    real(kind=c_real) , intent(in), dimension(shcol, nlev) :: qw, ql
+    real(kind=c_real) , intent(out), dimension(shcol, nlev) :: qv
+  end subroutine compute_shoc_vapor_f
 end interface
 
 end module shoc_iso_f
