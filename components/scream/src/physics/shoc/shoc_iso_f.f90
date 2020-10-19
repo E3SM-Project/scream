@@ -342,6 +342,14 @@ end subroutine shoc_energy_fixer_f
     real(kind=c_real) , intent(in), dimension(shcol, nlev) :: qw, ql
     real(kind=c_real) , intent(out), dimension(shcol, nlev) :: qv
   end subroutine compute_shoc_vapor_f
+
+subroutine error_function_f(input, output) bind(C)
+  use iso_c_binding
+
+  real(kind=c_real) , value, intent(in) :: input
+  real(kind=c_real) , intent(out) :: output
+end subroutine error_function_f
+
 end interface
 
 end module shoc_iso_f

@@ -837,6 +837,12 @@ struct ComputeShocVaporData : public PhysicsTestData {
   
   SHOC_NO_SCALAR(ComputeShocVaporData, 2)
 };
+
+struct ErrorFunctionData
+{
+  Real input, output;
+};
+
 // Glue functions to call fortran from from C++ with the Data struct
 void shoc_grid                                      (SHOCGridData &d);
 void shoc_diag_obklen                               (SHOCObklenData &d);
@@ -899,6 +905,8 @@ void diag_second_moments_lbycond                    (DiagSecondMomentsLbycondDat
 void diag_second_moments(DiagSecondMomentsData& d);
 void diag_second_shoc_moments(DiagSecondShocMomentsData& d);
 void compute_shoc_vapor(ComputeShocVaporData& d);
+void error_function(ErrorFunctionData& d);
+
 extern "C" { // _f function decls
 
 void calc_shoc_varorcovar_f(Int shcol, Int nlev, Int nlevi, Real tunefac,
@@ -955,6 +963,7 @@ void shoc_energy_fixer_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, R
                          Real* wqw_sfc, Real* rho_zt, Real* tke, Real* pint,
                          Real* host_dse);
 void compute_shoc_vapor_f(Int shcol, Int nlev, Real* qw, Real* ql, Real* qv);
+void error_function_f(Real input, Real* output);
 } // end _f function decls
 
 }  // namespace shoc

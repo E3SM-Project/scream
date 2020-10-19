@@ -1320,4 +1320,14 @@ contains
 
     call compute_shoc_vapor(shcol, nlev, qw, ql, qv)
   end subroutine compute_shoc_vapor_c
+
+  subroutine error_function_c(input, output) bind (C)
+    use shoc, only: error_function
+
+    real(kind=c_real), intent(in), value :: input
+    real(kind=c_real), intent(out) :: output
+
+    call error_function(input,output)
+  end subroutine error_function_c
+
 end module shoc_iso_c

@@ -259,6 +259,8 @@ void shoc_pblintd_cldcheck_c(Int shcol, Int nlev, Int nlevi, Real* zi, Real* cld
 
 void compute_shoc_vapor_c(Int shcol, Int nlev, Real* qw, Real* ql, Real* qv);
 
+void error_function_c(Real input, Real* output);
+
 } // end _c function decls
 
 namespace scream {
@@ -751,6 +753,12 @@ void compute_shoc_vapor(ComputeShocVaporData& d)
   d.transpose<ekat::TransposeDirection::c2f>();
   compute_shoc_vapor_c(d.shcol(), d.nlev(), d.qw, d.ql, d.qv);
   d.transpose<ekat::TransposeDirection::f2c>();
+}
+
+void error_function(ErrorFunctionData& d)
+{
+  shoc_init(1, true);
+  error_function_c(d.input, &d.output);
 }
 // end _c impls
 
@@ -1932,6 +1940,12 @@ void shoc_energy_fixer_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, R
 void compute_shoc_vapor_f(Int shcol, Int nlev, Real* qw, Real* ql, Real* qv)
 {
   // TODO
+}
+
+void error_function_f(Real input, Real* output)
+{
+  using SHF = Functions<Real, DefaultDevice>;  
+  SHF::error_function(input, output[0]);
 }
 } // namespace shoc
 } // namespace scream

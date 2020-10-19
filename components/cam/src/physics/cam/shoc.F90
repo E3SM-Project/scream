@@ -2615,7 +2615,7 @@ subroutine shoc_assumed_pdf_compute_s(&
   real(rtype), intent(out) :: C
 
   ! local variables
-  real(rtype) :: cthl, cqt, tmp_val
+  real(rtype) :: cthl, cqt, tmp_val, error_func_out
 
   ! Parameters
   real(rtype) :: sqrt2, sqrt2pi
@@ -2635,7 +2635,9 @@ subroutine shoc_assumed_pdf_compute_s(&
   C=0._rtype
 
   if (std_s .ne. 0.0_rtype) then
-    C=0.5_rtype*(1._rtype+erf(s/(sqrt2*std_s)))
+    call error_function(s/(sqrt2*std_s),error_func_out)
+
+    C=0.5_rtype*(1._rtype+error_func_out)
     IF (C .ne. 0._rtype) qn=s*C+(std_s/sqrt2pi)*exp(-0.5_rtype*bfb_square(s/std_s))
   else
     if (s .gt. 0._rtype) then
@@ -2734,6 +2736,31 @@ subroutine shoc_assumed_pdf_compute_buoyancy_flux(&
   +((lcond/cp)*bfb_pow(basepres/pval,(rgas/cp))-(1._rtype/epsterm)*basetemp)*wqls
 
 end subroutine shoc_assumed_pdf_compute_buoyancy_flux
+
+! Calls the error function. If use_cxx=true, then we call std::erf()
+subroutine error_function(input, output)
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use shoc_iso_f, only: error_function_f
+#endif
+
+  implicit none
+
+  real(rtype), intent(in) :: input
+  real(rtype), intent(out) :: output
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  if (use_cxx) then
+    call error_function_f(input,output)
+    return
+  endif
+#endif
+
+  output = erf(input);
+
+  return
+
+end subroutine error_function
 
 !==============================================================
 ! Advance turbulent kinetic energy equation
