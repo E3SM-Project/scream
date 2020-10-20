@@ -484,6 +484,10 @@ contains
 
       character(len=32) :: subname = 'radiation_init'
 
+      !needed for SPA
+      integer: year, month, day, tod, next_month
+      real(r8), pointer :: aerosol_optical_property(:,:,:,:)   
+
       !-----------------------------------------------------------------------
 
       ! Initialize cloud optics
@@ -1058,8 +1062,8 @@ contains
       use time_manager,   only: get_curr_date
 
       integer, intent(in) :: month_int, nbands !nbands is either nswbands or nlwbands
-      character*(*), intent(in) :: aero_optical_property_str, band_identifier
-      real(rtype), intent(inout) :: aero_optical_property(pcols,pver,nbands,begchunk:endchunk)
+      character*(*), intent(in) :: aerosol_optical_property_str, band_identifier
+      real(r8), intent(inout) :: aerosol_optical_property(pcols,pver,nbands,begchunk:endchunk)
      !internal variables
       character(len=100) :: base_file_name
       character(len=500) :: filename
@@ -1257,6 +1261,10 @@ contains
 
       ! Zero-array for cloud properties if not diagnosed by microphysics
       real(r8), target, dimension(pcols,pver) :: zeros
+
+      !needed for SPA
+      integer: year, month, day, tod, next_month
+      real(r8), pointer :: aerosol_optical_property(:,:,:,:)
 
       !----------------------------------------------------------------------
 
