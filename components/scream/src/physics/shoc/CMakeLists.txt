@@ -56,6 +56,7 @@ if (NOT CUDA_BUILD)
     shoc_update_prognostics_implicit.cpp
     shoc_diag_third_shoc_moments.cpp
     shoc_assumed_pdf.cpp
+    shoc_integ_column_stability.cpp
   ) # SHOC ETI SRCS
 endif()
 

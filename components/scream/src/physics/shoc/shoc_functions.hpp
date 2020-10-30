@@ -403,6 +403,7 @@ struct Functions
 # include "shoc_update_prognostics_implicit_impl.hpp"
 # include "shoc_diag_third_shoc_moments_impl.hpp"
 # include "shoc_assumed_pdf_impl.hpp"
+# include "shoc_integ_column_stability_impl.hpp"
 #endif // KOKKOS_ENABLE_CUDA
 
 #endif
