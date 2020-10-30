@@ -3042,8 +3042,8 @@ subroutine isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
   real(rtype) :: tscale, lambda, buoy_sgs_save
 
   !Parameters
-  real(rtype), parameter :: lambda_low   = 0.001_rtype
-  real(rtype), parameter :: lambda_high  = 0.04_rtype
+  real(rtype), parameter :: lambda_low   = 0.03_rtype
+  real(rtype), parameter :: lambda_high  = 0.03_rtype
   real(rtype), parameter :: lambda_slope = 0.65_rtype
   real(rtype), parameter :: brunt_low    = 0.02_rtype
   real(rtype), parameter :: maxiso       = 20000.0_rtype ! Return to isotropic timescale [s]
@@ -3119,10 +3119,10 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
   real(rtype), parameter :: Ckh = 0.1_rtype
   real(rtype), parameter :: Ckm = 0.1_rtype
   ! Default eddy coefficients for stable PBL diffusivities
-  real(rtype), parameter :: Ckh_s_def = 1.0_rtype
-  real(rtype), parameter :: Ckm_s_def = 1.0_rtype
+  real(rtype), parameter :: Ckh_s_def = 1e-2_rtype
+  real(rtype), parameter :: Ckm_s_def = 1e-2_rtype
   ! Minimum allowable value for stability diffusivities
-  real(rtype), parameter :: Ck_s_min = 0.1_rtype
+  real(rtype), parameter :: Ck_s_min = 1e-2_rtype
 
   !store zt_grid at nlev in 1d array
   zt_grid_1d(1:shcol) = zt_grid(1:shcol,nlev)
