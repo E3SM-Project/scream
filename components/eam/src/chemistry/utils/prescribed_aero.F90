@@ -482,6 +482,9 @@ end subroutine spec_c_to_a
     if (single_column) then
       randn = 0._r8
     endif
+
+    ! turn off random sampling for scream simulations
+    randn = 0._r8
     
     do i = 1, aero_cnt
        !Species with '_a' are updated using random sampling.
