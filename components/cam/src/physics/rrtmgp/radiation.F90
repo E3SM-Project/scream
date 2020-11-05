@@ -109,6 +109,10 @@ module radiation
    ! zeroes out the aerosol optical properties if False
    logical :: do_aerosol_rad = .true. 
 
+   ! Logical to indicate if aerosol optical properties are read in directly from
+   ! input file i.e., SPA:
+   logical :: do_SPA_optics = .false.
+
    ! Value for prescribing an invariant solar constant (i.e. total solar 
    ! irradiance at TOA). Used for idealized experiments such as RCE.
    ! Disabled when value is less than 0.
@@ -193,7 +197,7 @@ module radiation
    integer :: cldfsnow_idx = 0
 
    !needed for SPA
-   integer :: aero_tau_bnd_lw_mon_1,aero_tau_bnd_lw_mon_2, current_month
+   integer :: aer_tau_bnd_lw_mon_1_idx,aer_tau_bnd_lw_mon_2_idx, current_month
    !============================================================================
 
 contains
@@ -230,7 +234,8 @@ contains
                               use_rad_dt_cosz, spectralflux,   &
                               do_aerosol_rad,                  &
                               fixed_total_solar_irradiance,    &
-                              rrtmgp_enable_temperature_warnings
+                              rrtmgp_enable_temperature_warnings, &
+                              do_SPA_optics
 
       ! Read the namelist, only if called from master process
       ! TODO: better documentation and cleaner logic here?
@@ -331,8 +336,8 @@ contains
       end if
 
       !for SPA
-      call pbuf_add_field('aero_tau_bnd_lw_mon_1', 'global', dtype_r8, (/pcols,pverp,nlwbands/), aero_tau_bnd_lw_mon_1_idx)
-      call pbuf_add_field('aero_tau_bnd_lw_mon_2', 'global', dtype_r8,(/pcols,pverp,nlwbands/), aero_tau_bnd_lw_mon_2_idx)
+      call pbuf_add_field('aer_tau_bnd_lw_mon_1', 'global', dtype_r8, (/pcols,pverp,nlwbands/), aer_tau_bnd_lw_mon_1_idx)
+      call pbuf_add_field('aer_tau_bnd_lw_mon_2', 'global', dtype_r8,(/pcols,pverp,nlwbands/), aer_tau_bnd_lw_mon_2_idx)
 
    end subroutine radiation_register
 
@@ -425,6 +430,54 @@ contains
 
    !================================================================================================
 
+   subroutine get_aerosol_optics_from_file(month_int,aerosol_optical_property_str,band_identifier,nbands,aerosol_optical_property)
+      use pio,            only: file_desc_t, pio_nowrite
+      use cam_pio_utils,    only: cam_pio_openfile,cam_pio_closefile
+      use cam_grid_support, only: cam_grid_check, cam_grid_id,cam_grid_get_dim_names
+      use ncdio_atm,       only: infld
+      use time_manager,   only: get_curr_date
+
+      integer, intent(in) :: month_int, nbands !nbands is either nswbands or nlwbands
+      character*(*), intent(in) :: aerosol_optical_property_str, band_identifier
+      real(r8), intent(inout) :: aerosol_optical_property(pcols,pver,nbands,begchunk:endchunk)
+     !internal variables
+      character(len=100) :: base_file_name, optics_lookup_dir
+      character(len=500) :: filename
+      character(len=20) :: dim1name, dim2name
+      character(len=20) :: mon_str
+      type(file_desc_t) :: nccn_ncid
+      integer :: year, month, day, tod, next_month, grid_id
+      logical :: found = .false.
+
+      write(mon_str,*) month_int
+
+      !assign base_file_name the name of the CCN file being used 
+      base_file_name = "prescribed_aerosol_optics_file_"
+      optics_lookup_dir = "/p/lustre2/beydoun1/aerosol_otics"      
+
+      mon_str = adjustl(mon_str)
+
+     !assign base_file_name the name of the CCN file being used
+      base_file_name = "prescribed_aerosol_optics_file_"
+
+     !retrieve the name of the relevant file by combining base file name !with
+     !!month and full file path:
+      filename = trim(optics_lookup_dir)//'/'//trim(base_file_name)//trim(mon_str)//'.nc'
+
+      grid_id = cam_grid_id('physgrid')
+
+      call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
+
+      call cam_pio_openfile(nccn_ncid,filename,PIO_NOWRITE)
+
+      call infld(aerosol_optical_property_str,nccn_ncid,dim1name,'lev',band_identifier,dim2name,1,pcols,1,pver,1,nbands,begchunk,endchunk,&
+           aerosol_optical_property, found, gridname='physgrid')
+
+      call cam_pio_closefile(nccn_ncid)
+
+    end subroutine get_aerosol_optics_from_file
+
+
    subroutine radiation_init(state)
    !-------------------------------------------------------------------------------
    ! Purpose: Initialize the radiation parameterization and add fields to the 
@@ -485,7 +538,7 @@ contains
       character(len=32) :: subname = 'radiation_init'
 
       !needed for SPA
-      integer: year, month, day, tod, next_month
+      integer :: year, month, day, tod, next_month
       real(r8), pointer :: aerosol_optical_property(:,:,:,:)   
 
       !-----------------------------------------------------------------------
@@ -887,7 +940,7 @@ contains
                      sampling_seq='rad_lwsw', flag_xyfill=.true.)
       endif
 
-      if (do_SPA) then !initialize SPA
+      if (do_SPA_optics) then !initialize SPA
          !find current_month
          call get_curr_date(year,month,day,tod)
          current_month = month
@@ -1054,54 +1107,6 @@ contains
 
    end subroutine set_available_gases
 
-   subroutine get_aerosol_optics_from_file(month_int,aerosol_optical_property_str,band_identifier,nbands,aerosol_optical_property)
-      use pio,            only: file_desc_t, pio_nowrite
-      use cam_pio_utils,    only: cam_pio_openfile,cam_pio_closefile
-      use cam_grid_support, only: cam_grid_check, cam_grid_id, cam_grid_get_dim_names
-      use ncdio_atm,       only: infld
-      use time_manager,   only: get_curr_date
-
-      integer, intent(in) :: month_int, nbands !nbands is either nswbands or nlwbands
-      character*(*), intent(in) :: aerosol_optical_property_str, band_identifier
-      real(r8), intent(inout) :: aerosol_optical_property(pcols,pver,nbands,begchunk:endchunk)
-     !internal variables
-      character(len=100) :: base_file_name
-      character(len=500) :: filename
-      character(len=20) :: dim1name, dim2name
-      character(len=20) :: mon_str
-      type(file_desc_t) :: nccn_ncid
-      integer :: year, month, day, tod, next_month, grid_id
-      logical :: found = .false.    
-
-      write(mon_str,*) month_int
-
-      !assign base_file_name the name of the CCN file being used 
-      base_file_name = "prescribed_aerosol_optics_file_"
-
-      mon_str = adjustl(mon_str)
-
-     !assign base_file_name the name of the CCN file being used
-      base_file_name = "prescribed_aerosol_optics_file_"
-
-     !retrieve the name of the relevant file by combining base file name !with
-     !!month and full file path:
-      filename = trim(optics_lookup_dir)//'/'//trim(base_file_name)//trim(mon_str)//'.nc'
-
-      grid_id = cam_grid_id('physgrid')
-
-      call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
-
-      call cam_pio_openfile(nccn_ncid,filename,PIO_NOWRITE)
-
-      call infld(aerosol_optical_property_str,nccn_ncid,dim1name,'lev',band_identifier,dim2name,,1,pcols,1,pver,1,nbands,begchunk,endchunk,&
-           aerosol_optical_property, found, gridname='physgrid')
-
-      call cam_pio_closefile(nccn_ncid)
-
-    end subroutine get_aerosol_optics_from_file 
-
-          
-
 
    !===============================================================================
         
@@ -1263,8 +1268,16 @@ contains
       real(r8), target, dimension(pcols,pver) :: zeros
 
       !needed for SPA
-      integer: year, month, day, tod, next_month
+      integer :: year, month, day, tod, next_month
+      real(r8) :: fraction_of_month
       real(r8), pointer :: aerosol_optical_property(:,:,:,:)
+      real(r8), pointer :: aer_tau_bnd_lw_mon_1(:,:,:)
+      real(r8), pointer :: aer_tau_bnd_lw_mon_2(:,:,:)
+      real(r8), dimension(12):: days_per_month
+      nullify(aerosol_optical_property)
+      !fill days_per_month
+      days_per_month = (/31,28,31,30,31,30,31,31,30,31,30,31/)
+
 
       !----------------------------------------------------------------------
 
