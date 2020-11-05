@@ -1484,9 +1484,11 @@ subroutine modal_aero_calcsize_diag(state, pbuf, list_idx_in, dgnum_m)
          call endrun('modal_aero_calcsize_diag called for'// &
                      'diagnostic list but dgnum_m pointer not present')
       end if
-      allocate(dgnum_m(pcols,pver,nmodes), stat=stat)
-      if (stat > 0) then
-         call endrun('modal_aero_calcsize_diag: allocation FAILURE: dgnum_m')
+      if (.not. associated(dgnum_m)) then
+         allocate(dgnum_m(pcols,pver,nmodes), stat=stat)
+         if(stat > 0) then
+            call endrun('modal_aero_calcsize_diag: allocation FAILURE: dgnum_m')
+         end if
       end if
    end if
 
