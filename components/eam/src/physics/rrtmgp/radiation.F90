@@ -1534,7 +1534,7 @@ contains
       use mo_fluxes_byband, only: ty_fluxes_byband
       use mo_optical_props, only: ty_optical_props_2str
       use mo_gas_concentrations, only: ty_gas_concs
-      use radiation_utils, only: calculate_heating_rate
+      use radiation_utils, only: calculate_heating_rate, clip_values
       use cam_optics, only: get_cloud_optics_sw, sample_cloud_optics_sw, &
                             compress_optics_sw, set_aerosol_optics_sw
 
@@ -1710,6 +1710,12 @@ contains
 
       ! Do shortwave radiative transfer calculations
       call t_startf('rad_calculations_sw')
+      call handle_error(clip_values(cld_optics_sw%tau,  0._r8, huge(cld_optics_sw%tau), trim(subroutine_name) // ' cld_optics_sw%tau', tolerance=1e-10_r8))
+      call handle_error(clip_values(cld_optics_sw%ssa,  0._r8,                1._r8,    trim(subroutine_name) // ' cld_optics_sw%ssa', tolerance=1e-10_r8))
+      call handle_error(clip_values(cld_optics_sw%g,   -1._r8,                1._r8, trim(subroutine_name) // ' cld_optics_sw%g', tolerance=1e-10_r8))
+      call handle_error(clip_values(aer_optics_sw%tau,  0._r8, huge(aer_optics_sw%tau), trim(subroutine_name) // ' aer_optics_sw%tau', tolerance=1e-10_r8))
+      call handle_error(clip_values(aer_optics_sw%ssa,  0._r8,                1._r8, trim(subroutine_name) // ' aer_optics_sw%ssa', tolerance=1e-10_r8))
+      call handle_error(clip_values(aer_optics_sw%g,   -1._r8,                1._r8, trim(subroutine_name) // ' aer_optics_sw%tau', tolerance=1e-10_r8))
       call handle_error(rte_sw( &
          k_dist_sw, gas_concentrations, &
          pmid_day(1:nday,1:nlev_rad), &
@@ -1891,7 +1897,7 @@ contains
       use mo_fluxes_byband, only: ty_fluxes_byband
       use mo_optical_props, only: ty_optical_props_1scl
       use mo_gas_concentrations, only: ty_gas_concs
-      use radiation_utils, only: calculate_heating_rate
+      use radiation_utils, only: calculate_heating_rate, clip_values
 
       ! Inputs
       integer, intent(in) :: ncol
@@ -1963,6 +1969,8 @@ contains
 
       ! Do longwave radiative transfer calculations
       call t_startf('rad_calculations_lw')
+      call handle_error(clip_values(cld_optics_lw%tau,  0._r8, huge(cld_optics_lw%tau), trim(subroutine_name) // ' cld_optics_lw%tau', tolerance=1e-10_r8))
+      call handle_error(clip_values(aer_optics_lw%tau,  0._r8, huge(aer_optics_lw%tau), trim(subroutine_name) // ' aer_optics_lw%tau', tolerance=1e-10_r8))
       call handle_error(rte_lw( &
          k_dist_lw, gas_concentrations, &
          pmid(1:ncol,1:nlev_rad), tmid(1:ncol,1:nlev_rad), &
