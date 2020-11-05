@@ -1891,7 +1891,7 @@ contains
       use mo_fluxes_byband, only: ty_fluxes_byband
       use mo_optical_props, only: ty_optical_props_1scl
       use mo_gas_concentrations, only: ty_gas_concs
-      use radiation_utils, only: calculate_heating_rate
+      use radiation_utils, only: calculate_heating_rate, clip_values
 
       ! Inputs
       integer, intent(in) :: ncol
@@ -1963,6 +1963,8 @@ contains
 
       ! Do longwave radiative transfer calculations
       call t_startf('rad_calculations_lw')
+      call handle_error(clip_values(cld_optics_lw%tau,  0._r8, huge(cld_optics_lw%tau), trim(subroutine_name) // ' cld_optics_lw%tau', tolerance=1e-10_r8))
+      call handle_error(clip_values(aer_optics_lw%tau,  0._r8, huge(aer_optics_lw%tau), trim(subroutine_name) // ' aer_optics_lw%tau', tolerance=1e-10_r8))
       call handle_error(rte_lw( &
          k_dist_lw, gas_concentrations, &
          pmid(1:ncol,1:nlev_rad), tmid(1:ncol,1:nlev_rad), &
