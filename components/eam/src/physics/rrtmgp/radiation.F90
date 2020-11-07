@@ -1710,12 +1710,6 @@ contains
 
       ! Do shortwave radiative transfer calculations
       call t_startf('rad_calculations_sw')
-      call handle_error(clip_values(cld_optics_sw%tau,  0._r8, huge(cld_optics_sw%tau), trim(subroutine_name) // ' cld_optics_sw%tau', tolerance=1e-10_r8))
-      call handle_error(clip_values(cld_optics_sw%ssa,  0._r8,                1._r8,    trim(subroutine_name) // ' cld_optics_sw%ssa', tolerance=1e-10_r8))
-      call handle_error(clip_values(cld_optics_sw%g,   -1._r8,                1._r8, trim(subroutine_name) // ' cld_optics_sw%g', tolerance=1e-10_r8))
-      call handle_error(clip_values(aer_optics_sw%tau,  0._r8, huge(aer_optics_sw%tau), trim(subroutine_name) // ' aer_optics_sw%tau', tolerance=1e-10_r8))
-      call handle_error(clip_values(aer_optics_sw%ssa,  0._r8,                1._r8, trim(subroutine_name) // ' aer_optics_sw%ssa', tolerance=1e-10_r8))
-      call handle_error(clip_values(aer_optics_sw%g,   -1._r8,                1._r8, trim(subroutine_name) // ' aer_optics_sw%tau', tolerance=1e-10_r8))
       call handle_error(rte_sw( &
          k_dist_sw, gas_concentrations, &
          pmid_day(1:nday,1:nlev_rad), &
@@ -1969,8 +1963,6 @@ contains
 
       ! Do longwave radiative transfer calculations
       call t_startf('rad_calculations_lw')
-      call handle_error(clip_values(cld_optics_lw%tau,  0._r8, huge(cld_optics_lw%tau), trim(subroutine_name) // ' cld_optics_lw%tau', tolerance=1e-10_r8))
-      call handle_error(clip_values(aer_optics_lw%tau,  0._r8, huge(aer_optics_lw%tau), trim(subroutine_name) // ' aer_optics_lw%tau', tolerance=1e-10_r8))
       call handle_error(rte_lw( &
          k_dist_lw, gas_concentrations, &
          pmid(1:ncol,1:nlev_rad), tmid(1:ncol,1:nlev_rad), &
