@@ -818,7 +818,6 @@ contains
       call prevent_ice_overdepletion(pres(k), t_atm(k), qv(k), latent_heat_sublim(k), inv_dt, qidep, qi2qv_sublim_tend)
 
       if (Koby_fixes) then
-         call water_vapor_conservation(qv(k),qidep,qinuc,qi2qv_sublim_tend,qr2qv_evap_tend,dt)
          call ice_supersat_conservation(qidep,qinuc,cld_frac_i(k),qv(k),qv_sat_i(k),latent_heat_sublim(k),th_atm(k)/exner(k),dt)
       end if
       
@@ -2870,32 +2869,15 @@ subroutine prevent_ice_overdepletion(pres,t_atm,qv,latent_heat_sublim,inv_dt,   
 
 end subroutine prevent_ice_overdepletion
 
-subroutine water_vapor_conservation(qv,qidep,qinuc,qi2qv_sublim_tend,qr2qv_evap_tend,dt)
-
-  implicit none
-
-  real(rtype), intent(in)     :: qv,qi2qv_sublim_tend,qr2qv_evap_tend,dt
-  real(rtype), intent(inout) :: qidep,qinuc
-  real(rtype)                :: qv_avail, qv_sink, ratio
-
-  qv_avail = qv + (qi2qv_sublim_tend+qr2qv_evap_tend)*dt
-  qv_sink  = (qidep + qinuc)*dt
-
-  if (qv_sink > qv_avail .and. qv_sink>1.e-20_rtype) then
-     ratio = qv_avail/qv_sink
-     qidep = qidep*ratio
-     qinuc = qinuc*ratio     
-  endif
-
-  return
-end subroutine water_vapor_conservation
-
-subroutine ice_supersat_conservation(qidep,qinuc,cld_frac_i,qv,qv_sat_i,latent_heat_sublim,T_atm,dt)
-  !Make sure ice processes don't drag qv below ice supersaturation
+subroutine ice_supersat_conservation(qidep,qinuc,cld_frac_i,qv,qv_sat_i,latent_heat_sublim,T_atm, &
+     dt,qi2qv_sublim_tend,qr2qv_evap_tend)
+  !Make sure ice processes don't drag qv below ice supersaturation.
+  !Note that qv_sat_i is always > 0 so this also ensures qv itself doesn't go negative.
   
   implicit none
 
-  real(rtype), intent(in) :: cld_frac_i,qv,qv_sat_i,latent_heat_sublim,T_atm,dt
+  real(rtype), intent(in) :: cld_frac_i,qv,qv_sat_i,latent_heat_sublim,T_atm,dt, &
+       qi2qv_sublim_tend,qr2qv_evap_tend
   real(rtype), intent(inout) :: qidep,qinuc
   
   real(rtype) :: qv_sink, qv_avail, fract 
@@ -2904,7 +2886,7 @@ subroutine ice_supersat_conservation(qidep,qinuc,cld_frac_i,qv,qv_sat_i,latent_h
 
   if (qv_sink > qsmall .and. cld_frac_i > 1.0e-20_rtype) then
      ! --- Available water vapor for deposition/nucleation
-     qv_avail = (qv - qv_sat_i) / &
+     qv_avail = (qv + (qi2qv_sublim_tend+qr2qv_evap_tend)*dt - qv_sat_i) / &
           (1.0_rtype + latent_heat_sublim**2.0_rtype*qv_sat_i / (cp*rv*T_atm**2.0_rtype) ) / dt
 
      ! --- Only excess water vapor can be limited
