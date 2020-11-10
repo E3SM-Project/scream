@@ -837,7 +837,7 @@ contains
       if (Koby_fixes) then
          call nc_conservation(nc(k), nc_selfcollect_tend, dt, nc_collect_tend, nc2ni_immers_freeze_tend, &
               nc_accret_tend, nc2nr_autoconv_tend)
-         call nr_conservation(nr(k),ni2nr_melt_tend,nr_ice_shed_tend,ncshdc,nc2nr_autoconv_tend,dt,nr_collect_tend,&
+         call nr_conservation(nr(k),ni2nr_melt_tend,nr_ice_shed_tend,ncshdc,ncautr,dt,nr_collect_tend,&
               nr2ni_immers_freeze_tend,nr_selfcollect_tend,nr_evap_tend)
          call ni_conservation(ni(k),ni_nucleat_tend,nr2ni_immers_freeze_tend,nc2ni_immers_freeze_tend,dt,ni2nr_melt_tend,&
               ni_sublim_tend,ni_selfcollect_tend)
@@ -2756,10 +2756,12 @@ subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,inv_qc_relvar,    &
       !Khroutdinov and Kogan (2000)
       !print*,'p3_qc_autocon_expon = ',p3_qc_autocon_expon
       sbgrd_var_coef = subgrid_variance_scaling(inv_qc_relvar, 2.47_rtype)
-      qc2qr_autoconv_tend = sbgrd_var_coef*1350._rtype*bfb_pow(qc_incld,2.47_rtype)*bfb_pow(nc_incld*1.e-6_rtype*rho,-1.79_rtype)
-      ! note: ncautr is change in Nr; nc2nr_autoconv_tend is change in Nc
-      ncautr = qc2qr_autoconv_tend*cons3
-      nc2nr_autoconv_tend = qc2qr_autoconv_tend*nc_incld/qc_incld
+      qc2qr_autoconv_tend = sbgrd_var_coef*1350._rtype*bfb_pow(qc_incld,2.47_rtype)*bfb_pow(nc_incld*1.e-6_rtype*rho,-1.79_rtype)      
+      !ncautr is change in nr: assume all new raindrops are 25 micron in diameter
+      ncautr = qc2qr_autoconv_tend*cons3 
+      !nc2nr_autoconv_tend is change in nc: remove frac of nc_incld 
+      !proportional to fraction of mass removed by autoconversion
+      nc2nr_autoconv_tend = qc2qr_autoconv_tend*nc_incld/qc_incld 
 
       if (qc2qr_autoconv_tend .eq.0._rtype) nc2nr_autoconv_tend = 0._rtype
       if (nc2nr_autoconv_tend.eq.0._rtype) qc2qr_autoconv_tend  = 0._rtype
@@ -2942,18 +2944,18 @@ subroutine nc_conservation(nc, nc_selfcollect_tend, dt, nc_collect_tend, nc2ni_i
   return
 end subroutine nc_conservation
 
-subroutine nr_conservation(nr,ni2nr_melt_tend,nr_ice_shed_tend,ncshdc,nc2nr_autoconv_tend,dt,nr_collect_tend,&
+subroutine nr_conservation(nr,ni2nr_melt_tend,nr_ice_shed_tend,ncshdc,nr_autoconv_tend,dt,nr_collect_tend,&
      nr2ni_immers_freeze_tend,nr_selfcollect_tend,nr_evap_tend)
   !Make sure nr doesn't go below zero
 
   implicit none
 
-  real(rtype), intent(in) :: nr,ni2nr_melt_tend,nr_ice_shed_tend,ncshdc,nc2nr_autoconv_tend,dt
+  real(rtype), intent(in) :: nr,ni2nr_melt_tend,nr_ice_shed_tend,ncshdc,nr_autoconv_tend,dt
   real(rtype), intent(inout) :: nr_collect_tend,nr2ni_immers_freeze_tend,nr_selfcollect_tend,nr_evap_tend
   real(rtype) :: sink_nr, source_nr, ratio
 
   sink_nr = (nr_collect_tend + nr2ni_immers_freeze_tend + nr_selfcollect_tend + nr_evap_tend)*dt 
-  source_nr = nr + (ni2nr_melt_tend + nr_ice_shed_tend + ncshdc + nc2nr_autoconv_tend)*dt
+  source_nr = nr + (ni2nr_melt_tend + nr_ice_shed_tend + ncshdc + nr_autoconv_tend)*dt
   if(sink_nr > source_nr) then
      ratio = source_nr/sink_nr
      nr_collect_tend  = nr_collect_tend*ratio
