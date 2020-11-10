@@ -837,8 +837,8 @@ contains
       if (Koby_fixes) then
          call nc_conservation(nc(k), nc_selfcollect_tend, dt, nc_collect_tend, nc2ni_immers_freeze_tend, &
               nc_accret_tend, nc2nr_autoconv_tend)
-         call nr_conservation(nr(k),ni2nr_melt_tend,nr_ice_shed_tend,ncshdc,ncautr,dt,nr_collect_tend,&
-              nr2ni_immers_freeze_tend,nr_selfcollect_tend,nr_evap_tend)
+         call nr_conservation(nr(k),ni2nr_melt_tend,nr_ice_shed_tend,ncshdc,ncautr,dt,nmltratio, &
+              nr_collect_tend,nr2ni_immers_freeze_tend,nr_selfcollect_tend,nr_evap_tend)
          call ni_conservation(ni(k),ni_nucleat_tend,nr2ni_immers_freeze_tend,nc2ni_immers_freeze_tend,dt,ni2nr_melt_tend,&
               ni_sublim_tend,ni_selfcollect_tend)
       end if
@@ -2944,18 +2944,20 @@ subroutine nc_conservation(nc, nc_selfcollect_tend, dt, nc_collect_tend, nc2ni_i
   return
 end subroutine nc_conservation
 
-subroutine nr_conservation(nr,ni2nr_melt_tend,nr_ice_shed_tend,ncshdc,nr_autoconv_tend,dt,nr_collect_tend,&
-     nr2ni_immers_freeze_tend,nr_selfcollect_tend,nr_evap_tend)
+subroutine nr_conservation(nr,ni2nr_melt_tend,nr_ice_shed_tend,ncshdc,nr_autoconv_tend,dt,nmltratio,&
+     nr_collect_tend,nr2ni_immers_freeze_tend,nr_selfcollect_tend,nr_evap_tend)
   !Make sure nr doesn't go below zero
 
   implicit none
 
-  real(rtype), intent(in) :: nr,ni2nr_melt_tend,nr_ice_shed_tend,ncshdc,nr_autoconv_tend,dt
+  real(rtype), intent(in) :: nr,ni2nr_melt_tend,nr_ice_shed_tend,ncshdc,nr_autoconv_tend,dt,nmltratio
   real(rtype), intent(inout) :: nr_collect_tend,nr2ni_immers_freeze_tend,nr_selfcollect_tend,nr_evap_tend
   real(rtype) :: sink_nr, source_nr, ratio
 
-  sink_nr = (nr_collect_tend + nr2ni_immers_freeze_tend + nr_selfcollect_tend + nr_evap_tend)*dt 
-  source_nr = nr + (ni2nr_melt_tend + nr_ice_shed_tend + ncshdc + nr_autoconv_tend)*dt
+  sink_nr = (nr_collect_tend + nr2ni_immers_freeze_tend + nr_selfcollect_tend + nr_evap_tend)*dt
+  !recall that melting number is scaled by nmltratio to account for ice crystals melting then
+  !rapidly melting. ni removal from melting is *not* scaled by nmltratio...
+  source_nr = nr + (nmltratio*ni2nr_melt_tend + nr_ice_shed_tend + ncshdc + nr_autoconv_tend)*dt
   if(sink_nr > source_nr) then
      ratio = source_nr/sink_nr
      nr_collect_tend  = nr_collect_tend*ratio
