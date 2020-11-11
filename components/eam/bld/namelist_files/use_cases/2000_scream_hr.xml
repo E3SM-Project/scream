@@ -80,13 +80,13 @@
 <use_hetfrz_classnuc>.false.</use_hetfrz_classnuc>
 <aerodep_flx_type>'CYCLICAL'</aerodep_flx_type>
 <aerodep_flx_datapath>atm/cam/chem/trop_mam/aero</aerodep_flx_datapath>
-<aerodep_flx_file nlev="72">mam4_0.9x1.2_L72_2000clim_c170323.nc</aerodep_flx_file>
-<aerodep_flx_file nlev="128">mam4_0.9x1.2_L128_2000clim_c191106.nc</aerodep_flx_file>
+<aerodep_flx_file nlev="72">mam4_0.9x1.2_L72_E3SMv1_c201110.nc</aerodep_flx_file>
+<aerodep_flx_file nlev="128">mam4_0.9x1.2_L128_E3SMv1_c201110.nc</aerodep_flx_file>
 <aerodep_flx_cycle_yr>01</aerodep_flx_cycle_yr>
 <prescribed_aero_type>'CYCLICAL'</prescribed_aero_type>
 <prescribed_aero_datapath>atm/cam/chem/trop_mam/aero</prescribed_aero_datapath>
-<prescribed_aero_file nlev="72">mam4_0.9x1.2_L72_2000clim_c170323.nc</prescribed_aero_file>
-<prescribed_aero_file nlev="128">mam4_0.9x1.2_L128_2000clim_c191106.nc</prescribed_aero_file>
+<prescribed_aero_file nlev="72">mam4_0.9x1.2_L72_E3SMv1_c201110.nc</prescribed_aero_file>
+<prescribed_aero_file nlev="128">mam4_0.9x1.2_L128_E3SMv1_c201110.nc</prescribed_aero_file>
 <prescribed_aero_cycle_yr>01</prescribed_aero_cycle_yr>
 
 <!-- sim_year used for CLM datasets and SSTs forcings -->
