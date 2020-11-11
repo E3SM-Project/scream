@@ -3130,10 +3130,10 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
   real(rtype), parameter :: Ckh = 0.1_rtype
   real(rtype), parameter :: Ckm = 0.1_rtype
   ! Default eddy coefficients for stable PBL diffusivities
-  real(rtype), parameter :: Ckh_s_def = 0.1_rtype
-  real(rtype), parameter :: Ckm_s_def = 0.1_rtype
+  real(rtype), parameter :: Ckh_s_def = 1e-2_rtype
+  real(rtype), parameter :: Ckm_s_def = 1e-2_rtype
   ! Minimum allowable value for stability diffusivities
-  real(rtype), parameter :: Ck_s_min = 0.1_rtype
+  real(rtype), parameter :: Ck_s_min = 1e-2_rtype
 
   !store zt_grid at nlev in 1d array
   zt_grid_1d(1:shcol) = zt_grid(1:shcol,nlev)
