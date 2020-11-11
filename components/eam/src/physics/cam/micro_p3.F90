@@ -86,6 +86,8 @@ module micro_p3
      real(rtype), dimension(:), pointer :: p
   end type realptr
 
+  logical :: Koby_fixes=.true. !PMC hack for using conservation checks not ported to C++ yet in DY2.
+  
 contains
 
   SUBROUTINE p3_init(lookup_file_dir,version_p3)
@@ -815,9 +817,10 @@ contains
 
       call prevent_ice_overdepletion(pres(k), t_atm(k), qv(k), latent_heat_sublim(k), inv_dt, qidep, qi2qv_sublim_tend)
 
-      ! vapor -- not needed, since all sinks already have limits imposed and the sum, therefore,
-      !          cannot possibly overdeplete qv
-
+      if (Koby_fixes) then
+         call ice_supersat_conservation(qidep,qinuc,cld_frac_i(k),qv(k),qv_sat_i(k),latent_heat_sublim(k),t_atm(k),dt,qi2qv_sublim_tend,qr2qv_evap_tend)
+      end if
+      
       ! cloud
       call cloud_water_conservation(qc(k), dt, qc2qr_autoconv_tend, qc2qr_accret_tend, qccol, qc2qi_hetero_freeze_tend, &
            qc2qr_ice_shed_tend, qiberg, qi2qv_sublim_tend, qidep)
@@ -830,6 +833,15 @@ contains
       call ice_water_conservation(qi(k), qidep, qinuc, qiberg, qrcol, qccol, qr2qi_immers_freeze_tend, qc2qi_hetero_freeze_tend, &
            dt, qi2qv_sublim_tend, qi2qr_melt_tend)
 
+      if (Koby_fixes) then
+         call nc_conservation(nc(k), nc_selfcollect_tend, dt, nc_collect_tend, nc2ni_immers_freeze_tend, &
+              nc_accret_tend, nc2nr_autoconv_tend)
+         call nr_conservation(nr(k),ni2nr_melt_tend,nr_ice_shed_tend,ncshdc,ncautr,dt,nmltratio, &
+              nr_collect_tend,nr2ni_immers_freeze_tend,nr_selfcollect_tend,nr_evap_tend)
+         call ni_conservation(ni(k),ni_nucleat_tend,nr2ni_immers_freeze_tend,nc2ni_immers_freeze_tend,dt,ni2nr_melt_tend,&
+              ni_sublim_tend,ni_selfcollect_tend)
+      end if
+      
       !---------------------------------------------------------------------------------
       ! update prognostic microphysics and thermodynamics variables
       !---------------------------------------------------------------------------------
@@ -2743,10 +2755,12 @@ subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,inv_qc_relvar,    &
       !Khroutdinov and Kogan (2000)
       !print*,'p3_qc_autocon_expon = ',p3_qc_autocon_expon
       sbgrd_var_coef = subgrid_variance_scaling(inv_qc_relvar, 2.47_rtype)
-      qc2qr_autoconv_tend = sbgrd_var_coef*1350._rtype*bfb_pow(qc_incld,2.47_rtype)*bfb_pow(nc_incld*1.e-6_rtype*rho,-1.79_rtype)
-      ! note: ncautr is change in Nr; nc2nr_autoconv_tend is change in Nc
-      ncautr = qc2qr_autoconv_tend*cons3
-      nc2nr_autoconv_tend = qc2qr_autoconv_tend*nc_incld/qc_incld
+      qc2qr_autoconv_tend = sbgrd_var_coef*1350._rtype*bfb_pow(qc_incld,2.47_rtype)*bfb_pow(nc_incld*1.e-6_rtype*rho,-1.79_rtype)      
+      !ncautr is change in nr: assume all new raindrops are 25 micron in diameter
+      ncautr = qc2qr_autoconv_tend*cons3 
+      !nc2nr_autoconv_tend is change in nc: remove frac of nc_incld 
+      !proportional to fraction of mass removed by autoconversion
+      nc2nr_autoconv_tend = qc2qr_autoconv_tend*nc_incld/qc_incld 
 
       if (qc2qr_autoconv_tend .eq.0._rtype) nc2nr_autoconv_tend = 0._rtype
       if (nc2nr_autoconv_tend.eq.0._rtype) qc2qr_autoconv_tend  = 0._rtype
@@ -2854,6 +2868,110 @@ subroutine prevent_ice_overdepletion(pres,t_atm,qv,latent_heat_sublim,inv_dt,   
    qi2qv_sublim_tend  = qi2qv_sublim_tend*min(1._rtype,max(0._rtype,-qdep_satadj)/max(qi2qv_sublim_tend, 1.e-20_rtype))
 
 end subroutine prevent_ice_overdepletion
+
+subroutine ice_supersat_conservation(qidep,qinuc,cld_frac_i,qv,qv_sat_i,latent_heat_sublim,T_atm, &
+     dt,qi2qv_sublim_tend,qr2qv_evap_tend)
+  !Make sure ice processes don't drag qv below ice supersaturation.
+  !Note that qv_sat_i is always > 0 so this also ensures qv itself doesn't go negative.
+  
+  implicit none
+
+  real(rtype), intent(in) :: cld_frac_i,qv,qv_sat_i,latent_heat_sublim,T_atm,dt, &
+       qi2qv_sublim_tend,qr2qv_evap_tend
+  real(rtype), intent(inout) :: qidep,qinuc
+  
+  real(rtype) :: qv_sink, qv_avail, fract 
+
+  qv_sink = qidep + qinuc ! in [kg/kg] cell-avg values
+
+  if (qv_sink > qsmall .and. cld_frac_i > 1.0e-20_rtype) then
+     ! --- Available water vapor for deposition/nucleation
+     qv_avail = (qv + (qi2qv_sublim_tend+qr2qv_evap_tend)*dt - qv_sat_i) / &
+          (1.0_rtype + latent_heat_sublim**2.0_rtype*qv_sat_i / (cp*rv*T_atm**2.0_rtype) ) / dt
+
+     ! --- Only excess water vapor can be limited
+     qv_avail = max(qv_avail,0.0_rtype)
+         
+     if (qv_sink >  qv_avail) then
+        fract = qv_avail / qv_sink
+        qinuc = qinuc * fract
+        qidep = qidep * fract
+     endif
+  endif
+
+  return
+end subroutine ice_supersat_conservation
+
+subroutine nc_conservation(nc, nc_selfcollect_tend, dt, nc_collect_tend, nc2ni_immers_freeze_tend, &
+     nc_accret_tend, nc2nr_autoconv_tend)
+  !Make sure nc doesn't go below zero
+  
+  implicit none
+  
+  real(rtype), intent(in) :: nc,nc_selfcollect_tend,dt
+  real(rtype), intent(inout) :: nc_collect_tend,nc2ni_immers_freeze_tend,&
+                                nc_accret_tend,nc2nr_autoconv_tend
+  real(rtype) :: sink_nc, source_nc, ratio
+  
+  sink_nc = (nc_collect_tend + nc2ni_immers_freeze_tend + nc_accret_tend + nc2nr_autoconv_tend)*dt
+  source_nc = nc + nc_selfcollect_tend*dt
+  if(sink_nc > source_nc) then
+     ratio = source_nc/sink_nc
+     nc_collect_tend  = nc_collect_tend*ratio
+     nc2ni_immers_freeze_tend = nc2ni_immers_freeze_tend*ratio 
+     nc_accret_tend  = nc_accret_tend*ratio 
+     nc2nr_autoconv_tend = nc2nr_autoconv_tend*ratio
+  endif
+  
+  return
+end subroutine nc_conservation
+
+subroutine nr_conservation(nr,ni2nr_melt_tend,nr_ice_shed_tend,ncshdc,nr_autoconv_tend,dt,nmltratio,&
+     nr_collect_tend,nr2ni_immers_freeze_tend,nr_selfcollect_tend,nr_evap_tend)
+  !Make sure nr doesn't go below zero
+
+  implicit none
+
+  real(rtype), intent(in) :: nr,ni2nr_melt_tend,nr_ice_shed_tend,ncshdc,nr_autoconv_tend,dt,nmltratio
+  real(rtype), intent(inout) :: nr_collect_tend,nr2ni_immers_freeze_tend,nr_selfcollect_tend,nr_evap_tend
+  real(rtype) :: sink_nr, source_nr, ratio
+
+  sink_nr = (nr_collect_tend + nr2ni_immers_freeze_tend + nr_selfcollect_tend + nr_evap_tend)*dt
+  !recall that melting number is scaled by nmltratio to account for ice crystals melting then
+  !rapidly melting. ni removal from melting is *not* scaled by nmltratio...
+  source_nr = nr + (nmltratio*ni2nr_melt_tend + nr_ice_shed_tend + ncshdc + nr_autoconv_tend)*dt
+  if(sink_nr > source_nr) then
+     ratio = source_nr/sink_nr
+     nr_collect_tend  = nr_collect_tend*ratio
+     nr2ni_immers_freeze_tend = nr2ni_immers_freeze_tend*ratio
+     nr_selfcollect_tend  = nr_selfcollect_tend*ratio
+     nr_evap_tend  = nr_evap_tend*ratio 
+  endif
+
+  return
+end subroutine nr_conservation
+
+subroutine ni_conservation(ni, ni_nucleat_tend, nr2ni_immers_freeze_tend, nc2ni_immers_freeze_tend, dt,&
+     ni2nr_melt_tend,ni_sublim_tend,ni_selfcollect_tend)
+  !Make sure ni doesn't go below zero
+  
+  implicit none
+
+  real(rtype), intent(in) :: ni,ni_nucleat_tend,nr2ni_immers_freeze_tend,nc2ni_immers_freeze_tend,dt
+  real(rtype), intent(inout) :: ni2nr_melt_tend,ni_sublim_tend,ni_selfcollect_tend
+  real(rtype) :: sink_ni, source_ni, ratio
+
+  sink_ni = (ni2nr_melt_tend + ni_sublim_tend + ni_selfcollect_tend)*dt 
+  source_ni = ni + (ni_nucleat_tend+nr2ni_immers_freeze_tend+nc2ni_immers_freeze_tend)*dt
+  if(sink_ni > source_ni) then
+     ratio = source_ni/sink_ni
+     ni2nr_melt_tend  = ni2nr_melt_tend*ratio
+     ni_sublim_tend = ni_sublim_tend*ratio
+     ni_selfcollect_tend = ni_selfcollect_tend*ratio 
+  endif
+  
+  return
+end subroutine ni_conservation
 
 subroutine cloud_water_conservation(qc,dt,    &
    qc2qr_autoconv_tend,qc2qr_accret_tend,qccol,qc2qi_hetero_freeze_tend,qc2qr_ice_shed_tend,qiberg,qi2qv_sublim_tend,qidep)
