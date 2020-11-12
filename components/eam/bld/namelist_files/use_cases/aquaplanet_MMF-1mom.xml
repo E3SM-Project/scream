@@ -125,7 +125,7 @@
 
 <!-- Prescribed aerosols -->
 <prescribed_aero_datapath>atm/cam/chem/trop_mam/aero</prescribed_aero_datapath>
-<prescribed_aero_file>mam4_0.9x1.2_L72_2000clim_c170323.nc</prescribed_aero_file>
+<prescribed_aero_file>mam4_0.9x1.2_L72_E3SMv1_c201110.nc</prescribed_aero_file>
 <use_hetfrz_classnuc>.false.</use_hetfrz_classnuc>
 <prescribed_aero_type>CYCLICAL</prescribed_aero_type>
 <prescribed_aero_cycle_yr>01</prescribed_aero_cycle_yr>
