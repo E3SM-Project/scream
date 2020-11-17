@@ -442,8 +442,8 @@ contains
 
       integer, intent(in) :: month_int, nbands !nbands is either nswbands or nlwbands
       character*(*), intent(in) :: aerosol_optical_property_str, band_identifier
-     ! real(r8), intent(inout) :: aerosol_optical_property(pcols,pver,nbands,begchunk:endchunk)
-      real(r8), intent(inout) :: aerosol_optical_property(48602,pver,nbands)
+      real(r8), intent(inout) :: aerosol_optical_property(pcols,pver,nbands,begchunk:endchunk)
+      !real(r8), intent(inout) :: aerosol_optical_property(pcol,pver,nbands)
 
      !internal variables
       character(len=100) :: base_file_name, optics_lookup_dir
@@ -480,10 +480,10 @@ contains
 
       write(iulog,*) 'call infld'
 
-      call infld(aerosol_optical_property_str,nccn_ncid,dim1name,'lev',band_identifier,1,48602,1,pver,1,nbands,&!begchunk,endchunk,&
+      call infld(aerosol_optical_property_str,nccn_ncid,dim1name,'lev',band_identifier,1,pcols,1,pver,1,nbands,begchunk,endchunk,&
            aerosol_optical_property, found, gridname='physgrid')
 
-      write(iulog,*) 'aero optical optical property is', aerosol_optical_property(1,1,1)
+      write(iulog,*) 'aero optical optical property is', aerosol_optical_property(1,1,1,1)
 
       call cam_pio_closefile(nccn_ncid)
 
@@ -551,8 +551,8 @@ contains
 
       !needed for SPA
       integer :: year, month, day, tod, next_month
-!     real(r8), pointer :: aerosol_optical_property(:,:,:,:)
-      real(r8), pointer :: aerosol_optical_property(:,:,:)
+      real(r8), pointer :: aerosol_optical_property(:,:,:,:)
+  !    real(r8), pointer :: aerosol_optical_property(:,:,:)
       type(physics_buffer_desc), pointer :: pbuf(:)
 
       !-----------------------------------------------------------------------
@@ -965,14 +965,14 @@ contains
          else
             next_month = month + 1
          end if
-  !       allocate(aerosol_optical_property(pcols,pver,nlwbands,begchunk:endchunk))
-         allocate(aerosol_optical_property(48602,pver,nlwbands))
+         allocate(aerosol_optical_property(pcols,pver,nlwbands,begchunk:endchunk))
+!         allocate(aerosol_optical_property(pcols,pver,nlwbands))
          call get_aerosol_optical_property_from_file(current_month,'AER_TAU_LW','lwband',nlwbands,aerosol_optical_property)
          !aerosol_optical_property(:,:,:,:) = 0.0
          call pbuf_set_field(pbuf, aer_tau_bnd_lw_mon_1_idx,aerosol_optical_property)
          deallocate(aerosol_optical_property)
-!         allocate(aerosol_optical_property(pcols,pver,nlwbands,begchunk:endchunk))
-         allocate(aerosol_optical_property(48602,pver,nlwbands))
+         allocate(aerosol_optical_property(pcols,pver,nlwbands,begchunk:endchunk))
+ !        allocate(aerosol_optical_property(48602,pver,nlwbands))
          call get_aerosol_optical_property_from_file(next_month,'AER_TAU_LW','lwband',nlwbands,aerosol_optical_property)
          !aerosol_optical_property(:,:,:,:) = 0.0
          call pbuf_set_field(pbuf,aer_tau_bnd_lw_mon_2_idx,aerosol_optical_property)
