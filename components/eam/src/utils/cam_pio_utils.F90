@@ -501,9 +501,12 @@ contains
         write(iulog,*) 'Creating new decomp: ', iodesc_p%tag
       end if
 
+      write(iulog,*) 'call t_startf'
       call t_startf('get_filemap')
+      write(iulog,*) 'get filemap'
       call map%get_filemap(ldims, fdims, dof,                                 &
            src_in=field_dist_in, dest_in=file_dist_in, permutation_in=permute)
+      write(iulog,*) 'call t_stopf'
       call t_stopf('get_filemap')
       if (associated(iodesc_p%iodesc)) then
         ! Quick sanity check
@@ -511,6 +514,7 @@ contains
       end if
       allocate(iodesc_p%iodesc)
       call t_startf('newdecomp')
+      write(iulog,*) 'call cam_pio_newdecomp'
       call cam_pio_newdecomp(iodesc_p%iodesc, fdims, dof, dtype)
       call t_stopf('newdecomp')
 

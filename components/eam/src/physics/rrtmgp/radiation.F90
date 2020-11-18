@@ -198,7 +198,9 @@ module radiation
    integer :: cldfsnow_idx = 0
 
    !needed for SPA
-   integer :: aer_tau_bnd_lw_mon_1_idx,aer_tau_bnd_lw_mon_2_idx, current_month
+   integer :: aer_tau_bnd_lw_mon_1_idx,aer_tau_bnd_lw_mon_2_idx, aer_tau_bnd_sw_mon_1_idx, aer_tau_bnd_sw_mon_2_idx,&
+              aer_ssa_bnd_sw_mon_1_idx,aer_ssa_bnd_sw_mon_2_idx, aer_asm_bnd_sw_mon_1_idx, aer_asm_bnd_sw_mon_2_idx 
+   integer :: current_month
 
    !============================================================================
 
@@ -267,6 +269,7 @@ contains
       call mpibcast(do_aerosol_rad, 1, mpi_logical, mstrid, mpicom, ierr)
       call mpibcast(fixed_total_solar_irradiance, 1, mpi_real8, mstrid, mpicom, ierr)
       call mpibcast(rrtmgp_enable_temperature_warnings, 1, mpi_logical, mstrid, mpicom, ierr)
+      call mpibcast(do_SPA_optics, 1, mpi_logical, mstrid, mpicom, ierr)
 #endif
 
       ! Convert iradsw, iradlw and irad_always from hours to timesteps if necessary
@@ -340,6 +343,12 @@ contains
     !for SPA
       call pbuf_add_field('aer_tau_bnd_lw_mon_1', 'global', dtype_r8, (/pcols,pverp,nlwbands/), aer_tau_bnd_lw_mon_1_idx)
       call pbuf_add_field('aer_tau_bnd_lw_mon_2', 'global', dtype_r8,(/pcols,pverp,nlwbands/), aer_tau_bnd_lw_mon_2_idx)
+      call pbuf_add_field('aer_tau_bnd_sw_mon_1', 'global', dtype_r8, (/pcols,pverp,nlwbands/), aer_tau_bnd_sw_mon_1_idx)
+      call pbuf_add_field('aer_tau_bnd_sw_mon_2', 'global', dtype_r8,(/pcols,pverp,nlwbands/), aer_tau_bnd_sw_mon_2_idx)
+      call pbuf_add_field('aer_ssa_bnd_sw_mon_1', 'global', dtype_r8, (/pcols,pverp,nlwbands/), aer_ssa_bnd_sw_mon_1_idx)
+      call pbuf_add_field('aer_ssa_bnd_sw_mon_2', 'global', dtype_r8,(/pcols,pverp,nlwbands/), aer_ssa_bnd_sw_mon_2_idx)
+      call pbuf_add_field('aer_asm_bnd_sw_mon_1', 'global', dtype_r8, (/pcols,pverp,nlwbands/), aer_asm_bnd_sw_mon_1_idx)
+      call pbuf_add_field('aer_asm_bnd_sw_mon_2', 'global', dtype_r8,(/pcols,pverp,nlwbands/), aer_asm_bnd_sw_mon_2_idx)
 
    end subroutine radiation_register
 
@@ -483,13 +492,13 @@ contains
       call infld(aerosol_optical_property_str,nccn_ncid,dim1name,'lev',band_identifier,1,pcols,1,pver,1,nbands,begchunk,endchunk,&
            aerosol_optical_property, found, gridname='physgrid')
 
-      write(iulog,*) 'aero optical optical property is', aerosol_optical_property(1,1,1,1)
+      write(iulog,*) 'aero optical optical property is', aerosol_optical_property(1,:,1,begchunk)
 
       call cam_pio_closefile(nccn_ncid)
 
     end subroutine get_aerosol_optical_property_from_file
 
-   subroutine radiation_init(state)
+   subroutine radiation_init(state,pbuf)
    !-------------------------------------------------------------------------------
    ! Purpose: Initialize the radiation parameterization and add fields to the
    ! history buffer
@@ -509,6 +518,7 @@ contains
       use radiation_data,     only: init_rad_data
       use physics_types, only: physics_state
       use cam_logfile,     only: iulog
+      use spmd_utils,       only: iam
 
       ! RRTMGP modules
       use rrtmgp_coefficients, only: rrtmgp_load_coefficients=>load_and_init
@@ -524,6 +534,8 @@ contains
       ! where this subroutine is called, physics_state has not subset for a
       ! specific chunk (i.e., state is a vector of all chunks, indexed by lchnk)
       type(physics_state), intent(in) :: state(:)
+   
+      type(physics_buffer_desc), pointer :: pbuf(:,:)
 
       integer :: icall, nmodes
       logical :: active_calls(0:N_DIAG)
@@ -552,8 +564,6 @@ contains
       !needed for SPA
       integer :: year, month, day, tod, next_month
       real(r8), pointer :: aerosol_optical_property(:,:,:,:)
-  !    real(r8), pointer :: aerosol_optical_property(:,:,:)
-      type(physics_buffer_desc), pointer :: pbuf(:)
 
       !-----------------------------------------------------------------------
 
@@ -955,7 +965,7 @@ contains
       endif
 
       if (do_SPA_optics) then !initialize SPA
-         write(iulog,*) 'initializing SPA'
+         write(iulog,*) 'initializing SPA, iam = ', iam
          !find current_month
          call get_curr_date(year,month,day,tod)
          current_month = month
@@ -965,17 +975,41 @@ contains
          else
             next_month = month + 1
          end if
+
          allocate(aerosol_optical_property(pcols,pver,nlwbands,begchunk:endchunk))
-!         allocate(aerosol_optical_property(pcols,pver,nlwbands))
          call get_aerosol_optical_property_from_file(current_month,'AER_TAU_LW','lwband',nlwbands,aerosol_optical_property)
-         !aerosol_optical_property(:,:,:,:) = 0.0
          call pbuf_set_field(pbuf, aer_tau_bnd_lw_mon_1_idx,aerosol_optical_property)
          deallocate(aerosol_optical_property)
          allocate(aerosol_optical_property(pcols,pver,nlwbands,begchunk:endchunk))
- !        allocate(aerosol_optical_property(48602,pver,nlwbands))
          call get_aerosol_optical_property_from_file(next_month,'AER_TAU_LW','lwband',nlwbands,aerosol_optical_property)
-         !aerosol_optical_property(:,:,:,:) = 0.0
          call pbuf_set_field(pbuf,aer_tau_bnd_lw_mon_2_idx,aerosol_optical_property)
+         deallocate(aerosol_optical_property)
+
+         allocate(aerosol_optical_property(pcols,pver,nswbands,begchunk:endchunk))
+         call get_aerosol_optical_property_from_file(current_month,'AER_TAU_SW','swband',nswbands,aerosol_optical_property)
+         call pbuf_set_field(pbuf, aer_tau_bnd_sw_mon_1_idx,aerosol_optical_property)
+         deallocate(aerosol_optical_property)
+         allocate(aerosol_optical_property(pcols,pver,nswbands,begchunk:endchunk))
+         call get_aerosol_optical_property_from_file(next_month,'AER_TAU_SW','swband',nswbands,aerosol_optical_property)
+         call pbuf_set_field(pbuf,aer_tau_bnd_sw_mon_2_idx,aerosol_optical_property)
+         deallocate(aerosol_optical_property)
+
+         allocate(aerosol_optical_property(pcols,pver,nswbands,begchunk:endchunk))
+         call get_aerosol_optical_property_from_file(current_month,'AER_SSA_SW','swband',nswbands,aerosol_optical_property)
+         call pbuf_set_field(pbuf, aer_ssa_bnd_sw_mon_1_idx,aerosol_optical_property)
+         deallocate(aerosol_optical_property)
+         allocate(aerosol_optical_property(pcols,pver,nswbands,begchunk:endchunk))
+         call get_aerosol_optical_property_from_file(next_month,'AER_SSA_SW','swband',nswbands,aerosol_optical_property)
+         call pbuf_set_field(pbuf,aer_ssa_bnd_sw_mon_2_idx,aerosol_optical_property)
+         deallocate(aerosol_optical_property)
+
+         allocate(aerosol_optical_property(pcols,pver,nswbands,begchunk:endchunk))
+         call get_aerosol_optical_property_from_file(current_month,'AER_G_SW','swband',nswbands,aerosol_optical_property)
+         call pbuf_set_field(pbuf,aer_asm_bnd_sw_mon_1_idx,aerosol_optical_property)
+         deallocate(aerosol_optical_property)
+         allocate(aerosol_optical_property(pcols,pver,nswbands,begchunk:endchunk))
+         call get_aerosol_optical_property_from_file(next_month,'AER_G_SW','swband',nswbands,aerosol_optical_property)
+         call pbuf_set_field(pbuf,aer_asm_bnd_sw_mon_2_idx,aerosol_optical_property)
          deallocate(aerosol_optical_property)
 
      endif
@@ -1298,6 +1332,13 @@ contains
       real(r8), pointer :: aerosol_optical_property(:,:,:,:)
       real(r8), pointer :: aer_tau_bnd_lw_mon_1(:,:,:)
       real(r8), pointer :: aer_tau_bnd_lw_mon_2(:,:,:)
+      real(r8), pointer :: aer_tau_bnd_sw_mon_1(:,:,:)
+      real(r8), pointer :: aer_tau_bnd_sw_mon_2(:,:,:)
+      real(r8), pointer :: aer_ssa_bnd_sw_mon_1(:,:,:)
+      real(r8), pointer :: aer_ssa_bnd_sw_mon_2(:,:,:)
+      real(r8), pointer :: aer_asm_bnd_sw_mon_1(:,:,:)
+      real(r8), pointer :: aer_asm_bnd_sw_mon_2(:,:,:)
+
       real(r8), dimension(12):: days_per_month
       nullify(aerosol_optical_property)
       !fill days_per_month
@@ -1452,12 +1493,65 @@ contains
                   aer_tau_bnd_sw = 0._r8
                   aer_ssa_bnd_sw = 0._r8
                   aer_asm_bnd_sw = 0._r8
-                  call set_aerosol_optics_sw( &
-                     icall, dt, state, pbuf, &
-                     night_indices(1:nnight), &
-                     is_cmip6_volc, &
-                     aer_tau_bnd_sw, aer_ssa_bnd_sw, aer_asm_bnd_sw &
+                  if (do_SPA_optics) then
+                     !get current time step's date
+                     write(iulog,*) 'get current time steps date'
+                     call get_curr_date(year,month,day,tod)
+                     !populate with corresponding pbuf
+                     !variables
+                     call pbuf_get_field(pbuf,aer_tau_bnd_sw_mon_1_idx, aer_tau_bnd_sw_mon_1)
+                     call pbuf_get_field(pbuf,aer_tau_bnd_sw_mon_2_idx, aer_tau_bnd_sw_mon_2)
+                     call pbuf_get_field(pbuf,aer_ssa_bnd_sw_mon_1_idx, aer_ssa_bnd_sw_mon_1)
+                     call pbuf_get_field(pbuf,aer_ssa_bnd_sw_mon_2_idx, aer_ssa_bnd_sw_mon_2)
+                     call pbuf_get_field(pbuf,aer_asm_bnd_sw_mon_1_idx, aer_asm_bnd_sw_mon_1)
+                     call pbuf_get_field(pbuf,aer_asm_bnd_sw_mon_2_idx, aer_asm_bnd_sw_mon_2)
+
+                     if (current_month .ne. month) then
+
+                        aer_tau_bnd_sw_mon_1 = aer_tau_bnd_sw_mon_2
+                        aer_ssa_bnd_sw_mon_1 = aer_ssa_bnd_sw_mon_2
+                        aer_asm_bnd_sw_mon_1 = aer_asm_bnd_sw_mon_2
+
+                        if (month==12) then
+                           next_month = 1
+                        else
+                           next_month = month + 1
+                        end if
+
+                        allocate(aerosol_optical_property(pcols,pver,nswbands,begchunk:endchunk))
+                        write(iulog,*) 'call get aero optical properties'
+                        call get_aerosol_optical_property_from_file(next_month,'AER_TAU_SW','swband',nswbands,aerosol_optical_property)
+                        aer_tau_bnd_sw_mon_2 = aerosol_optical_property(:,:,:,state%lchnk)
+                        deallocate(aerosol_optical_property)
+                        allocate(aerosol_optical_property(pcols,pver,nswbands,begchunk:endchunk))
+                        write(iulog,*) 'call get aero optical properties'
+                        call get_aerosol_optical_property_from_file(next_month,'AER_SSA_SW','swband',nswbands,aerosol_optical_property)
+                        aer_ssa_bnd_sw_mon_2 = aerosol_optical_property(:,:,:,state%lchnk)
+                        deallocate(aerosol_optical_property)
+                        allocate(aerosol_optical_property(pcols,pver,nswbands,begchunk:endchunk))
+                        write(iulog,*) 'call get aero optical properties'
+                        call get_aerosol_optical_property_from_file(next_month,'AER_G_SW','swband',nswbands,aerosol_optical_property)
+                        aer_asm_bnd_sw_mon_2 = aerosol_optical_property(:,:,:,state%lchnk)
+                        deallocate(aerosol_optical_property)
+
+                        current_month = month
+                     end if
+                     !interpolate between two months to calculate prescribed
+                     !aerosol optical property based on current date
+                     fraction_of_month = (day*3600.0*24.0 + tod)/(3600*24*days_per_month(current_month)) !tod is in seconds
+                     aer_tau_bnd_sw = aer_tau_bnd_sw_mon_1*(1-fraction_of_month) + aer_tau_bnd_sw_mon_2*(fraction_of_month)
+                     aer_ssa_bnd_sw = aer_ssa_bnd_sw_mon_1*(1-fraction_of_month) + aer_ssa_bnd_sw_mon_2*(fraction_of_month)
+                     aer_asm_bnd_sw = aer_asm_bnd_sw_mon_1*(1-fraction_of_month) + aer_asm_bnd_sw_mon_2*(fraction_of_month)
+
+                  else
+
+                     call set_aerosol_optics_sw( &
+                          icall, dt, state, pbuf, &
+                          night_indices(1:nnight), &
+                          is_cmip6_volc, &
+                          aer_tau_bnd_sw, aer_ssa_bnd_sw, aer_asm_bnd_sw &
                   )
+                  end if !SPA optics
                   ! Now reorder bands to be consistent with RRTMGP
                   ! TODO: fix the input files themselves!
                   do icol = 1,size(aer_tau_bnd_sw,1)
@@ -1553,11 +1647,9 @@ contains
                   aer_tau_bnd_lw = 0._r8
                  if (do_SPA_optics) then
                      !get current time step's date
-                     write(iulog,*) 'get current time steps date'
                      call get_curr_date(year,month,day,tod)
-                     !populate mon_ccn_1 and mon_ccn_2 with corresponding pbuf
+                     !populate with corresponding pbuf
                      !variables
-                     write(iulog,*) 'populate mon_ccn_1 and mon_ccn_2 with corresponding pbuf variables'
                      call pbuf_get_field(pbuf,aer_tau_bnd_lw_mon_1_idx, aer_tau_bnd_lw_mon_1)
                      call pbuf_get_field(pbuf,aer_tau_bnd_lw_mon_2_idx, aer_tau_bnd_lw_mon_2)
                      if (current_month .ne. month) then
@@ -1565,11 +1657,9 @@ contains
                         if (month==12) then
                            next_month = 1
                         else
-                           !next_month = month + 1
-                           next_month = month !change this back later
+                           next_month = month + 1
                         end if
                         allocate(aerosol_optical_property(pcols,pver,nlwbands,begchunk:endchunk))
-                        write(iulog,*) 'call get aero optical properties'
                         call get_aerosol_optical_property_from_file(next_month,'AER_TAU_LW','lwband',nlwbands,aerosol_optical_property)
                         aer_tau_bnd_lw_mon_2 = aerosol_optical_property(:,:,:,state%lchnk)
                         deallocate(aerosol_optical_property)
