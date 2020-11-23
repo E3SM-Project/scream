@@ -476,7 +476,6 @@ contains
 
      !retrieve the name of the relevant file by combining base file name !with
      !!month and full file path:
-!      filename = trim(optics_lookup_dir)//'/'//trim(base_file_name)//trim(mon_str)//'.nc'
       filename = trim(SPA_lookup_dir)//'/'//trim(base_file_name)//trim(mon_str)//'.nc'
 
       grid_id = cam_grid_id('physgrid')
@@ -560,11 +559,6 @@ contains
       real(r8), pointer :: aerosol_optical_property(:,:,:,:)
       real(r8), pointer :: aerosol_optical_property_lw(:,:,:,:)
       real(r8), pointer :: aerosol_optical_property_sw(:,:,:,:)
-
-
-!      real(r8), pointer :: aerosol_optical_property_lw(pcols,pver,nlwbands,begchunk:endchunk)
-!     real(r8), pointer :: aerosol_optical_property_sw(pcols,pver,nswbands,begchunk:endchunk)
-
 
       !-----------------------------------------------------------------------
 
@@ -982,6 +976,8 @@ contains
          call get_aerosol_optical_property_from_file(next_month,'AER_TAU_LW','lwband',nlwbands,aerosol_optical_property_lw)
          call pbuf_set_field(pbuf,aer_tau_bnd_lw_mon_2_idx,aerosol_optical_property_lw)
 
+         deallocate(aerosol_optical_property_lw) 
+
          allocate(aerosol_optical_property_sw(pcols,pver,nswbands,begchunk:endchunk))
          
          call get_aerosol_optical_property_from_file(current_month,'AER_TAU_SW','swband',nswbands,aerosol_optical_property_sw)
@@ -998,6 +994,8 @@ contains
          call pbuf_set_field(pbuf,aer_asm_bnd_sw_mon_1_idx,aerosol_optical_property_sw)
          call get_aerosol_optical_property_from_file(next_month,'AER_G_SW','swband',nswbands,aerosol_optical_property_sw)
          call pbuf_set_field(pbuf,aer_asm_bnd_sw_mon_2_idx,aerosol_optical_property_sw)
+
+         deallocate(aerosol_optical_property_sw)
 
      endif
 
@@ -1514,6 +1512,8 @@ contains
                         call get_aerosol_optical_property_from_file(next_month,'AER_G_SW','swband',nswbands,aerosol_optical_property_sw)
                         aer_asm_bnd_sw_mon_2 = aerosol_optical_property_sw(:,:,:,state%lchnk)
 
+                        deallocate(aerosol_optical_property_sw)
+
                         current_month = month
                      end if
                      !interpolate between two months to calculate prescribed
@@ -1642,6 +1642,7 @@ contains
                         allocate(aerosol_optical_property_lw(pcols,pver,nlwbands,begchunk:endchunk))
                         call get_aerosol_optical_property_from_file(next_month,'AER_TAU_LW','lwband',nlwbands,aerosol_optical_property_lw)
                         aer_tau_bnd_lw_mon_2 = aerosol_optical_property_lw(:,:,:,state%lchnk)
+                        deallocate(aerosol_optical_property_lw)
                         current_month = month
                      end if
                      !interpolate between two months to calculate prescribed
