@@ -1807,7 +1807,7 @@ contains
   real (kind=real_kind) :: Qcol(nlev)
   real (kind=real_kind) :: mass,mass_new
   real (kind=real_kind) :: dp3d_thresh=.125
-  real (kind=real_kind) :: vtheta_thresh = 10  ! 10 Kelvin
+  real (kind=real_kind) :: vtheta_thresh = 155  !modified to 155 Kelvin
   logical :: warn
   integer i,j,k
 
