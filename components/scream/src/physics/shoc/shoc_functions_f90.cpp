@@ -1542,7 +1542,7 @@ void diag_second_shoc_moments_f(Int shcol, Int nlev, Int nlevi, Real* thetal, Re
   using Pack1         = typename ekat::Pack<Real, 1>;
   using view_pack1_1d = typename SHOC::view_1d<Pack1>;
 
-  Kokkos::Array<view_1d, 4> pack1_1d;
+  Kokkos::Array<view_pack1_1d, 4> pack1_1d;
   ekat::host_to_device({wthl_sfc, wqw_sfc, uw_sfc, vw_sfc}, shcol, pack1_1d);
 
   view_pack1_1d wthl_1d  (pack1_1d[0]),
