@@ -376,6 +376,18 @@ struct Functions
     const uview_1d<Spack>&       shoc_ql2);
 
   KOKKOS_FUNCTION
+  static void adv_sgs_tke(
+    const Int&                   nlev,
+    const Int&                   shcol,
+    const Spack&                 dtime,
+    const uview_1d<const Spack>& shoc_mix,
+    const uview_1d<const Spack>& wthv_sec,
+    const uview_1d<const Spack>& sterm_zt,
+    const uview_1d<const Spack>& tk,
+    const uview_1d<Spack>&       tke,
+    const uview_1d<Spack>&       a_diss);
+
+  KOKKOS_FUNCTION
   static void compute_tmpi(
     const MemberType&            team,
     const Int&                   nlevi,
@@ -403,8 +415,6 @@ struct Functions
 
   KOKKOS_FUNCTION
   static void shoc_main(const Int& shcol, const Int& nlev, const Int& nlevi, const Spack& dtime, const Int& nadv, const uview_1d<const Spack>& host_dx, const uview_1d<const Spack>& host_dy, const uview_1d<const Spack>& thv, const uview_1d<const Spack>& zt_grid, const uview_1d<const Spack>& zi_grid, const uview_1d<const Spack>& pres, const uview_1d<const Spack>& presi, const uview_1d<const Spack>& pdel, const uview_1d<const Spack>& wthl_sfc, const uview_1d<const Spack>& wqw_sfc, const uview_1d<const Spack>& uw_sfc, const uview_1d<const Spack>& vw_sfc, const uview_1d<const Spack>& wtracer_sfc, const Int& num_qtracers, const uview_1d<const Spack>& w_field, const uview_1d<const Spack>& exner, const uview_1d<const Spack>& phis, const uview_1d<Spack>& host_dse, const uview_1d<Spack>& tke, const uview_1d<Spack>& thetal, const uview_1d<Spack>& qw, const uview_1d<Spack>& u_wind, const uview_1d<Spack>& v_wind, const uview_1d<Spack>& qtracers, const uview_1d<Spack>& wthv_sec, const uview_1d<Spack>& tkh, const uview_1d<Spack>& tk, const uview_1d<Spack>& shoc_ql, const uview_1d<Spack>& shoc_cldfrac, const uview_1d<Spack>& pblh, const uview_1d<Spack>& shoc_mix, const uview_1d<Spack>& isotropy, const uview_1d<Spack>& w_sec, const uview_1d<Spack>& thl_sec, const uview_1d<Spack>& qw_sec, const uview_1d<Spack>& qwthl_sec, const uview_1d<Spack>& wthl_sec, const uview_1d<Spack>& wqw_sec, const uview_1d<Spack>& wtke_sec, const uview_1d<Spack>& uw_sec, const uview_1d<Spack>& vw_sec, const uview_1d<Spack>& w3, const uview_1d<Spack>& wqls_sec, const uview_1d<Spack>& brunt, const uview_1d<Spack>& shoc_ql2);
-  KOKKOS_FUNCTION
-  static void adv_sgs_tke(const Int& nlev, const Int& shcol, const Spack& dtime, const uview_1d<const Spack>& shoc_mix, const uview_1d<const Spack>& wthv_sec, const uview_1d<const Spack>& sterm_zt, const uview_1d<const Spack>& tk, const uview_1d<Spack>& tke, const uview_1d<Spack>& a_diss);
 }; // struct Functions
 
 } // namespace shoc
@@ -441,11 +451,11 @@ struct Functions
 # include "shoc_update_prognostics_implicit_impl.hpp"
 # include "shoc_diag_third_shoc_moments_impl.hpp"
 # include "shoc_assumed_pdf_impl.hpp"
+# include "shoc_adv_sgs_tke_impl.hpp"
 # include "shoc_compute_tmpi_impl.hpp"
 # include "shoc_integ_column_stability_impl.hpp"
 # include "shoc_dp_inverse_impl.hpp"
 # include "shoc_shoc_main_impl.hpp"
-# include "shoc_adv_sgs_tke_impl.hpp"
 #endif // KOKKOS_ENABLE_CUDA
 
 #endif // SHOC_FUNCTIONS_HPP
