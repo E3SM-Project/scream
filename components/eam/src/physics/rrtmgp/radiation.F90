@@ -346,14 +346,14 @@ contains
       end if
 
     !for SPA
-      call pbuf_add_field('aer_tau_bnd_lw_mon_1', 'global', dtype_r8, (/pcols,pverp,nlwbands/), aer_tau_bnd_lw_mon_1_idx)
-      call pbuf_add_field('aer_tau_bnd_lw_mon_2', 'global', dtype_r8,(/pcols,pverp,nlwbands/), aer_tau_bnd_lw_mon_2_idx)
-      call pbuf_add_field('aer_tau_bnd_sw_mon_1', 'global', dtype_r8, (/pcols,pverp,nlwbands/), aer_tau_bnd_sw_mon_1_idx)
-      call pbuf_add_field('aer_tau_bnd_sw_mon_2', 'global', dtype_r8,(/pcols,pverp,nlwbands/), aer_tau_bnd_sw_mon_2_idx)
-      call pbuf_add_field('aer_ssa_bnd_sw_mon_1', 'global', dtype_r8, (/pcols,pverp,nlwbands/), aer_ssa_bnd_sw_mon_1_idx)
-      call pbuf_add_field('aer_ssa_bnd_sw_mon_2', 'global', dtype_r8,(/pcols,pverp,nlwbands/), aer_ssa_bnd_sw_mon_2_idx)
-      call pbuf_add_field('aer_asm_bnd_sw_mon_1', 'global', dtype_r8, (/pcols,pverp,nlwbands/), aer_asm_bnd_sw_mon_1_idx)
-      call pbuf_add_field('aer_asm_bnd_sw_mon_2', 'global', dtype_r8,(/pcols,pverp,nlwbands/), aer_asm_bnd_sw_mon_2_idx)
+      call pbuf_add_field('ATBLM_1', 'global', dtype_r8, (/pcols,pverp,nlwbands/), aer_tau_bnd_lw_mon_1_idx)
+      call pbuf_add_field('ATBLM_2', 'global', dtype_r8,(/pcols,pverp,nlwbands/), aer_tau_bnd_lw_mon_2_idx)
+      call pbuf_add_field('ATBSM_1', 'global', dtype_r8, (/pcols,pverp,nlwbands/), aer_tau_bnd_sw_mon_1_idx)
+      call pbuf_add_field('ATBSM_2', 'global', dtype_r8,(/pcols,pverp,nlwbands/), aer_tau_bnd_sw_mon_2_idx)
+      call pbuf_add_field('ASBSM_1', 'global', dtype_r8, (/pcols,pverp,nlwbands/), aer_ssa_bnd_sw_mon_1_idx)
+      call pbuf_add_field('ASBSM_2', 'global', dtype_r8,(/pcols,pverp,nlwbands/), aer_ssa_bnd_sw_mon_2_idx)
+      call pbuf_add_field('AABSM_1', 'global', dtype_r8, (/pcols,pverp,nlwbands/), aer_asm_bnd_sw_mon_1_idx)
+      call pbuf_add_field('AABSM_2', 'global', dtype_r8,(/pcols,pverp,nlwbands/), aer_asm_bnd_sw_mon_2_idx)
 
    end subroutine radiation_register
 
