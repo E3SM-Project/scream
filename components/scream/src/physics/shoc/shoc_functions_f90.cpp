@@ -2417,5 +2417,9 @@ void shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Real* hos
 {
   // TODO
 }
+void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, Real* shoc_mix, Real* wthv_sec, Real* sterm_zt, Real* tk, Real* tke, Real* a_diss)
+{
+  // TODO
+}
 } // namespace shoc
 } // namespace scream
