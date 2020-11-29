@@ -377,9 +377,10 @@ struct Functions
 
   KOKKOS_FUNCTION
   static void adv_sgs_tke(
+    const MemberType&            team,
     const Int&                   nlev,
     const Int&                   shcol,
-    const Spack&                 dtime,
+    const Real&                  dtime,
     const uview_1d<const Spack>& shoc_mix,
     const uview_1d<const Spack>& wthv_sec,
     const uview_1d<const Spack>& sterm_zt,
