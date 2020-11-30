@@ -365,7 +365,7 @@ subroutine shoc_main ( &
 
     ! Compute the planetary boundary layer height, which is an
     !   input needed for the length scale calculation.
-    
+
     ! Update SHOC water vapor, to be used by the next two routines
     call compute_shoc_vapor(&
        shcol,nlev,qw,shoc_ql,&              ! Input
@@ -479,12 +479,12 @@ subroutine shoc_main ( &
 
   ! Update PBLH, as other routines outside of SHOC
   !  may require this variable.
-  
+
   ! Update SHOC water vapor, to be used by the next two routines
   call compute_shoc_vapor(&
      shcol,nlev,qw,shoc_ql,&              ! Input
      shoc_qv)                             ! Output
-  
+
   call shoc_diag_obklen(&
      shcol,uw_sfc,vw_sfc,&                          ! Input
      wthl_sfc,wqw_sfc,thetal(:shcol,nlev),&         ! Input
@@ -719,7 +719,7 @@ subroutine update_prognostics_implicit( &
 
   ! compute surface fluxes for liq. potential temp, water and tke
   call sfc_fluxes(shcol, num_tracer, dtime, rho_zi(:,nlevi), rdp_zt(:,nlev), &
-                  wthl_sfc, wqw_sfc, wtke_sfc, wtracer_sfc, & 
+                  wthl_sfc, wqw_sfc, wtke_sfc, wtracer_sfc, &
                   thetal(:,nlev), qw(:,nlev), tke(:,nlev), tracer(:,nlev,:))
 
   ! Call decomp for momentum variables
@@ -952,7 +952,7 @@ subroutine sfc_fluxes(shcol, num_tracer, dtime, rho_zi_sfc, rdp_zt_sfc, wthl_sfc
      thetal(i) = thetal(i) + cmnfac * wthl_sfc(i)
      qw(i)     = qw(i)     + cmnfac * wqw_sfc(i)
      tke(i)    = tke(i)    + cmnfac * wtke_sfc(i)
-  
+
      ! surface fluxes for tracers
      do p = 1, num_tracer
         wtracer(i,p) = wtracer(i,p) + cmnfac * wtracer_sfc(i,p)
@@ -1360,7 +1360,7 @@ subroutine diag_second_moments(&
      call diag_second_moments_f(shcol,nlev,nlevi,thetal,qw,u_wind,v_wind,tke, &         ! Input
                                 isotropy,tkh,tk,dz_zi,zt_grid,zi_grid,shoc_mix, &      ! Input
                                 thl_sec,qw_sec,wthl_sec,wqw_sec,qwthl_sec,uw_sec,vw_sec,wtke_sec, &    ! Input/Output
-                                w_sec)                                 
+                                w_sec)
       return
    endif
 #endif
@@ -2921,6 +2921,10 @@ end subroutine shoc_tke
 
 subroutine integ_column_stability(nlev, shcol, dz_zt, pres, brunt, brunt_int)
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use shoc_iso_f, only: integ_column_stability_f
+#endif
+
   implicit none
   !intent-ins
   integer,     intent(in) :: nlev, shcol
@@ -2937,6 +2941,13 @@ subroutine integ_column_stability(nlev, shcol, dz_zt, pres, brunt, brunt_int)
 
   !local variables
   integer :: i, k
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  if (use_cxx) then
+     call integ_column_stability_f(nlev, shcol, dz_zt, pres, brunt, brunt_int)
+     return
+  endif
+#endif
 
   brunt_int(1:shcol) = 0._rtype
   do k = 1, nlev
@@ -3927,7 +3938,7 @@ subroutine shoc_diag_obklen(&
 #ifdef SCREAM_CONFIG_IS_CMAKE
   use shoc_iso_f, only: shoc_diag_obklen_f
 #endif
-    
+
   implicit none
 
 ! INPUT VARIABLES
@@ -4049,7 +4060,7 @@ subroutine pblintd(&
     real(rtype) :: thv(shcol,nlev)         ! virtual potential temperature
     real(rtype) :: tlv(shcol)              ! ref. level pot tmp + tmp excess
 
-    logical  :: check(shcol)            ! True=>chk if Richardson no.>critcal
+    logical(btype)  :: check(shcol)            ! True=>chk if Richardson no.>critcal
 
     !
     ! Compute Obukhov length virtual temperature flux and various arrays for use later:
@@ -4168,7 +4179,7 @@ subroutine pblintd_init(&
     !
     real(rtype), intent(out) :: pblh(shcol)             ! boundary-layer height [m]
     real(rtype), intent(out) :: rino(shcol,nlev)        ! bulk Richardson no. from level to ref lev
-    logical, intent(out)     :: check(shcol)            ! True=>chk if Richardson no.>critcal
+    logical(btype), intent(out)     :: check(shcol)            ! True=>chk if Richardson no.>critcal
 
     !
     !---------------------------Local workspace-----------------------------
@@ -4205,7 +4216,7 @@ subroutine pblintd_height(&
     !
     real(rtype), intent(out)   :: pblh(shcol)             ! boundary-layer height [m]
     real(rtype), intent(inout) :: rino(shcol,nlev)                     ! bulk Richardson no. from level to ref lev
-    logical, intent(inout)     :: check(shcol)            ! True=>chk if Richardson no.>critcal
+    logical(btype), intent(inout)     :: check(shcol)            ! True=>chk if Richardson no.>critcal
 
     !
     !---------------------------Local workspace-----------------------------
@@ -4254,7 +4265,7 @@ subroutine pblintd_surf_temp(&
     real(rtype), intent(in) :: thv(shcol,nlev)          ! virtual potential temperature
 
     real(rtype), intent(out) :: tlv(shcol)              ! ref. level pot tmp + tmp excess
-    logical, intent(inout)  :: check(shcol)             ! True=>chk if Richardson no.>critcal
+    logical(btype), intent(inout)  :: check(shcol)             ! True=>chk if Richardson no.>critcal
     real(rtype), intent(inout) :: rino(shcol,nlev)      ! bulk Richardson no. from level to ref lev
     real(rtype), intent(inout) :: pblh(shcol)              ! boundary-layer height [m]
     !
@@ -4300,7 +4311,7 @@ subroutine pblintd_check_pblh(&
 
     real(rtype), intent(in)  :: z(shcol,nlev)           ! height above surface [m]
     real(rtype), intent(in)  :: ustar(shcol)            ! surface friction velocity [m/s]
-    logical, intent(in)      :: check(shcol)            ! True=>chk if Richardson no.>critcal
+    logical(btype), intent(in)      :: check(shcol)            ! True=>chk if Richardson no.>critcal
     !
     ! Output arguments
     !
@@ -4356,7 +4367,7 @@ subroutine pblintd_cldcheck(      &
     !---------------------------Local workspace-----------------------------
     !
     integer  :: i                       ! longitude index
-    logical  :: cldcheck(shcol)      ! True=>if cloud in lowest layer
+    logical(btype)  :: cldcheck(shcol)      ! True=>if cloud in lowest layer
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
@@ -4481,7 +4492,7 @@ subroutine compute_brunt_shoc_length(nlev,nlevi,shcol,dz_zt,thv,thv_zi,brunt)
 #ifdef SCREAM_CONFIG_IS_CMAKE
   use shoc_iso_f, only: compute_brunt_shoc_length_f
 #endif
-  
+
   implicit none
   integer, intent(in) :: nlev, nlevi, shcol
   ! Grid difference centereted on thermo grid [m]
@@ -4500,7 +4511,7 @@ subroutine compute_brunt_shoc_length(nlev,nlevi,shcol,dz_zt,thv,thv_zi,brunt)
     return
   endif
 #endif
-  
+
   do k=1,nlev
     do i=1,shcol
       brunt(i,k) = (ggr/thv(i,k)) * (thv_zi(i,k) - thv_zi(i,k+1))/dz_zt(i,k)
@@ -4517,7 +4528,7 @@ subroutine compute_l_inf_shoc_length(nlev,shcol,zt_grid,dz_zt,tke,l_inf)
 #ifdef SCREAM_CONFIG_IS_CMAKE
   use shoc_iso_f, only: compute_l_inf_shoc_length_f
 #endif
- 
+
   implicit none
   integer, intent(in) :: nlev, shcol
   real(rtype), intent(in) :: zt_grid(shcol,nlev), dz_zt(shcol,nlev), tke(shcol,nlev)
@@ -4701,7 +4712,7 @@ subroutine check_length_scale_shoc_length(nlev,shcol,host_dx,host_dy,shoc_mix)
     return
   endif
 #endif
-  
+
   do k=1,nlev
     do i=1,shcol
       shoc_mix(i,k)=min(maxlen,shoc_mix(i,k))
