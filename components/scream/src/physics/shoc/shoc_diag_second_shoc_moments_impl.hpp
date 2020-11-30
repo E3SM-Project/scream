@@ -34,16 +34,11 @@ void Functions<S,D>::diag_second_shoc_moments(const MemberType& team, const Int&
   // Diagnose the second order moments flux, for the lower boundary
   const auto nlevi_pack = ekat::npack<Spack>(nlevi)-1;
   const int nlevi_indx  = (nlevi-1)%Spack::n;
-  Scalar& wthl_s         = wthl_sec(nlevi_pack)[nlevi_indx];
-  Scalar& wqw_s          = wqw_sec(nlevi_pack)[nlevi_indx];
-  Scalar& uw_s           = uw_sec(nlevi_pack)[nlevi_indx];
-  Scalar& vw_s           = vw_sec(nlevi_pack)[nlevi_indx];
-  Scalar& wtke_s         = wtke_sec(nlevi_pack)[nlevi_indx];
-  Scalar& thl_s          = thl_sec(nlevi_pack)[nlevi_indx];
-  Scalar& qw_s           = qw_sec(nlevi_pack)[nlevi_indx];
-  Scalar& qwthl_s        = qwthl_sec(nlevi_pack)[nlevi_indx];
   shoc_diag_second_moments_lbycond(wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, ustar2, wstar,
-                                   wthl_s, wqw_s, uw_s, vw_s, wtke_s, thl_s, qw_s, qwthl_s);
+                                   wthl_sec(nlevi_npack)[nlevi_indx], wqw_sec(nlevi_npack)[nlevi_indx], 
+                                   uw_sec(nlevi_npack)[nlevi_indx], vw_sec(nlevi_npack)[nlevi_indx], 
+                                   wtke_sec(nlevi_npack)[nlevi_indx], thl_sec(nlevi_npack)[nlevi_indx], 
+                                   qw_sec(nlevi_npack)[nlevi_indx], qwthl_sec(nlevi_npack)[nlevi_indx]);
   team.team_barrier();
 
   // Diagnose the second order moments, for points away from boundaries.  this is
@@ -55,15 +50,9 @@ void Functions<S,D>::diag_second_shoc_moments(const MemberType& team, const Int&
   team.team_barrier();
 
   // Diagnose the second order moments, calculate the upper boundary conditions
-  Scalar& thl_s0   = thl_sec(0)[0];
-  Scalar& qw_s0    = qw_sec(0)[0];
-  Scalar& wthl_s0  = wthl_sec(0)[0];
-  Scalar& wqw_s0   = wqw_sec(0)[0];
-  Scalar& qwthl_s0 = qwthl_sec(0)[0];
-  Scalar& uw_s0    = uw_sec(0)[0];
-  Scalar& vw_s0    = vw_sec(0)[0];
-  Scalar& wtke_s0  = wtke_sec(0)[0];
-  shoc_diag_second_moments_ubycond(thl_s0, qw_s0, wthl_s0, wqw_s0, qwthl_s0, uw_s0, vw_s0, wtke_s0);
+  shoc_diag_second_moments_ubycond(thl_sec(0)[0], qw_sec(0)[0], wthl_sec(0)[0], 
+                                   wqw_sec(0)[0], qwthl_sec(0)[0], uw_sec(0)[0], 
+                                   vw_sec(0)[0], wtke_sec(0)[0]);
 }
 
 } // namespace shoc
