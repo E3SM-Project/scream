@@ -2217,6 +2217,9 @@ void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, Real* shoc_mix, Real* wthv_s
       SHF::adv_sgs_tke(team, nlev, shcol, dtime, shoc_mix_s, wthv_sec_s, sterm_zt_s, tk_s, tke_s, a_diss_s);
     });
 
+  // Sync back to host
+  Kokkos::Array<view_2d, 2> inout_views = {tke_d, a_diss_d};
+  ekat::device_to_host<int,2>({tke, a_diss}, {shcol}, {nlev}, inout_views, true);
 }
 
 void shoc_assumed_pdf_f(Int shcol, Int nlev, Int nlevi, Real* thetal, Real* qw, Real* w_field,
