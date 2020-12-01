@@ -269,6 +269,8 @@ void vd_shoc_decomp_c(Int shcol, Int nlev, Int nlevi, Real* kv_term, Real* tmpi,
                       Real* flux, Real* du, Real* dl, Real* d);
 
 void vd_shoc_solve_c(Int shcol, Int nlev, Real* du, Real* dl, Real* d, Real* var);
+
+void pblintd_check_pblh_c(Int shcol, Int nlev, Int nlevi, Real* z, Real* ustar, bool* check, Real* pblh);
 } // extern "C" : end _c decls
 
 namespace scream {
@@ -765,6 +767,15 @@ void vd_shoc_decomp_and_solve(VdShocDecompandSolveData& d)
   }
   d.transpose<ekat::TransposeDirection::f2c>();
 }
+
+void pblintd_check_pblh(PblintdCheckPblhData& d)
+{
+  shoc_init(d.nlev, true);
+  d.transpose<ekat::TransposeDirection::c2f>();
+  pblintd_check_pblh_c(d.shcol, d.nlev, d.nlevi, d.z, d.ustar, d.check, d.pblh);
+  d.transpose<ekat::TransposeDirection::f2c>();
+}
+
 // end _c impls
 
 //
@@ -2539,5 +2550,48 @@ void vd_shoc_decomp_and_solve_f(Int shcol, Int nlev, Int nlevi, Int num_rhs, Rea
    ekat::device_to_host<int, 1>({var}, shcol, nlev, num_rhs, inout_views, true);
 }
 
+void pblintd_check_pblh_f(Int shcol, Int nlev, Int nlevi, Real* z, Real* ustar, bool* check, Real* pblh)
+{
+  using SHOC       = Functions<Real, DefaultDevice>;
+  using Spack      = typename SHOC::Spack;
+  using Scalar     = typename SHOC::Scalar;
+  using Pack1      = typename ekat::Pack<Real, 1>;
+  using view_1d    = typename SHOC::view_1d<Pack1>;
+  using view_2d    = typename SHOC::view_2d<Spack>;
+
+  Kokkos::Array<view_2d, 1> views_2d;
+  ekat::host_to_device({z}, shcol, nlev, views_2d, true);
+  view_2d z_2d (views_2d[0]);
+
+  Kokkos::Array<view_1d, 1> views_1d;
+  ekat::host_to_device({ustar}, shcol, views_1d);
+  view_1d ustar_1d (views_1d[0]);
+
+  SHOC::view_1d<bool> check_1d("check", shcol);
+  const auto host_check_1d = Kokkos::create_mirror_view(check_1d);
+  for (auto k=0; k<shcol; ++k) {
+    host_check_1d(k) = check[k];
+  }
+  Kokkos::deep_copy(check_1d, host_check_1d);
+
+  view_1d pblh_1d("pblh_1d", shcol);
+
+  Int npbl = nlev;
+
+  Kokkos::parallel_for("pblintd_check_pblh", shcol, KOKKOS_LAMBDA (const int& i) {
+
+    const auto z_1d  = ekat::subview(z_2d, i);
+    Scalar& ustar_s  = ustar_1d(i)[0];
+    Scalar& pblh_s   = pblh_1d(i)[0];
+
+    bool& check_s = check_1d(i);
+
+    SHOC::pblintd_check_pblh(nlevi, npbl, z_1d, ustar_s, check_s, pblh_s);
+
+ });
+
+  Kokkos::Array<view_1d, 1> out_1d_views = {pblh_1d};
+  ekat::device_to_host<int, 1>({pblh}, {shcol}, out_1d_views);
+}
 } // namespace shoc
 } // namespace scream

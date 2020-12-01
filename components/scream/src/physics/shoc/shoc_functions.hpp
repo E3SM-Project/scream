@@ -440,6 +440,11 @@ struct Functions
     const uview_1d<Scalar>& dl,
     const uview_1d<Scalar>& d,
     const uview_2d<Spack>&  var);
+
+  KOKKOS_FUNCTION
+  static void pblintd_check_pblh(const Int& nlevi, const Int& npbl,
+              const uview_1d<const Spack>& z, const Scalar& ustar, const bool& check, Scalar& pblh);
+
 }; // struct Functions
 
 } // namespace shoc
@@ -483,6 +488,7 @@ struct Functions
 # include "shoc_shoc_main_impl.hpp"
 # include "shoc_pblintd_height_impl.hpp"
 # include "shoc_tridiag_solver_impl.hpp"
+# include "shoc_pblintd_check_pblh_impl.hpp"
 #endif // KOKKOS_ENABLE_CUDA
 
 #endif // SHOC_FUNCTIONS_HPP
