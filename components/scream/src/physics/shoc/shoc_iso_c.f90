@@ -1401,7 +1401,7 @@ contains
   end subroutine pblintd_surf_temp_c
 
   subroutine pblintd_check_pblh_c(shcol, nlev, nlevi, z, ustar, check, pblh) bind(C)
-    use shoc, only : pblintd_check_pblh
+    use shoc, only : npbl, pblintd_check_pblh
     integer(kind=c_int) , value, intent(in) :: shcol, nlev, nlevi
     real(kind=c_real) , intent(in), dimension(shcol, nlev) :: z
     real(kind=c_real) , intent(in), dimension(shcol) :: ustar
