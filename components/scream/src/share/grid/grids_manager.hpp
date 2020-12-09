@@ -22,7 +22,7 @@ class GridsManager
 {
 public:
   using grid_type         = AbstractGrid;
-  using grid_ptr_type     = std::shared_ptr<grid_type>;
+  using grid_ptr_type     = std::shared_ptr<const grid_type>;
   using grid_repo_type    = std::map<std::string, grid_ptr_type>;
   using remapper_type     = AbstractRemapper<Real>;
   using remapper_ptr_type = std::shared_ptr<remapper_type>;
@@ -69,6 +69,12 @@ public:
       "       Perhaps you forgot to add it creation to the implementation of the grids manager?\n");
 
     return remapper;
+  }
+
+  remapper_ptr_type
+  create_remapper (const std::string& from_grid,
+                   const std::string& to_grid) const {
+    return create_remapper(get_grid(from_grid),get_grid(to_grid));
   }
 
 protected:

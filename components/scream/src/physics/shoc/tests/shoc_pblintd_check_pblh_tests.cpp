@@ -15,6 +15,68 @@ namespace unit_test {
 template <typename D>
 struct UnitWrap::UnitTest<D>::TestPblintdCheckPblh {
 
+  static void run_property()
+  {
+    const auto ustar_min = scream::shoc::Constants<Scalar>::ustar_min;
+    static constexpr Int shcol = 5;
+    static constexpr Int nlev = 4;
+    static constexpr Int nlevi = nlev+1;
+
+    // Tests for the subroutine pblintd_check_pblh
+
+    // TEST ONE
+    // Simple function and a simple test to be sure that "undefined"
+    //   input values of PBLH are modified by this routine.
+
+    // Define mid point height [m]
+    static constexpr Real z[nlev] = {1500, 1000, 500, 20};
+    // Define surface friction velocity [m/s]
+    static constexpr Real ustar[shcol] = {0.1, 4.0, 0.9, 2.0, ustar_min};
+    // Define check array
+    static constexpr bool check[shcol] = {true, false, true, false, true};
+    // Define PBL depth [m]
+    // Make some values purposefully "undefined"
+    static constexpr Real pblh[shcol] = {-20, 500, 1000, -20, 700};
+
+    // Initialize data structure for bridging to F90
+    PblintdCheckPblhData SDS(shcol, nlev, nlevi);
+
+    // Test that the inputs are reasonable
+    REQUIRE( (SDS.shcol == shcol && SDS.nlev == nlev && SDS.nlevi == nlevi) );
+    REQUIRE(shcol > 0);
+    REQUIRE(nlevi == nlev+1);
+
+    // Fill in test data
+    for(Int s = 0; s < shcol; ++s) {
+      SDS.ustar[s] = ustar[s];
+      SDS.check[s] = check[s];
+      SDS.pblh[s] = pblh[s];
+      for(Int n = 0; n < nlev; ++n) {
+        const auto offset = n + s * nlev;
+        SDS.z[offset] = z[n];
+      }
+    }
+
+    // check to make sure the input data makes sense
+    for(Int s = 0; s < shcol; ++s) {
+      REQUIRE(SDS.ustar[s] >= ustar_min);
+      for(Int n = 0; n < nlev; ++n) {
+        const auto offset = n + s * nlev;
+        REQUIRE(SDS.z[offset] > 0);
+      }
+    }
+
+    // Call the fortran implementation
+    pblintd_check_pblh(SDS);
+
+    // Check the result
+    // Check that PBL height is greater than zero.  This is an
+    //  important check to determine if the undefined values were modified.
+    for(Int s = 0; s < shcol; ++s) {
+      REQUIRE(SDS.pblh[s] > 0);
+    }
+  }
+
   static void run_bfb()
   {
     PblintdCheckPblhData f90_data[] = {
@@ -76,7 +138,14 @@ struct UnitWrap::UnitTest<D>::TestPblintdCheckPblh {
 
 namespace {
 
-TEST_CASE("pblintd_check_pblh_bfb", "[shoc]")
+TEST_CASE("pblintd_check_pblh_property", "shoc")
+{
+  using TestStruct = scream::shoc::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestPblintdCheckPblh;
+
+  TestStruct::run_property();
+}
+
+TEST_CASE("pblintd_check_pblh_bfb", "shoc")
 {
   using TestStruct = scream::shoc::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestPblintdCheckPblh;
 
