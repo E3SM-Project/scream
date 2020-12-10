@@ -1410,6 +1410,7 @@ contains
 
     ! reset the npbl to nlev
     npbl = nlev
+    pblh = 0.0;
     call pblintd_check_pblh(shcol, nlev, nlevi, z, ustar, check, pblh)
   end subroutine pblintd_check_pblh_c
   

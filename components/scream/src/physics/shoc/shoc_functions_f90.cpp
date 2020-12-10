@@ -3025,12 +3025,12 @@ void pblintd_check_pblh_f(Int shcol, Int nlev, Int nlevi, Real* z, Real* ustar, 
 
     const auto z_1d  = ekat::subview(z_2d, i);
     Scalar& ustar_s  = ustar_1d(i)[0];
-    Scalar& pblh_s   = pblh_1d(i)[0];
+    Scalar pblh_s {0.};  
 
     bool& check_s = check_1d(i);
 
     SHOC::pblintd_check_pblh(nlevi, npbl, z_1d, ustar_s, check_s, pblh_s);
-
+    pblh_1d(i)[0] = pblh_s;
  });
 
   Kokkos::Array<view_1d, 1> out_1d_views = {pblh_1d};
