@@ -28,9 +28,10 @@ void Functions<S,D>::pblintd_check_pblh(const Int& nlevi, const Int& npbl,
    // latitude value for f so that c = 0.07/f = 700.  Also, do not allow
    // PBL to exceed some maximum (npbl) number of allowable points
    //
-   const auto zs = scalarize(z);
-   if (check) pblh = zs(nlevi-npbl-1);
-   pblh = max(pblh,700.0*ustar);
+   const auto npbl_pack = (nlevi-npbl-1)/Spack::n;
+   const auto npbl_indx = (nlevi-npbl-1)%Spack::n;
+   if (check) pblh = z(npbl_pack)[npbl_indx];
+   pblh = ekat::impl::max(pblh, sp(700)*ustar);
 }
 
 } // namespace shoc

@@ -2994,20 +2994,23 @@ void shoc_grid_f(Int shcol, Int nlev, Int nlevi, Real* zt_grid, Real* zi_grid, R
 
 void pblintd_check_pblh_f(Int shcol, Int nlev, Int nlevi, Real* z, Real* ustar, bool* check, Real* pblh)
 {
-  using SHOC       = Functions<Real, DefaultDevice>;
-  using Spack      = typename SHOC::Spack;
-  using Scalar     = typename SHOC::Scalar;
-  using Pack1      = typename ekat::Pack<Real, 1>;
-  using view_1d    = typename SHOC::view_1d<Pack1>;
-  using view_2d    = typename SHOC::view_2d<Spack>;
+  using SHOC         = Functions<Real, DefaultDevice>;
+  using Spack        = typename SHOC::Spack;
+  using Scalar       = typename SHOC::Scalar;
+  using Pack1        = typename ekat::Pack<Real, 1>;
+  using Bpack1       = typename ekat::Pack<bool, 1>;
+  using view_bool_1d = typename SHOC::view_1d<Bpack1>;
+  using view_1d      = typename SHOC::view_1d<Pack1>;
+  using view_2d      = typename SHOC::view_2d<Spack>;
 
   Kokkos::Array<view_2d, 1> views_2d;
   ekat::host_to_device({z}, shcol, nlev, views_2d, true);
   view_2d z_2d (views_2d[0]);
 
-  Kokkos::Array<view_1d, 1> views_1d;
-  ekat::host_to_device({ustar}, shcol, views_1d);
-  view_1d ustar_1d (views_1d[0]);
+  Kokkos::Array<view_1d, 2> views_1d;
+  ekat::host_to_device({ustar, pblh}, shcol, views_1d);
+  view_1d ustar_1d (views_1d[0]),
+          pblh_1d  (views_1d[1]);
 
   SHOC::view_1d<bool> check_1d("check", shcol);
   const auto host_check_1d = Kokkos::create_mirror_view(check_1d);
@@ -3015,8 +3018,6 @@ void pblintd_check_pblh_f(Int shcol, Int nlev, Int nlevi, Real* z, Real* ustar, 
     host_check_1d(k) = check[k];
   }
   Kokkos::deep_copy(check_1d, host_check_1d);
-
-  view_1d pblh_1d("pblh_1d", shcol);
 
   Int npbl = nlev;
 
