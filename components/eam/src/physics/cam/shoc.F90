@@ -96,6 +96,9 @@ real(rtype), parameter :: pblmaxp = 4.e4_rtype
 ! third moment of vertical velocity clipping factor
 real(rtype), parameter :: w3clip=1.2_rtype
 
+! Revert to a simple 1.5 TKE closure
+logical(btype), parameter :: do_15closure = .true.
+
 ! ========
 ! Set upper limits for certain SHOC quantities
 ! Note that these upper limits are quite high
@@ -357,7 +360,7 @@ subroutine shoc_main ( &
   real(rtype), intent(out) :: w3(shcol,nlevi)
   ! liquid water flux [kg/kg m/s]
   real(rtype), intent(out) :: wqls_sec(shcol,nlev)
-  ! brunt vaisala frequency [s-1]
+  ! brunt vaisala frequency [s-2]
   real(rtype), intent(out) :: brunt(shcol,nlev)
   ! return to isotropic timescale [s]
   real(rtype), intent(out) :: isotropy(shcol,nlev)
@@ -391,6 +394,10 @@ subroutine shoc_main ( &
   real(rtype) :: obklen(shcol)
   ! Kinematic surface buoyancy flux [m^2/s^3]
   real(rtype) :: kbfs(shcol)
+
+  ! Temporary storage arrays
+  real(rtype) :: wqw_sec_diag(shcol,nlevi)
+  real(rtype) :: wthl_sec_diag(shcol,nlevi)
 
   ! Variables related to energy conservation
   real(rtype) :: se_b(shcol),ke_b(shcol),&
@@ -507,26 +514,44 @@ subroutine shoc_main ( &
        thetal,qw,qtracers,tke,&             ! Input/Output
        u_wind,v_wind)                       ! Input/Output
 
-    ! Diagnose the second order moments
-    call diag_second_shoc_moments(&
-       shcol,nlev,nlevi, &                    ! Input
-       thetal,qw,u_wind,v_wind,tke, &         ! Input
-       isotropy,tkh,tk,&                      ! Input
-       dz_zi,zt_grid,zi_grid,shoc_mix, &      ! Input
-       wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &   ! Input
-       thl_sec, qw_sec,wthl_sec,wqw_sec,&     ! Output
-       qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Output
-       w_sec)                                 ! Output
+      ! Diagnose the second order moments, including transport
+      !  which is needed regardless if SHOC or 1.5 closure
+      !  is used (for diagnostic purposes)
+      call diag_second_shoc_moments(&
+         shcol,nlev,nlevi, &                    ! Input
+         thetal,qw,u_wind,v_wind,tke, &         ! Input
+         isotropy,tkh,tk,&                      ! Input
+         dz_zi,zt_grid,zi_grid,shoc_mix, &      ! Input
+         wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &   ! Input
+         thl_sec, qw_sec,wthl_sec,wqw_sec,&     ! Output
+         qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Output
+         w_sec)                                 ! Output
 
-    ! Diagnose the third moment of vertical velocity,
-    !  needed for the PDF closure
-    call diag_third_shoc_moments(&
-       shcol,nlev,nlevi,&                   ! Input
-       w_sec,thl_sec,&                      ! Input
-       wthl_sec,isotropy,brunt,&            ! Input
-       thetal,tke,&                         ! Input
-       dz_zt,dz_zi,zt_grid,zi_grid,&        ! Input
-       w3)                                  ! Output
+    if (.not. do_15closure) then
+
+      ! Diagnose the third moment of vertical velocity,
+      !  needed for the PDF closure
+      call diag_third_shoc_moments(&
+         shcol,nlev,nlevi,&                   ! Input
+         w_sec,thl_sec,&                      ! Input
+         wthl_sec,isotropy,brunt,&            ! Input
+         thetal,tke,&                         ! Input
+         dz_zt,dz_zi,zt_grid,zi_grid,&        ! Input
+         w3)                                  ! Output
+   
+    else
+
+       ! Else we will call this routine to set all higher
+       !   order moments appropriately for a 1.5 TKE closure
+       !   that assumes no SGS variability.  This is for purposes
+       !   of the assumed PDF code.
+       call diag_moments_nosgs(&
+          shcol,nlev,nlevi,&                  ! Input
+          w_sec,thl_sec,qw_sec,wthl_sec,&     ! Output
+          wqw_sec,qwthl_sec,w3,&              ! Output
+          wthl_sec_diag,wqw_sec_diag)         ! Output
+
+    endif
 
     ! Call the PDF to close on SGS cloud and turbulence
     call shoc_assumed_pdf(&
@@ -541,6 +566,17 @@ subroutine shoc_main ( &
     ! Check TKE to make sure values lie within acceptable
     !  bounds after vertical advection, etc.
     call check_tke(shcol,nlev,tke)
+
+    ! If a 1.5 closure was used, copy the saved values
+    !  of heat and moisture flux back to the proper arrays
+    !  so that they are representative of the true values
+    !  used for transport in the diagnostics
+    if (do_15closure) then
+       call diag_moments_nosgs_fluxdiag(&
+         shcol,nlevi,&                      ! Input
+         wthl_sec_diag,wqw_sec_diag,&       ! Input
+         wthl_sec,wqw_sec)                  ! Output
+    endif
 
   enddo ! end time loop
 
@@ -1149,6 +1185,100 @@ subroutine sfc_fluxes(shcol, num_tracer, dtime, rho_zi_sfc, rdp_zt_sfc, wthl_sfc
 
 end subroutine sfc_fluxes
 
+!=======================================================
+! Diagnose moments if 1.5 TKE closure used
+
+subroutine diag_moments_nosgs(&
+         shcol,nlev,nlevi,&                    ! Input
+         w_sec,thl_sec,qw_sec,wthl_sec,&       ! Output
+         wqw_sec,qwthl_sec,w3,&                ! Output
+         wthl_sec_diag,wqw_sec_diag)           ! Output
+
+  implicit none
+
+! INPUT VARIABLES
+  ! number of SHOC columns
+  integer, intent(in) :: shcol
+  ! number of midpoint levels
+  integer, intent(in) :: nlev
+  ! number of interface levels
+  integer, intent(in) :: nlevi
+  
+! OUTPUT VARIABLES
+  ! vertical velocity variance [m2/s2]
+  real(rtype), intent(out) :: w_sec(shcol,nlev)
+  ! second order liquid wat. potential temp. [K^2]
+  real(rtype), intent(out) :: thl_sec(shcol,nlevi)
+  ! second order total water mixing rat. [kg^2/kg^2]
+  real(rtype), intent(out) :: qw_sec(shcol,nlevi)
+  ! covariance of temp and moisture [K kg/kg]
+  real(rtype), intent(out) :: qwthl_sec(shcol,nlevi)
+  ! vertical flux of heat [K m/s]
+  real(rtype), intent(out) :: wthl_sec(shcol,nlevi)
+  ! vertical flux of total water [kg/kg m/s]
+  real(rtype), intent(out) :: wqw_sec(shcol,nlevi)
+  !vertical flux of heat [K m/s] for diagnostics
+  real(rtype), intent(out) :: wthl_sec_diag(shcol,nlevi)
+  ! vertical flux of total water [kg/kg m/s] for diagnostics
+  real(rtype), intent(out) :: wqw_sec_diag(shcol,nlevi)
+  ! third moment vertical velocity [m3/s3]
+  real(rtype), intent(out) :: w3(shcol,nlevi)
+
+  ! Before we write over the flux terms with zeros, for the
+  !   purposes of the PDF we need to save these terms so that
+  !   the vertical flux of heat and moisture is adequately saved
+  !   for diagnostic purposes
+  wthl_sec_diag(:shcol,:nlevi) = wthl_sec(:shcol,:nlevi)
+  wqw_sec_diag(:shcol,:nlevi) = wqw_sec(:shcol,:nlevi)
+
+  w_sec(:shcol,:nlev) = 0.0_rtype
+  thl_sec(:shcol,:nlevi) = 0.0_rtype
+  qw_sec(:shcol,:nlevi) = 0.0_rtype
+  wthl_sec(:shcol,:nlevi) = 0.0_rtype
+  wqw_sec(:shcol,:nlevi) = 0.0_rtype
+  qwthl_sec(:shcol,:nlevi) = 0.0_rtype
+  w3(:shcol,:nlevi) = 0.0_rtype
+
+  return
+end subroutine diag_moments_nosgs
+
+!=======================================================
+! If 1.5 TKE is used, copy the vertical flux moments back
+!   into proper arrays for accurate diagnostic purposes
+
+subroutine diag_moments_nosgs_fluxdiag(&
+         shcol,nlevi,&                    ! Input
+         wthl_sec_diag,wqw_sec_diag,&     ! Input
+         wthl_sec,wqw_sec)                ! Output
+
+  implicit none
+
+! INPUT VARIABLES
+  ! number of SHOC columns
+  integer, intent(in) :: shcol
+  ! number of interface levels
+  integer, intent(in) :: nlevi
+  !vertical flux of heat [K m/s] for diagnostics
+  real(rtype), intent(in) :: wthl_sec_diag(shcol,nlevi)
+  ! vertical flux of total water [kg/kg m/s] for diagnostics
+  real(rtype), intent(in) :: wqw_sec_diag(shcol,nlevi)
+
+! OUTPUT VARIABLES
+  ! vertical flux of heat [K m/s]
+  real(rtype), intent(out) :: wthl_sec(shcol,nlevi)
+  ! vertical flux of total water [kg/kg m/s]
+  real(rtype), intent(out) :: wqw_sec(shcol,nlevi)
+
+  ! If using 1.5 TKE, we overwrote the vertical flux terms
+  !   with zeros so the PDF thought there was no SGS variability,
+  !   though need to restore these arrays so that diagnostics
+  !   accurately represents the flux of the transport applied
+  !   in the turbulence calculation
+  wthl_sec(:shcol,:nlevi) = wthl_sec_diag(:shcol,:nlevi)
+  wqw_sec(:shcol,:nlevi) = wqw_sec_diag(:shcol,:nlevi)
+
+  return
+end subroutine diag_moments_nosgs_fluxdiag
 
 !=======================================================
 ! SHOC Diagnose the second order moments,
@@ -1843,7 +1973,7 @@ subroutine diag_third_shoc_moments(&
   real(rtype), intent(in) :: wthl_sec(shcol,nlevi)
   ! return to isotropy timescale [s]
   real(rtype), intent(in) :: isotropy(shcol,nlev)
-  ! brunt vaisallia frequency [s]
+  ! brunt vaisallia frequency [s-2]
   real(rtype), intent(in) :: brunt(shcol,nlev)
   ! liquid water potential temperature [K]
   real(rtype), intent(in) :: thetal(shcol,nlev)
@@ -3061,7 +3191,7 @@ subroutine shoc_tke(&
   real(rtype), intent(in) :: pres(shcol,nlev)
   ! absolute temperature [K]
   real(rtype), intent(in) :: tabs(shcol,nlev)
-  ! Brunt Vaisalla frequncy [/s]
+  ! Brunt Vaisalla frequncy [/s^2]
   real(rtype), intent(in) :: brunt(shcol,nlev)
   ! heights on midpoint grid [m]
   real(rtype), intent(in) :: zt_grid(shcol,nlev)
@@ -3102,7 +3232,7 @@ subroutine shoc_tke(&
 
   !advance sgs TKE
   call adv_sgs_tke(nlev, shcol, dtime, shoc_mix, wthv_sec, &
-       sterm_zt, tk, tke, a_diss)
+       sterm_zt, tk, brunt, tke, a_diss)
 
   !Compute isotropic time scale [s]
   call isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
@@ -3131,7 +3261,7 @@ subroutine integ_column_stability(nlev, shcol, dz_zt, pres, brunt, brunt_int)
   real(rtype), intent(in) :: dz_zt(shcol,nlev)
   ! pressure [Pa]
   real(rtype), intent(in) :: pres(shcol,nlev)
-  ! Brunt Vaisalla frequncy [/s]
+  ! Brunt Vaisalla frequncy [/s^2]
   real(rtype), intent(in) :: brunt(shcol,nlev)
 
   !intent-out
@@ -3226,7 +3356,7 @@ end subroutine compute_shr_prod
 ! Advance SGS TKE
 
 subroutine adv_sgs_tke(nlev, shcol, dtime, shoc_mix, wthv_sec, &
-     sterm_zt, tk, tke, a_diss)
+     sterm_zt, tk, brunt, tke, a_diss)
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
   use shoc_iso_f, only: adv_sgs_tke_f
@@ -3247,6 +3377,8 @@ subroutine adv_sgs_tke(nlev, shcol, dtime, shoc_mix, wthv_sec, &
   real(rtype), intent(in) :: sterm_zt(shcol,nlev)
   ! eddy coefficient for momentum [m2/s]
   real(rtype), intent(in) :: tk(shcol,nlev)
+  ! local moist brunt vaisalla frequency [/s^2]
+  real(rtype), intent(in) :: brunt(shcol,nlev)
 
   ! intent-inout
   ! turbulent kinetic energy [m2/s2]
@@ -3282,7 +3414,14 @@ subroutine adv_sgs_tke(nlev, shcol, dtime, shoc_mix, wthv_sec, &
      do i = 1, shcol
 
         ! Compute buoyant production term
-        a_prod_bu=(ggr/basetemp)*wthv_sec(i,k)
+        if (do_15closure) then
+          ! if 1.5 closure then buoyancy flux closed
+          !   as function of the local moist brunt vaisalla
+          !   frequency since there is no SGS variability
+          a_prod_bu=-tk(i,k)*brunt(i,k)
+        else
+          a_prod_bu=(ggr/basetemp)*wthv_sec(i,k)
+        endif
 
         tke(i,k)=max(0._rtype,tke(i,k))
 
@@ -3328,7 +3467,7 @@ subroutine isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
   real(rtype), intent(in) :: tke(shcol,nlev)
   ! Dissipation term
   real(rtype), intent(in) :: a_diss(shcol,nlev)
-  ! Brunt Vaisalla frequncy [/s]
+  ! Brunt Vaisalla frequncy [/s^2]
   real(rtype), intent(in) :: brunt(shcol,nlev)
 
   ! intent-out
@@ -3535,7 +3674,7 @@ subroutine shoc_length(&
   real(rtype), intent(in) :: thv(shcol,nlev)
 
   ! OUTPUT VARIABLES
-  ! Brunt-Vaisala frequency [/s]
+  ! Brunt-Vaisala frequency [/s^2]
   real(rtype), intent(out) :: brunt(shcol,nlev)
   ! SHOC mixing length [m]
   real(rtype), intent(out) :: shoc_mix(shcol,nlev)
@@ -4761,7 +4900,7 @@ subroutine compute_brunt_shoc_length(nlev,nlevi,shcol,dz_zt,thv,thv_zi,brunt)
   real(rtype), intent(in) :: thv(shcol,nlev)
   ! virtual potential temperature [K] at interface
   real(rtype), intent(in) :: thv_zi(shcol,nlevi)
-  ! brunt vaisala frequency [s-1]
+  ! brunt vaisala frequency [s-2]
   real(rtype), intent(out) :: brunt(shcol, nlev)
   integer k, i
 
@@ -4831,7 +4970,7 @@ subroutine compute_shoc_mix_shoc_length(nlev,shcol,tke,brunt,zt_grid,l_inf,shoc_
   integer, intent(in) :: nlev, shcol
   ! turbulent kinetic energy [m^2/s^2]
   real(rtype), intent(in) :: tke(shcol,nlev)
-  ! brunt vaisala frequency [s-1]
+  ! brunt vaisala frequency [s-2]
   real(rtype), intent(in) :: brunt(shcol,nlev)
   ! heights, for thermo grid [m]
   real(rtype), intent(in) :: zt_grid(shcol,nlev)
