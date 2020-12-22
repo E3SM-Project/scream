@@ -3191,14 +3191,16 @@ void pblintd_check_pblh_f(Int shcol, Int nlev, Int nlevi, Int npbl, Real* z, Rea
 void pblintd_f(Int shcol, Int nlev, Int nlevi, Real* z, Real* zi, Real* thl, Real* ql, Real* q, 
               Real* u, Real* v, Real* ustar, Real* obklen, Real* kbfs, Real* cldn, Real* pblh)
 {
-  using SHOC       = Functions<Real, DefaultDevice>;
-  using Spack      = typename SHOC::Spack;
-  using Scalar     = typename SHOC::Scalar;
-  using Pack1      = typename ekat::Pack<Real, 1>;
-  using view_1d    = typename SHOC::view_1d<Pack1>;
-  using view_2d    = typename SHOC::view_2d<Spack>;
-  using ExeSpace   = typename SHOC::KT::ExeSpace;
-  using MemberType = typename SHOC::MemberType;
+  using SHOC         = Functions<Real, DefaultDevice>;
+  using Spack        = typename SHOC::Spack;
+  using Scalar       = typename SHOC::Scalar;
+  using Pack1        = typename ekat::Pack<Real, 1>;
+  using BPack1       = typename ekat::Pack<bool, 1>;
+  using view_1d      = typename SHOC::view_1d<Pack1>;
+  using view_bool_1d = typename SHOC::view_1d<BPack1>;
+  using view_2d      = typename SHOC::view_2d<Spack>;
+  using ExeSpace     = typename SHOC::KT::ExeSpace;
+  using MemberType   = typename SHOC::MemberType;
 
   std::vector<view_2d> views_2d(8);
   ekat::host_to_device({z, zi, thl, ql, q, u, v, cldn}, shcol, nlev, views_2d, true);
@@ -3218,12 +3220,7 @@ void pblintd_f(Int shcol, Int nlev, Int nlevi, Real* z, Real* zi, Real* thl, Rea
           obklen_1d  (views_1d[1]),
           kbfs_1d    (views_1d[2]);
 
-  SHOC::view_1d<bool> check_1d("check", shcol);
-  const auto host_check_1d = Kokkos::create_mirror_view(check_1d);
-  Kokkos::deep_copy(check_1d, host_check_1d);
-
-  view_1d pblh_1d("pblh_1d", shcol),
-          tlv_1d("tlv_1d", shcol);
+  view_1d pblh_1d("pblh_1d", shcol);
 
   view_2d rino_2d("rino_2d", shcol, nlev),
           thv_2d ("thv_2d", shcol, nlev);
@@ -3250,8 +3247,6 @@ void pblintd_f(Int shcol, Int nlev, Int nlevi, Real* z, Real* zi, Real* thl, Rea
     Scalar& obklen_s = obklen_1d(i)[0];
     Scalar& kbfs_s   = kbfs_1d(i)[0];
     Scalar& pblh_s   = pblh_1d(i)[0];
-    Scalar& tlv_s    = tlv_1d(i)[0];
-    bool& check_s    = check_1d(i);
 
     SHOC::pblintd(team, nlev, nlevi, npbl, z_1d, zi_1d, thl_1d, ql_1d, q_1d, u_1d, v_1d, cldn_1d, rino_1d, thv_1d,
                   ustar_s, obklen_s, kbfs_s, pblh_s);
