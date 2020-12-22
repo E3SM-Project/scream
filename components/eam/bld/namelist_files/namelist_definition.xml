@@ -3435,6 +3435,12 @@ Coefficient for eddy diffusivity for momentum for stable boundary layers.
 Default: set by build-namelist
 </entry>
 
+<entry id="do_no_sgs_var" type="logical" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+If true SHOC will turn into a 1.5 TKE closure with no SGS variability
+Default: set by build-namelist
+</entry>
+
 <entry id="clubb_cloudtop_cooling" type="logical"  category="pblrad"
        group="clubbpbl_diff_nl" valid_values="" >
 Apply cloud top radiative cooling parameterization

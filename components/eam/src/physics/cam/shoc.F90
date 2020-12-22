@@ -96,9 +96,6 @@ real(rtype), parameter :: pblmaxp = 4.e4_rtype
 ! third moment of vertical velocity clipping factor
 real(rtype), parameter :: w3clip=1.2_rtype
 
-! Revert to a simple 1.5 TKE closure
-logical(btype), parameter :: do_15closure = .true.
-
 ! ========
 ! Set upper limits for certain SHOC quantities
 ! Note that these upper limits are quite high
@@ -122,6 +119,10 @@ real(rtype), parameter :: ricr  =  0.3_rtype      ! Critical richardson number
 ! Maximum number of levels in pbl from surface
 integer :: npbl
 
+! Revert SHOC to a 1.5 TKE closure with an all or nothing
+!  condensation scheme?
+logical(btype) :: do_15closure
+
 !==============================================================
 ! Begin SHOC parameterization code!
 contains
@@ -134,7 +135,8 @@ subroutine shoc_init( &
          thl2tune_in, qw2tune_in, qwthl2tune_in, &
          w2tune_in, length_fac_in, c_diag_3rd_mom_in, &
          lambda_low_in, lambda_high_in, lambda_slope_in, &
-         lambda_thresh_in, Ckh_in, Ckm_in, Ckh_s_in, Ckm_s_in)
+         lambda_thresh_in, Ckh_in, Ckm_in, Ckh_s_in, Ckm_s_in, &
+         do_shoc_sgs_var)
 
   implicit none
 
@@ -174,6 +176,7 @@ subroutine shoc_init( &
   real(rtype), intent(in), optional :: Ckm_in ! eddy diffusivity coefficient for momentum
   real(rtype), intent(in), optional :: Ckh_s_in ! Stable PBL diffusivity for heat
   real(rtype), intent(in), optional :: Ckm_s_in ! Stable PBL diffusivity for momentum
+  logical(btype), intent(in) :: do_no_sgs_var
 
   integer :: k
 
@@ -203,6 +206,10 @@ subroutine shoc_init( &
   if (present(Ckm_in)) Ckm=Ckm_in
   if (present(Ckh_s_in)) Ckh_s=Ckh_s_in
   if (present(Ckm_s_in)) Ckm_s=Ckm_s_in
+  ! If host model is not doing SGS variability,
+  !   then revert SHOC to a 1.5 turbulence closure with an
+  !   all or nothing condensation scheme.
+  do_15closure = do_no_sgs_var
 
    ! Limit pbl height to regions below 400 mb
    ! npbl = max number of levels (from bottom) in pbl

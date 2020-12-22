@@ -109,6 +109,11 @@ module shoc_intr
   real(r8) :: shoc_Ckh_s = unset_r8
   real(r8) :: shoc_Ckm_s = unset_r8
 
+  
+  ! default.  If set to true then we really won't be running SHOC but a 
+  !  1.5 TKE closure with an all or nothing condensation scheme.
+  logical :: do_no_sgs_var = .false.
+  
   integer :: edsclr_dim
 
   logical      :: prog_modal_aero
@@ -229,7 +234,7 @@ end function shoc_implements_cnst
                                shoc_w2tune, shoc_length_fac, shoc_c_diag_3rd_mom, &
                                shoc_lambda_low, shoc_lambda_high, shoc_lambda_slope, &
                                shoc_lambda_thresh, shoc_Ckh, shoc_Ckm, shoc_Ckh_s, &
-                               shoc_Ckm_s
+                               shoc_Ckm_s, do_no_sgs_var
 
     !  Read namelist to determine if SHOC history should be called
     if (masterproc) then
@@ -265,6 +270,7 @@ end function shoc_implements_cnst
       call mpibcast(shoc_Ckm,                1,   mpir8,   0, mpicom)
       call mpibcast(shoc_Ckh_s,              1,   mpir8,   0, mpicom)
       call mpibcast(shoc_Ckm_s,              1,   mpir8,   0, mpicom)
+      call mpibcast(do_no_sgs_var,           1,   mpilog,  0, mpicom)
 #endif
 
   end subroutine shoc_readnl
@@ -448,7 +454,7 @@ end function shoc_implements_cnst
     call shoc_init( &
           pver, gravit, rair, rh2o, cpair, &
           zvir, latvap, latice, karman, p0_shoc, &
-          pref_mid, nbot_shoc, ntop_shoc, &
+          pref_mid, nbot_shoc, ntop_shoc, do_no_sgs_var, &
           shoc_thl2tune, shoc_qw2tune, shoc_qwthl2tune, &
           shoc_w2tune, shoc_length_fac, shoc_c_diag_3rd_mom, &
           shoc_lambda_low, shoc_lambda_high, shoc_lambda_slope, &
