@@ -4084,6 +4084,10 @@ subroutine pblintd(&
        ustar,obklen,kbfs,cldn,&       ! Input
        pblh)                          ! Output
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use shoc_iso_f, only: pblintd_f
+#endif
+
     !-----------------------------------------------------------------------
     !
     ! Purpose:
@@ -4142,6 +4146,16 @@ subroutine pblintd(&
     real(rtype) :: tlv(shcol)              ! ref. level pot tmp + tmp excess
 
     logical(btype)  :: check(shcol)            ! True=>chk if Richardson no.>critcal
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  if (use_cxx) then
+    call pblintd_f(shcol,nlev,nlevi,&             ! Input
+                   z,zi,thl,ql,q,u,v,&                        ! Input
+                   ustar,obklen,kbfs,cldn,&       ! Input
+                   pblh)                          ! Output
+    return
+  endif
+#endif
 
     !
     ! Compute Obukhov length virtual temperature flux and various arrays for use later:

@@ -3188,9 +3188,77 @@ void pblintd_check_pblh_f(Int shcol, Int nlev, Int nlevi, Int npbl, Real* z, Rea
   ekat::device_to_host({pblh}, shcol, out_1d_views);
 }
 
-void pblintd_f(Int shcol, Int nlev, Int nlevi, Real* z, Real* zi, Real* thl, Real* ql, Real* q, Real* u, Real* v, Real* ustar, Real* obklen, Real* kbfs, Real* cldn, Real* pblh)
+void pblintd_f(Int shcol, Int nlev, Int nlevi, Real* z, Real* zi, Real* thl, Real* ql, Real* q, 
+              Real* u, Real* v, Real* ustar, Real* obklen, Real* kbfs, Real* cldn, Real* pblh)
 {
-  // TODO
+  using SHOC       = Functions<Real, DefaultDevice>;
+  using Spack      = typename SHOC::Spack;
+  using Scalar     = typename SHOC::Scalar;
+  using Pack1      = typename ekat::Pack<Real, 1>;
+  using view_1d    = typename SHOC::view_1d<Pack1>;
+  using view_2d    = typename SHOC::view_2d<Spack>;
+  using ExeSpace   = typename SHOC::KT::ExeSpace;
+  using MemberType = typename SHOC::MemberType;
+
+  std::vector<view_2d> views_2d(8);
+  ekat::host_to_device({z, zi, thl, ql, q, u, v, cldn}, shcol, nlev, views_2d, true);
+
+  view_2d z_2d    (views_2d[0]),
+          zi_2d   (views_2d[1]),
+          thl_2d  (views_2d[2]),
+          ql_2d   (views_2d[3]),
+          q_2d    (views_2d[4]),
+          u_2d    (views_2d[5]),
+          v_2d    (views_2d[6]),
+          cldn_2d (views_2d[7]);
+
+  std::vector<view_1d> views_1d(3);
+  ekat::host_to_device({ustar, obklen, kbfs}, shcol, views_1d);
+  view_1d ustar_1d   (views_1d[0]),
+          obklen_1d  (views_1d[1]),
+          kbfs_1d    (views_1d[2]);
+
+  SHOC::view_1d<bool> check_1d("check", shcol);
+  const auto host_check_1d = Kokkos::create_mirror_view(check_1d);
+  Kokkos::deep_copy(check_1d, host_check_1d);
+
+  view_1d pblh_1d("pblh_1d", shcol),
+          tlv_1d("tlv_1d", shcol);
+
+  view_2d rino_2d("rino_2d", shcol, nlev),
+          thv_2d ("thv_2d", shcol, nlev);
+
+  Int npbl = nlev;
+  const Int nlev_pack = ekat::npack<Spack>(nlev);
+  const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_pack);
+  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+    const Int i = team.league_rank();
+
+    auto z_1d    = ekat::subview(z_2d, i);
+    auto zi_1d   = ekat::subview(zi_2d, i);
+    auto thl_1d  = ekat::subview(thl_2d, i);
+    auto ql_1d   = ekat::subview(ql_2d, i);
+    auto q_1d    = ekat::subview(q_2d, i);
+    auto u_1d    = ekat::subview(u_2d, i);
+    auto v_1d    = ekat::subview(v_2d, i);
+    auto cldn_1d = ekat::subview(cldn_2d, i);
+
+    auto rino_1d = ekat::subview(rino_2d, i);
+    auto thv_1d  = ekat::subview(thv_2d, i);
+
+    Scalar& ustar_s  = ustar_1d(i)[0];
+    Scalar& obklen_s = obklen_1d(i)[0];
+    Scalar& kbfs_s   = kbfs_1d(i)[0];
+    Scalar& pblh_s   = pblh_1d(i)[0];
+    Scalar& tlv_s    = tlv_1d(i)[0];
+    bool& check_s    = check_1d(i);
+
+    SHOC::pblintd(team, nlev, nlevi, npbl, z_1d, zi_1d, thl_1d, ql_1d, q_1d, u_1d, v_1d, cldn_1d, rino_1d, thv_1d,
+                  ustar_s, obklen_s, kbfs_s, pblh_s);
+  });
+
+  std::vector<view_1d> inout_views = {pblh_1d};
+  ekat::device_to_host({pblh}, shcol, inout_views);  
 }
 
 void shoc_tke_f(Int shcol, Int nlev, Int nlevi, Real dtime, Real* wthv_sec, Real* shoc_mix, Real* dz_zi, Real* dz_zt, Real* pres,

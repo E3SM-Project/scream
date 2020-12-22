@@ -138,7 +138,10 @@ struct UnitWrap::UnitTest<D>::TestPblintd {
   static void run_bfb()
   {
     PblintdData f90_data[] = {
-      // TODO
+      PblintdData(36, 72, 73),
+      PblintdData(72,  72, 73),
+      PblintdData(128, 72, 73),
+      PblintdData(256, 72, 73),    
     };
 
     static constexpr Int num_runs = sizeof(f90_data) / sizeof(PblintdData);
@@ -152,7 +155,10 @@ struct UnitWrap::UnitTest<D>::TestPblintd {
     // Create copies of data for use by cxx. Needs to happen before fortran calls so that
     // inout data is in original state
     PblintdData cxx_data[] = {
-      // TODO
+      PblintdData(f90_data[0]),
+      PblintdData(f90_data[1]),
+      PblintdData(f90_data[2]),
+      PblintdData(f90_data[3]),     
     };
 
     // Assume all data is in C layout
