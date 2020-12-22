@@ -91,9 +91,6 @@ real(rtype), parameter :: ustar_min = 0.01_rtype
 ! PBL max depth in pressure units
 real(rtype), parameter :: pblmaxp = 4.e4_rtype
 
-! Revert to a simple 1.5 TKE closure
-logical(btype), parameter :: do_15closure = .true.
-
 ! ========
 ! Set upper limits for certain SHOC quantities
 ! Note that these upper limits are quite high
@@ -117,6 +114,10 @@ real(rtype), parameter :: ricr  =  0.3_rtype      ! Critical richardson number
 ! Maximum number of levels in pbl from surface
 integer :: npbl
 
+! Revert SHOC to a 1.5 TKE closure with an all or nothing
+!  condensation scheme?
+logical(btype) :: do_15closure
+
 !==============================================================
 ! Begin SHOC parameterization code!
 contains
@@ -125,7 +126,8 @@ contains
 subroutine shoc_init( &
          nlev, gravit, rair, rh2o, cpair, &
          zvir, latvap, latice, karman, &
-         pref_mid, nbot_shoc, ntop_shoc)
+         pref_mid, nbot_shoc, ntop_shoc, &
+         do_no_sgs_var)
 
   implicit none
 
@@ -149,6 +151,8 @@ subroutine shoc_init( &
   integer, intent(in)   :: nbot_shoc ! Bottom level to which SHOC is applied
   integer, intent(in)   :: ntop_shoc ! Top level to which SHOC is applied
 
+  logical(btype), intent(in) :: do_no_sgs_var
+
   integer :: k
 
   ggr = gravit   ! [m/s2]
@@ -159,6 +163,10 @@ subroutine shoc_init( &
   lcond = latvap ! [J/kg]
   lice = latice  ! [J/kg]
   vk = karman    ! [-]
+  ! If host model is not doing SGS variability,
+  !   then revert SHOC to a 1.5 turbulence closure with an
+  !   all or nothing condensation scheme.
+  do_15closure = do_no_sgs_var
 
    ! Limit pbl height to regions below 400 mb
    ! npbl = max number of levels (from bottom) in pbl

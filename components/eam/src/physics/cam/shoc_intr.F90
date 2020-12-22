@@ -94,6 +94,10 @@ module shoc_intr
   real(r8) :: shoc_timestep = unset_r8  ! Default SHOC timestep set in namelist
   real(r8) :: dp1
   
+  ! default.  If set to true then we really won't be running SHOC but a 
+  !  1.5 TKE closure with an all or nothing condensation scheme.
+  logical :: do_no_sgs_var = .false.
+  
   integer :: edsclr_dim
   
   logical      :: prog_modal_aero
@@ -210,7 +214,7 @@ end function shoc_implements_cnst
     
     integer :: iunit, read_status
     
-    namelist /shocpbl_diff_nl/ shoc_timestep
+    namelist /shocpbl_diff_nl/ shoc_timestep, do_no_sgs_var
     
     !  Read namelist to determine if SHOC history should be called
     if (masterproc) then
@@ -232,6 +236,7 @@ end function shoc_implements_cnst
 #ifdef SPMD
 ! Broadcast namelist variables
       call mpibcast(shoc_timestep,           1,   mpir8,   0, mpicom)
+      call mpibcast(do_no_sgs_var,           1,   mpilog,  0, mpicom)
 #endif
   
   end subroutine shoc_readnl   
@@ -402,7 +407,8 @@ end function shoc_implements_cnst
     call shoc_init( &
           pver, gravit, rair, rh2o, cpair, &
 	  zvir, latvap, latice, karman, &
-	  pref_mid, nbot_shoc, ntop_shoc )   
+	  pref_mid, nbot_shoc, ntop_shoc, &
+          do_no_sgs_var )   
     
     ! --------------- !
     ! End             !
