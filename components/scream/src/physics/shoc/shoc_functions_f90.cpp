@@ -3220,7 +3220,10 @@ void pblintd_f(Int shcol, Int nlev, Int nlevi, Real* z, Real* zi, Real* thl, Rea
           obklen_1d  (views_1d[1]),
           kbfs_1d    (views_1d[2]);
 
-  view_1d pblh_1d("pblh_1d", shcol);
+  view_1d pblh_1d("pblh_1d", shcol),
+          tlv_1d("tlv_1d", shcol);
+
+  view_bool_1d check_1d("check_1d", shcol);
 
   view_2d rino_2d("rino_2d", shcol, nlev),
           thv_2d ("thv_2d", shcol, nlev);
@@ -3247,9 +3250,11 @@ void pblintd_f(Int shcol, Int nlev, Int nlevi, Real* z, Real* zi, Real* thl, Rea
     Scalar& obklen_s = obklen_1d(i)[0];
     Scalar& kbfs_s   = kbfs_1d(i)[0];
     Scalar& pblh_s   = pblh_1d(i)[0];
+    Scalar& tlv_s    = tlv_1d(i)[0];
+    bool& check_s    = check_1d(i)[0];
 
     SHOC::pblintd(team, nlev, nlevi, npbl, z_1d, zi_1d, thl_1d, ql_1d, q_1d, u_1d, v_1d, cldn_1d, rino_1d, thv_1d,
-                  ustar_s, obklen_s, kbfs_s, pblh_s);
+                  ustar_s, obklen_s, kbfs_s, tlv_s, check_s, pblh_s);
   });
 
   std::vector<view_1d> inout_views = {pblh_1d};

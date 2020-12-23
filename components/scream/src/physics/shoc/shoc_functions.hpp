@@ -534,7 +534,7 @@ struct Functions
       const uview_1d<const Spack>& v, const uview_1d<const Spack>& cldn,
       const uview_1d<Spack>& rino, const uview_1d<Spack>& thv,
       const Scalar& ustar, const Scalar& obklen, const Scalar& kbfs,
-      Scalar& pblh);
+      Scalar& tlv, bool& check, Scalar& pblh);
 
 
   KOKKOS_FUNCTION

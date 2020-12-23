@@ -20,7 +20,7 @@ void Functions<S,D>::pblintd(const MemberType& team, const Int& nlev, const Int&
       const uview_1d<const Spack>& v, const uview_1d<const Spack>& cldn,
       const uview_1d<Spack>& rino, const uview_1d<Spack>& thv,
       const Scalar& ustar, const Scalar& obklen, const Scalar& kbfs, 
-      Scalar& pblh)
+      Scalar& tlv, bool& check, Scalar& pblh)
 {
   //-----------------------------------------------------------------------
   //
@@ -47,10 +47,6 @@ void Functions<S,D>::pblintd(const MemberType& team, const Int& nlev, const Int&
   //
   // Author: B. Stevens (extracted from pbldiff, August 2000)
   //
-
-  Scalar tlv=0;   // ref. level pot tmp + tmp excess
-  bool check;     //  True=>chk if Richardson no.>critcal
-
   const auto nlev_pack = ekat::npack<Spack>(nlev)-1;
   const int nlev_indx  = (nlev-1)%Spack::n;
 
@@ -60,21 +56,31 @@ void Functions<S,D>::pblintd(const MemberType& team, const Int& nlev, const Int&
   pblintd_init(z(nlev_pack)[nlev_indx], check, 
                rino(nlev_pack)[nlev_indx], pblh);
 
+  team.team_barrier();
+
   // PBL height calculation
   pblintd_height(team, nlev, npbl, z, u, v, ustar, thv, 
                  thv(nlev_pack)[nlev_indx], pblh, rino, check);
+
+  team.team_barrier();
 
   // Estimate an effective surface temperature to account for surface
   // fluctuations
   pblintd_surf_temp(nlev, nlevi, npbl, z, ustar, obklen, kbfs,
                     thv, tlv, pblh, check, rino);
 
+  team.team_barrier();
+
   // Improve pblh estimate for unstable conditions using the convective
   // temperature excess as reference temperature:
   pblintd_height(team, nlev, npbl, z, u, v, ustar, thv, tlv, pblh, rino, check);
 
+  team.team_barrier();
+
   // Check PBL height
   pblintd_check_pblh(nlevi, npbl, z, ustar, check, pblh);
+
+  team.team_barrier();
 
   // PBL check over ocean
   shoc_pblintd_cldcheck(zi(nlev_pack)[nlev_indx], cldn(nlev_pack)[nlev_indx], pblh);
