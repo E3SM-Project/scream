@@ -94,7 +94,7 @@ void isotropic_ts_c(Int nlev, Int shcol, Real *brunt_int, Real *tke,
                     Real *a_diss, Real *brunt, Real *isotropy);
 
 void adv_sgs_tke_c(Int nlev, Int shcol, Real dtime, Real *shoc_mix,
-                   Real *wthv_sec, Real *sterm_zt, Real *tk,
+                   Real *wthv_sec, Real *sterm_zt, Real *tk, Real *brunt,
                    Real *tke, Real *a_diss);
 
 void eddy_diffusivities_c(Int nlev, Int shcol, Real *obklen, Real *pblh,
@@ -453,7 +453,7 @@ void adv_sgs_tke(AdvSgsTkeData& d)
 {
   shoc_init(d.nlev, true);
   d.transpose<ekat::TransposeDirection::c2f>();
-  adv_sgs_tke_c(d.nlev, d.shcol, d.dtime, d.shoc_mix, d.wthv_sec, d.sterm_zt, d.tk, d.tke, d.a_diss);
+  adv_sgs_tke_c(d.nlev, d.shcol, d.dtime, d.shoc_mix, d.wthv_sec, d.sterm_zt, d.tk, d. brunt, d.tke, d.a_diss);
   d.transpose<ekat::TransposeDirection::f2c>();
 }
 

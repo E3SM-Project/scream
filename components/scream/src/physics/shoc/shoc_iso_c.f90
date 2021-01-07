@@ -39,11 +39,15 @@ contains
     real(kind=c_real), value, intent(in)  :: karman ! Von Karman's constant
 
     real(kind=c_real) :: pref_mid(nlev) ! unused values
+    logical(kind=c_bool) :: do_no_sgs_var ! Option to revert SHOC to a 1.5 TKE scheme
+                                    !   with no SGS variability
+
+    do_no_sgs_var = .false. ! For routine SHOC testing, always set to false
 
     pref_mid = 0
     call shoc_init(nlev, gravit, rair, rh2o, cpair, &
                    zvir, latvap, latice, karman, &
-                   pref_mid, nlev, 1)
+                   pref_mid, nlev, 1, do_no_sgs_var)
     npbl = nlev ! set pbl layer explicitly so we don't need pref_mid.
   end subroutine shoc_init_c
 
@@ -344,7 +348,7 @@ contains
   end subroutine isotropic_ts_c
 
   subroutine adv_sgs_tke_c(nlev, shcol, dtime, shoc_mix, wthv_sec, &
-                           sterm_zt, tk, tke, a_diss) bind (C)
+                           sterm_zt, tk, brunt, tke, a_diss) bind (C)
     use shoc, only: adv_sgs_tke
 
     integer(kind=c_int), intent(in), value :: nlev
@@ -354,13 +358,14 @@ contains
     real(kind=c_real), intent(in) :: wthv_sec(shcol,nlev)
     real(kind=c_real), intent(in) :: sterm_zt(shcol,nlev)
     real(kind=c_real), intent(in) :: tk(shcol,nlev)
+    real(kind=c_real), intent(in) :: brunt(shcol,nlev)
 
     real(kind=c_real), intent(inout) :: tke(shcol,nlev)
 
     real(kind=c_real), intent(out) :: a_diss(shcol,nlev)
 
     call adv_sgs_tke(nlev, shcol, dtime, shoc_mix, wthv_sec, &
-                     sterm_zt, tk, tke, a_diss)
+                     sterm_zt, tk, brunt, tke, a_diss)
 
   end subroutine adv_sgs_tke_c
 

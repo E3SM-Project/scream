@@ -4,7 +4,7 @@
 
 module scream_shoc_interface_mod
 
-  use iso_c_binding, only: c_ptr, c_f_pointer, c_int, c_double, c_bool,C_NULL_CHAR, c_float
+  use iso_c_binding, only: c_ptr, c_f_pointer, c_int, c_double, c_bool,C_NULL_CHAR, c_float, c_bool
 
   implicit none
 
@@ -54,6 +54,7 @@ contains
 
     real(kind=rtype) :: pref_mid(pcols,pver) ! pressure at midlevel hPa; rtype for now b/c shoc supports only rtype currently
     integer(kind=c_int) :: kts, kte, k
+    logical(kind=c_bool) :: do_no_sgs_var
 
     kts     = 1
     kte     = pver
@@ -74,7 +75,8 @@ contains
          real(karman,kind=rtype),&
          pref_mid,            &
          kte,&
-         kts)
+         kts,&
+         do_no_sgs_var)
 
     q(:,:,:) = 0.0_rtype
     q(:,:,1) = 1.0e-5_rtype!state%q(:,:,1)

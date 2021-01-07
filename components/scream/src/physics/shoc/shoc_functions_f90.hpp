@@ -311,7 +311,7 @@ struct AdvSgsTkeData : public PhysicsTestData {
   // Inputs
   Int shcol, nlev;
   Real dtime;
-  Real *shoc_mix, *wthv_sec, *sterm_zt, *tk;
+  Real *shoc_mix, *wthv_sec, *sterm_zt, *tk, *brunt;
 
   // Inputs/Outputs
   Real *tke;
@@ -320,7 +320,7 @@ struct AdvSgsTkeData : public PhysicsTestData {
   Real *a_diss;
 
   AdvSgsTkeData(Int shcol_, Int nlev_, Real dtime_) :
-    PhysicsTestData({{ shcol_, nlev_ }}, {{ &shoc_mix, &wthv_sec, &sterm_zt, &tk, &tke, &a_diss }}), shcol(shcol_), nlev(nlev_), dtime(dtime_) {}
+    PhysicsTestData({{ shcol_, nlev_ }}, {{ &shoc_mix, &wthv_sec, &sterm_zt, &tk, &brunt, &tke, &a_diss }}), shcol(shcol_), nlev(nlev_), dtime(dtime_) {}
 
   PTD_STD_DEF(AdvSgsTkeData, 3, shcol, nlev, dtime);
 };

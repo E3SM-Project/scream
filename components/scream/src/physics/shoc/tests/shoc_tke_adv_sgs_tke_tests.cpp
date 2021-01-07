@@ -77,6 +77,9 @@ struct UnitWrap::UnitTest<D>::TestShocAdvSgsTke {
         SDS.wthv_sec[offset] = wthv_sec_gr[s];
         SDS.sterm_zt[offset] = sterm_gr[s];
         SDS.tke[offset] = tke_init_gr[s];
+
+        // Note this is not used in standard configuration
+        SDS.brunt[offset] = 0;
       }
     }
 
