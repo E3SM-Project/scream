@@ -4231,6 +4231,10 @@ subroutine pblintd(&
        ustar,obklen,kbfs,cldn,&       ! Input
        pblh)                          ! Output
 
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use shoc_iso_f, only: pblintd_f
+#endif
+
     !-----------------------------------------------------------------------
     !
     ! Purpose:
@@ -4289,6 +4293,18 @@ subroutine pblintd(&
     real(rtype) :: tlv(shcol)              ! ref. level pot tmp + tmp excess
 
     logical(btype)  :: check(shcol)            ! True=>chk if Richardson no.>critcal
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  if (use_cxx) then
+    call pblintd_f(&
+      shcol,nlev,nlevi,&             ! Input
+      z,zi,thl,ql,&                  ! Input
+      q,u,v,&                        ! Input
+      ustar,obklen,kbfs,cldn,&       ! Input
+      pblh)                          ! Output
+    return
+  endif
+#endif
 
     !
     ! Compute Obukhov length virtual temperature flux and various arrays for use later:
@@ -4396,10 +4412,6 @@ subroutine pblintd_init(&
        z,&                      ! Input
        check,rino,pblh)         ! Output
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-    use shoc_iso_f, only: pblintd_init_f
-#endif
-
     !------------------------------Arguments--------------------------------
     ! Input arguments
     !
@@ -4419,13 +4431,6 @@ subroutine pblintd_init(&
     !
     integer  :: i                       ! longitude index
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
-   if (use_cxx) then
-      call pblintd_init_f(shcol,nlev,z,check,rino,pblh)
-      return
-   endif
-#endif
-
     do i=1,shcol
        check(i)     = .true.
        rino(i,nlev) = 0.0_rtype
@@ -4438,6 +4443,11 @@ subroutine pblintd_height(&
        z,u,v,ustar,&             ! Input
        thv,thv_ref,&             ! Input
        pblh,rino,check)          ! Output
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use shoc_iso_f, only: pblintd_height_f
+#endif
+
     !------------------------------Arguments--------------------------------
     !
     ! Input arguments
@@ -4466,6 +4476,15 @@ subroutine pblintd_height(&
     integer  :: k                       ! level index
     real(rtype) :: vvk                     ! velocity magnitude squared
     real(rtype) :: th
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   if (use_cxx) then
+      call pblintd_height_f(shcol,nlev,z,u,v,ustar,thv,thv_ref,&             ! Input
+                            pblh,rino,check)          ! Output
+      return
+   endif
+#endif
+
     !
     ! PBL height calculation:  Scan upward until the Richardson number between
     ! the first level and the current level exceeds the "critical" value.
@@ -4473,15 +4492,15 @@ subroutine pblintd_height(&
     do k=nlev-1,nlev-npbl+1,-1
        do i=1,shcol
           if (check(i)) then
-             vvk = bfb_square(u(i,k) - u(i,nlev)) + bfb_square(v(i,k) - v(i,nlev)) + fac*bfb_square(ustar(i))
+             vvk = bfb_square((u(i,k) - u(i,nlev))) + bfb_square((v(i,k) - v(i,nlev))) + fac*bfb_square(ustar(i))
              vvk = max(vvk,tiny)
              rino(i,k) = ggr*(thv(i,k) -thv_ref(i))*(z(i,k)-z(i,nlev))/(thv(i,nlev)*vvk)
              if (rino(i,k) >= ricr) then
                 pblh(i) = z(i,k+1) + (ricr - rino(i,k+1))/(rino(i,k) -rino(i,k+1)) * &
                      (z(i,k) - z(i,k+1))
                 check(i) = .false.
-             end if
-          end if
+             endif
+          endif
        end do
     end do
     return
@@ -4492,6 +4511,11 @@ subroutine pblintd_surf_temp(&
        z,ustar,obklen,kbfs,thv,&   ! Input
        tlv,&                       ! Output
        pblh,check,rino)            ! InOutput
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+    use shoc_iso_f, only: pblintd_surf_temp_f
+#endif
+
     !------------------------------Arguments--------------------------------
     ! Input arguments
     !
@@ -4517,11 +4541,19 @@ subroutine pblintd_surf_temp(&
 
     !===================
     ! const parameter for Diagnosis of PBL depth
-    real(rtype), parameter :: onet  = 1._rtype/3._rtype  ! 1/3 power in wind gradient expression
     real(rtype), parameter :: fak   =  8.5_rtype      ! Constant in surface temperature excess
     real(rtype), parameter :: betam = 15.0_rtype      ! Constant in wind gradient expression
     real(rtype), parameter :: sffrac=  0.1_rtype      ! Surface layer fraction of boundary layer
     real(rtype), parameter :: binm  = betam*sffrac ! betam * sffrac
+
+#ifdef SCREAM_CONFIG_IS_CMAKE
+   if (use_cxx) then
+      call pblintd_surf_temp_f(shcol,nlev,nlevi,&          ! Input
+                         z,ustar,obklen,kbfs,thv,&   ! Input
+                         tlv,pblh,check,rino)            ! InOutput
+      return
+   endif
+#endif
 
     !
     ! Estimate an effective surface temperature to account for surface
@@ -4532,7 +4564,7 @@ subroutine pblintd_surf_temp(&
        check(i)  = (kbfs(i) > 0._rtype)
        tlv(i)    = thv(i,nlev)
        if (check(i)) then
-          phiminv      = bfb_pow((1._rtype - binm*pblh(i)/obklen(i)), onet)
+          phiminv      = bfb_cbrt(1._rtype - binm*pblh(i)/obklen(i))
           rino(i,nlev) = 0.0_rtype
           tlv(i)       = thv(i,nlev) + kbfs(i)*fak/( ustar(i)*phiminv )
        end if

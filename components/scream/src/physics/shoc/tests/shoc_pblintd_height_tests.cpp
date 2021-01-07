@@ -170,13 +170,15 @@ struct UnitWrap::UnitTest<D>::TestPblintdHeight {
   static void run_bfb()
   {
     PblintdHeightData f90_data[] = {
-      // TODO
+      PblintdHeightData(10, 72),
+      PblintdHeightData(10, 12),
+      PblintdHeightData(7, 16),
+      PblintdHeightData(2, 7),
     };
 
     static constexpr Int num_runs = sizeof(f90_data) / sizeof(PblintdHeightData);
 
     // Generate random input data
-    // Alternatively, you can use the f90_data construtors/initializer lists to hardcode data
     for (auto& d : f90_data) {
       d.randomize();
     }
@@ -184,7 +186,10 @@ struct UnitWrap::UnitTest<D>::TestPblintdHeight {
     // Create copies of data for use by cxx. Needs to happen before fortran calls so that
     // inout data is in original state
     PblintdHeightData cxx_data[] = {
-      // TODO
+      PblintdHeightData(f90_data[0]),
+      PblintdHeightData(f90_data[1]),
+      PblintdHeightData(f90_data[2]),
+      PblintdHeightData(f90_data[3]),
     };
 
     // Assume all data is in C layout
@@ -212,11 +217,6 @@ struct UnitWrap::UnitTest<D>::TestPblintdHeight {
         REQUIRE(d_f90.total(d_f90.pblh) == d_cxx.total(d_cxx.check));
         REQUIRE(d_f90.check[k] == d_cxx.check[k]);
       }
-      for (Int k = 0; k < d_f90.total(d_f90.rino); ++k) {
-        REQUIRE(d_f90.total(d_f90.rino) == d_cxx.total(d_cxx.rino));
-        REQUIRE(d_f90.rino[k] == d_cxx.rino[k]);
-      }
-
     }
   } // run_bfb
 

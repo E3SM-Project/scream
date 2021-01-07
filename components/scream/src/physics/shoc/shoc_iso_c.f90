@@ -1340,7 +1340,7 @@ contains
   end subroutine update_prognostics_implicit_c
 
   subroutine pblintd_height_c(shcol, nlev, z, u, v, ustar, thv, thv_ref, pblh, rino, check) bind(C)
-    use shoc, only : pblintd_height
+    use shoc, only : npbl, pblintd_height
 
     integer(kind=c_int) , value, intent(in) :: shcol, nlev
     real(kind=c_real) , intent(in), dimension(shcol, nlev) :: z, u, v, thv
@@ -1349,20 +1349,10 @@ contains
     real(kind=c_real) , intent(inout), dimension(shcol, nlev) :: rino
     logical(kind=c_bool) , intent(inout), dimension(shcol) :: check
 
+    ! setup npbl
+    npbl = nlev
     call pblintd_height(shcol, nlev, z, u, v, ustar, thv, thv_ref, pblh, rino, check)
   end subroutine pblintd_height_c
-
-  subroutine pblintd_init_c(shcol, nlev, z, check, rino, pblh) bind(C)
-    use shoc, only : pblintd_init
-
-    integer(kind=c_int) , value, intent(in) :: shcol, nlev
-    real(kind=c_real) , intent(in), dimension(shcol, nlev) :: z
-    logical(kind=c_bool) , intent(out), dimension(shcol) :: check
-    real(kind=c_real) , intent(out), dimension(shcol, nlev) :: rino
-    real(kind=c_real) , intent(out), dimension(shcol) :: pblh
-
-    call pblintd_init(shcol, nlev, z, check, rino, pblh)
-  end subroutine pblintd_init_c
 
   subroutine vd_shoc_decomp_c(shcol, nlev, nlevi, kv_term, tmpi, rdp_zt, dtime, flux, du, dl, d) bind(C)
     use shoc, only : vd_shoc_decomp
@@ -1388,7 +1378,7 @@ contains
   end subroutine vd_shoc_solve_c
 
   subroutine pblintd_surf_temp_c(shcol, nlev, nlevi, z, ustar, obklen, kbfs, thv, tlv, pblh, check, rino) bind(C)
-    use shoc, only : pblintd_surf_temp
+    use shoc, only : npbl, pblintd_surf_temp
 
     integer(kind=c_int) , value, intent(in) :: shcol, nlev, nlevi
     real(kind=c_real) , intent(in), dimension(shcol, nlev) :: z, thv
@@ -1397,9 +1387,12 @@ contains
     real(kind=c_real) , intent(inout), dimension(shcol) :: pblh
     logical(kind=c_bool) , intent(inout), dimension(shcol) :: check
     real(kind=c_real) , intent(inout), dimension(shcol, nlev) :: rino
-
+    
+    ! setup npbl
+    npbl = nlev
     call pblintd_surf_temp(shcol, nlev, nlevi, z, ustar, obklen, kbfs, thv, tlv, pblh, check, rino)
   end subroutine pblintd_surf_temp_c
+
   subroutine pblintd_check_pblh_c(shcol, nlev, nlevi, z, ustar, check, pblh) bind(C)
     use shoc, only : npbl,pblintd_check_pblh
 
