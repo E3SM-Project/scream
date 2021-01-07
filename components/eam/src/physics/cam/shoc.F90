@@ -521,18 +521,18 @@ subroutine shoc_main ( &
        thetal,qw,qtracers,tke,&             ! Input/Output
        u_wind,v_wind)                       ! Input/Output
 
-      ! Diagnose the second order moments, including transport
-      !  which is needed regardless if SHOC or 1.5 closure
-      !  is used (for diagnostic purposes)
-      call diag_second_shoc_moments(&
-         shcol,nlev,nlevi, &                    ! Input
-         thetal,qw,u_wind,v_wind,tke, &         ! Input
-         isotropy,tkh,tk,&                      ! Input
-         dz_zi,zt_grid,zi_grid,shoc_mix, &      ! Input
-         wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &   ! Input
-         thl_sec, qw_sec,wthl_sec,wqw_sec,&     ! Output
-         qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Output
-         w_sec)                                 ! Output
+    ! Diagnose the second order moments, including transport
+    !  which is needed regardless if SHOC or 1.5 closure
+    !  is used (for diagnostic purposes)
+    call diag_second_shoc_moments(&
+       shcol,nlev,nlevi, &                    ! Input
+       thetal,qw,u_wind,v_wind,tke, &         ! Input
+       isotropy,tkh,tk,&                      ! Input
+       dz_zi,zt_grid,zi_grid,shoc_mix, &      ! Input
+       wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &   ! Input
+       thl_sec, qw_sec,wthl_sec,wqw_sec,&     ! Output
+       qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Output
+       w_sec)                                 ! Output
 
     if (.not. do_15closure) then
 
