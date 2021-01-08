@@ -199,7 +199,7 @@ struct UnitWrap::UnitTest<D>::TestShocAdvSgsTke {
       AdvSgsTkeData(10, 71, 72),
       AdvSgsTkeData(10, 12, 13),
       AdvSgsTkeData(7,  16, 17),
-      AdvSgsTkeData(2,   7, 8)
+      AdvSgsTkeData(2,   7, 8),
     };
     static constexpr Int num_runs = sizeof(f90_data) / sizeof(AdvSgsTkeData);
 
@@ -228,7 +228,7 @@ struct UnitWrap::UnitTest<D>::TestShocAdvSgsTke {
     // Get data from cxx
     for (auto& d : cxx_data) {
       d.transpose<ekat::TransposeDirection::c2f>(); // _f expects data in fortran layout
-      adv_sgs_tke_f(d.nlev, d.shcol, d.dtime, d.shoc_mix, d.wthv_sec, d.sterm_zt, d.tk, d.tke, d.a_diss);
+      adv_sgs_tke_f(d.nlev, d.shcol, d.dtime, d.shoc_mix, d.wthv_sec, d.sterm_zt, d.tk, d.brunt, d.tke, d.a_diss);
       d.transpose<ekat::TransposeDirection::f2c>(); // go back to C layout
     }
 

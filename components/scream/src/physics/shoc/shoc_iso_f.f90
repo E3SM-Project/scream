@@ -370,12 +370,12 @@ subroutine diag_third_shoc_moments_f(shcol, nlev, nlevi, w_sec, thl_sec, wthl_se
   real(kind=c_real) , intent(out), dimension(shcol, nlevi) :: w3
 end subroutine diag_third_shoc_moments_f
 
-  subroutine adv_sgs_tke_f(nlev, shcol, dtime, shoc_mix, wthv_sec, sterm_zt, tk, tke, a_diss) bind(C)
+  subroutine adv_sgs_tke_f(nlev, shcol, dtime, shoc_mix, wthv_sec, sterm_zt, tk, brunt, tke, a_diss) bind(C)
     use iso_c_binding
 
     integer(kind=c_int) , value, intent(in) :: nlev, shcol
     real(kind=c_real) , value, intent(in) :: dtime
-    real(kind=c_real) , intent(in), dimension(shcol, nlev) :: shoc_mix, wthv_sec, sterm_zt, tk
+    real(kind=c_real) , intent(in), dimension(shcol, nlev) :: shoc_mix, wthv_sec, sterm_zt, tk, brunt
     real(kind=c_real) , intent(inout), dimension(shcol, nlev) :: tke
     real(kind=c_real) , intent(out), dimension(shcol, nlev) :: a_diss
   end subroutine adv_sgs_tke_f

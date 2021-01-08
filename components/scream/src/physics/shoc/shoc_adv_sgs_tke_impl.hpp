@@ -22,6 +22,7 @@ void Functions<S,D>
   const uview_1d<const Spack>& wthv_sec,
   const uview_1d<const Spack>& sterm_zt,
   const uview_1d<const Spack>& tk,
+  const uview_1d<const Spack>& brunt,
   const uview_1d<Spack>&       tke,
   const uview_1d<Spack>&       a_diss)
 {
@@ -39,12 +40,18 @@ void Functions<S,D>
   static constexpr Scalar Ce1 = Ce/sp(0.7)*sp(0.19);
   static constexpr Scalar Ce2 = Ce/sp(0.7)*sp(0.51);
   static constexpr Scalar Cee = Ce1 + Ce2;
+  const bool do_15closure = SC::do_15closure;
 
   const Int nlev_pack = ekat::npack<Spack>(nlev);
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev_pack), [&] (const Int& k) {
 
     // Compute buoyant production term
-    const Spack a_prod_bu = (ggr/basetemp)*wthv_sec(k);
+//    if (do_15closure){
+//      const Spack a_prod_bu = -tk(k)*brunt(k);
+//    }
+//    else{
+      const Spack a_prod_bu = (ggr/basetemp)*wthv_sec(k);
+//    }
 
     tke(k) = ekat::max(0,tke(k));
 

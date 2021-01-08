@@ -396,6 +396,7 @@ struct Functions
     const uview_1d<const Spack>& wthv_sec,
     const uview_1d<const Spack>& sterm_zt,
     const uview_1d<const Spack>& tk,
+    const uview_1d<const Spack>& brunt,
     const uview_1d<Spack>&       tke,
     const uview_1d<Spack>&       a_diss);
 
