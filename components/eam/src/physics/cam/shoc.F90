@@ -3404,7 +3404,7 @@ subroutine adv_sgs_tke(nlev, shcol, dtime, shoc_mix, wthv_sec, &
 #ifdef SCREAM_CONFIG_IS_CMAKE
   if (use_cxx) then
      call adv_sgs_tke_f(nlev, shcol, dtime, shoc_mix, wthv_sec, &
-          sterm_zt, tk, tke, a_diss)
+          sterm_zt, tk, brunt, tke, a_diss)
      return
   endif
 #endif

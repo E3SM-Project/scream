@@ -453,7 +453,7 @@ void adv_sgs_tke(AdvSgsTkeData& d)
 {
   shoc_init(d.nlev, true);
   d.transpose<ekat::TransposeDirection::c2f>();
-  adv_sgs_tke_c(d.nlev, d.shcol, d.dtime, d.shoc_mix, d.wthv_sec, d.sterm_zt, d.tk, d. brunt, d.tke, d.a_diss);
+  adv_sgs_tke_c(d.nlev, d.shcol, d.dtime, d.shoc_mix, d.wthv_sec, d.sterm_zt, d.tk, d.brunt, d.tke, d.a_diss);
   d.transpose<ekat::TransposeDirection::f2c>();
 }
 
@@ -2392,7 +2392,7 @@ void diag_third_shoc_moments_f(Int shcol, Int nlev, Int nlevi, Real* w_sec, Real
 }
 
 void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, Real* shoc_mix, Real* wthv_sec,
-                   Real* sterm_zt, Real* tk, Real* tke, Real* a_diss)
+                   Real* sterm_zt, Real* tk, Real* brunt, Real* tke, Real* a_diss)
 {
   using SHF = Functions<Real, DefaultDevice>;
 
@@ -2405,7 +2405,7 @@ void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, Real* shoc_mix, Real* wthv_s
   static constexpr Int num_arrays = 6;
 
   std::vector<view_2d> temp_d(num_arrays);
-  std::vector<const Real*> ptr_array  = {shoc_mix, wthv_sec, sterm_zt, tk,    tke,   a_diss};
+  std::vector<const Real*> ptr_array  = {shoc_mix, wthv_sec, sterm_zt, tk, brunt, tke, a_diss};
 
   // Sync to device
   ekat::host_to_device(ptr_array, shcol, nlev, temp_d, true);
@@ -2416,9 +2416,10 @@ void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, Real* shoc_mix, Real* wthv_s
     wthv_sec_d (temp_d[1]),
     sterm_zt_d (temp_d[2]),
     tk_d       (temp_d[3]),
+    brunt_d    (temp_d[4]),
     //output
-    tke_d      (temp_d[4]), //inout
-    a_diss_d   (temp_d[5]); //out
+    tke_d      (temp_d[5]), //inout
+    a_diss_d   (temp_d[6]); //out
 
   const Int nk_pack = ekat::npack<Spack>(nlev);
   const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
@@ -2431,10 +2432,11 @@ void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, Real* shoc_mix, Real* wthv_s
       const auto wthv_sec_s = ekat::subview(wthv_sec_d ,i);
       const auto sterm_zt_s = ekat::subview(sterm_zt_d ,i);
       const auto tk_s       = ekat::subview(tk_d ,i);
+      const auto brunt_s    = ekat::subview(brunt_d, i);
       const auto tke_s      = ekat::subview(tke_d ,i);
       const auto a_diss_s   = ekat::subview(a_diss_d ,i);
 
-      SHF::adv_sgs_tke(team, nlev, dtime, shoc_mix_s, wthv_sec_s, sterm_zt_s, tk_s, tke_s, a_diss_s);
+      SHF::adv_sgs_tke(team, nlev, dtime, shoc_mix_s, wthv_sec_s, sterm_zt_s, tk_s, brunt_s, tke_s, a_diss_s);
     });
 
   // Sync back to host
