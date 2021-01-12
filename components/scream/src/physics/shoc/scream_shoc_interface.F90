@@ -58,6 +58,7 @@ contains
 
     kts     = 1
     kte     = pver
+    do_no_sgs_var = .false.
 
     do k = kte,kts,-1
        pref_mid(:,k)    = 1e3_rtype - (1e3_rtype-0.1)/real(pver)!state%pmid(:,:)
