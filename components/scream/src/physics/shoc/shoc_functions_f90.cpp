@@ -2402,7 +2402,7 @@ void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, Real* shoc_mix, Real* wthv_s
   using ExeSpace   = typename KT::ExeSpace;
   using MemberType = typename SHF::MemberType;
 
-  static constexpr Int num_arrays = 6;
+  static constexpr Int num_arrays = 7;
 
   std::vector<view_2d> temp_d(num_arrays);
   std::vector<const Real*> ptr_array  = {shoc_mix, wthv_sec, sterm_zt, tk, brunt, tke, a_diss};
