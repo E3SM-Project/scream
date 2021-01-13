@@ -554,12 +554,12 @@ subroutine shoc_main ( &
        !   of the assumed PDF code.
        call diag_moments_nosgs(&
           shcol,nlev,nlevi,&                  ! Input
-          w_sec,thl_sec,qw_sec,wthl_sec,&     ! Output
-          wqw_sec,qwthl_sec,w3,&              ! Output
-          wthl_sec_diag,wqw_sec_diag)         ! Output
+          w_sec,thl_sec,qw_sec,qwthl_sec,&    ! Output
+          w3)                                 ! Output
 
     endif
-
+    wthl_sec(:,:) = 0._rtype
+    wqw_sec(:,:) = 0._rtype
     ! Call the PDF to close on SGS cloud and turbulence
     call shoc_assumed_pdf(&
        shcol,nlev,nlevi,&                   ! Input
@@ -573,17 +573,6 @@ subroutine shoc_main ( &
     ! Check TKE to make sure values lie within acceptable
     !  bounds after vertical advection, etc.
     call check_tke(shcol,nlev,tke)
-
-    ! If a 1.5 closure was used, copy the saved values
-    !  of heat and moisture flux back to the proper arrays
-    !  so that they are representative of the true values
-    !  used for transport in the diagnostics
-    if (do_15closure) then
-       call diag_moments_nosgs_fluxdiag(&
-         shcol,nlevi,&                      ! Input
-         wthl_sec_diag,wqw_sec_diag,&       ! Input
-         wthl_sec,wqw_sec)                  ! Output
-    endif
 
   enddo ! end time loop
 
@@ -1197,9 +1186,8 @@ end subroutine sfc_fluxes
 
 subroutine diag_moments_nosgs(&
          shcol,nlev,nlevi,&                    ! Input
-         w_sec,thl_sec,qw_sec,wthl_sec,&       ! Output
-         wqw_sec,qwthl_sec,w3,&                ! Output
-         wthl_sec_diag,wqw_sec_diag)           ! Output
+         w_sec,thl_sec,qw_sec,qwthl_sec,&      ! Output
+         w3)                                   ! Output
 
   implicit none
 
@@ -1220,72 +1208,20 @@ subroutine diag_moments_nosgs(&
   real(rtype), intent(out) :: qw_sec(shcol,nlevi)
   ! covariance of temp and moisture [K kg/kg]
   real(rtype), intent(out) :: qwthl_sec(shcol,nlevi)
-  ! vertical flux of heat [K m/s]
-  real(rtype), intent(out) :: wthl_sec(shcol,nlevi)
-  ! vertical flux of total water [kg/kg m/s]
-  real(rtype), intent(out) :: wqw_sec(shcol,nlevi)
-  !vertical flux of heat [K m/s] for diagnostics
-  real(rtype), intent(out) :: wthl_sec_diag(shcol,nlevi)
-  ! vertical flux of total water [kg/kg m/s] for diagnostics
-  real(rtype), intent(out) :: wqw_sec_diag(shcol,nlevi)
   ! third moment vertical velocity [m3/s3]
   real(rtype), intent(out) :: w3(shcol,nlevi)
 
-  ! Before we write over the flux terms with zeros, for the
-  !   purposes of the PDF we need to save these terms so that
-  !   the vertical flux of heat and moisture is adequately saved
-  !   for diagnostic purposes
-  wthl_sec_diag(:shcol,:nlevi) = wthl_sec(:shcol,:nlevi)
-  wqw_sec_diag(:shcol,:nlevi) = wqw_sec(:shcol,:nlevi)
+  ! Set higher order moments to zero if a 1.5 TKE scheme 
+  !   is used to achieve all or nothing condensation
 
   w_sec(:shcol,:nlev) = 0.0_rtype
   thl_sec(:shcol,:nlevi) = 0.0_rtype
   qw_sec(:shcol,:nlevi) = 0.0_rtype
-  wthl_sec(:shcol,:nlevi) = 0.0_rtype
-  wqw_sec(:shcol,:nlevi) = 0.0_rtype
   qwthl_sec(:shcol,:nlevi) = 0.0_rtype
   w3(:shcol,:nlevi) = 0.0_rtype
 
   return
 end subroutine diag_moments_nosgs
-
-!=======================================================
-! If 1.5 TKE is used, copy the vertical flux moments back
-!   into proper arrays for accurate diagnostic purposes
-
-subroutine diag_moments_nosgs_fluxdiag(&
-         shcol,nlevi,&                    ! Input
-         wthl_sec_diag,wqw_sec_diag,&     ! Input
-         wthl_sec,wqw_sec)                ! Output
-
-  implicit none
-
-! INPUT VARIABLES
-  ! number of SHOC columns
-  integer, intent(in) :: shcol
-  ! number of interface levels
-  integer, intent(in) :: nlevi
-  !vertical flux of heat [K m/s] for diagnostics
-  real(rtype), intent(in) :: wthl_sec_diag(shcol,nlevi)
-  ! vertical flux of total water [kg/kg m/s] for diagnostics
-  real(rtype), intent(in) :: wqw_sec_diag(shcol,nlevi)
-
-! OUTPUT VARIABLES
-  ! vertical flux of heat [K m/s]
-  real(rtype), intent(out) :: wthl_sec(shcol,nlevi)
-  ! vertical flux of total water [kg/kg m/s]
-  real(rtype), intent(out) :: wqw_sec(shcol,nlevi)
-
-  ! If using 1.5 TKE, we overwrote the vertical flux terms
-  !   with zeros so the PDF thought there was no SGS variability,
-  !   though need to restore these arrays so that diagnostics
-  !   accurately represents the flux of the transport applied
-  !   in the turbulence calculation
-  wthl_sec(:shcol,:nlevi) = wthl_sec_diag(:shcol,:nlevi)
-  wqw_sec(:shcol,:nlevi) = wqw_sec_diag(:shcol,:nlevi)
-
-  return
-end subroutine diag_moments_nosgs_fluxdiag
 
 !=======================================================
 ! SHOC Diagnose the second order moments,
