@@ -558,8 +558,7 @@ subroutine shoc_main ( &
           w3)                                 ! Output
 
     endif
-    wthl_sec(:,:) = 0._rtype
-    wqw_sec(:,:) = 0._rtype
+
     ! Call the PDF to close on SGS cloud and turbulence
     call shoc_assumed_pdf(&
        shcol,nlev,nlevi,&                   ! Input
