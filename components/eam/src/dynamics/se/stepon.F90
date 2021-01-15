@@ -150,7 +150,7 @@ subroutine stepon_init(dyn_in, dyn_out )
   call addfld('DYN_V'    ,(/ 'lev' /), 'A', 'm/s',  'Meridional Velocity',    gridname='GLL')
   call addfld('DYN_OMEGA',(/ 'lev' /), 'A', 'Pa/s', 'Vertical Velocity',      gridname='GLL' )
   call addfld('DYN_PS'   ,horiz_only,  'A', 'Pa',   'Surface pressure',       gridname='GLL')
-  call addfld('DYN_PNH'  ,(/ 'lev' /), 'A', 'Pa',   'Nonhydro pressure',      gridname='GLL')
+  call addfld('DYN_PNH'  ,(/ 'lev' /), 'A', 'Pa',   'Nonhydrostatic pressure',      gridname='GLL')
 
 end subroutine stepon_init
 
