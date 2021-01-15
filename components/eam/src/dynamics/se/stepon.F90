@@ -28,6 +28,7 @@ module stepon
    use scamMod,        only: use_iop, doiopupdate, single_column, &
                              setiopupdate, readiopdata, iop_mode
    use element_mod,    only: element_t
+   use element_ops,    only: get_field
    use shr_const_mod,       only: SHR_CONST_PI
    use se_single_column_mod, only: scm_broadcast
 
@@ -149,6 +150,7 @@ subroutine stepon_init(dyn_in, dyn_out )
   call addfld('DYN_V'    ,(/ 'lev' /), 'A', 'm/s',  'Meridional Velocity',    gridname='GLL')
   call addfld('DYN_OMEGA',(/ 'lev' /), 'A', 'Pa/s', 'Vertical Velocity',      gridname='GLL' )
   call addfld('DYN_PS'   ,horiz_only,  'A', 'Pa',   'Surface pressure',       gridname='GLL')
+  call addfld('DYN_PNH'  ,(/ 'lev' /), 'A', 'Pa',   'Nonhydrostatic pressure',      gridname='GLL')
 
 end subroutine stepon_init
 
@@ -417,6 +419,15 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
          call outfld('DIV',tmp_dyn(1,1,1,ie),npsq,ie)
       enddo
    endif
+
+   if (hist_fld_active('DYN_PNH')) then
+      do ie=1,nelemd
+         ! time level ntQ is not used
+         call get_field(dyn_in%elem(ie),'pnh',tmp_dyn(:,:,:,ie),hvcoord,tl_f,1)
+         call outfld('DYN_PNH',tmp_dyn(1,1,1,ie),npsq,ie)
+      enddo
+   endif
+
    if (hist_fld_active('FU') .or. hist_fld_active('FV') ) then
       do ie=1,nelemd
          do j=1,np
