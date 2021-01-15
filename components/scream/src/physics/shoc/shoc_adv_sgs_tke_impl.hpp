@@ -41,17 +41,18 @@ void Functions<S,D>
   static constexpr Scalar Ce2 = Ce/sp(0.7)*sp(0.51);
   static constexpr Scalar Cee = Ce1 + Ce2;
   const bool do_15closure = SC::do_15closure;
+  Spack a_prod_bu;
 
   const Int nlev_pack = ekat::npack<Spack>(nlev);
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev_pack), [&] (const Int& k) {
 
     // Compute buoyant production term
-//    if (do_15closure){
-//      const Spack a_prod_bu = -tk(k)*brunt(k);
-//    }
-//    else{
-      const Spack a_prod_bu = (ggr/basetemp)*wthv_sec(k);
-//    }
+    if (do_15closure == true){
+      a_prod_bu = -tk(k)*brunt(k);
+    }
+    else{
+      a_prod_bu = (ggr/basetemp)*wthv_sec(k);
+    }
 
     tke(k) = ekat::max(0,tke(k));
 
