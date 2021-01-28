@@ -2948,7 +2948,7 @@ subroutine nr_conservation(nr,ni2nr_melt_tend,nr_ice_shed_tend,ncshdc,nc2nr_auto
   real(rtype) :: sink_nr, source_nr, ratio
 
   sink_nr = (nr_collect_tend + nr2ni_immers_freeze_tend + nr_selfcollect_tend + nr_evap_tend)*dt
-  source_nr = nr + (ni2nr_melt_tend + nr_ice_shed_tend + ncshdc + nc2nr_autoconv_tend)*dt
+  source_nr = nr + (ni2nr_melt_tend*nmltratio + nr_ice_shed_tend + ncshdc + nc2nr_autoconv_tend)*dt
   if(sink_nr > source_nr) then
      ratio = source_nr/sink_nr
      nr_collect_tend  = nr_collect_tend*ratio
