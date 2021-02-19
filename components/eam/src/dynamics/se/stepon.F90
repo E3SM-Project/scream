@@ -28,7 +28,7 @@ module stepon
    use scamMod,        only: use_iop, doiopupdate, single_column, &
                              setiopupdate, readiopdata, iop_mode
    use element_mod,    only: element_t
-   use element_ops,    only: get_field
+   use element_ops,    only: get_field, get_field_i
    use shr_const_mod,       only: SHR_CONST_PI
    use se_single_column_mod, only: scm_broadcast
 
@@ -150,7 +150,9 @@ subroutine stepon_init(dyn_in, dyn_out )
   call addfld('DYN_V'    ,(/ 'lev' /), 'A', 'm/s',  'Meridional Velocity',    gridname='GLL')
   call addfld('DYN_OMEGA',(/ 'lev' /), 'A', 'Pa/s', 'Vertical Velocity',      gridname='GLL' )
   call addfld('DYN_PS'   ,horiz_only,  'A', 'Pa',   'Surface pressure',       gridname='GLL')
-  call addfld('DYN_PNH'  ,(/ 'lev' /), 'A', 'Pa',   'Nonhydrostatic pressure',      gridname='GLL')
+  call addfld('DYN_PNH'  ,(/ 'lev' /), 'A', 'Pa',   'Nonhydrostatic pressure',gridname='GLL')
+  call addfld('DYN_W'    ,(/ 'ilev' /),'A', 'm/s',  'Vertical velocity',      gridname='GLL')
+  call addfld('DYN_PHI'  ,(/ 'ilev' /),'A', 'm2/s2','Geopotential',           gridname='GLL')
 
 end subroutine stepon_init
 
@@ -228,7 +230,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
    use parallel_mod,    only: par
    use dyn_comp,        only: TimeLevel, hvcoord
    use time_mod,        only: tstep, TimeLevel_Qdp   !  dynamics typestep
-   use control_mod,     only: ftype, qsplit
+   use control_mod,     only: ftype, qsplit, theta_hydrostatic_mode
    use hycoef,          only: hyai, hybi
    use cam_history,     only: outfld, hist_fld_active
    use prim_driver_base,only: applyCAMforcing_tracers
@@ -244,6 +246,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
    real(r8) :: rec2dt
    real(r8) :: dp(np,np,nlev),fq,fq0,qn0, ftmp(npsq,nlev,2)
    real(r8) :: tmp_dyn(np,np,nlev,nelemd)
+   real(r8) :: tmp_dyn_i(np,np,nlevp)
    real(r8) :: fmtmp(np,np,nlev)
    real(r8) :: p_m(np,np,nlev)    ! temporary midpoint pressure for DYN_OMEGA output
    real(r8) :: p_i(np,np,nlevp)   ! temporary interface pressure for DYN_OMEGA output
@@ -420,6 +423,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
       enddo
    endif
 
+#ifdef MODEL_THETA_L
    if (hist_fld_active('DYN_PNH')) then
       do ie=1,nelemd
          ! time level ntQ is not used
@@ -427,6 +431,25 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
          call outfld('DYN_PNH',tmp_dyn(1,1,1,ie),npsq,ie)
       enddo
    endif
+
+   if (.not. theta_hydrostatic_mode) then
+   if (hist_fld_active('DYN_PHI')) then
+      do ie=1,nelemd
+         call get_field_i(dyn_in%elem(ie),'geo_i',tmp_dyn_i(:,:,:),hvcoord,tl_f)
+         call outfld('DYN_PHI',tmp_dyn_i(:,:,:),npsq,ie)
+      enddo
+   endif
+   if (hist_fld_active('DYN_W')) then
+      do ie=1,nelemd
+         call get_field_i(dyn_in%elem(ie),'w_i',tmp_dyn_i(:,:,:),hvcoord,tl_f)
+         call outfld('DYN_W',tmp_dyn_i(:,:,:),npsq,ie)
+      enddo
+   endif
+   endif
+
+#endif
+
+
 
    if (hist_fld_active('FU') .or. hist_fld_active('FV') ) then
       do ie=1,nelemd
