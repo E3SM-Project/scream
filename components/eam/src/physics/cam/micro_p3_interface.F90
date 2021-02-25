@@ -424,6 +424,29 @@ end subroutine micro_p3_readnl
                &Could not call addfld for constituent with unknown units.")
        endif
     end do
+
+    ! Add fields to output that are needed for p3-stand-alone test:
+    call addfld("T_atm",          (/ 'lev' /), 'I', 'unitless', "T_atm"          ) 
+    call addfld("ast",            (/ 'lev' /), 'I', 'unitless', "ast"            ) 
+    call addfld("ni_activated",   (/ 'lev' /), 'I', 'unitless', "ni_activated"   ) 
+    call addfld("nc_nuceat_tend", (/ 'lev' /), 'I', 'unitless', "nc_nuceat_tend" ) 
+    call addfld("pmid",           (/ 'lev' /), 'I', 'unitless', "pmid"           ) 
+    call addfld("dp",             (/ 'lev' /), 'I', 'unitless', "dp"             ) 
+    call addfld("zi",             (/ 'lev' /), 'I', 'unitless', "zi"             ) 
+    call addfld("qv_prev",        (/ 'lev' /), 'I', 'unitless', "qv_prev"        ) 
+    call addfld("T_prev",         (/ 'lev' /), 'I', 'unitless', "T_prev"         ) 
+    call addfld("qv",             (/ 'lev' /), 'I', 'unitless', "qv"             ) 
+    call addfld("qc",             (/ 'lev' /), 'I', 'unitless', "qc"             ) 
+    call addfld("qr",             (/ 'lev' /), 'I', 'unitless', "qr"             ) 
+    call addfld("qi",             (/ 'lev' /), 'I', 'unitless', "qi"             ) 
+    call addfld("qm",             (/ 'lev' /), 'I', 'unitless', "qm"             ) 
+    call addfld("nc",             (/ 'lev' /), 'I', 'unitless', "nc"             ) 
+    call addfld("nr",             (/ 'lev' /), 'I', 'unitless', "nr"             ) 
+    call addfld("ni",             (/ 'lev' /), 'I', 'unitless', "ni"             ) 
+    call addfld("bm",             (/ 'lev' /), 'I', 'unitless', "bm"             ) 
+    call addfld("nccn_prescribed",(/ 'lev' /), 'I', 'unitless', "nccn_prescribed") 
+    call addfld("inv_qc_relvar",  (/ 'lev' /), 'I', 'unitless', "inv_qc_relvar"  ) 
+
     call addfld(apcnst(ixcldliq), (/ 'lev' /), 'A', 'kg/kg', trim(cnst_name(ixcldliq))//' after physics'  )
     call addfld(apcnst(ixcldice), (/ 'lev' /), 'A', 'kg/kg', trim(cnst_name(ixcldice))//' after physics'  )
     call addfld(bpcnst(ixcldliq), (/ 'lev' /), 'A', 'kg/kg', trim(cnst_name(ixcldliq))//' before physics' )
@@ -939,7 +962,6 @@ end subroutine micro_p3_readnl
     lq(ixnumrain) = .true.
     lq(ixrimvol)  = .true.
     call physics_ptend_init(ptend, psetcols, "micro_p3", ls=.true., lq=lq)
-
     ! HANDLE AEROSOL ACTIVATION
     !==============
     do_predict_nc = micro_aerosolactivation
@@ -1065,6 +1087,27 @@ end subroutine micro_p3_readnl
        nccn_prescribed = ccn_trcdat*cld_frac_l
     end if
 
+    ! Write to outfile the variables needed for p3-stand-alone initialization
+    call outfld("T_atm",           state%T,                pcols, lchnk) 
+    call outfld("ast",             ast,                    pcols, lchnk) 
+    call outfld("ni_activated",    ni_activated,           pcols, lchnk) 
+    call outfld("nc_nuceat_tend",  npccn,                  pcols, lchnk) 
+    call outfld("pmid",            state%pmid,             pcols, lchnk) 
+    call outfld("dp",              state%pdel  ,           pcols, lchnk) 
+    call outfld("zi",              state%zi,               pcols, lchnk) 
+    call outfld("qv_prev",         qv_prev,                pcols, lchnk) 
+    call outfld("T_prev",          T_prev,                 pcols, lchnk) 
+    call outfld("qv",              state%q(:,:,1),         pcols, lchnk) 
+    call outfld("qc",              state%q(:,:,ixcldliq),  pcols, lchnk) 
+    call outfld("qr",              state%q(:,:,ixrain),    pcols, lchnk) 
+    call outfld("qi",              state%q(:,:,ixcldice),  pcols, lchnk) 
+    call outfld("qm",              state%q(:,:,ixcldrim),  pcols, lchnk) 
+    call outfld("nc",              state%q(:,:,ixnumliq),  pcols, lchnk) 
+    call outfld("nr",              state%q(:,:,ixnumrain), pcols, lchnk) 
+    call outfld("ni",              state%q(:,:,ixnumice),  pcols, lchnk) 
+    call outfld("bm",              state%q(:,:,ixrimvol),  pcols, lchnk) 
+    call outfld("nccn_prescribed", nccn_prescribed,        pcols, lchnk) 
+    call outfld("inv_qc_relvar",   relvar,                 pcols, lchnk) 
     ! CALL P3
     !==============
     ! TODO: get proper value for 'it' from time module
