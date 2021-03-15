@@ -850,7 +850,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
 
     call tsinti(tmelt, latvap, rair, stebol, latice)
 
-    call radiation_init(phys_state) !,pbuf2d)
+    call radiation_init(phys_state,pbuf2d)
 
     call rad_solar_var_init()
 
