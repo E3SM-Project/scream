@@ -170,6 +170,7 @@ module radiation
       'H2O', 'CO2', 'O3 ', 'N2O', &
       'CO ', 'CH4', 'O2 ', 'N2 ' &
    /)
+   real(r8), target :: active_gases_index(size(active_gases))
 
    ! Stuff to generate random numbers for perturbation growth tests. This needs to
    ! be public module data because restart_physics needs to read it to write it to
@@ -478,6 +479,7 @@ contains
       ! needed for SPA
       integer :: band_index
 
+      integer :: igas
       !-----------------------------------------------------------------------
 
       ! sanity check for spa
@@ -574,6 +576,24 @@ contains
       call add_hist_coord('swband', nswbands, 'Shortwave wavenumber', 'cm-1', sw_band_midpoints)
       call add_hist_coord('lwband', nlwbands, 'Longwave wavenumber', 'cm-1', lw_band_midpoints)
 
+
+!ASD      ! Add outfields to be used for RRTMG stand-alone testing.
+          do igas = 1,size(active_gases)
+            active_gases_index(igas) = igas
+          end do
+          call add_hist_coord("ngas",size(active_gases),"Number of active gases in radiation", 'N/A', active_gases_index)
+      call addfld("pmid_RADin",        (/ 'lev' /), 'I', 'unitless', '')
+      call addfld("pint_RADin",        (/ 'lev' /), 'I', 'unitless', '')
+      call addfld("tmid_RADin",        (/ 'lev' /), 'I', 'unitless', '')
+      call addfld("tint_RADin",        (/ 'lev' /), 'I', 'unitless', '')
+      call addfld("gas_vmr_RADin",     (/ 'lev', 'ngas' /), 'I', 'unitless', "gas_vmr")
+      call addfld("sfc_alb_dir_RADin", (/ 'lev' /), 'I', 'unitless', "sfc_alb_dir")
+      call addfld("sfc_alb_dif_RADin", (/ 'lev' /), 'I', 'unitless', "sfc_alb_dif")
+      call addfld("mu0_RADin",         (/ 'lev' /), 'I', 'unitless', "mu0")
+      call addfld("lwp_RADin",         (/ 'lev' /), 'I', 'unitless', "lwp")
+      call addfld("iwp_RADin",         (/ 'lev' /), 'I', 'unitless', "iwp")
+      call addfld("rel_RADin",         (/ 'lev' /), 'I', 'unitless', "rel")
+      call addfld("rei_RADin",         (/ 'lev' /), 'I', 'unitless', "rei")
       ! Shortwave radiation
       call addfld('TOT_CLD_VISTAU', (/ 'lev' /), 'A',   '1', &
                   'Total gridbox cloud visible (550 nm) optical depth', &
@@ -1168,6 +1188,7 @@ contains
 
       ! Gas volume mixing ratios
       real(r8), dimension(size(active_gases),pcols,pver) :: gas_vmr
+      real(r8), dimension(pcols,pver,size(active_gases)) :: gas_vmr_flip
 
       ! Needed for shortwave aerosol; TODO: remove this dependency
       integer :: nday, nnight     ! Number of daylight columns
@@ -1573,6 +1594,24 @@ contains
             end if
          end if
       end if
+      ! Call outfield on fields needed by radiation for stand-alone testing 
+      do icol = 1,ncol
+        do ilay = 1,size(active_gases)
+          gas_vmr_flip(icol,:,ilay) = gas_vmr(ilay,icol,:)
+        end do
+      end do
+      call outfld("pmid_RADin",        state%pmid, pcols, state%lchnk)
+      call outfld("pint_RADin",        state%pint, pcols, state%lchnk)
+      call outfld("tmid_RADin",        state%t,    pcols, state%lchnk)
+      call outfld("tint_RADin",        tint,       pcols, state%lchnk)
+      call outfld("gas_vmr_RADin",     gas_vmr_flip, pcols, state%lchnk)
+      call outfld("sfc_alb_dir_RADin", albedo_dir, pcols, state%lchnk)
+      call outfld("sfc_alb_dif_RADin", albedo_dif, pcols, state%lchnk)
+      call outfld("mu0_RADin",         coszrs, pcols, state%lchnk)
+      call outfld("lwp_RADin",         iclwp, pcols, state%lchnk)
+      call outfld("iwp_RADin",         iciwp, pcols, state%lchnk)
+      call outfld("rel_RADin",         rel, pcols, state%lchnk)
+      call outfld("rei_RADin",         rei, pcols, state%lchnk)
 
    end subroutine radiation_tend
 
