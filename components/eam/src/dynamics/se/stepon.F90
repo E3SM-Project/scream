@@ -86,6 +86,7 @@ subroutine stepon_init(dyn_in, dyn_out )
   use gravity_waves_sources,  only: gws_init
   use phys_control,           only: use_gw_front
   use cam_history_support,    only: max_fieldname_len
+  use cam_history_support, only: add_hist_coord 
 
 ! !OUTPUT PARAMETERS
 !
@@ -113,6 +114,15 @@ subroutine stepon_init(dyn_in, dyn_out )
   ! these calls cant be done in dyn_init() because physics grid
   ! is not initialized at that point if making a restart runs
   !
+  ! Fields needed to run a dynamics stand-alone test
+  call add_hist_coord('dim2',  2, 'Velocity coordinates',  'N/A', (/ 1,2 /))
+  call addfld('dp_inHOMME',         (/ 'lev' /),          'I', 'unitless', 'dp',         gridname='GLL')
+  call addfld('phi_i_inHOMME',      (/ 'ilev' /),         'I', 'unitless', 'phi_i',      gridname='GLL')
+  call addfld('qv_inHOMME',         (/ 'lev' /),          'I', 'unitless', 'qv',         gridname='GLL')
+  call addfld('v_inHOMME',          (/ 'lev', 'dim2' /),  'I', 'unitless', 'v',          gridname='GLL')
+  call addfld('vtheta_dp_inHOMME',  (/ 'lev' /),          'I', 'unitless', 'vtheta_dp',  gridname='GLL')
+  call addfld('w_i_inHOMME',        (/ 'ilev' /),         'I', 'unitless', 'w_i',        gridname='GLL')
+  call addfld('ps_inHOMME',         horiz_only,           'I', 'unitless', 'ps',         gridname='GLL')
   ! Forcing from physics
   call addfld ('FU',  (/ 'lev' /), 'A', 'm/s2', 'Zonal wind forcing term',     gridname='GLL')
   call addfld ('FV',  (/ 'lev' /), 'A', 'm/s2', 'Meridional wind forcing term',gridname='GLL')
@@ -509,6 +519,15 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
       enddo
       call outfld('DYN_OMEGA',omega(:,:,:),npsq,ie)
 #endif
+      ! Write output for stand-alone dynamics test
+      call outfld('dp_inHOMME',         dyn_in%elem(ie)%state%dp3d(:,:,:,tl_f),      npsq,ie)
+      call outfld('phi_i_inHOMME',      dyn_in%elem(ie)%state%phinh_i(:,:,:,tl_f),   npsq,ie)
+      call outfld('qv_inHOMME',         dyn_in%elem(ie)%state%Q(:,:,:,1),            npsq,ie)
+      call outfld('v_inHOMME',          dyn_in%elem(ie)%state%V(:,:,:,:,tl_f),       npsq,ie)
+      call outfld('vtheta_dp_inHOMME',  dyn_in%elem(ie)%state%vtheta_dp(:,:,:,tl_f), npsq,ie)
+      call outfld('w_i_inHOMME',        dyn_in%elem(ie)%state%w_i(:,:,:,tl_f),       npsq,ie)
+      call outfld('ps_inHOMME',         p_i(:,:,nlevp),                              npsq,ie)
+      !-----
    end do
    
    
