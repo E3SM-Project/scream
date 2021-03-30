@@ -296,6 +296,7 @@ end function shoc_implements_cnst
     use constituents,           only: cnst_get_ind	
     use shoc,                   only: shoc_init			      			      
     use cam_history,            only: horiz_only, addfld, add_default
+    use cam_history_support,    only: add_hist_coord 
     use error_messages,         only: handle_errmsg
     use trb_mtn_stress,         only: init_tms   
  
@@ -389,6 +390,7 @@ end function shoc_implements_cnst
     endif
 
     ! Write variables for shoc stand alone test: INPUT 
+    call add_hist_coord('dim2',  2, 'Velocity coordinates',  'N/A', (/ 1,2 /))
     call addfld( "t_inSHOC",        (/'lev'/),  'I', 'unitless', "t"       )
     call addfld( "alst_inSHOC",     (/'lev'/),  'I', 'unitless', "alst"    )
     call addfld( "zi_inSHOC",       (/'ilev'/), 'I', 'unitless', "zi"      )
@@ -409,6 +411,7 @@ end function shoc_implements_cnst
     call addfld( "tke_inSHOC",      (/'lev'/),  'I', 'unitless', "tke"     )
     call addfld( "u_inSHOC",        (/'lev'/),  'I', 'unitless', "u"       )
     call addfld( "v_inSHOC",        (/'lev'/),  'I', 'unitless', "v"       )
+    call addfld( "V_inSHOC",        (/'lev', 'dim2'/),  'I', 'unitless', "V"       )
     call addfld( "wthv_sec_inSHOC", (/'lev'/),  'I', 'unitless', "wthv_sec")
     call addfld( "tkh_inSHOC",      (/'lev'/),  'I', 'unitless', "tkh"     )
     call addfld( "tk_inSHOC",       (/'lev'/),  'I', 'unitless', "tk"      )
@@ -427,7 +430,7 @@ end function shoc_implements_cnst
     call addfld('WTHL_SEC',(/'ilev'/), 'A', 'W/m2', 'Heat flux')
     call addfld('WQW_SEC',(/'ilev'/), 'A', 'W/m2', 'Moisture flux')
     call addfld('WTKE_SEC',(/'ilev'/), 'A', 'm3/s3', 'Vertical flux of turbulence')
-    call addfld('UW_SEC',(/'ilev'/), 'A', 'm2/s2', 'Momentum flux')
+    call addfld('UW_SEC',(/'ilev'/), 'A', 'm2/s2', 'MomenVum flux')
     call addfld('VW_SEC',(/'ilev'/), 'A', 'm2/s2', 'Momentum flux')
     call addfld('W3',(/'ilev'/), 'A', 'm3/s3', 'Third moment vertical velocity')
     call addfld('WQL_SEC',(/'lev'/),'A', 'W/m2', 'Liquid water flux')
@@ -593,6 +596,7 @@ end function shoc_implements_cnst
    real(r8) :: thlm(pcols,pver)
    real(r8) :: um(pcols,pver)
    real(r8) :: vm(pcols,pver)
+   real(r8) :: uvm(pcols,pver,2)
    real(r8) :: rvm(pcols,pver)
    real(r8) :: rtm(pcols,pver)
    real(r8) :: rcm(pcols,pver)
@@ -801,6 +805,8 @@ end function shoc_implements_cnst
        rtm(i,k) = rvm(i,k) + rcm(i,k)
        um(i,k) = state1%u(i,k)
        vm(i,k) = state1%v(i,k)
+       uvm(i,k,1) = um(i,k)
+       uvm(i,k,2) = vm(i,k)
        
        pot_temp = state1%t(i,k)*inv_exner(i,k)
        thlm(i,k) = pot_temp-(pot_temp/state1%t(i,k))*(latvap/cpair)*state1%q(i,k,ixcldliq)
@@ -896,6 +902,7 @@ end function shoc_implements_cnst
    call outfld( "tke_inSHOC",      tke_zt,                 pcols, lchnk )
    call outfld( "u_inSHOC",        um,                     pcols, lchnk )
    call outfld( "v_inSHOC",        vm,                     pcols, lchnk )
+   call outfld( "V_inSHOC",        uvm,                    pcols, lchnk )
    call outfld( "wthv_sec_inSHOC", wthv,                   pcols, lchnk )
    call outfld( "tkh_inSHOC",      tkh,                    pcols, lchnk )
    call outfld( "tk_inSHOC",       tk,                     pcols, lchnk )
