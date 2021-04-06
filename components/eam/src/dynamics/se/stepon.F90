@@ -153,6 +153,7 @@ subroutine stepon_init(dyn_in, dyn_out )
   call addfld('DYN_PNH'  ,(/ 'lev' /), 'A', 'Pa',   'Nonhydrostatic pressure',gridname='GLL')
   call addfld('DYN_W'    ,(/ 'ilev' /),'A', 'm/s',  'Vertical velocity',      gridname='GLL')
   call addfld('DYN_PHI'  ,(/ 'ilev' /),'A', 'm2/s2','Geopotential',           gridname='GLL')
+  call addfld('DYN_MU'   ,(/ 'ilev' /),'A', 'm2/s2','dPNH/dPH',               gridname='GLL')
 
 end subroutine stepon_init
 
@@ -443,6 +444,12 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
       do ie=1,nelemd
          call get_field_i(dyn_in%elem(ie),'w_i',tmp_dyn_i(:,:,:),hvcoord,tl_f)
          call outfld('DYN_W',tmp_dyn_i(:,:,:),npsq,ie)
+      enddo
+   endif
+   if (hist_fld_active('DYN_MU')) then
+      do ie=1,nelemd
+         call get_field_i(dyn_in%elem(ie),'mu_i',tmp_dyn_i(:,:,:),hvcoord,tl_f)
+         call outfld('DYN_MU',tmp_dyn_i(:,:,:),npsq,ie)
       enddo
    endif
    endif
