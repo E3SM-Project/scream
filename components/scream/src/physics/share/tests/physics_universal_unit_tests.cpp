@@ -113,7 +113,9 @@ struct UnitWrap::UnitTest<D>::TestUniversal
     }
   } // T_th_conversion_test
 //-----------------------------------------------------------------------------------------------//
-  KOKKOS_FUNCTION static void dz_tests(const Scalar& zi_top, const Scalar& zi_bot, int& errors){
+  KOKKOS_FUNCTION static void dz_tests(const Scalar& zi_top, const Scalar& zi_bot, 
+                     const Scalar& pseudo_density_in, const Scalar& p_mid_in, const Scalar& T_mid_in, const Scalar& qv_in,
+                     int& errors){
 
     // Allow usage of universal functions
     using physics = scream::physics::Functions<Scalar, Device>;
@@ -124,7 +126,7 @@ struct UnitWrap::UnitTest<D>::TestUniversal
     //========================================================
     // Test calculation of layer thickness using get_dz
     //========================================================
-    // This function tests the function "get_dz" for a set of interface layer heights.
+    // This operation tests the function "get_dz" for a set of interface layer heights when the interface layers are provided.
     //
     // Inputs:
     //   zi_top: The above surface height of the top of the verical layer, m.
@@ -142,6 +144,30 @@ struct UnitWrap::UnitTest<D>::TestUniversal
       errors++;
     }
 
+    //========================================================
+    // This operation tests the function "get_dz" for a set of interface layer heights when pressure and temperature is provided
+    //
+    // Inputs:
+    //   pseudo_density: The pressure level thickness, Pa
+    //   p_mid         : The avgerage atmosphere pressure over the level, Pa
+    //   T_mid         : The atmospheric temperature, K - needed for T_virtual
+    //   qv            : The water vapor mass mixing ratio, kg/kg - needed for T_virtual
+    // Outputs:
+    //   errors:  A tally of any errors that this test detects.
+    //========================================================
+    static constexpr Scalar Rd  = C::RD;
+    static constexpr Scalar ggr = C::gravit;
+    const Spack pseudo_density(pseudo_density_in);
+    const Spack p_mid(p_mid_in);
+    const Spack T_mid(T_mid_in);
+    const Spack qv(qv_in);
+    const Spack T_virtual = physics::get_virtual_temperature(T_mid,qv,Smask(true));
+    expected_dz = pseudo_density_in*Rd*T_virtual[0] / (p_mid_in*ggr); 
+    const Spack dz_1 = physics::get_dz(pseudo_density, p_mid, T_mid, qv, Smask(true));
+    if (std::abs(dz_1[0]-expected_dz)>tol) {
+      printf("get_dz test: abs(dz-expected_dz)=%e is larger than the tol=%e\n",std::abs(dz[0]-expected_dz),tol);
+      errors++;
+    }
   } // dz_test
 //-----------------------------------------------------------------------------------------------//
   KOKKOS_FUNCTION static void dse_tests(const Scalar& temp, const Scalar& height, const Scalar surface_height, int& errors){
@@ -269,7 +295,7 @@ struct UnitWrap::UnitTest<D>::TestUniversal
         //     Allow for varying interface heights by setting zi_bot equal to the sum(0,...,k).
         Real zi_bot = (pow(k,2)+k)/2.0;
         Real zi_top = zi_bot + (k+1);
-        dz_tests(zi_top,zi_bot,errors);
+        dz_tests(zi_top,zi_bot,dp,pres,temp(k),qv(k),errors);
         // DSE Test
         dse_tests(temp(k),height(k),surface_height(k),errors);
         // virtual temperature test

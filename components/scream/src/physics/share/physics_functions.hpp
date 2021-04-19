@@ -131,6 +131,15 @@ struct Functions
   //   zi_bot is the distance above the surface of the bottom of the layer.  Units in m
   KOKKOS_FUNCTION
   static Spack get_dz(const Spack& zi_top, const Spack& zi_bot, const Smask& range_mask);
+  // Determine the physical thickness of a vertical layer
+  // The result is dz, units in m
+  // The inputs are
+  //   pseudo_density is the pressure level thickness, Pa
+  //   p_mid          is the avgerage atmosphere pressure over the level, Pa
+  //   T_mid          is the atmospheric temperature, K - needed for T_virtual
+  //   qv             is the water vapor mass mixing ratio, kg/kg - needed for T_virtual
+  KOKKOS_FUNCTION
+  static Spack get_dz(const Spack& pseudo_density, const Spack& p_mid, const Spack& T_mid, const Spack& qv, const Smask& range_mask);
 
   // Compute dry static energy (DSE).
   // The result unit is in J/kg

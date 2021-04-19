@@ -85,6 +85,38 @@ Functions<S,D>::th_to_T(const Spack& th_atm, const Spack& exner, const Smask& ra
   return result;
 }
 //-----------------------------------------------------------------------------------------------//
+// Determines the vertical layer thickness using the equation of state:
+//   dz = - (-pseudo_density)*Rd*T_virtual / (p_mid*g)
+//     note the extra negative sign because the psuedo_density in the model is measured in the positive direction.
+// where
+//   dz             is the vertical layer thickness, m
+//   pseudo_density is the pressure level thickness, Pa
+//   T_virtual      is the virtual temperature - calculated using a separate function from this suite, K
+//   p_mid          is the avgerage atmosphere pressure over the level, Pa
+//   g              is the graviational constant, m s-2
+//   Rd             is the universal gas constant for dry air, J/kg/K
+//   T_mid          is the atmospheric temperature, K - needed for T_virtual
+//   qv             is the water vapor mass mixing ratio, kg/kg - needed for T_virtual
+template <typename S, typename D>
+KOKKOS_FUNCTION
+typename Functions<S,D>::Spack
+Functions<S,D>::get_dz(const Spack& pseudo_density, const Spack& p_mid, const Spack& T_mid, const Spack& qv, const Smask& range_mask)
+{
+  static constexpr Scalar Rd  = C::RD;
+  static constexpr Scalar ggr = C::gravit;
+  // Need to first back out virtual temperature
+  Spack T_virtual = get_virtual_temperature(T_mid,qv,range_mask);
+  // Now can back out the vertical layer thickness
+  Spack result;
+  const Spack dz = pseudo_density*Rd*T_virtual / (p_mid*ggr);
+  // Check that there are no obvious errors in the result.
+  EKAT_KERNEL_ASSERT_MSG(!((isnan(dz) && range_mask).any()), "Error in get_dz, dz has NaN values.\n"); // exit with an error message
+  EKAT_KERNEL_ASSERT_MSG(!(((dz <= 0) && range_mask).any()), "Error in get_dz, dz has negative values.\n"); // exit with an error message
+  // Set the values of the result
+  result.set(range_mask,dz);
+  return result;
+}
+//-----------------------------------------------------------------------------------------------//
 // Determines the vertical layer thickness given the interface heights:
 //   dz = zi_top-zi_bot,
 // where
