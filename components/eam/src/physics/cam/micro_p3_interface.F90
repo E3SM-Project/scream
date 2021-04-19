@@ -96,7 +96,6 @@ module micro_p3_interface
       mon_ccn_idx,        &
       current_month      !Needed for prescribed CCN option         
 
-!   integer,dimension(12) :: mon_ccn_idx
 
 ! Physics buffer indices for fields registered by other modules
    integer :: &
@@ -298,19 +297,6 @@ end subroutine micro_p3_readnl
    call pbuf_add_field('T_PREV',      'global',dtype_r8,(/pcols,pver/), t_prev_idx)
  !! for prescribed CCN
    call pbuf_add_field('MON_CCN',  'global', dtype_r8,(/pcols,pver,12/),mon_ccn_idx)
-!   call pbuf_add_field('MON_CCN_1',  'global', dtype_r8,(/pcols,pver/),mon_ccn_idx(1)) !ASDmon_ccn_1_idx)
-!   call pbuf_add_field('MON_CCN_2',  'global', dtype_r8,(/pcols,pver/),mon_ccn_idx(2)) !ASDmon_ccn_2_idx)
-!   call pbuf_add_field('MON_CCN_3',  'global', dtype_r8,(/pcols,pver/),mon_ccn_idx(3)) !ASDmon_ccn_3_idx)
-!   call pbuf_add_field('MON_CCN_4',  'global', dtype_r8,(/pcols,pver/),mon_ccn_idx(4)) !ASDmon_ccn_4_idx)
-!   call pbuf_add_field('MON_CCN_5',  'global', dtype_r8,(/pcols,pver/),mon_ccn_idx(5)) !ASDmon_ccn_5_idx)
-!   call pbuf_add_field('MON_CCN_6',  'global', dtype_r8,(/pcols,pver/),mon_ccn_idx(6)) !ASDmon_ccn_6_idx)
-!   call pbuf_add_field('MON_CCN_7',  'global', dtype_r8,(/pcols,pver/),mon_ccn_idx(7)) !ASDmon_ccn_7_idx)
-!   call pbuf_add_field('MON_CCN_8',  'global', dtype_r8,(/pcols,pver/),mon_ccn_idx(8)) !ASDmon_ccn_8_idx)
-!   call pbuf_add_field('MON_CCN_9',  'global', dtype_r8,(/pcols,pver/),mon_ccn_idx(9)) !ASDmon_ccn_9_idx)
-!   call pbuf_add_field('MON_CCN_10', 'global', dtype_r8,(/pcols,pver/),mon_ccn_idx(10)) !ASDmon_ccn_10_idx)
-!   call pbuf_add_field('MON_CCN_11', 'global', dtype_r8,(/pcols,pver/),mon_ccn_idx(11)) !ASDmon_ccn_11_idx)
-!   call pbuf_add_field('MON_CCN_12', 'global', dtype_r8,(/pcols,pver/),mon_ccn_idx(12)) !ASDmon_ccn_12_idx)
-
 
    if (masterproc) write(iulog,'(A20)') '    P3 register finished'
   end subroutine micro_p3_register
@@ -820,7 +806,6 @@ end subroutine micro_p3_readnl
       logical :: found = .false.
       real(rtype) :: fraction_of_month
       real(rtype), pointer :: mon_ccn(:,:,:)
-!      real(rtype), pointer :: mon_ccn_2(:,:)
       real(rtype), dimension(12):: days_per_month
 
       !fill days_per_month, SPA does not recognize leap year
@@ -837,9 +822,8 @@ end subroutine micro_p3_readnl
 
       !interpolate between mon_ccn_1 and mon_ccn_2 to calculate nccn_prescribed
       !based on current date
-      call pbuf_get_field(pbuf,mon_ccn_idx, mon_ccn)
 
-!      call pbuf_get_field(pbuf,mon_ccn_idx(next_month), mon_ccn_2)
+      call pbuf_get_field(pbuf,mon_ccn_idx, mon_ccn)
 
       fraction_of_month = (day*3600.0*24.0 + tod)/(3600*24*days_per_month(current_month)) !tod is in seconds
 
