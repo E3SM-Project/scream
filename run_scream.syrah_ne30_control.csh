@@ -943,7 +943,8 @@ $xmlchange_exe --id DEBUG --val `uppercase $debug_compile`
 cat <<EOF >> user_nl_eam
  nhtfrq = $atm_output_freq
  mfilt  = $records_per_atm_output_file
- do_prescribed_CCN = .false.
+ do_prescribed_CCN = .true.
+ micro_p3_lookup_dir = '/g/g12/beydoun1/scream_develop_2/scream/components/scream/data'
  do_SPA_optics = .true.
  SPA_lookup_dir = '/p/lustre2/beydoun1/aerosol_optics/full_spa_files'
 EOF
