@@ -1328,16 +1328,12 @@ contains
       !needed for SPA
       integer :: year, month, day, tod, next_month
       real(r8) :: fraction_of_month
-!      real(r8), pointer :: aerosol_optical_property_lw(:,:,:,:,:)
-!      real(r8), pointer :: aerosol_optical_property_sw(:,:,:,:,:)
       real(r8), pointer :: aer_tau_bnd_lw_mon(:,:,:,:)
       real(r8), pointer :: aer_tau_bnd_sw_mon(:,:,:,:)
       real(r8), pointer :: aer_ssa_bnd_sw_mon(:,:,:,:)
       real(r8), pointer :: aer_asm_bnd_sw_mon(:,:,:,:)
 
       real(r8), dimension(12):: days_per_month
-      !nullify(aerosol_optical_property_lw)
-      !nullify(aerosol_optical_property_sw)
       !fill days_per_month, SPA doesn't recognize leap year
       days_per_month = (/31,28,31,30,31,30,31,31,30,31,30,31/)
 
