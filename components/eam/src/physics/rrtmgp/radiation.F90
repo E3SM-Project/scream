@@ -1511,13 +1511,6 @@ contains
                      aer_ssa_bnd_sw = aer_ssa_bnd_sw_mon(:,:,:,current_month)*(1-fraction_of_month) + aer_ssa_bnd_sw_mon(:,:,:,next_month)*(fraction_of_month)
                      aer_asm_bnd_sw = aer_asm_bnd_sw_mon(:,:,:,current_month)*(1-fraction_of_month) + aer_asm_bnd_sw_mon(:,:,:,next_month)*(fraction_of_month)
  
-                     aer_asm_bnd_sw = min(1.0,aer_asm_bnd_sw)
-                     aer_ssa_bnd_sw = min(1.0,aer_ssa_bnd_sw)
-                     aer_tau_bnd_sw = min(1.0,aer_tau_bnd_sw)
-                     aer_asm_bnd_sw = max(0.0,aer_asm_bnd_sw)
-                     aer_ssa_bnd_sw = max(0.0,aer_ssa_bnd_sw)
-                     aer_tau_bnd_sw = max(0.0,aer_tau_bnd_sw)
-
                   else
 
                      call set_aerosol_optics_sw( &
@@ -1638,8 +1631,6 @@ contains
                      !aerosol optical property based on current date
                      fraction_of_month = (day*3600.0*24.0 + tod)/(3600*24*days_per_month(current_month)) !tod is in seconds
                      aer_tau_bnd_lw = aer_tau_bnd_lw_mon(:,:,:,current_month)*(1-fraction_of_month) + aer_tau_bnd_lw_mon(:,:,:,next_month)*(fraction_of_month)
-                     aer_tau_bnd_lw = min(1.0,aer_tau_bnd_lw)
-                     aer_tau_bnd_lw = max(0.0,aer_tau_bnd_lw)
                   else
 
                      call aer_rad_props_lw(is_cmip6_volc, icall, dt, state, pbuf, aer_tau_bnd_lw)
