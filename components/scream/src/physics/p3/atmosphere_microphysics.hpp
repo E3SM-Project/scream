@@ -84,7 +84,7 @@ public:
         // Potential temperature
         const Spack oT_atm(T_atm(icol,ipack));
         const Smask oT_atm_mask(!isnan(oT_atm) and oT_atm>0.0);
-        auto oth = physics_fun::T_to_th(oT_atm,oexner,oT_atm_mask);
+        auto oth = physics_fun::get_potential_temperature(oT_atm,opmid,oT_atm_mask);
         th_atm(icol,ipack).set(oT_atm_mask,oth);
         // Cloud fraction and dz
         const Spack oast(ast(icol,ipack));
@@ -134,7 +134,7 @@ public:
     view_2d       dz;
     // Assigning local variables
     void set_variables(const int ncol, const int npack,
-           view_2d_const pmid_, view_2d T_atm_, view_2d_const ast_, view_2d_const zi_,
+           const view_2d_const pmid_, const view_2d T_atm_, const view_2d_const ast_, const view_2d_const zi_,
            view_2d exner_, view_2d th_atm_, view_2d cld_frac_l_, view_2d cld_frac_i_, view_2d cld_frac_r_, view_2d dz_
            )
     {
@@ -167,9 +167,10 @@ public:
       for (int ipack=0;ipack<m_npack;ipack++) {
         // Update the atmospheric temperature and the previous temperature.
         const Spack oexner(exner(icol,ipack));
+        const Spack op_mid(p_mid(icol,ipack));
         const Spack oth_atm(th_atm(icol,ipack));
         const Smask oth_atm_mask(!isnan(oth_atm) and oth_atm>0.0);
-        auto oT = physics_fun::th_to_T(oth_atm,oexner,oth_atm_mask);
+        auto oT = physics_fun::get_potential_temperature_inv(oth_atm,op_mid,oth_atm_mask);
         T_atm(icol,ipack).set(oth_atm_mask,oT);
         T_prev(icol,ipack).set(oth_atm_mask,T_atm(icol,ipack));
         // Update qv_prev
@@ -188,6 +189,7 @@ public:
     view_2d       T_atm;
     view_2d       exner;
     view_2d       th_atm;
+    view_2d_const p_mid;
     view_2d       T_prev;
     view_2d       qv;
     view_2d       qv_prev;
@@ -196,12 +198,14 @@ public:
     // Assigning local values
     void set_variables(const int ncol, const int npack,
                     view_2d th_atm_, view_2d exner_, view_2d T_atm_, view_2d T_prev_,
-                    view_2d qv_, view_2d qv_prev_, view_2d diag_eff_radius_qc_, view_2d diag_eff_radius_qi_)
+                    view_2d qv_, view_2d qv_prev_, view_2d diag_eff_radius_qc_, view_2d diag_eff_radius_qi_,
+                    const view_2d_const p_mid_)
     {
       m_ncol  = ncol;
       m_npack = npack;
       // IN
       th_atm      = th_atm_;
+      p_mid       = p_mid_;
       exner       = exner_;
       qv          = qv_;
       // OUT

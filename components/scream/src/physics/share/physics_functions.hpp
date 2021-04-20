@@ -153,7 +153,7 @@ struct Functions
   KOKKOS_FUNCTION
   static Spack get_dse(const Spack& T_mid, const Spack& z_mid, const Real surf_geopotential, const Smask& range_mask);
 
-  // Comput virtual temperature
+  // Compute virtual temperature
   // The result unit is in K
   // The inputs are
   //   T_mid is the atmospheric temperature.  Units in K.
