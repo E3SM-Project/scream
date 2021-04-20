@@ -168,6 +168,7 @@ struct UnitWrap::UnitTest<D>::TestUniversal
       printf("get_dz test: abs(dz-expected_dz)=%e is larger than the tol=%e\n",std::abs(dz[0]-expected_dz),tol);
       errors++;
     }
+
   } // dz_test
 //-----------------------------------------------------------------------------------------------//
   KOKKOS_FUNCTION static void dse_tests(const Scalar& temp, const Scalar& height, const Scalar surface_height, int& errors){
@@ -249,7 +250,10 @@ struct UnitWrap::UnitTest<D>::TestUniversal
     view_1d temp("temp",num_levs),
             height("height",num_levs),
             surface_height("surface_height",num_levs),
-            qv("qv",num_levs);
+            qv("qv",num_levs),
+            pseudo_density("pseudo_density",num_levs),
+            pressure("pressure",num_levs);
+    view_1d dz_view("dz",num_levs);
 
     std::random_device rd;
     using rngAlg = std::mt19937_64;
@@ -263,6 +267,8 @@ struct UnitWrap::UnitTest<D>::TestUniversal
     ekat::genRandArray(height,engine,pdf);
     ekat::genRandArray(surface_height,engine,pdf);
     ekat::genRandArray(qv,engine,pdf);
+    ekat::genRandArray(pressure,engine,pdf);
+    ekat::genRandArray(pseudo_density,engine,pdf);
 
     int nerr = 0;
     TeamPolicy policy(ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, 1));
@@ -274,14 +280,22 @@ struct UnitWrap::UnitTest<D>::TestUniversal
       static constexpr Scalar rd     = C::RD;
       static constexpr Scalar inv_cp = C::INV_CP;
       static constexpr Scalar tmelt  = C::Tmelt;
+      static constexpr Scalar ggr    = C::gravit;
+      static constexpr Scalar ep_2   = C::ep_2;
+      static constexpr Scalar eps    = C::macheps;
+      Real tol = 2000*eps;
 
       // Create dummy level data for testing:
       Real pres_top = 200.;
       Real dp       = (p0-pres_top)/(num_levs-1);
 
       // Run tests
+      // Test function versions with views as input
+      physics::get_dz(num_levs,pseudo_density, pressure, temp, qv, dz_view);
       for (int k=0;k<num_levs;++k)
       {
+        Real T_virtual_exp = (temp[k]*(qv[k]+ep_2))/(ep_2*(1.0+qv[k]));
+        Real dz_exp = pseudo_density[k]*rd*T_virtual_exp/(pressure[k]*ggr);
         // Exner test
         //   - Pressure at level k is just k*dp, so each pressure level is dp in thickness.
         Real pres = p0 + k*dp;
@@ -296,6 +310,10 @@ struct UnitWrap::UnitTest<D>::TestUniversal
         Real zi_bot = (pow(k,2)+k)/2.0;
         Real zi_top = zi_bot + (k+1);
         dz_tests(zi_top,zi_bot,dp,pres,temp(k),qv(k),errors);
+        if (std::abs(dz_view[k]-dz_exp)>tol) {
+          printf("get_dz test: abs(dz-expected_dz)=%e is larger than the tol=%e\n",std::abs(dz_view[k]-dz_exp),tol);
+          errors++;
+        }
         // DSE Test
         dse_tests(temp(k),height(k),surface_height(k),errors);
         // virtual temperature test

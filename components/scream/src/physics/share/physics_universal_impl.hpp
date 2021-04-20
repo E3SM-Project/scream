@@ -116,6 +116,21 @@ Functions<S,D>::get_dz(const Spack& pseudo_density, const Spack& p_mid, const Sp
   result.set(range_mask,dz);
   return result;
 }
+
+template <typename S, typename D>
+KOKKOS_FUNCTION
+template <typename InputProvider>
+void Functions<S,D>::get_dz(const int nlev, 
+                            const InputProvider& psuedo_density,
+                            const InputProvider& p_mid,
+                            const InputProvider& T_mid,
+                            const InputProvider& qv,
+                            const view_1d<S>& dz)
+{
+  Kokkos::parallel_for("get_dz",nlev,[&](const int ilev) {
+    dz[ilev] = get_dz(psuedo_density[ilev],p_mid[ilev],T_mid[ilev],qv[ilev],Smask(true))[0];
+  }); 
+}
 //-----------------------------------------------------------------------------------------------//
 // Determines the vertical layer thickness given the interface heights:
 //   dz = zi_top-zi_bot,

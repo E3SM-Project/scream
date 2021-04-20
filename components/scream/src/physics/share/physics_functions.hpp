@@ -141,6 +141,15 @@ struct Functions
   KOKKOS_FUNCTION
   static Spack get_dz(const Spack& pseudo_density, const Spack& p_mid, const Spack& T_mid, const Spack& qv, const Smask& range_mask);
 
+  KOKKOS_FUNCTION
+  template<typename InputProvider>
+  static void get_dz(const int nlev, 
+                     const InputProvider& psuedo_density,
+                     const InputProvider& p_mid,
+                     const InputProvider& T_mid,
+                     const InputProvider& qv,
+                     const view_1d<Scalar>& dz);
+
   // Compute dry static energy (DSE).
   // The result unit is in J/kg
   // The inputs are
