@@ -114,8 +114,14 @@ struct Functions
   //   T_mid is the atmospheric temperature, units in K
   //   Exners function, unitless.  Exners function can be derived using `get_exner` defined above.
   KOKKOS_FUNCTION
-  static Spack T_to_th(const Spack& T_atm, const Spack& exner, const Smask& range_mask);
+  static Spack get_potential_temperature(const Spack& T_mid, const Spack& exner, const Smask& range_mask);
 
+  KOKKOS_FUNCTION
+  template <typename InputProvider>
+  static void get_potential_temperature(const int nlev,
+                                        const InputProvider& T_mid,
+                                        const InputProvider& exner,
+                                        const view_1d<Scalar>& T_potential);
   // Converts potential temperature into temperature
   // The result is the temperature, units in K
   // The inputs are

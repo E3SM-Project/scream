@@ -61,7 +61,7 @@ struct UnitWrap::UnitTest<D>::TestUniversal
     //========================================================
     // Test conversion of temperature to potential temperature, and vice versa
     //========================================================
-    // This function tests both the T_to_th and th_to_T universal conversion functions.
+    // This function tests both the get_potential_temperature and th_to_T universal conversion functions.
     //
     // Inputs:
     //   T_in:    An example temperature, K.
@@ -78,10 +78,10 @@ struct UnitWrap::UnitTest<D>::TestUniversal
     // Test conversion from temperature (T) to potential temperature (th)
     // Use T_in to convert from T to th
     // Note: T to th conversion is just a simple formula of th = T/exner
-    const Spack th_atm = physics::T_to_th(T,exner,Smask(true));
+    const Spack th_mid = physics::get_potential_temperature(T,exner,Smask(true));
     Real expected_th = T_in/exner[0];
-    if (std::abs(th_atm[0]-expected_th)>tol) {
-      printf("T to th test: abs(th_atm-expected_th)=%e is larger than the tol=%e\n",std::abs(th_atm[0]-expected_th),tol);
+    if (std::abs(th_mid[0]-expected_th)>tol) {
+      printf("get_potential_temperature test: abs(th_mid-expected_th)=%e is larger than the tol=%e\n",std::abs(th_mid[0]-expected_th),tol);
       errors++;
     }
 
@@ -91,14 +91,14 @@ struct UnitWrap::UnitTest<D>::TestUniversal
     const Spack T_atm = physics::th_to_T(T,exner,Smask(true));
     Real expected_T = T_in*exner[0];
     if (std::abs(T_atm[0]-expected_T)>tol) {
-      printf("T to th test: abs(th_atm-expected_th)=%e is larger than the tol=%e\n",std::abs(T_atm[0]-expected_T),tol);
+      printf("th to Ttest: abs(T_mid-expected_T)=%e is larger than the tol=%e\n",std::abs(T_atm[0]-expected_T),tol);
       errors++;
     }
 
-    // Test that T_to_th and th_to_T are inverses of each other.
+    // Test that get_potential_temperature and th_to_T are inverses of each other.
     // Test T to th as inverses of each other
     // Converting T to th and then back to T should return the same value again.
-    const Spack th_temp = physics::T_to_th(T,exner,Smask(true));
+    const Spack th_temp = physics::get_potential_temperature(T,exner,Smask(true));
     const Spack T_new   = physics::th_to_T(th_temp,exner,Smask(true));
     if (std::abs(T_new[0]-T_in)>tol) {
       printf("T to th test: abs[ T_new (%.3e) - T_in (%.3e) ]=%e is larger than the tol=%e\n",T_new[0],T_in,std::abs(T_new[0]-T_in),tol);
@@ -106,7 +106,7 @@ struct UnitWrap::UnitTest<D>::TestUniversal
     }
     // and vice versa
     const Spack T_temp = physics::th_to_T(T,exner,Smask(true));
-    const Spack th_new = physics::T_to_th(T_temp,exner,Smask(true));
+    const Spack th_new = physics::get_potential_temperature(T_temp,exner,Smask(true));
     if (std::abs(th_new[0]-T_in)>tol) {
       printf("T to th test: abs[ th_new (%.3e) - T_in (%.3e) ]=%e is larger than the tol=%e\n",th_new[0],T_in,std::abs(th_new[0]-T_in),tol);
       errors++;
