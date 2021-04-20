@@ -180,6 +180,18 @@ Functions<S,D>::get_virtual_temperature(const Spack& T_mid, const Spack& qv, con
   return T_virt;
 }
 
+template <typename S, typename D>
+KOKKOS_FUNCTION
+template <typename InputProvider>
+void Functions<S,D>::get_virtual_temperature(const int nlev,
+                                             const InputProvider& T_mid,
+                                             const InputProvider& qv,
+                                             const view_1d<S>& T_virtual)
+{
+  Kokkos::parallel_for("get_potential_temperature_inv",nlev,[&](const int& ilev) {
+    T_virtual[ilev] = get_virtual_temperature_inv(T_mid[ilev],qv[ilev],Smask(true))[0];
+  });
+}
 //-----------------------------------------------------------------------------------------------//
 } // namespace physics
 } // namespace scream

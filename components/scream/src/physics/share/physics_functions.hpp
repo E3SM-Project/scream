@@ -160,6 +160,13 @@ struct Functions
   //   qv    is the water vapor mass mixing ratio.  Units in kg/kg
   KOKKOS_FUNCTION
   static Spack get_virtual_temperature(const Spack& T_mid, const Spack& qv, const Smask& range_mask);
+
+  KOKKOS_FUNCTION
+  template <typename InputProvider>
+  static void get_virtual_temperature(const int nlev,
+                                      const InputProvider& T_mid,
+                                      const InputProvider& qv,
+                                      const view_1d<Scalar>& T_virtual);
 };
 
 } // namespace physics
