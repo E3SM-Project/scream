@@ -193,7 +193,7 @@ void Functions<S,D>::get_virtual_temperature(const int nlev,
                                              const view_1d<S>& T_virtual)
 {
   Kokkos::parallel_for("get_potential_temperature_inv",nlev,[&](const int& ilev) {
-    T_virtual[ilev] = get_virtual_temperature_inv(T_mid[ilev],qv[ilev],Smask(true))[0];
+    T_virtual[ilev] = get_virtual_temperature(T_mid[ilev],qv[ilev],Smask(true))[0];
   });
 }
 //-----------------------------------------------------------------------------------------------//

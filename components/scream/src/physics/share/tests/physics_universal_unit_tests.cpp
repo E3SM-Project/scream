@@ -50,69 +50,6 @@ struct UnitWrap::UnitTest<D>::TestUniversal
   } // exner_tests
 
 //-----------------------------------------------------------------------------------------------//
-  KOKKOS_FUNCTION static void T_th_conversion_test(const Scalar& T_in, const Scalar& pres_in, int& errors){
-
-    // Allow usage of universal functions
-    using physics = scream::physics::Functions<Scalar, Device>;
-    // Gather the test tolerance
-    static constexpr Scalar eps = C::macheps;
-    Real tol = 1000*eps;
-
-    //========================================================
-    // Test conversion of temperature to potential temperature, and vice versa
-    //========================================================
-    // This function tests both the get_potential_temperature and get_potential_temperature_inv universal conversion functions.
-    //
-    // Inputs:
-    //   T_in:    An example temperature, K.
-    //   pres_in: A pressure value to use for conversion, Pa.
-    // Outputs:
-    //   errors:  A tally of any errors that this test detects.
-    //========================================================
-
-    const Spack T(T_in);
-    const Spack pres(pres_in);
-    // Retrieve exners function for this pressure level.  Note, get_exner is tested in a separate test.
-    const Spack exner = physics::get_exner(pres,Smask(true));
-
-    // Test conversion from temperature (T) to potential temperature (th)
-    // Use T_in to convert from T to th
-    // Note: T to th conversion is just a simple formula of th = T/exner
-    const Spack th_mid = physics::get_potential_temperature(T,pres,Smask(true));
-    Real expected_th = T_in/exner[0];
-    if (std::abs(th_mid[0]-expected_th)>tol) {
-      printf("get_potential_temperature test: abs(th_mid-expected_th)=%e is larger than the tol=%e\n",std::abs(th_mid[0]-expected_th),tol);
-      errors++;
-    }
-
-    // Test conversion from potential temperature (th) to temperature (T)
-    // Use T_in to convert from th to T, note, we use T_in again because we are just testing the formula and T_in should be sufficient for that.
-    // Note: th to T conversion is just a simple formula of T = th*exner
-    const Spack T_mid = physics::get_potential_temperature_inv(T,pres,Smask(true));
-    Real expected_T = T_in*exner[0];
-    if (std::abs(T_mid[0]-expected_T)>tol) {
-      printf("th to T test: abs(T_mid-expected_T)=%e is larger than the tol=%e\n",std::abs(T_mid[0]-expected_T),tol);
-      errors++;
-    }
-
-    // Test that get_potential_temperature and get_potential_temperature_inv are inverses of each other.
-    // Test T to th as inverses of each other
-    // Converting T to th and then back to T should return the same value again.
-    const Spack th_temp = physics::get_potential_temperature(T,pres,Smask(true));
-    const Spack T_new   = physics::get_potential_temperature_inv(th_temp,pres,Smask(true));
-    if (std::abs(T_new[0]-T_in)>tol) {
-      printf("T to th and back again test: abs[ T_new (%.3e) - T_in (%.3e) ]=%e is larger than the tol=%e\n",T_new[0],T_in,std::abs(T_new[0]-T_in),tol);
-      errors++;
-    }
-    // and vice versa
-    const Spack T_temp = physics::get_potential_temperature_inv(T,pres,Smask(true));
-    const Spack th_new = physics::get_potential_temperature(T_temp,pres,Smask(true));
-    if (std::abs(th_new[0]-T_in)>tol) {
-      printf("th to T and back again test: abs[ th_new (%.3e) - T_in (%.3e) ]=%e is larger than the tol=%e\n",th_new[0],T_in,std::abs(th_new[0]-T_in),tol);
-      errors++;
-    }
-  } // T_th_conversion_test
-//-----------------------------------------------------------------------------------------------//
   KOKKOS_FUNCTION static void dz_tests(const Scalar& zi_top, const Scalar& zi_bot, int& errors){
 
     // Allow usage of universal functions
@@ -178,40 +115,6 @@ struct UnitWrap::UnitTest<D>::TestUniversal
 
   } // dse_test
 //-----------------------------------------------------------------------------------------------//
-  KOKKOS_FUNCTION static void virtual_temperature_test(const Scalar& T_mid_in, const Scalar& qv_in, int& errors){
-
-    // Allow usage of universal functions
-    using physics = scream::physics::Functions<Scalar, Device>;
-    // Gather the machine epsilon for the error tolerance
-    static constexpr Scalar eps = C::macheps;
-    static constexpr Scalar ep_2 = C::ep_2;
-    Real tol = 2000*eps;
-
-    //========================================================
-    // Test calculation of virtual temperature using get_virtual_temperature
-    //========================================================
-    // This function tests the function "get_virtual_temperature".
-    //
-    // Inputs:
-    //   T_mid_in is the atmospheric temperature. Units in K.
-    //   qv_in is the atmospheric water vapor mass mixing ratio.  Units in kg/kg
-    // Outputs:
-    //   errors:  A tally of any errors that this test detects.
-    //========================================================
-    const Spack T_mid(T_mid_in);
-    const Spack qv(qv_in);
-    // Given T and qv, determine T_virt
-    const Spack T_virt = physics::get_virtual_temperature(T_mid,qv,Smask(true));
-    // Determine the expected virtual temperature
-    Real expected_T_virt = T_mid_in*(qv_in+ep_2)/(ep_2*(1.0+qv_in));
-
-    if (std::abs(T_virt[0]-expected_T_virt)>tol) {
-      printf("get_virtual_temperature test: abs(T_virt-expected_T_virt)=%e is larger than the tol=%e\n",std::abs(T_virt[0]-expected_T_virt),tol);
-      errors++;
-    }
-  
-  } // virtual_temperature_test
-//-----------------------------------------------------------------------------------------------//
   static void run()
   {
     using physics = scream::physics::Functions<Scalar, Device>;
@@ -223,7 +126,12 @@ struct UnitWrap::UnitTest<D>::TestUniversal
     view_1d temp("temp",num_levs),
             height("height",num_levs),
             surface_height("surface_height",num_levs),
-            qv("qv",num_levs);
+            qv("qv",num_levs),
+            pressure("pressure",num_levs);
+    // Allocate arrays for test outputs
+    view_1d T_potential("T_potential",num_levs),
+            T_from_potential("T_from_potential",num_levs),
+            T_virtual("T_virtual",num_levs);
 
     std::random_device rd;
     using rngAlg = std::mt19937_64;
@@ -237,6 +145,7 @@ struct UnitWrap::UnitTest<D>::TestUniversal
     ekat::genRandArray(height,engine,pdf);
     ekat::genRandArray(surface_height,engine,pdf);
     ekat::genRandArray(qv,engine,pdf);
+    ekat::genRandArray(pressure,engine,pdf);
 
     int nerr = 0;
     TeamPolicy policy(ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, 1));
@@ -248,22 +157,60 @@ struct UnitWrap::UnitTest<D>::TestUniversal
       static constexpr Scalar rd     = C::RD;
       static constexpr Scalar inv_cp = C::INV_CP;
       static constexpr Scalar tmelt  = C::Tmelt;
+      static constexpr Scalar ep_2   = C::ep_2;
+      // Gather the machine epsilon for the error tolerance
+      static constexpr Scalar eps = C::macheps;
+      Real tol = 1000*eps;
 
       // Create dummy level data for testing:
       Real pres_top = 200.;
       Real dp       = (p0-pres_top)/(num_levs-1);
 
       // Run tests
+      //========================================================
+      // Test conversion of temperature to potential temperature, and vice versa
+      //========================================================
+      // This function tests both the get_potential_temperature and get_potential_temperature_inv universal conversion functions.
+      //
+      // Inputs:
+      //   T_mid:    An example temperature, K.
+      //   pressure: A pressure value to use for conversion, Pa.
+      //========================================================
+      physics::get_potential_temperature(num_levs,temp,pressure,T_potential);
+      physics::get_potential_temperature_inv(num_levs,T_potential,pressure,T_from_potential);
+      //========================================================
+      // Test calculation of virtual temperature using get_virtual_temperature
+      //========================================================
+      // This function tests the function "get_virtual_temperature".
+      //
+      // Inputs:
+      //   temp is the atmospheric temperature. Units in K.
+      //   qv   is the atmospheric water vapor mass mixing ratio.  Units in kg/kg
+      //========================================================
+      physics::get_virtual_temperature(num_levs,temp,qv,T_virtual);
+      // Check the values from the tests above against expected values over the entire column
       for (int k=0;k<num_levs;++k)
       {
+        // temperature conversion check
+        Real exp_T_pot = physics::get_potential_temperature(temp(k),pressure(k),Smask(true))[0];
+        Real exp_T_vir = temp(k)*(qv(k)+ep_2)/(ep_2*(1.0+qv(k)));
+        if (std::abs(T_potential(k)-exp_T_pot)>tol) {
+          printf("get_potential_temperature test: abs(T_potential - expected_T_potential)=%e is larger than the tol=%e\n",std::abs(T_potential(k)-exp_T_pot),tol);
+          errors++;
+        }
+        if (std::abs(temp(k)-T_from_potential(k))>tol) {
+          printf("get_potential_temperature_inv test: abs(T_mid - T_from_inv_function)=%e is larger than the tol=%e\n",std::abs(temp(k)-T_from_potential(k)),tol);
+          errors++;
+        }
+        if (std::abs(T_virtual(k)-exp_T_vir)>tol) {
+          printf("get_virtual_temperature test: abs(T_virt-expected_T_virt)=%e is larger than the tol=%e\n",std::abs(T_virtual(k)-exp_T_vir),tol);
+          errors++;
+        }
         // Exner test
         //   - Pressure at level k is just k*dp, so each pressure level is dp in thickness.
         Real pres = p0 + k*dp;
         Real p_val  = pow( pres/p0, rd*inv_cp);
         exner_tests(pres,p_val,errors);
-        // T and TH conversion TEST
-        Real T_mid = tmelt + k;
-        T_th_conversion_test(T_mid,pres,errors);
         // DZ Test
         //   - Determine the z-layer bottom and top as being the (k+1) thick.
         //     Allow for varying interface heights by setting zi_bot equal to the sum(0,...,k).
@@ -272,8 +219,6 @@ struct UnitWrap::UnitTest<D>::TestUniversal
         dz_tests(zi_top,zi_bot,errors);
         // DSE Test
         dse_tests(temp(k),height(k),surface_height(k),errors);
-        // virtual temperature test
-        virtual_temperature_test(temp(k),qv(k),errors);
       }
 
     }, nerr);
