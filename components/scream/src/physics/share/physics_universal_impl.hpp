@@ -50,13 +50,15 @@ Functions<S,D>::get_exner(const Spack& P, const Smask& range_mask)
 // where
 //   th_mid is the potential temperature, K
 //   T_mid  is the temperature, K
+//   p_mid  is the pressure, Pa  -> used to calculate exners formula.
 //   exner  is the exners formula, see definition above, unitless
 template <typename S, typename D>
 KOKKOS_FUNCTION
 typename Functions<S,D>::Spack
-Functions<S,D>::get_potential_temperature(const Spack& T_mid, const Spack& exner, const Smask& range_mask)
+Functions<S,D>::get_potential_temperature(const Spack& T_mid, const Spack& p_mid, const Smask& range_mask)
 {
   Spack result;
+  const Spack exner  = get_exner(p_mid,range_mask);
   const Spack th_mid = T_mid/exner;
   // Check that there are no obvious errors in the result.
   check_temperature(th_mid,"get_potential_temperature",range_mask);
@@ -70,11 +72,11 @@ KOKKOS_FUNCTION
 template <typename InputProvider>
 void Functions<S,D>::get_potential_temperature(const int nlev,
                                                const InputProvider& T_mid,
-                                               const InputProvider& exner,
+                                               const InputProvider& p_mid,
                                                const view_1d<S>& T_potential)
 {
   Kokkos::parallel_for("get_potential_temperature",nlev,[&](const int& ilev) {
-    T_potential[ilev] = get_potential_temperature(T_mid[ilev],exner[ilev],Smask(true))[0];
+    T_potential[ilev] = get_potential_temperature(T_mid[ilev],p_mid[ilev],Smask(true))[0];
   });
 }
 
@@ -84,13 +86,15 @@ void Functions<S,D>::get_potential_temperature(const int nlev,
 // where
 //   th_mid is the potential temperature, K
 //   T_mid  is the temperature, K
+//   p_mid  is the pressure, Pa  -> used to calculate exners formula.
 //   exner  is the exners formula, see definition above, unitless
 template <typename S, typename D>
 KOKKOS_FUNCTION
 typename Functions<S,D>::Spack
-Functions<S,D>::get_potential_temperature_inv(const Spack& th_mid, const Spack& exner, const Smask& range_mask)
+Functions<S,D>::get_potential_temperature_inv(const Spack& th_mid, const Spack& p_mid, const Smask& range_mask)
 {
   Spack result;
+  const Spack exner = get_exner(p_mid,range_mask);
   const Spack T_mid = th_mid*exner;
   // Check that there are no obvious errors in the result.
   check_temperature(T_mid,"inverse get_potential_temperature",range_mask);
@@ -104,11 +108,11 @@ KOKKOS_FUNCTION
 template <typename InputProvider>
 void Functions<S,D>::get_potential_temperature_inv(const int nlev,
                                            const InputProvider& th_mid,
-                                           const InputProvider& exner,
+                                           const InputProvider& p_mid,
                                            const view_1d<Scalar>& T_mid)
 {
   Kokkos::parallel_for("get_potential_temperature_inv",nlev,[&](const int& ilev) {
-    T_mid[ilev] = get_potential_temperature_inv(th_mid[ilev],exner[ilev],Smask(true))[0];
+    T_mid[ilev] = get_potential_temperature_inv(th_mid[ilev],p_mid[ilev],Smask(true))[0];
   });
 }
 //-----------------------------------------------------------------------------------------------//

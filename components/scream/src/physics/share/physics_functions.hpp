@@ -112,29 +112,29 @@ struct Functions
   // The result is the potential temperature, units in K
   // The inputs are
   //   T_mid is the atmospheric temperature, units in K
-  //   Exners function, unitless.  Exners function can be derived using `get_exner` defined above.
+  //   p_mid is the atmospheric pressure, units in Pa.  Used with Exners function using `get_exner` defined above.
   KOKKOS_FUNCTION
-  static Spack get_potential_temperature(const Spack& T_mid, const Spack& exner, const Smask& range_mask);
+  static Spack get_potential_temperature(const Spack& T_mid, const Spack& p_mid, const Smask& range_mask);
 
   KOKKOS_FUNCTION
   template <typename InputProvider>
   static void get_potential_temperature(const int nlev,
                                         const InputProvider& T_mid,
-                                        const InputProvider& exner,
+                                        const InputProvider& p_mid,
                                         const view_1d<Scalar>& T_potential);
   // Converts potential temperature into temperature
   // The result is the temperature, units in K
   // The inputs are
   //   Potential Temperature, units in K
-  //   Exners function, unitless.  Exners function can be derived using `get_exner` defined above.
+  //   p_mid is the atmospheric pressure, units in Pa.  Used with Exners function using `get_exner` defined above.
   KOKKOS_FUNCTION
-  static Spack get_potential_temperature_inv(const Spack& th_mid, const Spack& exner, const Smask& range_mask);
+  static Spack get_potential_temperature_inv(const Spack& th_mid, const Spack& p_mid, const Smask& range_mask);
 
   KOKKOS_FUNCTION
   template <typename InputProvider>
   static void get_potential_temperature_inv(const int nlev,
                                              const InputProvider& th_mid,
-                                             const InputProvider& exner,
+                                             const InputProvider& p_mid,
                                              const view_1d<Scalar>& T_mid);
   // Determine the physical thickness of a vertical layer
   // The result is dz, units in m
