@@ -128,8 +128,14 @@ struct Functions
   //   Potential Temperature, units in K
   //   Exners function, unitless.  Exners function can be derived using `get_exner` defined above.
   KOKKOS_FUNCTION
-  static Spack th_to_T(const Spack& th_atm, const Spack& exner, const Smask& range_mask);
+  static Spack get_potential_temperature_inv(const Spack& th_mid, const Spack& exner, const Smask& range_mask);
 
+  KOKKOS_FUNCTION
+  template <typename InputProvider>
+  static void get_potential_temperature_inv(const int nlev,
+                                             const InputProvider& th_mid,
+                                             const InputProvider& exner,
+                                             const view_1d<Scalar>& T_mid);
   // Determine the physical thickness of a vertical layer
   // The result is dz, units in m
   // The inputs are

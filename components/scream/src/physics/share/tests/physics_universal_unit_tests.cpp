@@ -61,7 +61,7 @@ struct UnitWrap::UnitTest<D>::TestUniversal
     //========================================================
     // Test conversion of temperature to potential temperature, and vice versa
     //========================================================
-    // This function tests both the get_potential_temperature and th_to_T universal conversion functions.
+    // This function tests both the get_potential_temperature and get_potential_temperature_inv universal conversion functions.
     //
     // Inputs:
     //   T_in:    An example temperature, K.
@@ -88,24 +88,24 @@ struct UnitWrap::UnitTest<D>::TestUniversal
     // Test conversion from potential temperature (th) to temperature (T)
     // Use T_in to convert from th to T, note, we use T_in again because we are just testing the formula and T_in should be sufficient for that.
     // Note: th to T conversion is just a simple formula of T = th*exner
-    const Spack T_atm = physics::th_to_T(T,exner,Smask(true));
+    const Spack T_mid = physics::get_potential_temperature_inv(T,exner,Smask(true));
     Real expected_T = T_in*exner[0];
-    if (std::abs(T_atm[0]-expected_T)>tol) {
-      printf("th to Ttest: abs(T_mid-expected_T)=%e is larger than the tol=%e\n",std::abs(T_atm[0]-expected_T),tol);
+    if (std::abs(T_mid[0]-expected_T)>tol) {
+      printf("th to Ttest: abs(T_mid-expected_T)=%e is larger than the tol=%e\n",std::abs(T_mid[0]-expected_T),tol);
       errors++;
     }
 
-    // Test that get_potential_temperature and th_to_T are inverses of each other.
+    // Test that get_potential_temperature and get_potential_temperature_inv are inverses of each other.
     // Test T to th as inverses of each other
     // Converting T to th and then back to T should return the same value again.
     const Spack th_temp = physics::get_potential_temperature(T,exner,Smask(true));
-    const Spack T_new   = physics::th_to_T(th_temp,exner,Smask(true));
+    const Spack T_new   = physics::get_potential_temperature_inv(th_temp,exner,Smask(true));
     if (std::abs(T_new[0]-T_in)>tol) {
       printf("T to th test: abs[ T_new (%.3e) - T_in (%.3e) ]=%e is larger than the tol=%e\n",T_new[0],T_in,std::abs(T_new[0]-T_in),tol);
       errors++;
     }
     // and vice versa
-    const Spack T_temp = physics::th_to_T(T,exner,Smask(true));
+    const Spack T_temp = physics::get_potential_temperature_inv(T,exner,Smask(true));
     const Spack th_new = physics::get_potential_temperature(T_temp,exner,Smask(true));
     if (std::abs(th_new[0]-T_in)>tol) {
       printf("T to th test: abs[ th_new (%.3e) - T_in (%.3e) ]=%e is larger than the tol=%e\n",th_new[0],T_in,std::abs(th_new[0]-T_in),tol);
@@ -262,8 +262,8 @@ struct UnitWrap::UnitTest<D>::TestUniversal
         Real p_val  = pow( pres/p0, rd*inv_cp);
         exner_tests(pres,p_val,errors);
         // T and TH conversion TEST
-        Real T_atm = tmelt + k;
-        T_th_conversion_test(T_atm,pres,errors);
+        Real T_mid = tmelt + k;
+        T_th_conversion_test(T_mid,pres,errors);
         // DZ Test
         //   - Determine the z-layer bottom and top as being the (k+1) thick.
         //     Allow for varying interface heights by setting zi_bot equal to the sum(0,...,k).

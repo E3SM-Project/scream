@@ -80,23 +80,36 @@ void Functions<S,D>::get_potential_temperature(const int nlev,
 
 //-----------------------------------------------------------------------------------------------//
 // Converts potential temperature to temperature using Exners function:
-//   T_atm = th_atm*exner,
+//   T_mid = th_mid*exner,
 // where
-//   th_atm is the potential temperature, K
-//   T_atm  is the temperature, K
+//   th_mid is the potential temperature, K
+//   T_mid  is the temperature, K
 //   exner  is the exners formula, see definition above, unitless
 template <typename S, typename D>
 KOKKOS_FUNCTION
 typename Functions<S,D>::Spack
-Functions<S,D>::th_to_T(const Spack& th_atm, const Spack& exner, const Smask& range_mask)
+Functions<S,D>::get_potential_temperature_inv(const Spack& th_mid, const Spack& exner, const Smask& range_mask)
 {
   Spack result;
-  const Spack T_atm = th_atm*exner;
+  const Spack T_mid = th_mid*exner;
   // Check that there are no obvious errors in the result.
-  check_temperature(T_atm,"th_to_T",range_mask);
+  check_temperature(T_mid,"inverse get_potential_temperature",range_mask);
   // Set the values of the result
-  result.set(range_mask,T_atm);
+  result.set(range_mask,T_mid);
   return result;
+}
+
+template <typename S, typename D>
+KOKKOS_FUNCTION
+template <typename InputProvider>
+void Functions<S,D>::get_potential_temperature_inv(const int nlev,
+                                           const InputProvider& th_mid,
+                                           const InputProvider& exner,
+                                           const view_1d<Scalar>& T_mid)
+{
+  Kokkos::parallel_for("get_potential_temperature_inv",nlev,[&](const int& ilev) {
+    T_mid[ilev] = get_potential_temperature_inv(th_mid[ilev],exner[ilev],Smask(true))[0];
+  });
 }
 //-----------------------------------------------------------------------------------------------//
 // Determines the vertical layer thickness given the interface heights:
