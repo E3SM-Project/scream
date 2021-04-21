@@ -118,8 +118,8 @@ Functions<S,D>::get_dz(const Spack& pseudo_density, const Spack& p_mid, const Sp
 }
 
 template <typename S, typename D>
-KOKKOS_FUNCTION
 template <typename InputProvider>
+KOKKOS_FUNCTION
 void Functions<S,D>::get_dz(const int nlev, 
                             const InputProvider& psuedo_density,
                             const InputProvider& p_mid,
