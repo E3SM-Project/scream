@@ -799,8 +799,8 @@ end subroutine micro_p3_readnl
       real(rtype), pointer :: mon_ccn(:,:,:)
       real(rtype), dimension(12):: days_per_month
 
-      !fill days_per_month, SPA does not recognize leap year, noter that
-      !days_per_month is also independetly defined in radiation.F90 
+      !fill days_per_month, SPA does not recognize leap year, note that
+      !days_per_month is also independently defined in radiation.F90 
       days_per_month = (/31,28,31,30,31,30,31,31,30,31,30,31/)
 
       !get current time step's date

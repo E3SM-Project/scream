@@ -1325,7 +1325,7 @@ contains
 
       real(r8), dimension(12):: days_per_month
       !fill days_per_month, SPA doesn't recognize leap year, note that
-      !days_per_month is also independently defined in micro_p3_interace
+      !days_per_month is also independently defined in micro_p3_interface
       days_per_month = (/31,28,31,30,31,30,31,31,30,31,30,31/) 
 
       !----------------------------------------------------------------------
