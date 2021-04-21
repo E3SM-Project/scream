@@ -93,8 +93,7 @@ module micro_p3_interface
       qv_prev_idx,        &
       t_prev_idx,         &
       accre_enhan_idx,    &
-      mon_ccn_idx,        &
-      current_month      !Needed for prescribed CCN option         
+      mon_ccn_idx         !Needed for prescribed CCN option         
 
 
 ! Physics buffer indices for fields registered by other modules
@@ -349,13 +348,10 @@ end subroutine micro_p3_readnl
       write(mon_str,*) month_int
 
       !assign base_file_name the name of the CCN file being used 
-      base_file_name = "prescribed_CCN_file_"
+      base_file_name = "spa_file_"
 
       mon_str = adjustl(mon_str)
- 
-     !assign base_file_name the name of the CCN file being used
-      base_file_name = "prescribed_CCN_file_"
- 
+  
      !retrieve the name of the relevant file by combining base file name !with !month and full file path:
       filename = trim(micro_p3_lookup_dir)//'/'//trim(base_file_name)//trim(mon_str)//'.nc'
  
@@ -699,14 +695,9 @@ end subroutine micro_p3_readnl
 
    if (do_prescribed_CCN) then !intialize mon_ccn_1-12
 
-      !find current_month
-      call get_curr_date(year,month,day,tod)
-      current_month = month
       allocate(ccn_values(pcols,pver,12,begchunk:endchunk))
-      do month = 1,12
-  
+      do month = 1,12 
          call get_prescribed_CCN_from_file(micro_p3_lookup_dir,month,ccn_values(:,:,month,:))
-  
       end do
       call pbuf_set_field(pbuf2d, mon_ccn_idx, ccn_values)
 
@@ -808,7 +799,8 @@ end subroutine micro_p3_readnl
       real(rtype), pointer :: mon_ccn(:,:,:)
       real(rtype), dimension(12):: days_per_month
 
-      !fill days_per_month, SPA does not recognize leap year
+      !fill days_per_month, SPA does not recognize leap year, noter that
+      !days_per_month is also independetly defined in radiation.F90 
       days_per_month = (/31,28,31,30,31,30,31,31,30,31,30,31/)
 
       !get current time step's date
@@ -825,9 +817,9 @@ end subroutine micro_p3_readnl
 
       call pbuf_get_field(pbuf,mon_ccn_idx, mon_ccn)
 
-      fraction_of_month = (day*3600.0*24.0 + tod)/(3600*24*days_per_month(current_month)) !tod is in seconds
+      fraction_of_month = (day*3600.0*24.0 + tod)/(3600*24*days_per_month(month)) !tod is in seconds
 
-      nccn_prescribed = mon_ccn(:,:,current_month)*(1-fraction_of_month) + mon_ccn(:,:,next_month)*(fraction_of_month)
+      nccn_prescribed = mon_ccn(:,:,month)*(1-fraction_of_month) + mon_ccn(:,:,next_month)*(fraction_of_month)
 
      !write(iulog,*) 'nccn_prescribed', nccn_prescribed(1,65)
 
