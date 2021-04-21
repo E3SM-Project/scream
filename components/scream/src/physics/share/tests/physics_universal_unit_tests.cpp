@@ -294,9 +294,7 @@ struct UnitWrap::UnitTest<D>::TestUniversal
       physics::get_dz(num_levs,pseudo_density, pressure, temp, qv, dz_view);
       for (int k=0;k<num_levs;++k)
       {
-        Spack T_in(temp(k));
-        Spack qv_in(qv(k));
-        Real T_virtual_exp = physics::get_virtual_temperature(T_in,qv_in,Smask(true))[0];
+        Real T_virtual_exp = physics::get_virtual_temperature(temp(k),qv(k),Smask(true))[0];
         Real dz_exp = pseudo_density[k]*rd*T_virtual_exp/(pressure[k]*ggr);
         // Exner test
         //   - Pressure at level k is just k*dp, so each pressure level is dp in thickness.
