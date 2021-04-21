@@ -160,7 +160,7 @@ struct UnitWrap::UnitTest<D>::TestUniversal
       static constexpr Scalar ep_2   = C::ep_2;
       // Gather the machine epsilon for the error tolerance
       static constexpr Scalar eps = C::macheps;
-      Real tol = 1000*eps;
+      Real tol = 2000*eps;
 
       // Create dummy level data for testing:
       Real pres_top = 200.;
