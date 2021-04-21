@@ -68,8 +68,8 @@ Functions<S,D>::get_potential_temperature(const Spack& T_mid, const Spack& p_mid
 }
 
 template <typename S, typename D>
-KOKKOS_FUNCTION
 template <typename InputProvider>
+KOKKOS_FUNCTION
 void Functions<S,D>::get_potential_temperature(const int nlev,
                                                const InputProvider& T_mid,
                                                const InputProvider& p_mid,
@@ -104,8 +104,8 @@ Functions<S,D>::get_potential_temperature_inv(const Spack& th_mid, const Spack& 
 }
 
 template <typename S, typename D>
-KOKKOS_FUNCTION
 template <typename InputProvider>
+KOKKOS_FUNCTION
 void Functions<S,D>::get_potential_temperature_inv(const int nlev,
                                            const InputProvider& th_mid,
                                            const InputProvider& p_mid,
@@ -185,8 +185,8 @@ Functions<S,D>::get_virtual_temperature(const Spack& T_mid, const Spack& qv, con
 }
 
 template <typename S, typename D>
-KOKKOS_FUNCTION
 template <typename InputProvider>
+KOKKOS_FUNCTION
 void Functions<S,D>::get_virtual_temperature(const int nlev,
                                              const InputProvider& T_mid,
                                              const InputProvider& qv,

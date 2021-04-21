@@ -116,8 +116,8 @@ struct Functions
   KOKKOS_FUNCTION
   static Spack get_potential_temperature(const Spack& T_mid, const Spack& p_mid, const Smask& range_mask);
 
-  KOKKOS_FUNCTION
   template <typename InputProvider>
+  KOKKOS_FUNCTION
   static void get_potential_temperature(const int nlev,
                                         const InputProvider& T_mid,
                                         const InputProvider& p_mid,
@@ -130,8 +130,8 @@ struct Functions
   KOKKOS_FUNCTION
   static Spack get_potential_temperature_inv(const Spack& th_mid, const Spack& p_mid, const Smask& range_mask);
 
-  KOKKOS_FUNCTION
   template <typename InputProvider>
+  KOKKOS_FUNCTION
   static void get_potential_temperature_inv(const int nlev,
                                              const InputProvider& th_mid,
                                              const InputProvider& p_mid,
@@ -161,8 +161,8 @@ struct Functions
   KOKKOS_FUNCTION
   static Spack get_virtual_temperature(const Spack& T_mid, const Spack& qv, const Smask& range_mask);
 
-  KOKKOS_FUNCTION
   template <typename InputProvider>
+  KOKKOS_FUNCTION
   static void get_virtual_temperature(const int nlev,
                                       const InputProvider& T_mid,
                                       const InputProvider& qv,
