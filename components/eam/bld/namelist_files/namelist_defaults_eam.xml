@@ -1120,7 +1120,9 @@
 <!-- zm conv -->
 <zmconv_c0_lnd                                                        > 0.0030D0 </zmconv_c0_lnd>
 <zmconv_c0_lnd  microphys="p3"  clubb_sgs="1"    phys="default"       > 0.0075D0 </zmconv_c0_lnd>
+<zmconv_c0_lnd                  hgrid="ne120np4" phys="default"       > 0.0035D0 </zmconv_c0_lnd>
 <zmconv_c0_ocn                                                        > 0.0030D0 </zmconv_c0_ocn>
+<zmconv_c0_ocn                  hgrid="ne120np4" phys="default"       > 0.0035D0 </zmconv_c0_ocn>
 
 <zmconv_tau			                                                      > 3600</zmconv_tau>
 <zmconv_alfa			                                                      > 0.1</zmconv_alfa>
