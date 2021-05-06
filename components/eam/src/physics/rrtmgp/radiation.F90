@@ -578,22 +578,24 @@ contains
 
 
 !ASD      ! Add outfields to be used for RRTMG stand-alone testing.
-          do igas = 1,size(active_gases)
-            active_gases_index(igas) = igas
-          end do
-          call add_hist_coord("ngas",size(active_gases),"Number of active gases in radiation", 'N/A', active_gases_index)
-      call addfld("pmid_RADin",        (/ 'lev' /), 'I', 'unitless', '')
-      call addfld("pint_RADin",        (/ 'lev' /), 'I', 'unitless', '')
-      call addfld("tmid_RADin",        (/ 'lev' /), 'I', 'unitless', '')
+      do igas = 1,size(active_gases)
+        active_gases_index(igas) = igas
+      end do
+      call add_hist_coord("ngas",size(active_gases),"Number of active gases in radiation", 'N/A', active_gases_index)
+      call addfld("T_mid_RADin",            (/ 'lev' /),         'I', 'K',        "T_mid")
+      call addfld("cosine_zenith_RADin",    (/ 'lev' /),         'I', 'unitless', "mu0")
+      call addfld("eff_radius_qc_RADin",    (/ 'lev' /),         'I', 'micron',   "rel")
+      call addfld("eff_radius_qi_RADin",    (/ 'lev' /),         'I', 'micron',   "rei")
+      call addfld("gas_vmr_RADin",          (/ 'lev', 'ngas' /), 'I', 'kg/kg',    "gas_vmr")
+      call addfld("iwp_RADin",              (/ 'lev' /),         'I', 'kg m-3',   "iwp")
+      call addfld("lwp_RADin",              (/ 'lev' /),         'I', 'kg m-3',   "lwp")
+      call addfld("p_mid_RADin",            (/ 'lev' /),         'I', 'Pa',       "p_mid")
+      call addfld("pint_RADin",             (/ 'lev' /),         'I', 'Pa',       "p_int")
+      call addfld("surf_alb_diffuse_RADin", (/ 'lev' /),         'I', 'unitless', "sfc_alb_dif")
+      call addfld("surf_alb_direct_RADin",  (/ 'lev' /),         'I', 'unitless', "sfc_alb_dir")
+
       call addfld("tint_RADin",        (/ 'lev' /), 'I', 'unitless', '')
-      call addfld("gas_vmr_RADin",     (/ 'lev', 'ngas' /), 'I', 'unitless', "gas_vmr")
-      call addfld("sfc_alb_dir_RADin", (/ 'lev' /), 'I', 'unitless', "sfc_alb_dir")
-      call addfld("sfc_alb_dif_RADin", (/ 'lev' /), 'I', 'unitless', "sfc_alb_dif")
-      call addfld("mu0_RADin",         (/ 'lev' /), 'I', 'unitless', "mu0")
-      call addfld("lwp_RADin",         (/ 'lev' /), 'I', 'unitless', "lwp")
-      call addfld("iwp_RADin",         (/ 'lev' /), 'I', 'unitless', "iwp")
-      call addfld("rel_RADin",         (/ 'lev' /), 'I', 'unitless', "rel")
-      call addfld("rei_RADin",         (/ 'lev' /), 'I', 'unitless', "rei")
+
       ! Shortwave radiation
       call addfld('TOT_CLD_VISTAU', (/ 'lev' /), 'A',   '1', &
                   'Total gridbox cloud visible (550 nm) optical depth', &
@@ -1600,18 +1602,19 @@ contains
           gas_vmr_flip(icol,:,ilay) = gas_vmr(ilay,icol,:)
         end do
       end do
-      call outfld("pmid_RADin",        state%pmid, pcols, state%lchnk)
-      call outfld("pint_RADin",        state%pint, pcols, state%lchnk)
-      call outfld("tmid_RADin",        state%t,    pcols, state%lchnk)
+      call outfld("T_mid_RADin",            state%t,      pcols, state%lchnk)
+      call outfld("cosine_zenith_RADin",    coszrs,       pcols, state%lchnk)
+      call outfld("eff_radius_qc_RADin",    rel,          pcols, state%lchnk)
+      call outfld("eff_radius_qi_RADin",    rei,          pcols, state%lchnk)
+      call outfld("gas_vmr_RADin",          gas_vmr_flip, pcols, state%lchnk)
+      call outfld("iwp_RADin",              iciwp,        pcols, state%lchnk)
+      call outfld("lwp_RADin",              iclwp,        pcols, state%lchnk)
+      call outfld("p_mid_RADin",            state%pmid,   pcols, state%lchnk)
+      call outfld("pint_RADin",             state%pint,   pcols, state%lchnk)
+      call outfld("surf_alb_diffuse_RADin", albedo_dif,   pcols, state%lchnk)
+      call outfld("surf_alb_direct_RADin",  albedo_dir,   pcols, state%lchnk)
+
       call outfld("tint_RADin",        tint,       pcols, state%lchnk)
-      call outfld("gas_vmr_RADin",     gas_vmr_flip, pcols, state%lchnk)
-      call outfld("sfc_alb_dir_RADin", albedo_dir, pcols, state%lchnk)
-      call outfld("sfc_alb_dif_RADin", albedo_dif, pcols, state%lchnk)
-      call outfld("mu0_RADin",         coszrs, pcols, state%lchnk)
-      call outfld("lwp_RADin",         iclwp, pcols, state%lchnk)
-      call outfld("iwp_RADin",         iciwp, pcols, state%lchnk)
-      call outfld("rel_RADin",         rel, pcols, state%lchnk)
-      call outfld("rei_RADin",         rei, pcols, state%lchnk)
 
    end subroutine radiation_tend
 
