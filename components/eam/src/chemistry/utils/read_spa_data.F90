@@ -60,7 +60,7 @@ contains
 
 !    call trcdata_init( specifier, 'unfied_SPA_file_lat_lon.nc', '', '/compyfs/sing201/lat_lon', spa_fields, spa_file, &
 !         rmv_file, 1, 0, 0, 'CYCLICAL')
-    call trcdata_init( specifier, 'unfied_SPA_file_lat_lon.nc', '', '/global/cscratch1/sd/bsingh/users/hassan', spa_fields, spa_file, &
+    call trcdata_init( specifier, 'unfied_SPA_file_lat_lon.nc', '', '/compyfs/sing201/lat_lon', spa_fields, spa_file, &
          rmv_file, 1, 0, 0, 'CYCLICAL')
 
 

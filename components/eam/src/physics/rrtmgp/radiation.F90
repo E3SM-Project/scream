@@ -990,13 +990,13 @@ contains
 
       if (do_SPA_optics) then !initialize SPA
 
-         do band_index = 0,nswbands
+         do band_index = 1,nswbands
             aer_tau_bnd_sw_idx(band_index) = pbuf_get_index(aer_tau_sw_names(band_index))
             aer_ssa_bnd_sw_idx(band_index) = pbuf_get_index(aer_ssa_sw_names(band_index))  
             aer_asm_bnd_sw_idx(band_index) = pbuf_get_index(aer_asm_sw_names(band_index))
          end do
    
-         do band_index = 0,nlwbands
+         do band_index = 1,nlwbands
             aer_tau_bnd_lw_idx(band_index) = pbuf_get_index(aer_tau_lw_names(band_index))
          end do
 
@@ -1471,7 +1471,7 @@ contains
                   aer_asm_bnd_sw = 0._r8
                   if (do_SPA_optics) then
 
-                     do band_index = 0,nswbands 
+                     do band_index = 1,nswbands 
                         call pbuf_get_field(pbuf,aer_tau_bnd_sw_idx(band_index), aerosol_optical_property) 
                         aer_tau_bnd_sw(:,:,band_index) = aerosol_optical_property
                         nullify(aerosol_optical_property) 
@@ -1586,7 +1586,7 @@ contains
                   call t_startf('rad_aer_optics_lw')
                   aer_tau_bnd_lw = 0._r8
                  if (do_SPA_optics) then
-                     do band_index = 0,nlwbands
+                     do band_index = 1,nlwbands
                         call pbuf_get_field(pbuf,aer_tau_bnd_lw_idx(band_index), aerosol_optical_property) 
                         aer_tau_bnd_lw(:,:,band_index) = aerosol_optical_property
                         nullify(aerosol_optical_property)
