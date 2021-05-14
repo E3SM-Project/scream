@@ -25,9 +25,8 @@ module read_spa_data
 
   logical, public, protected :: is_spa_active = .false.
 
-  type(trfld), pointer :: spa_fields_type(:)
-  type(trfile)         :: spa_file_type
-  logical              :: rmv_file = .false.
+  type(trfld), pointer :: spa_fields_type(:)     ! data struture to store spa fields related info (see tracer_data.F90 for details)
+  type(trfile)         :: spa_file_type          ! data structure to store spa files related info (see tracer_data.F90 for details)
 
   !Following fields are read in via namelist but defaults are set here
   character(len=shr_kind_cl) :: filename = ' '
@@ -35,7 +34,17 @@ module read_spa_data
   character(len=32)          :: datatype = 'SERIAL'
   integer                    :: cycle_yr = 0
 
-  !fields to read from the file
+
+  integer, parameter :: N_CCN    = 1  !total number of CCN fields
+
+  !nswbands is the number of sw bands and nlwbands is the number of lwbands
+  integer, parameter :: N_FLDS   = nlwbands + (3*nswbands) + N_CCN !total number of fields to be read (3 SW arrays)
+
+  !--------------------------------------------------
+  !fields to be read from spa input file
+  !--------------------------------------------------
+  integer, parameter :: c_fld_len = 13 ! character field length (some compilers require fixed length characters)
+ 
 character(len=16), parameter :: pbuf_names(59) = &
      [ 'AER_G_SW_0   ', 'AER_G_SW_1   ', 'AER_G_SW_2   ', 'AER_G_SW_3   ', 'AER_G_SW_4   ', &
        'AER_G_SW_5   ', 'AER_G_SW_6   ', 'AER_G_SW_7   ', 'AER_G_SW_8   ', 'AER_G_SW_9   ', &
@@ -51,6 +60,9 @@ character(len=16), parameter :: pbuf_names(59) = &
        'AER_TAU_SW_5 ', 'AER_TAU_SW_6 ', 'AER_TAU_SW_7 ', 'AER_TAU_SW_8 ', 'AER_TAU_SW_9 ', &
        'AER_TAU_SW_10', 'AER_TAU_SW_11', 'AER_TAU_SW_12','AER_TAU_SW_13', &
        'CCN3         ']
+
+  !P3 array for CCN
+  character(len=c_fld_len), public, parameter :: ccn_names (N_CCN) = ['CCN3         ']
 
 character(len=16), parameter :: specifier(59) = pbuf_names(59)
 
@@ -155,6 +167,7 @@ contains
 
     implicit none
 
+    logical, parameter :: rmv_file = .false.
     !Tracer data routine init
     allocate (spa_file_type%in_pbuf(size(specifier)))
     spa_file_type%in_pbuf(:) = .true.
