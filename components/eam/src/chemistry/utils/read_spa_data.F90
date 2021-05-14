@@ -43,7 +43,7 @@ module read_spa_data
   !--------------------------------------------------
   !fields to be read from spa input file
   !--------------------------------------------------
-  integer, parameter :: c_fld_len = 13 ! character field length (some compilers require fixed length characters)
+  integer, parameter :: c_fld_len = 16 ! character field length (some compilers require fixed length characters)
  
   !Radiation LW and SW arrays
   character(len=c_fld_len), public, parameter :: aer_asm_sw_names(nswbands) = &
@@ -68,9 +68,9 @@ module read_spa_data
   character(len=c_fld_len), public, parameter :: ccn_names (N_CCN) = ['CCN3         ']
 
 !combine all arrays into one array for reading this data using tracer data routines
-  character(len=c_fld_len), parameter :: pbuf_names(N_FLDS) = [ aer_asm_sw_names, aer_ssa_sw_names, &
+  character(len=c_fld_len), parameter :: field_names(N_FLDS) = [ aer_asm_sw_names, aer_ssa_sw_names, &
        aer_tau_sw_names, aer_tau_lw_names, ccn_names]
-character(len=16), parameter :: specifier(59) = pbuf_names(59)
+character(len=16), parameter :: specifier(59) = field_names(59)
 
 
 contains
@@ -90,8 +90,8 @@ contains
     if(.not. is_spa_active) return
 
     !Add all the fields to physics buffer so that they can be retrieved later when needed
-    do i = 1, size(pbuf_names)
-       call pbuf_add_field(pbuf_names(i),'physpkg',dtype_r8,(/pcols,pver/),idx)
+    do i = 1 , size(field_names)
+       call pbuf_add_field(field_names(i),'physpkg',dtype_r8,(/pcols,pver/),idx)
     enddo
 
   endsubroutine read_spa_data_register
