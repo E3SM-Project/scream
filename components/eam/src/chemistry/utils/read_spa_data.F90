@@ -81,7 +81,10 @@ contains
 
     integer :: i,idx
 
-    do i = 1,size(pbuf_names)
+    if(.not. is_spa_active) return
+
+    !Add all the fields to physics buffer so that they can be retrieved later when needed
+    do i = 1, size(pbuf_names)
        call pbuf_add_field(pbuf_names(i),'physpkg',dtype_r8,(/pcols,pver/),idx)
     enddo
 
@@ -174,12 +177,16 @@ contains
     character(len=shr_kind_cl), parameter :: filelist = ' ' !not currently used
     integer, parameter :: fixed_ymd = 0                     !not currently used
     integer, parameter :: fixed_tod = 0                     !not currently used
-    !Tracer data routine init
+    
+    if(.not. is_spa_active) return
+
+    !Allocate "in_pbuf" component of spa_file_type variable, so that tracer_init knows that these fields exist in PBUF
     allocate (spa_file_type%in_pbuf(size(specifier)))
+
+    !set in_pbuf to true for all the fields since we added all the fields to pbuf during the "register" process
     spa_file_type%in_pbuf(:) = .true.
 
-!    call trcdata_init( specifier, 'unfied_SPA_file_lat_lon.nc', '', '/compyfs/sing201/lat_lon', spa_fields_type, spa_file_type, &
-!         rmv_file, 1, 0, 0, 'CYCLICAL')
+    !call the init routine so that tracer data routine can initialize all fields required to read and interpolated the data
     call trcdata_init( specifier, 'unfied_SPA_file_lat_lon.nc', '', '/compyfs/sing201/lat_lon', spa_fields_type, spa_file_type, &
          rmv_file, 1, 0, 0, 'CYCLICAL')
 
@@ -203,7 +210,7 @@ contains
     type(physics_state), intent(in)    :: state(begchunk:endchunk)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
-    !if(.not. is_spa_active) return
+    if(.not. is_spa_active) return
 
     !interpolate in time and space
     call advance_trcdata( spa_fields_type, spa_file_type, state, pbuf2d )
