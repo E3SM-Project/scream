@@ -70,7 +70,7 @@ module read_spa_data
 !combine all arrays into one array for reading this data using tracer data routines
   character(len=c_fld_len), parameter :: field_names(N_FLDS) = [ aer_asm_sw_names, aer_ssa_sw_names, &
        aer_tau_sw_names, aer_tau_lw_names, ccn_names]
-character(len=16), parameter :: specifier(N_FLDS) = field_names(N_FLDS)
+character(len=13), parameter :: specifier(N_FLDS) = field_names(N_FLDS)
 
 
 contains
