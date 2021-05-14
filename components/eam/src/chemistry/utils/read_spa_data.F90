@@ -17,7 +17,11 @@ module read_spa_data
   private
 
   !list of public subroutines
-  public :: read_spa_data_init, read_spa_data_adv, read_spa_data_register
+  public :: read_spa_data_init, read_spa_data_adv, read_spa_data_register, spa_readnl
+
+  !---------------------------------------------------------------------------
+  !Module level data shared by more than one subroutine or protected variables
+  !---------------------------------------------------------------------------
 
   logical, public, protected :: is_spa_active = .false.
 
