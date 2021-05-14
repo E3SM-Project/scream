@@ -2141,6 +2141,33 @@ Default: .false.
 Directory where SPA files are located.
 </entry>
 
+<entry id="spa_datapath" type="char*256" input_pathname="abs" category="cam_chem"
+       group="spa_nl" valid_values="" >
+Full pathname of the directory that contains the spa input file
+Default: None
+</entry>
+
+<entry id="spa_file" type="char*256" input_pathname="rel:spa_datapath" category="cam_chem"
+       group="spa_nl" valid_values="" >
+Filename of dataset for spa
+Default: None
+</entry>
+
+<entry id="spa_type" type="char*32" category="cam_chem"
+       group="spa_nl" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
+Type of time interpolation for data in spa files.
+Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
+Default: 'SERIAL'
+</entry>
+
+<entry id="spa_cycle_yr" type="integer" category="cam_chem"
+       group="spa_nl" valid_values="" >
+The  cycle year of the prescribed aerosol data
+if <varname>spa_type</varname>  is 'CYCLICAL'.
+Format: YYYY
+Default: 0
+</entry>
+
 <entry id="micro_aerosolactivation" type="logical" category="microphys"
        group="micro_nl" valid_values="" >
 Specify if aerosol activation is used in microphysics scheme.
