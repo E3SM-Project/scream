@@ -43,7 +43,7 @@ module read_spa_data
   !--------------------------------------------------
   !fields to be read from spa input file
   !--------------------------------------------------
-  integer, parameter :: c_fld_len = 16 ! character field length (some compilers require fixed length characters)
+  integer, parameter :: c_fld_len = 13 ! character field length (some compilers require fixed length characters)
  
   !Radiation LW and SW arrays
   character(len=c_fld_len), public, parameter :: aer_asm_sw_names(nswbands) = &
