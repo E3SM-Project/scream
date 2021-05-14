@@ -70,8 +70,7 @@ module read_spa_data
 !combine all arrays into one array for reading this data using tracer data routines
   character(len=c_fld_len), parameter :: field_names(N_FLDS) = [ aer_asm_sw_names, aer_ssa_sw_names, &
        aer_tau_sw_names, aer_tau_lw_names, ccn_names]
-character(len=13), parameter :: specifier1(N_FLDS) = field_names(N_FLDS)
-
+character(len=c_fld_len), parameter :: fldd(N_FLDS) = field_names(N_FLDS)
 
 contains
 
@@ -187,13 +186,13 @@ contains
     if(.not. is_spa_active) return
 
     !Allocate "in_pbuf" component of spa_file_type variable, so that tracer_init knows that these fields exist in PBUF
-    allocate (spa_file_type%in_pbuf(size(specifier1)))
+    allocate (spa_file_type%in_pbuf(size(fldd)))
 
     !set in_pbuf to true for all the fields since we added all the fields to pbuf during the "register" process
     spa_file_type%in_pbuf(:) = .true.
 
     !call the init routine so that tracer data routine can initialize all fields required to read and interpolated the data
-    call trcdata_init( specifier1, filename, filelist, datapath, spa_fields_type, spa_file_type, &
+    call trcdata_init( fldd, filename, filelist, datapath, spa_fields_type, spa_file_type, &
          rmv_file, cycle_yr, fixed_ymd, fixed_tod, datatype)
 
 
