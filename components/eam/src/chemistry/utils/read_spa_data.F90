@@ -167,7 +167,13 @@ contains
 
     implicit none
 
-    logical, parameter :: rmv_file = .false.
+    !Local variables
+    logical, parameter :: rmv_file = .false.                !if .true., local file will be removed after all data is read
+
+    !Following variables are declared as parameters as this functionality is currently not implemented
+    character(len=shr_kind_cl), parameter :: filelist = ' ' !not currently used
+    integer, parameter :: fixed_ymd = 0                     !not currently used
+    integer, parameter :: fixed_tod = 0                     !not currently used
     !Tracer data routine init
     allocate (spa_file_type%in_pbuf(size(specifier)))
     spa_file_type%in_pbuf(:) = .true.
