@@ -193,8 +193,8 @@ contains
     spa_file_type%in_pbuf(:) = .true.
 
     !call the init routine so that tracer data routine can initialize all fields required to read and interpolated the data
-    call trcdata_init( specifier, 'unfied_SPA_file_lat_lon.nc', '', '/compyfs/sing201/lat_lon', spa_fields_type, spa_file_type, &
-         rmv_file, 1, 0, 0, 'CYCLICAL')
+    call trcdata_init( specifier, filename, filelist, datapath, spa_fields_type, spa_file_type, &
+         rmv_file, cycle_yr, fixed_ymd, fixed_tod, datatype)
 
 
   end subroutine read_spa_data_init
