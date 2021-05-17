@@ -413,11 +413,16 @@ end function shoc_implements_cnst
     call addfld( "z_int_inSHOC",            (/'ilev'/),         'I', 'm',        "zi"      )
     call addfld( "z_mid_inSHOC",            (/'lev'/),          'I', 'm',        "zm"      )
 
-    call addfld( "s_inSHOC",        (/'lev'/),  'I', 'unitless', "s"       )
-    call addfld( "u_inSHOC",        (/'lev'/),  'I', 'unitless', "u"       )
-    call addfld( "v_inSHOC",        (/'lev'/),  'I', 'unitless', "v"       )
-    call addfld( "tkh_inSHOC",      (/'lev'/),  'I', 'unitless', "tkh"     )
-    call addfld( "tk_inSHOC",       (/'lev'/),  'I', 'unitless', "tk"      )
+    call addfld( "T_mid_outSHOC",           (/'lev'/),          'I', 'K',         "t"       )
+    call addfld( "cldfrac_liq_outSHOC",     (/'lev'/),          'I', 'unitless',  "alst"    )
+    call addfld( "eddy_diff_mom_outSHOC",   (/'lev'/),          'I', 'm2/s',      "khzm"    )
+    call addfld( "horiz_winds_outSHOC",     (/'lev', 'dim2'/),  'I', 'm/s',       "V"       )
+    call addfld( "qc_outSHOC",              (/'lev'/),          'I', 'kg/kg',     "shoc_ql" )
+    call addfld( "qv_outSHOC",              (/'lev'/),          'I', 'kg/kg',     "shoc_qv" )
+    call addfld( "sgs_buoy_flux_outSHOC",   (/'lev'/),          'I', 'K m/s',     "wthv_sec")
+    call addfld( "tke_outSHOC",             (/'lev'/),          'I', '(m/s)^2',   "tke"     )
+    call addfld( "inv_qc_relvar_outSHOC",   (/'lev'/),          'I', '(kg/kg)^2', "inv_qc_relvar" )
+    call addfld( "pbl_height_outSHOC",      horiz_only,         'I', 'm',         "pbl_height" )
 
     ! Add SHOC fields
     call addfld('SHOC_TKE', (/'lev'/), 'A', 'm2/s2', 'TKE')
@@ -906,11 +911,6 @@ end function shoc_implements_cnst
    call outfld( "z_int_inSHOC",            state1%zi,              pcols, lchnk )
    call outfld( "z_mid_inSHOC",            state1%zm,              pcols, lchnk )
 
-   call outfld( "s_inSHOC",        shoc_s,                 pcols, lchnk )
-   call outfld( "u_inSHOC",        um,                     pcols, lchnk )
-   call outfld( "v_inSHOC",        vm,                     pcols, lchnk )
-   call outfld( "tkh_inSHOC",      tkh,                    pcols, lchnk )
-   call outfld( "tk_inSHOC",       tk,                     pcols, lchnk )
    ! ------------------------------------------------- !
    ! Actually call SHOC                                !
    ! ------------------------------------------------- !   
@@ -1227,6 +1227,16 @@ end function shoc_implements_cnst
     call outfld('LIQ_CLOUD_FRAC',liq_cloud_frac,pcols,lchnk)
     call outfld('TOT_CLOUD_FRAC',tot_cloud_frac,pcols,lchnk)
 
+   call outfld( "T_mid_outSHOC",           state1%t,               pcols, lchnk )
+   call outfld( "cldfrac_liq_outSHOC",     alst,                   pcols, lchnk )
+   call outfld( "eddy_diff_mom_outSHOC",   khzm,                   pcols, lchnk )
+   call outfld( "horiz_winds_outSHOC",     uvm,                    pcols, lchnk )
+   call outfld( "qc_outSHOC",              state1%q(i,k,ixcldliq), pcols, lchnk )
+   call outfld( "qv_outSHOC",              state1%q(i,k,ixq),      pcols, lchnk )
+   call outfld( "sgs_buoy_flux_outSHOC",   wthv,                   pcols, lchnk )
+   call outfld( "tke_outSHOC",             tke_zt,                 pcols, lchnk )
+   call outfld( "inv_qc_relvar_outSHOC",   relvar,                 pcols, lchnk )
+   call outfld( "pbl_height_outSHOC",      pblh,                   pcols, lchnk )
 #endif    
     return         
   end subroutine shoc_tend_e3sm   
