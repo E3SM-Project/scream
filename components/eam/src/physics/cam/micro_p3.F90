@@ -813,10 +813,6 @@ contains
       !   1) Should we be taking qinuc into consideration too?
       !   2) Is MG correct in NOT limiting qi2qv_sublim_tend?
 
-      call prevent_ice_overdepletion(pres(k), t_atm(k), qv(k), latent_heat_sublim(k), inv_dt, qidep, qi2qv_sublim_tend)
-
-      call ice_supersat_conservation(qidep,qinuc,cld_frac_i(k),qv(k),qv_sat_i(k),latent_heat_sublim(k),th_atm(k)/exner(k),dt, &
-           qi2qv_sublim_tend, qr2qv_evap_tend)
 
       ! cloud
       call cloud_water_conservation(qc(k), dt, qc2qr_autoconv_tend, qc2qr_accret_tend, qccol, qc2qi_hetero_freeze_tend, &
@@ -836,6 +832,12 @@ contains
            nr2ni_immers_freeze_tend,nr_selfcollect_tend,nr_evap_tend)
       call ni_conservation(ni(k),ni_nucleat_tend,nr2ni_immers_freeze_tend,nc2ni_immers_freeze_tend,dt,ni2nr_melt_tend,&
            ni_sublim_tend,ni_selfcollect_tend)
+
+      call prevent_ice_overdepletion(pres(k), t_atm(k), qv(k), latent_heat_vapor(k), latent_heat_sublim(k), inv_dt, dt, qidep, qinuc, & 
+            qi2qv_sublim_tend, qr2qv_evap_tend)
+
+      call ice_supersat_conservation(qidep,qinuc,cld_frac_i(k),qv(k),qv_sat_i(k),latent_heat_sublim(k),th_atm(k)/exner(k),dt, &
+                                     qi2qv_sublim_tend, qr2qv_evap_tend)
 
       !---------------------------------------------------------------------------------
       ! update prognostic microphysics and thermodynamics variables
@@ -2836,33 +2838,51 @@ subroutine back_to_cell_average(cld_frac_l,cld_frac_r,cld_frac_i,               
 
 end subroutine back_to_cell_average
 
-subroutine prevent_ice_overdepletion(pres,t_atm,qv,latent_heat_sublim,inv_dt,    &
-   qidep,qi2qv_sublim_tend)
+subroutine prevent_ice_overdepletion(pres,t_atm,qv,latent_heat_vapor,latent_heat_sublim,inv_dt,dt,qidep,qinuc,    &
+   qr2qv_evap_tend,qi2qv_sublim_tend)
 
-   !-- Limit ice process rates to prevent overdepletion of sources such that
-   !   the subsequent adjustments are done with maximum possible rates for the
-   !   time step.  (note: most ice rates are adjusted here since they must be done
-   !   simultaneously (outside of iice-loops) to distribute reduction proportionally
-   !   amongst categories.
-   !PMC - might need to rethink above statement since only one category now.
+   !-- Limit evaporative processes to prevent the QV field from ice supersaturation (evaporation should not lead to supersaturation) 
 
    implicit none
 
    real(rtype), intent(in) :: pres
    real(rtype), intent(in) :: t_atm
    real(rtype), intent(in) :: qv
-   real(rtype), intent(in) :: latent_heat_sublim
-   real(rtype), intent(in) :: inv_dt
+   real(rtype), intent(in) :: latent_heat_sublim,latent_heat_vapor
+   real(rtype), intent(in) :: inv_dt,dt
+   real(rtype), intent(in) :: qidep,qinuc
 
-   real(rtype), intent(inout) :: qidep
-   real(rtype), intent(inout) :: qi2qv_sublim_tend
+   real(rtype), intent(inout) :: qi2qv_sublim_tend,qr2qv_evap_tend
 
-   real(rtype) :: dumqv_sat_i, qdep_satadj
+   real(rtype) :: dumqv_sat_i, qdep_satadj, qrevp_satadj
+   real(rtype) :: qtmp_all,ttmp_all,qv_sat_l,q_sink,t_sink,dumqv_sat_l,qv_source_evp,qi2qv_sublim_satadj
 
-   dumqv_sat_i = qv_sat(t_atm,pres,1)
-   qdep_satadj = (qv-dumqv_sat_i)/(1._rtype + bfb_square(latent_heat_sublim)*dumqv_sat_i/(cp*rv* bfb_square(t_atm) ))*inv_dt
-   qidep  = qidep*min(1._rtype,max(0._rtype, qdep_satadj)/max(qidep, 1.e-20_rtype))
-   qi2qv_sublim_tend  = qi2qv_sublim_tend*min(1._rtype,max(0._rtype,-qdep_satadj)/max(qi2qv_sublim_tend, 1.e-20_rtype))
+   ! ... available water vapor 
+   qtmp_all = qv - (qidep + qinuc)*dt + (qi2qv_sublim_tend + qr2qv_evap_tend)*dt 
+   ! ... corresponding temperature
+   ttmp_all = t_atm + ((qidep-qi2qv_sublim_tend+qinuc)*latent_heat_sublim*inv_cp + (-qr2qv_evap_tend*latent_heat_vapor*inv_cp))*dt
+
+   ! ... water vapor needed for liquid saturation is the minimal requirment for both liquid and ice sturation
+   qv_sat_l = qv_sat(ttmp_all,pres,0)
+
+   ! ... if water vapor mass exceeds liquid saturation, we limit only source terms (e.g., sublimation, rain evp) 
+   if(qtmp_all > qv_sat_l)then
+
+      ! ... first, rain evaporation is limited to the sub-saturation defined by the water vapor sink terms (deposition, ice nucleation)
+      !     latent heat for vaporization is used
+      q_sink = qv - (qidep + qinuc)*dt
+      t_sink = t_atm + ((qidep+qinuc)*latent_heat_sublim*inv_cp)*dt
+      dumqv_sat_l = qv_sat(t_sink,pres,0)
+      qv_source_evp = qr2qv_evap_tend + qi2qv_sublim_tend
+      qrevp_satadj = (q_sink-dumqv_sat_l)/(1._rtype + bfb_square(latent_heat_vapor)*dumqv_sat_l/(cp*rv* bfb_square(t_sink) ))*inv_dt
+      qr2qv_evap_tend    = qr2qv_evap_tend*min(1._rtype,max(0._rtype,-qrevp_satadj)/max(qv_source_evp, 1.e-20_rtype))
+
+      ! ... next, ice-sublimation is limited in the same way but with latent heat for sublimation 
+      dumqv_sat_i = qv_sat(t_sink,pres,1)
+      qi2qv_sublim_satadj = (q_sink-dumqv_sat_i)/(1._rtype + bfb_square(latent_heat_sublim)*dumqv_sat_i/(cp*rv* bfb_square(t_sink) ))*inv_dt
+      qi2qv_sublim_tend  = qi2qv_sublim_tend*min(1._rtype,max(0._rtype,-qi2qv_sublim_satadj)/max(qv_source_evp, 1.e-20_rtype))
+   
+   endif
 
 end subroutine prevent_ice_overdepletion
 
