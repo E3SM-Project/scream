@@ -1,7 +1,7 @@
 #ifndef SCREAM_COMMON_PHYSICS_IMPL_HPP
 #define SCREAM_COMMON_PHYSICS_IMPL_HPP
 
-#include "physics/share/physics_constants.hpp"
+#include "share/scream_constants.hpp"
 #include "share/util/scream_column_ops.hpp"
 
 namespace scream {
@@ -11,11 +11,11 @@ template<typename ScalarT>
 KOKKOS_INLINE_FUNCTION
 ScalarT PhysicsFunctions<DeviceT>::exner_function(const ScalarT& pressure)
 {
-  using C = scream::physics::Constants<Real>;
+  using C = scream::Constants<Real>;
 
   static constexpr auto p0 = C::P0;
-  static constexpr auto rd = C::RD;
-  static constexpr auto inv_cp = C::INV_CP;
+  static constexpr auto rd = C::R_dry_air;
+  static constexpr auto inv_cp = C::one / C::cp_dry_air;
 
   return pow( pressure/p0, rd*inv_cp );
 }
@@ -83,11 +83,13 @@ KOKKOS_INLINE_FUNCTION
 ScalarT PhysicsFunctions<DeviceT>::
 calculate_temperature_from_virtual_temperature(const ScalarT& T_virtual, const ScalarT& qv)
 {
-  using C = scream::physics::Constants<Real>;
+  using C = scream::Constants<Real>;
 
-  static constexpr auto ep_2 = C::ep_2;
+  // Molecular mass ratio of water vapor and dry air
+  static constexpr auto mmr = C::M_water_vapor / C::M_dry_air;
+  static constexpr auto one = C::one;
 
-  return T_virtual*((ep_2*(1.0+qv))/(qv+ep_2));
+  return T_virtual*((mmr*(one+qv))/(qv+mmr));
 }
 
 template<typename DeviceT>
@@ -110,10 +112,13 @@ template<typename ScalarT>
 KOKKOS_INLINE_FUNCTION
 ScalarT PhysicsFunctions<DeviceT>::calculate_virtual_temperature(const ScalarT& temperature, const ScalarT& qv)
 {
-  using C = scream::physics::Constants<Real>;
+  using C = scream::Constants<Real>;
 
-  static constexpr auto ep_2 = C::ep_2;
-  return temperature*((qv+ep_2)/(ep_2*(1.0+qv)));
+  // Molecular mass ratio of water vapor and dry air
+  static constexpr auto mmr = C::M_water_vapor / C::M_dry_air;
+  static constexpr auto one = C::one;
+
+  return temperature*( (qv+mmr)/(mmr*(one+qv)) );
 }
 
 template<typename DeviceT>
@@ -137,10 +142,10 @@ KOKKOS_INLINE_FUNCTION
 ScalarT PhysicsFunctions<DeviceT>::
 calculate_dse(const ScalarT& temperature, const ScalarT& z, const Real surf_geopotential)
 {
-  using C = scream::physics::Constants<Real>;
+  using C = scream::Constants<Real>;
 
-  static constexpr auto cp = C::CP;
-  static constexpr auto g  = C::gravit;
+  static constexpr auto cp = C::cp_dry_air;
+  static constexpr auto g  = C::gravity;
 
   return cp*temperature + g*z + surf_geopotential;
 }
@@ -166,13 +171,13 @@ KOKKOS_INLINE_FUNCTION
 ScalarT PhysicsFunctions<DeviceT>::
 calculate_dz(const ScalarT& pseudo_density, const ScalarT& p_mid, const ScalarT& T_mid, const ScalarT& qv)
 {
-  using C = scream::physics::Constants<Real>;
+  using C = scream::Constants<Real>;
 
   const ScalarT& T_virtual = calculate_virtual_temperature(T_mid,qv);
 
-  static constexpr auto rd = C::RD;
-  static constexpr auto g  = C::gravit;
-  return (rd/g)*pseudo_density*T_virtual / p_mid;
+  static constexpr auto Rd = C::R_dry_air;
+  static constexpr auto g  = C::gravity;
+  return (Rd/g)*pseudo_density*T_virtual / p_mid;
 }
 
 template<typename DeviceT>
