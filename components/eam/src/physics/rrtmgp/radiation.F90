@@ -194,6 +194,11 @@ module radiation
    ! needed for SPA
    integer :: aer_tau_bnd_lw_idx(nlwbands), aer_tau_bnd_sw_idx(nswbands),&
               aer_ssa_bnd_sw_idx(nswbands), aer_asm_bnd_sw_idx(nswbands)
+
+   !needed to generate initial conditions for RAD
+   integer, public ::    &
+        ixcldliq = -1,   & ! cloud liquid amount index
+        ixcldice = -1      ! ice index
    !============================================================================
 
 contains
@@ -577,24 +582,28 @@ contains
       call add_hist_coord('lwband', nlwbands, 'Longwave wavenumber', 'cm-1', lw_band_midpoints)
 
 
-!ASD      ! Add outfields to be used for RRTMG stand-alone testing.
+      ! Add outfields to be used for RRTMGP stand-alone testing.
+      call cnst_get_ind('CLDLIQ',ixcldliq)
+      call cnst_get_ind('CLDICE',ixcldice)
       do igas = 1,size(active_gases)
         active_gases_index(igas) = igas
       end do
       call add_hist_coord("ngas",size(active_gases),"Number of active gases in radiation", 'N/A', active_gases_index)
-      call addfld("T_mid_RADin",            (/ 'lev' /),         'I', 'K',        "T_mid")
-      call addfld("cosine_zenith_RADin",    (/ 'lev' /),         'I', 'unitless', "mu0")
-      call addfld("eff_radius_qc_RADin",    (/ 'lev' /),         'I', 'micron',   "rel")
-      call addfld("eff_radius_qi_RADin",    (/ 'lev' /),         'I', 'micron',   "rei")
-      call addfld("gas_vmr_RADin",          (/ 'lev', 'ngas' /), 'I', 'kg/kg',    "gas_vmr")
-      call addfld("iwp_RADin",              (/ 'lev' /),         'I', 'kg m-3',   "iwp")
-      call addfld("lwp_RADin",              (/ 'lev' /),         'I', 'kg m-3',   "lwp")
-      call addfld("p_mid_RADin",            (/ 'lev' /),         'I', 'Pa',       "p_mid")
-      call addfld("pint_RADin",             (/ 'lev' /),         'I', 'Pa',       "p_int")
-      call addfld("surf_alb_diffuse_RADin", (/ 'lev' /),         'I', 'unitless', "sfc_alb_dif")
-      call addfld("surf_alb_direct_RADin",  (/ 'lev' /),         'I', 'unitless', "sfc_alb_dir")
-
-      call addfld("tint_RADin",        (/ 'lev' /), 'I', 'unitless', '')
+      call addfld("T_mid_inRAD",            (/ 'lev' /),         'I', 'K',        "T_mid")
+      call addfld("cosine_zenith_inRAD",    (/ 'lev' /),         'I', 'unitless', "mu0")
+      call addfld("eff_radius_qc_inRAD",    (/ 'lev' /),         'I', 'micron',   "rel")
+      call addfld("eff_radius_qi_inRAD",    (/ 'lev' /),         'I', 'micron',   "rei")
+      call addfld("gas_vmr_inRAD",          (/ 'lev', 'ngas' /), 'I', 'kg/kg',    "gas_vmr")
+      call addfld("p_mid_inRAD",            (/ 'lev' /),         'I', 'Pa',       "p_mid")
+      call addfld("p_int_inRAD",            (/ 'ilev' /),        'I', 'Pa',       "p_int")
+      call addfld("pseudo_density_inRAD",   (/ 'lev' /),         'I', 'Pa',       "pseudo density")
+      call addfld("qc_inRAD",               (/ 'lev' /),         'I', 'kg/kg',    "qc, cld water MMR")
+      call addfld("qi_inRAD",               (/ 'lev' /),         'I', 'kg/kg',    "qi, ice water MMR")
+      call addfld('surf_alb_diffuse_inRAD', (/'swband'/),        'I', '1',        "Shortwave direct-beam albedo", &
+                  sampling_seq='rad_lwsw', flag_xyfill=.true.)
+      call addfld('surf_alb_direct_inRAD', (/'swband'/),         'I', '1',        "Shortwave diffuse-beam albedo", &
+                  sampling_seq='rad_lwsw', flag_xyfill=.true.)
+      call addfld("t_int_inRAD",            (/ 'ilev' /),        'I', 'K',        "Interface Temperature")
 
       ! Shortwave radiation
       call addfld('TOT_CLD_VISTAU', (/ 'lev' /), 'A',   '1', &
@@ -1190,7 +1199,7 @@ contains
 
       ! Gas volume mixing ratios
       real(r8), dimension(size(active_gases),pcols,pver) :: gas_vmr
-      real(r8), dimension(pcols,pver,size(active_gases)) :: gas_vmr_flip
+      real(r8), dimension(pcols,size(active_gases),pver) :: gas_vmr_output
 
       ! Needed for shortwave aerosol; TODO: remove this dependency
       integer :: nday, nnight     ! Number of daylight columns
@@ -1257,6 +1266,16 @@ contains
          des => zeros
       end if
 
+      ! Write output used as arguments to radiation tendency - for use with
+      ! stand-alone rrtmgp testing.
+      call outfld("T_mid_inRAD",            state%t,      pcols, state%lchnk)
+      call outfld("eff_radius_qc_inRAD",    rel,          pcols, state%lchnk)
+      call outfld("eff_radius_qi_inRAD",    rei,          pcols, state%lchnk)
+      call outfld("p_mid_inRAD",            state%pmid,   pcols, state%lchnk)
+      call outfld("p_int_inRAD",            state%pint,   pcols, state%lchnk)
+      call outfld("qc_inRAD",               state%q(:,:,ixcldice),  pcols, state%lchnk) 
+      call outfld("qi_inRAD",               state%q(:,:,ixcldice),  pcols, state%lchnk) 
+
       ! Compute combined cloud and snow fraction
       do icol = 1,size(cld,1)
          do ilay = 1,size(cld,2)
@@ -1292,6 +1311,7 @@ contains
          ), fatal=.false., warn=rrtmgp_enable_temperature_warnings)
          call t_stopf('rrtmgp_check_temperatures')
       end if
+      call outfld("t_int_inRAD",            tint,         pcols, state%lchnk)
 
       ! Do shortwave stuff...
       if (radiation_do('sw')) then
@@ -1307,6 +1327,8 @@ contains
          ! Send albedos to history buffer (useful for debugging)
          call outfld('SW_ALBEDO_DIR', transpose(albedo_dir(1:nswbands,1:ncol)), ncol, state%lchnk)
          call outfld('SW_ALBEDO_DIF', transpose(albedo_dif(1:nswbands,1:ncol)), ncol, state%lchnk)
+         call outfld('surf_alb_direct_inRAD', transpose(albedo_dir(1:nswbands,1:ncol)), ncol, state%lchnk)
+         call outfld('surf_alb_diffuse_inRAD', transpose(albedo_dif(1:nswbands,1:ncol)), ncol, state%lchnk)
 
          ! Get cosine solar zenith angle for current time step.
          call set_cosine_solar_zenith_angle(state, dt_avg, coszrs(1:ncol))
@@ -1599,22 +1621,10 @@ contains
       ! Call outfield on fields needed by radiation for stand-alone testing 
       do icol = 1,ncol
         do ilay = 1,size(active_gases)
-          gas_vmr_flip(icol,:,ilay) = gas_vmr(ilay,icol,:)
+          gas_vmr_output(icol,ilay,:) = gas_vmr(ilay,icol,:)
         end do
       end do
-      call outfld("T_mid_RADin",            state%t,      pcols, state%lchnk)
-      call outfld("cosine_zenith_RADin",    coszrs,       pcols, state%lchnk)
-      call outfld("eff_radius_qc_RADin",    rel,          pcols, state%lchnk)
-      call outfld("eff_radius_qi_RADin",    rei,          pcols, state%lchnk)
-      call outfld("gas_vmr_RADin",          gas_vmr_flip, pcols, state%lchnk)
-      call outfld("iwp_RADin",              iciwp,        pcols, state%lchnk)
-      call outfld("lwp_RADin",              iclwp,        pcols, state%lchnk)
-      call outfld("p_mid_RADin",            state%pmid,   pcols, state%lchnk)
-      call outfld("pint_RADin",             state%pint,   pcols, state%lchnk)
-      call outfld("surf_alb_diffuse_RADin", albedo_dif,   pcols, state%lchnk)
-      call outfld("surf_alb_direct_RADin",  albedo_dir,   pcols, state%lchnk)
-
-      call outfld("tint_RADin",        tint,       pcols, state%lchnk)
+      call outfld("gas_vmr_inRAD",     gas_vmr_output,      pcols, state%lchnk)
 
    end subroutine radiation_tend
 
