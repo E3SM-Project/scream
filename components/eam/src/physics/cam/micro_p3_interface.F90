@@ -441,6 +441,7 @@ end subroutine micro_p3_readnl
     call addfld("qm_inP3",                 (/ 'lev' /),  'I', 'kg/kg',     "qm"             ) 
     call addfld("qr_inP3",                 (/ 'lev' /),  'I', 'kg/kg',     "qr"             ) 
     call addfld("cldfrac_tot_inP3",        (/ 'lev' /),  'I', 'unitless',  "ast"            ) 
+    call addfld("cldfrac_tot_inRAD",       (/ 'lev' /),  'I', 'unitless',  "ast"            ) 
     call addfld("T_prev_micro_step_inP3",  (/ 'lev' /),  'I', 'K',         "T_prev"         ) 
     call addfld("nc_activated_inP3",       (/ 'lev' /),  'I', '1/kg',      "nccn_prescribed") 
     call addfld("nc_nuceat_tend_inP3",     (/ 'lev' /),  'I', '1/kg/s',    "nc_nuceat_tend" ) 
@@ -1123,6 +1124,7 @@ end subroutine micro_p3_readnl
     call outfld("qm_inP3",                 state%q(:,:,ixcldrim),  pcols, lchnk) 
     call outfld("qr_inP3",                 state%q(:,:,ixrain),    pcols, lchnk) 
     call outfld("cldfrac_tot_inP3",        ast,                    pcols, lchnk) 
+    call outfld("cldfrac_tot_inRAD",       ast,                    pcols, lchnk) ! Radiation needs this one too in SCREAM
     call outfld("T_prev_micro_step_inP3",  T_prev,                 pcols, lchnk) 
     call outfld("nc_activated_inP3",       nccn_prescribed,        pcols, lchnk) 
     call outfld("nc_nuceat_tend_inP3",     npccn,                  pcols, lchnk) 
