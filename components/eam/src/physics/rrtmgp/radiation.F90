@@ -587,13 +587,13 @@ contains
       call cnst_get_ind('CLDICE',ixcldice)
       do igas = 1,size(active_gases)
         active_gases_index(igas) = igas
+        call addfld(trim(active_gases(igas))//"_inRAD",          (/ 'lev' /), 'I', 'kg/kg',  trim(active_gases(igas)))
       end do
       call add_hist_coord("ngas",size(active_gases),"Number of active gases in radiation", 'N/A', active_gases_index)
       call addfld("T_mid_inRAD",            (/ 'lev' /),         'I', 'K',        "T_mid")
-      call addfld("cosine_zenith_inRAD",    (/ 'lev' /),         'I', 'unitless', "mu0")
+      call addfld("cos_zenith_inRAD",    (/ 'lev' /),         'I', 'unitless', "mu0")
       call addfld("eff_radius_qc_inRAD",    (/ 'lev' /),         'I', 'micron',   "rel")
       call addfld("eff_radius_qi_inRAD",    (/ 'lev' /),         'I', 'micron',   "rei")
-      call addfld("gas_vmr_inRAD",          (/ 'lev', 'ngas' /), 'I', 'kg/kg',    "gas_vmr")
       call addfld("p_mid_inRAD",            (/ 'lev' /),         'I', 'Pa',       "p_mid")
       call addfld("p_int_inRAD",            (/ 'ilev' /),        'I', 'Pa',       "p_int")
       call addfld("pseudo_density_inRAD",   (/ 'lev' /),         'I', 'Pa',       "pseudo density")
@@ -1217,6 +1217,7 @@ contains
       logical :: active_calls(0:N_DIAG)
 
       integer :: icol, ilay
+      integer :: igas
 
       ! Everyone needs a name
       character(*), parameter :: subname = 'radiation_tend'
@@ -1618,13 +1619,10 @@ contains
             end if
          end if
       end if
-      ! Call outfield on fields needed by radiation for stand-alone testing 
-      do icol = 1,ncol
-        do ilay = 1,size(active_gases)
-          gas_vmr_output(icol,ilay,:) = gas_vmr(ilay,icol,:)
-        end do
+      ! Call outfield on active gases needed by radiation for stand-alone testing 
+      do igas = 1,size(active_gases)
+        call outfld(trim(active_gases(igas))//"_inRAD", gas_vmr(:,:,igas), pcols, state%lchnk) 
       end do
-      call outfld("gas_vmr_inRAD",     gas_vmr_output,      pcols, state%lchnk)
 
    end subroutine radiation_tend
 
