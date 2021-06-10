@@ -360,13 +360,13 @@ end function radiation_nextsw_cday
 
 !================================================================================================
 
-  subroutine radiation_init(phys_state)
+  subroutine radiation_init(phys_state, pbuf)
 !-----------------------------------------------------------------------
 !
 ! Initialize the radiation parameterization, add fields to the history buffer
 ! 
 !-----------------------------------------------------------------------
-    use physics_buffer, only: pbuf_get_index
+    use physics_buffer, only: physics_buffer_desc, pbuf_get_index
     use phys_grid,      only: npchunks, get_ncols_p, chunks, knuhcs, ngcols, dyn_to_latlon_gcol_map
     use cam_history,    only: addfld, horiz_only, add_default
     use constituents,   only: cnst_get_ind
@@ -389,6 +389,7 @@ end function radiation_nextsw_cday
 #endif
 
     type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
+    type(physics_buffer_desc), pointer :: pbuf(:,:)
 
     integer :: icall, nmodes
     logical :: active_calls(0:N_DIAG)

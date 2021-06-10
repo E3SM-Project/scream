@@ -1239,7 +1239,7 @@
 <!-- Only for use with RRTMGP -->
 <do_aerosol_rad>              .true.   </do_aerosol_rad>
 <fixed_total_solar_irradiance>-1       </fixed_total_solar_irradiance>
-<do_spa_optics> .false.</do_spa_optics>
+<do_spa_optics rad="rrtmgp"> .false.</do_spa_optics>
 
 <!-- ================================================================== -->
 <!-- Defaults for SE                                                    -->

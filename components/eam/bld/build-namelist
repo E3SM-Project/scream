@@ -763,7 +763,10 @@ if ( $spa_chem) {
     add_default($nl, 'spa_type', 'val' => 'CYCLICAL');
     add_default($nl, 'spa_cycle_yr', 'val' => 1);
     add_default($nl, 'do_prescribed_ccn', 'val' => '.true.');
-    add_default($nl, 'do_spa_optics', 'val' => '.true.');
+    # Only add spa optics flag for RRTMGP; not supported for RRTMG
+    if ($cfg->get('rad') eq 'rrtmgp') {
+        add_default($nl, 'do_spa_optics', 'val' => '.true.');
+    }
 }
 
 # Chemistry deposition lists
@@ -3730,7 +3733,9 @@ if ($clubb_sgs  =~ /$TRUE/io) {
 }
 
 #RRTMGP
-add_default($nl, 'do_spa_optics');
+if ($cfg->get('rad') eq 'rrtmgp') {
+    add_default($nl, 'do_spa_optics');
+}
 
 # MMF Microphysics scheme
 add_default($nl, 'MMF_microphysics_scheme');
