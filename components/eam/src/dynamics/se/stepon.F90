@@ -231,7 +231,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
    use parallel_mod,    only: par
    use dyn_comp,        only: TimeLevel, hvcoord
    use time_mod,        only: tstep, TimeLevel_Qdp   !  dynamics typestep
-   use control_mod,     only: ftype, qsplit, theta_hydrostatic_mode
+   use control_mod,     only: ftype, qsplit
    use hycoef,          only: hyai, hybi
    use cam_history,     only: outfld, hist_fld_active
    use prim_driver_base,only: applyCAMforcing_tracers
@@ -432,7 +432,6 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
       enddo
    endif
 
-   if (.not. theta_hydrostatic_mode) then
    if (hist_fld_active('DYN_Z3')) then
       do ie=1,nelemd
          call get_field_i(dyn_in%elem(ie),'geo_i',tmp_dyn_i(:,:,:),hvcoord,tl_f)
@@ -451,8 +450,6 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
          call outfld('DYN_MU',tmp_dyn_i(:,:,:),npsq,ie)
       enddo
    endif
-   endif
-
 
    if (hist_fld_active('FU') .or. hist_fld_active('FV') ) then
       do ie=1,nelemd
