@@ -1258,7 +1258,6 @@ contains
 
       ! Gas volume mixing ratios
       real(r8), dimension(size(active_gases),pcols,pver) :: gas_vmr
-      real(r8), dimension(pcols,size(active_gases),pver) :: gas_vmr_output
 
       ! Needed for shortwave aerosol; TODO: remove this dependency
       integer :: nday, nnight     ! Number of daylight columns
@@ -1448,7 +1447,7 @@ contains
             if (active_calls(icall)) then
                ! Get gas concentrations
                call t_startf('rad_gas_concentrations_sw')
-               call get_gas_vmr(icall, state, pbuf, active_gases, gas_vmr)
+               call get_gas_vmr(icall, state, pbuf, active_gases, gas_vmr, write_mmr=.true.)
                call t_stopf('rad_gas_concentrations_sw')
                ! Get aerosol optics
                if (do_aerosol_rad) then
@@ -1679,10 +1678,6 @@ contains
             end if
          end if
       end if
-      ! Call outfield on active gases needed by radiation for stand-alone testing 
-      do igas = 1,size(active_gases)
-        call outfld(trim(active_gases(igas))//"_inRAD", gas_vmr(:,:,igas), pcols, state%lchnk) 
-      end do
 
    end subroutine radiation_tend
 
@@ -2745,20 +2740,24 @@ contains
 
    !----------------------------------------------------------------------------
 
-   subroutine get_gas_vmr(icall, state, pbuf, gas_names, gas_vmr)
+   subroutine get_gas_vmr(icall, state, pbuf, gas_names, gas_vmr, write_mmr)
 
       use physics_types, only: physics_state
       use physics_buffer, only: physics_buffer_desc
       use rad_constituents, only: rad_cnst_get_gas
+      use cam_history, only: outfld
 
       integer, intent(in) :: icall
       type(physics_state), intent(in) :: state
       type(physics_buffer_desc), pointer :: pbuf(:)
       character(len=*), intent(in), dimension(:) :: gas_names
       real(r8), intent(out), dimension(:,:,:) :: gas_vmr
+      logical, intent(in), optional :: write_mmr  ! Special option to also simulataneously write the mass-mixing-ratios for active
+                                                  ! gases for use to initialize stand-alone radiation tests.
 
       ! Mass mixing ratio
       real(r8), pointer :: mmr(:,:)
+      real(r8), allocatable :: gas_out(:,:)
 
       ! Gases and molecular weights. Note that we do NOT have CFCs yet (I think
       ! this is coming soon in RRTMGP). RRTMGP also allows for absorption due to
@@ -2793,6 +2792,7 @@ contains
 
       ! initialize
       gas_vmr(:,:,:) = 0._r8
+      if (present(write_mmr).and.write_mmr) allocate(gas_out(pcols,pver))
 
       ! For each gas species needed for RRTMGP, read the mass mixing ratio from the
       ! CAM rad_constituents interface, convert to volume mixing ratios, and
@@ -2837,6 +2837,13 @@ contains
                                             * mol_weight_air / mol_weight_gas(igas)
 
          end select
+         if (present(write_mmr).and.write_mmr) then
+            ! Convert VMR to wet MMR
+            call rad_cnst_get_gas(icall, trim('H2O'), state, pbuf, mmr)
+            gas_out(1:ncol,1:pver) = mol_weight_gas(igas)/mol_weight_air * (1._r8 - mmr(1:ncol,1:pver)) * gas_vmr(igas,1:ncol,1:pver)
+            ! Call as outfld
+            call outfld(trim(gas_species(igas))//"_inRAD", gas_out(1:ncol,1:pver), ncol, state%lchnk)
+         end if
 
       end do  ! igas
 
