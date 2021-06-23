@@ -84,8 +84,7 @@ subroutine stepon_init(dyn_in, dyn_out )
   use cam_history,            only: register_vector_field
   use gravity_waves_sources,  only: gws_init
   use phys_control,           only: use_gw_front
-  use cam_history_support,    only: max_fieldname_len
-  use cam_history_support, only: add_hist_coord 
+  use cam_history_support,    only: max_fieldname_len, add_hist_coord
 
 ! !OUTPUT PARAMETERS
 !
@@ -114,7 +113,9 @@ subroutine stepon_init(dyn_in, dyn_out )
   ! is not initialized at that point if making a restart runs
   !
   ! Fields needed to run a dynamics stand-alone test
-  call add_hist_coord('dim2',  2, 'Velocity coordinates',  'N/A', (/ 1,2 /))
+  ! Note: the "dim2" dimension is added by SHOC.  If shoc is not active than the v_inHOMME addfld call will fail.
+  !       To fix just add the line:
+  !          call add_hist_coord('dim2',  2, 'Velocity coordinates',  'N/A', (/ 1,2 /))
   call addfld('dp_inHOMME',         (/ 'lev' /),          'I', 'unitless', 'dp',         gridname='GLL')
   call addfld('phi_i_inHOMME',      (/ 'ilev' /),         'I', 'unitless', 'phi_i',      gridname='GLL')
   call addfld('qv_inHOMME',         (/ 'lev' /),          'I', 'unitless', 'qv',         gridname='GLL')

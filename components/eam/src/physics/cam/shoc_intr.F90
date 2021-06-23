@@ -295,7 +295,7 @@ end function shoc_implements_cnst
     use constituents,           only: cnst_get_ind	
     use shoc,                   only: shoc_init			      			      
     use cam_history,            only: horiz_only, addfld, add_default
-    use cam_history_support,    only: add_hist_coord 
+    use cam_history_support,    only: add_hist_coord
     use error_messages,         only: handle_errmsg
     use trb_mtn_stress,         only: init_tms   
  
@@ -387,12 +387,12 @@ end function shoc_implements_cnst
        edsclr_dim = edsclr_dim-1
     endif
 
-    ! Write variables for shoc stand alone test: INPUT 
-    call add_hist_coord('dim2_shoc',  2, 'Velocity coordinates',  'N/A', (/ 1,2 /))
+    ! Write variables for shoc stand alone test: INPUT
+    call add_hist_coord('dim2',  2, 'Velocity coordinates',  'N/A', (/ 1,2 /))
     call addfld( "T_mid_inSHOC",            (/'lev'/),          'I', 'K',        "t"       )
     call addfld( "cldfrac_liq_inSHOC",      (/'lev'/),          'I', 'unitless', "alst"    )
     call addfld( "eddy_diff_mom_inSHOC",    (/'lev'/),          'I', 'm2/s',     "khzm"    )
-    call addfld( "horiz_winds_inSHOC",      (/'lev', 'dim2_shoc'/),  'I', 'm/s',      "V"       )
+    call addfld( "horiz_winds_inSHOC",      (/'lev', 'dim2'/),  'I', 'm/s',      "V"       )
     call addfld( "host_dx_inSHOC",          horiz_only,         'I', 'm',        "host_dx" )
     call addfld( "host_dy_inSHOC",          horiz_only,         'I', 'm',        "host_dy" )
     call addfld( "omega_inSHOC",            (/'lev'/),          'I', 'Pa/s',     "omega"   )
@@ -414,7 +414,7 @@ end function shoc_implements_cnst
     call addfld( "T_mid_outSHOC",           (/'lev'/),          'I', 'K',         "t"       )
     call addfld( "cldfrac_liq_outSHOC",     (/'lev'/),          'I', 'unitless',  "alst"    )
     call addfld( "eddy_diff_mom_outSHOC",   (/'lev'/),          'I', 'm2/s',      "khzm"    )
-    call addfld( "horiz_winds_outSHOC",     (/'lev', 'dim2_shoc'/),  'I', 'm/s',       "V"       )
+    call addfld( "horiz_winds_outSHOC",     (/'lev', 'dim2'/),  'I', 'm/s',       "V"       )
     call addfld( "qc_outSHOC",              (/'lev'/),          'I', 'kg/kg',     "shoc_ql" )
     call addfld( "qv_outSHOC",              (/'lev'/),          'I', 'kg/kg',     "shoc_qv" )
     call addfld( "sgs_buoy_flux_outSHOC",   (/'lev'/),          'I', 'K m/s',     "wthv_sec")

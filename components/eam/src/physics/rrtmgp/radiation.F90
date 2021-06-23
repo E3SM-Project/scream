@@ -627,7 +627,7 @@ contains
       end do
       call add_hist_coord("ngas",size(active_gases),"Number of active gases in radiation", 'N/A', active_gases_index)
       call addfld("T_mid_inRAD",            (/ 'lev' /),         'I', 'K',        "T_mid")
-      call addfld("cos_zenith_inRAD",    (/ 'lev' /),         'I', 'unitless', "mu0")
+      call addfld("cos_zenith_inRAD",       horiz_only,          'I', 'unitless', "mu0")
       call addfld("eff_radius_qc_inRAD",    (/ 'lev' /),         'I', 'micron',   "rel")
       call addfld("eff_radius_qi_inRAD",    (/ 'lev' /),         'I', 'micron',   "rei")
       call addfld("p_mid_inRAD",            (/ 'lev' /),         'I', 'Pa',       "p_mid")
