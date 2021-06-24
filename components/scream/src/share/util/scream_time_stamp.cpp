@@ -120,8 +120,8 @@ TimeStamp& TimeStamp::operator+=(const double seconds) {
   if (carry>0) {
 
     m_dd += carry;
-    while (m_dd>dpm(m_yy,m_mm)) {
-      m_dd -= dpm(m_yy,m_mm);
+    while ((m_dd+1)>dpm(m_yy,m_mm)) { /* Have to offset m_dd by one because it starts at 0 */
+      m_dd -= dpm(m_yy,m_mm)-1;
       ++m_mm;
       m_yy += m_mm / 12;
       m_mm  = m_mm % 12;
@@ -132,35 +132,15 @@ TimeStamp& TimeStamp::operator+=(const double seconds) {
 }
 
 bool operator== (const TimeStamp& ts1, const TimeStamp& ts2) {
-  return ts1.get_seconds()==ts2.get_seconds() &&
-         ts1.get_days()==ts2.get_days() &&
-         ts1.get_years()==ts2.get_years();
+  return ts1.test_double()==ts2.test_double();
 }
 
 bool operator< (const TimeStamp& ts1, const TimeStamp& ts2) {
-  if (ts1.get_years()>ts2.get_years()) {
-    return false;
-  } else if (ts1.get_years()==ts2.get_years()) {
-    if (ts1.get_days()>ts2.get_days()) {
-      return false;
-    } else if (ts1.get_days()==ts2.get_days()) {
-      return ts1.get_seconds()<ts2.get_seconds();
-    }
-  }
-  return true;
+  return ts1.test_double()<ts2.test_double();
 }
 
 bool operator<= (const TimeStamp& ts1, const TimeStamp& ts2) {
-  if (ts1.get_years()>ts2.get_years()) {
-    return false;
-  } else if (ts1.get_years()==ts2.get_years()) {
-    if (ts1.get_days()>ts2.get_days()) {
-      return false;
-    } else if (ts1.get_days()==ts2.get_days()) {
-      return ts1.get_seconds()<=ts2.get_seconds();
-    }
-  }
-  return true;
+  return ts1.test_double()<=ts2.test_double();
 }
 
 double operator- (const TimeStamp& ts1, const TimeStamp& ts2) {
