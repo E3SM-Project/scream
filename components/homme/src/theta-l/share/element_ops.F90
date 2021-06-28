@@ -505,6 +505,8 @@ recursive subroutine get_field(elem,name,field,hvcoord,nt,ntQ)
   integer,          intent(in)    :: i,j,k,n0,n1
   type(element_t),  intent(inout) :: elem
 
+write(*,*) "SET STATE1"
+
   ! set prognostic state variables at level midpoints
   elem%state%v   (i,j,1,k,n0:n1)   = u
   elem%state%v   (i,j,2,k,n0:n1)   = v
@@ -546,10 +548,13 @@ recursive subroutine get_field(elem,name,field,hvcoord,nt,ntQ)
   integer,          intent(in)    :: n0,n1,ntQ
   type(element_t),  intent(inout) :: elem
   integer :: n
+
   real(real_kind), dimension(np,np,nlev) :: Rstar
 
   ! get cp and kappa for dry or moist cases
   call get_R_star(Rstar,elem%state%Q(:,:,:,1))
+
+write(*,*) "SET STATE2"
 
   do n=n0,n1
     ! set prognostic state variables at level midpoints

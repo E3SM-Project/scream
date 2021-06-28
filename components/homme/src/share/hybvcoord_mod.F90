@@ -93,6 +93,11 @@ contains
           endif
           read(11,*)hvcoord%hybi(1:plevp_in)
 
+!do k=1,plevp
+!   write(*,*) hvcoord%hyai(k),hvcoord%hybi(k)
+!end do
+
+
           ! Read A midpoint coefficients from ascii file
           read(12,*) plev_in
           if (plev_in .ne. plev) then

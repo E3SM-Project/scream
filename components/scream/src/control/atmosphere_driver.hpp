@@ -67,6 +67,8 @@ public:
   // Create fields as requested by all processes
   void create_fields ();
 
+  void initialize_surface_coupling ();
+
   // Sets a pre-built SurfaceCoupling object in the driver (for CIME runs only)
   void set_surface_coupling (const std::shared_ptr<SurfaceCoupling>& sc);
 

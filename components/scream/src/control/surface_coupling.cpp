@@ -1,6 +1,6 @@
 #include "control/surface_coupling.hpp"
-
 #include "share/field/field_utils.hpp"
+#include "share/util/scream_common_physics_functions.hpp"
 
 namespace scream {
 namespace control {
@@ -12,7 +12,8 @@ SurfaceCoupling (const field_mgr_ptr& field_mgr)
 {
   auto grid = m_field_mgr->get_grid();
 
-  m_num_cols  = grid->get_num_local_dofs();
+  m_num_cols = grid->get_num_local_dofs();
+  m_num_levs = grid->get_num_vertical_levels();
 
   EKAT_REQUIRE_MSG(grid->type()==GridType::Point,
       "Error! Surface coupling only implemented for 'Point' grids.\n"
@@ -20,12 +21,12 @@ SurfaceCoupling (const field_mgr_ptr& field_mgr)
 }
 
 void SurfaceCoupling::
-set_num_fields (const int num_imports, const int num_exports)
+set_num_fields (const int num_imports, const int num_scream_imports, const int num_exports)
 {
   EKAT_REQUIRE_MSG(m_state==RepoState::Clean,
                      "Error! You can only set the number of fields in SurfaceCoupling once.\n");
 
-  m_scream_imports_dev = decltype(m_scream_imports_dev)("",num_imports);
+  m_scream_imports_dev = decltype(m_scream_imports_dev)("",num_scream_imports);
   m_scream_exports_dev = decltype(m_scream_exports_dev)("",num_exports);
 
   m_scream_imports_host = Kokkos::create_mirror_view(m_scream_imports_dev);
@@ -50,38 +51,44 @@ register_import(const std::string& fname,
                       "       Did you forget to call set_num_fields(..) ?\n");
   EKAT_REQUIRE_MSG (m_state!=RepoState::Closed, "Error! Registration phase has already ended.\n");
 
-  // Check that we still have room
-  EKAT_REQUIRE_MSG(m_num_imports<m_scream_imports_host.extent_int(0),
-                     "Error! Imports view is already full. Did you call 'set_num_fields' with the wrong arguments?\n");
+  if (fname == "unused" || fname == "unused_for_now" || fname == "RRTMGP")
+  {
+    // Do nothing
+  } else {
+    // Check that we still have room
+    EKAT_REQUIRE_MSG(m_num_imports<m_scream_imports_host.extent_int(0),
+                       "Error! Imports view is already full. Did you call 'set_num_fields' with the wrong arguments?\n");
 
-  // Get the field, and check that is valid
-  import_field_type field = m_field_mgr->get_field(fname);
-  EKAT_REQUIRE_MSG (field.is_allocated(), "Error! Import field view has not been allocated yet.\n");
-  
-  EKAT_REQUIRE_MSG(cpl_idx>=0, "Error! Input cpl_idx is negative.\n");
+    // Get the field, and check that is valid
+    import_field_type field = m_field_mgr->get_field(fname);
 
-  // Check that this cpl_idx wasn't already registered
-  for (int i=0; i<m_num_imports; ++i) {
-    EKAT_REQUIRE_MSG(cpl_idx!=m_scream_imports_host(i).cpl_idx,
-                       "Error! An import with cpl_idx " + std::to_string(cpl_idx) + " was already registered.\n");
+    EKAT_REQUIRE_MSG (field.is_allocated(), "Error! Import field view has not been allocated yet.\n");
+
+    EKAT_REQUIRE_MSG(cpl_idx>=0, "Error! Input cpl_idx is negative.\n");
+
+    // Check that this cpl_idx wasn't already registered
+    for (int i=0; i<m_num_imports; ++i) {
+      EKAT_REQUIRE_MSG(cpl_idx!=m_scream_imports_host(i).cpl_idx,
+                         "Error! An import with cpl_idx " + std::to_string(cpl_idx) + " was already registered.\n");
+    }
+
+    auto& info = m_scream_imports_host(m_num_imports);
+
+    // Set view data ptr
+    info.data = field.get_view().data();
+
+    // Set cpl index
+    info.cpl_idx = cpl_idx;
+
+    // Get column offset and stride
+    get_col_info (field.get_header_ptr(), vecComp, info.col_offset, info.col_stride);
+
+    // Store the identifier of this field, for debug purposes
+    m_imports_fids.insert(field.get_header().get_identifier());
+
+    // Update number of imports stored
+    ++m_num_imports;
   }
-
-  auto& info = m_scream_imports_host(m_num_imports);
-
-  // Set view data ptr
-  info.data = field.get_view().data();
-
-  // Set cpl index
-  info.cpl_idx = cpl_idx;
-
-  // Get column offset and stride
-  get_col_info (field.get_header_ptr(), vecComp, info.col_offset, info.col_stride);
-
-  // Store the identifier of this field, for debug purposes
-  m_imports_fids.insert(field.get_header().get_identifier());
-
-  // Update number of imports stored
-  ++m_num_imports;
 }
 
 void SurfaceCoupling::
@@ -100,7 +107,7 @@ register_export (const std::string& fname,
                      "Error! Exports view is already full. Did you call 'set_num_fields' with the wrong arguments?\n");
 
   // Get the field, and check that is valid
-  export_field_type field = m_field_mgr->get_field(fname);
+  Field<const Real> field = compute_export_field (fname);
   EKAT_REQUIRE_MSG (field.is_allocated(), "Error! Export field view has not been allocated yet.\n");
 
   EKAT_REQUIRE_MSG(cpl_idx>=0, "Error! Input cpl_idx is negative.\n");
@@ -127,6 +134,110 @@ register_export (const std::string& fname,
 
   // Update number of exports stored
   ++m_num_exports;
+}
+
+Field<const Real> SurfaceCoupling::
+compute_export_field (const std::string& fname) const
+{
+  using namespace ShortFieldTagsNames;
+  using namespace ekat::units;
+
+  using PF   = PhysicsFunctions<device_type>;
+
+  const int last_entry = m_num_levs-1;
+  FieldLayout layout { {COL, LEV}, {m_num_cols, m_num_levs} };
+  auto grid_name = m_field_mgr->get_grid()->name();
+
+  Field<Real> field;
+
+  // 3 cases for choosing an export field:
+  //   1. fname describes a field in the FieldManager. In this case,
+  //      use this field.
+  //   2. fname == set_zero, which indicates that this field is not
+  //      used in SCREAM. In this case, create a field whose view is
+  //      filled with 0.
+  //   3. fname corresponeds to a field which is a combination of
+  //      SCREAM fields. In this case, query the FieldManager for
+  //      this fields and create a new field with the computed
+  //      values (only at the surface)
+  if (m_field_mgr->has_field(fname)) {
+
+    field = m_field_mgr->get_field(fname);
+
+  } else if (fname == "set_zero") {
+
+    // Create field with data values = 0
+    Units nondim(0,0,0,0,0,0,0);
+    FieldIdentifier id("set_zero_field", layout, nondim, grid_name);
+
+    field = Field<Real> (id);
+    field.get_header().get_alloc_properties().request_allocation<Real>();
+    field.allocate_view();
+    field.deep_copy(0.0);
+
+  } else if (fname == "Sa_ptem") {
+
+    const auto T_mid = m_field_mgr->get_field("T_mid").get_reshaped_view<const Real**>();
+    const auto p_mid = m_field_mgr->get_field("p_mid").get_reshaped_view<const Real**>();
+
+    // Create field for result
+    FieldIdentifier id("theta", layout, K, grid_name);
+    field = Field<Real> (id);
+    field.get_header().get_alloc_properties().request_allocation<Real>();
+    field.allocate_view();
+    const auto& theta = field.get_reshaped_view<Real**>();
+
+    const auto policy = KokkosTypes<device_type>::RangePolicy(0, m_num_cols);
+    Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const int& i) {
+      theta(i, last_entry) = PF::calculate_theta_from_T(T_mid(i, last_entry), p_mid(i, last_entry));
+    });
+
+  }
+  else if (fname == "Sa_u" || fname == "Sa_v") {
+
+    auto horiz_winds = m_field_mgr->get_field("horiz_winds").get_reshaped_view<Real***>();
+
+    // Create field for result
+    FieldIdentifier id((fname == "Sa_u" ? "u_wind" : "v_wind"), layout, m/s, grid_name);
+    field = Field<Real> (id);
+    field.get_header().get_alloc_properties().request_allocation<Real>();
+    field.allocate_view();
+    const auto& wind = field.get_reshaped_view<Real**>();
+
+    const int wind_indx = (fname == "Sa_u" ? 0 : 1);
+
+    const auto policy = KokkosTypes<device_type>::RangePolicy(0, m_num_cols);
+    Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const int& i) {
+      wind(i, last_entry) = horiz_winds(i, wind_indx, last_entry);
+    });
+
+  }
+  else if (fname == "Sa_dens") {
+
+    const auto pseudo_density = m_field_mgr->get_field("pseudo_density").get_reshaped_view<const Real**>();
+    const auto T_mid          = m_field_mgr->get_field("T_mid").get_reshaped_view<const Real**>();
+    const auto p_mid          = m_field_mgr->get_field("p_mid").get_reshaped_view<const Real**>();
+    const auto qv             = m_field_mgr->get_field("qv").get_reshaped_view<const Real**>();
+
+    // Create field for result
+    FieldIdentifier id("density", layout, kg/(m*m*m), grid_name);
+    field = Field<Real> (id);
+    field.get_header().get_alloc_properties().request_allocation<Real>();
+    field.allocate_view();
+    const auto& density = field.get_reshaped_view<Real**>();
+
+    const auto policy = KokkosTypes<device_type>::RangePolicy(0, m_num_cols);
+    Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const int& i) {
+      const auto dz = PF::calculate_dz(pseudo_density(i, last_entry), p_mid(i, last_entry), T_mid(i, last_entry), qv(i, last_entry));
+      density(i, last_entry) = PF::calculate_density(pseudo_density(i, last_entry), dz);
+    });
+
+  }
+  else {
+    EKAT_ERROR_MSG("Error! Unrecognized export field name: " + fname + ".");
+  }
+
+  return field.get_const();
 }
 
 void SurfaceCoupling::
@@ -188,6 +299,8 @@ registration_ends (cpl_data_ptr_type cpl_imports_ptr,
 
 void SurfaceCoupling::do_import ()
 {
+  EKAT_ERROR_MSG("DO IMPORT");
+
   if (m_num_imports==0) {
     return;
   }

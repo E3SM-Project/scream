@@ -47,6 +47,7 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
   // TODO: they should not be inited yet; should we error out if they are?
   //       I'm gonna say 'no', for now, cause it might be a pb with unit tests.
   if (!is_data_structures_inited_f90()) {
+    std::cout << "set_grids"<< std::endl;
     prim_init_data_structures_f90 ();
   }
 
@@ -420,6 +421,8 @@ void HommeDynamics::initialize_impl (const util::TimeStamp& /* t0 */)
 
   using ESU = ekat::ExeSpaceUtils<KT::ExeSpace>;
   const auto policy = ESU::get_thread_range_parallel_scan_team_policy(num_elems*NP*NP,NVL);
+
+  std::cout << "NE: " << num_elems << std::endl;
 
   // Need two temporaries, for pi_mid and pi_int
   ekat::WorkspaceManager<Pack,DefaultDevice> wsm(NVLI,2,policy);

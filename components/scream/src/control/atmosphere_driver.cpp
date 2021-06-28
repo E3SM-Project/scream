@@ -215,6 +215,10 @@ void AtmosphereDriver::create_fields()
   m_ad_status |= s_fields_created;
 }
 
+void AtmosphereDriver::initialize_surface_coupling () {
+  m_surface_coupling = std::make_shared<SurfaceCoupling>(get_ref_grid_field_mgr());
+}
+
 void AtmosphereDriver::initialize_output_manager () {
   check_ad_status (s_comm_set | s_params_set | s_grids_created | s_fields_created);
 

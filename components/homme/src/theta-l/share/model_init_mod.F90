@@ -73,6 +73,9 @@ contains
 
       ! initialize reference states used by hyberviscosity
       ps_ref(:,:) = hvcoord%ps0 * exp ( -elem(ie)%state%phis(:,:)/(Rgas*TREF)) 
+
+      write(*,*) "ref: ",hvcoord%ps0,elem(ie)%state%phis(1,1)
+
       do k=1,nlev
          elem(ie)%derived%dp_ref(:,:,k) = ( hvcoord%hyai(k+1) - hvcoord%hyai(k) )*hvcoord%ps0 + &
               (hvcoord%hybi(k+1)-hvcoord%hybi(k))*ps_ref(:,:)

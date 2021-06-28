@@ -42,7 +42,7 @@ public:
   explicit SurfaceCoupling (const field_mgr_ptr& field_mgr);
 
   // This allocates some service views
-  void set_num_fields (const int num_imports, const int num_exports);
+  void set_num_fields (const int num_imports, const int num_scream_imports, const int num_exports);
 
   // Register import/export scream fields
   void register_import (const std::string& fname,
@@ -51,6 +51,8 @@ public:
   void register_export (const std::string& fname,
                         const int cpl_idx,
                         const int vecComp = -1);
+
+  Field<const Real> compute_export_field (const std::string& fname) const;
 
   // Marks the end of the registration phase. Here, we check that there are no
   // import/export Info struct with only partial information
@@ -142,6 +144,7 @@ protected:
   int           m_num_exports;
 
   int           m_num_cols;
+  int           m_num_levs;
 
   RepoState     m_state;
 };

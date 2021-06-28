@@ -75,8 +75,8 @@ TEST_CASE ("surface_coupling")
   control::SurfaceCoupling importer(fm_in);
   control::SurfaceCoupling exporter(fm_out);
 
-  importer.set_num_fields(num_fields,0); // Recall that SC counts *scalar* fields, so vector3d counts as 2 fields
-  exporter.set_num_fields(0,num_fields);
+  importer.set_num_fields(num_fields, num_fields,0); // Recall that SC counts *scalar* fields, so vector3d counts as 2 fields
+  exporter.set_num_fields(0,0,num_fields);
 
   // Register fields in the importer/exporter
   // Note: the 1st integer is the field "idx" (the idx used by the component cpl to retrieve it),

@@ -7,6 +7,7 @@ module scream_cpl_indices
 
   ! Focus only on the ones that scream imports/exports (subsets of x2a and a2x)
   integer, parameter, public :: num_required_imports = 21
+  integer, parameter, public :: num_scream_imports   = 4
   integer, parameter, public :: num_required_exports = 12
   integer, parameter, public :: num_optional_imports = 0
   integer, parameter, public :: num_optional_exports = 1
@@ -92,27 +93,27 @@ contains
     cpl_names_x2a(21) = 'So_re'     ! ???? (cam_in%re) [***UNUSED***]
 
     ! Names used by scream for the input fields above
-    scr_names_x2a(1)  = 'surface_water_evaporation_flux'
-    scr_names_x2a(2)  = 'Faxx_sen'
-    scr_names_x2a(3)  = 'Faxx_lat'
-    scr_names_x2a(4)  = 'Faxx_taux'
-    scr_names_x2a(5)  = 'Faxx_tauy'
-    scr_names_x2a(6)  = 'Faxx_lwup'
-    scr_names_x2a(7)  = 'Sx_avsdr'
-    scr_names_x2a(8)  = 'Sx_anidr'
-    scr_names_x2a(9)  = 'Sx_avsdf'
-    scr_names_x2a(10) = 'Sx_anidf'
-    scr_names_x2a(11) = 'Sx_t'
-    scr_names_x2a(12) = 'Sl_snowh'
-    scr_names_x2a(13) = 'Si_snowh'
-    scr_names_x2a(14) = 'Sx_tref'
-    scr_names_x2a(15) = 'Sx_qref'
-    scr_names_x2a(16) = 'Sx_u10'
-    scr_names_x2a(17) = 'Sf_ifrac'
-    scr_names_x2a(18) = 'Sf_ofrac'
-    scr_names_x2a(19) = 'Sf_lfrac'
-    scr_names_x2a(20) = 'So_ustar'
-    scr_names_x2a(21) = 'So_re'
+    scr_names_x2a(1)  = 'surf_latent_flux'
+    scr_names_x2a(2)  = 'surf_sens_flux'
+    scr_names_x2a(3)  = 'unused_for_now'
+    scr_names_x2a(4)  = 'surf_u_mom_flux'
+    scr_names_x2a(5)  = 'surf_v_mom_flux'
+    scr_names_x2a(6)  = 'RRTMGP'
+    scr_names_x2a(7)  = 'RRTMGP'
+    scr_names_x2a(8)  = 'RRTMGP'
+    scr_names_x2a(9)  = 'RRTMGP'
+    scr_names_x2a(10) = 'RRTMGP'
+    scr_names_x2a(11) = 'unused_for_now'
+    scr_names_x2a(12) = 'unused'
+    scr_names_x2a(13) = 'unused'
+    scr_names_x2a(14) = 'unused'
+    scr_names_x2a(15) = 'unused'
+    scr_names_x2a(16) = 'unused'
+    scr_names_x2a(17) = 'RRTMGP'
+    scr_names_x2a(18) = 'unused'
+    scr_names_x2a(19) = 'RRTMGP'
+    scr_names_x2a(20) = 'unused'
+    scr_names_x2a(21) = 'unused'
 
     ! List of cpl names of outputs that scream needs to pass back to cpl
 
@@ -160,19 +161,19 @@ contains
     cpl_names_a2x(13)  = 'Sa_co2prog' ! Always 0.0_r8 as it is not computed by SCREAM (prognostic co2 is turned off)
 
     ! Names used by scream for the output fields above
-    scr_names_a2x(1)  = 'surface_temperature'
+    scr_names_a2x(1)  = 'T_mid'
     scr_names_a2x(2)  = 'Sa_ptem'
-    scr_names_a2x(3)  = 'Sa_z'
+    scr_names_a2x(3)  = 'z_mid'
     scr_names_a2x(4)  = 'Sa_u'
     scr_names_a2x(5)  = 'Sa_v'
-    scr_names_a2x(6)  = 'Sa_pbot'
+    scr_names_a2x(6)  = 'p_mid'
     scr_names_a2x(7)  = 'Sa_dens'
-    scr_names_a2x(8)  = 'Sa_shum'
-    scr_names_a2x(9)  = 'Faxa_rainc'
-    scr_names_a2x(10) = 'Faxa_rainl'
-    scr_names_a2x(11) = 'Faxa_snowc'
-    scr_names_a2x(12) = 'Faxa_snowl'
-    scr_names_a2x(13)  = 'Sa_co2prog'
+    scr_names_a2x(8)  = 'qv'
+    scr_names_a2x(9)  = 'set_zero'
+    scr_names_a2x(10) = 'set_zero' !'precip_liq_surf'
+    scr_names_a2x(11) = 'set_zero'
+    scr_names_a2x(12) = 'set_zero'
+    scr_names_a2x(13) = 'set_zero'
 
     do i=1,num_required_imports
       index_x2a(i) = mct_avect_indexra(x2a,TRIM(cpl_names_x2a(i)))
