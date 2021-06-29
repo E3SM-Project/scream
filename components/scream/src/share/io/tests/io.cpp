@@ -123,7 +123,7 @@ TEST_CASE("input_output_basic","io")
   }
 
   // Check average output
-  input_type avg_input(io_comm,avg_params,field_manager,grid_man);
+  input_type avg_input(io_comm,avg_params,field_manager,grid);
   avg_input.pull_input();
   f1.sync_to_host();
   f2.sync_to_host();
