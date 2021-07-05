@@ -93,6 +93,9 @@ module micro_p3_interface
       qv_prev_idx,        &
       t_prev_idx,         &
       accre_enhan_idx,    &
+      n_ccn_active_idx,   &
+      !n_drop_incloud_idx, &
+      !n_drop_source_idx,  &
       ccn3_idx
 
 
@@ -278,6 +281,11 @@ end subroutine micro_p3_readnl
    call pbuf_add_field('DEI',        'physpkg',dtype_r8,(/pcols,pver/), dei_idx)
    call pbuf_add_field('MU',         'physpkg',dtype_r8,(/pcols,pver/), mu_idx)
    call pbuf_add_field('LAMBDAC',    'physpkg',dtype_r8,(/pcols,pver/), lambdac_idx)
+
+   call pbuf_add_field('N_CCN_ACTIVE','global',dtype_r8,(/pcols,pver/), n_ccn_active_idx)
+   !call pbuf_add_field('N_DROP_INCLOUD','global',dtype_r8,(/pcols,pver/), n_drop_incloud_idx)
+   !call pbuf_add_field('N_DROP_SOURCE','global',dtype_r8,(/pcols,pver/), n_drop_source_idx)
+
 
    !! module cospsimulator_intr
    call pbuf_add_field('REL',        'physpkg',dtype_r8,(/pcols,pver/), rel_idx)
@@ -557,6 +565,11 @@ end subroutine micro_p3_readnl
    call addfld('vap_ice_exchange',  (/ 'lev' /), 'A', 'kg/kg/s', 'Tendency for conversion from/to vapor phase to/from frozen phase')
    call addfld('liq_ice_exchange',  (/ 'lev' /), 'A', 'kg/kg/s', 'Tendency for conversion from/to liquid phase to/from frozen phase')
 
+   ! spa testing
+   call addfld('INCLOUD_NC',  (/ 'lev' /), 'A', 'm-3', 'in cloud drop number concentration')
+   call addfld('INCLOUD_NC_TEND',  (/ 'lev' /), 'A', '1/kg/s', 'in cloud nc tendency - npccn')
+   call addfld('CLOUD_CHECK',  (/ 'lev' /), 'A', '', 'cloud or not cloud')
+
    ! determine the add_default fields
    call phys_getopts(history_amwg_out           = history_amwg         , &
                      history_verbose_out        = history_verbose      , &
@@ -594,6 +607,10 @@ end subroutine micro_p3_readnl
       call add_default('vap_liq_exchange',  1, ' ')
       call add_default('vap_ice_exchange',  1, ' ')
       call add_default('liq_ice_exchange',  1, ' ')
+      call add_default('CLOUD_CHECK',1,' ')
+      call add_default('INCLOUD_NC_TEND',1,' ')
+      call add_default('INCLOUD_NC',1,' ')
+
       ! Microphysics tendencies
       ! warm-phase process rates
       if (micro_tend_output) then
@@ -845,7 +862,10 @@ end subroutine micro_p3_readnl
     real(rtype) :: cdnumc(pcols)      
     real(rtype) :: icinc(pcols,pver) 
     real(rtype) :: icwnc(pcols,pver) 
-
+    real(rtype) :: cloud_check(pcols,pver)
+    real(rtype) :: incloud_nc(pcols,pver)
+    real(rtype) :: incloud_nc_tend(pcols,pver)
+   
  
     integer :: it                      !timestep counter                       -
     integer :: its, ite                !horizontal bounds (column start,finish)
@@ -1051,6 +1071,9 @@ end subroutine micro_p3_readnl
     prec_pcw = 0.0_rtype
     snow_pcw = 0.0_rtype
     vap_liq_exchange = 0.0_rtype
+    cloud_check = 0.0_rtype
+    incloud_nc = 0.0_rtype
+    incloud_nc_tend = 0.0_rtype
 
     call t_startf('micro_p3_tend_loop')
     call p3_main( &
@@ -1279,7 +1302,14 @@ end subroutine micro_p3_readnl
          if ( cld_frac_l(icol,k) > 0.01_rtype .and. icwmrst(icol,k) > 5.e-5_rtype ) then
             efcout(icol,k) = rel(icol,k) * cld_frac_l(icol,k)
             ncout(icol,k)  = icwnc(icol,k) * cld_frac_l(icol,k)
-            freql(icol,k)  = cld_frac_l(icol,k)
+            freql(icol,k)  = cld_frac_l(icol,k) 
+            incloud_nc(icol,k) = icwnc(icol,k)
+            incloud_nc_tend(icol,k) = npccn(icol,k) 
+            cloud_check(icol,k) = 1.0_rtype
+         else 
+            cloud_check(icol,k) = 0.0_rtype 
+            incloud_nc(icol,k) = 0.0_rtype
+            incloud_nc_tend(icol,k) = 0.0_rtype 
          end if
          if ( cld_frac_i(icol,k) > 0.01_rtype .and. icimrst(icol,k) > 1.e-6_rtype ) then
             efiout(icol,k) = rei(icol,k) * cld_frac_i(icol,k)
@@ -1424,6 +1454,11 @@ end subroutine micro_p3_readnl
    call outfld('vap_ice_exchange',      vap_ice_exchange,      pcols, lchnk)
    call outfld('vap_liq_exchange',      vap_liq_exchange,      pcols, lchnk)
    call outfld('liq_ice_exchange',      liq_ice_exchange,      pcols, lchnk)
+
+   !spa stuff
+   call outfld('CLOUD_CHECK',      cloud_check,      pcols, lchnk)
+   call outfld('INCLOUD_NC',      incloud_nc,      pcols, lchnk)
+   call outfld('INCLOUD_NC_TEND',      incloud_nc_tend,      pcols, lchnk)
 
    call t_stopf('micro_p3_tend_finish')
   end subroutine micro_p3_tend

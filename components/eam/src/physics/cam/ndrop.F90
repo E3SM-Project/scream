@@ -17,7 +17,7 @@ use physconst,        only: pi, rhoh2o, mwh2o, r_universal, rh2o, &
                             gravit, latvap, cpair, rair
 use constituents,     only: pcnst, cnst_get_ind
 use physics_types,    only: physics_state, physics_ptend, physics_ptend_init
-use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
+use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, pbuf_add_field,dtype_r8
 
 use wv_saturation,    only: qsat
 use phys_control,     only: phys_getopts
@@ -60,6 +60,10 @@ character(len=8) :: ccn_name(psat)= &
 ! indices in state and pbuf structures
 integer :: numliq_idx = -1
 integer :: kvh_idx    = -1
+integer :: n_ccn_active_idx
+!integer :: n_drop_incloud_idx
+!integer :: n_drop_source_idx
+
 
 ! description of modal aerosols
 integer               :: ntot_amode     ! number of aerosol modes
@@ -95,6 +99,8 @@ logical :: lq(pcnst) = .false. ! set flags true for constituents with non-zero t
 !BSINGH -  Bugfix flags (Must be removed once the bug fix is accepted for master merge)
 logical :: fix_g1_err_ndrop = .false. !BSINGH - default is false
 logical :: regen_fix 
+
+real(r8),allocatable :: num_cloud_instances(:,:)
 
 !===============================================================================
 contains
@@ -272,6 +278,18 @@ subroutine ndrop_init
    call addfld('NDROPSNK', (/ 'lev' /), 'A', '1/kg/s', 'Droplet number loss by microphysics')
    call addfld('NDROPCOL', horiz_only,    'A', '1/m2', 'Column droplet number')
 
+   ! add variable to keep track of number of times a grid cell is cloudy so in-cloud averaging can be done
+!   call addfld('NUM_CLOUDY_INSTANCES', (/ 'lev' /),    'A', '1', 'Instances of cloudiness')
+   call addfld('N_CCN_ACTIVATED', (/ 'lev' /),    'A', '1/cm3', 'in cloud activated number concentration')
+   call addfld('IS_CLOUD',(/ 'lev' /),    'A', '1/cm3', 'in cloud activated number concentration')
+   !call addfld('N_DROP_INC', (/ 'lev' /),    'A', '1/cm3', 'in cloud activated number concentration')
+   !call addfld('N_DROP_SOURCE_INC', (/ 'lev' /),    'A', '1/cm3', 'in cloud activated number concentration')
+
+
+   !call pbuf_add_field('N_CCN_ACTIVE','global',dtype_r8,(/pcols,pver/), n_ccn_active_idx)
+
+   allocate(num_cloud_instances(pcols,pver))
+
    ! set the add_default fields  
    if (history_amwg) then
       call add_default('CCN3', 1, ' ')
@@ -369,6 +387,11 @@ subroutine dropmixnuc( &
    real(r8) :: csbot(pver)       ! air density at bottom (interface) of layer (kg/m3)
    real(r8) :: csbot_cscen(pver) ! csbot(i)/cs(i,k)
    real(r8) :: dz(pcols,pver)      ! geometric thickness of layers (m)
+
+   !Hassan
+   real(r8),pointer :: n_ccn_activated(:,:) ! (/cm3)
+   real(r8)  :: n_ccn_activated_f(pcols,pver) 
+   real(r8)  :: is_cloud(pcols,pver) 
 
    real(r8) :: wtke(pcols,pver)     ! turbulent vertical velocity at base of layer k (m/s)
    real(r8) :: wtke_cen(pcols,pver) ! turbulent vertical velocity at center of layer k (m/s)
@@ -710,7 +733,7 @@ subroutine dropmixnuc( &
          kp1 = min0(k+1, pver)
          taumix_internal_pver_inv = 0.0_r8
 
-         if (cldn(i,k) > 0.01_r8) then
+         if (cldn(i,k) > 0.01_r8) then  !counting instances should be done within this condition 
 
             wdiab = 0
             wmix  = 0._r8                       ! single updraft
@@ -834,7 +857,20 @@ subroutine dropmixnuc( &
                nsource(i,k) = nsource(i,k) + fluxntot/(cs(i,k)*dz(i,k))
 
             endif  ! (cldn(i,k) - cldn(i,kp1) > 0.01 .or. k == pver)
-
+      
+            allocate(n_ccn_activated(pcols,pver)) 
+            n_ccn_active_idx = pbuf_get_index('N_CCN_ACTIVE')
+            !n_drop_source_idx = pbuf_get_index('N_DROP_SOURCE')
+            !n_drop_incloud_idx = pbuf_get_index('N_DROP_INCLOUD')
+            !call pbuf_get_field(pbuf, n_ccn_active_idx, n_ccn_activated)
+            !call pbuf_get_field(pbuf, n_drop_source_idx, n_drop_source)
+            !call pbuf_get_field(pbuf, n_drop_incloud_idx, n_drop_incloud) 
+            n_ccn_activated(i,k) = (n_ccn_activated(i,k)*(num_cloud_instances(i,k)) + (max(nsource(i,k),0.0_r8)/dtinv))/(num_cloud_instances(i,k) + 1)
+!            n_ccn_activated(i,k) = (n_ccn_activated(i,k)*(num_cloud_instances(i,k)) + (nsource(i,k)/dtinv))/(num_cloud_instances(i,k) + 1)
+            num_cloud_instances(i,k) = num_cloud_instances(i,k) + 1.0_r8
+            n_ccn_activated_f(i,k) = (max(nsource(i,k),0.0_r8)/dtinv)
+            is_cloud(i,k) = 1 
+!            n_ccn_activated_f(i,k) = n_ccn_activated(i,k) 
          else
 
             ! no cloud
@@ -1091,6 +1127,10 @@ subroutine dropmixnuc( &
    call outfld('NDROPSRC', nsource,  pcols, lchnk)
    call outfld('NDROPMIX', ndropmix, pcols, lchnk)
    call outfld('WTKE    ', wtke,     pcols, lchnk)
+
+   call outfld('N_CCN_ACTIVATED',n_ccn_activated_f,pcols,lchnk)
+   call outfld('IS_CLOUD',is_cloud,pcols,lchnk)
+
 
    call ccncalc(state, pbuf, cs, ccn)
    do l = 1, psat
