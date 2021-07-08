@@ -266,6 +266,16 @@ initialize_fields (const util::TimeStamp& t0)
   const auto& ic_pl = m_atm_params.sublist("Initial Conditions");
   const auto& ref_grid_name = m_grids_manager->get_reference_grid()->name();
 
+  // Initialize the pio_subsystem to make it possible to use IO from this point
+  // on.
+  MPI_Fint fcomm = MPI_Comm_c2f(m_atm_comm.mpi_comm());
+  if (!scorpio::is_eam_pio_subsystem_inited()) {
+    scorpio::eam_init_pio_subsystem(fcomm);
+  } else {
+    EKAT_REQUIRE_MSG (fcomm==scorpio::eam_pio_subsystem_comm(),
+        "Error! EAM subsystem was inited with a comm different from the current atm comm.\n");
+  }
+
   // Create parameter list for AtmosphereInput
   ekat::ParameterList ic_reader_params;
   ic_reader_params.set("GRID",ref_grid_name);
@@ -319,14 +329,6 @@ initialize_fields (const util::TimeStamp& t0)
     // There are fields to read from the nc file. We must have a valid nc file then.
     ic_reader_params.set("FILENAME",ic_pl.get<std::string>("Initial Conditions File"));
     ic_fields.set("Number of Fields",ifield);
-
-    MPI_Fint fcomm = MPI_Comm_c2f(m_atm_comm.mpi_comm());
-    if (!scorpio::is_eam_pio_subsystem_inited()) {
-      scorpio::eam_init_pio_subsystem(fcomm);
-    } else {
-      EKAT_REQUIRE_MSG (fcomm==scorpio::eam_pio_subsystem_comm(),
-          "Error! EAM subsystem was inited with a comm different from the current atm comm.\n");
-    }
 
     AtmosphereInput ic_reader(m_atm_comm,ic_reader_params,get_ref_grid_field_mgr(),m_grids_manager);
 

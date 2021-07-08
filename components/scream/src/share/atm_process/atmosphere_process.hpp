@@ -66,6 +66,8 @@ class AtmosphereProcess : public ekat::enable_shared_from_this<AtmosphereProcess
 public:
   using TimeStamp      = util::TimeStamp;
   using ci_string      = ekat::CaseInsensitiveString;
+  using grid_type      = AbstractGrid;
+  using grid_ptr_type  = std::shared_ptr<const grid_type>;
 
   virtual ~AtmosphereProcess () = default;
 
@@ -334,6 +336,8 @@ protected:
 
   virtual void set_required_field_impl (const Field<const Real>& f) = 0;
   virtual void set_computed_field_impl (const Field<      Real>& f) = 0;
+
+  grid_ptr_type            m_grid;
 
 private:
 

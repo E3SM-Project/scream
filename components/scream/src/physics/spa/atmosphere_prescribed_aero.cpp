@@ -1,5 +1,7 @@
 #include "atmosphere_prescribed_aero.hpp"
 
+#include "share/io/scorpio_input.hpp"
+
 #include "ekat/ekat_assert.hpp"
 #include "ekat/util/ekat_units.hpp"
 
@@ -23,9 +25,10 @@ void SPA::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   using namespace ShortFieldTagsNames;
 
   const auto& grid_name = m_spa_params.get<std::string>("Grid");
-  auto grid  = grids_manager->get_grid(grid_name);
-  m_num_cols = grid->get_num_local_dofs(); // Number of columns on this rank
-  m_num_levs = grid->get_num_vertical_levels();  // Number of levels per column
+//  auto grid  = grids_manager->get_grid(grid_name);
+  m_grid     = grids_manager->get_grid(grid_name);
+  m_num_cols = m_grid->get_num_local_dofs(); // Number of columns on this rank
+  m_num_levs = m_grid->get_num_vertical_levels();  // Number of levels per column
 
   // Define the different field layouts that will be used for this process
 
@@ -39,12 +42,28 @@ void SPA::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   // Collect the spa data filename from the parameter list
   m_input_data_filename = m_spa_params.get<std::string>("Input Data Filename");
   printf("ASD Init - %s\n",m_input_data_filename.c_str());
+
+  // DUMMY values for now, TODO: get real data from file.
+  MonthlyCCN.CCN = SPAF::view_3d<Spack>("CCN",m_num_cols,12,m_num_levs);
 }
 
 // =========================================================================================
 void SPA::initialize_impl (const util::TimeStamp& /* t0 */)
 {
-  // Do nothing for now
+  // Initialize tracking of which month the simulation is in.
+  auto ts = timestamp();
+  m_current_month = ts.get_months() + 1;
+  m_next_month    = m_current_month + 1;
+
+  // Set the SPA structures with pointers to FM data
+  PrescribedAero.CCN = m_spa_fields_out["nc_activated"].get_reshaped_view<Pack**>();
+
+  // Get data from input file
+  using input_type = AtmosphereInput;
+  input_type spa_input(m_spa_comm,"Physics",m_grid);
+  std::vector<std::string> var_dims = {"ncol","lev"};
+  std::vector<int> dim_lens = {m_num_cols,m_num_levs};
+//  spa_input.pull_input(m_input_data_filename,"CCN3",var_dims, true, dim_lens, nc_activated.data());
 }
 
 // =========================================================================================
@@ -58,9 +77,26 @@ void SPA::run_impl (const Real dt)
   std::string time_str = ts.to_string();
   printf("ASD - %s\n",time_str.c_str());
   }
-  
 
-//  SPAFunc::main(m_num_cols,m_num_levs,qi,liq_cld_frac,ice_cld_frac,tot_cld_frac);
+  // Gather information from the timestamp which is needed for temporal interpolation of
+  // SPA data.
+  //   mm_0 is the month we are currently in.
+  //   mm_1 is next month.
+  // combined these two will be used with the SPA data to calculate the slope and intercept
+  // for the temporal interpolation.
+  //   sec_from_mm_0 is the distance into the month (in sec) that we are currently at.
+  // This will be used with the slope/intercept form to calculate the SPA value at this point
+  // in time.
+  int mm_0 = ts.get_months() + 1;
+  if (mm_0 != m_current_month) {
+    m_current_month = mm_0;
+    m_next_month    = (mm_0 % 12) + 1;
+  }
+
+  Real days_from_mm_0 = ts.get_days() + ts.get_seconds()/86400.0;
+  printf("   - mm_0 = %d, mm_1 = %d, sec = %f\n",m_current_month,m_next_month,days_from_mm_0);
+
+  SPAF::main(m_num_cols,m_num_levs,ts.get_months(),days_from_mm_0,MonthlyGHG,MonthlyCCN,PrescribedAero);
 
   // Advance the timestamp
   ts += dt;
