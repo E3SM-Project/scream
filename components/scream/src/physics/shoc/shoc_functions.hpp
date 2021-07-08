@@ -66,16 +66,17 @@ struct Functions
 
   using MemberType = typename KT::MemberType;
 
-  using Workspace       = typename ekat::WorkspaceManager<Spack,  Device>::Workspace;
+  using WorkspaceMgr = typename ekat::WorkspaceManager<Spack,  Device>;
+  using Workspace    = typename WorkspaceMgr::Workspace;
 
   // This struct stores input views for shoc_main.
   struct SHOCInput {
     SHOCInput() = default;
 
     // Grid spacing of host model in x direction [m]
-    view_1d<const Scalar> host_dx;
+    view_1d<const Scalar> dx;
     // grid spacing of host model in y direction [m]
-    view_1d<const Scalar> host_dy;
+    view_1d<const Scalar> dy;
     // heights, for thermo grid [m]
     view_2d<const Spack>  zt_grid;
     // heights, for interface grid [m]
@@ -347,8 +348,8 @@ struct Functions
   static void check_length_scale_shoc_length(
     const MemberType&      team,
     const Int&             nlev,
-    const Scalar&          host_dx,
-    const Scalar&          host_dy,
+    const Scalar&          dx,
+    const Scalar&          dy,
     const uview_1d<Spack>& shoc_mix);
 
   KOKKOS_FUNCTION
@@ -374,8 +375,8 @@ struct Functions
     const MemberType&            team,
     const Int&                   nlev,
     const Int&                   nlevi,
-    const Scalar&                host_dx,
-    const Scalar&                host_dy,
+    const Scalar&                dx,
+    const Scalar&                dy,
     const uview_1d<const Spack>& zt_grid,
     const uview_1d<const Spack>& zi_grid,
     const uview_1d<const Spack>& dz_zt,
@@ -620,6 +621,7 @@ struct Functions
     const Int&               nadv,                 // Number of times to loop SHOC
     const Int&               num_q_tracers,        // Number of tracers
     const Scalar&            dtime,                // SHOC timestep [s]
+    const WorkspaceMgr&      workspace_mgr,        // WorkspaceManager for local variables
     const SHOCInput&         shoc_input,           // Input
     const SHOCInputOutput&   shoc_input_output,    // Input/Output
     const SHOCOutput&        shoc_output,          // Output

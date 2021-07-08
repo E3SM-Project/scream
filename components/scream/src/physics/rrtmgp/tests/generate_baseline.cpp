@@ -68,10 +68,11 @@ int main (int argc, char** argv) {
     real2d iwp ("iwp", ncol, nlay);
     real2d rel ("rel", ncol, nlay);
     real2d rei ("rei", ncol, nlay);
+    real2d cld ("cld", ncol, nlay);
     rrtmgpTest::dummy_atmos(
         inputfile, ncol, p_lay, t_lay,
         sfc_alb_dir, sfc_alb_dif, mu0,
-        lwp, iwp, rel, rei
+        lwp, iwp, rel, rei, cld
     );
 
     // Setup flux outputs; In a real model run, the fluxes would be
@@ -89,6 +90,7 @@ int main (int argc, char** argv) {
     // NOTE: these will get replaced with AD stuff that handles these
     std::cout << "rrtmgp_main..." << std::endl;
     rrtmgp::rrtmgp_main(
+        ncol, nlay,
         p_lay, t_lay, p_lev, t_lev, gas_concs,
         sfc_alb_dir, sfc_alb_dif, mu0,
         lwp, iwp, rel, rei,
@@ -118,6 +120,7 @@ int main (int argc, char** argv) {
     iwp.deallocate();
     rel.deallocate();
     rei.deallocate();
+    cld.deallocate();
     sw_flux_up_ref.deallocate();
     sw_flux_dn_ref.deallocate();
     sw_flux_dn_dir_ref.deallocate();

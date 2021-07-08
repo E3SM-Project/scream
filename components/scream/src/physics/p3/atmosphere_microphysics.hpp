@@ -5,7 +5,7 @@
 #include "ekat/ekat_parameter_list.hpp"
 #include "physics/p3/p3_main_impl.hpp"
 #include "physics/p3/p3_functions.hpp"
-#include "physics/share/physics_functions.hpp" // also for ETI not on GPUs
+#include "share/util/scream_common_physics_functions.hpp"
 
 #include <string>
 
@@ -26,12 +26,18 @@ namespace scream
   using Spack        = typename P3F::Spack;
   using Smask        = typename P3F::Smask;
   using Pack         = ekat::Pack<Real,Spack::n>;
-  using physics_fun  = scream::physics::Functions<Real, DefaultDevice>;
+  using PF           = scream::PhysicsFunctions<DefaultDevice>;
+  using KT           = ekat::KokkosTypes<DefaultDevice>;
+  using WSM          = ekat::WorkspaceManager<Spack, KT::Device>;
 
   using view_1d  = typename P3F::view_1d<Real>;
   using view_2d  = typename P3F::view_2d<Spack>;
   using view_2d_const  = typename P3F::view_2d<const Spack>;
   using sview_2d = typename KokkosTypes<DefaultDevice>::template view_2d<Real>;
+
+  using uview_1d  = Unmanaged<view_1d>;
+  using uview_2d  = Unmanaged<view_2d>;
+  using suview_2d = Unmanaged<sview_2d>;
 
 class P3Microphysics : public AtmosphereProcess
 {
@@ -76,22 +82,23 @@ public:
     KOKKOS_INLINE_FUNCTION
     void operator()(const int icol) const {
       for (int ipack=0;ipack<m_npack;ipack++) {
+        // The ipack slice of input variables used more than once
+        const Spack& pmid_pack(pmid(icol,ipack));
+        const Spack& T_atm_pack(T_atm(icol,ipack));
+        const Spack& cld_frac_t_pack(cld_frac_t(icol,ipack));
         // Exner
-        const Spack opmid(pmid(icol,ipack));
-        const Smask opmid_mask(!isnan(opmid) and opmid>0.0);
-        auto oexner = physics_fun::get_exner(opmid,opmid_mask);
-        exner(icol,ipack).set(opmid_mask,oexner);
+        const auto& exner = PF::exner_function(pmid_pack);
+        inv_exner(icol,ipack) = 1.0/exner;
         // Potential temperature
-        const Spack oT_atm(T_atm(icol,ipack));
-        const Smask oT_atm_mask(!isnan(oT_atm) and oT_atm>0.0);
-        auto oth = physics_fun::T_to_th(oT_atm,oexner,oT_atm_mask);
-        th_atm(icol,ipack).set(oT_atm_mask,oth);
-        // Cloud fraction and dz
-        const Spack oast(ast(icol,ipack));
-        const Smask oasti_mask(!isnan(oast) and oast>mincld);
-        cld_frac_l(icol,ipack).set(oasti_mask,oast);
-        cld_frac_i(icol,ipack).set(oasti_mask,oast);
-        cld_frac_r(icol,ipack).set(oasti_mask,oast);
+        th_atm(icol,ipack) = PF::calculate_theta_from_T(T_atm_pack,pmid_pack);
+        // DZ
+        dz(icol,ipack) = PF::calculate_dz(pseudo_density(icol,ipack), pmid_pack, T_atm_pack, qv(icol,ipack));
+        // Cloud fraction
+        // Set minimum cloud fraction - avoids division by zero
+        cld_frac_l(icol,ipack) = ekat::max(cld_frac_t_pack,mincld);
+        cld_frac_i(icol,ipack) = ekat::max(cld_frac_t_pack,mincld);
+        cld_frac_r(icol,ipack) = ekat::max(cld_frac_t_pack,mincld);
+        // update rain cloud fraction given neighboring levels using max-overlap approach.
         for (int ivec=0;ivec<Spack::n;ivec++)
         {
           // Hard-coded max-overlap cloud fraction calculation.  Cycle through the layers from top to bottom and determine if the rain fraction needs to
@@ -100,20 +107,10 @@ public:
           Int lev = ipack*Spack::n + ivec;  // Determine the level at this pack/vec location.
           Int ipack_m1 = (lev - 1) / Spack::n;
           Int ivec_m1  = (lev - 1) % Spack::n;
-          Int ipack_p1 = (lev + 1) / Spack::n;
-          Int ivec_p1  = (lev + 1) % Spack::n;
           if (lev != 0) { /* Not applicable at the very top layer */
-            cld_frac_r(icol,ipack)[ivec] = ast(icol,ipack_m1)[ivec_m1]>cld_frac_r(icol,ipack)[ivec] ?
-                                              ast(icol,ipack_m1)[ivec_m1] :
+            cld_frac_r(icol,ipack)[ivec] = cld_frac_t(icol,ipack_m1)[ivec_m1]>cld_frac_r(icol,ipack)[ivec] ?
+                                              cld_frac_t(icol,ipack_m1)[ivec_m1] :
                                               cld_frac_r(icol,ipack)[ivec];
-          }
-          // dz is calculated as the difference between the two layer interfaces.  Note that the lower the index the higher the altitude.
-          // We also want to make sure we use the top level index for assignment since dz[0] = zi[0]-zi[1], for example.
-          if (ipack_p1 < m_npack) {
-            dz(icol,ipack)[ivec] = zi(icol,ipack)[ivec]-zi(icol,ipack_p1)[ivec_p1];
-          }
-          else {
-            dz(icol,ipack)[ivec] = zi(icol,ipack)[ivec];
           }
         }
         //
@@ -123,10 +120,11 @@ public:
     int m_ncol, m_npack;
     Real mincld = 0.0001;  // TODO: These should be stored somewhere as more universal constants.  Or maybe in the P3 class hpp
     view_2d_const pmid;
+    view_2d_const pseudo_density;
     view_2d       T_atm;
-    view_2d_const ast;
-    view_2d_const zi;
-    view_2d       exner;
+    view_2d_const cld_frac_t;
+    view_2d       qv;
+    view_2d       inv_exner;
     view_2d       th_atm;
     view_2d       cld_frac_l;
     view_2d       cld_frac_i;
@@ -134,19 +132,20 @@ public:
     view_2d       dz;
     // Assigning local variables
     void set_variables(const int ncol, const int npack,
-           view_2d_const pmid_, view_2d T_atm_, view_2d_const ast_, view_2d_const zi_,
-           view_2d exner_, view_2d th_atm_, view_2d cld_frac_l_, view_2d cld_frac_i_, view_2d cld_frac_r_, view_2d dz_
+           const view_2d_const& pmid_, const view_2d_const& pseudo_density_, const view_2d& T_atm_, const view_2d_const& cld_frac_t_, const view_2d& qv_,
+           const view_2d& inv_exner_, const view_2d& th_atm_, const view_2d& cld_frac_l_, const view_2d& cld_frac_i_, const view_2d& cld_frac_r_, const view_2d& dz_
            )
     {
       m_ncol = ncol;
       m_npack = npack;
       // IN
       pmid = pmid_;
+      pseudo_density = pseudo_density_;
       T_atm = T_atm_;
-      ast = ast_;
-      zi = zi_;
+      cld_frac_t = cld_frac_t_;
+      qv = qv_;
       // OUT
-      exner = exner_;
+      inv_exner = inv_exner_;
       th_atm = th_atm_;
       cld_frac_l = cld_frac_l_;
       cld_frac_i = cld_frac_i_;
@@ -166,27 +165,19 @@ public:
     void operator()(const int icol) const {
       for (int ipack=0;ipack<m_npack;ipack++) {
         // Update the atmospheric temperature and the previous temperature.
-        const Spack oexner(exner(icol,ipack));
-        const Spack oth_atm(th_atm(icol,ipack));
-        const Smask oth_atm_mask(!isnan(oth_atm) and oth_atm>0.0);
-        auto oT = physics_fun::th_to_T(oth_atm,oexner,oth_atm_mask);
-        T_atm(icol,ipack).set(oth_atm_mask,oT);
-        T_prev(icol,ipack).set(oth_atm_mask,T_atm(icol,ipack));
+        T_atm(icol,ipack)  = PF::calculate_T_from_theta(th_atm(icol,ipack),pmid(icol,ipack));
+        T_prev(icol,ipack) = T_atm(icol,ipack);
         // Update qv_prev
-        const Spack oqv(qv(icol,ipack));
-        const Smask oqv_mask(!isnan(oqv) and oqv>0.0);
-        qv_prev(icol,ipack).set(oqv_mask,oqv);
+        qv_prev(icol,ipack) = qv(icol,ipack);
         // Rescale effective radius' into microns
-        for (int ivec=0;ivec<Spack::n;ivec++) {
-          diag_eff_radius_qc(icol,ipack)[ivec] *= 1e6;
-          diag_eff_radius_qi(icol,ipack)[ivec] *= 1e6;
-        }
+        diag_eff_radius_qc(icol,ipack) *= 1e6;
+        diag_eff_radius_qi(icol,ipack) *= 1e6;
       } // for ipack
     } // operator
     // Local variables
     int m_ncol, m_npack;
     view_2d       T_atm;
-    view_2d       exner;
+    view_2d_const pmid;
     view_2d       th_atm;
     view_2d       T_prev;
     view_2d       qv;
@@ -195,14 +186,14 @@ public:
     view_2d       diag_eff_radius_qi;
     // Assigning local values
     void set_variables(const int ncol, const int npack,
-                    view_2d th_atm_, view_2d exner_, view_2d T_atm_, view_2d T_prev_,
-                    view_2d qv_, view_2d qv_prev_, view_2d diag_eff_radius_qc_, view_2d diag_eff_radius_qi_)
+                    const view_2d& th_atm_, const view_2d_const& pmid_, const view_2d& T_atm_, const view_2d& T_prev_,
+                    const view_2d& qv_, const view_2d& qv_prev_, const view_2d& diag_eff_radius_qc_, const view_2d& diag_eff_radius_qi_)
     {
       m_ncol  = ncol;
       m_npack = npack;
       // IN
       th_atm      = th_atm_;
-      exner       = exner_;
+      pmid        = pmid_;
       qv          = qv_;
       // OUT
       T_atm              = T_atm_;
@@ -215,11 +206,35 @@ public:
       // new processes come online to make sure their requirements from p3 are being met.
       // qme, vap_liq_exchange
       // ENERGY Conservation: prec_str, snow_str
-      // RAD Vars: icinc, icwnc, icimrst, icwmrst, rel, rei, dei
+      // RAD Vars: icinc, icwnc, icimrst, icwmrst
       // COSP Vars: flxprc, flxsnw, flxprc, flxsnw, cvreffliq, cvreffice, reffrain, reffsnow
     } // set_variables
   }; // p3_postamble
   /* --------------------------------------------------------------------------------------------*/
+
+  // Structure for storing local variables initialized using the ATMBufferManager
+  struct Buffer {
+    // 1d view scalar, size (ncol)
+    static constexpr int num_1d_scalar = 1;
+    // 2d view packed, size (ncol, nlev_packs)
+    static constexpr int num_2d_vector = 10;
+
+    uview_1d precip_ice_surf;
+    uview_2d inv_exner;
+    uview_2d th_atm;
+    uview_2d cld_frac_l;
+    uview_2d cld_frac_i;
+    uview_2d cld_frac_r;
+    uview_2d dz;
+    uview_2d qv2qi_depos_tend;
+    uview_2d rho_qi;
+    uview_2d precip_liq_flux;
+    uview_2d precip_ice_flux;
+
+    suview_2d col_location;
+
+    Spack* wsm_data;
+  };
 
 protected:
 
@@ -232,6 +247,12 @@ protected:
   void set_required_field_impl (const Field<const Real>& f);
   void set_computed_field_impl (const Field<      Real>& f);
 
+  // Computes total number of bytes needed for local variables
+  int requested_buffer_size_in_bytes() const;
+
+  // Set local variables using memory provided by
+  // the ATMBufferManager
+  void init_buffers(const ATMBufferManager &buffer_manager);
 
   std::map<std::string,const_field_type>  m_p3_fields_in;
   std::map<std::string,field_type>        m_p3_fields_out;
@@ -259,6 +280,9 @@ protected:
   Int m_num_cols;
   Int m_num_levs;
   Int m_nk_pack;
+
+  // Struct which contains local variables
+  Buffer m_buffer;
 
   // Store the structures for each arguement to p3_main;
   P3F::P3PrognosticState   prog_state;

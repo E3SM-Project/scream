@@ -77,10 +77,11 @@ int main(int argc, char** argv) {
     real2d iwp("iwp", ncol, nlay);
     real2d rel("rel", ncol, nlay);
     real2d rei("rei", ncol, nlay);
+    real2d cld("cld", ncol, nlay);
     rrtmgpTest::dummy_atmos(
             inputfile, ncol, p_lay, t_lay,
             sfc_alb_dir, sfc_alb_dif, mu0,
-            lwp, iwp, rel, rei
+            lwp, iwp, rel, rei, cld
         );
 
     // Setup flux outputs; In a real model run, the fluxes would be
@@ -97,7 +98,8 @@ int main(int argc, char** argv) {
     // Run RRTMGP code on dummy atmosphere
     std::cout << "Run RRTMGP...\n";
     scream::rrtmgp::rrtmgp_main(
-            p_lay, t_lay, p_lev, t_lev, gas_concs, 
+            ncol, nlay,
+            p_lay, t_lay, p_lev, t_lev, gas_concs,
             sfc_alb_dir, sfc_alb_dif, mu0,
             lwp, iwp, rel, rei,
             sw_flux_up, sw_flux_dn, sw_flux_dir,
@@ -141,6 +143,7 @@ int main(int argc, char** argv) {
     iwp.deallocate();
     rel.deallocate();
     rei.deallocate();
+    cld.deallocate();
     yakl::finalize();
 
     return nerr != 0 ? 1 : 0;

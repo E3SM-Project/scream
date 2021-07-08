@@ -11,8 +11,8 @@
 namespace scream {
     namespace rrtmgp {
 
-        OpticalProps2str get_cloud_optics_sw(CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist, real2d &p_lay, real2d &t_lay, real2d &lwp, real2d &iwp, real2d &rel, real2d &rei);
-        OpticalProps1scl get_cloud_optics_lw(CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist, real2d &p_lay, real2d &t_lay, real2d &lwp, real2d &iwp, real2d &rel, real2d &rei);
+        OpticalProps2str get_cloud_optics_sw(const int ncol, const int nlay, CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist, real2d &p_lay, real2d &t_lay, real2d &lwp, real2d &iwp, real2d &rel, real2d &rei);
+        OpticalProps1scl get_cloud_optics_lw(const int ncol, const int nlay, CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist, real2d &p_lay, real2d &t_lay, real2d &lwp, real2d &iwp, real2d &rel, real2d &rei);
 
         /*
          * Names of input files we will need.
@@ -87,6 +87,7 @@ namespace scream {
         }
 
         void rrtmgp_main(
+                const int ncol, const int nlay,
                 real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev, 
                 GasConcs &gas_concs,
                 real2d &sfc_alb_dir, real2d &sfc_alb_dif, real1d &mu0, 
@@ -106,17 +107,19 @@ namespace scream {
             fluxes_lw.flux_dn = lw_flux_dn;
 
             // Convert cloud physical properties to optical properties for input to RRTMGP
-            OpticalProps2str clouds_sw = get_cloud_optics_sw(cloud_optics_sw, k_dist_sw, p_lay, t_lay, lwp, iwp, rel, rei);
-            OpticalProps1scl clouds_lw = get_cloud_optics_lw(cloud_optics_lw, k_dist_lw, p_lay, t_lay, lwp, iwp, rel, rei);
+            OpticalProps2str clouds_sw = get_cloud_optics_sw(ncol, nlay, cloud_optics_sw, k_dist_sw, p_lay, t_lay, lwp, iwp, rel, rei);
+            OpticalProps1scl clouds_lw = get_cloud_optics_lw(ncol, nlay, cloud_optics_lw, k_dist_lw, p_lay, t_lay, lwp, iwp, rel, rei);
 
             // Do shortwave
             rrtmgp_sw(
+                ncol, nlay,
                 k_dist_sw, p_lay, t_lay, p_lev, t_lev, gas_concs, 
                 sfc_alb_dir, sfc_alb_dif, mu0, clouds_sw, fluxes_sw
             );
 
             // Do longwave
             rrtmgp_lw(
+                ncol, nlay,
                 k_dist_lw, p_lay, t_lay, p_lev, t_lev, gas_concs,
                 clouds_lw, fluxes_lw
             );
@@ -125,12 +128,9 @@ namespace scream {
         }
 
         OpticalProps2str get_cloud_optics_sw(
-                CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist, 
+                const int ncol, const int nlay,
+                CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist,
                 real2d &p_lay, real2d &t_lay, real2d &lwp, real2d &iwp, real2d &rel, real2d &rei) {
-
-            // Problem sizes
-            int ncol = t_lay.dimension[0];
-            int nlay = t_lay.dimension[1];
  
             // Initialize optics
             OpticalProps2str clouds;
@@ -139,9 +139,15 @@ namespace scream {
 
             // Needed for consistency with all-sky example problem?
             cloud_optics.set_ice_roughness(2);
+ 
+            // Limit effective radii to be within bounds of lookup table
+            auto rel_limited = real2d("rel_limited", ncol, nlay);
+            auto rei_limited = real2d("rei_limited", ncol, nlay);
+            limit_to_bounds(rel, cloud_optics.radliq_lwr, cloud_optics.radliq_upr, rel_limited);
+            limit_to_bounds(rei, cloud_optics.radice_lwr, cloud_optics.radice_upr, rei_limited);
 
             // Calculate cloud optics
-            cloud_optics.cloud_optics(lwp, iwp, rel, rei, clouds);
+            cloud_optics.cloud_optics(ncol, nlay, lwp, iwp, rel_limited, rei_limited, clouds);
 
             // Return optics
             return clouds;
@@ -149,12 +155,9 @@ namespace scream {
 
 
         OpticalProps1scl get_cloud_optics_lw(
+                const int ncol, const int nlay,
                 CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist, 
                 real2d &p_lay, real2d &t_lay, real2d &lwp, real2d &iwp, real2d &rel, real2d &rei) {
-
-            // Problem sizes
-            int ncol = t_lay.dimension[0];
-            int nlay = t_lay.dimension[1];
 
             // Initialize optics
             OpticalProps1scl clouds;
@@ -164,8 +167,14 @@ namespace scream {
             // Needed for consistency with all-sky example problem?
             cloud_optics.set_ice_roughness(2);
 
+            // Limit effective radii to be within bounds of lookup table
+            auto rel_limited = real2d("rel_limited", ncol, nlay);
+            auto rei_limited = real2d("rei_limited", ncol, nlay);
+            limit_to_bounds(rel, cloud_optics.radliq_lwr, cloud_optics.radliq_upr, rel_limited);
+            limit_to_bounds(rei, cloud_optics.radice_lwr, cloud_optics.radice_upr, rei_limited);
+
             // Calculate cloud optics
-            cloud_optics.cloud_optics(lwp, iwp, rel, rei, clouds);
+            cloud_optics.cloud_optics(ncol, nlay, lwp, iwp, rel_limited, rei_limited, clouds);
 
             // Return optics
             return clouds;
@@ -173,8 +182,9 @@ namespace scream {
 
 
         void rrtmgp_sw(
-                GasOpticsRRTMGP &k_dist, 
-                real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev, 
+                const int ncol, const int nlay,
+                GasOpticsRRTMGP &k_dist,
+                real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev,
                 GasConcs &gas_concs,
                 real2d &sfc_alb_dir, real2d &sfc_alb_dif, real1d &mu0, OpticalProps2str &clouds,
                 FluxesBroadband &fluxes) {
@@ -182,8 +192,6 @@ namespace scream {
             // Get problem sizes
             int nbnd = k_dist.get_nband();
             int ngpt = k_dist.get_ngpt();
-            int ncol = p_lay.dimension[0];
-            int nlay = p_lay.dimension[1];
 
             // Allocate space for optical properties
             OpticalProps2str optics;
@@ -194,7 +202,7 @@ namespace scream {
             auto p_lay_host = p_lay.createHostCopy();
             bool top_at_1 = p_lay_host(1, 1) < p_lay_host(1, nlay);
 
-            k_dist.gas_optics(top_at_1, p_lay, p_lev, t_lay, gas_concs, optics, toa_flux);
+            k_dist.gas_optics(ncol, nlay, top_at_1, p_lay, p_lev, t_lay, gas_concs, optics, toa_flux);
 
             // Combine gas and cloud optics
             clouds.delta_scale();
@@ -214,6 +222,7 @@ namespace scream {
         }
 
         void rrtmgp_lw(
+                const int ncol, const int nlay,
                 GasOpticsRRTMGP &k_dist,
                 real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev,
                 GasConcs &gas_concs,
@@ -222,8 +231,6 @@ namespace scream {
 
             // Problem size
             int nbnd = k_dist.get_nband();
-            int ncol = p_lay.dimension[0];
-            int nlay = p_lay.dimension[1];
 
             // Allocate space for optical properties
             OpticalProps1scl optics;
@@ -243,7 +250,7 @@ namespace scream {
             memset( emis_sfc , 0.98_wp                                   );
 
             // Do gas optics
-            k_dist.gas_optics(top_at_1, p_lay, p_lev, t_lay, t_sfc, gas_concs, optics, lw_sources, real2d(), t_lev);
+            k_dist.gas_optics(ncol, nlay, top_at_1, p_lay, p_lev, t_lay, t_sfc, gas_concs, optics, lw_sources, real2d(), t_lev);
 
             // Combine gas and cloud optics
             clouds.increment(optics);
