@@ -33,9 +33,9 @@ endif()
 ## Copy yaml input file to run directory
 FILE (MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/data)
 # P3 data files
-CONFIGURE_FILE(${SCREAM_DATA_DIR}/p3_lookup_table_1.dat-v4
+CONFIGURE_FILE(${SCREAM_DATA_DIR}/p3_lookup_table_1.dat-v4.1.1
                ${CMAKE_CURRENT_BINARY_DIR}/data COPYONLY)
-CONFIGURE_FILE(${SCREAM_DATA_DIR}/p3_lookup_table_2.dat-v4
+CONFIGURE_FILE(${SCREAM_DATA_DIR}/p3_lookup_table_2.dat-v4.1.1
                ${CMAKE_CURRENT_BINARY_DIR}/data COPYONLY)
 # RRTMGP data files
 CONFIGURE_FILE(${SCREAM_BASE_DIR}/../eam/src/physics/rrtmgp/external/rrtmgp/data/rrtmgp-data-sw-g224-2018-12-04.nc
