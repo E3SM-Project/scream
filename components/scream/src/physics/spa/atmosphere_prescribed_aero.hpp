@@ -1,6 +1,8 @@
 #ifndef SCREAM_PRESCRIBED_AERO_HPP
 #define SCREAM_PRESCRIBED_AERO_HPP
 
+#include "physics/spa/spa_functions.hpp"
+
 #include "share/atm_process/atmosphere_process.hpp"
 #include "ekat/ekat_parameter_list.hpp"
 
@@ -16,16 +18,18 @@ namespace scream
  * in its list of subcomponents (the AD should make sure of this).
 */
 
+  using namespace spa;
+
 class SPA : public AtmosphereProcess
 {
 public:
   using field_type       = Field<      Real>;
   using const_field_type = Field<const Real>;
 
-//  using CldFractionFunc = cld_fraction::CldFractionFunctions<Real, DefaultDevice>;
-//  using Spack           = CldFractionFunc::Spack;
-//  using Smask           = CldFractionFunc::Smask;
-//  using Pack            = ekat::Pack<Real,Spack::n>;
+  using SPAF         = SPAFunctions<Real, DefaultDevice>;
+  using Spack        = typename SPAF::Spack;
+  using Smask        = typename SPAF::Smask;
+  using Pack         = ekat::Pack<Real,Spack::n>;
 
   // Constructors
   SPA (const ekat::Comm& comm, const ekat::ParameterList& params);
@@ -71,7 +75,16 @@ protected:
   Int m_num_levs;
 
   // The name of the SPA data file
-  std::string m_input_data_filename; 
+  std::string m_input_data_filename;
+
+  // Track which month the data is in
+  Int m_current_month;
+  Int m_next_month;
+
+  // Storage structure for monthly data
+  SPAF::MonthlyGHG     MonthlyGHG;
+  SPAF::MonthlyCCN     MonthlyCCN;
+  SPAF::PrescribedAero PrescribedAero;
 
 }; // class SPA
 

@@ -1,9 +1,12 @@
 set(SPA_SRCS
   atmosphere_prescribed_aero.cpp
+  spa.cpp
 )
 
 set(SPA_HEADERS
   atmosphere_prescribed_aero.hpp
+  spa_functions.hpp
+  spa_main_impl.hpp
 )
 
 add_library(spa ${SPA_SRCS})
