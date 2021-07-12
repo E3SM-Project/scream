@@ -36,8 +36,12 @@ void SPA::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   FieldLayout scalar3d_layout_mid { {COL,LEV}, {m_num_cols,m_num_levs} };
 
   constexpr int ps = SCREAM_SMALL_PACK_SIZE;
-  // Set of fields used as input and output
-  add_field<Updated>("nc_activated",       scalar3d_layout_mid, 1/kg,     grid_name, ps);
+  
+  // Set of fields used as input
+  add_field<Required>("p_mid",              scalar3d_layout_mid,   Pa,     grid_name, ps);
+
+  // Set of fields used as output
+  add_field<Computed>("nc_activated",       scalar3d_layout_mid, 1/kg,     grid_name, ps);
   
   // Collect the spa data filename from the parameter list
   m_input_data_filename = m_spa_params.get<std::string>("Input Data Filename");
@@ -50,6 +54,9 @@ void SPA::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
 // =========================================================================================
 void SPA::initialize_impl (const util::TimeStamp& /* t0 */)
 {
+
+  InterpolationData.p_mid = m_spa_fields_in["p_mid"].get_reshaped_view<const Pack**>();
+
   // Initialize tracking of which month the simulation is in.
   auto ts = timestamp();
   m_current_month = ts.get_months() + 1;
@@ -93,10 +100,14 @@ void SPA::run_impl (const Real dt)
     m_next_month    = (mm_0 % 12) + 1;
   }
 
-  Real days_from_mm_0 = ts.get_days() + ts.get_seconds()/86400.0;
-  printf("   - mm_0 = %d, mm_1 = %d, sec = %f\n",m_current_month,m_next_month,days_from_mm_0);
+  Real days_from_mm_0 = 0.0; // TODO: ts.get_days() + ts.get_seconds()/86400.0;
+  Real days_from_mm_1 = 0.0; // TODO: ts.get_days_this_month() - days_from_mm_0;
+  printf("   - mm_0 = %d, mm_1 = %d, days_from_mm0 = %f, days_from_mm1 = %f, total_days = %f\n",m_current_month,m_next_month,days_from_mm_0,days_from_mm_1,days_from_mm_1+days_from_mm_0);
 
-  SPAF::main(m_num_cols,m_num_levs,ts.get_months(),days_from_mm_0,MonthlyGHG,MonthlyCCN,PrescribedAero);
+  InterpolationData.current_time_in_days = ts.get_days() + ts.get_seconds()/86400.0;
+  InterpolationData.length_of_month_in_days = 31;//ts.get_days_this_month();
+ 
+  SPAF::main(m_num_cols,m_num_levs,ts.get_months(),InterpolationData,MonthlyGHG,MonthlyCCN,PrescribedAero);
 
   // Advance the timestamp
   ts += dt;

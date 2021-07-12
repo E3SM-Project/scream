@@ -9,7 +9,7 @@ Atmosphere Processes:
   Process 0:
     Process Name: SPA
     Grid: Physics
-    Input Data Filename: "blah.txt"
+    Input Data Filename: "/usr/gdata/climdat/ccsm3data/inputdata/atm/cam/chem/spa/spa_file_unified_and_clipped_ne4.nc"
 
 Grids Manager:
   Type: Physics Only

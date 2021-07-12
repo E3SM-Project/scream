@@ -86,6 +86,9 @@ protected:
   SPAF::MonthlyCCN     MonthlyCCN;
   SPAF::PrescribedAero PrescribedAero;
 
+  // Storage of interpolation data
+  SPAF::InterpolationData InterpolationData;
+
 }; // class SPA
 
 } // namespace scream

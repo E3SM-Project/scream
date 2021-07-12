@@ -113,11 +113,13 @@ struct SPAFunctions
     view_3d<Spack> AER_TAU_SW_12;
     view_3d<Spack> AER_TAU_SW_13;
   };
+
   struct MonthlyCCN {
     MonthlyCCN() = default;
     // CCN concentration at S=0.1%
     view_3d<Spack> CCN;
   };
+
   struct PrescribedAero {
     PrescribedAero() = default;
     // CCN concentration at S=0.1%
@@ -186,24 +188,25 @@ struct SPAFunctions
     view_2d<Spack> AER_TAU_SW_13;
   };
 
+  struct InterpolationData {
+    InterpolationData() = default;
+    // Needed for temporal interpolation
+    Real                 current_time_in_days;
+    Real                 length_of_month_in_days;
+    // Needed for vertical interpolation
+    view_2d<const Spack> p_mid;
+  };
+
+  static void init();
+
   static void main(
     const Int nj, 
     const Int nk,
     const Int c_month,
-    const Real days_from_c_month,
+    const InterpolationData InterpData,
     const MonthlyGHG& GHG,
     const MonthlyCCN& CCN,
     const PrescribedAero& prescribed_aero);
-
-  KOKKOS_FUNCTION
-  static void temporal_interpolation(
-    const MemberType& team,
-    const Int& nk,
-    const Real& c_time_in_days,
-    const uview_1d<const Spack>& c_month_data,
-    const uview_1d<const Spack>& n_month_data,
-    const uview_1d<Spack>&       interp_data
-  );
 
   KOKKOS_FUNCTION
   static void spatial_interpolation( 
@@ -214,6 +217,9 @@ struct SPAFunctions
     const uview_1d<Spack>& c_month_interp_data,
     const uview_1d<Spack>& n_month_interp_data
   );
+
+  KOKKOS_FUNCTION
+  static void horizontal_interpolation(const std::string& filename);
 
 }; // struct SPAFunctions
 
