@@ -57,9 +57,9 @@ CONFIGURE_FILE(${HOMME_SOURCE_DIR}/test/vcoord/acme-72m.ascii
 
 # Copy p3 lookup tables to local data directory
 FILE (MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/data)
-CONFIGURE_FILE(${SCREAM_DATA_DIR}/p3_lookup_table_1.dat-v4
+CONFIGURE_FILE(${SCREAM_DATA_DIR}/p3_lookup_table_1.dat-v4.1.1
                ${CMAKE_CURRENT_BINARY_DIR}/data COPYONLY)
-CONFIGURE_FILE(${SCREAM_DATA_DIR}/p3_lookup_table_2.dat-v4
+CONFIGURE_FILE(${SCREAM_DATA_DIR}/p3_lookup_table_2.dat-v4.1.1
                ${CMAKE_CURRENT_BINARY_DIR}/data COPYONLY)
 CONFIGURE_FILE(${SCREAM_DATA_DIR}/p3_universal_constants.inp
                ${CMAKE_CURRENT_BINARY_DIR}/data COPYONLY)
