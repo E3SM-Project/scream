@@ -340,8 +340,10 @@ void ElementsState::push_to_f90_pointers (F90Ptr& state_v, F90Ptr& state_w_i, F9
   for (int i=0; i<m_num_elems; ++i) {
     for (int k=0;k<NUM_TIME_LEVELS; ++k) {
       for (int j=0; j<NUM_INTERFACE_LEV; ++j) {
-        if (state_phinh_i_f90(i,k,j,0,0) == 46758.3176)
-          std::cout << "REF2:" << state_phinh_i_f90(i,k,j,0,0) << std::endl;
+        for (int n0=0; j<4; ++j) {
+          for (int n1=0; j<4; ++j) {
+            if (std::abs(state_phinh_i_f90(i,k,j,n0,n1) - 478324.61380177061) < 1e-3)
+              std::cout << "REF2:" << state_phinh_i_f90(i,k,j,n0,n1) << std::endl;
       }
     }
   }
