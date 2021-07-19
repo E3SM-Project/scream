@@ -178,6 +178,7 @@ module radiation
       'H2O', 'CO2', 'O3 ', 'N2O', &
       'CO ', 'CH4', 'O2 ', 'N2 ' &
    /)
+   real(r8), target :: active_gases_index(size(active_gases))
 
    ! Stuff to generate random numbers for perturbation growth tests. This needs to
    ! be public module data because restart_physics needs to read it to write it to
@@ -201,6 +202,11 @@ module radiation
    !needed for SPA
    integer :: aer_tau_bnd_lw_idx(nlwbands), aer_tau_bnd_sw_idx(nswbands),&
               aer_ssa_bnd_sw_idx(nswbands), aer_asm_bnd_sw_idx(nswbands)
+
+   !needed to generate initial conditions for RAD
+   integer, public ::    &
+        ixcldliq = -1,   & ! cloud liquid amount index
+        ixcldice = -1      ! ice index
    !============================================================================
 
 contains
@@ -494,6 +500,7 @@ contains
       integer :: month
       integer :: band_index
 
+      integer :: igas
       !-----------------------------------------------------------------------
 
       !sanity check for spa
@@ -609,6 +616,30 @@ contains
       call get_lw_spectral_midpoints(lw_band_midpoints, 'cm-1')
       call add_hist_coord('swband', nswbands, 'Shortwave wavenumber', 'cm-1', sw_band_midpoints)
       call add_hist_coord('lwband', nlwbands, 'Longwave wavenumber', 'cm-1', lw_band_midpoints)
+
+
+      ! Add outfields to be used for RRTMGP stand-alone testing.
+      call cnst_get_ind('CLDLIQ',ixcldliq)
+      call cnst_get_ind('CLDICE',ixcldice)
+      do igas = 1,size(active_gases)
+        active_gases_index(igas) = igas
+        call addfld(trim(active_gases(igas))//"_inRAD",          (/ 'lev' /), 'I', 'kg/kg',  trim(active_gases(igas)))
+      end do
+      call add_hist_coord("ngas",size(active_gases),"Number of active gases in radiation", 'N/A', active_gases_index)
+      call addfld("T_mid_inRAD",            (/ 'lev' /),         'I', 'K',        "T_mid")
+      call addfld("cos_zenith_inRAD",       horiz_only,          'I', 'unitless', "mu0")
+      call addfld("eff_radius_qc_inRAD",    (/ 'lev' /),         'I', 'micron',   "rel")
+      call addfld("eff_radius_qi_inRAD",    (/ 'lev' /),         'I', 'micron',   "rei")
+      call addfld("p_mid_inRAD",            (/ 'lev' /),         'I', 'Pa',       "p_mid")
+      call addfld("p_int_inRAD",            (/ 'ilev' /),        'I', 'Pa',       "p_int")
+      call addfld("pseudo_density_inRAD",   (/ 'lev' /),         'I', 'Pa',       "pseudo density")
+      call addfld("qc_inRAD",               (/ 'lev' /),         'I', 'kg/kg',    "qc, cld water MMR")
+      call addfld("qi_inRAD",               (/ 'lev' /),         'I', 'kg/kg',    "qi, ice water MMR")
+      call addfld('surf_alb_diffuse_inRAD', (/'swband'/),        'I', '1',        "Shortwave direct-beam albedo", &
+                  sampling_seq='rad_lwsw', flag_xyfill=.true.)
+      call addfld('surf_alb_direct_inRAD', (/'swband'/),         'I', '1',        "Shortwave diffuse-beam albedo", &
+                  sampling_seq='rad_lwsw', flag_xyfill=.true.)
+      call addfld("t_int_inRAD",            (/ 'ilev' /),        'I', 'K',        "Interface Temperature")
 
       ! Shortwave radiation
       call addfld('TOT_CLD_VISTAU', (/ 'lev' /), 'A',   '1', &
@@ -1244,6 +1275,7 @@ contains
       logical :: active_calls(0:N_DIAG)
 
       integer :: icol, ilay
+      integer :: igas
 
       ! Everyone needs a name
       character(*), parameter :: subname = 'radiation_tend'
@@ -1291,6 +1323,16 @@ contains
          des => zeros
       end if
 
+      ! Write output used as arguments to radiation tendency - for use with
+      ! stand-alone rrtmgp testing.
+      call outfld("T_mid_inRAD",            state%t,      pcols, state%lchnk)
+      call outfld("eff_radius_qc_inRAD",    rel,          pcols, state%lchnk)
+      call outfld("eff_radius_qi_inRAD",    rei,          pcols, state%lchnk)
+      call outfld("p_mid_inRAD",            state%pmid,   pcols, state%lchnk)
+      call outfld("p_int_inRAD",            state%pint,   pcols, state%lchnk)
+      call outfld("qc_inRAD",               state%q(:,:,ixcldice),  pcols, state%lchnk) 
+      call outfld("qi_inRAD",               state%q(:,:,ixcldice),  pcols, state%lchnk) 
+
       ! Compute combined cloud and snow fraction
       do icol = 1,size(cld,1)
          do ilay = 1,size(cld,2)
@@ -1326,6 +1368,7 @@ contains
          ), fatal=.false., warn=rrtmgp_enable_temperature_warnings)
          call t_stopf('rrtmgp_check_temperatures')
       end if
+      call outfld("t_int_inRAD",            tint,         pcols, state%lchnk)
 
       ! Do shortwave stuff...
       if (radiation_do('sw')) then
@@ -1341,10 +1384,13 @@ contains
          ! Send albedos to history buffer (useful for debugging)
          call outfld('SW_ALBEDO_DIR', transpose(albedo_dir(1:nswbands,1:ncol)), ncol, state%lchnk)
          call outfld('SW_ALBEDO_DIF', transpose(albedo_dif(1:nswbands,1:ncol)), ncol, state%lchnk)
+         call outfld('surf_alb_direct_inRAD', transpose(albedo_dir(1:nswbands,1:ncol)), ncol, state%lchnk)
+         call outfld('surf_alb_diffuse_inRAD', transpose(albedo_dif(1:nswbands,1:ncol)), ncol, state%lchnk)
 
          ! Get cosine solar zenith angle for current time step.
          call set_cosine_solar_zenith_angle(state, dt_avg, coszrs(1:ncol))
          call outfld('COSZRS', coszrs(1:ncol), ncol, state%lchnk)
+         call outfld("cos_zenith_inRAD", coszrs(1:ncol), ncol, state%lchnk)
          ! If the swrad_off flag is set, meaning we should not do SW radiation, then
          ! we just set coszrs to zero everywhere. TODO: why not just set dosw false
          ! and skip the loop?
@@ -1401,7 +1447,7 @@ contains
             if (active_calls(icall)) then
                ! Get gas concentrations
                call t_startf('rad_gas_concentrations_sw')
-               call get_gas_vmr(icall, state, pbuf, active_gases, gas_vmr)
+               call get_gas_vmr(icall, state, pbuf, active_gases, gas_vmr, write_mmr=.true.)
                call t_stopf('rad_gas_concentrations_sw')
                ! Get aerosol optics
                if (do_aerosol_rad) then
@@ -2694,20 +2740,24 @@ contains
 
    !----------------------------------------------------------------------------
 
-   subroutine get_gas_vmr(icall, state, pbuf, gas_names, gas_vmr)
+   subroutine get_gas_vmr(icall, state, pbuf, gas_names, gas_vmr, write_mmr)
 
       use physics_types, only: physics_state
       use physics_buffer, only: physics_buffer_desc
       use rad_constituents, only: rad_cnst_get_gas
+      use cam_history, only: outfld
 
       integer, intent(in) :: icall
       type(physics_state), intent(in) :: state
       type(physics_buffer_desc), pointer :: pbuf(:)
       character(len=*), intent(in), dimension(:) :: gas_names
       real(r8), intent(out), dimension(:,:,:) :: gas_vmr
+      logical, intent(in), optional :: write_mmr  ! Special option to also simulataneously write the mass-mixing-ratios for active
+                                                  ! gases for use to initialize stand-alone radiation tests.
 
       ! Mass mixing ratio
       real(r8), pointer :: mmr(:,:)
+      real(r8), allocatable :: gas_out(:,:)
 
       ! Gases and molecular weights. Note that we do NOT have CFCs yet (I think
       ! this is coming soon in RRTMGP). RRTMGP also allows for absorption due to
@@ -2742,6 +2792,7 @@ contains
 
       ! initialize
       gas_vmr(:,:,:) = 0._r8
+      if (present(write_mmr).and.write_mmr) allocate(gas_out(pcols,pver))
 
       ! For each gas species needed for RRTMGP, read the mass mixing ratio from the
       ! CAM rad_constituents interface, convert to volume mixing ratios, and
@@ -2786,6 +2837,13 @@ contains
                                             * mol_weight_air / mol_weight_gas(igas)
 
          end select
+         if (present(write_mmr).and.write_mmr) then
+            ! Convert VMR to wet MMR
+            call rad_cnst_get_gas(icall, trim('H2O'), state, pbuf, mmr)
+            gas_out(1:ncol,1:pver) = mol_weight_gas(igas)/mol_weight_air * (1._r8 - mmr(1:ncol,1:pver)) * gas_vmr(igas,1:ncol,1:pver)
+            ! Call as outfld
+            call outfld(trim(gas_species(igas))//"_inRAD", gas_out(1:ncol,1:pver), ncol, state%lchnk)
+         end if
 
       end do  ! igas
 

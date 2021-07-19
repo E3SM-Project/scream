@@ -420,6 +420,50 @@ end subroutine micro_p3_readnl
                &Could not call addfld for constituent with unknown units.")
        endif
     end do
+
+    ! Add fields to output that are needed for p3-stand-alone test: INPUT
+    call addfld("T_mid_inP3",              (/ 'lev' /),  'I', 'K',         "T_atm"          ) 
+    call addfld("p_mid_inP3",              (/ 'lev' /),  'I', 'Pa',        "pmid"           ) 
+    call addfld("pseudo_density_inP3",     (/ 'lev' /),  'I', 'Pa',        "dp"             ) 
+    call addfld("qc_inP3",                 (/ 'lev' /),  'I', 'kg/kg',     "qc"             ) 
+    call addfld("qv_inP3",                 (/ 'lev' /),  'I', 'kg/kg',     "qv"             ) 
+    call addfld("z_int_inP3",              (/ 'ilev' /), 'I', 'm',         "zi"             ) 
+    call addfld("inv_qc_relvar_inP3",      (/ 'lev' /),  'I', '(kg/kg)^2', "inv_qc_relvar"  ) 
+    call addfld("bm_inP3",                 (/ 'lev' /),  'I', '1/kg',      "bm"             ) 
+    call addfld("nc_inP3",                 (/ 'lev' /),  'I', '1/kg',      "nc"             ) 
+    call addfld("ni_inP3",                 (/ 'lev' /),  'I', '1/kg',      "ni"             ) 
+    call addfld("nr_inP3",                 (/ 'lev' /),  'I', '1/kg',      "nr"             ) 
+    call addfld("qi_inP3",                 (/ 'lev' /),  'I', 'kg/kg',     "qi"             ) 
+    call addfld("qm_inP3",                 (/ 'lev' /),  'I', 'kg/kg',     "qm"             ) 
+    call addfld("qr_inP3",                 (/ 'lev' /),  'I', 'kg/kg',     "qr"             ) 
+    call addfld("cldfrac_tot_inP3",        (/ 'lev' /),  'I', 'unitless',  "ast"            ) 
+    call addfld("cldfrac_tot_inRAD",       (/ 'lev' /),  'I', 'unitless',  "ast"            ) 
+    call addfld("T_prev_micro_step_inP3",  (/ 'lev' /),  'I', 'K',         "T_prev"         ) 
+    call addfld("nc_activated_inP3",       (/ 'lev' /),  'I', '1/kg',      "nccn_prescribed") 
+    call addfld("nc_nuceat_tend_inP3",     (/ 'lev' /),  'I', '1/kg/s',    "nc_nuceat_tend" ) 
+    call addfld("ni_activated_inP3",       (/ 'lev' /),  'I', '1/kg',      "ni_activated"   ) 
+    call addfld("qv_prev_micro_step_inP3", (/ 'lev' /),  'I', 'kg/kg',     "qv_prev"        ) 
+
+
+    ! Add fields to output that are needed for p3-stand-alone test: OUTPUT
+    call addfld("T_mid_outP3",                  (/ 'lev' /),  'I', 'K',      "T_mid_outP3"              ) 
+    call addfld("qc_outP3",                     (/ 'lev' /),  'I', 'kg/kg',  "qc_outP3"                 )
+    call addfld("qv_outP3",                     (/ 'lev' /),  'I', 'kg/kg',  "qv_outP3"                 ) 
+    call addfld("bm_outP3",                     (/ 'lev' /),  'I', 'kg/kg',  "bm_outP3"                 ) 
+    call addfld("nc_outP3",                     (/ 'lev' /),  'I', 'kg/kg',  "nc_outP3"                 ) 
+    call addfld("ni_outP3",                     (/ 'lev' /),  'I', 'kg/kg',  "ni_outP3"                 ) 
+    call addfld("nr_outP3",                     (/ 'lev' /),  'I', 'kg/kg',  "nr_outP3"                 ) 
+    call addfld("qi_outP3",                     (/ 'lev' /),  'I', 'kg/kg',  "qi_outP3"                 ) 
+    call addfld("qm_outP3",                     (/ 'lev' /),  'I', 'kg/kg',  "qm_outP3"                 ) 
+    call addfld("qr_outP3",                     (/ 'lev' /),  'I', 'kg/kg',  "qr_outP3"                 ) 
+    call addfld("T_prev_micro_step_outP3",      (/ 'lev' /),  'I', 'K',      "T_prev_outP3"             ) 
+    call addfld("qv_prev_micro_step_outP3",     (/ 'lev' /),  'I', 'kg/kg',  "qv_prev_outP3"            ) 
+    call addfld("eff_radius_qc_outP3",          (/ 'lev' /),  'I', 'micron', "diag_eff_radius_qc_outP3" ) 
+    call addfld("eff_radius_qi_outP3",          (/ 'lev' /),  'I', 'micron', "diag_eff_radius_qi_outP3" ) 
+    call addfld("liq_ice_exchange_outP3",       (/ 'lev' /),  'I', 'kg/kg',  "liq_ice_exchange_outP3"   ) 
+    call addfld("vap_liq_exchange_outP3",       (/ 'lev' /),  'I', 'kg/kg',  "vap_liq_exchange_outP3"   ) 
+    call addfld("vap_ice_exchange_outP3",       (/ 'lev' /),  'I', 'kg/kg',  "vap_ice_exchange_outP3"   ) 
+ 
     call addfld(apcnst(ixcldliq), (/ 'lev' /), 'A', 'kg/kg', trim(cnst_name(ixcldliq))//' after physics'  )
     call addfld(apcnst(ixcldice), (/ 'lev' /), 'A', 'kg/kg', trim(cnst_name(ixcldice))//' after physics'  )
     call addfld(bpcnst(ixcldliq), (/ 'lev' /), 'A', 'kg/kg', trim(cnst_name(ixcldliq))//' before physics' )
@@ -931,7 +975,6 @@ end subroutine micro_p3_readnl
     lq(ixnumrain) = .true.
     lq(ixrimvol)  = .true.
     call physics_ptend_init(ptend, psetcols, "micro_p3", ls=.true., lq=lq)
-
     ! HANDLE AEROSOL ACTIVATION
     !==============
     do_predict_nc = micro_aerosolactivation 
@@ -1043,6 +1086,29 @@ end subroutine micro_p3_readnl
        ! of zero values outside cloud. Preemptively multiplying by cldfrac here is needed to get the correct in-cloud ccn value in P3
        nccn_prescribed = ccn_trcdat*cld_frac_l
     end if
+
+    ! Write to outfile the variables needed for p3-stand-alone initialization
+    call outfld("T_mid_inP3",              state%T,                pcols, lchnk) 
+    call outfld("p_mid_inP3",              state%pmid,             pcols, lchnk) 
+    call outfld("pseudo_density_inP3",     state%pdel  ,           pcols, lchnk) 
+    call outfld("qc_inP3",                 state%q(:,:,ixcldliq),  pcols, lchnk) 
+    call outfld("qv_inP3",                 state%q(:,:,1),         pcols, lchnk) 
+    call outfld("z_int_inP3",              state%zi,               pcols, lchnk) 
+    call outfld("inv_qc_relvar_inP3",      relvar,                 pcols, lchnk) 
+    call outfld("bm_inP3",                 state%q(:,:,ixrimvol),  pcols, lchnk) 
+    call outfld("nc_inP3",                 state%q(:,:,ixnumliq),  pcols, lchnk) 
+    call outfld("ni_inP3",                 state%q(:,:,ixnumice),  pcols, lchnk) 
+    call outfld("nr_inP3",                 state%q(:,:,ixnumrain), pcols, lchnk) 
+    call outfld("qi_inP3",                 state%q(:,:,ixcldice),  pcols, lchnk) 
+    call outfld("qm_inP3",                 state%q(:,:,ixcldrim),  pcols, lchnk) 
+    call outfld("qr_inP3",                 state%q(:,:,ixrain),    pcols, lchnk) 
+    call outfld("cldfrac_tot_inP3",        ast,                    pcols, lchnk) 
+    call outfld("cldfrac_tot_inRAD",       ast,                    pcols, lchnk) ! Radiation needs this one too in SCREAM
+    call outfld("T_prev_micro_step_inP3",  T_prev,                 pcols, lchnk) 
+    call outfld("nc_activated_inP3",       nccn_prescribed,        pcols, lchnk) 
+    call outfld("nc_nuceat_tend_inP3",     npccn,                  pcols, lchnk) 
+    call outfld("ni_activated_inP3",       ni_activated,           pcols, lchnk) 
+    call outfld("qv_prev_micro_step_inP3", qv_prev,                pcols, lchnk) 
 
     ! CALL P3
     !==============
@@ -1351,6 +1417,25 @@ end subroutine micro_p3_readnl
 !====================== COSP Specific Outputs  END ======================!
 
     !WRITE OUTPUT
+    ! write output that can be used to check the p3_stand_alone test output: 
+    call outfld("T_mid_outP3",               temp,              pcols, lchnk) 
+    call outfld("qc_outP3",                  cldliq,            pcols, lchnk)
+    call outfld("qv_outP3",                  qv,                pcols, lchnk) 
+    call outfld("bm_outP3",                  rimvol,            pcols, lchnk) 
+    call outfld("nc_outP3",                  numliq,            pcols, lchnk) 
+    call outfld("ni_outP3",                  numice,            pcols, lchnk) 
+    call outfld("nr_outP3",                  numrain,           pcols, lchnk) 
+    call outfld("qi_outP3",                  ice,               pcols, lchnk) 
+    call outfld("qm_outP3",                  qm,                pcols, lchnk) 
+    call outfld("qr_outP3",                  rain,              pcols, lchnk) 
+    call outfld("T_prev_micro_step_outP3",   t_prev,            pcols, lchnk)
+    call outfld("qv_prev_micro_step_outP3",  qv_prev,           pcols, lchnk) 
+    call outfld("eff_radius_qc_outP3",       rel,               pcols, lchnk) 
+    call outfld("eff_radius_qi_outP3",       rei,               pcols, lchnk) 
+    call outfld("liq_ice_exchange_outP3",    liq_ice_exchange,  pcols, lchnk) 
+    call outfld("vap_liq_exchange_outP3",    vap_liq_exchange,  pcols, lchnk) 
+    call outfld("vap_ice_exchange_outP3",    vap_ice_exchange,  pcols, lchnk) 
+
     !=============
    call outfld('AQRAIN',      aqrain,      psetcols, lchnk)
    call outfld('ANRAIN',      anrain,      psetcols, lchnk)

@@ -110,6 +110,7 @@ subroutine zm_conv_init(pref_edge)
   use phys_control,   only: phys_deepconv_pbl, phys_getopts, cam_physpkg_is
   use physics_buffer, only: pbuf_get_index
   use rad_constituents, only: rad_cnst_get_info 
+  use cam_history_support, only: add_hist_coord 
 
   implicit none
 
@@ -173,6 +174,74 @@ subroutine zm_conv_init(pref_edge)
     call addfld ('ZMICUD',     (/ 'lev' /), 'A', 'm/s', 'ZM in-cloud U downdrafts')
     call addfld ('ZMICVU',     (/ 'lev' /), 'A', 'm/s', 'ZM in-cloud V updrafts')
     call addfld ('ZMICVD',     (/ 'lev' /), 'A', 'm/s', 'ZM in-cloud V downdrafts')
+
+    ! Add fields for ZM stand-alone tests
+! ZM stand alone test data isn't needed yet, leaving her to simplify the process
+! for the future.
+!    call add_hist_coord('cnst',1,'Number of constituents for zm fields','N/A', (/ 1 /))
+!    call addfld('dsubcld_zmIN',  horiz_only, 'I', 'unitless', 'dsubcld ')
+!    call addfld('cape_zmIN',     horiz_only, 'I', 'unitless', 'cape    ')
+!    call addfld('dcape_zmIN',    horiz_only, 'I', 'unitless', 'dcape   ')
+!    call addfld('cld_zmIN',      horiz_only, 'I', 'unitless', 'cld     ')
+!    call addfld('geos_zmIN',     horiz_only, 'I', 'unitless', 'geos    ')
+!    call addfld('ideep_zmIN',    horiz_only, 'I', 'unitless', 'ideep   ')
+!    call addfld('jcbot_zmIN',    horiz_only, 'I', 'unitless', 'jcbot   ')
+!    call addfld('jctop_zmIN',    horiz_only, 'I', 'unitless', 'jctop   ')
+!    call addfld('jt_zmIN',       horiz_only, 'I', 'unitless', 'jt      ')
+!    call addfld('landfrac_zmIN', horiz_only, 'I', 'unitless', 'landfrac')
+!    call addfld('maxg_zmIN',     horiz_only, 'I', 'unitless', 'maxg    ')
+!    call addfld('pblh_zmIN',     horiz_only, 'I', 'unitless', 'pblh    ')
+!    call addfld('prec_zmIN',     horiz_only, 'I', 'unitless', 'prec    ')
+!    call addfld('snow_zmIN',     horiz_only, 'I', 'unitless', 'snow    ')
+!    call addfld('tend_q_zmIN',   horiz_only, 'I', 'unitless', 'tend_q  ')
+!    call addfld('tend_s_zmIN',   horiz_only, 'I', 'unitless', 'tend_s  ')
+!    call addfld('tpert_zmIN',    horiz_only, 'I', 'unitless', 'tpert   ')
+!    call addfld('cme_zmIN',       (/ 'lev' /), 'I', 'unitless', 'cme      ')
+!    call addfld('cnv_nm1_zmIN',   (/ 'lev' /), 'I', 'unitless', 'cnv_nm1  ')
+!    call addfld('delt_zmIN',      (/ 'lev' /), 'I', 'unitless', 'delt     ')
+!    call addfld('dlf_zmIN',       (/ 'lev' /), 'I', 'unitless', 'dlf      ')
+!    call addfld('dp_zmIN',        (/ 'lev' /), 'I', 'unitless', 'dp       ')
+!    call addfld('dpp_zmIN',       (/ 'lev' /), 'I', 'unitless', 'dpp      ')
+!    call addfld('du_zmIN',        (/ 'lev' /), 'I', 'unitless', 'du       ')
+!    call addfld('ed_zmIN',        (/ 'lev' /), 'I', 'unitless', 'ed       ')
+!    call addfld('eu_zmIN',        (/ 'lev' /), 'I', 'unitless', 'eu       ')
+!    call addfld('flxprec_zmIN',   (/ 'lev' /), 'I', 'unitless', 'flxprec  ')
+!    call addfld('flxsnow_zmIN',   (/ 'lev' /), 'I', 'unitless', 'flxsnow  ')
+!    call addfld('heat_zmIN',      (/ 'lev' /), 'I', 'unitless', 'heat     ')
+!    call addfld('hu_nm1_zmIN',    (/ 'lev' /), 'I', 'unitless', 'hu_nm1   ')
+!    call addfld('lchnk_zmIN',     (/ 'lev' /), 'I', 'unitless', 'lchnk    ')
+!    call addfld('lengath_zmIN',   (/ 'lev' /), 'I', 'unitless', 'lengath  ')
+!    call addfld('limcnv_in_zmIN', (/ 'lev' /), 'I', 'unitless', 'limcnv_in')
+!    call addfld('mcon_zmIN',    (/ 'lev' /), 'I', 'unitless', 'mcon     ')
+!    call addfld('md_zmIN',      (/ 'lev' /), 'I', 'unitless', 'md       ')
+!    call addfld('mu_zmIN',      (/ 'lev' /), 'I', 'unitless', 'mu       ')
+!    call addfld('ncol_zmIN',    (/ 'lev' /), 'I', 'unitless', 'ncol     ')
+!    call addfld('ntprprd_zmIN', (/ 'lev' /), 'I', 'unitless', 'ntprprd  ')
+!    call addfld('ntsnprd_zmIN', (/ 'lev' /), 'I', 'unitless', 'ntsnprd  ')
+!    call addfld('pap_zmIN',    (/ 'lev' /), 'I', 'unitless', 'pap      ')
+!    call addfld('pflx_zmIN',   (/ 'lev' /), 'I', 'unitless', 'pflx     ')
+!    call addfld('q_star_zmIN', (/ 'lev' /), 'I', 'unitless', 'q_star   ')
+!    call addfld('qh_zmIN',     (/ 'lev' /), 'I', 'unitless', 'qh       ')
+!    call addfld('ql_zmIN',     (/ 'lev' /), 'I', 'unitless', 'ql       ')
+!    call addfld('qm1_zmIN',    (/ 'lev' /), 'I', 'unitless', 'qm1      ')
+!    call addfld('qtnd_zmIN',   (/ 'lev' /), 'I', 'unitless', 'qtnd     ')
+!    call addfld('qv_zmIN',     (/ 'lev' /), 'I', 'unitless', 'qv       ')
+!    call addfld('rliq_zmIN',   (/ 'lev' /), 'I', 'unitless', 'rliq     ')
+!    call addfld('rprd_zmIN',   (/ 'lev' /), 'I', 'unitless', 'rprd     ')
+!    call addfld('t_zmIN',      (/ 'lev' /), 'I', 'unitless', 't        ')
+!    call addfld('t_star_zmIN', (/ 'lev' /), 'I', 'unitless', 't_star   ')
+!    call addfld('tm1_zmIN',    (/ 'lev' /), 'I', 'unitless', 'tm1      ')
+!    call addfld('zdu_zmIN',    (/ 'lev' /), 'I', 'unitless', 'zdu      ')
+!    call addfld('zm_zmIN',     (/ 'lev' /), 'I', 'unitless', 'zm       ')
+!    call addfld('ztodt_zmIN',  (/ 'lev' /), 'I', 'unitless', 'ztodt    ')
+!    call addfld('paph_zmIN',   (/ 'ilev' /), 'I', 'unitless', 'paph')
+!    call addfld('zi_zmIN',     (/ 'ilev' /), 'I', 'unitless', 'zi  ')
+!    call addfld('fracis_zmIN', (/ 'lev', 'cnst' /), 'I', 'unitless', 'fracis        ')
+!    call addfld('icwu_zmIN',           (/ 'lev', 'cnst' /), 'I', 'unitless', 'icwu          ')
+!    call addfld('ncnst_zmIN',          (/ 'lev', 'cnst' /), 'I', 'unitless', 'ncnst         ')
+!    call addfld('no_deep_pbl_in_zmIN', (/ 'lev', 'cnst' /), 'I', 'unitless', 'no_deep_pbl_in')
+!    call addfld('pgdall_zmIN',         (/ 'lev', 'cnst' /), 'I', 'unitless', 'pgdall        ')
+!    call addfld('pguall_zmIN',         (/ 'lev', 'cnst' /), 'I', 'unitless', 'pguall        ')
     
     call phys_getopts( history_budget_out = history_budget, &
                        history_budget_histfile_num_out = history_budget_histfile_num, &
@@ -408,6 +477,74 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 !
 ! Begin with Zhang-McFarlane (1996) convection parameterization
 !
+! zm stand alone data isn't needed yet.  Leaving here to simplify the process in
+! the future.
+!ASD    call outfld('pgdall_zmIN',         , pcols, lchnk) !OUT 
+!ASD    call outfld('pguall_zmIN',         , pcols, lchnk) !OUT
+!ASD    call outfld('dsubcld_zmIN',        dsubcld, pcols, lchnk)  !OUT
+!ASD    call outfld('cape_zmIN',           cape,    pcols, lchnk)  !OUT
+!ASD    call outfld('dcape_zmIN',          dcape,   pcols, lchnk)  !OUT
+!ASD    call outfld('du_zmIN',             du, pcols, lchnk) !OUT
+!ASD    call outfld('ed_zmIN',             ed, pcols, lchnk) !OUT
+!ASD    call outfld('eu_zmIN',             eu, pcols, lchnk) !OUT
+!ASD    call outfld('jcbot_zmIN',          jcbot, pcols, lchnk) !OUT
+!ASD    call outfld('dlf_zmIN',            dlf, pcols, lchnk) !OUT
+!ASD    call outfld('dp_zmIN',             state%pdel, pcols, lchnk) !OUT
+!ASD    call outfld('cme_zmIN',            cme, pcols, lchnk) !OUT
+!ASD    call outfld('heat_zmIN',           , pcols, lchnk) !OUT
+!ASD    call outfld('mcon_zmIN',           mcon, pcols, lchnk)  !OUT
+!ASD    call outfld('md_zmIN',             md, pcols, lchnk)  !OUT
+!ASD    call outfld('mu_zmIN',             mu, pcols, lchnk) !OUT 
+!ASD    call outfld('pflx_zmIN',           , pcols, lchnk) !OUT
+!ASD    call outfld('qtnd_zmIN',           , pcols, lchnk !OUT)
+!ASD    call outfld('prec_zmIN',           prec, pcols, lchnk) !OUT
+!ASD    call outfld('zdu_zmIN',            zdu, pcols, lchnk) !OUT
+!ASD    call outfld('jctop_zmIN',          jctop, pcols, lchnk) !OUT
+!ASD    call outfld('rliq_zmIN',           rliq, pcols, lchnk) !OUT
+!ASD    call outfld('rprd_zmIN',           rprd, pcols, lchnk) !OUT
+!ASD    call outfld('icwu_zmIN',           icwu, pcols, lchnk)       !OUT 
+!ASD    call outfld('snow_zmIN',           , pcols, lchnk)  !OUT
+!ASD    call outfld('flxprec_zmIN',        , pcols, lchnk) !OUT
+!ASD    call outfld('flxsnow_zmIN',        , pcols, lchnk) !OUT
+!ASD    call outfld('ntprprd_zmIN',        , pcols, lchnk) !OUT 
+!ASD    call outfld('ntsnprd_zmIN',        , pcols, lchnk) !OUT
+!ASD    call outfld('tend_q_zmIN',         ptend_loc%q(:,:,1), pcols, lchnk) !OUT qtnd
+!ASD    call outfld('tend_s_zmIN',         ptend_loc%s, pcols, lchnk)  ! OUT heat
+!ASD
+!ASD    call outfld('cld_zmIN',            cld, pcols, lchnk)
+!ASD    call outfld('geos_zmIN',           state%phis, pcols, lchnk)
+!ASD    call outfld('landfrac_zmIN',       landfrac, pcols, lchnk)
+!ASD    call outfld('qv_zmIN',             state%q(:,:,1), pcols, lchnk)
+!ASD    call outfld('t_zmIN',              state%t, pcols, lchnk)
+!ASD    call outfld('pap_zmIN',            state%pmid pcols, lchnk)
+!ASD    call outfld('paph_zmIN',           state%pint, pcols, lchnk)
+!ASD    call outfld('dpp_zmIN',            state%pdel, pcols, lchnk)
+!ASD    call outfld('zm_zmIN',             state%zm, pcols, lchnk)
+!ASD    call outfld('zi_zmIN',             state%zi, pcols, lchnk)
+!ASD    call outfld('pblh_zmIN',           pblh, pcols, lchnk)
+!ASD    call outfld('tpert_zmIN',          tpert, pcols, lchnk)
+!ASD    call outfld('tm1_zmIN',            tm1, pcols, lchnk)
+!ASD    call outfld('qm1_zmIN',            qm1, pcols, lchnk)
+!ASD    call outfld('t_star_zmIN',         t_star, pcols, lchnk)
+!ASD    call outfld('q_star_zmIN',         q_star, pcols, lchnk)
+!ASD    call outfld('jt_zmIN',             jt, pcols, lchnk)
+!ASD    call outfld('maxg_zmIN',           maxg, pcols, lchnk)
+!ASD
+!ASD    call outfld('ideep_zmIN',          ideep, pcols, lchnk)
+!ASD    call outfld('cnv_nm1_zmIN',        cnv_nmq, pcols, lchnk)
+!ASD    call outfld('delt_zmIN',           , pcols, lchnk)
+!ASD    call outfld('hu_nm1_zmIN',         hu_nm1, pcols, lchnk)
+!ASD    call outfld('lchnk_zmIN',          , pcols, lchnk)
+!ASD    call outfld('lengath_zmIN',        , pcols, lchnk)
+!ASD    call outfld('limcnv_in_zmIN',      , pcols, lchnk)
+!ASD    call outfld('ncol_zmIN',           , pcols, lchnk) 
+!ASD    call outfld('qh_zmIN',             , pcols, lchnk)
+!ASD    call outfld('ql_zmIN',             ql, pcols, lchnk)
+!ASD    call outfld('ztodt_zmIN',          , pcols, lchnk)
+!ASD    call outfld('fracis_zmIN',         fracis, pcols, lchnk)
+!ASD    call outfld('ncnst_zmIN',          , pcols, lchnk)        
+!ASD    call outfld('no_deep_pbl_in_zmIN', , pcols, lchnk) 
+
    call t_startf ('zm_convr')
    call zm_convr(   lchnk   ,ncol    , &
                     state%t       ,state%q(:,:,1)     ,prec    ,jctop   ,jcbot   , &

@@ -295,6 +295,7 @@ end function shoc_implements_cnst
     use constituents,           only: cnst_get_ind	
     use shoc,                   only: shoc_init			      			      
     use cam_history,            only: horiz_only, addfld, add_default
+    use cam_history_support,    only: add_hist_coord
     use error_messages,         only: handle_errmsg
     use trb_mtn_stress,         only: init_tms   
  
@@ -384,7 +385,42 @@ end function shoc_implements_cnst
        call cnst_get_ind('NUMLIQ',ixnumliq)
        lq(ixnumliq) = .false.
        edsclr_dim = edsclr_dim-1
-    endif 
+    endif
+
+    ! Write variables for shoc stand alone test: INPUT
+    call add_hist_coord('dim2',  2, 'Velocity coordinates',  'N/A', (/ 1,2 /))
+    call addfld( "T_mid_inSHOC",            (/'lev'/),          'I', 'K',        "t"       )
+    call addfld( "cldfrac_liq_inSHOC",      (/'lev'/),          'I', 'unitless', "alst"    )
+    call addfld( "eddy_diff_mom_inSHOC",    (/'lev'/),          'I', 'm2/s',     "khzm"    )
+    call addfld( "horiz_winds_inSHOC",      (/'lev', 'dim2'/),  'I', 'm/s',      "V"       )
+    call addfld( "host_dx_inSHOC",          horiz_only,         'I', 'm',        "host_dx" )
+    call addfld( "host_dy_inSHOC",          horiz_only,         'I', 'm',        "host_dy" )
+    call addfld( "omega_inSHOC",            (/'lev'/),          'I', 'Pa/s',     "omega"   )
+    call addfld( "p_int_inSHOC",            (/'ilev'/),         'I', 'Pa',       "pint"    )
+    call addfld( "p_mid_inSHOC",            (/'lev'/),          'I', 'Pa',       "pmid"    )
+    call addfld( "phis_inSHOC",             horiz_only,         'I', 'm',        "phis"    )
+    call addfld( "pseudo_density_inSHOC",   (/'lev'/),          'I', 'Pa',       "pdel"    )
+    call addfld( "qc_inSHOC",               (/'lev'/),          'I', 'kg/kg',    "shoc_ql" )
+    call addfld( "qv_inSHOC",               (/'lev'/),          'I', 'kg/kg',    "shoc_qv" )
+    call addfld( "sgs_buoy_flux_inSHOC",    (/'lev'/),          'I', 'K m/s',    "wthv_sec")
+    call addfld( "surf_latent_flux_inSHOC", horiz_only,         'I', 'kg/s^3',   "shf"     )
+    call addfld( "surf_sens_flux_inSHOC",   horiz_only,         'I', 'kg/s^3',   "cflx_k0" )
+    call addfld( "surf_u_mom_flux_inSHOC",  horiz_only,         'I', 'kg m/s^2', "wsx"     )
+    call addfld( "surf_v_mom_flux_inSHOC",  horiz_only,         'I', 'kg m/s^2', "wsy"     )
+    call addfld( "tke_inSHOC",              (/'lev'/),          'I', '(m/s)^2',  "tke"     )
+    call addfld( "z_int_inSHOC",            (/'ilev'/),         'I', 'm',        "zi"      )
+    call addfld( "z_mid_inSHOC",            (/'lev'/),          'I', 'm',        "zm"      )
+
+    call addfld( "T_mid_outSHOC",           (/'lev'/),          'I', 'K',         "t"       )
+    call addfld( "cldfrac_liq_outSHOC",     (/'lev'/),          'I', 'unitless',  "alst"    )
+    call addfld( "eddy_diff_mom_outSHOC",   (/'lev'/),          'I', 'm2/s',      "khzm"    )
+    call addfld( "horiz_winds_outSHOC",     (/'lev', 'dim2'/),  'I', 'm/s',       "V"       )
+    call addfld( "qc_outSHOC",              (/'lev'/),          'I', 'kg/kg',     "shoc_ql" )
+    call addfld( "qv_outSHOC",              (/'lev'/),          'I', 'kg/kg',     "shoc_qv" )
+    call addfld( "sgs_buoy_flux_outSHOC",   (/'lev'/),          'I', 'K m/s',     "wthv_sec")
+    call addfld( "tke_outSHOC",             (/'lev'/),          'I', '(m/s)^2',   "tke"     )
+    call addfld( "inv_qc_relvar_outSHOC",   (/'lev'/),          'I', '(kg/kg)^2', "inv_qc_relvar" )
+    call addfld( "pbl_height_outSHOC",      horiz_only,         'I', 'm',         "pbl_height" )
 
     ! Add SHOC fields
     call addfld('SHOC_TKE', (/'lev'/), 'A', 'm2/s2', 'TKE')
@@ -399,7 +435,7 @@ end function shoc_implements_cnst
     call addfld('WTHL_SEC',(/'ilev'/), 'A', 'W/m2', 'Heat flux')
     call addfld('WQW_SEC',(/'ilev'/), 'A', 'W/m2', 'Moisture flux')
     call addfld('WTKE_SEC',(/'ilev'/), 'A', 'm3/s3', 'Vertical flux of turbulence')
-    call addfld('UW_SEC',(/'ilev'/), 'A', 'm2/s2', 'Momentum flux')
+    call addfld('UW_SEC',(/'ilev'/), 'A', 'm2/s2', 'MomenVum flux')
     call addfld('VW_SEC',(/'ilev'/), 'A', 'm2/s2', 'Momentum flux')
     call addfld('W3',(/'ilev'/), 'A', 'm3/s3', 'Third moment vertical velocity')
     call addfld('WQL_SEC',(/'lev'/),'A', 'W/m2', 'Liquid water flux')
@@ -555,6 +591,7 @@ end function shoc_implements_cnst
    real(r8) :: thlm(pcols,pver)
    real(r8) :: um(pcols,pver)
    real(r8) :: vm(pcols,pver)
+   real(r8) :: uvm(pcols,pver,2)
    real(r8) :: rvm(pcols,pver)
    real(r8) :: rtm(pcols,pver)
    real(r8) :: rcm(pcols,pver)
@@ -756,6 +793,8 @@ end function shoc_implements_cnst
        rtm(i,k) = rvm(i,k) + rcm(i,k)
        um(i,k) = state1%u(i,k)
        vm(i,k) = state1%v(i,k)
+       uvm(i,k,1) = um(i,k)
+       uvm(i,k,2) = vm(i,k)
        
        thlm(i,k) = state1%t(i,k)*inv_exner(i,k)-(latvap/cpair)*state1%q(i,k,ixcldliq)
        thv(i,k) = state1%t(i,k)*inv_exner(i,k)*(1.0_r8+zvir*state1%q(i,k,ixq)-state1%q(i,k,ixcldliq)) 
@@ -804,7 +843,7 @@ end function shoc_implements_cnst
       !  Surface fluxes provided by host model
 
       wpthlp_sfc(i) = cam_in%shf(i)/(cpair*rrho_i(i,pverp))       ! Sensible heat flux
-      wprtp_sfc(i)  = cam_in%cflx(i,1)/(rrho_i(i,pverp))      ! Latent heat flux
+      wprtp_sfc(i)  = cam_in%cflx(i,1)/(rrho_i(i,pverp))          ! Latent heat flux
       upwp_sfc(i)   = cam_in%wsx(i)/rrho_i(i,pverp)               ! Surface meridional momentum flux
       vpwp_sfc(i)   = cam_in%wsy(i)/rrho_i(i,pverp)               ! Surface zonal momentum flux  
       wtracer_sfc(i,:) = 0._r8  ! in E3SM tracer fluxes are done elsewhere
@@ -823,6 +862,31 @@ end function shoc_implements_cnst
      end if
    enddo    
     
+   ! ------------------------------------------------- !
+   ! Write SHOC inputs to file                         !
+   ! ------------------------------------------------- !
+   call outfld( "T_mid_inSHOC",            state1%t,               pcols, lchnk )
+   call outfld( "cldfrac_liq_inSHOC",      alst,                   pcols, lchnk )
+   call outfld( "eddy_diff_mom_inSHOC",    khzm,                   pcols, lchnk )
+   call outfld( "horiz_winds_inSHOC",      uvm,                    pcols, lchnk )
+   call outfld( "host_dx_inSHOC",          host_dx_in,             pcols, lchnk )
+   call outfld( "host_dy_inSHOC",          host_dy_in,             pcols, lchnk )
+   call outfld( "omega_inSHOC",            state1%omega,           pcols, lchnk )
+   call outfld( "p_int_inSHOC",            state%pint,             pcols, lchnk )
+   call outfld( "p_mid_inSHOC",            state%pmid,             pcols, lchnk )
+   call outfld( "phis_inSHOC",             state1%phis,            pcols, lchnk )
+   call outfld( "pseudo_density_inSHOC",   state%pdel,             pcols, lchnk )
+   call outfld( "qc_inSHOC",               state1%q(:,:,ixcldliq), pcols, lchnk )
+   call outfld( "qv_inSHOC",               state1%q(:,:,ixq),      pcols, lchnk )
+   call outfld( "sgs_buoy_flux_inSHOC",    wthv,                   pcols, lchnk )
+   call outfld( "surf_latent_flux_inSHOC", cam_in%cflx,            pcols, lchnk )
+   call outfld( "surf_sens_flux_inSHOC",   cam_in%shf,             pcols, lchnk )
+   call outfld( "surf_u_mom_flux_inSHOC",  cam_in%wsx,             pcols, lchnk )
+   call outfld( "surf_v_mom_flux_inSHOC",  cam_in%wsy,             pcols, lchnk )
+   call outfld( "tke_inSHOC",              tke_zt,                 pcols, lchnk )
+   call outfld( "z_int_inSHOC",            state1%zi,              pcols, lchnk )
+   call outfld( "z_mid_inSHOC",            state1%zm,              pcols, lchnk )
+
    ! ------------------------------------------------- !
    ! Actually call SHOC                                !
    ! ------------------------------------------------- !   
@@ -1116,6 +1180,16 @@ end function shoc_implements_cnst
     call outfld('BRUNT',brunt_out,pcols,lchnk)
     call outfld('RELVAR',relvar,pcols,lchnk)
 
+   call outfld( "T_mid_outSHOC",           state1%t,               pcols, lchnk )
+   call outfld( "cldfrac_liq_outSHOC",     alst,                   pcols, lchnk )
+   call outfld( "eddy_diff_mom_outSHOC",   khzm,                   pcols, lchnk )
+   call outfld( "horiz_winds_outSHOC",     uvm,                    pcols, lchnk )
+   call outfld( "qc_outSHOC",              state1%q(i,k,ixcldliq), pcols, lchnk )
+   call outfld( "qv_outSHOC",              state1%q(i,k,ixq),      pcols, lchnk )
+   call outfld( "sgs_buoy_flux_outSHOC",   wthv,                   pcols, lchnk )
+   call outfld( "tke_outSHOC",             tke_zt,                 pcols, lchnk )
+   call outfld( "inv_qc_relvar_outSHOC",   relvar,                 pcols, lchnk )
+   call outfld( "pbl_height_outSHOC",      pblh,                   pcols, lchnk )
 #endif    
     return         
   end subroutine shoc_tend_e3sm   
