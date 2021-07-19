@@ -331,6 +331,8 @@ void ElementsState::push_to_f90_pointers (F90Ptr& state_v, F90Ptr& state_w_i, F9
   HostViewUnmanaged<Real *[NUM_TIME_LEVELS][NUM_INTERFACE_LEV]   [NP][NP]> state_phinh_i_f90   (state_phinh_i,m_num_elems);
   HostViewUnmanaged<Real *[NUM_TIME_LEVELS][NUM_PHYSICAL_LEV ]   [NP][NP]> state_dp3d_f90      (state_dp3d,m_num_elems);
 
+  std::cout << "REF2:" << m_phinh_i(0,0,0,0,0)[0] << std::endl;
+
   sync_to_host(m_v,         state_v_f90);
   sync_to_host(m_w_i,       state_w_i_f90);
   sync_to_host(m_vtheta_dp, state_vtheta_dp_f90);
