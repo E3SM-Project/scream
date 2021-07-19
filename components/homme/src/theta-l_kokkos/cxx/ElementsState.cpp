@@ -345,6 +345,8 @@ void ElementsState::push_to_f90_pointers (F90Ptr& state_v, F90Ptr& state_w_i, F9
             if (std::abs(state_phinh_i_f90(i,k,j,n0,n1) - 478324.61380177061) < 1e-3)
               std::cout << "REF2:" << state_phinh_i_f90(i,k,j,n0,n1) << std::endl;
       }
+        }
+      }
     }
   }
 }
