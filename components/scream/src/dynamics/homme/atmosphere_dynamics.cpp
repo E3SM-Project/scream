@@ -466,8 +466,8 @@ void HommeDynamics::initialize_impl (const util::TimeStamp& /* t0 */)
       w_i(ie,nm1,igp,jgp,ilev) = w_i(ie,n0,igp,jgp,ilev);
       w_i(ie,np1,igp,jgp,ilev) = w_i(ie,n0,igp,jgp,ilev);
 
-      phinh_i(ie,nm1,igp,jgp,ilev) = phinh_i(ie,n0,igp,jgp,ilev)+50000000;
-      phinh_i(ie,np1,igp,jgp,ilev) = phinh_i(ie,n0,igp,jgp,ilev)+50000000;
+      phinh_i(ie,nm1,igp,jgp,ilev) = phinh_i(ie,n0,igp,jgp,ilev);
+      phinh_i(ie,np1,igp,jgp,ilev) = phinh_i(ie,n0,igp,jgp,ilev);
     });
 
     // Copy ps (and last interface of w_i and phinh_i)  from the n0 timelevel to all the other ones
@@ -477,8 +477,8 @@ void HommeDynamics::initialize_impl (const util::TimeStamp& /* t0 */)
       w_i(ie,nm1,igp,jgp,NVLI-1) = w_i(ie,n0,igp,jgp,NVLI-1);
       w_i(ie,np1,igp,jgp,NVLI-1) = w_i(ie,n0,igp,jgp,NVLI-1);
 
-      phinh_i(ie,nm1,igp,jgp,NVLI-1) = phinh_i(ie,n0,igp,jgp,NVLI-1)+50000000;
-      phinh_i(ie,np1,igp,jgp,NVLI-1) = phinh_i(ie,n0,igp,jgp,NVLI-1)+50000000;
+      phinh_i(ie,nm1,igp,jgp,NVLI-1) = phinh_i(ie,n0,igp,jgp,NVLI-1);
+      phinh_i(ie,np1,igp,jgp,NVLI-1) = phinh_i(ie,n0,igp,jgp,NVLI-1);
     });
 
     // Release the scratch mem

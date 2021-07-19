@@ -309,6 +309,8 @@ void ElementsState::pull_from_f90_pointers (CF90Ptr& state_v,         CF90Ptr& s
   HostViewUnmanaged<const Real *[NUM_TIME_LEVELS][NUM_PHYSICAL_LEV ]   [NP][NP]> state_dp3d_f90      (state_dp3d,m_num_elems);
   HostViewUnmanaged<const Real *[NUM_TIME_LEVELS]                      [NP][NP]> ps_v_f90            (state_ps_v,m_num_elems);
 
+  std::cout << "NUM_ELEMS: " << m_num_elems << "   " << NUM_TIME_LEVELS << "     " << NUM_PHYSICAL_LEV << std::endl;
+
   sync_to_device(state_v_f90,         m_v);
   sync_to_device(state_w_i_f90,       m_w_i);
   sync_to_device(state_vtheta_dp_f90, m_vtheta_dp);
