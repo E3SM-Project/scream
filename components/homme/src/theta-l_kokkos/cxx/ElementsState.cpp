@@ -332,9 +332,9 @@ void ElementsState::push_to_f90_pointers (F90Ptr& state_v, F90Ptr& state_w_i, F9
   HostViewUnmanaged<Real *[NUM_TIME_LEVELS][NUM_PHYSICAL_LEV ]   [NP][NP]> state_dp3d_f90      (state_dp3d,m_num_elems);
 
   std::cout << "REF2:" << m_phinh_i(0,0,0,0,0)[0] << std::endl;
-  for (i=0; i<m_num_elems; ++i) {
-    for (k=0;k<NUM_TIME_LEVELS; ++k) {
-      for (j=0; j<NUM_INTERFACE_LEV; ++j) {
+  for (int i=0; i<m_num_elems; ++i) {
+    for (int k=0;k<NUM_TIME_LEVELS; ++k) {
+      for (int j=0; j<NUM_INTERFACE_LEV; ++j) {
         std::cout << "REF2:" << m_phinh_i(i,k,j,0,0)[0] << std::endl;
       }
     }
