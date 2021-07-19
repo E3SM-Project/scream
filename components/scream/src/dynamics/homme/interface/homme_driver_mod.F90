@@ -113,7 +113,6 @@ contains
                                  elem_state_Qdp_ptr, elem_state_Q_ptr, elem_derived_omega_p_ptr)
     if (copy_phis) then
       ! Set phis=phi(bottom)
-      write(*,*) "COPY: ",elem_state_phis(1,1,1)
       elem_state_phis(:,:,:) = elem_state_phinh_i(:,:,nlevp,tl%n0,:)
       write(*,*) "COPY: ",elem_state_phis(1,1,1)
       write(*,*)
