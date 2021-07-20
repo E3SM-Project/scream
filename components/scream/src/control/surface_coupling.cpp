@@ -299,8 +299,6 @@ registration_ends (cpl_data_ptr_type cpl_imports_ptr,
 
 void SurfaceCoupling::do_import ()
 {
-  EKAT_ERROR_MSG("DO IMPORT");
-
   if (m_num_imports==0) {
     return;
   }
@@ -326,6 +324,8 @@ void SurfaceCoupling::do_import ()
     auto offset = icol*info.col_stride + info.col_offset;
     info.data[offset] = cpl_imports_view_d(icol,info.cpl_idx);
   });
+
+  EKAT_ERROR_MSG("DO IMPORT");
 }
 
 void SurfaceCoupling::do_export ()
