@@ -114,8 +114,6 @@ contains
     if (copy_phis) then
       ! Set phis=phi(bottom)
       elem_state_phis(:,:,:) = elem_state_phinh_i(:,:,nlevp,tl%n0,:)
-      write(*,*) "COPY: ",elem_state_phis(1,1,1)
-      write(*,*)
     endif
   end subroutine prim_copy_cxx_to_f90
 
