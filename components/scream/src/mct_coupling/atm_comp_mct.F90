@@ -53,7 +53,7 @@ CONTAINS
     use iso_c_binding,      only: c_ptr, c_loc, c_int, c_char
     use scream_f2c_mod,     only: scream_create_atm_instance, scream_setup_surface_coupling, &
                                   scream_init_atm
-    use scream_cpl_indices, only: scream_set_cpl_indices, num_exports, num_imports, &
+    use scream_cpl_indices, only: scream_set_cpl_indices, num_exports, num_cpl_imports, num_scream_imports, &
                                   scr_names_x2a, scr_names_a2x, index_x2a, index_a2x
     use ekat_string_utils,  only: string_f2c
 
@@ -151,7 +151,7 @@ CONTAINS
 
     ! Init surface coupling stuff in the AD
     call scream_set_cpl_indices (x2a, a2x)
-    call scream_setup_surface_coupling (c_loc(scr_names_x2a), c_loc(index_x2a), c_loc(x2a%rAttr), num_imports, &
+    call scream_setup_surface_coupling (c_loc(scr_names_x2a), c_loc(index_x2a), c_loc(x2a%rAttr), num_cpl_imports, num_scream_imports, &
                                         c_loc(scr_names_a2x), c_loc(index_a2x), c_loc(a2x%rAttr), num_exports)
 
     !----------------------------------------------------------------------------

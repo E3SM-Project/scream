@@ -6,13 +6,13 @@ module scream_cpl_indices
   private
 
   ! Focus only on the ones that scream imports/exports (subsets of x2a and a2x)
-  integer, parameter, public :: num_required_imports = 21
-  integer, parameter, public :: num_scream_imports   = 4
-  integer, parameter, public :: num_required_exports = 12
-  integer, parameter, public :: num_optional_imports = 0
-  integer, parameter, public :: num_optional_exports = 1
-  integer, parameter, public :: num_imports = num_required_imports + num_optional_imports
-  integer, parameter, public :: num_exports = num_required_exports + num_optional_exports
+  integer, parameter, public :: num_required_cpl_imports = 21
+  integer, parameter, public :: num_scream_imports       = 4
+  integer, parameter, public :: num_required_exports     = 12
+  integer, parameter, public :: num_optional_cpl_imports = 0
+  integer, parameter, public :: num_optional_exports     = 1
+  integer, parameter, public :: num_cpl_imports = num_required_cpl_imports + num_optional_cpl_imports
+  integer, parameter, public :: num_exports     = num_required_exports + num_optional_exports
 
   integer(kind=c_int), public, allocatable, target :: index_x2a(:)
   integer(kind=c_int), public, allocatable, target :: index_a2x(:)
@@ -41,13 +41,13 @@ contains
     !
     integer :: i,idx
 
-    allocate (index_x2a(num_imports))
+    allocate (index_x2a(num_cpl_imports))
     allocate (index_a2x(num_exports))
 
-    allocate (cpl_names_x2a(num_imports))
+    allocate (cpl_names_x2a(num_cpl_imports))
     allocate (cpl_names_a2x(num_exports))
 
-    allocate (scr_names_x2a(num_imports))
+    allocate (scr_names_x2a(num_cpl_imports))
     allocate (scr_names_a2x(num_exports))
 
     ! Determine attribute vector indices
@@ -92,9 +92,8 @@ contains
     cpl_names_x2a(20) = 'So_ustar'  ! Friction/shear velocity     [m/s]      (cam_in%ustar) [***UNUSED***]
     cpl_names_x2a(21) = 'So_re'     ! ???? (cam_in%re) [***UNUSED***]
 
-    ! Names used by scream for the input fields above. Some are unused
-    ! and others will be used by radiation (RRTMGP), but currently aren't
-    ! ready in that code.
+    ! Names used by scream for the input fields above.
+    ! Unused fields are marked and skipped during surface coupling.
     scr_names_x2a(1)  = 'surf_latent_flux'
     scr_names_x2a(2)  = 'surf_sens_flux'
     scr_names_x2a(3)  = 'unused'
@@ -180,11 +179,11 @@ contains
     scr_names_a2x(12) = 'set_zero'
     scr_names_a2x(13) = 'set_zero'
 
-    do i=1,num_required_imports
+    do i=1,num_required_cpl_imports
       index_x2a(i) = mct_avect_indexra(x2a,TRIM(cpl_names_x2a(i)))
       scr_names_x2a(i) = TRIM(scr_names_x2a(i)) // C_NULL_CHAR
     enddo
-    do i=num_required_imports+1,num_imports
+    do i=num_required_cpl_imports+1,num_cpl_imports
       index_x2a(i) = mct_avect_indexra(x2a,TRIM(cpl_names_x2a(i)),perrWith='quiet')
       scr_names_x2a(i) = TRIM(scr_names_x2a(i)) // C_NULL_CHAR
     enddo
