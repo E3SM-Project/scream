@@ -76,15 +76,17 @@ void Functions<S,D>
   bool log_qxpresent;
   const Int k_qxtop = find_top(team, sqr, qsmall, kbot, ktop, kdir, log_qxpresent);
 
+  //Skip all calculations if there's no rain to sediment
   if (log_qxpresent) {
     Scalar dt_left   = dt;  // time remaining for sedi over full model (mp) time step
-    Scalar prt_accum = 0.0; // precip rate for individual category
-
-    // find bottom
-    Int k_qxbot = find_bottom(team, sqr, qsmall, kbot, k_qxtop, kdir, log_qxpresent);
+    Scalar prt_accum = 0.0; // precip rate
 
     while (dt_left > C::dt_left_tol) {
       Scalar Co_max = 0.0;
+
+      // find bottom of rainy area. Occurs inside dt substep since rain advects down.
+      Int k_qxbot = find_bottom(team, sqr, qsmall, kbot, k_qxtop, kdir, log_qxpresent);
+      
       Int kmin, kmax;
       Int kmin_scalar = ( kdir == 1 ? k_qxbot : k_qxtop);
       Int kmax_scalar = ( kdir == 1 ? k_qxtop : k_qxbot);
