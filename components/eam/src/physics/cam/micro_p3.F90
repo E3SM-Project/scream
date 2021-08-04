@@ -3745,20 +3745,20 @@ subroutine rain_sedimentation(kts,kte,ktop,kbot,kdir,   &
       dt_left   = dt  !time remaining for sedi over full model (mp) time step
       prt_accum = 0._rtype  !precip rate for individual category
 
-      !find bottom
-      do k = kbot,k_qxtop,kdir
-         if (qr(k).ge.qsmall) then
-            k_qxbot = k
-            exit
-         endif
-      enddo
-
       substep_sedi_r: do while (dt_left.gt.1.e-4_rtype)
 
          Co_max = 0._rtype
          V_qr = 0._rtype
          V_nr = 0._rtype
 
+         !find bottom inside dt loop because kbot moves down as rain sediments.
+         do k = kbot,k_qxtop,kdir
+            if (qr(k).ge.qsmall) then
+               k_qxbot = k
+               exit
+            endif
+         enddo
+         
          kloop_sedi_r1: do k = k_qxtop,k_qxbot,-kdir
 
             qr_notsmall_r1: if (qr_incld(k)>qsmall) then
