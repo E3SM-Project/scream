@@ -74,90 +74,102 @@ void Functions<S,D>
   const auto sqr = scalarize(qr);
   constexpr Scalar qsmall = C::QSMALL;
   bool log_qxpresent;
-  const Int k_qxtop = find_top(team, sqr, qsmall, kbot, ktop, kdir, log_qxpresent);
+  Int k_qxtop = find_top(team, sqr, qsmall, kbot, ktop, kdir, log_qxpresent);
 
   //Skip all calculations if there's no rain to sediment
   if (log_qxpresent) {
     Scalar dt_left   = dt;  // time remaining for sedi over full model (mp) time step
     Scalar prt_accum = 0.0; // precip rate
 
+    // find bottom of rainy area. Note that generalized_sedimentation moves this layer
+    // down 1 level every substep as appropriate for explicit advection. So never need to
+    // call this fn again.
+    Int k_qxbot = find_bottom(team, sqr, qsmall, kbot, k_qxtop, kdir, log_qxpresent);
+    
     while (dt_left > C::dt_left_tol) {
       Scalar Co_max = 0.0;
 
-      // find bottom of rainy area. Occurs inside dt substep since rain advects down.
-      Int k_qxbot = find_bottom(team, sqr, qsmall, kbot, k_qxtop, kdir, log_qxpresent);
-      
-      Int kmin, kmax;
-      Int kmin_scalar = ( kdir == 1 ? k_qxbot : k_qxtop);
-      Int kmax_scalar = ( kdir == 1 ? k_qxtop : k_qxbot);
+      //Recompute k_qxtop every substep since may move down and there may not be
+      //any condensate left in the column at all!
+      k_qxtop = find_top(team, sqr, qsmall, kbot, ktop, kdir, log_qxpresent);
+      if (!log_qxpresent) {
+	dt_left = 0; //if no water left, just skip to end of timestep
 
-      Kokkos::parallel_for(
-       Kokkos::TeamThreadRange(team, V_qr.extent(0)), [&] (Int k) {
-        V_qr(k) = 0;
-        V_nr(k) = 0;
-      });
-      team.team_barrier();
+      } else {
+	Int kmin, kmax;
+	Int kmin_scalar = ( kdir == 1 ? k_qxbot : k_qxtop);
+	Int kmax_scalar = ( kdir == 1 ? k_qxtop : k_qxbot);
 
-      // Convert top/bot to pack indices
-      ekat::impl::set_min_max(k_qxbot, k_qxtop, kmin, kmax, Spack::n);
-
-      // compute Vq, Vn (get values from lookup table)
-      Kokkos::parallel_reduce(
-       Kokkos::TeamThreadRange(team, kmax-kmin+1), [&] (int pk_, Scalar& lmax) {
-
-        const int pk = kmin + pk_;
-        const auto range_pack = ekat::range<IntSmallPack>(pk*Spack::n);
-        const auto range_mask = range_pack >= kmin_scalar && range_pack <= kmax_scalar;
-        const auto qr_gt_small = range_mask && qr_incld(pk) > qsmall;
-        if (qr_gt_small.any()) {
-          compute_rain_fall_velocity(vn_table_vals, vm_table_vals,
-                                     qr_incld(pk), rhofacr(pk),
-                                     nr_incld(pk), mu_r(pk), lamr(pk),
-				     V_qr(pk), V_nr(pk), qr_gt_small);
-
-	  //in compute_rain_fall_velocity, get_rain_dsd2 keeps the drop-size
-	  //distribution within reasonable bounds by modifying nr_incld.
-	  //The next line maintains consistency between nr_incld and nr
-	  nr(pk).set(qr_gt_small, nr_incld(pk)*cld_frac_r(pk));
-
-        }
-        const auto Co_max_local = max(qr_gt_small, 0,
-                                      V_qr(pk) * dt_left * inv_dz(pk));
-        if (Co_max_local > lmax) lmax = Co_max_local;
-      }, Kokkos::Max<Scalar>(Co_max));
-      team.team_barrier();
-
-      generalized_sedimentation<2>(rho, inv_rho, inv_dz, team, nk, k_qxtop, k_qxbot, kbot, kdir, Co_max, dt_left, prt_accum, fluxes_ptr, vs_ptr, qnr_ptr);
-
-      //Update _incld values with end-of-step cell-ave values
-      //No prob w/ div by cld_frac_r because set to min of 1e-4 in interface.
-      Kokkos::parallel_for(
-        Kokkos::TeamThreadRange(team, qr.extent(0)), [&] (int pk) {
-	  qr_incld(pk)=qr(pk)/cld_frac_r(pk);
-	  nr_incld(pk)=nr(pk)/cld_frac_r(pk);
+	Kokkos::parallel_for(
+	Kokkos::TeamThreadRange(team, V_qr.extent(0)), [&] (Int k) {
+	  V_qr(k) = 0;
+	  V_nr(k) = 0;
 	});
+	team.team_barrier();
 
-      // AaronDonahue, precip_liq_flux output
-      kmin_scalar = ( kdir == 1 ? k_qxbot+1 : k_qxtop+1);
-      kmax_scalar = ( kdir == 1 ? k_qxtop+1 : k_qxbot+1);
-      ekat::impl::set_min_max(kmin_scalar, kmax_scalar, kmin, kmax, Spack::n);
-      Kokkos::parallel_for(
-       Kokkos::TeamThreadRange(team, kmax-kmin+1), [&] (int pk_) {
-        const int pk = kmin + pk_;
-        const auto range_pack = ekat::range<IntSmallPack>(pk*Spack::n);
-        const auto range_mask = range_pack >= kmin_scalar && range_pack <= kmax_scalar;
-        auto index_pack = range_pack-1;
-        const auto lt_zero = index_pack < 0;
-        index_pack.set(lt_zero, 0);
-        const auto flux_qx_pk = index(sflux_qx, index_pack);
-        precip_liq_flux(pk).set(range_mask, precip_liq_flux(pk) + flux_qx_pk);
-      });
-    }
-    Kokkos::single(
-     Kokkos::PerTeam(team), [&] () {
-      precip_liq_surf += prt_accum * C::INV_RHO_H2O * inv_dt;
-    });
-  }
+	// Convert top/bot to pack indices
+	ekat::impl::set_min_max(k_qxbot, k_qxtop, kmin, kmax, Spack::n);
+
+	// compute Vq, Vn (get values from lookup table)
+	Kokkos::parallel_reduce(
+          Kokkos::TeamThreadRange(team, kmax-kmin+1), [&] (int pk_, Scalar& lmax) {
+
+	    const int pk = kmin + pk_;
+	    const auto range_pack = ekat::range<IntSmallPack>(pk*Spack::n);
+	    const auto range_mask = range_pack >= kmin_scalar && range_pack <= kmax_scalar;
+	    const auto qr_gt_small = range_mask && qr_incld(pk) > qsmall;
+	    if (qr_gt_small.any()) {
+	      compute_rain_fall_velocity(vn_table_vals, vm_table_vals,
+					 qr_incld(pk), rhofacr(pk),
+					 nr_incld(pk), mu_r(pk), lamr(pk),
+					 V_qr(pk), V_nr(pk), qr_gt_small);
+
+	      //in compute_rain_fall_velocity, get_rain_dsd2 keeps the drop-size
+	      //distribution within reasonable bounds by modifying nr_incld.
+	      //The next line maintains consistency between nr_incld and nr
+	      nr(pk).set(qr_gt_small, nr_incld(pk)*cld_frac_r(pk));
+
+	    } //end "if any qr local to team > qsmall"
+	    const auto Co_max_local = max(qr_gt_small, 0,
+					  V_qr(pk) * dt_left * inv_dz(pk));
+	    if (Co_max_local > lmax) lmax = Co_max_local;
+	  }, Kokkos::Max<Scalar>(Co_max));
+	team.team_barrier();
+
+	generalized_sedimentation<2>(rho, inv_rho, inv_dz, team, nk, k_qxtop, k_qxbot, kbot,
+				     kdir, Co_max, dt_left, prt_accum, fluxes_ptr, vs_ptr, qnr_ptr);
+
+	//Update _incld values with end-of-step cell-ave values
+	//No prob w/ div by cld_frac_r because set to min of 1e-4 in interface.
+	Kokkos::parallel_for(
+          Kokkos::TeamThreadRange(team, qr.extent(0)), [&] (int pk) {
+	    qr_incld(pk)=qr(pk)/cld_frac_r(pk);
+	    nr_incld(pk)=nr(pk)/cld_frac_r(pk);
+	  });
+
+	//PMC this next code seems wasteful/unneeded???
+	// AaronDonahue, precip_liq_flux output
+	kmin_scalar = ( kdir == 1 ? k_qxbot+1 : k_qxtop+1);
+	kmax_scalar = ( kdir == 1 ? k_qxtop+1 : k_qxbot+1);
+	ekat::impl::set_min_max(kmin_scalar, kmax_scalar, kmin, kmax, Spack::n);
+	Kokkos::parallel_for(
+	  Kokkos::TeamThreadRange(team, kmax-kmin+1), [&] (int pk_) {
+	    const int pk = kmin + pk_;
+	    const auto range_pack = ekat::range<IntSmallPack>(pk*Spack::n);
+	    const auto range_mask = range_pack >= kmin_scalar && range_pack <= kmax_scalar;
+	    auto index_pack = range_pack-1;
+	    const auto lt_zero = index_pack < 0;
+	    index_pack.set(lt_zero, 0);
+	    const auto flux_qx_pk = index(sflux_qx, index_pack);
+	    precip_liq_flux(pk).set(range_mask, precip_liq_flux(pk) + flux_qx_pk);
+	  });
+	Kokkos::single(
+	   Kokkos::PerTeam(team), [&] () {
+	     precip_liq_surf += prt_accum * C::INV_RHO_H2O * inv_dt;
+	   });
+      } //end if log_qxpresent
+    } //end while dt_left>0
+  } //end if(log_qxpresent)
 
   Kokkos::parallel_for(
    Kokkos::TeamThreadRange(team, qr_tend.extent(0)), [&] (int pk) {
