@@ -37,25 +37,16 @@ set (BUILD_HOMME_THETA_KOKKOS ON CACHE BOOL "")
 # Note: if/when Homme will rely on EKAT for kokkos, you can get rid of this
 set (E3SM_INTERNAL_KOKKOS_ALREADY_BUILT TRUE)
 
-# Note: we need scream's fp model to superseed homme's one. So we append our
-# current compiler flags to homme's flags
-set (TEMP_C_FLAGS ${CMAKE_C_FLAGS})
-set (TEMP_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-set (TEMP_F_FLAGS ${CMAKE_Fortran_FLAGS})
-set (CMAKE_C_FLAGS)
-set (CMAKE_CXX_FLAGS)
-set (CMAKE_Fortran_FLAGS)
-
 # Make Homme use the same pack size that scream does
 set (HOMMEXX_VECTOR_SIZE ${SCREAM_PACK_SIZE} CACHE STRING "")
 
 # configure Homme folder
 add_subdirectory(${HOMME_SOURCE_DIR} ${HOMME_BINARY_DIR})
 
-# *APPEND* scream flags to homme flags
-set (HOMME_C_FLAGS       ${HOMME_C_FLAGS} ${TEMP_C_FLAGS})
-set (HOMME_CXX_FLAGS     ${HOMME_CXX_FLAGS} ${TEMP_CXX_FLAGS})
-set (HOMME_Fortran_FLAGS ${HOMME_Fortran_FLAGS} ${TEMP_F_FLAGS})
+# Use same flags as SCREAM
+set (HOMME_C_FLAGS       ${CMAKE_C_FLAGS})
+set (HOMME_CXX_FLAGS     ${CMAKE_CXX_FLAGS})
+set (HOMME_Fortran_FLAGS ${CMAKE_Fortran_FLAGS})
 
 # A bunch of string manipulation to get homme compiler/link flags correctly
 # forwarded to our libs. Here are the takeaways:
