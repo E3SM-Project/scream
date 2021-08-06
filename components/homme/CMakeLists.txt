@@ -15,6 +15,8 @@ IF (NOT DEFINED PROJECT_NAME)
   # By default, build executables/tests, and do not build 'library-style' targets
   OPTION (HOMME_BUILD_EXECS "Whether Homme should build executables and tests." ON)
   OPTION (HOMME_BUILD_LIBS  "Whether Homme should build a library for each dycore target." OFF)
+
+  SET(HOMME_STANDALONE TRUE)
 ELSE ()
   # Manually enable languages, in case they were not enabled by host project
   ENABLE_LANGUAGE(C)
@@ -23,6 +25,8 @@ ELSE ()
   # By default, do not build executables/tests, and build 'library-style' targets
   OPTION (HOMME_BUILD_EXECS "Whether Homme should build executables and tests." OFF)
   OPTION (HOMME_BUILD_LIBS  "Whether Homme should build a library for each dycore target." ON)
+
+  SET(HOMME_STANDALONE FALSE)
 ENDIF ()
 
 INCLUDE(FortranCInterface)
@@ -159,11 +163,14 @@ IF (HOMME_ENABLE_COMPOSE)
   SET (HOMME_USE_KOKKOS TRUE)
 ENDIF ()
 
-IF (HOMME_USE_CXX)
-  MESSAGE(STATUS "This configuration of HOMME requires a C++ compiler")
-  ENABLE_LANGUAGE(CXX)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-ENDIF ()
+IF (HOMME_STANDALONE)
+  # Homme needs to setup its own flags
+  IF (HOMME_USE_CXX)
+    MESSAGE(STATUS "This configuration of HOMME requires a C++ compiler")
+    ENABLE_LANGUAGE(CXX)
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+  ENDIF ()
+ENDIF( )
 
 # Option to use ARKode package from SUNDIALS
 OPTION(HOMME_USE_ARKODE "Use ARKode package from SUNDIALS" FALSE)
@@ -208,8 +215,10 @@ ENDIF()
 ##############################################################################
 # Compiler options set in cmake/SetCompiler.cmake
 ##############################################################################
-INCLUDE(${HOMME_SOURCE_DIR}/cmake/SetCompilerFlags.cmake)
-
+IF (HOMME_STANDALONE)
+  # Homme needs to setup its own flags
+  INCLUDE(${HOMME_SOURCE_DIR}/cmake/SetCompilerFlags.cmake)
+ENDIF()
 
 OPTION(HOMME_USE_MKL "Whether to use Intel's MKL instead of blas/lapack" FALSE)
 IF(${HOMME_USE_MKL})
@@ -469,14 +478,6 @@ ADD_CUSTOM_TARGET(clean-all
    COMMAND ${CMAKE_BUILD_TOOL} clean
    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/clean-cmake-files.cmake"
 )
-
-IF (NOT "${PROJECT_NAME}" STREQUAL "HOMME")
-  # Homme is used as a subproject. We need to make the compiler options available to the outside
-  SET (HOMME_C_FLAGS ${CMAKE_C_FLAGS} PARENT_SCOPE)
-  SET (HOMME_CXX_FLAGS ${CMAKE_CXX_FLAGS} PARENT_SCOPE)
-  SET (HOMME_Fortran_FLAGS ${CMAKE_Fortran_FLAGS} PARENT_SCOPE)
-  SET (HOMME_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} PARENT_SCOPE)
-ENDIF ()
 
 IF (${HOMME_USE_KOKKOS})
   # Put this last so that tribits.cmake's 'check' target doesn't conflict with
