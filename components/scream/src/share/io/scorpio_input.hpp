@@ -81,11 +81,25 @@ class AtmosphereInput
 {
 public:
   using dofs_list_type = AbstractGrid::dofs_list_type;
+  using grid_type      = AbstractGrid;
+  using grid_ptr_type  = std::shared_ptr<const grid_type>;
   template<int N>
   using view_ND_host = typename KokkosTypes<DefaultDevice>::template view_ND<Real,N>::HostMirror;
   using view_1d_host = view_ND_host<1>;
 
   // --- Constructor(s) & Destructor --- //
+  AtmosphereInput (const ekat::Comm& comm, const ekat::ParameterList& params,
+                   const std::shared_ptr<const FieldManager<Real>>& field_mgr,
+                   const grid_ptr_type& grid)
+    : m_params    (params)
+    , m_comm      (comm)
+    , m_field_mgr (field_mgr)
+    , m_grid      (grid)
+    , m_grid_set  (true)
+  {
+    // Nothing to do here
+  }
+
   AtmosphereInput (const ekat::Comm& comm, const ekat::ParameterList& params,
                    const std::shared_ptr<const FieldManager<Real>>& field_mgr,
                    const std::shared_ptr<const GridsManager>& grid_mgr)
@@ -106,6 +120,16 @@ public:
     // Nothing to do here
   }
 
+  AtmosphereInput (const ekat::Comm& comm, const std:: string grid_name,
+                   const grid_ptr_type& grid)
+    : m_comm      (comm)
+    , m_grid      (grid)
+    , m_grid_name (grid_name)
+    , m_grid_set  (true)
+  {
+    // Nothing to do here
+  }
+
   virtual ~AtmosphereInput () = default;
 
   // --- Methods --- //
@@ -122,7 +146,7 @@ public:
   void pull_input (const std::string& filename, const std::string& var_name,
                    const std::vector<std::string>& var_dims,
                    const bool has_columns, const std::vector<int>& dim_lens,
-                   const int padding, Real* data);
+                   const int padding, const grid_ptr_type& grid, Real* data);
 
   // Determine padding from the type of the variable.
   template<typename ValueType>
@@ -136,7 +160,12 @@ public:
     const int padding = ekat::PackInfo<pack_size>::padding(dim_lens.back());
     // Make sure to pass the data as a Real pointer.
     auto data_real = reinterpret_cast<Real*>(data);
-    pull_input(filename, var_name, var_dims, has_columns, dim_lens, padding, data_real);
+    if (m_grid_set) {
+      pull_input(filename, var_name, var_dims, has_columns, dim_lens, padding, m_grid, data_real);
+    } else {
+      auto grid = m_grid_mgr->get_grid(m_grid_name);
+      pull_input(filename, var_name, var_dims, has_columns, dim_lens, padding, grid, data_real);
+    }
   }
 
   void init();
@@ -158,6 +187,8 @@ protected:
 
   std::shared_ptr<const FieldManager<Real>>   m_field_mgr;
   std::shared_ptr<const GridsManager>         m_grid_mgr;
+  grid_ptr_type                               m_grid;
+  bool                                        m_grid_set = false;
   
   std::string m_filename;
   std::string m_avg_type;

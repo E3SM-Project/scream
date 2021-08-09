@@ -119,7 +119,7 @@ TEST_CASE("input_output_basic","io")
   auto max_params = get_in_params("Max",io_comm);
   Real tol = pow(10,-6);
   // Check instant output
-  input_type ins_input(io_comm,ins_params,field_manager,grid_man);
+  input_type ins_input(io_comm,ins_params,field_manager,grid);
   ins_input.pull_input();
   auto f1 = field_manager->get_field("field_1");
   auto f2 = field_manager->get_field("field_2");

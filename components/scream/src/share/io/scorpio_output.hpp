@@ -85,12 +85,39 @@ class AtmosphereOutput
 {
 public:
   using dofs_list_type = AbstractGrid::dofs_list_type;
+  using grid_type      = AbstractGrid;
+  using grid_ptr_type  = std::shared_ptr<const grid_type>;
   using view_1d_host = typename KokkosTypes<HostDevice>::view_1d<Real>;
   using input_type     = AtmosphereInput;
 
   virtual ~AtmosphereOutput () = default;
 
   // Constructor
+  AtmosphereOutput(const ekat::Comm& comm, const ekat::ParameterList& params, 
+                   const std::shared_ptr<const FieldManager<Real>>& field_mgr,
+                   const grid_ptr_type& grid)
+  {
+    m_comm      = comm;
+    m_params    = params;
+    m_field_mgr = field_mgr;
+    m_grid      = grid;
+    m_grid_set  = true;
+    m_read_restart_hist = false;
+  }
+  // Constructor
+  AtmosphereOutput(const ekat::Comm& comm, const ekat::ParameterList& params, 
+                   const std::shared_ptr<const FieldManager<Real>>& field_mgr,
+                   const grid_ptr_type& grid,
+                   const bool read_restart_hist)
+  {
+    m_comm      = comm;
+    m_params    = params;
+    m_field_mgr = field_mgr;
+    m_grid      = grid;
+    m_grid_set  = true;
+    m_read_restart_hist = read_restart_hist;
+  }
+
   AtmosphereOutput(const ekat::Comm& comm, const ekat::ParameterList& params, 
                    const std::shared_ptr<const FieldManager<Real>>& field_mgr,
                    const std::shared_ptr<const GridsManager>& grid_mgr)
@@ -140,6 +167,8 @@ protected:
   ekat::Comm                                  m_comm;
   std::shared_ptr<const FieldManager<Real>>   m_field_mgr;
   std::shared_ptr<const GridsManager>         m_grid_mgr;
+  grid_ptr_type                               m_grid;
+  bool                                        m_grid_set = false;
   
   // Main output control data
   std::string m_casename;

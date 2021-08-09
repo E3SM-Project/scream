@@ -13,7 +13,7 @@ void AtmosphereOutput::init()
   // Parse the parameters that controls this output instance.
   // See the comments at the top for more details.
   m_casename        = m_params.get<std::string>("FILENAME");
-  m_grid_name       = m_params.get<std::string>("GRID","Physics");  // optional, default to Physics.
+  m_grid_name       = m_params.get<std::string>("GRID","Physics");  // optional, default to Physics., TODO: I don't think this is used anymore.
   auto& freq_params = m_params.sublist("FREQUENCY");
   m_out_max_steps   = freq_params.get<Int>("OUT_MAX_STEPS");
   m_out_frequency   = freq_params.get<Int>("OUT_N");
@@ -30,8 +30,14 @@ void AtmosphereOutput::init()
       "       Possible choices: Instant, Average, Max, Min.\n");
 
   // Gather data from grid manager:  In particular the global ids for columns assigned to this MPI rank
-  EKAT_REQUIRE_MSG(m_grid_name=="Physics" || m_grid_name=="Physics GLL","Error with output grid! scorpio_output.hpp class only supports output on a Physics or Physics GLL grid for now.\n");
-  auto gids_dev = m_grid_mgr->get_grid(m_grid_name)->get_dofs_gids();
+  using namespace ShortFieldTagsNames;
+  if (!m_grid_set) {
+    m_grid = m_grid_mgr->get_grid(m_grid_name);
+    m_grid_set = true;
+  }
+  EKAT_REQUIRE_MSG(m_grid->get_2d_scalar_layout().tags().front()==COL,
+      "Error with input grid! scorpio_input.hpp class only supports input on a Physics based grid for now.\n");
+  auto gids_dev = m_grid->get_dofs_gids();
   m_gids_host = Kokkos::create_mirror_view( gids_dev );
   Kokkos::deep_copy(m_gids_host,gids_dev); 
   // Note, only the total number of columns is distributed over MPI ranks, need to sum over all procs this size to properly register COL dimension.
@@ -87,7 +93,7 @@ void AtmosphereOutput::init()
       f_list.set<std::string>("field "+std::to_string(fcnt),name);
       fcnt+=1;
     }
-    input_type rhist_in(m_comm,res_params,m_field_mgr,m_grid_mgr);
+    input_type rhist_in(m_comm,res_params,m_field_mgr,m_grid);
     rhist_in.init();
     for (auto name : m_fields)
     {

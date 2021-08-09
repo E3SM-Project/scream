@@ -18,7 +18,7 @@ void AtmosphereInput::
 pull_input(const std::string& filename, const std::string& var_name,
            const std::vector<std::string>& var_dims,
            const bool has_columns, const std::vector<int>& dim_lens,
-           const int padding, Real* data)
+           const int padding, const grid_ptr_type& grid, Real* data)
 {
   using namespace scream::scorpio;
   
@@ -125,11 +125,20 @@ void AtmosphereInput::init()
   }
 
   // Check setup against information from grid manager:
-  auto grid = m_grid_mgr->get_grid(m_grid_name);
-  EKAT_REQUIRE_MSG(grid->get_2d_scalar_layout().tags().front()==COL,
-      "Error with input grid! scorpio_input.hpp class only supports input on a Physics grid for now.\n");
+  if (!m_grid_set) {
+    m_grid = m_grid_mgr->get_grid(m_grid_name);
+    m_grid_set = true;
+  }
+  if (!m_grid_set) {
+  EKAT_REQUIRE_MSG(m_grid->get_2d_scalar_layout().tags().front()==COL,
+      "Error with input grid! scorpio_input.hpp class only supports input on a Physics based grid for now.\n");
+    m_grid = m_grid_mgr->get_grid(m_grid_name);
+    m_grid_set = true;
+  }
+  EKAT_REQUIRE_MSG(m_grid->get_2d_scalar_layout().tags().front()==COL,
+      "Error with input grid! scorpio_input.hpp class only supports input on a Physics based grid for now.\n");
 
-  auto gids_dev = grid->get_dofs_gids();
+  auto gids_dev = m_grid->get_dofs_gids();
   m_gids_host = Kokkos::create_mirror_view( gids_dev );
   Kokkos::deep_copy(m_gids_host,gids_dev); 
 

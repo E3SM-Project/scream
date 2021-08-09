@@ -110,12 +110,12 @@ protected:
   ekat::Comm                                   atm_comm;
   ekat::Comm                                   pio_comm; 
   ekat::ParameterList                          m_params;
-  std::shared_ptr<const FieldManager<Real>> m_device_field_manager;
+  std::shared_ptr<const FieldManager<Real>>    m_device_field_manager;
   std::shared_ptr<const GridsManager>          m_grids_manager;
 
   bool                                 param_set = false;
   bool                                 gm_set    = false;
-  bool                                 fm_set  = false;
+  bool                                 fm_set    = false;
   bool                        m_runtype_restart  = false;
 
 }; // class OutputManager
@@ -126,14 +126,18 @@ protected:
  * stream.  See scorpio_output.hpp for more information on what the parameter list needs.         */
 inline void OutputManager::new_output(const ekat::ParameterList& params)
 {
-  auto output_instance = std::make_shared<output_type>(pio_comm,params,m_device_field_manager,m_grids_manager,m_runtype_restart);
+  auto grid_name = params.get<std::string>("GRID");
+  auto grid = m_grids_manager->get_grid(grid_name);
+  auto output_instance = std::make_shared<output_type>(pio_comm,params,m_device_field_manager,grid,m_runtype_restart);
   output_instance->init();
   m_output_streams.push_back(output_instance);
 }
 /* --------------------------------------------------------------------- */
 inline void OutputManager::new_output(const ekat::ParameterList& params, const bool runtype_restart)
 {
-  auto output_instance = std::make_shared<output_type>(pio_comm,params,m_device_field_manager,m_grids_manager,runtype_restart);
+  auto grid_name = params.get<std::string>("GRID");
+  auto grid = m_grids_manager->get_grid(grid_name);
+  auto output_instance = std::make_shared<output_type>(pio_comm,params,m_device_field_manager,grid,runtype_restart);
   output_instance->init();
   m_output_streams.push_back(output_instance);
 }
@@ -152,7 +156,7 @@ inline void OutputManager::init()
   // Make sure params, fm and grids manager are already set
   EKAT_REQUIRE_MSG(param_set,"Error! Output manager requires a parameter list to be set before initialization");
   EKAT_REQUIRE_MSG(gm_set,   "Error! Output manager requires a grids manager to be set before initialization");
-  EKAT_REQUIRE_MSG(fm_set, "Error! Output manager requires a field fm to be set before initialization");
+  EKAT_REQUIRE_MSG(fm_set,   "Error! Output manager requires a field fm to be set before initialization");
   // First parse the param list for output.
   // Starting with the stride.  NOTE: Only a stride of 1 is supported right now.  TODO: Allow for stride of any value.
   Int stride = m_params.get<Int>("PIO Stride",1);
