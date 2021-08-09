@@ -146,8 +146,6 @@ TEST_CASE("restart","io")
     for (Int jj=0;jj<num_levs;++jj) {
       REQUIRE(std::abs(field2_hst(jj)   -((jj+1)/10.+15))<tol);
       REQUIRE(std::abs(field3_hst(ii,jj)-((jj+1)/10.+ii))<tol);  //Note, field 3 is not restarted, so doesn't have the +15
-      std::cout << "f  : " << field4_hst(ii,0,jj) << "\n";
-      std::cout << "tgt: " << ((jj+1)/10.+ii+15) << "\n";
       REQUIRE(std::abs(field4_hst(ii,0,jj)-((jj+1)/10.+ii+15))<tol);
       REQUIRE(std::abs(field4_hst(ii,1,jj)-(-((jj+1)/10.+ii)+15))<tol);
     }
