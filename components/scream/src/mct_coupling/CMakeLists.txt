@@ -34,7 +34,6 @@ set(ATM_SRC
 set (SCREAM_LIBS
      scream_share
      scream_control
-     scream_io
      ${dynLibName}
      p3
      shoc
