@@ -198,6 +198,13 @@ struct FieldRequest {
   FieldIdentifier           fid;
   int                       pack_size;
   std::list<std::string>    groups;
+
+  // Helper functions
+  void add_group(const std::string& grp_name) {
+    if ((std::find(groups.begin(), groups.end(), grp_name) == groups.end())) {
+      groups.push_back(grp_name);
+    }
+  }
 };
 
 // In order to use FieldRequest in std sorted containers (like std::set),

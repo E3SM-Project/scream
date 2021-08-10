@@ -68,7 +68,7 @@ void SHOCMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids
   add_field<Required>("surf_u_mom_flux",  scalar2d_layout_col, N/(m*m), grid_name, ps);
   add_field<Required>("surf_v_mom_flux",  scalar2d_layout_col, N/(m*m), grid_name, ps);
 
-  add_field<Updated> ("T_mid",            scalar3d_layout_mid, K,       grid_name, ps);
+  add_field<Updated> ("T_mid",            scalar3d_layout_mid, K,       grid_name, "restart", ps);
   add_field<Updated> ("qv",               scalar3d_layout_mid, Qunit,   grid_name, "tracers", ps);
 
   // Input variables

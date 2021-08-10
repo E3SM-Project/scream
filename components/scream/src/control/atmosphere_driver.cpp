@@ -129,10 +129,23 @@ void AtmosphereDriver::create_fields()
     auto grid = it.second;
     m_field_mgrs[grid->name()] = std::make_shared<field_mgr_type>(grid);
     m_field_mgrs[grid->name()]->registration_begins();
+    // check that restart is a group registered with the field manager
+    const auto& has_restart = m_field_mgrs[grid->name()]->has_group("restart");
+    if (!has_restart) {
+      const auto& grid_name = grid->name();
+      std::string grp_name = "restart";
+      GroupRequest restart_grp(grp_name,grid_name,Bundling::NotNeeded);
+      m_field_mgrs[grid->name()]->register_group(restart_grp);
+    }
   }
 
   // Register required/computed fields
-  for (const auto& req : m_atm_process_group->get_required_fields()) {
+  // Make sure all required fields are in the "restart" group
+  for (auto req : m_atm_process_group->get_required_fields()) {
+    // Make sure the "restart" group is registered with this field
+    const std::string& grp_name = "restart";
+    req.add_group(grp_name);
+    // Now register field
     m_field_mgrs.at(req.fid.get_grid_name())->register_field(req);
   }
   for (const auto& req : m_atm_process_group->get_computed_fields()) {

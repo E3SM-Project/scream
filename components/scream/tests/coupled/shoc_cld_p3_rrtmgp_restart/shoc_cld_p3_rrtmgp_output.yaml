@@ -1,0 +1,24 @@
+%YAML 1.1
+---
+FILENAME: shoc_cld_p3_rrtmgp_run1
+AVERAGING TYPE: Instant
+GRID: Physics
+FREQUENCY:
+  OUT_N: 5
+  OUT_OPTION: Steps
+  OUT_MAX_STEPS: 1
+FIELDS:
+  Number of Fields: 12
+  field 1: T_mid
+  field 2: qc
+  field 3: qv
+  field 4: tke
+  field 5: pbl_height
+  field 6: qi
+  field 7: qm
+  field 8: qr
+  field 9: nc
+  field 10: nr
+  field 11: ni
+  field 12: bm
+...
