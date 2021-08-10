@@ -58,21 +58,6 @@ public:
   std::map<std::string,const_field_type> m_rrtmgp_fields_in;
   std::map<std::string,field_type>       m_rrtmgp_fields_out;
 
-  template<typename T>
-  using view_type = field_type::view_type<T*>;
-
-  template<typename T>
-  using host_view_type = field_type::get_view_type<view_type<T>,Host>;
-
-  using host_view_in_type   = host_view_type<const_field_type::RT>;
-  using host_view_out_type  = host_view_type<      field_type::RT>;
-  std::map<std::string,host_view_in_type>   m_rrtmgp_host_views_in;
-  std::map<std::string,host_view_out_type>  m_rrtmgp_host_views_out;
-
-
-  std::map<std::string,const Real*>  m_raw_ptrs_in;
-  std::map<std::string,Real*>        m_raw_ptrs_out;
-
   util::TimeStamp m_current_ts;
   ekat::Comm            m_rrtmgp_comm;
   ekat::ParameterList   m_rrtmgp_params;
@@ -96,15 +81,17 @@ public:
 
   // Structure for storing local variables initialized using the ATMBufferManager
   struct Buffer {
-    static constexpr int num_1d_ncol        = 1;
-    static constexpr int num_1d_string_ngas = 1;
+    static constexpr int num_1d_ncol        = 5;
     static constexpr int num_2d_nlay        = 14;
     static constexpr int num_2d_nlay_p1     = 7;
     static constexpr int num_2d_nswbands    = 2;
-    static constexpr int num_3d_ngas        = 1;
 
     // 1d size (ncol)
     real1d mu0;
+    real1d sfc_alb_dir_vis;
+    real1d sfc_alb_dir_nir;
+    real1d sfc_alb_dif_vis;
+    real1d sfc_alb_dif_nir;
 
     // 2d size (ncol, nlay)
     real2d p_lay;
@@ -134,9 +121,6 @@ public:
     // 2d size (ncol, nswbands)
     real2d sfc_alb_dir;
     real2d sfc_alb_dif;
-
-    // 3d size (ncol, nlay, ngas)
-    real3d gas_vmr;
   };
 
 protected:
