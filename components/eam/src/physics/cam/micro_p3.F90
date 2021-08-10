@@ -3745,53 +3745,69 @@ subroutine rain_sedimentation(kts,kte,ktop,kbot,kdir,   &
       dt_left   = dt  !time remaining for sedi over full model (mp) time step
       prt_accum = 0._rtype  !precip rate for individual category
 
+      !find bottom. Note that generalized_sedimentation moves k_qxbot down 1
+      !level every time it is called (as appropriate for an explicit advection
+      !scheme. Thus bottom is accurately defined for the rest of this scheme.
+      do k = kbot,k_qxtop,kdir
+         if (qr(k).ge.qsmall) then
+            k_qxbot = k
+            exit
+         endif
+      enddo
+
       substep_sedi_r: do while (dt_left.gt.1.e-4_rtype)
 
          Co_max = 0._rtype
          V_qr = 0._rtype
          V_nr = 0._rtype
 
-         !find bottom inside dt loop because kbot moves down as rain sediments.
-         do k = kbot,k_qxtop,kdir
+         !Recompute k_qxtop every substep since it sediments downward, potentially
+         !resulting in a cloud-free column which would cause crashes if not handled
+         do k = ktop,kbot,-kdir
             if (qr(k).ge.qsmall) then
-               k_qxbot = k
+               log_qxpresent = .true.
+               k_qxtop = k
                exit
-            endif
-         enddo
-         
-         kloop_sedi_r1: do k = k_qxtop,k_qxbot,-kdir
-
-            qr_notsmall_r1: if (qr_incld(k)>qsmall) then
-
-               call compute_rain_fall_velocity(qr_incld(k), rhofacr(k), nr_incld(k), &
-                    mu_r(k), lamr(k), V_qr(k), V_nr(k))
-
-               !in compute_rain_fall_velocity, get_rain_dsd2 keeps the drop-size
-               !distribution within reasonable bounds by modifying nr_incld.
-               !The next line maintains consistency between nr_incld and nr.
-               nr(k) = nr_incld(k)*cld_frac_r(k)
-
-            endif qr_notsmall_r1
-
-            Co_max = max(Co_max, V_qr(k)*dt_left*inv_dz(k))
-            !            Co_max = max(Co_max, max(V_nr(k),V_qr(k))*dt_left*inv_dz(i,k))
-
-         enddo kloop_sedi_r1
-
-         call generalized_sedimentation(kts, kte, kdir, k_qxtop, k_qxbot, kbot, Co_max, dt_left, &
-              prt_accum, inv_dz, inv_rho, rho, num_arrays, vs, fluxes, qnr)
-
-         !-- AaronDonahue, precip_liq_flux output
-         do k = k_qxbot,k_qxtop,kdir
-            precip_liq_flux(k+1) = precip_liq_flux(k+1) + flux_qx(k) ! AaronDonahue
+            endif !
          enddo
 
-         !Update _incld values with end-of-step cell-ave values
-         !Note that cld_frac_r is set in interface to have min of mincld=1e-4
-         !so dividing by it is fine.
-         qr_incld(:) = qr(:)/cld_frac_r(:)
-         nr_incld(:) = nr(:)/cld_frac_r(:)
+         if (.not. log_qxpresent) then
+            dt_left = 0._rtype
+         else
+            kloop_sedi_r1: do k = k_qxtop,k_qxbot,-kdir
 
+               qr_notsmall_r1: if (qr_incld(k)>qsmall) then
+
+                  call compute_rain_fall_velocity(qr_incld(k), rhofacr(k), nr_incld(k), &
+                       mu_r(k), lamr(k), V_qr(k), V_nr(k))
+
+                  !in compute_rain_fall_velocity, get_rain_dsd2 keeps the drop-size
+                  !distribution within reasonable bounds by modifying nr_incld.
+                  !The next line maintains consistency between nr_incld and nr.
+                  nr(k) = nr_incld(k)*cld_frac_r(k)
+
+               endif qr_notsmall_r1
+
+               Co_max = max(Co_max, V_qr(k)*dt_left*inv_dz(k))
+               !            Co_max = max(Co_max, max(V_nr(k),V_qr(k))*dt_left*inv_dz(i,k))
+
+            enddo kloop_sedi_r1
+
+            call generalized_sedimentation(kts, kte, kdir, k_qxtop, k_qxbot, kbot, Co_max, dt_left, &
+                 prt_accum, inv_dz, inv_rho, rho, num_arrays, vs, fluxes, qnr)
+
+            !-- AaronDonahue, precip_liq_flux output
+            do k = k_qxbot,k_qxtop,kdir
+               precip_liq_flux(k+1) = precip_liq_flux(k+1) + flux_qx(k) ! AaronDonahue
+            enddo
+
+            !Update _incld values with end-of-step cell-ave values
+            !Note that cld_frac_r is set in interface to have min of mincld=1e-4
+            !so dividing by it is fine.
+            qr_incld(:) = qr(:)/cld_frac_r(:)
+            nr_incld(:) = nr(:)/cld_frac_r(:)
+
+         end if !log_qxpresent inside dt_left loop
       enddo substep_sedi_r
 
       precip_liq_surf = precip_liq_surf + prt_accum*inv_rho_h2o*inv_dt
