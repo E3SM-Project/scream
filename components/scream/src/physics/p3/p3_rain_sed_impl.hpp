@@ -89,8 +89,8 @@ void Functions<S,D>
     while (dt_left > C::dt_left_tol) {
       Scalar Co_max = 0.0;
 
-      //Recompute k_qxtop every substep since may move down and there may not be
-      //any condensate left in the column at all!
+      //Recompute k_qxtop every substep since it sediments downward, potentially
+      //resulting in a cloud-free column which would cause crashes if not handled
       k_qxtop = find_top(team, sqr, qsmall, kbot, ktop, kdir, log_qxpresent);
       if (!log_qxpresent) {
 	dt_left = 0; //if no water left, just skip to end of timestep
