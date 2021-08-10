@@ -147,11 +147,12 @@ void Functions<S,D>
 	    nr_incld(pk)=nr(pk)/cld_frac_r(pk);
 	  });
 
-	//PMC this next code seems wasteful/unneeded???
+	//PMC recalculating kmin and kmax seems unnecessary. Run test to confirm. 
 	// AaronDonahue, precip_liq_flux output
 	kmin_scalar = ( kdir == 1 ? k_qxbot+1 : k_qxtop+1);
 	kmax_scalar = ( kdir == 1 ? k_qxtop+1 : k_qxbot+1);
 	ekat::impl::set_min_max(kmin_scalar, kmax_scalar, kmin, kmax, Spack::n);
+
 	Kokkos::parallel_for(
 	  Kokkos::TeamThreadRange(team, kmax-kmin+1), [&] (int pk_) {
 	    const int pk = kmin + pk_;
@@ -163,12 +164,15 @@ void Functions<S,D>
 	    const auto flux_qx_pk = index(sflux_qx, index_pack);
 	    precip_liq_flux(pk).set(range_mask, precip_liq_flux(pk) + flux_qx_pk);
 	  });
-	Kokkos::single(
-	   Kokkos::PerTeam(team), [&] () {
-	     precip_liq_surf += prt_accum * C::INV_RHO_H2O * inv_dt;
-	   });
       } //end if log_qxpresent
     } //end while dt_left>0
+
+    //prt_accum is surf precip in kg/kg. Convert to mm/sec.
+    //Use += to sum both cld sed and rain sed.
+    Kokkos::single(
+       Kokkos::PerTeam(team), [&] () {
+	 precip_liq_surf += prt_accum * C::INV_RHO_H2O * inv_dt;
+       });
   } //end if(log_qxpresent)
 
   Kokkos::parallel_for(
