@@ -43,36 +43,6 @@ set (HOMMEXX_VECTOR_SIZE ${SCREAM_PACK_SIZE} CACHE STRING "")
 # configure Homme folder
 add_subdirectory(${HOMME_SOURCE_DIR} ${HOMME_BINARY_DIR})
 
-# Use same flags as SCREAM
-set (HOMME_C_FLAGS       ${CMAKE_C_FLAGS})
-set (HOMME_CXX_FLAGS     ${CMAKE_CXX_FLAGS})
-set (HOMME_Fortran_FLAGS ${CMAKE_Fortran_FLAGS})
-
-# A bunch of string manipulation to get homme compiler/link flags correctly
-# forwarded to our libs. Here are the takeaways:
-#
-# - we need to store HOMME_<LANG>_FLAGS in the cache, since CreateDynamicsLib
-#   may be called from somewhere else in the src tree, and those vars would
-#   otherwise get out of scope
-# - We need to turn the strings into lists, by replacing ' ' with ';'
-# - The hard one: target_compile_options performs 'de-duplication' of repeated flags,
-#   meaning that '-D A -D B' is turned into '-D A B'. For fp model on Intel, this
-#   would cause "-fp-model X -fp-model Y" to be turned into "-fp-model X Y",
-#   which the compiler does not like. Thankfully, there is a remedy, albeit a bit ugly:
-#   prepend the flag to be kept (even if repeated) with 'SHELL: '.
-
-string (REPLACE " " ";" HOMME_C_FLAGS_TMP       "${HOMME_C_FLAGS}")
-string (REPLACE " " ";" HOMME_CXX_FLAGS_TMP     "${HOMME_CXX_FLAGS}")
-string (REPLACE " " ";" HOMME_Fortran_FLAGS_TMP "${HOMME_Fortran_FLAGS}")
-string (REPLACE " " ";" HOMME_LINKER_FLAGS_TMP  "${HOMME_LINKER_FLAGS}")
-string(REGEX REPLACE "-fp-model;(fast|fast=1|fast=2|strict|precise|source|consistent);" "SHELL:-fp-model \\1;" HOMME_C_FLAGS_TMP       "${HOMME_C_FLAGS_TMP}")
-string(REGEX REPLACE "-fp-model;(fast|fast=1|fast=2|strict|precise|source|consistent);" "SHELL:-fp-model \\1;" HOMME_CXX_FLAGS_TMP     "${HOMME_CXX_FLAGS_TMP}")
-string(REGEX REPLACE "-fp-model;(fast|fast=1|fast=2|strict|precise|source|consistent);" "SHELL:-fp-model \\1;" HOMME_Fortran_FLAGS_TMP "${HOMME_Fortran_FLAGS_TMP}")
-set (HOMME_C_FLAGS "${HOMME_C_FLAGS_TMP}" CACHE INTERNAL "")
-set (HOMME_CXX_FLAGS "${HOMME_CXX_FLAGS_TMP}" CACHE INTERNAL "")
-set (HOMME_Fortran_FLAGS "${HOMME_Fortran_FLAGS_TMP}" CACHE INTERNAL "")
-set (HOMME_LINKER_FLAGS "${HOMME_LINKER_FLAGS_TMP}" CACHE INTERNAL "")
-
 #######################################################################
 #     Macro to create dyn lib with specific compile-time options      #
 #######################################################################
@@ -153,9 +123,6 @@ macro (CreateDynamicsLib HOMME_TARGET NP PLEV QSIZE)
     else ()
       target_link_libraries(${hommeLibName} "${HOMME_LINKER_FLAGS}")
     endif ()
-    target_compile_options (${hommeLibName} BEFORE PRIVATE $<$<COMPILE_LANGUAGE:C>:${HOMME_C_FLAGS}>)
-    target_compile_options (${hommeLibName} BEFORE PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${HOMME_CXX_FLAGS}>)
-    target_compile_options (${hommeLibName} BEFORE PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:${HOMME_Fortran_FLAGS}>)
 
     #####################################
     ###     Build SCREAM library      ###
