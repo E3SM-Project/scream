@@ -44,7 +44,7 @@ module homme_params_mod
     topology,               &    ! Mesh topology
     geometry,               &         ! Mesh geometry
     tstep_type,             &
-    ftype,                  & ! Unused in SCREAM
+    ftype,                  &
     dt_tracer_factor,       &
     dt_remap_factor,        &
     qsplit,                 &
@@ -96,7 +96,7 @@ module homme_params_mod
 contains
 
   subroutine init_params_f90 (nl_fname_c) bind(c)
-    use iso_c_binding,     only: c_ptr, c_f_pointer
+    use iso_c_binding,     only: c_ptr, c_f_pointer, C_NULL_CHAR
     use shr_file_mod,      only: getunit=>shr_file_getUnit, freeunit=>shr_file_freeUnit
     use homme_context_mod, only: is_parallel_inited, is_params_inited, &
                                  par
@@ -106,8 +106,9 @@ contains
     type (c_ptr), intent(in) :: nl_fname_c
 
     ! Locals
-    character(len=256), pointer :: nl_fname
-    integer :: ierr, unitn, se_ftype
+    character(len=256), pointer :: nl_fname_ptr
+    character(len=256) :: nl_fname
+    integer :: ierr, unitn, se_ftype, str_len
     real(kind=real_kind) :: dt_max
     character(len=MAX_FILE_LEN) :: mesh_file ! Unused in SCREAM
 
@@ -156,7 +157,7 @@ contains
       mesh_file,                & ! Unused in SCREAM
       integration,              & ! Unused in SCREAM
       smooth,                   & ! Unused in SCREAM
-      se_ftype                    ! Unused in SCREAM
+      se_ftype
 
     namelist /vert_nl/    &
       vform,              &
@@ -182,6 +183,7 @@ contains
     runtype = 0
     statefreq = 99999
     geometry = "sphere"
+    se_ftype = ftype
 
     !-----------------------------!
     !     Parse namelist file     !
@@ -189,8 +191,10 @@ contains
 
     ! Open namelist file
     unitn = getunit()
-    call c_f_pointer(nl_fname_c,nl_fname)
-    open( unitn, file=trim(nl_fname), status='old' )
+    call c_f_pointer(nl_fname_c,nl_fname_ptr)
+    str_len = index(nl_fname_ptr, C_NULL_CHAR) - 1
+    nl_fname = trim(nl_fname_ptr(1:str_len))
+    open( unitn, file=nl_fname, status='old' )
 
     ! Parse all namelist sections
     read (unit=unitn,nml=ctl_nl,iostat=ierr)
@@ -226,6 +230,7 @@ contains
     call MPI_bcast(tstep_type, 1, MPIinteger_t, par%root, par%comm, ierr)
     call MPI_bcast(qsplit,     1, MPIinteger_t, par%root, par%comm, ierr)
     call MPI_bcast(rsplit,     1, MPIinteger_t, par%root, par%comm, ierr)
+    call MPI_bcast(se_ftype,   1, MPIinteger_t, par%root, par%comm, ierr)
     call MPI_bcast(tstep,      1, MPIreal_t,    par%root, par%comm, ierr)
 
     ! Algorithmic params
@@ -279,7 +284,7 @@ contains
 
     ierr = timestep_make_subcycle_parameters_consistent(par, rsplit, qsplit, dt_remap_factor, dt_tracer_factor)
 
-    ftype = 0
+    ftype = se_ftype
     npart = par%nprocs
 
     use_moisture = ( moisture /= "dry") 

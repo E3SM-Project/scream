@@ -113,8 +113,8 @@ real(rtype), parameter :: mintke = 0.0004_rtype
 
 !===================
 ! const parameter for Diagnosis of PBL depth
-real(rtype), parameter :: tiny = 1.e-36_rtype     ! lower bound for wind magnitude
-real(rtype), parameter :: fac  = 100._rtype       ! ustar parameter in height diagnosis
+real(rtype), parameter :: tinyw = 1.e-36_rtype    ! lower bound for wind magnitude
+real(rtype), parameter :: fac   = 100._rtype      ! ustar parameter in height diagnosis
 real(rtype), parameter :: ricr  =  0.3_rtype      ! Critical richardson number
 
 ! Maximum number of levels in pbl from surface
@@ -192,7 +192,7 @@ subroutine shoc_init( &
   if (present(qw2tune_in)) qw2tune = qw2tune_in
   if (present(qwthl2tune_in)) qwthl2tune = qwthl2tune_in
   if (present(w2tune_in)) w2tune=w2tune_in
-  if (present(qw2tune_in)) length_fac=length_fac_in
+  if (present(length_fac_in)) length_fac=length_fac_in
   if (present(qwthl2tune_in)) c_diag_3rd_mom=c_diag_3rd_mom_in
   if (present(lambda_low_in)) lambda_low=lambda_low_in
   if (present(lambda_high_in)) lambda_high=lambda_high_in
@@ -230,7 +230,7 @@ subroutine shoc_main ( &
      zt_grid,zi_grid,pres,presi,pdel,&    ! Input
      wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, & ! Input
      wtracer_sfc,num_qtracers,w_field, &  ! Input
-     exner,phis, &                        ! Input
+     inv_exner,phis, &                        ! Input
      host_dse, tke, thetal, qw, &         ! Input/Output
      u_wind, v_wind,qtracers,&            ! Input/Output
      wthv_sec,tkh,tk,&                    ! Input/Output
@@ -294,8 +294,8 @@ subroutine shoc_main ( &
   real(rtype), intent(in) :: vw_sfc(shcol)
   ! Surface flux for tracers [varies]
   real(rtype), intent(in) :: wtracer_sfc(shcol,num_qtracers)
-  ! Exner function [-]
-  real(rtype), intent(in) :: exner(shcol,nlev)
+  ! Inverse of the exner function [-]
+  real(rtype), intent(in) :: inv_exner(shcol,nlev)
   ! Host model surface geopotential height
   real(rtype), intent(in) :: phis(shcol)
 
@@ -411,7 +411,7 @@ subroutine shoc_main ( &
                      zt_grid,zi_grid,pres,presi,pdel,&       ! Input
                      wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &    ! Input
                      wtracer_sfc,num_qtracers,w_field, &     ! Input
-                     exner,phis, &                           ! Input
+                     inv_exner,phis, &                           ! Input
                      host_dse, tke, thetal, qw, &            ! Input/Output
                      u_wind, v_wind,qtracers,&               ! Input/Output
                      wthv_sec,tkh,tk,&                       ! Input/Output
@@ -547,7 +547,7 @@ subroutine shoc_main ( &
   !  temperature
   call update_host_dse(&
      shcol,nlev,thetal,&                   ! Input
-     shoc_ql,exner,zt_grid,phis,&          ! Input
+     shoc_ql,inv_exner,zt_grid,phis,&          ! Input
      host_dse)                             ! Output
 
   call shoc_energy_integrals(&             ! Input
@@ -2855,9 +2855,9 @@ subroutine shoc_assumed_pdf_compute_s(&
   qn=0._rtype
   C=0._rtype
 
-  if (std_s .ne. 0.0_rtype) then
+  if (std_s .gt. bfb_sqrt(tiny(1._rtype)) * 100) then
     C=0.5_rtype*(1._rtype+bfb_erf(s/(sqrt2*std_s)))
-    IF (C .ne. 0._rtype) qn=s*C+(std_s/sqrt2pi)*bfb_exp(-0.5_rtype*bfb_square(s/std_s))
+    if (C .ne. 0._rtype) qn=s*C+(std_s/sqrt2pi)*bfb_exp(-0.5_rtype*bfb_square(s/std_s))
   else
     if (s .gt. 0._rtype) then
       C=1.0_rtype
@@ -3749,7 +3749,7 @@ end subroutine shoc_energy_integrals
 
 subroutine update_host_dse(&
          shcol,nlev,thlm,&                 ! Input
-         shoc_ql,exner,zt_grid,phis,&      ! Input
+         shoc_ql,inv_exner,zt_grid,phis,&  ! Input
          host_dse)                         ! Output
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
@@ -3767,8 +3767,8 @@ subroutine update_host_dse(&
   real(rtype), intent(in) :: thlm(shcol,nlev)
   ! cloud liquid water mixing ratio [kg/kg]
   real(rtype), intent(in) :: shoc_ql(shcol,nlev)
-  ! exner function [-]
-  real(rtype), intent(in) :: exner(shcol,nlev)
+  ! inverse of exner function [-]
+  real(rtype), intent(in) :: inv_exner(shcol,nlev)
   ! heights at mid point [m]
   real(rtype), intent(in) :: zt_grid(shcol,nlev)
   ! surface geopotential height of host model [m]
@@ -3786,7 +3786,7 @@ subroutine update_host_dse(&
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
-      call update_host_dse_f(shcol,nlev,thlm,shoc_ql,exner,zt_grid,phis, &  ! Input
+      call update_host_dse_f(shcol,nlev,thlm,shoc_ql,inv_exner,zt_grid,phis, &  ! Input
            host_dse)                              ! Input/Output)
       return
    endif
@@ -3794,7 +3794,7 @@ subroutine update_host_dse(&
 
   do k=1,nlev
     do i=1,shcol
-      temp = (thlm(i,k)+(lcond/cp)*shoc_ql(i,k))/exner(i,k)
+      temp = (thlm(i,k)+(lcond/cp)*shoc_ql(i,k))/inv_exner(i,k)
       host_dse(i,k) = cp*temp+ggr*zt_grid(i,k)+phis(i)
     enddo
   enddo
@@ -4414,7 +4414,7 @@ subroutine pblintd_height(&
        do i=1,shcol
           if (check(i)) then
              vvk = bfb_square((u(i,k) - u(i,nlev))) + bfb_square((v(i,k) - v(i,nlev))) + fac*bfb_square(ustar(i))
-             vvk = max(vvk,tiny)
+             vvk = max(vvk,tinyw)
              rino(i,k) = ggr*(thv(i,k) -thv_ref(i))*(z(i,k)-z(i,nlev))/(thv(i,nlev)*vvk)
              if (rino(i,k) >= ricr) then
                 pblh(i) = z(i,k+1) + (ricr - rino(i,k+1))/(rino(i,k) -rino(i,k+1)) * &

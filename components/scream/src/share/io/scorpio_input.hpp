@@ -81,7 +81,9 @@ class AtmosphereInput
 {
 public:
   using dofs_list_type = AbstractGrid::dofs_list_type;
-  using view_type_host = typename KokkosTypes<DefaultDevice>::view_1d<Real>::HostMirror;
+  template<int N>
+  using view_ND_host = typename KokkosTypes<DefaultDevice>::template view_ND<Real,N>::HostMirror;
+  using view_1d_host = view_ND_host<1>;
 
   // --- Constructor(s) & Destructor --- //
   AtmosphereInput (const ekat::Comm& comm, const ekat::ParameterList& params,
@@ -111,7 +113,7 @@ public:
   void pull_input ();
 
   // Used by scorpio_output when handling restart history files.
-  view_type_host pull_input (const std::string& name);
+  view_1d_host pull_input (const std::string& name);
 
   // var_dims is a list of tags for each of the physical dimensions of this variable.
   // dim_lens is a vector of the physical dimension lengths without any padding, in other words
@@ -144,10 +146,11 @@ protected:
   // Internal functions
   void register_variables();
   void set_degrees_of_freedom();
+  void read_input(const std::string& name);
 
   std::vector<std::string> get_vec_of_dims (const FieldLayout& layout);
   std::string get_io_decomp (const std::vector<std::string>& vec_of_dims);
-  std::vector<Int> get_var_dof (const int dof_len, const bool has_cols);
+  std::vector<Int> get_var_dof_offsets (const int dof_len, const bool has_cols);
 
   // Internal variables
   ekat::ParameterList m_params;

@@ -2,7 +2,7 @@
 #define SHOC_SHOC_ASSUMED_PDF_IMPL_HPP
 
 #include "shoc_functions.hpp" // for ETI only but harmless for GPU
-#include "physics_functions.hpp"
+#include "physics/share/physics_functions.hpp"
 
 #include <iomanip>
 
@@ -85,14 +85,6 @@ void Functions<S,D>::shoc_assumed_pdf(
   // gnu and std=c++14. The macro ConstExceptGnu is defined in ekat_kokkos_types.hpp.
   ConstExceptGnu Int nlev_pack = ekat::npack<Spack>(nlev);
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev_pack), [&] (const Int& k) {
-
-    // Store active pack entries
-    const Smask is_last_pack(k == nlev_pack-1);
-    const int last_pack_indx = (nlev-1)%Spack::n;
-    const auto range = ekat::range<IntSmallPack>(k*Spack::n);
-    const Smask active_entries = (!is_last_pack ||
-                                  (is_last_pack && range < last_pack_indx));
-
     // Initialize cloud variables to zero
     shoc_cldfrac(k) = 0;
     if (k==0) { shoc_ql(k)[0] = 0; }
@@ -154,23 +146,26 @@ void Functions<S,D>::shoc_assumed_pdf(
         Skew_thl.set(tsign>sp(0.2) && tsign<=sp(0.4), (((sp(1.2)*Skew_w)/sp(0.2))*(tsign-sp(0.2))));
       }
 
-      thl2_1.set(condition,
-                 ekat::min(100,
-                           ekat::max(0, (3*tmp_val_1*(1 - a*ekat::square(tmp_val_2) - (1-a)*ekat::square(tmp_val_1))
-                                         - (Skew_thl - a*ekat::cube(tmp_val_2) - (1 - a)*ekat::cube(tmp_val_1)))
-                                         /(3*a*(tmp_val_1 - tmp_val_2))))*thlsec);
-      thl2_2.set(condition,
-                 ekat::min(100,
+      if (condition.any()) {
+        thl2_1.set(condition,
+                   ekat::min(100,
+                             ekat::max(0, (3*tmp_val_1*(1 - a*ekat::square(tmp_val_2) - (1-a)*ekat::square(tmp_val_1))
+                                           - (Skew_thl - a*ekat::cube(tmp_val_2) - (1 - a)*ekat::cube(tmp_val_1)))
+                                       /(3*a*(tmp_val_1 - tmp_val_2))))*thlsec);
+        thl2_2.set(condition,
+                   ekat::min(100,
                            ekat::max(0, (-3*tmp_val_2*(1 - a*ekat::square(tmp_val_2)
                                          - (1 - a)*ekat::square(tmp_val_1))
                                          + (Skew_thl - a*ekat::cube(tmp_val_2) - (1 - a)*ekat::cube(tmp_val_1)))
                                          /(3*(1 - a)*(tmp_val_1 - tmp_val_2))))*thlsec);
 
-      thl1_1.set(condition, tmp_val_2*sqrtthl+thl_first);
-      thl1_2.set(condition, tmp_val_1*sqrtthl+thl_first);
+        thl1_1.set(condition, tmp_val_2*sqrtthl+thl_first);
+        thl1_2.set(condition, tmp_val_1*sqrtthl+thl_first);
 
-      sqrtthl2_1.set(condition, ekat::sqrt(thl2_1));
-      sqrtthl2_2.set(condition, ekat::sqrt(thl2_2));
+        sqrtthl2_1.set(condition, ekat::sqrt(thl2_1));
+        sqrtthl2_2.set(condition, ekat::sqrt(thl2_2));
+      }
+
     }
 
     // Find parameters for total water mixing ratio
@@ -187,16 +182,18 @@ void Functions<S,D>::shoc_assumed_pdf(
       Skew_qw.set(tsign>sp(0.4), sp(1.2)*Skew_w);
       Skew_qw.set(tsign>sp(0.2) && tsign<=sp(0.4), (((sp(1.2)*Skew_w)/sp(0.2))*(tsign-sp(0.2))));
 
-      qw2_1.set(condition,
+      if (condition.any()) {
+        qw2_1.set(condition,
                 ekat::min(100,
                           ekat::max(0, (3*tmp_val_1*(1 - a*ekat::square(tmp_val_2) - (1 - a)*ekat::square(tmp_val_1))
                                         - (Skew_qw - a*ekat::cube(tmp_val_2) - (1 - a)*ekat::cube(tmp_val_1)))
                                         /(3*a*(tmp_val_1 - tmp_val_2))))*qwsec);
-      qw2_2.set(condition,
+        qw2_2.set(condition,
                 ekat::min(100,
                           ekat::max(0, (-3*tmp_val_2*(1 - a*ekat::square(tmp_val_2) - (1 - a)*ekat::square(tmp_val_1))
                                         + (Skew_qw - a*ekat::cube(tmp_val_2) - (1 - a)*ekat::cube(tmp_val_1)))
                                         /(3*(1 - a)*(tmp_val_1 - tmp_val_2))))*qwsec);
+      }
 
       qw1_1.set(condition, tmp_val_2*sqrtqt+qw_first);
       qw1_2.set(condition, tmp_val_1*sqrtqt+qw_first);
@@ -215,15 +212,21 @@ void Functions<S,D>::shoc_assumed_pdf(
       Spack r_qwthl_1(0);
       {
         const Spack testvar = a*sqrtqw2_1*sqrtthl2_1 + (1 - a)*sqrtqw2_2*sqrtthl2_2;
-        r_qwthl_1.set(testvar != 0,
-                      ekat::max(-1,
-                                ekat::min(1, (qwthlsec - a*(qw1_1 - qw_first)*(thl1_1 - thl_first)
-                                              - (1 - a)*(qw1_2 - qw_first)*(thl1_2 - thl_first))/testvar)));
+        const auto testvar_ne_zero = testvar != 0;
+        if (testvar_ne_zero.any()) {
+          r_qwthl_1.set(testvar_ne_zero,
+                        ekat::max(-1,
+                                  ekat::min(1, (qwthlsec - a*(qw1_1 - qw_first)*(thl1_1 - thl_first)
+                                                - (1 - a)*(qw1_2 - qw_first)*(thl1_2 - thl_first))/testvar)));
+        }
       }
 
       // Begin to compute cloud property statistics
       const Spack Tl1_1 = thl1_1/(ekat::pow(basepres/pval,(rair/cp)));
       const Spack Tl1_2 = thl1_2/(ekat::pow(basepres/pval,(rair/cp)));
+
+      const auto index_range = ekat::range<IntSmallPack>(k*Spack::n);
+      const Smask active_entries = (index_range < nlev);
 
       // Check to ensure Tl1_1 and Tl1_2 are not negative, endrun otherwise
       const auto is_neg_Tl1_1 = (Tl1_1 <= 0) && active_entries;
@@ -268,11 +271,17 @@ void Functions<S,D>::shoc_assumed_pdf(
         std_s1 = ekat::sqrt(ekat::max(0,
                                       ekat::square(cthl1)*thl2_1
                                       + ekat::square(cqt1)*qw2_1 - 2*cthl1*sqrtthl2_1*cqt1*sqrtqw2_1*r_qwthl_1));
+        const auto std_s1_not_small = std_s1 > std::sqrt(std::numeric_limits<Scalar>::min()) * 100;
         s1 = qw1_1-qs1*((1 + beta1*qw1_1)/(1 + beta1*qs1));
-        C1.set(std_s1 != 0, sp(0.5)*(1 + ekat::erf(s1/(sqrt2*std_s1))));
-        C1.set(std_s1 == 0 && s1 > 0, 1);
-        qn1.set(std_s1 != 0 && C1 != 0, s1*C1+(std_s1/sqrt2pi)*ekat::exp(-sp(0.5)*ekat::square(s1/std_s1)));
-        qn1.set(std_s1 == 0 && s1 > 0, s1);
+        if (std_s1_not_small.any()) {
+          C1.set(std_s1_not_small, sp(0.5)*(1 + ekat::erf(s1/(sqrt2*std_s1))));
+        }
+        C1.set(!std_s1_not_small && s1 > 0, 1);
+        const auto std_s1_C1_not_small = std_s1_not_small && C1 != 0;
+        if (std_s1_C1_not_small.any()) {
+          qn1.set(std_s1_C1_not_small, s1*C1+(std_s1/sqrt2pi)*ekat::exp(-sp(0.5)*ekat::square(s1/std_s1)));
+        }
+        qn1.set(!std_s1_not_small && s1 > 0, s1);
         ql1 = ekat::min(qn1, qw1_1);
 
         // Second plume
@@ -289,15 +298,26 @@ void Functions<S,D>::shoc_assumed_pdf(
         const Spack cqt2(!equal,
                          1/(1 + beta2*qs2));
 
-        std_s2.set(!equal,
-                   ekat::sqrt(ekat::max(0,
-                                        ekat::square(cthl2)*thl2_2
-                                        + ekat::square(cqt2)*qw2_2 - 2*cthl2*sqrtthl2_2*cqt2*sqrtqw2_2*r_qwthl_1)));
-        s2.set(!equal, qw1_2-qs2*((1 + beta2*qw1_2)/(1 + beta2*qs2)));
-        C2.set(!equal && std_s2 != 0, sp(0.5)*(1 + ekat::erf(s2/(sqrt2*std_s2))));
-        C2.set(!equal && std_s2 == 0 && s2 > 0, 1);
-        qn2.set(!equal && std_s2 != 0 && C2 != 0, s2*C2+(std_s2/sqrt2pi)*ekat::exp(-sp(0.5)*ekat::square(s2/std_s2)));
-        qn2.set(!equal && std_s2 == 0 && s2 > 0, s2);
+        const auto nequal = !equal;
+        if (nequal.any()) {
+          std_s2.set(nequal,
+                     ekat::sqrt(ekat::max(0,
+                                          ekat::square(cthl2)*thl2_2
+                                          + ekat::square(cqt2)*qw2_2 - 2*cthl2*sqrtthl2_2*cqt2*sqrtqw2_2*r_qwthl_1)));
+          s2.set(nequal, qw1_2-qs2*((1 + beta2*qw1_2)/(1 + beta2*qs2)));
+          const auto std_s2_not_small = std_s2 > std::sqrt(std::numeric_limits<Scalar>::min()) * 100;
+          const auto nequal_std_s2_not_small = nequal && std_s2_not_small;
+          if (nequal_std_s2_not_small.any()) {
+            C2.set(nequal_std_s2_not_small, sp(0.5)*(1 + ekat::erf(s2/(sqrt2*std_s2))));
+          }
+          C2.set(nequal && !std_s2_not_small && s2 > 0, 1);
+          const auto nequal_std_s2_C2_not_small = nequal_std_s2_not_small && C2 != 0;
+          if (nequal_std_s2_C2_not_small.any()) {
+            qn2.set(nequal_std_s2_C2_not_small, s2*C2+(std_s2/sqrt2pi)*ekat::exp(-sp(0.5)*ekat::square(s2/std_s2)));
+          }
+          qn2.set(nequal && !std_s2_not_small && s2 > 0, s2);
+        }
+
         ql2 = ekat::min(qn2, qw1_2);
       }
 

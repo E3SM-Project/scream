@@ -9,6 +9,7 @@
 #include "share/scream_types.hpp"
 #include "share/io/output_manager.hpp"
 #include "share/io/scorpio_input.hpp"
+#include "share/atm_process/ATMBufferManager.hpp"
 
 #include "ekat/mpi/ekat_comm.hpp"
 #include "ekat/ekat_parameter_list.hpp"
@@ -72,8 +73,6 @@ public:
   // Load initial conditions for atm inputs
   void initialize_fields (const util::TimeStamp& t0);
 
-  void initialize_constant_field(const std::string& name, const ekat::ParameterList& ic_pl);
-
   // Initialie I/O structures for output
   void initialize_output_manager ();
 
@@ -106,8 +105,11 @@ public:
 
   const std::shared_ptr<GridsManager>& get_grids_manager () const { return m_grids_manager; }
 
+  const ATMBufferManager& get_memory_buffer() const { return m_memory_buffer; }
+
 protected:
 
+  void initialize_constant_field(const FieldRequest& freq, const ekat::ParameterList& ic_pl);
   void register_groups ();
 
   std::map<std::string,field_mgr_ptr>    m_field_mgrs;
@@ -119,6 +121,8 @@ protected:
   ekat::ParameterList                                 m_atm_params;
 
   OutputManager                                       m_output_manager;
+
+  ATMBufferManager                                    m_memory_buffer;
 
   // Surface coupling stuff
   std::shared_ptr<SurfaceCoupling>            m_surface_coupling;

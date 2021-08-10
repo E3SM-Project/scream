@@ -8,10 +8,10 @@ namespace p3 {
 namespace ic {
 
 // From mixed_case_data.py in scream-docs at commit 4bbea4.
-FortranData::Ptr make_mixed (const Int ncol) {
+FortranData::Ptr make_mixed (const Int ncol, const Int nlev) {
   using consts = scream::physics::Constants<Real>;
 
-  const Int nk = 72;
+  const Int nk = nlev;
   Int k;
   const auto dp = std::make_shared<FortranData>(ncol, nk);
   auto& d = *dp;
@@ -49,8 +49,8 @@ FortranData::Ptr make_mixed (const Int ncol) {
     for (k = 0; k < nk; ++k) d.pres(i,k) = 100 + 1e5/double(nk)*k;
     // dpres is actually an input variable, but needed here to compute theta.
     for (k = 0; k < nk; ++k) d.dpres(i,k) = 1e5/double(nk);
-    // exner is actually an input variable, but needed here to compute theta.
-    for (k = 0; k < nk; ++k) d.exner(i,k) = std::pow((1e5/d.pres(i,k)), (287.15/1005.0));
+    // inv_exner is actually an input variable, but needed here to compute theta.
+    for (k = 0; k < nk; ++k) d.inv_exner(i,k) = std::pow((1e5/d.pres(i,k)), (287.15/1005.0));
     // cloud fraction is an input variable, just set to 1 everywhere
     for (k = 0; k < nk; ++k) d.cld_frac_i(i,k) = 1.0;
     for (k = 0; k < nk; ++k) d.cld_frac_l(i,k) = 1.0;
@@ -91,9 +91,6 @@ FortranData::Ptr make_mixed (const Int ncol) {
     // deposition/condensation-freezing needs t<258.15 and >5% supersat.
     d.qv(i,33) = 1e-4;
 
-    // input variables.
-    d.dt = 1800;
-
     // set qv_prev and t_prev to qv and T vals
     for (k = 0; k < nk; ++k){
       d.qv_prev(i,k) = d.qv(i,k);
@@ -119,9 +116,9 @@ FortranData::Ptr make_mixed (const Int ncol) {
   return dp;
 }
 
-FortranData::Ptr Factory::create (IC ic, Int ncol) {
+FortranData::Ptr Factory::create (IC ic, Int ncol, Int nlev) {
  switch (ic) {
-   case mixed: return make_mixed(ncol);
+   case mixed: return make_mixed(ncol, nlev);
  default:
    EKAT_REQUIRE_MSG(false, "Not an IC: " << ic);
  }

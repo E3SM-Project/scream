@@ -4,6 +4,8 @@
 #include "cpp/rrtmgp/mo_gas_optics_rrtmgp.h"
 #include "cpp/extensions/cloud_optics/mo_cloud_optics.h"
 #include "cpp/rte/mo_fluxes.h"
+#include "cpp/const.h"
+#include "physics/share/physics_constants.hpp"
 
 namespace scream {
     namespace rrtmgp {
@@ -30,13 +32,22 @@ namespace scream {
          */
         extern void rrtmgp_initialize(GasConcs &gas_concs);
         /*
+         * Compute band-by-band surface albedos from broadband albedos.
+         */
+        extern void compute_band_by_band_surface_albedos(
+                const int ncol, const int nswbands,
+                real1d &sfc_alb_dir_vis, real1d &sfc_alb_dir_nir,
+                real1d &sfc_alb_dif_vis, real1d &sfc_alb_dif_nir,
+                real2d &sfc_alb_dir,     real2d &sfc_alb_dif);
+        /*
          * Main driver code to run RRTMGP
          */
         extern void rrtmgp_main(
-                real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev, 
+                const int ncol, const int nlay,
+                real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev,
                 GasConcs &gas_concs,
-                real2d &sfc_alb_dir, real2d &sfc_alb_dif, real1d &mu0, 
-                real2d &lwp, real2d &iwp, real2d &real, real2d &rei,
+                real2d &sfc_alb_dir, real2d &sfc_alb_dif, real1d &mu0,
+                real2d &lwp, real2d &iwp, real2d &rel, real2d &rei,
                 real2d &sw_flux_up, real2d &sw_flux_dn, real2d &sw_flux_dn_dir,
                 real2d &lw_flux_up, real2d &lw_flux_dn);
         /*
@@ -47,6 +58,7 @@ namespace scream {
          * Shortwave driver (called by rrtmgp_main)
          */
         extern void rrtmgp_sw(
+                const int ncol, const int nlay,
                 GasOpticsRRTMGP &k_dist, 
                 real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev, 
                 GasConcs &gas_concs, 
@@ -56,11 +68,49 @@ namespace scream {
          * Longwave driver (called by rrtmgp_main)
          */
         extern void rrtmgp_lw(
+                const int ncol, const int nlay,
                 GasOpticsRRTMGP &k_dist,
                 real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev,
                 GasConcs &gas_concs,
                 OpticalProps1scl &clouds,
                 FluxesBroadband &fluxes);
+        /* 
+         * Provide a function to convert cloud (water and ice) mixing ratios to layer mass per unit area
+         * (what E3SM refers to as "in-cloud water paths", a terminology we shun here to avoid confusion
+         * with the standard practice of using "water path" to refer to the total column-integrated
+         * quantities).
+         */
+        template<class T, int myMem, int myStyle> void mixing_ratio_to_cloud_mass(
+                yakl::Array<T,2,myMem,myStyle> const &mixing_ratio, 
+                yakl::Array<T,2,myMem,myStyle> const &cloud_fraction, 
+                yakl::Array<T,2,myMem,myStyle> const &dp, 
+                yakl::Array<T,2,myMem,myStyle>       &cloud_mass) {
+            int ncol = mixing_ratio.dimension[0];
+            int nlay = mixing_ratio.dimension[1];
+            using physconst = scream::physics::Constants<Real>;
+            parallel_for(Bounds<2>(nlay, ncol), YAKL_LAMBDA(int ilay, int icol) {
+                // Compute in-cloud mixing ratio (mixing ratio of the cloudy part of the layer)
+                // NOTE: these thresholds (from E3SM) seem arbitrary, but included here for consistency
+                // This limits in-cloud mixing ratio to 0.005 kg/kg. According to note in cloud_diagnostics
+                // in EAM, this is consistent with limits in MG2. Is this true for P3?
+                auto incloud_mixing_ratio = std::min(mixing_ratio(icol,ilay) / std::max(0.0001, cloud_fraction(icol,ilay)), 0.005);
+                // Compute layer-integrated cloud mass (per unit area)
+                cloud_mass(icol,ilay) = incloud_mixing_ratio * dp(icol,ilay) / physconst::gravit;
+            });
+        }
+
+        /*
+         * Routine to limit a quantity to set bounds. Used to make sure
+         * effective radii are within the bounds of the cloud optical
+         * property look-up tables, but could be used to limit other
+         * fields as well.
+         */
+        template<class S, class T> void limit_to_bounds(S const &arr_in, T const lower, T const upper, S &arr_out) {
+            yakl::c::parallel_for(arr_in.totElems(), YAKL_LAMBDA(int i) {
+                arr_out.data()[i] = min(max(arr_in.data()[i], lower), upper);
+            });
+        }
+
     } // namespace rrtmgp
 }  // namespace scream
 

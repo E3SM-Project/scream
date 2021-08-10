@@ -39,7 +39,10 @@ Int Functions<S,D>::shoc_init(
     Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, begin_pack_indx, end_pack_indx),
                                                     [&] (const Int& k, Int& local_max) {
       auto range = ekat::range<IntSmallPack>(k*Spack::n);
-      const auto condition = (range >= ntop_shoc && range < nbot_shoc && pref_mid(k) >= pblmaxp);
+      auto condition = (range >= ntop_shoc && range < nbot_shoc);
+      if (condition.any()) {
+        condition = condition && pref_mid(k) >= pblmaxp;
+      }
 
       auto levels_from_surface = nbot_shoc - range;
       levels_from_surface.set(!condition, 1);
@@ -69,8 +72,8 @@ void Functions<S,D>::shoc_main_internal(
   const Int&                   num_qtracers, // Number of tracers
   const Scalar&                dtime,        // SHOC timestep [s]
   // Input Variables
-  const Scalar&                host_dx,
-  const Scalar&                host_dy,
+  const Scalar&                dx,
+  const Scalar&                dy,
   const uview_1d<const Spack>& zt_grid,
   const uview_1d<const Spack>& zi_grid,
   const uview_1d<const Spack>& pres,
@@ -83,7 +86,7 @@ void Functions<S,D>::shoc_main_internal(
   const Scalar&                uw_sfc,
   const Scalar&                vw_sfc,
   const uview_1d<const Spack>& wtracer_sfc,
-  const uview_1d<const Spack>& exner,
+  const uview_1d<const Spack>& inv_exner,
   const Scalar&                phis,
   // Workspace/Local Variables
   const Workspace&             workspace,
@@ -124,14 +127,15 @@ void Functions<S,D>::shoc_main_internal(
     {"rho_zt", "shoc_qv", "dz_zt", "dz_zi", "tkh"},
     {&rho_zt, &shoc_qv, &dz_zt, &dz_zi, &tkh});
 
-  // View/pack indices for nlev, nlevi
-  const Int nlev_v = (nlev-1)/Spack::n;
-  const Int nlev_p = (nlev-1)%Spack::n;
-
-  // Local variables
+  // Local scalars
   Scalar se_b{0},   ke_b{0}, wv_b{0},   wl_b{0},
          se_a{0},   ke_a{0}, wv_a{0},   wl_a{0},
          ustar{0},  kbfs{0}, obklen{0}, ustar2{0}, wstar{0};
+
+  // Scalarize some views for single entry access
+  const auto s_thetal  = ekat::scalarize(thetal);
+  const auto s_shoc_ql = ekat::scalarize(shoc_ql);
+  const auto s_shoc_qv = ekat::scalarize(shoc_qv);
 
   // Compute integrals of static energy, kinetic energy, water vapor, and liquid water
   // for the computation of total energy before SHOC is called.  This is for an
@@ -162,12 +166,12 @@ void Functions<S,D>::shoc_main_internal(
                        shoc_qv);             // Output
 
     team.team_barrier();
-    shoc_diag_obklen(uw_sfc,vw_sfc,          // Input
-                     wthl_sfc, wqw_sfc,      // Input
-                    thetal(nlev_v)[nlev_p],  // Input
-                    shoc_ql(nlev_v)[nlev_p], // Input
-                    shoc_qv(nlev_v)[nlev_p], // Input
-                    ustar,kbfs,obklen);      // Output
+    shoc_diag_obklen(uw_sfc,vw_sfc,     // Input
+                     wthl_sfc, wqw_sfc, // Input
+                     s_thetal(nlev-1),  // Input
+                     s_shoc_ql(nlev-1), // Input
+                     s_shoc_qv(nlev-1), // Input
+                     ustar,kbfs,obklen); // Output
 
     pblintd(team,nlev,nlevi,npbl,     // Input
             zt_grid,zi_grid,thetal,   // Input
@@ -178,11 +182,11 @@ void Functions<S,D>::shoc_main_internal(
             pblh);                    // Output
 
     // Update the turbulent length scale
-    shoc_length(team,nlev,nlevi,host_dx,host_dy, // Input
-                zt_grid,zi_grid,dz_zt,           // Input
-                tke,thv,                         // Input
-                workspace,                       // Workspace
-                brunt,shoc_mix);                 // Output
+    shoc_length(team,nlev,nlevi,dx,dy, // Input
+                zt_grid,zi_grid,dz_zt, // Input
+                tke,thv,               // Input
+                workspace,             // Workspace
+                brunt,shoc_mix);       // Output
 
     // Advance the SGS TKE equation
     shoc_tke(team,nlev,nlevi,dtime,wthv_sec,    // Input
@@ -237,7 +241,7 @@ void Functions<S,D>::shoc_main_internal(
   // Use SHOC outputs to update the host model
   // temperature
   update_host_dse(team,nlev,thetal,shoc_ql, // Input
-                  exner,zt_grid,phis,       // Input
+                  inv_exner,zt_grid,phis,   // Input
                   host_dse);                // Output
 
   team.team_barrier();
@@ -263,12 +267,12 @@ void Functions<S,D>::shoc_main_internal(
                      shoc_qv);             // Output
 
   team.team_barrier();
-  shoc_diag_obklen(uw_sfc,vw_sfc,           // Input
-                   wthl_sfc,wqw_sfc,        // Input
-                   thetal(nlev_v)[nlev_p],  // Input
-                   shoc_ql(nlev_v)[nlev_p], // Input
-                   shoc_qv(nlev_v)[nlev_p], // Input
-                   ustar,kbfs,obklen);      // Output
+  shoc_diag_obklen(uw_sfc,vw_sfc,      // Input
+                   wthl_sfc,wqw_sfc,   // Input
+                   s_thetal(nlev-1),   // Input
+                   s_shoc_ql(nlev-1),  // Input
+                   s_shoc_qv(nlev-1),  // Input
+                   ustar,kbfs,obklen); // Output
 
   pblintd(team,nlev,nlevi,npbl,zt_grid,   // Input
           zi_grid,thetal,shoc_ql,shoc_qv, // Input
@@ -285,41 +289,34 @@ void Functions<S,D>::shoc_main_internal(
 
 template<typename S, typename D>
 Int Functions<S,D>::shoc_main(
-  const Int&               shcol,        // Number of SHOC columns in the array
-  const Int&               nlev,         // Number of levels
-  const Int&               nlevi,        // Number of levels on interface grid
-  const Int&               npbl,         // Maximum number of levels in pbl from surface
-  const Int&               nadv,         // Number of times to loop SHOC
-  const Int&               num_qtracers, // Number of tracers
-  const Scalar&            dtime,        // SHOC timestep [s]
-  const SHOCInput&         shoc_input,
-  const SHOCInputOutput&   shoc_input_output,
-  const SHOCOutput&        shoc_output,
-  const SHOCHistoryOutput& shoc_history_output)
+  const Int&               shcol,               // Number of SHOC columns in the array
+  const Int&               nlev,                // Number of levels
+  const Int&               nlevi,               // Number of levels on interface grid
+  const Int&               npbl,                // Maximum number of levels in pbl from surface
+  const Int&               nadv,                // Number of times to loop SHOC
+  const Int&               num_qtracers,        // Number of tracers
+  const Scalar&            dtime,               // SHOC timestep [s]
+  const WorkspaceMgr&      workspace_mgr,       // WorkspaceManager for local variables
+  const SHOCInput&         shoc_input,          // Input
+  const SHOCInputOutput&   shoc_input_output,   // Input/Output
+  const SHOCOutput&        shoc_output,         // Output
+  const SHOCHistoryOutput& shoc_history_output) // Output (diagnostic)
 {
   using ExeSpace = typename KT::ExeSpace;
-
-  // Number of packs for nlev, nlevi
-  const auto nlev_packs = ekat::npack<Spack>(nlev);
-  const auto nlevi_packs = ekat::npack<Spack>(nlevi);
-
-  const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs);
-
-  const int n_wind_slots = ekat::npack<Spack>(2)*Spack::n;
-  const int n_trac_slots = ekat::npack<Spack>(num_qtracers+3)*Spack::n;
-  ekat::WorkspaceManager<Spack, Device> workspace_mgr(nlevi_packs, 13+(n_wind_slots+n_trac_slots), policy);
 
   // Start timer
   auto start = std::chrono::steady_clock::now();
 
   // SHOC main loop
+  const auto nlev_packs = ekat::npack<Spack>(nlev);
+  const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs);
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
     const Int i = team.league_rank();
 
     auto workspace = workspace_mgr.get_workspace(team);
 
-    const Scalar host_dx_s{shoc_input.host_dx(i)};
-    const Scalar host_dy_s{shoc_input.host_dy(i)};
+    const Scalar dx_s{shoc_input.dx(i)};
+    const Scalar dy_s{shoc_input.dy(i)};
     const Scalar wthl_sfc_s{shoc_input.wthl_sfc(i)};
     const Scalar wqw_sfc_s{shoc_input.wqw_sfc(i)};
     const Scalar uw_sfc_s{shoc_input.uw_sfc(i)};
@@ -335,7 +332,7 @@ Int Functions<S,D>::shoc_main(
     const auto thv_s          = ekat::subview(shoc_input.thv, i);
     const auto w_field_s      = ekat::subview(shoc_input.w_field, i);
     const auto wtracer_sfc_s  = ekat::subview(shoc_input.wtracer_sfc, i);
-    const auto exner_s        = ekat::subview(shoc_input.exner, i);
+    const auto inv_exner_s    = ekat::subview(shoc_input.inv_exner, i);
     const auto host_dse_s     = ekat::subview(shoc_input_output.host_dse, i);
     const auto tke_s          = ekat::subview(shoc_input_output.tke, i);
     const auto thetal_s       = ekat::subview(shoc_input_output.thetal, i);
@@ -365,10 +362,10 @@ Int Functions<S,D>::shoc_main(
     const auto qtracers_s = Kokkos::subview(shoc_input_output.qtracers, i, Kokkos::ALL(), Kokkos::ALL());
 
     shoc_main_internal(team, nlev, nlevi, npbl, nadv, num_qtracers, dtime,
-                       host_dx_s, host_dy_s, zt_grid_s, zi_grid_s,            // Input
+                       dx_s, dy_s, zt_grid_s, zi_grid_s,                      // Input
                        pres_s, presi_s, pdel_s, thv_s, w_field_s,             // Input
                        wthl_sfc_s, wqw_sfc_s, uw_sfc_s, vw_sfc_s,             // Input
-                       wtracer_sfc_s, exner_s, phis_s,                        // Input
+                       wtracer_sfc_s, inv_exner_s, phis_s,                    // Input
                        workspace,                                             // Workspace
                        host_dse_s, tke_s, thetal_s, qw_s, u_wind_s, v_wind_s, // Input/Output
                        wthv_sec_s, qtracers_s, tk_s, shoc_cldfrac_s,          // Input/Output

@@ -5,6 +5,7 @@
 #include "ekat/kokkos/ekat_kokkos_utils.hpp"
 #include "physics/p3/p3_functions.hpp"
 #include "physics/p3/p3_functions_f90.hpp"
+#include "share/util/scream_setup_random_test.hpp"
 
 #include "p3_unit_tests_common.hpp"
 
@@ -50,6 +51,8 @@ static void run_phys()
 
 static void run_bfb_p3_main_part1()
 {
+  auto engine = setup_random_test();
+
   constexpr Scalar qsmall = C::QSMALL; //PMC wouldn't it make more sense to define qsmall at a higher level since used in part1, part2, and part3?
   constexpr Scalar T_zerodegc   = C::T_zerodegc;
   constexpr Scalar sup_upper = -0.05;
@@ -67,7 +70,7 @@ static void run_bfb_p3_main_part1()
 
   for (auto& d : isds_fortran) {
     const auto qsmall_r = std::make_pair(0, qsmall*2); //PMC this range seems inappropriately small
-    d.randomize({
+    d.randomize(engine, {
         {d.T_atm, {T_zerodegc - 10, T_zerodegc + 10}},
         {d.qv_supersat_i, {sup_lower -.05, sup_upper + .05}},
         {d.qc, qsmall_r}, {d.qr, qsmall_r}, {d.qi, qsmall_r} });
@@ -90,7 +93,7 @@ static void run_bfb_p3_main_part1()
   // Get data from cxx
   for (auto& d : isds_cxx) {
     p3_main_part1_f(d.kts, d.kte, d.ktop, d.kbot, d.kdir, d.do_predict_nc, d.do_prescribed_CCN, d.dt,
-                    d.pres, d.dpres, d.dz, d.nc_nuceat_tend, d.nccn_prescribed, d.exner, d.inv_exner, d.inv_cld_frac_l, d.inv_cld_frac_i,
+                    d.pres, d.dpres, d.dz, d.nc_nuceat_tend, d.nccn_prescribed, d.inv_exner, d.exner, d.inv_cld_frac_l, d.inv_cld_frac_i,
                     d.inv_cld_frac_r, d.latent_heat_vapor, d.latent_heat_sublim, d.latent_heat_fusion,
                     d.T_atm, d.rho, d.inv_rho, d.qv_sat_l, d.qv_sat_i, d.qv_supersat_i, d.rhofacr, d.rhofaci,
                     d.acn, d.qv, d.th_atm, d.qc, d.nc, d.qr, d.nr, d.qi, d.ni, d.qm, d.bm, d.qc_incld, d.qr_incld, d.qi_incld,
@@ -139,6 +142,8 @@ static void run_bfb_p3_main_part1()
 
 static void run_bfb_p3_main_part2()
 {
+  auto engine = setup_random_test();
+
   constexpr Scalar qsmall     = C::QSMALL;
   constexpr Scalar T_zerodegc   = C::T_zerodegc;
   constexpr Scalar sup_upper = -0.05;
@@ -156,7 +161,7 @@ static void run_bfb_p3_main_part2()
 
   for (auto& d : isds_fortran) {
     const auto qsmall_r = std::make_pair(0, qsmall*2);
-    d.randomize({
+    d.randomize(engine, {
         {d.T_atm,  {T_zerodegc - 10, T_zerodegc + 10}},
         {d.t_prev, {T_zerodegc - 10, T_zerodegc + 10}},
         {d.qv_supersat_i, {sup_lower -.05, sup_upper + .05}},
@@ -181,7 +186,7 @@ static void run_bfb_p3_main_part2()
   for (auto& d : isds_cxx) {
     p3_main_part2_f(
       d.kts, d.kte, d.kbot, d.ktop, d.kdir, d.do_predict_nc, d.do_prescribed_CCN, d.dt, d.inv_dt,
-      d.pres, d.dpres, d.dz, d.nc_nuceat_tend, d.exner, d.inv_exner, d.inv_cld_frac_l, d.inv_cld_frac_i,
+      d.pres, d.dpres, d.dz, d.nc_nuceat_tend, d.inv_exner, d.exner, d.inv_cld_frac_l, d.inv_cld_frac_i,
       d.inv_cld_frac_r, d.ni_activated, d.inv_qc_relvar, d.cld_frac_i, d.cld_frac_l, d.cld_frac_r, d.qv_prev, d.t_prev,
       d.T_atm, d.rho, d.inv_rho, d.qv_sat_l, d.qv_sat_i, d.qv_supersat_i, d.rhofacr, d.rhofaci, d.acn, d.qv, d.th_atm, d.qc, d.nc, d.qr, d.nr, d.qi, d.ni,
       d.qm, d.bm, d.latent_heat_vapor, d.latent_heat_sublim, d.latent_heat_fusion, d.qc_incld, d.qr_incld, d.qi_incld, d.qm_incld, d.nc_incld, d.nr_incld,
@@ -251,6 +256,8 @@ static void run_bfb_p3_main_part2()
 
 static void run_bfb_p3_main_part3()
 {
+  auto engine = setup_random_test();
+
   constexpr Scalar qsmall     = C::QSMALL;
 
   P3MainPart3Data isds_fortran[] = {
@@ -265,7 +272,7 @@ static void run_bfb_p3_main_part3()
 
   for (auto& d : isds_fortran) {
     const auto qsmall_r = std::make_pair(0, qsmall*2);
-    d.randomize({ {d.qc, qsmall_r}, {d.qr, qsmall_r}, {d.qi, qsmall_r} });
+    d.randomize(engine, { {d.qc, qsmall_r}, {d.qr, qsmall_r}, {d.qi, qsmall_r} });
   }
 
   // Create copies of data for use by cxx. Needs to happen before fortran calls so that
@@ -286,7 +293,7 @@ static void run_bfb_p3_main_part3()
   for (auto& d : isds_cxx) {
     p3_main_part3_f(
       d.kts, d.kte, d.kbot, d.ktop, d.kdir,
-      d.exner, d.cld_frac_l, d.cld_frac_r, d.cld_frac_i,
+      d.inv_exner, d.cld_frac_l, d.cld_frac_r, d.cld_frac_i,
       d.rho, d.inv_rho, d.rhofaci, d.qv, d.th_atm, d.qc, d.nc, d.qr, d.nr, d.qi, d.ni, d.qm, d.bm, d.latent_heat_vapor, d.latent_heat_sublim,
       d.mu_c, d.nu, d.lamc, d.mu_r, d.lamr, d.vap_liq_exchange,
       d. ze_rain, d.ze_ice, d.diag_vm_qi, d.diag_eff_radius_qi, d.diag_diam_qi, d.rho_qi, d.diag_equiv_reflectivity, d.diag_eff_radius_qc);
@@ -333,6 +340,8 @@ static void run_bfb_p3_main_part3()
 
 static void run_bfb_p3_main()
 {
+  auto engine = setup_random_test();
+
   P3MainData isds_fortran[] = {
     //      its, ite, kts, kte,   it,        dt, do_predict_nc, do_prescribed_CCN
     P3MainData(1, 10,   1,  72,    1, 1.800E+03, false, true),
@@ -342,14 +351,14 @@ static void run_bfb_p3_main()
   static constexpr Int num_runs = sizeof(isds_fortran) / sizeof(P3MainData);
 
   for (auto& d : isds_fortran) {
-    d.randomize( {
+    d.randomize(engine, {
         {d.pres           , {1.00000000E+02 , 9.87111111E+04}},
         {d.dz             , {1.22776609E+02 , 3.49039167E+04}},
         {d.nc_nuceat_tend , {0              , 0}},
         {d.nccn_prescribed, {0              , 0}},
         {d.ni_activated   , {0              , 0}},
         {d.dpres          , {1.37888889E+03, 1.39888889E+03}},
-        {d.exner          , {1.00371345E+00, 3.19721007E+00}},
+        {d.inv_exner          , {1.00371345E+00, 3.19721007E+00}},
         {d.cld_frac_i     , {1              , 1}},
         {d.cld_frac_l     , {1              , 1}},
         {d.cld_frac_r     , {1              , 1}},
@@ -388,7 +397,7 @@ static void run_bfb_p3_main()
       d.qc, d.nc, d.qr, d.nr, d.th_atm, d.qv, d.dt, d.qi, d.qm, d.ni,
       d.bm, d.pres, d.dz, d.nc_nuceat_tend, d.nccn_prescribed, d.ni_activated, d.inv_qc_relvar, d.it, d.precip_liq_surf,
       d.precip_ice_surf, d.its, d.ite, d.kts, d.kte, d.diag_eff_radius_qc, d.diag_eff_radius_qi,
-      d.rho_qi, d.do_predict_nc, d.do_prescribed_CCN, d.dpres, d.exner, d.qv2qi_depos_tend,
+      d.rho_qi, d.do_predict_nc, d.do_prescribed_CCN, d.dpres, d.inv_exner, d.qv2qi_depos_tend,
       d.precip_liq_flux, d.precip_ice_flux, d.cld_frac_r, d.cld_frac_l, d.cld_frac_i, 
       d.liq_ice_exchange, d.vap_liq_exchange, d.vap_ice_exchange, d.qv_prev, d.t_prev);
     d.transpose<ekat::TransposeDirection::f2c>();
@@ -427,6 +436,8 @@ static void run_bfb_p3_main()
       REQUIRE(df90.precip_liq_surf[t]   == dcxx.precip_liq_surf[t]);
       REQUIRE(df90.precip_ice_surf[t]   == dcxx.precip_ice_surf[t]);
     }
+    REQUIRE(df90.precip_liq_flux[tot]   == dcxx.precip_liq_flux[tot]);
+    REQUIRE(df90.precip_ice_flux[tot]   == dcxx.precip_ice_flux[tot]);
     REQUIRE(df90.precip_liq_surf[tot]   == dcxx.precip_liq_surf[tot]);
     REQUIRE(df90.precip_ice_surf[tot]   == dcxx.precip_ice_surf[tot]);
   }

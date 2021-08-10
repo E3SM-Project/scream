@@ -35,7 +35,7 @@ void shoc_diag_obklen_c(Int shcol, Real *uw_sfc, Real *vw_sfc, Real *wthl_sfc,
                         Real *qv_sfc, Real *ustar, Real *kbfs, Real *obklen);
 
 void update_host_dse_c(Int shcol, Int nlev, Real *thlm, Real *shoc_ql,
-                       Real *exner, Real *zt_grid, Real *phis, Real *host_dse);
+                       Real *inv_exner, Real *zt_grid, Real *phis, Real *host_dse);
 
 void shoc_energy_fixer_c(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv,
                          Real *zt_grid, Real *zi_grid, Real *se_b, Real *ke_b,
@@ -267,7 +267,7 @@ void update_prognostics_implicit_c(Int shcol, Int nlev, Int nlevi, Int num_trace
 void shoc_main_c(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Real* host_dx, Real* host_dy,
                  Real* thv, Real* zt_grid, Real* zi_grid, Real* pres, Real* presi, Real* pdel,
                  Real* wthl_sfc, Real* wqw_sfc, Real* uw_sfc, Real* vw_sfc, Real* wtracer_sfc,
-                 Int num_qtracers, Real* w_field, Real* exner, Real* phis, Real* host_dse, Real* tke,
+                 Int num_qtracers, Real* w_field, Real* inv_exner, Real* phis, Real* host_dse, Real* tke,
                  Real* thetal, Real* qw, Real* u_wind, Real* v_wind, Real* qtracers, Real* wthv_sec,
                  Real* tkh, Real* tk, Real* shoc_ql, Real* shoc_cldfrac, Real* pblh, Real* shoc_mix,
                  Real* isotropy, Real* w_sec, Real* thl_sec, Real* qw_sec, Real* qwthl_sec, Real* wthl_sec,
@@ -320,7 +320,7 @@ void update_host_dse(UpdateHostDseData& d)
 {
   shoc_init(d.nlev, true);
   d.transpose<ekat::TransposeDirection::c2f>();
-  update_host_dse_c(d.shcol, d.nlev, d.thlm, d.shoc_ql, d.exner, d.zt_grid, d.phis, d.host_dse);
+  update_host_dse_c(d.shcol, d.nlev, d.thlm, d.shoc_ql, d.inv_exner, d.zt_grid, d.phis, d.host_dse);
   d.transpose<ekat::TransposeDirection::f2c>();
 }
 
@@ -739,7 +739,7 @@ void shoc_main(ShocMainData& d)
   d.transpose<ekat::TransposeDirection::c2f>();
   shoc_main_c(d.shcol, d.nlev, d.nlevi, d.dtime, d.nadv, d.host_dx, d.host_dy, d.thv, d.zt_grid, d.zi_grid,
               d.pres, d.presi, d.pdel, d.wthl_sfc, d.wqw_sfc, d.uw_sfc, d.vw_sfc, d.wtracer_sfc,
-              d.num_qtracers, d.w_field, d.exner, d.phis, d.host_dse, d.tke, d.thetal, d.qw,
+              d.num_qtracers, d.w_field, d.inv_exner, d.phis, d.host_dse, d.tke, d.thetal, d.qw,
               d.u_wind, d.v_wind, d.qtracers, d.wthv_sec, d.tkh, d.tk, d.shoc_ql, d.shoc_cldfrac, d.pblh,
               d.shoc_mix, d.isotropy, d.w_sec, d.thl_sec, d.qw_sec, d.qwthl_sec, d.wthl_sec, d.wqw_sec,
               d.wtke_sec, d.uw_sec, d.vw_sec, d.w3, d.wqls_sec, d.brunt, d.shoc_ql2, &d.elapsed_s);
@@ -758,7 +758,7 @@ void shoc_main_with_init(ShocMainData& d)
 
   shoc_main_c(d.shcol, d.nlev, d.nlevi, d.dtime, d.nadv, d.host_dx, d.host_dy, d.thv, d.zt_grid, d.zi_grid,
               d.pres, d.presi, d.pdel, d.wthl_sfc, d.wqw_sfc, d.uw_sfc, d.vw_sfc, d.wtracer_sfc, d.num_qtracers,
-              d.w_field, d.exner, d.phis, d.host_dse, d.tke, d.thetal, d.qw, d.u_wind, d.v_wind, d.qtracers,
+              d.w_field, d.inv_exner, d.phis, d.host_dse, d.tke, d.thetal, d.qw, d.u_wind, d.v_wind, d.qtracers,
               d.wthv_sec, d.tkh, d.tk, d.shoc_ql, d.shoc_cldfrac, d.pblh, d.shoc_mix, d.isotropy, d.w_sec,
               d.thl_sec, d.qw_sec, d.qwthl_sec, d.wthl_sec, d.wqw_sec, d.wtke_sec, d.uw_sec, d.vw_sec, d.w3,
               d.wqls_sec, d.brunt, d.shoc_ql2, &d.elapsed_s);
@@ -1006,7 +1006,7 @@ void shoc_diag_second_moments_ubycond_f(Int shcol, Real* thl_sec, Real* qw_sec, 
   ScreamDeepCopy::copy_to_host({thl_sec, qw_sec, qwthl_sec, wthl_sec, wqw_sec, uw_sec, vw_sec, wtke_sec}, shcol, host_views);
 }
 
-void update_host_dse_f(Int shcol, Int nlev, Real* thlm, Real* shoc_ql, Real* exner, Real* zt_grid,
+void update_host_dse_f(Int shcol, Int nlev, Real* thlm, Real* shoc_ql, Real* inv_exner, Real* zt_grid,
                        Real* phis, Real* host_dse)
 {
   using SHF = Functions<Real, DefaultDevice>;
@@ -1021,7 +1021,7 @@ void update_host_dse_f(Int shcol, Int nlev, Real* thlm, Real* shoc_ql, Real* exn
 
   std::vector<view_1d> temp_1d_d(1);
   std::vector<view_2d> temp_2d_d(5);
-  std::vector<const Real*> ptr_array = {thlm,  shoc_ql, exner, zt_grid, host_dse};
+  std::vector<const Real*> ptr_array = {thlm,  shoc_ql, inv_exner, zt_grid, host_dse};
 
   // Sync to device
   ScreamDeepCopy::copy_to_device({phis}, shcol, temp_1d_d);
@@ -1030,11 +1030,11 @@ void update_host_dse_f(Int shcol, Int nlev, Real* thlm, Real* shoc_ql, Real* exn
   view_1d phis_d(temp_1d_d[0]);
 
   view_2d
-    thlm_d    (temp_2d_d[0]),
-    shoc_ql_d (temp_2d_d[1]),
-    exner_d   (temp_2d_d[2]),
-    zt_grid_d (temp_2d_d[3]),
-    host_dse_d(temp_2d_d[4]);
+    thlm_d     (temp_2d_d[0]),
+    shoc_ql_d  (temp_2d_d[1]),
+    inv_exner_d(temp_2d_d[2]),
+    zt_grid_d  (temp_2d_d[3]),
+    host_dse_d (temp_2d_d[4]);
 
   const Int nk_pack = ekat::npack<Spack>(nlev);
   const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
@@ -1042,13 +1042,13 @@ void update_host_dse_f(Int shcol, Int nlev, Real* thlm, Real* shoc_ql, Real* exn
     const Int i = team.league_rank();
 
     const Scalar phis_s{phis_d(i)};
-    const auto thlm_s   = ekat::subview(thlm_d, i);
-    const auto shoc_ql_s    = ekat::subview(shoc_ql_d, i);
-    const auto exner_s    = ekat::subview(exner_d, i);
-    const auto zt_grid_s = ekat::subview(zt_grid_d, i);
-    const auto host_dse_s = ekat::subview(host_dse_d, i);
+    const auto thlm_s      = ekat::subview(thlm_d, i);
+    const auto shoc_ql_s   = ekat::subview(shoc_ql_d, i);
+    const auto inv_exner_s = ekat::subview(inv_exner_d, i);
+    const auto zt_grid_s   = ekat::subview(zt_grid_d, i);
+    const auto host_dse_s  = ekat::subview(host_dse_d, i);
 
-    SHF::update_host_dse(team, nlev, thlm_s, shoc_ql_s, exner_s, zt_grid_s, phis_s, host_dse_s);
+    SHF::update_host_dse(team, nlev, thlm_s, shoc_ql_s, inv_exner_s, zt_grid_s, phis_s, host_dse_s);
   });
 
   // Sync back to host
@@ -2151,7 +2151,7 @@ void update_prognostics_implicit_f(Int shcol, Int nlev, Int nlevi, Int num_trace
     v_wind_d(temp_2d_d[12]);
 
   view_3d
-    tracer_f90_d(temp_3d_d[0]);
+    qtracers_f90_d(temp_3d_d[0]);
 
   // Local variables
   const Int nlev_packs = ekat::npack<Spack>(nlev);
@@ -2159,12 +2159,17 @@ void update_prognostics_implicit_f(Int shcol, Int nlev, Int nlevi, Int num_trace
   const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs);
 
   // CXX version of shoc qtracers is the transpose of the fortran version.
-  view_3d tracer_cxx_d("",shcol,num_tracer,nlev_packs);
+  view_3d qtracers_cxx_d("",shcol,num_tracer,nlev_packs);
+
+  // scalarize each view
+  const auto qtracers_cxx_d_s = ekat::scalarize(qtracers_cxx_d);
+  const auto qtracers_f90_d_s = ekat::scalarize(qtracers_f90_d);
+
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
     const int i = team.league_rank();
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&] (const Int& k) {
       Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, num_tracer), [&] (const Int& q) {
-        tracer_cxx_d(i,q,k/Spack::n)[k%Spack::n] = tracer_f90_d(i,k,q/Spack::n)[q%Spack::n];
+        qtracers_cxx_d_s(i,q,k) = qtracers_f90_d_s(i,k,q);
       });
     });
   });
@@ -2198,7 +2203,7 @@ void update_prognostics_implicit_f(Int shcol, Int nlev, Int nlevi, Int num_trace
     const auto u_wind_s = ekat::subview(u_wind_d, i);
     const auto v_wind_s = ekat::subview(v_wind_d, i);
     const auto tke_s = ekat::subview(tke_d, i);
-    const auto tracer_s = Kokkos::subview(tracer_cxx_d, i, Kokkos::ALL(), Kokkos::ALL());
+    const auto tracer_s = Kokkos::subview(qtracers_cxx_d, i, Kokkos::ALL(), Kokkos::ALL());
 
     SHF::update_prognostics_implicit(team, nlev, nlevi, num_tracer, dtime,
                                      dz_zt_s, dz_zi_s, rho_zt_s, zt_grid_s,
@@ -2213,7 +2218,7 @@ void update_prognostics_implicit_f(Int shcol, Int nlev, Int nlevi, Int num_trace
     const int i = team.league_rank();
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&] (const Int& k) {
       Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, num_tracer), [&] (const Int& q) {
-        tracer_f90_d(i,k,q/Spack::n)[q%Spack::n] = tracer_cxx_d(i,q,k/Spack::n)[k%Spack::n];
+        qtracers_f90_d_s(i,k,q) = qtracers_cxx_d_s(i,q,k);
       });
     });
   });
@@ -2222,7 +2227,7 @@ void update_prognostics_implicit_f(Int shcol, Int nlev, Int nlevi, Int num_trace
   std::vector<view_2d> inout_views_2d = {thetal_d, qw_d, u_wind_d, v_wind_d, tke_d};
   ekat::device_to_host({thetal, qw, u_wind, v_wind, tke}, shcol, nlev, inout_views_2d, true);
 
-  std::vector<view_3d> inout_views = {tracer_f90_d};
+  std::vector<view_3d> inout_views = {qtracers_f90_d};
   ekat::device_to_host({tracer}, shcol, nlev, num_tracer, inout_views, true);
 }
 
@@ -2693,7 +2698,7 @@ int shoc_init_f(Int nlev, Real *pref_mid, Int nbot_shoc, Int ntop_shoc)
 
 Int shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Int npbl, Real* host_dx, Real* host_dy, Real* thv, Real* zt_grid,
                 Real* zi_grid, Real* pres, Real* presi, Real* pdel, Real* wthl_sfc, Real* wqw_sfc, Real* uw_sfc, Real* vw_sfc,
-                Real* wtracer_sfc, Int num_qtracers, Real* w_field, Real* exner, Real* phis, Real* host_dse, Real* tke,
+                Real* wtracer_sfc, Int num_qtracers, Real* w_field, Real* inv_exner, Real* phis, Real* host_dse, Real* tke,
                 Real* thetal, Real* qw, Real* u_wind, Real* v_wind, Real* qtracers, Real* wthv_sec, Real* tkh, Real* tk,
                 Real* shoc_ql, Real* shoc_cldfrac, Real* pblh, Real* shoc_mix, Real* isotropy, Real* w_sec, Real* thl_sec,
                 Real* qw_sec, Real* qwthl_sec, Real* wthl_sec, Real* wqw_sec, Real* wtke_sec, Real* uw_sec, Real* vw_sec,
@@ -2739,7 +2744,7 @@ Int shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Int npbl, 
   std::vector<const Real*> ptr_array_1d = {host_dx, host_dy, wthl_sfc, wqw_sfc,
                                            uw_sfc,  vw_sfc,  phis};
   std::vector<const Real*> ptr_array_2d = {zt_grid,   zi_grid,  pres,        presi,        pdel,
-                                           thv,       w_field,  wtracer_sfc, exner,        host_dse,
+                                           thv,       w_field,  wtracer_sfc, inv_exner,        host_dse,
                                            tke,       thetal,   qw,          u_wind,       v_wind,
                                            wthv_sec,  tk,       shoc_cldfrac, shoc_ql,
                                            shoc_ql2,  shoc_mix, w_sec,       thl_sec,      qw_sec,
@@ -2771,7 +2776,7 @@ Int shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Int npbl, 
     thv_d         (temp_2d_d[index_counter++]),
     w_field_d     (temp_2d_d[index_counter++]),
     wtracer_sfc_d (temp_2d_d[index_counter++]),
-    exner_d       (temp_2d_d[index_counter++]),
+    inv_exner_d   (temp_2d_d[index_counter++]),
     host_dse_d    (temp_2d_d[index_counter++]),
     tke_d         (temp_2d_d[index_counter++]),
     thetal_d      (temp_2d_d[index_counter++]),
@@ -2807,27 +2812,31 @@ Int shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Int npbl, 
   view_3d horiz_wind_d("horiz_wind",shcol,2,nlev_packs);
   view_3d qtracers_cxx_d("qtracers",shcol,num_qtracers,nlev_packs);
 
+  // scalarize each view
+  const auto u_wind_d_s = ekat::scalarize(u_wind_d);
+  const auto v_wind_d_s = ekat::scalarize(v_wind_d);
+  const auto horiz_wind_d_s = ekat::scalarize(horiz_wind_d);
+  const auto qtracers_cxx_d_s = ekat::scalarize(qtracers_cxx_d);
+  const auto qtracers_f90_d_s = ekat::scalarize(qtracers_f90_d);
+
   const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs);
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
     const Int i = team.league_rank();
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&] (const Int& k) {
-      const int k_v = k/Spack::n;
-      const int k_p = k%Spack::n;
-
-      horiz_wind_d(i,0,k_v)[k_p] = u_wind_d(i,k_v)[k_p];
-      horiz_wind_d(i,1,k_v)[k_p] = v_wind_d(i,k_v)[k_p];
+      horiz_wind_d_s(i,0,k) = u_wind_d_s(i,k);
+      horiz_wind_d_s(i,1,k) = v_wind_d_s(i,k);
 
       Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, num_qtracers), [&] (const Int& q) {
-        qtracers_cxx_d(i,q,k_v)[k_p] = qtracers_f90_d(i,k,q/Spack::n)[q%Spack::n];
+        qtracers_cxx_d_s(i,q,k) = qtracers_f90_d_s(i,k,q);
       });
     });
   });
 
   // Pack our data into structs and ship it off to shoc_main.
-  SHF::SHOCInput shoc_input{host_dx_d,  host_dy_d,     zt_grid_d, zi_grid_d,
-                             pres_d,    presi_d,       pdel_d,    thv_d,
-                             w_field_d, wthl_sfc_d,    wqw_sfc_d, uw_sfc_d,
-                             vw_sfc_d,  wtracer_sfc_d, exner_d,   phis_d};
+  SHF::SHOCInput shoc_input{host_dx_d,  host_dy_d,     zt_grid_d,   zi_grid_d,
+                             pres_d,    presi_d,       pdel_d,      thv_d,
+                             w_field_d, wthl_sfc_d,    wqw_sfc_d,   uw_sfc_d,
+                             vw_sfc_d,  wtracer_sfc_d, inv_exner_d, phis_d};
   SHF::SHOCInputOutput shoc_input_output{host_dse_d,   tke_d,      thetal_d,       qw_d,
                                          horiz_wind_d, wthv_sec_d, qtracers_cxx_d,
                                          tk_d,         shoc_cldfrac_d, shoc_ql_d};
@@ -2837,7 +2846,14 @@ Int shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Int npbl, 
                                              uw_sec_d,    vw_sec_d,   w3_d,      wqls_sec_d,
                                              brunt_d,     isotropy_d};
 
+  // Create local workspace
+  const auto nlevi_packs = ekat::npack<Spack>(nlevi);
+  const int n_wind_slots = ekat::npack<Spack>(2)*Spack::n;
+  const int n_trac_slots = ekat::npack<Spack>(num_qtracers+3)*Spack::n;
+  ekat::WorkspaceManager<Spack, SHF::KT::Device> workspace_mgr(nlevi_packs, 13+(n_wind_slots+n_trac_slots), policy);
+
   const auto elapsed_microsec = SHF::shoc_main(shcol, nlev, nlevi, npbl, nadv, num_qtracers, dtime,
+                                               workspace_mgr,
                                                shoc_input, shoc_input_output, shoc_output, shoc_history_output);
 
   // Copy wind back into separate views and
@@ -2845,14 +2861,11 @@ Int shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Int npbl, 
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
     const Int i = team.league_rank();
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&] (const Int& k) {
-      const int k_v = k/Spack::n;
-      const int k_p = k%Spack::n;
-
-      u_wind_d(i,k_v)[k_p] = horiz_wind_d(i,0,k_v)[k_p];
-      v_wind_d(i,k_v)[k_p] = horiz_wind_d(i,1,k_v)[k_p];
+      u_wind_d_s(i,k) = horiz_wind_d_s(i,0,k);
+      v_wind_d_s(i,k) = horiz_wind_d_s(i,1,k);
 
       Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, num_qtracers), [&] (const Int& q) {
-        qtracers_f90_d(i,k,q/Spack::n)[q%Spack::n] = qtracers_cxx_d(i,q,k_v)[k_p];
+        qtracers_f90_d_s(i,k,q) = qtracers_cxx_d_s(i,q,k);
       });
     });
   });

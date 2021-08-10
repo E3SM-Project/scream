@@ -69,18 +69,22 @@ int main(int argc, char** argv) {
 
     // Setup our dummy atmosphere based on the input data we read in
     std::cout << "Setup dummy atmos...\n";
-    auto nswbands = scream::rrtmgp::k_dist_sw.get_nband();
-    real2d sfc_alb_dir("sfc_alb_dir", nswbands, ncol);
-    real2d sfc_alb_dif("sfc_alb_dif", nswbands, ncol);
+    real1d sfc_alb_dir_vis("sfc_alb_dir_vis", ncol);
+    real1d sfc_alb_dir_nir("sfc_alb_dir_nir", ncol);
+    real1d sfc_alb_dif_vis("sfc_alb_dif_vis", ncol);
+    real1d sfc_alb_dif_nir("sfc_alb_dif_nir", ncol);
     real1d mu0("mu0", ncol);
     real2d lwp("lwp", ncol, nlay);
     real2d iwp("iwp", ncol, nlay);
     real2d rel("rel", ncol, nlay);
     real2d rei("rei", ncol, nlay);
+    real2d cld("cld", ncol, nlay);
     rrtmgpTest::dummy_atmos(
             inputfile, ncol, p_lay, t_lay,
-            sfc_alb_dir, sfc_alb_dif, mu0,
-            lwp, iwp, rel, rei
+            sfc_alb_dir_vis, sfc_alb_dir_nir,
+            sfc_alb_dif_vis, sfc_alb_dif_nir,
+            mu0,
+            lwp, iwp, rel, rei, cld
         );
 
     // Setup flux outputs; In a real model run, the fluxes would be
@@ -94,10 +98,21 @@ int main(int argc, char** argv) {
     real2d lw_flux_up ("lw_flux_up" ,ncol,nlay+1);
     real2d lw_flux_dn ("lw_flux_dn" ,ncol,nlay+1);
 
+    // Compute band-by-band surface_albedos.
+    const auto nswbands = scream::rrtmgp::k_dist_sw.get_nband();
+    real2d sfc_alb_dir("sfc_alb_dir", ncol, nswbands);
+    real2d sfc_alb_dif("sfc_alb_dif", ncol, nswbands);
+    rrtmgp::compute_band_by_band_surface_albedos(
+      ncol, nswbands,
+      sfc_alb_dir_vis, sfc_alb_dir_nir,
+      sfc_alb_dif_vis, sfc_alb_dif_nir,
+      sfc_alb_dir, sfc_alb_dif);
+
     // Run RRTMGP code on dummy atmosphere
     std::cout << "Run RRTMGP...\n";
     scream::rrtmgp::rrtmgp_main(
-            p_lay, t_lay, p_lev, t_lev, gas_concs, 
+            ncol, nlay,
+            p_lay, t_lay, p_lev, t_lev, gas_concs,
             sfc_alb_dir, sfc_alb_dif, mu0,
             lwp, iwp, rel, rei,
             sw_flux_up, sw_flux_dn, sw_flux_dir,
@@ -134,6 +149,10 @@ int main(int argc, char** argv) {
     p_lev.deallocate();
     t_lev.deallocate();
     gas_concs.reset();
+    sfc_alb_dir_vis.deallocate();
+    sfc_alb_dir_nir.deallocate();
+    sfc_alb_dif_vis.deallocate();
+    sfc_alb_dif_nir.deallocate();
     sfc_alb_dir.deallocate();
     sfc_alb_dif.deallocate();
     mu0.deallocate();
@@ -141,6 +160,7 @@ int main(int argc, char** argv) {
     iwp.deallocate();
     rel.deallocate();
     rei.deallocate();
+    cld.deallocate();
     yakl::finalize();
 
     return nerr != 0 ? 1 : 0;

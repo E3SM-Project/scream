@@ -161,7 +161,7 @@ void Functions<S,D>
           V_qit(pk).set(qi_gt_small, table_val_qi_fallspd * rhofaci(pk)); // mass-weighted   fall speed (with density factor)
           V_nit(pk).set(qi_gt_small, table_val_ni_fallspd * rhofaci(pk)); // number-weighted fall speed (with density factor)
         }
-        const auto Co_max_local = max(qi_gt_small, -1,
+        const auto Co_max_local = max(qi_gt_small, 0,
                                       V_qit(pk) * dt_left * inv_dz(pk));
         if (Co_max_local > lmax) lmax = Co_max_local;
       }, Kokkos::Max<Scalar>(Co_max));
@@ -179,9 +179,9 @@ void Functions<S,D>
 	  bm_incld(pk)=bm(pk)/cld_frac_i(pk);
 	});
 
-      
+
     } //end CFL substep loop
-    
+
     Kokkos::single(
       Kokkos::PerTeam(team), [&] () {
         precip_ice_surf += prt_accum * C::INV_RHO_H2O * inv_dt;
@@ -203,7 +203,7 @@ KOKKOS_FUNCTION
 void Functions<S,D>
 ::homogeneous_freezing(
   const uview_1d<const Spack>& T_atm,
-  const uview_1d<const Spack>& exner,
+  const uview_1d<const Spack>& inv_exner,
   const uview_1d<const Spack>& latent_heat_fusion,
   const MemberType& team,
   const Int& nk, const Int& ktop, const Int& kbot, const Int& kdir,
@@ -248,13 +248,13 @@ void Functions<S,D>
     qi(pk).set(qc_gt_small, qi(pk) + Qc_nuc);
     bm(pk).set(qc_gt_small, bm(pk) + Qc_nuc*inv_rho_rimeMax);
     ni(pk).set(qc_gt_small, ni(pk) + Nc_nuc);
-    th_atm(pk).set   (qc_gt_small, th_atm(pk) + exner(pk)*Qc_nuc*latent_heat_fusion(pk)*inv_cp);
+    th_atm(pk).set   (qc_gt_small, th_atm(pk) + inv_exner(pk)*Qc_nuc*latent_heat_fusion(pk)*inv_cp);
 
     qm(pk).set(qr_gt_small, qm(pk) + Qr_nuc);
     qi(pk).set(qr_gt_small, qi(pk) + Qr_nuc);
     bm(pk).set(qr_gt_small, bm(pk) + Qr_nuc*inv_rho_rimeMax);
     ni(pk).set(qr_gt_small, ni(pk) + Nr_nuc);
-    th_atm(pk).set   (qr_gt_small, th_atm(pk) + exner(pk)*Qr_nuc*latent_heat_fusion(pk)*inv_cp);
+    th_atm(pk).set   (qr_gt_small, th_atm(pk) + inv_exner(pk)*Qr_nuc*latent_heat_fusion(pk)*inv_cp);
 
     qc(pk).set(qc_gt_small, 0);
     nc(pk).set(qc_gt_small, 0);

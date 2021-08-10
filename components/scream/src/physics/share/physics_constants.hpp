@@ -3,6 +3,9 @@
 
 #include "share/scream_types.hpp"
 
+#include "ekat/util/ekat_string_utils.hpp"
+#include "ekat/ekat_scalar_traits.hpp"
+
 #include <vector>
 
 namespace scream {
@@ -18,6 +21,8 @@ namespace physics {
 template <typename Scalar>
 struct Constants
 {
+  using ci_string      = ekat::CaseInsensitiveString;
+
   static constexpr Scalar Cpair         = 1004.64;
   static constexpr Scalar Rair          = 287.042;
   static constexpr Scalar RH2O          = 461.505;
@@ -87,7 +92,7 @@ struct Constants
   static constexpr Scalar Avogad        = 6.02214e26;
   static constexpr Scalar Boltz         = 1.38065e-23;
   static constexpr Scalar Rgas          = Avogad * Boltz;
-  static constexpr Scalar MWWV          = 18.016;
+  static constexpr Scalar MWWV          = MWH2O;
   static constexpr Scalar RWV           = Rgas / MWWV;
   static constexpr Scalar ZVIR          = (RWV / Rair) - 1.0;
   static constexpr Scalar max_total_ni  = 500.e+3;  // maximum total ice concentration (sum of all categories) (m)
@@ -95,6 +100,7 @@ struct Constants
   static constexpr Scalar f2r           = 0.32;
   static constexpr Scalar nmltratio     = 0.2; // ratio of rain number produced to ice number loss from melting
   static constexpr Scalar basetemp      = 300.0;
+  static constexpr Scalar r_earth       = 6.376e6; // Radius of the earth in m
 
   // Table dimension constants
   static constexpr int VTABLE_DIM0    = 300;
@@ -107,7 +113,35 @@ struct Constants
   // = 3 Khairoutdinov and Kogan 2000
   static constexpr int IPARAM         = 3;
 
+  // Gases
+  static Scalar get_gas_mol_weight(ci_string gas_name);
 };
+
+// Gases
+// Define the molecular weight for each gas, which can then be
+// used to determine the volume mixing ratio for each gas.
+template <typename Scalar>
+Scalar Constants<Scalar>::get_gas_mol_weight(ci_string gas_name) {
+  //TODO: Possible improvement would be to design a device friendly function
+  if        (gas_name == "h2o") {
+    return Scalar(Constants<Scalar>::MWH2O);
+  } else if (gas_name == "co2") {
+    return 44.0095;
+  } else if (gas_name == "o3" ) {
+    return 47.9982;
+  } else if (gas_name == "n2o") {
+    return 44.0128;
+  } else if (gas_name == "co" ) {
+    return 28.0101;
+  } else if (gas_name == "ch4") {
+    return 16.04246;
+  } else if (gas_name == "o2" ) {
+    return 31.998;
+  } else if (gas_name == "n2" ) {
+    return 28.0134;
+  }
+  return ekat::ScalarTraits<Scalar>::invalid();
+}
 
 template <typename Scalar>
 constexpr Scalar Constants<Scalar>::NSMALL;

@@ -170,9 +170,9 @@ OPTIONS
                         This switch only works with the Spectral Element dycore.
      -scam              Compiles model in single column mode.  Only works with SE dycore.
      
-  Options relevent to IOP mode:
+  Options relevent for doubly periodic cloud resolving model (CRM) mode:
   
-     -iop_mode        
+     -dpcrm_mode
 
   EAM parallelization:
 
@@ -283,8 +283,7 @@ OPTIONS
      -MMF_microphysics_scheme <string>   CRM microphysics package name [sam1mom | m2005 ].
      -use_ECPP          use CRM clouds for vertical transport, aqueous chemistry and wet removable of aerosols
      -crm_adv           CRM advection scheme [MPDATA | UM5]
-     -crm <model>       CRM model [sam | samxx]
-     -use_MAML          use multiple atmosphere and multiple land version of MMF
+     -crm <model>       CRM model [sam | samomp | samxx]
 EOF
 }
 
@@ -348,7 +347,6 @@ GetOptions(
     "use_MMF"                   => \$opts{'use_MMF'},
     "use_MMF_VT"                => \$opts{'use_MMF_VT'},
     "use_ECPP"                  => \$opts{'use_ECPP'},
-    "use_MAML"                  => \$opts{'use_MAML'},
     "crm_nx=s"                  => \$opts{'crm_nx'},
     "crm_ny=s"                  => \$opts{'crm_ny'},
     "crm_nz=s"                  => \$opts{'crm_nz'},
@@ -411,7 +409,7 @@ GetOptions(
     "res=s"                     => \$opts{'res'},
     "rof=s"                     => \$opts{'rof'},
     "scam"                      => \$opts{'scam'},
-    "iop_mode"                  => \$opts{'iop_mode'},
+    "dpcrm_mode"                => \$opts{'dpcrm_mode'},
     "s|silent"                  => \$opts{'silent'},
     "smp!"                      => \$opts{'smp'},
     "spmd!"                     => \$opts{'spmd'},
@@ -1230,21 +1228,21 @@ EOF
 if ($print>=2) { print "EAM single column mode (SCAM): $scam$eol"; }
 
 #-----------------------------------------------------------------------------------------------
-# IOP Mode
-if (defined $opts{'iop_mode'}) {
-    $cfg_ref->set('iop_mode', 1);
+# Doubly periodic (DP) cloud resolving model (CRM) mode
+if (defined $opts{'dpcrm_mode'}) {
+    $cfg_ref->set('dpcrm_mode', 1);
 }
-my $iop_mode = $cfg_ref->get('iop_mode') ? "ON" : "OFF";
+my $dpcrm_mode = $cfg_ref->get('dpcrm_mode') ? "ON" : "OFF";
 
-# Currently only Spectral Element dycores support IOP mode
-if ($iop_mode eq 'ON' and $dyn_pkg ne 'se') {
+# Currently only Spectral Element dycores support DP CRM mode
+if ($dpcrm_mode eq 'ON' and $dyn_pkg ne 'se') {
     die <<"EOF";
-**  ERROR: IOP mode only works with Spectral Element dycore.
+**  ERROR: Doubly periodic cloud resolving model only works with Spectral Element dycore.
 **         Requested dycore is: $dyn_pkg
 EOF
 }
 
-if ($print>=2) { print "IOP mode: $iop_mode$eol"; }
+if ($print>=2) { print "DP CRM mode: $dpcrm_mode$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # Generate IOP
@@ -1267,8 +1265,13 @@ if ($print>=2) { print "Produce IOP file for SCAM: $e3smreplay$eol"; }
 #-----------------------------------------------------------------------------------------------
 # Multiscale Modelling Framework mode (MMF)
 if (defined $opts{'use_MMF'}) {
+    # disable other scheme options
+    $pbl_pkg = 'none';
+    $microphys_pkg = 'none';
+    $cfg_ref->set('pbl', $pbl_pkg);
+    $cfg_ref->set('microphys', $microphys_pkg);
+    $cfg_ref->set('macrophys', 'none');
     if (defined $opts{'use_ECPP'})            { $cfg_ref->set('use_ECPP', 1); }
-    if (defined $opts{'use_MAML'})            { $cfg_ref->set('use_MAML', 1); }
     if (defined $opts{'use_MMF_VT'})          { $cfg_ref->set('use_MMF_VT', 1); }
     $cfg_ref->set('use_MMF', 1);
     $cfg_ref->set('crm_nx', $opts{'crm_nx'});
@@ -1385,7 +1388,12 @@ if (!$prog_species) {
   $cfg_ref->set('chem_src_dir', $chem_src_dir);
 }
 
-if (($chem_pkg ne 'none') || ($prog_species)) {
+if ($chem_pkg eq 'spa'){
+    $chem_src_dir = "$cam_root/components/eam/src/chemistry/pp_none";
+    $cfg_ref->set('chem_src_dir', $chem_src_dir);
+}
+
+if ((($chem_pkg ne 'none') && ($chem_pkg ne 'spa')) || ($prog_species)) {
 
     # customize chemistry
     my $edit_chem_mech = $cfg_ref->get('edit_chem_mech');
@@ -1471,10 +1479,10 @@ else {
             if ($print>=2) { print "Advected constituents added by $microphys_pkg microphysics: 8$eol"; }
         }
 
-	if ($clubb_do_adv) {
-	    $nadv += 9;
-            if ($print>=2) { print "Advected constituents added by $microphys_pkg microphysics: 8$eol"; }
-	}
+        if ($clubb_do_adv) {
+            $nadv += 9;
+                if ($print>=2) { print "Advected constituents added by $microphys_pkg microphysics: 8$eol"; }
+        }
 
         if ($shoc_sgs){
             $nadv += 1;
@@ -1491,11 +1499,26 @@ else {
         $nadv += $chem_nadv;
         if ($print>=2) { print "Advected constituents added by chemistry $chem_pkg: $chem_nadv$eol"; }
 
-    }
+        # Advected tracers for MMF - same for 1-mom and 2-mom (1-mom ignores number concentration)
+        # - cloud liquid amount
+        # - cloud ice amount
+        # - cloud liquid number
+        # - cloud ice number
+        # - precipitating rain amount
+        # - precipitating snow amount
+        # - precipitating rain number
+        # - precipitating snow number
+        if (defined $opts{'use_MMF'}) {
+            $nadv += 8;
+            if ($print>=2) { print "Advected constituents added for MMF physics package: 8$eol"; }
+        }
 
-    if (defined $opts{'use_MMF_VT'}) {
-        $nadv += 2; # add tracers for CRM t and q variance transport
-        if ($print>=2) { print "Advected variance constituent added for MMF: 2$eol"; }
+        # MMF variance transport tracers
+        if (defined $opts{'use_MMF_VT'}) {
+            $nadv += 2; # add tracers for CRM t and q variance transport
+            if ($print>=2) { print "Advected variance constituent added for MMF: 2$eol"; }
+        }
+
     }
 
     # Add in specified test tracers.  These may be present with adiabatic or ideal physics.
@@ -1778,7 +1801,6 @@ if (defined $opts{'use_MMF'}) {
     $cfg_cppdefs .= " -DCRM_NX=$crm_nx -DCRM_NY=$crm_ny -DCRM_NZ=$crm_nz ";
     $cfg_cppdefs .= " -DCRM_DX=$crm_dx -DCRM_DT=$crm_dt ";
     if (defined $opts{'use_ECPP'}) { $cfg_cppdefs .= " -DECPP " }
-    if (defined $opts{'use_MAML'}) { $cfg_cppdefs .= " -DMAML " }
     if (defined $opts{'crm_nx_rad'}) {
         $cfg_cppdefs .= " -DCRM_NX_RAD=$crm_nx_rad "
     } else {
@@ -1793,6 +1815,8 @@ if (defined $opts{'use_MMF'}) {
     my $crm = $cfg_ref->get('crm');
     if    ($crm eq 'sam') {
         $cfg_cppdefs .= " -DMMF_SAM "
+    } elsif ($crm eq 'samomp') {
+        $cfg_cppdefs .= " -DMMF_SAMOMP"
     } elsif ($crm eq 'samxx') {
         $cfg_cppdefs .= " -DMMF_SAMXX "
     }
@@ -2585,6 +2609,31 @@ sub write_filepath
               print $fh "$camsrcdir/eam/src/physics/crm/sam/ADV_MPDATA\n";
           }
 
+        } elsif ($crm eq 'samomp') {
+          #####################################################
+          ## -crm samomp will GLOB directories for CMake
+          ######################################################
+          print $fh "$camsrcdir/eam/src/physics/crm/samomp\n";
+          #
+          # microphysics
+          my $MMF_microphysics_scheme = $cfg_ref->get('MMF_microphysics_scheme');
+          if ($MMF_microphysics_scheme eq 'sam1mom') {
+              print $fh "$camsrcdir/eam/src/physics/crm/samomp/MICRO_SAM1MOM\n";
+          } elsif ($MMF_microphysics_scheme eq 'm2005') {
+              print $fh "$camsrcdir/eam/src/physics/crm/samomp/MICRO_M2005\n";
+          }
+
+          # turbulence closure
+          print $fh "$camsrcdir/eam/src/physics/crm/samomp/SGS_TKE\n";
+
+          # advection scheme
+          my $crm_adv = $cfg_ref->get('crm_adv');
+          if ($crm_adv eq 'UM5') {
+              print $fh "$camsrcdir/eam/src/physics/crm/samomp/ADV_UM5\n";
+          } else {
+              print $fh "$camsrcdir/eam/src/physics/crm/samomp/ADV_MPDATA\n";
+          }
+                              
         } elsif ($crm eq 'samxx') {
           #####################################################
           ## -crm samxx will add_subdirectory in CMake rather

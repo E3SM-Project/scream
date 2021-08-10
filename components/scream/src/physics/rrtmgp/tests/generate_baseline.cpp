@@ -60,18 +60,22 @@ int main (int argc, char** argv) {
     rrtmgp::rrtmgp_initialize(gas_concs);
 
     // Setup dummy all-sky problem
-    int nswbands = 16;
-    real2d sfc_alb_dir ("sfc_alb_dir", nswbands, ncol);
-    real2d sfc_alb_dif ("sfc_alb_dif", nswbands, ncol);
+    real1d sfc_alb_dir_vis ("sfc_alb_dir_vis", ncol);
+    real1d sfc_alb_dir_nir ("sfc_alb_dir_nir", ncol);
+    real1d sfc_alb_dif_vis ("sfc_alb_dif_vis", ncol);
+    real1d sfc_alb_dif_nir ("sfc_alb_dif_nir", ncol);
     real1d mu0 ("mu0", ncol);
     real2d lwp ("lwp", ncol, nlay);
     real2d iwp ("iwp", ncol, nlay);
     real2d rel ("rel", ncol, nlay);
     real2d rei ("rei", ncol, nlay);
+    real2d cld ("cld", ncol, nlay);
     rrtmgpTest::dummy_atmos(
         inputfile, ncol, p_lay, t_lay,
-        sfc_alb_dir, sfc_alb_dif, mu0,
-        lwp, iwp, rel, rei
+        sfc_alb_dir_vis, sfc_alb_dir_nir,
+        sfc_alb_dif_vis, sfc_alb_dif_nir,
+        mu0,
+        lwp, iwp, rel, rei, cld
     );
 
     // Setup flux outputs; In a real model run, the fluxes would be
@@ -84,11 +88,22 @@ int main (int argc, char** argv) {
     real2d lw_flux_up ("lw_flux_up" ,ncol,nlay+1);
     real2d lw_flux_dn ("lw_flux_dn" ,ncol,nlay+1);
 
+    // Compute band-by-band surface_albedos.
+    const auto nswbands = 14;
+    real2d sfc_alb_dir("sfc_alb_dir", ncol, nswbands);
+    real2d sfc_alb_dif("sfc_alb_dif", ncol, nswbands);
+    rrtmgp::compute_band_by_band_surface_albedos(
+      ncol, nswbands,
+      sfc_alb_dir_vis, sfc_alb_dir_nir,
+      sfc_alb_dif_vis, sfc_alb_dif_nir,
+      sfc_alb_dir, sfc_alb_dif);
+
     // Run RRTMGP standalone codes and compare with AD run
     // Do something interesting here...
     // NOTE: these will get replaced with AD stuff that handles these
     std::cout << "rrtmgp_main..." << std::endl;
     rrtmgp::rrtmgp_main(
+        ncol, nlay,
         p_lay, t_lay, p_lev, t_lev, gas_concs,
         sfc_alb_dir, sfc_alb_dif, mu0,
         lwp, iwp, rel, rei,
@@ -111,6 +126,10 @@ int main (int argc, char** argv) {
     t_lay.deallocate();
     p_lev.deallocate();
     t_lev.deallocate();
+    sfc_alb_dir_vis.deallocate();
+    sfc_alb_dir_nir.deallocate();
+    sfc_alb_dif_vis.deallocate();
+    sfc_alb_dif_nir.deallocate();
     sfc_alb_dir.deallocate();
     sfc_alb_dif.deallocate();
     mu0.deallocate();
@@ -118,6 +137,7 @@ int main (int argc, char** argv) {
     iwp.deallocate();
     rel.deallocate();
     rei.deallocate();
+    cld.deallocate();
     sw_flux_up_ref.deallocate();
     sw_flux_dn_ref.deallocate();
     sw_flux_dn_dir_ref.deallocate();

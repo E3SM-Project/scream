@@ -11,8 +11,8 @@
 namespace scream {
     namespace rrtmgp {
 
-        OpticalProps2str get_cloud_optics_sw(CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist, real2d &p_lay, real2d &t_lay, real2d &lwp, real2d &iwp, real2d &rel, real2d &rei);
-        OpticalProps1scl get_cloud_optics_lw(CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist, real2d &p_lay, real2d &t_lay, real2d &lwp, real2d &iwp, real2d &rel, real2d &rei);
+        OpticalProps2str get_cloud_optics_sw(const int ncol, const int nlay, CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist, real2d &p_lay, real2d &t_lay, real2d &lwp, real2d &iwp, real2d &rel, real2d &rei);
+        OpticalProps1scl get_cloud_optics_lw(const int ncol, const int nlay, CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist, real2d &p_lay, real2d &t_lay, real2d &lwp, real2d &iwp, real2d &rel, real2d &rei);
 
         /*
          * Names of input files we will need.
@@ -86,10 +86,61 @@ namespace scream {
             cloud_optics_lw.finalize(); //~CloudOptics();
         }
 
+        void compute_band_by_band_surface_albedos(
+                const int ncol, const int nswbands,
+                real1d &sfc_alb_dir_vis, real1d &sfc_alb_dir_nir,
+                real1d &sfc_alb_dif_vis, real1d &sfc_alb_dif_nir,
+                real2d &sfc_alb_dir,     real2d &sfc_alb_dif) {
+
+            EKAT_ASSERT_MSG(initialized, "Error! rrtmgp_initialize must be called before GasOpticsRRTMGP object can be used.");
+            auto wavenumber_limits = k_dist_sw.get_band_lims_wavenumber();
+
+            EKAT_ASSERT_MSG(size(wavenumber_limits, 1) == 2,
+                            "Error! 1st dimension for wavenumber_limits should be 2.");
+            EKAT_ASSERT_MSG(size(wavenumber_limits, 2) == nswbands,
+                            "Error! 2nd dimension for wavenumber_limits should be " + std::to_string(nswbands) + " (nswbands).");
+
+            // Loop over bands, and determine for each band whether it is broadly in the
+            // visible or infrared part of the spectrum (visible or "not visible")
+            parallel_for(Bounds<2>(nswbands, ncol), YAKL_LAMBDA(const int ibnd, const int icol) {
+
+             // Threshold between visible and infrared is 0.7 micron, or 14286 cm^-1.
+             const real visible_wavenumber_threshold = 14286;
+
+             // Wavenumber is in the visible if it is above the visible wavenumber
+             // threshold, and in the infrared if it is below the threshold
+             const bool is_visible_wave1 = (wavenumber_limits(1, ibnd) > visible_wavenumber_threshold ? true : false);
+             const bool is_visible_wave2 = (wavenumber_limits(2, ibnd) > visible_wavenumber_threshold ? true : false);
+
+              if (is_visible_wave1 && is_visible_wave2) {
+
+                // Entire band is in the visible
+                sfc_alb_dir(icol,ibnd) = sfc_alb_dir_vis(icol);
+                sfc_alb_dif(icol,ibnd) = sfc_alb_dif_vis(icol);
+
+              } else if (!is_visible_wave1 && !is_visible_wave2) {
+
+                // Entire band is in the longwave (near-infrared)
+                sfc_alb_dir(icol,ibnd) = sfc_alb_dir_nir(icol);
+                sfc_alb_dif(icol,ibnd) = sfc_alb_dif_nir(icol);
+
+              } else {
+
+                // Band straddles the visible to near-infrared transition, so we take
+                // the albedo to be the average of the visible and near-infrared
+                // broadband albedos
+                sfc_alb_dir(icol,ibnd) = 0.5*(sfc_alb_dir_vis(icol) + sfc_alb_dir_nir(icol));
+                sfc_alb_dif(icol,ibnd) = 0.5*(sfc_alb_dif_vis(icol) + sfc_alb_dif_nir(icol));
+
+              }
+            });
+        }
+
         void rrtmgp_main(
+                const int ncol, const int nlay,
                 real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev, 
                 GasConcs &gas_concs,
-                real2d &sfc_alb_dir, real2d &sfc_alb_dif, real1d &mu0, 
+                real2d &sfc_alb_dir, real2d &sfc_alb_dif, real1d &mu0,
                 real2d &lwp, real2d &iwp, real2d &rel, real2d &rei,
                 real2d &sw_flux_up, real2d &sw_flux_dn, real2d &sw_flux_dn_dir,
                 real2d &lw_flux_up, real2d &lw_flux_dn) {
@@ -106,17 +157,19 @@ namespace scream {
             fluxes_lw.flux_dn = lw_flux_dn;
 
             // Convert cloud physical properties to optical properties for input to RRTMGP
-            OpticalProps2str clouds_sw = get_cloud_optics_sw(cloud_optics_sw, k_dist_sw, p_lay, t_lay, lwp, iwp, rel, rei);
-            OpticalProps1scl clouds_lw = get_cloud_optics_lw(cloud_optics_lw, k_dist_lw, p_lay, t_lay, lwp, iwp, rel, rei);
+            OpticalProps2str clouds_sw = get_cloud_optics_sw(ncol, nlay, cloud_optics_sw, k_dist_sw, p_lay, t_lay, lwp, iwp, rel, rei);
+            OpticalProps1scl clouds_lw = get_cloud_optics_lw(ncol, nlay, cloud_optics_lw, k_dist_lw, p_lay, t_lay, lwp, iwp, rel, rei);        
 
             // Do shortwave
             rrtmgp_sw(
+                ncol, nlay,
                 k_dist_sw, p_lay, t_lay, p_lev, t_lev, gas_concs, 
                 sfc_alb_dir, sfc_alb_dif, mu0, clouds_sw, fluxes_sw
             );
 
             // Do longwave
             rrtmgp_lw(
+                ncol, nlay,
                 k_dist_lw, p_lay, t_lay, p_lev, t_lev, gas_concs,
                 clouds_lw, fluxes_lw
             );
@@ -125,12 +178,9 @@ namespace scream {
         }
 
         OpticalProps2str get_cloud_optics_sw(
-                CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist, 
+                const int ncol, const int nlay,
+                CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist,
                 real2d &p_lay, real2d &t_lay, real2d &lwp, real2d &iwp, real2d &rel, real2d &rei) {
-
-            // Problem sizes
-            int ncol = t_lay.dimension[0];
-            int nlay = t_lay.dimension[1];
  
             // Initialize optics
             OpticalProps2str clouds;
@@ -139,9 +189,15 @@ namespace scream {
 
             // Needed for consistency with all-sky example problem?
             cloud_optics.set_ice_roughness(2);
+ 
+            // Limit effective radii to be within bounds of lookup table
+            auto rel_limited = real2d("rel_limited", ncol, nlay);
+            auto rei_limited = real2d("rei_limited", ncol, nlay);
+            limit_to_bounds(rel, cloud_optics.radliq_lwr, cloud_optics.radliq_upr, rel_limited);
+            limit_to_bounds(rei, cloud_optics.radice_lwr, cloud_optics.radice_upr, rei_limited);
 
             // Calculate cloud optics
-            cloud_optics.cloud_optics(lwp, iwp, rel, rei, clouds);
+            cloud_optics.cloud_optics(ncol, nlay, lwp, iwp, rel_limited, rei_limited, clouds);
 
             // Return optics
             return clouds;
@@ -149,12 +205,9 @@ namespace scream {
 
 
         OpticalProps1scl get_cloud_optics_lw(
+                const int ncol, const int nlay,
                 CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist, 
                 real2d &p_lay, real2d &t_lay, real2d &lwp, real2d &iwp, real2d &rel, real2d &rei) {
-
-            // Problem sizes
-            int ncol = t_lay.dimension[0];
-            int nlay = t_lay.dimension[1];
 
             // Initialize optics
             OpticalProps1scl clouds;
@@ -164,8 +217,14 @@ namespace scream {
             // Needed for consistency with all-sky example problem?
             cloud_optics.set_ice_roughness(2);
 
+            // Limit effective radii to be within bounds of lookup table
+            auto rel_limited = real2d("rel_limited", ncol, nlay);
+            auto rei_limited = real2d("rei_limited", ncol, nlay);
+            limit_to_bounds(rel, cloud_optics.radliq_lwr, cloud_optics.radliq_upr, rel_limited);
+            limit_to_bounds(rei, cloud_optics.radice_lwr, cloud_optics.radice_upr, rei_limited);
+
             // Calculate cloud optics
-            cloud_optics.cloud_optics(lwp, iwp, rel, rei, clouds);
+            cloud_optics.cloud_optics(ncol, nlay, lwp, iwp, rel_limited, rei_limited, clouds);
 
             // Return optics
             return clouds;
@@ -173,8 +232,9 @@ namespace scream {
 
 
         void rrtmgp_sw(
-                GasOpticsRRTMGP &k_dist, 
-                real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev, 
+                const int ncol, const int nlay,
+                GasOpticsRRTMGP &k_dist,
+                real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev,
                 GasConcs &gas_concs,
                 real2d &sfc_alb_dir, real2d &sfc_alb_dif, real1d &mu0, OpticalProps2str &clouds,
                 FluxesBroadband &fluxes) {
@@ -182,38 +242,129 @@ namespace scream {
             // Get problem sizes
             int nbnd = k_dist.get_nband();
             int ngpt = k_dist.get_ngpt();
-            int ncol = p_lay.dimension[0];
-            int nlay = p_lay.dimension[1];
+            int ngas = gas_concs.get_num_gases();
+
+            // Get daytime indices
+            auto dayIndices = int1d("dayIndices", ncol);
+            memset(dayIndices, -1);
+            // Loop below has to be done on host, so create host copies
+            // TODO: there is probably a way to do this on the device
+            auto dayIndices_h = dayIndices.createHostCopy();
+            auto mu0_h = mu0.createHostCopy();
+            int nday = 0;
+            for (int icol = 1; icol <= ncol; icol++) {
+                if (mu0_h(icol) > 0) {
+                    nday++;
+                    dayIndices_h(nday) = icol;
+                }
+            }
+            // Copy data back to the device
+            dayIndices_h.deep_copy_to(dayIndices);
+            if (nday == 0) { 
+                std::cout << "WARNING: no daytime columns found for this chunk!\n";
+                return;
+            }
+
+            // Subset mu0
+            auto mu0_day = real1d("mu0_day", nday);
+            parallel_for(Bounds<1>(nday), YAKL_LAMBDA(int iday) {
+                mu0_day(iday) = mu0(dayIndices(iday));
+            });
+
+            // subset state variables
+            auto p_lay_day = real2d("p_lay_day", nday, nlay);
+            auto t_lay_day = real2d("t_lay_day", nday, nlay);
+            parallel_for(Bounds<2>(nlay,nday), YAKL_LAMBDA(int ilay, int iday) {
+                p_lay_day(iday,ilay) = p_lay(dayIndices(iday),ilay);
+                t_lay_day(iday,ilay) = t_lay(dayIndices(iday),ilay);
+            });
+            auto p_lev_day = real2d("p_lev_day", nday, nlay+1);
+            auto t_lev_day = real2d("t_lev_day", nday, nlay+1);
+            parallel_for(Bounds<2>(nlay+1,nday), YAKL_LAMBDA(int ilev, int iday) {
+                p_lev_day(iday,ilev) = p_lev(dayIndices(iday),ilev);
+                t_lev_day(iday,ilev) = t_lev(dayIndices(iday),ilev);
+            });
+
+            // Subset gases
+            auto gas_names = gas_concs.get_gas_names();
+            GasConcs gas_concs_day;
+            gas_concs_day.init(gas_names, nday, nlay);
+            for (int igas = 1; igas <= ngas; igas++) {
+                auto vmr_day = real2d("vmr_day", nday, nlay);
+                auto vmr     = real2d("vmr"    , ncol, nlay);
+                gas_concs.get_vmr(gas_names(igas), vmr);
+                parallel_for(Bounds<2>(nlay,nday), YAKL_LAMBDA(int ilay, int iday) {
+                    vmr_day(iday,ilay) = vmr(dayIndices(iday),ilay);
+                });
+                gas_concs_day.set_vmr(gas_names(igas), vmr_day);
+            }
+
+            // Subset cloud optics
+            OpticalProps2str clouds_day;
+            clouds_day.init(k_dist.get_band_lims_wavenumber());
+            clouds_day.alloc_2str(nday, nlay);
+            parallel_for(Bounds<3>(nbnd,nlay,nday), YAKL_LAMBDA(int ibnd, int ilay, int iday) {
+                clouds_day.tau(iday,ilay,ibnd) = clouds.tau(dayIndices(iday),ilay,ibnd);
+                clouds_day.ssa(iday,ilay,ibnd) = clouds.ssa(dayIndices(iday),ilay,ibnd);
+                clouds_day.g  (iday,ilay,ibnd) = clouds.g  (dayIndices(iday),ilay,ibnd);
+            });
+
+            // RRTMGP assumes surface albedos have a screwy dimension ordering
+            // for some strange reason, so we need to transpose these; also do
+            // daytime subsetting in the same kernel
+            real2d sfc_alb_dir_T("sfc_alb_dir", nbnd, nday);
+            real2d sfc_alb_dif_T("sfc_alb_dif", nbnd, nday);
+            parallel_for(Bounds<2>(nbnd,nday), YAKL_LAMBDA(int ibnd, int icol) {
+                sfc_alb_dir_T(ibnd,icol) = sfc_alb_dir(dayIndices(icol),ibnd);
+                sfc_alb_dif_T(ibnd,icol) = sfc_alb_dif(dayIndices(icol),ibnd);
+            });
 
             // Allocate space for optical properties
             OpticalProps2str optics;
-            optics.alloc_2str(ncol, nlay, k_dist);
+            optics.alloc_2str(nday, nlay, k_dist);
 
             // Do gas optics
-            real2d toa_flux("toa_flux", ncol, ngpt);
+            real2d toa_flux("toa_flux", nday, ngpt);
             auto p_lay_host = p_lay.createHostCopy();
             bool top_at_1 = p_lay_host(1, 1) < p_lay_host(1, nlay);
 
-            k_dist.gas_optics(top_at_1, p_lay, p_lev, t_lay, gas_concs, optics, toa_flux);
+            k_dist.gas_optics(nday, nlay, top_at_1, p_lay_day, p_lev_day, t_lay_day, gas_concs_day, optics, toa_flux);
 
             // Combine gas and cloud optics
-            clouds.delta_scale();
-            clouds.increment(optics);
+            clouds_day.delta_scale();
+            clouds_day.increment(optics);
 
-            // RRTMGP assumes surface albedos have a screwy dimension ordering
-            // for some strange reason, so we need to transpose these
-            real2d sfc_alb_dir_T("sfc_alb_dir", nbnd, ncol);
-            real2d sfc_alb_dif_T("sfc_alb_dif", nbnd, ncol);
-            parallel_for(Bounds<2>(nbnd,ncol), YAKL_LAMBDA(int ibnd, int icol) {
-                sfc_alb_dir_T(ibnd,icol) = sfc_alb_dir(icol,ibnd);
-                sfc_alb_dif_T(ibnd,icol) = sfc_alb_dif(icol,ibnd);
+            // Compute fluxes on daytime columns
+            auto flux_up_day = real2d("flux_up_day", nday, nlay+1);
+            auto flux_dn_day = real2d("flux_dn_day", nday, nlay+1);
+            auto flux_dn_dir_day = real2d("flux_dn_dir_day", nday, nlay+1);
+            FluxesBroadband fluxes_day;
+            fluxes_day.flux_up     = flux_up_day; //real2d("flux_up"    , nday,nlay+1);
+            fluxes_day.flux_dn     = flux_dn_day; //real2d("flux_dn"    , nday,nlay+1);
+            fluxes_day.flux_dn_dir = flux_dn_dir_day; //real2d("flux_dn_dir", nday,nlay+1);
+            rte_sw(optics, top_at_1, mu0_day, toa_flux, sfc_alb_dir_T, sfc_alb_dif_T, fluxes_day);
+
+            // Zero out all fluxes before expanding daytime fluxes
+            auto &flux_up = fluxes.flux_up;
+            auto &flux_dn = fluxes.flux_dn;
+            auto &flux_dn_dir = fluxes.flux_dn_dir;
+            parallel_for(Bounds<2>(nlay+1,ncol), YAKL_LAMBDA(int ilev, int icol) {
+                flux_up    (icol,ilev) = 0;
+                flux_dn    (icol,ilev) = 0;
+                flux_dn_dir(icol,ilev) = 0;
             });
-
-            // Compute fluxes
-            rte_sw(optics, top_at_1, mu0, toa_flux, sfc_alb_dir_T, sfc_alb_dif_T, fluxes);
+            
+            // Expand daytime fluxes to all columns
+            parallel_for(Bounds<2>(nlay+1,nday), YAKL_LAMBDA(int ilev, int iday) {
+                int icol = dayIndices(iday);
+                flux_up    (icol,ilev) = flux_up_day    (iday,ilev);
+                flux_dn    (icol,ilev) = flux_dn_day    (iday,ilev);
+                flux_dn_dir(icol,ilev) = flux_dn_dir_day(iday,ilev);
+            });
         }
 
         void rrtmgp_lw(
+                const int ncol, const int nlay,
                 GasOpticsRRTMGP &k_dist,
                 real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev,
                 GasConcs &gas_concs,
@@ -222,8 +373,6 @@ namespace scream {
 
             // Problem size
             int nbnd = k_dist.get_nband();
-            int ncol = p_lay.dimension[0];
-            int nlay = p_lay.dimension[1];
 
             // Allocate space for optical properties
             OpticalProps1scl optics;
@@ -243,7 +392,7 @@ namespace scream {
             memset( emis_sfc , 0.98_wp                                   );
 
             // Do gas optics
-            k_dist.gas_optics(top_at_1, p_lay, p_lev, t_lay, t_sfc, gas_concs, optics, lw_sources, real2d(), t_lev);
+            k_dist.gas_optics(ncol, nlay, top_at_1, p_lay, p_lev, t_lay, t_sfc, gas_concs, optics, lw_sources, real2d(), t_lev);
 
             // Combine gas and cloud optics
             clouds.increment(optics);
