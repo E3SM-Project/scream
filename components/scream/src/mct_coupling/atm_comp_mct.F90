@@ -86,7 +86,7 @@ CONTAINS
     type(c_ptr) :: x2a_ptr, a2x_ptr
 
     ! TODO: read this from the namelist?
-    character(len=256)                :: yaml_fname = "data/scream_input.yaml"
+    character(len=256)                :: yaml_fname = "/compyfs/sing201/e3sm_scratch/SMS.ne4pg2_ne4pg2.F2000-SCREAM-SA.compy_intel.screamcpp/run/data/scream_input.yaml"
     character(kind=c_char,len=256), target :: yaml_fname_c
     !-------------------------------------------------------------------------------
 
@@ -98,6 +98,7 @@ CONTAINS
          dom=dom_atm, &
          infodata=infodata)
     call seq_infodata_getData(infodata, atm_phase=phase)
+    call seq_infodata_PutData(infodata, atm_aero=.true.)
 
     if (phase > 1) RETURN
 
@@ -205,6 +206,10 @@ CONTAINS
 
     ! Run scream
     dt_scream_r = dt_scream
+
+    ! HACK: To get it to work
+    dt_scream_r = 300
+
     call scream_run( dt_scream_r )
 
     ! Set time of next radiadtion computation
@@ -261,7 +266,7 @@ CONTAINS
     ! Build the atmosphere grid numbering for MCT
     ! NOTE:  Numbering scheme is: West to East and South to North
     ! starting at south pole.  Should be the same as what's used in SCRIP
-    
+
     ! Determine global seg map
     num_local_cols  = scream_get_num_local_cols()
     num_global_cols = scream_get_num_global_cols()
@@ -291,11 +296,11 @@ CONTAINS
     !
     integer        , intent(in)   :: lsize
     type(mct_gsMap), intent(in)   :: gsMap_atm
-    type(mct_ggrid), intent(inout):: dom_atm  
+    type(mct_ggrid), intent(inout):: dom_atm
     !
     ! Local Variables
     !
-    integer  :: n,i,c,ncols           ! indices	
+    integer  :: n,i,c,ncols           ! indices
     real(r8), pointer :: data1(:)
     real(r8), pointer :: data2(:)     ! temporary
     integer , pointer :: idata(:)     ! temporary
@@ -316,22 +321,22 @@ CONTAINS
 
     ! Fill in correct values for domain components
     call scream_get_cols_latlon(c_loc(data1),c_loc(data2))
-    call mct_gGrid_importRAttr(dom_atm,"lat",data1,lsize) 
-    call mct_gGrid_importRAttr(dom_atm,"lon",data2,lsize) 
+    call mct_gGrid_importRAttr(dom_atm,"lat",data1,lsize)
+    call mct_gGrid_importRAttr(dom_atm,"lon",data2,lsize)
     data1(:) = data1(:) * rad2deg
     data2(:) = data2(:) * rad2deg
 
     call scream_get_cols_area(c_loc(data1))
-    call mct_gGrid_importRAttr(dom_atm,"area",data1,lsize) 
+    call mct_gGrid_importRAttr(dom_atm,"area",data1,lsize)
 
     ! Mask and frac are both exactly 1
     data1 = 1.0
-    call mct_gGrid_importRAttr(dom_atm,"mask",data1,lsize) 
-    call mct_gGrid_importRAttr(dom_atm,"frac",data1,lsize) 
+    call mct_gGrid_importRAttr(dom_atm,"mask",data1,lsize)
+    call mct_gGrid_importRAttr(dom_atm,"frac",data1,lsize)
 
     ! Aream is computed by mct, so give invalid initial value
     data1 = -9999.0_R8
-    call mct_gGrid_importRAttr(dom_atm,"aream",data1,lsize) 
+    call mct_gGrid_importRAttr(dom_atm,"aream",data1,lsize)
   end subroutine atm_domain_mct
 
 end module atm_comp_mct

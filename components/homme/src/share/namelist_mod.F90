@@ -1003,6 +1003,7 @@ end if
 #endif
     endif
     if (ne.eq.0 .and. ne_x .eq. 0 .and. ne_y .eq. 0) cubed_sphere_map=2  ! must use element_local for var-res grids
+    cubed_sphere_map=0 !BSINGH--REMOVE THIS, THIS IS FOR TESTING ONLY!!!!!
     if (par%masterproc) write (iulog,*) "Reference element projection: cubed_sphere_map=",cubed_sphere_map
 
 ! set geometric factors

@@ -221,6 +221,70 @@ void RRTMGPRadiation::run_impl (const Real dt) {
   auto d_lw_flux_up = m_fields_out.at("LW_flux_up").get_view<Real**>();
   auto d_lw_flux_dn = m_fields_out.at("LW_flux_dn").get_view<Real**>();
 
+//  {
+//    Real p_mid_sum(0.0),p_int_sum(0.0),pseudo_density_sum(0.0),
+//         t_int_sum(0.0),sfc_alb_dir_vis_sum(0.0),sfc_alb_dir_nir_sum(0.0),sfc_alb_dif_vis_sum(0.0),
+//         sfc_alb_dif_nir_sum(0.0),cos_zenith_sum(0.0),qc_sum(0.0),qi_sum(0.0),
+//         cldfrac_tot_sum(0.0),eff_radius_qc_sum(0.0),eff_radius_qi_sum(0.0),qv_sum(0.0),
+//         T_mid_sum(0.0);
+
+//    for (int i=0; i<m_ncol; ++i) {
+//      sfc_alb_dir_vis_sum += d_sfc_alb_dir_vis(i);
+//      sfc_alb_dir_nir_sum += d_sfc_alb_dir_nir(i);
+//      sfc_alb_dif_vis_sum += d_sfc_alb_dif_vis(i);
+//      sfc_alb_dif_nir_sum += d_sfc_alb_dif_nir(i);
+//      cos_zenith_sum += d_mu0(i);
+//      for (int k=0; k<m_nlay+1; ++k) {
+//        p_int_sum += d_pint(i,k);
+//        t_int_sum += d_tint(i,k);
+//        if (k < m_nlay) {
+//          p_mid_sum += d_pmid(i,k);
+//          pseudo_density_sum += d_pdel(i,k);
+//          qc_sum += d_qc(i,k);
+//          qi_sum += d_qi(i,k);
+//          cldfrac_tot_sum += d_cldfrac_tot(i,k);
+//          eff_radius_qc_sum += d_rel(i,k);
+//          eff_radius_qi_sum += d_rei(i,k);
+//          qv_sum += d_qv(i,k);
+//          T_mid_sum += d_tmid(i,k);
+//        }
+//      }
+//    }
+
+//    Real gas_sum(0.0);
+//    for (int igas = 0; igas < m_ngas; igas++) {
+//      auto name = m_gas_names[igas];
+//      auto fm_name = name=="h2o" ? "qv" : name;
+//      auto d_temp  = m_fields_in.at(fm_name).get_view<const Real**>();
+//      for (int i=0; i<m_ncol; ++i) {
+//        for (int k=0; k<m_nlay; ++k) {
+//          gas_sum += d_temp(i,k);
+//        }
+//      }
+//    }
+
+//    std::cout << std::endl << "RRTMGP INPUT VARS" << std::endl
+//              << "p_mid: " << p_mid_sum << std::endl
+//              << "p_int: " << p_int_sum << std::endl
+//              << "pseudo_density: " << pseudo_density_sum << std::endl
+//              << "t_int: " << t_int_sum << std::endl
+//              << "sfc_alb_dir_vis: " << sfc_alb_dir_vis_sum << std::endl
+//              << "sfc_alb_dir_nir: " << sfc_alb_dir_nir_sum << std::endl
+//              << "sfc_alb_dif_vis: " << sfc_alb_dif_vis_sum << std::endl
+//              << "sfc_alb_dif_nir: " << sfc_alb_dif_nir_sum << std::endl
+//              << "cos_zenith: " << cos_zenith_sum << std::endl
+//              << "qv: " << qv_sum << std::endl
+//              << "qc: " << qc_sum << std::endl
+//              << "qi: " << qi_sum << std::endl
+//              << "cldfrac_tot: " << cldfrac_tot_sum << std::endl
+//              << "eff_radius_qc: " << eff_radius_qc_sum << std::endl
+//              << "eff_radius_qi: " << eff_radius_qi_sum << std::endl
+//              << "T_mid: " << T_mid_sum << std::endl
+//              << "gas: " << gas_sum << std::endl
+//              << std::endl;
+//  }
+
+
   // Create YAKL arrays. RRTMGP expects YAKL arrays with styleFortran, i.e., data has ncol
   // as the fastest index. For this reason we must copy the data.
   auto p_lay           = m_buffer.p_lay;
@@ -373,6 +437,33 @@ void RRTMGPRadiation::run_impl (const Real dt) {
       });
     });
   }
+
+//  {
+//    Real T_mid_sum(0.0),SW_flux_dn_sum(0.0),SW_flux_up_sum(0.0),
+//         SW_flux_dn_dir_sum(0.0),LW_flux_up_sum(0.0),LW_flux_dn_sum(0.0);
+
+//    for (int i=0; i<m_ncol; ++i) {
+//      for (int k=0; k<m_nlay+1; ++k) {
+//        SW_flux_dn_sum += d_sw_flux_dn(i,k);
+//        SW_flux_up_sum += d_sw_flux_up(i,k);
+//        SW_flux_dn_dir_sum += d_sw_flux_dn_dir(i,k);
+//        LW_flux_up_sum += d_lw_flux_up(i,k);
+//        LW_flux_dn_sum += d_lw_flux_dn(i,k);
+//        if (k < m_nlay) {
+//          T_mid_sum += d_tmid(i,k);
+//        }
+//      }
+//    }
+
+//    std::cout << std::endl << "RRTMGP OUTPUT VARS" << std::endl
+//              << "T_mid: " << T_mid_sum << std::endl
+//              << "SW_flux_dn: " << SW_flux_dn_sum << std::endl
+//              << "SW_flux_up: " << SW_flux_up_sum << std::endl
+//              << "SW_flux_dn_dir: " << SW_flux_dn_dir_sum << std::endl
+//              << "LW_flux_up: " << LW_flux_up_sum << std::endl
+//              << "LW_flux_dn: " << LW_flux_dn_sum << std::endl
+//              << std::endl;
+//  }
 }
 // =========================================================================================
 

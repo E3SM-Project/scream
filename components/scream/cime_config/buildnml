@@ -168,9 +168,9 @@ def buildnml(case, caseroot, compname):
 
     # If we have to re-dump the YAML file due to CIME case updates,
     # we need to also restore the original comments.
-    if modified:
-        ordered_dump(scream_input, yaml_tgt)
-        apply_comments(yaml_tgt, comments)
+    #if modified:
+    #    ordered_dump(scream_input, yaml_tgt)
+    #    apply_comments(yaml_tgt, comments)
 
     # Create homme namelists from scream inputs
     homme_nl_path = os.path.join(rundir, scream_input["Atmosphere Driver"]["Grids Manager"]["Dynamics Driven"]["Dynamics Namelist File Name"])

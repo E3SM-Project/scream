@@ -15,4 +15,17 @@
     <support_level>Experimental, under development</support_level>
   </compset>
 
+  <compset>
+    <alias>F2000-SCREAM-SA-NEW</alias> <!-- SCREAM standalone NEW -->
+    <lname>2000_SCREAM_ELM%SPBC_SICE_SOCN_SROF_SGLC_SWAV</lname>
+    <support_level>Experimental, under development</support_level>
+  </compset>
+
+<compset>
+    <alias>F2000-SCREAM-SA-LND_CICE_DOCN</alias> <!-- SCREAM standalone NEW -->
+    <lname>2000_SCREAM_ELM%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV_SIAC_SESP</lname>
+    <support_level>Experimental, under development</support_level>
+</compset>
+
+
 </compsets>

@@ -66,7 +66,6 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
   using FL  = FieldLayout;
 
   constexpr int NGP  = HOMMEXX_NP;
-  constexpr int NVL  = HOMMEXX_NUM_PHYSICAL_LEV;
   constexpr int NTL  = HOMMEXX_NUM_TIME_LEVELS;
 
   // Some units
@@ -82,6 +81,7 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
 
   const int ne = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
   const int ncols = m_ref_grid->get_num_local_dofs();
+  const int nlevs = m_dyn_grid->get_num_vertical_levels();
 
   // Sanity check for the grid. This should *always* pass, since Homme builds the grids
   EKAT_REQUIRE_MSG(get_num_local_elems_f90()==ne,
@@ -105,20 +105,20 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
 
   // Note: qv is needed to make sure Q is not empty (dyn needs qv to transform T<->Theta),
   constexpr int N = sizeof(Homme::Scalar) / sizeof(Real);
-  add_field<Updated> ("horiz_winds",   FL({COL,CMP, LEV},{ncols,2,NVL}),  m/s,   rgn,N);
-  add_field<Updated> ("T_mid",         FL({COL,     LEV},{ncols,  NVL}),  K,     rgn,N);
-  add_field<Updated> ("w_int",         FL({COL,    ILEV},{ncols,  NVL+1}),m/s,   rgn,N);
-  add_field<Updated> ("phi_int",       FL({COL,    ILEV},{ncols,  NVL+1}),Pa/rho,rgn,N);
-  add_field<Updated> ("pseudo_density",FL({COL,     LEV},{ncols,  NVL}),  Pa,    rgn,N);
+  add_field<Updated> ("horiz_winds",   FL({COL,CMP, LEV},{ncols,2,nlevs}),  m/s,   rgn,N);
+  add_field<Updated> ("T_mid",         FL({COL,     LEV},{ncols,  nlevs}),  K,     rgn,N);
+  add_field<Updated> ("w_int",         FL({COL,    ILEV},{ncols,  nlevs+1}),m/s,   rgn,N);
+  add_field<Updated> ("phi_int",       FL({COL,    ILEV},{ncols,  nlevs+1}),Pa/rho,rgn,N);
+  add_field<Updated> ("pseudo_density",FL({COL,     LEV},{ncols,  nlevs}),  Pa,    rgn,N);
   add_field<Updated> ("ps",            FL({COL         },{ncols      }),  Pa,    rgn);
-  add_field<Required>("qv",            FL({COL,     LEV},{ncols,  NVL}),  Q,     rgn,"tracers",N);
-  add_field<Computed>("p_int",         FL({COL,    ILEV},{ncols,  NVL+1}),Pa,    rgn,N);
-  add_field<Computed>("p_mid",         FL({COL,     LEV},{ncols,  NVL}),  Pa,    rgn,N);
+  add_field<Required>("qv",            FL({COL,     LEV},{ncols,  nlevs}),  Q,     rgn,"tracers",N);
+  add_field<Computed>("p_int",         FL({COL,    ILEV},{ncols,  nlevs+1}),Pa,    rgn,N);
+  add_field<Computed>("p_mid",         FL({COL,     LEV},{ncols,  nlevs}),  Pa,    rgn,N);
 
   // These are used to back out tendencies
-  add_field<Updated>("T_mid_prev",      FL({COL,LEV},    {ncols,  NVL}),  K/s,    rgn,N);
-  add_field<Updated>("horiz_winds_prev",FL({COL,CMP,LEV},{ncols,2,NVL}),  m/(s*s),rgn,N);
-  add_field<Updated>("w_int_prev",      FL({COL,LEV},    {ncols,  NVL+1}),m/(s*s),rgn,N);
+  add_field<Updated>("T_mid_prev",      FL({COL,LEV},    {ncols,  nlevs}),  K/s,    rgn,N);
+  add_field<Updated>("horiz_winds_prev",FL({COL,CMP,LEV},{ncols,2,nlevs}),  m/(s*s),rgn,N);
+  add_field<Updated>("w_int_prev",      FL({COL,ILEV},    {ncols,  nlevs+1}),m/(s*s),rgn,N);
 
   // Dynamics backs out tendencies from the states, and pass those to Homme.
   // After Homme completes, we remap the updates state to the ref grid.
@@ -131,21 +131,21 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
   //       we don't care about units.
   // Note: the dyn grid names do not follow the FieldManager conventions,
   //       but rather the var names in Homme, so they can be easily found there. 
-  create_dyn_field("FM",{EL,CMP,GP,GP,LEV},{ne,3,NP,NP,NVL});
-  create_dyn_field("FT",{EL,    GP,GP,LEV},{ne,  NP,NP,NVL});
+  create_dyn_field("FM",{EL,CMP,GP,GP,LEV},{ne,3,NP,NP,nlevs});
+  create_dyn_field("FT",{EL,    GP,GP,LEV},{ne,  NP,NP,nlevs});
 
-  create_dyn_field("v",        {EL,TL,CMP,GP,GP,LEV}, {ne,NTL,2,NP,NP,NVL});
-  create_dyn_field("vtheta_dp",{EL,TL,    GP,GP,LEV}, {ne,NTL,  NP,NP,NVL});
-  create_dyn_field("dp3d",     {EL,TL,    GP,GP,LEV}, {ne,NTL,  NP,NP,NVL});
-  create_dyn_field("w_i",      {EL,TL,    GP,GP,ILEV},{ne,NTL,  NP,NP,NVL+1});
-  create_dyn_field("phinh_i",  {EL,TL,    GP,GP,ILEV},{ne,NTL,  NP,NP,NVL+1});
+  create_dyn_field("v",        {EL,TL,CMP,GP,GP,LEV}, {ne,NTL,2,NP,NP,nlevs});
+  create_dyn_field("vtheta_dp",{EL,TL,    GP,GP,LEV}, {ne,NTL,  NP,NP,nlevs});
+  create_dyn_field("dp3d",     {EL,TL,    GP,GP,LEV}, {ne,NTL,  NP,NP,nlevs});
+  create_dyn_field("w_i",      {EL,TL,    GP,GP,ILEV},{ne,NTL,  NP,NP,nlevs+1});
+  create_dyn_field("phinh_i",  {EL,TL,    GP,GP,ILEV},{ne,NTL,  NP,NP,nlevs+1});
   create_dyn_field("ps",       {EL,TL,    GP,GP},     {ne,NTL,  NP,NP});
 
   // For momentum and temperature, we back out tendencies on the ref grid,
   // and then remap them. So we need extra fields for FM and FT on the ref grid,
   // but we don't expose them, since they are internal. And we don't care about units.
-  field_type FM(FID("FM",FL({COL,CMP,LEV},{ncols,3,NVL}),nondim,rgn));
-  field_type FT(FID("FT",FL({COL,LEV},{ncols,NVL}),nondim,rgn));
+  field_type FM(FID("FM",FL({COL,CMP,LEV},{ncols,3,nlevs}),nondim,rgn));
+  field_type FT(FID("FT",FL({COL,LEV},{ncols,nlevs}),nondim,rgn));
   FM.get_header().get_alloc_properties().request_allocation<Real>(N);
   FT.get_header().get_alloc_properties().request_allocation<Real>(N);
   FM.allocate_view();
@@ -524,6 +524,64 @@ void HommeDynamics::initialize_impl (const util::TimeStamp& /* t0 */)
 void HommeDynamics::run_impl (const Real dt)
 {
   try {
+
+
+//    {
+//      const auto& horiz_winds      = m_ref_grid_fields.at("horiz_winds").get_view<Real***>();
+//      const auto& T_mid            = m_ref_grid_fields.at("T_mid").get_view<Real**>();
+//      const auto& w_int            = m_ref_grid_fields.at("w_int").get_view<Real**>();
+//      const auto& phi_int          = m_ref_grid_fields.at("phi_int").get_view<Real**>();
+//      const auto& pseudo_density   = m_ref_grid_fields.at("pseudo_density").get_view<Real**>();
+//      const auto& ps               = m_ref_grid_fields.at("ps").get_view<Real*>();
+//      const auto& tracers          = m_ref_grid_fields.at("Q").get_view<Real***>();
+//      const auto& T_mid_prev       = m_ref_grid_fields.at("T_mid_prev").get_view<Real**>();
+//      const auto& horiz_winds_prev = m_ref_grid_fields.at("horiz_winds_prev").get_view<Real***>();
+//      const auto& w_int_prev       = m_ref_grid_fields.at("w_int_prev").get_view<Real**>();
+
+//      const int ncols = m_ref_grid->get_num_local_dofs();
+//      const int nlevs = m_ref_grid->get_num_vertical_levels();
+//      const int qsize = tracers.extent_int(1);
+
+//      Real horiz_winds_sum(0.0),T_mid_sum(0.0),w_int_sum(0.0),phi_int_sum(0.0),
+//           pseudo_density_sum(0.0),ps_sum(0.0),tracers_sum(0.0),
+//           T_mid_prev_sum(0.0),horiz_winds_prev_sum(0.0),w_int_prev_sum(0.0);
+
+//      for (int i=0; i<ncols; ++i) {
+//        ps_sum += ps(i);
+//        for (int k=0; k<nlevs+1; ++k) {
+//          w_int_sum += w_int(i,k);
+//          phi_int_sum += phi_int(i,k);
+//          w_int_prev_sum += w_int_prev(i,k);
+//          if (k < nlevs) {
+//            T_mid_sum += T_mid(i,k);
+//            pseudo_density_sum += pseudo_density(i,k);
+//            T_mid_prev_sum += T_mid_prev(i,k);
+//            for (int c=0; c<2; ++c) {
+//              horiz_winds_sum += horiz_winds(i,c,k);
+//              horiz_winds_prev_sum += horiz_winds_prev(i,c,k);
+//            }
+//            for (int q=0; q<qsize; ++q) {
+//              tracers_sum += tracers(i,q,k);
+//            }
+//          }
+//        }
+//      }
+
+//      std::cout << std::endl << "HOMME INPUT VARS" << std::endl
+//                << "horiz_winds: " << horiz_winds_sum << std::endl
+//                << "T_mid: " << T_mid_sum << std::endl
+//                << "w_int: " << w_int_sum << std::endl
+//                << "phi_int: " << phi_int_sum << std::endl
+//                << "pseudo_density: " << pseudo_density_sum << std::endl
+//                << "ps: " << ps_sum << std::endl
+//                << "tracers: " << tracers_sum << std::endl
+//                << "T_mid_prev: " << T_mid_prev_sum << std::endl
+//                << "horiz_winds_prev: " << horiz_winds_prev_sum << std::endl
+//                << "w_int_prev: " << w_int_prev_sum << std::endl
+//                << std::endl;
+//    }
+
+
     // Prepare inputs for homme
     Kokkos::fence();
     homme_pre_process (dt);
@@ -535,6 +593,70 @@ void HommeDynamics::run_impl (const Real dt)
     // Post process Homme's output, to produce what the rest of Atm expects
     Kokkos::fence();
     homme_post_process ();
+
+
+//    {
+//      const auto& horiz_winds      = m_ref_grid_fields.at("horiz_winds").get_view<Real***>();
+//      const auto& T_mid            = m_ref_grid_fields.at("T_mid").get_view<Real**>();
+//      const auto& w_int            = m_ref_grid_fields.at("w_int").get_view<Real**>();
+//      const auto& phi_int          = m_ref_grid_fields.at("phi_int").get_view<Real**>();
+//      const auto& pseudo_density   = m_ref_grid_fields.at("pseudo_density").get_view<Real**>();
+//      const auto& ps               = m_ref_grid_fields.at("ps").get_view<Real*>();
+//      const auto& tracers          = m_ref_grid_fields.at("Q").get_view<Real***>();
+//      const auto& T_mid_prev       = m_ref_grid_fields.at("T_mid_prev").get_view<Real**>();
+//      const auto& horiz_winds_prev = m_ref_grid_fields.at("horiz_winds_prev").get_view<Real***>();
+//      const auto& w_int_prev       = m_ref_grid_fields.at("w_int_prev").get_view<Real**>();
+//      const auto& p_int            = m_ref_grid_fields.at("p_int").get_view<Real**>();
+//      const auto& p_mid            = m_ref_grid_fields.at("p_mid").get_view<Real**>();
+
+//      const int ncols = m_ref_grid->get_num_local_dofs();
+//      const int nlevs = m_ref_grid->get_num_vertical_levels();
+//      const int qsize = tracers.extent_int(1);
+
+//      Real horiz_winds_sum(0.0),T_mid_sum(0.0),w_int_sum(0.0),phi_int_sum(0.0),
+//           pseudo_density_sum(0.0),ps_sum(0.0),tracers_sum(0.0),
+//           T_mid_prev_sum(0.0),horiz_winds_prev_sum(0.0),w_int_prev_sum(0.0),
+//           p_int_sum(0.0),p_mid_sum(0.0);
+
+//      for (int i=0; i<ncols; ++i) {
+//        ps_sum += ps(i);
+//        for (int k=0; k<nlevs+1; ++k) {
+//          w_int_sum += w_int(i,k);
+//          phi_int_sum += phi_int(i,k);
+//          w_int_prev_sum += w_int_prev(i,k);
+//          p_int_sum += p_int(i,k);
+//          if (k < nlevs) {
+//            T_mid_sum += T_mid(i,k);
+//            pseudo_density_sum += pseudo_density(i,k);
+//            T_mid_prev_sum += T_mid_prev(i,k);
+//            p_mid_sum += p_mid(i,k);
+//            for (int c=0; c<2; ++c) {
+//              horiz_winds_sum += horiz_winds(i,c,k);
+//              horiz_winds_prev_sum += horiz_winds_prev(i,c,k);
+//            }
+//            for (int q=0; q<qsize; ++q) {
+//              tracers_sum += tracers(i,q,k);
+//            }
+//          }
+//        }
+//      }
+
+//      std::cout << std::endl << "HOMME OUPUT VARS" << std::endl
+//                << "horiz_winds: " << horiz_winds_sum << std::endl
+//                << "T_mid: " << T_mid_sum << std::endl
+//                << "w_int: " << w_int_sum << std::endl
+//                << "phi_int: " << phi_int_sum << std::endl
+//                << "pseudo_density: " << pseudo_density_sum << std::endl
+//                << "ps: " << ps_sum << std::endl
+//                << "tracers: " << tracers_sum << std::endl
+//                << "T_mid_prev: " << T_mid_prev_sum << std::endl
+//                << "horiz_winds_prev: " << horiz_winds_prev_sum << std::endl
+//                << "w_int_prev: " << w_int_prev_sum << std::endl
+//                << "p_int: " << p_int_sum << std::endl
+//                << "p_mid: " << p_mid_sum << std::endl
+//                << std::endl;
+//    }
+
 
     // Get a copy of the current timestamp (at the beginning of the step) and
     // advance it, updating the p3 fields.

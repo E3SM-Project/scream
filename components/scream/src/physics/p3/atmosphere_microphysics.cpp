@@ -281,6 +281,84 @@ void P3Microphysics::initialize_impl (const util::TimeStamp& t0)
 void P3Microphysics::run_impl (const Real dt)
 {
 
+//  {
+//    const auto& cldfrac_tot        = m_fields_in["cldfrac_tot"].get_view<const Real**>();
+//    const auto& p_mid              = m_fields_in["p_mid"].get_view<const Real**>();
+//    const auto& z_int              = m_fields_in["z_int"].get_view<const Real**>();
+//    const auto& T_mid              = m_fields_out["T_mid"].get_view<Real**>();
+//    const auto& qv                 = m_fields_out["qv"].get_view<Real**>();
+//    const auto& qc                 = m_fields_out["qc"].get_view<Real**>();
+//    const auto& qr                 = m_fields_out["qr"].get_view<Real**>();
+//    const auto& qi                 = m_fields_out["qi"].get_view<Real**>();
+//    const auto& qm                 = m_fields_out["qm"].get_view<Real**>();
+//    const auto& nc                 = m_fields_out["nc"].get_view<Real**>();
+//    const auto& nr                 = m_fields_out["nr"].get_view<Real**>();
+//    const auto& ni                 = m_fields_out["ni"].get_view<Real**>();
+//    const auto& bm                 = m_fields_out["bm"].get_view<Real**>();
+//    const auto& nc_nuceat_tend     = m_fields_in["nc_nuceat_tend"].get_view<const Real**>();
+//    const auto& nc_activated       = m_fields_in["nc_activated"].get_view<const Real**>();
+//    const auto& ni_activated       = m_fields_in["ni_activated"].get_view<const Real**>();
+//    const auto& inv_qc_relvar      = m_fields_in["inv_qc_relvar"].get_view<const Real**>();
+//    const auto& pseudo_density     = m_fields_in["pseudo_density"].get_view<const Real**>();
+//    const auto& qv_prev_micro_step = m_fields_out["qv_prev_micro_step"].get_view<Real**>();
+//    const auto& T_prev_micro_step  = m_fields_out["T_prev_micro_step"].get_view<Real**>();
+
+//    Real cldfrac_tot_sum(0.0),p_mid_sum(0.0),z_int_sum(0.0),T_mid_sum(0.0),qv_sum(0.0),qc_sum(0.0),qr_sum(0.0),
+//         qi_sum(0.0),qm_sum(0.0),nc_sum(0.0),nr_sum(0.0),ni_sum(0.0),bm_sum(0.0),nc_nuceat_tend_sum(0.0),
+//         nc_activated_sum(0.0),ni_activated_sum(0.0),inv_qc_relvar_sum(0.0),
+//         pseudo_density_sum(0.0),qv_prev_micro_step_sum(0.0),T_prev_micro_step_sum(0.0);
+
+//    for (int i=0; i<m_num_cols; ++i) {
+//      for (int k=0; k<m_num_levs+1; ++k) {
+//        z_int_sum += z_int(i,k);
+//        if (k < m_num_levs) {
+//          cldfrac_tot_sum += cldfrac_tot(i,k);
+//          p_mid_sum += p_mid(i,k);
+//          T_mid_sum += T_mid(i,k);
+//          qv_sum += qv(i,k);
+//          qc_sum += qc(i,k);
+//          qr_sum += qr(i,k);
+//          qi_sum += qi(i,k);
+//          qm_sum += qm(i,k);
+//          nc_sum += nc(i,k);
+//          nr_sum += nr(i,k);
+//          ni_sum += ni(i,k);
+//          bm_sum += bm(i,k);
+//          nc_nuceat_tend_sum += nc_nuceat_tend(i,k);
+//          nc_activated_sum += nc_activated(i,k);
+//          ni_activated_sum += ni_activated(i,k);
+//          inv_qc_relvar_sum += inv_qc_relvar(i,k);
+//          pseudo_density_sum += pseudo_density(i,k);
+//          qv_prev_micro_step_sum += qv_prev_micro_step(i,k);
+//          T_prev_micro_step_sum += T_prev_micro_step(i,k);
+//        }
+//      }
+//    }
+
+//    std::cout << std::endl << "P3 INPUT VARS" << std::endl
+//              << "cldfrac_tot: " << cldfrac_tot_sum << std::endl
+//              << "p_mid: " << p_mid_sum << std::endl
+//              << "z_int: " << z_int_sum << std::endl
+//              << "T_mid: " << T_mid_sum << std::endl
+//              << "qv: " << qv_sum << std::endl
+//              << "qc: " << qc_sum << std::endl
+//              << "qr: " << qr_sum << std::endl
+//              << "qi: " << qi_sum << std::endl
+//              << "qm: " << qm_sum << std::endl
+//              << "nc: " << nc_sum << std::endl
+//              << "nr: " << nr_sum << std::endl
+//              << "ni: " << ni_sum << std::endl
+//              << "bm: " << bm_sum << std::endl
+//              << "nc_nuceat_tend: " << nc_nuceat_tend_sum << std::endl
+//              << "nc_activated: " << nc_activated_sum << std::endl
+//              << "ni_activated: " << ni_activated_sum << std::endl
+//              << "inv_qc_relvar: " << inv_qc_relvar_sum << std::endl
+//              << "pseudo_density: " << pseudo_density_sum << std::endl
+//              << "qv_prev_micro_step: " << qv_prev_micro_step_sum << std::endl
+//              << "T_prev_micro_step: " << T_prev_micro_step_sum << std::endl
+//              << std::endl;
+//  }
+
   // Assign values to local arrays used by P3, these are now stored in p3_loc.
   Kokkos::parallel_for(
     "p3_main_local_vals",
@@ -310,6 +388,79 @@ void P3Microphysics::run_impl (const Real dt)
     p3_postproc
   ); // Kokkos::parallel_for(p3_main_local_vals)
   Kokkos::fence();
+
+//  {
+//    const auto& T_mid                  = m_fields_out["T_mid"].get_view<Real**>();
+//    const auto& qv                     = m_fields_out["qv"].get_view<Real**>();
+//    const auto& qc                     = m_fields_out["qc"].get_view<Real**>();
+//    const auto& qr                     = m_fields_out["qr"].get_view<Real**>();
+//    const auto& qi                     = m_fields_out["qi"].get_view<Real**>();
+//    const auto& qm                     = m_fields_out["qm"].get_view<Real**>();
+//    const auto& nc                     = m_fields_out["nc"].get_view<Real**>();
+//    const auto& nr                     = m_fields_out["nr"].get_view<Real**>();
+//    const auto& ni                     = m_fields_out["ni"].get_view<Real**>();
+//    const auto& bm                     = m_fields_out["bm"].get_view<Real**>();
+//    const auto& qv_prev_micro_step     = m_fields_out["qv_prev_micro_step"].get_view<Real**>();
+//    const auto& T_prev_micro_step      = m_fields_out["T_prev_micro_step"].get_view<Real**>();
+//    const auto& precip_liq_surf        = m_fields_out["precip_liq_surf"].get_view<Real*>();
+//    const auto& eff_radius_qc          = m_fields_out["eff_radius_qc"].get_view<Real**>();
+//    const auto& eff_radius_qi          = m_fields_out["eff_radius_qi"].get_view<Real**>();
+//    const auto& micro_liq_ice_exchange = m_fields_out["micro_liq_ice_exchange"].get_view<Real**>();
+//    const auto& micro_vap_liq_exchange = m_fields_out["micro_vap_liq_exchange"].get_view<Real**>();
+//    const auto& micro_vap_ice_exchange = m_fields_out["micro_vap_ice_exchange"].get_view<Real**>();
+
+//    Real T_mid_sum(0.0),qv_sum(0.0),qc_sum(0.0),qr_sum(0.0),
+//         qi_sum(0.0),qm_sum(0.0),nc_sum(0.0),nr_sum(0.0),
+//         ni_sum(0.0),bm_sum(0.0),qv_prev_micro_step_sum(0.0),
+//         T_prev_micro_step_sum(0.0),
+//        precip_liq_surf_sum(0.0),eff_radius_qc_sum(0.0),eff_radius_qi_sum(0.0),
+//        micro_liq_ice_exchange_sum(0.0),micro_vap_liq_exchange_sum(0.0),
+//        micro_vap_ice_exchange_sum(0.0);
+
+//    for (int i=0; i<m_num_cols; ++i) {
+//      precip_liq_surf_sum += precip_liq_surf(i);
+//      for (int k=0; k<m_num_levs; ++k) {
+//        T_mid_sum += T_mid(i,k);
+//        qv_sum += qv(i,k);
+//        qc_sum += qc(i,k);
+//        qr_sum += qr(i,k);
+//        qi_sum += qi(i,k);
+//        qm_sum += qm(i,k);
+//        nc_sum += nc(i,k);
+//        nr_sum += nr(i,k);
+//        ni_sum += ni(i,k);
+//        bm_sum += bm(i,k);
+//        qv_prev_micro_step_sum += qv_prev_micro_step(i,k);
+//        T_prev_micro_step_sum += T_prev_micro_step(i,k);
+//        eff_radius_qc_sum += eff_radius_qc(i,k);
+//        eff_radius_qi_sum += eff_radius_qi(i,k);
+//        micro_liq_ice_exchange_sum += micro_liq_ice_exchange(i,k);
+//        micro_vap_liq_exchange_sum += micro_vap_liq_exchange(i,k);
+//        micro_vap_ice_exchange_sum += micro_vap_ice_exchange(i,k);
+//      }
+//    }
+
+//    std::cout << std::endl << "P3 OUTPUT VARS" << std::endl
+//              << "T_mid: " << T_mid_sum << std::endl
+//              << "qv: " << qv_sum << std::endl
+//              << "qc: " << qc_sum << std::endl
+//              << "qr: " << qr_sum << std::endl
+//              << "qi: " << qi_sum << std::endl
+//              << "qm: " << qm_sum << std::endl
+//              << "nc: " << nc_sum << std::endl
+//              << "nr: " << nr_sum << std::endl
+//              << "ni: " << ni_sum << std::endl
+//              << "bm: " << bm_sum << std::endl
+//              << "qv_prev_micro_step: " << qv_prev_micro_step_sum << std::endl
+//              << "T_prev_micro_step: " << T_prev_micro_step_sum << std::endl
+//              << "precip_liq_surf: " << precip_liq_surf_sum << std::endl
+//              << "eff_radius_qc: " << eff_radius_qc_sum << std::endl
+//              << "eff_radius_qi: " << eff_radius_qi_sum << std::endl
+//              << "micro_liq_ice_exchange: " << micro_liq_ice_exchange_sum << std::endl
+//              << "micro_vap_liq_exchange: " << micro_vap_liq_exchange_sum << std::endl
+//              << "micro_vap_ice_exchange: " << micro_vap_ice_exchange_sum << std::endl
+//              << std::endl;
+//  }
 
   // Get a copy of the current timestamp (at the beginning of the step) and
   // advance it, updating the p3 fields.

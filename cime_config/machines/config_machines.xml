@@ -644,7 +644,7 @@
     <DOUT_S_ROOT>$CIME_OUTPUT_ROOT/archive/$CASE</DOUT_S_ROOT>
     <BASELINE_ROOT>/sems-data-store/ACME/baselines/mappy/$COMPILER</BASELINE_ROOT>
     <CCSM_CPRNC>/sems-data-store/ACME/mappy/cprnc/cprnc</CCSM_CPRNC>
-    <GMAKE_J>64</GMAKE_J>
+    <GMAKE_J>32</GMAKE_J>
     <TESTS>e3sm_developer</TESTS>
     <BATCH_SYSTEM>none</BATCH_SYSTEM>
     <SUPPORTED_BY>jgfouca at sandia dot gov</SUPPORTED_BY>
@@ -674,18 +674,18 @@
         <command name="load">sems-cmake/3.19.1</command>
       </modules>
       <modules compiler="gnu">
-        <command name="load">acme-gcc/8.1.0</command>
+        <command name="load">sems-gcc/9.2.0</command>
       </modules>
       <modules compiler="intel">
         <command name="load">sems-intel/19.0.5</command>
       </modules>
       <modules mpilib="mpi-serial">
-        <command name="load">acme-netcdf/4.4.1/exo_acme</command>
+        <command name="load">sems-netcdf</command>
         <command name="load">acme-pfunit/3.2.8/base</command>
       </modules>
       <modules mpilib="!mpi-serial">
-        <command name="load">acme-openmpi/2.1.5</command>
-        <command name="load">acme-netcdf/4.7.4/acme</command>
+        <command name="load">sems-openmpi/4.0.2</command>
+        <command name="load">sems-netcdf</command>
       </modules>
     </module_system>
     <RUNDIR>$CIME_OUTPUT_ROOT/$CASE/run</RUNDIR>

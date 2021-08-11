@@ -177,10 +177,10 @@ public:
     // Now run all field property checks on all fields
     for (auto& f : m_fields_in) {
       auto& field = f.second;
-      for (auto& pc : field.get_property_checks()) {
-        EKAT_REQUIRE_MSG(pc.check(field),
-           "Error: Field Property Check Fail: " << pc.name() << ",\n      field: " << f.first << ",\n      before process: " << this->name());
-      }
+//      for (auto& pc : field.get_property_checks()) {
+//        EKAT_REQUIRE_MSG(pc.check(field),
+//           "Error: Field Property Check Fail: " << pc.name() << ",\n      field: " << f.first << ",\n      before process: " << this->name());
+//      }
     }
   }
   void check_computed_fields () {
@@ -190,10 +190,10 @@ public:
     // Now run all field property checks on all fields
     for (auto& f : m_fields_out) {
       auto& field = f.second;
-      for (auto& pc : field.get_property_checks()) {
-        EKAT_REQUIRE_MSG(pc.check(field),
-           "Error: Field Property Check Fail: " << pc.name() << ",\n      field: " << f.first << ",\n      after process: " << this->name());
-      }
+//      for (auto& pc : field.get_property_checks()) {
+//        EKAT_REQUIRE_MSG(pc.check(field),
+//           "Error: Field Property Check Fail: " << pc.name() << ",\n      field: " << f.first << ",\n      after process: " << this->name());
+//      }
     }
   }
 

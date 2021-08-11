@@ -1415,6 +1415,9 @@ flags should be captured within MPAS CMake files.
   <SLIBS>
     <append>$SHELL{$NETCDF_PATH/bin/nf-config --flibs} -lblas -llapack</append>
   </SLIBS>
+  <LDFLAGS>
+    <append> -fopenmp </append>
+  </LDFLAGS>
 </compiler>
 
 <compiler MACH="mappy" COMPILER="intel">
@@ -1436,6 +1439,9 @@ flags should be captured within MPAS CMake files.
   <SLIBS>
     <append>$SHELL{$NETCDF_PATH/bin/nf-config --flibs} -lblas -llapack</append>
   </SLIBS>
+  <LDFLAGS>
+    <append> -fopenmp </append>
+  </LDFLAGS>
 </compiler>
 
 <compiler MACH="snl-white" COMPILER="gnu">

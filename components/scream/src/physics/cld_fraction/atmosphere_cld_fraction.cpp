@@ -71,7 +71,45 @@ void CldFraction::run_impl (const Real dt)
   auto ice_cld_frac = m_fields_out["cldfrac_ice"].get_view<Pack**>();
   auto tot_cld_frac = m_fields_out["cldfrac_tot"].get_view<Pack**>();
 
+//  {
+//    auto s_qi   = m_fields_in["qi"].get_view<const Real**>();
+//    auto s_liq_cld_frac = m_fields_in["cldfrac_liq"].get_view<const Real**>();
+
+//    Real qi_sum(0.0),cldfrac_liq_sum(0.0);
+
+//    for (int i=0; i<m_num_cols; ++i) {
+//      for (int k=0; k<m_num_levs; ++k) {
+//        qi_sum += s_qi(i,k);
+//        cldfrac_liq_sum += s_liq_cld_frac(i,k);
+//      }
+//    }
+
+//    std::cout << std::endl << "CLD_FRAC INPUT VARS" << std::endl
+//              << "qi: " << qi_sum << std::endl
+//              << "cldfrac_liq: " << cldfrac_liq_sum << std::endl
+//              << std::endl;
+//  }
+
   CldFractionFunc::main(m_num_cols,m_num_levs,qi,liq_cld_frac,ice_cld_frac,tot_cld_frac);
+
+//  {
+//    auto s_ice_cld_frac = m_fields_out["cldfrac_ice"].get_view<Real**>();
+//    auto s_tot_cld_frac = m_fields_out["cldfrac_tot"].get_view<Real**>();
+
+//    Real cldfrac_ice_sum(0.0),cldfrac_tot_sum(0.0);
+
+//    for (int i=0; i<m_num_cols; ++i) {
+//      for (int k=0; k<m_num_levs; ++k) {
+//        cldfrac_ice_sum += s_ice_cld_frac(i,k);
+//        cldfrac_tot_sum += s_tot_cld_frac(i,k);
+//      }
+//    }
+
+//    std::cout << std::endl << "CLD_FRAC OUTPUT VARS" << std::endl
+//              << "cldfrac_ice: " << cldfrac_ice_sum << std::endl
+//              << "cldfrac_tot: " << cldfrac_tot_sum << std::endl
+//              << std::endl;
+//  }
 
   // Get a copy of the current timestamp (at the beginning of the step) and
   // advance it,

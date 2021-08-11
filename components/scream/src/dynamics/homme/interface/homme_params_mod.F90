@@ -199,7 +199,7 @@ contains
     ! Parse all namelist sections
     read (unit=unitn,nml=ctl_nl,iostat=ierr)
     if (ierr < 0) then
-      write(6,*) 'ierr =',ierr
+      write(6,*) 'ierr =',ierr,nl_fname
       call abortmp( '[scream] init_params_f90 :: namelist read returns an'// &
              ' end of file or end of record condition' )
     end if
@@ -314,7 +314,7 @@ contains
     if (cubed_sphere_map<0) then
        cubed_sphere_map=2  ! theta model default = element local
     endif
-
+    cubed_sphere_map=0! BSINGH- this is a kludge and must be removed. DO NOT MERGE TO MASTER
     if (geometry=="sphere") then
       scale_factor           = rearth
       scale_factor_inv       = rrearth

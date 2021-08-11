@@ -121,6 +121,7 @@ contains
     real (kind=real_kind)          :: alpha=1
     real (kind=longdouble_kind)      :: gll_points(np)
 
+    print*,'BALLI:', cubed_sphere_map
     if(present(alpha_in)) alpha=alpha_in
     
     elem%FaceNum=elem%vertex%face_number

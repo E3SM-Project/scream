@@ -365,6 +365,94 @@ void SHOCMacrophysics::run_impl (const Real dt)
   const auto nlevi_packs = ekat::npack<Spack>(m_num_levs+1);
   const auto policy      = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nlev_packs);
 
+//  {
+//    const auto pref_mid          = m_fields_in["pref_mid"].get_view<const Real*>();
+//    const auto& z_int            = m_fields_in["z_int"].get_view<const Real**>();
+//    const auto& z_mid            = m_fields_in["z_mid"].get_view<const Real**>();
+//    const auto& omega            = m_fields_in["omega"].get_view<const Real**>();
+//    const auto& surf_sens_flux   = m_fields_in["surf_sens_flux"].get_view<const Real*>();
+//    const auto& surf_latent_flux = m_fields_in["surf_latent_flux"].get_view<const Real*>();
+//    const auto& surf_mom_flux    = m_fields_in["surf_mom_flux"].get_view<const Real**>();
+//    const auto& T_mid            = m_fields_out["T_mid"].get_view<Real**>();
+//    const auto& qv               = m_fields_out["qv"].get_view<Real**>();
+//    const auto& p_mid            = m_fields_in["p_mid"].get_view<const Real**>();
+//    const auto& p_int            = m_fields_in["p_int"].get_view<const Real**>();
+//    const auto& pseudo_density   = m_fields_in["pseudo_density"].get_view<const Real**>();
+//    const auto& phis             = m_fields_in["phis"].get_view<const Real*>();
+//    const auto& tke              = m_fields_out["tke"].get_view<Real**>();
+//    const auto& horiz_winds      = m_fields_out["horiz_winds"].get_view<Real***>();
+//    const auto& sgs_buoy_flux    = m_fields_out["sgs_buoy_flux"].get_view<Real**>();
+//    const auto& eddy_diff_mom    = m_fields_out["eddy_diff_mom"].get_view<Real**>();
+//    const auto& qc               = m_fields_out["qc"].get_view<Real**>();
+//    const auto& cldfrac_liq      = m_fields_out["cldfrac_liq"].get_view<Real**>();
+//    const auto& tracers          = m_fields_out["Q"].get_view<Real***>();
+
+//    Real pref_mid_sum(0.0),z_int_sum(0.0),z_mid_sum(0.0),omega_sum(0.0),
+//        surf_sens_flux_sum(0.0),surf_latent_flux_sum(0.0),surf_mom_flux_sum(0.0),T_mid_sum(0.0),
+//        qv_sum(0.0),p_mid_sum(0.0),p_int_sum(0.0),pseudo_density_sum(0.0),
+//        phis_sum(0.0),tke_sum(0.0),horiz_winds_sum(0.0),sgs_buoy_flux_sum(0.0),
+//        eddy_diff_mom_sum(0.0),qc_sum(0.0),cldfrac_liq_sum(0.0),tracers_sum(0.0);
+
+//    for (int i=0; i<m_num_cols; ++i) {
+//      surf_sens_flux_sum += surf_sens_flux(i);
+//      surf_latent_flux_sum += surf_latent_flux(i);
+//      phis_sum += phis(i);
+//      for (int c=0; c<2; ++c) {
+//        surf_mom_flux_sum += surf_mom_flux(i,c);
+//      }
+//      for (int k=0; k<m_num_levs+1; ++k) {
+//        z_int_sum += z_int(i,k);
+//        p_int_sum += p_int(i,k);
+//        if (k < m_num_levs) {
+//          if(i==0 && k<m_num_levs) {
+//            pref_mid_sum += pref_mid(k);
+//          }
+//          z_mid_sum += z_mid(i,k);
+//          omega_sum += omega(i,k);
+//          T_mid_sum += T_mid(i,k);
+//          qv_sum += qv(i,k);
+//          p_mid_sum += p_mid(i,k);
+//          pseudo_density_sum += pseudo_density(i,k);
+//          tke_sum += tke(i,k);
+//          sgs_buoy_flux_sum += sgs_buoy_flux(i,k);
+//          eddy_diff_mom_sum += eddy_diff_mom(i,k);
+//          qc_sum += qc(i,k);
+//          cldfrac_liq_sum += cldfrac_liq(i,k);
+//          for (int c=0; c<2; ++c) {
+//            horiz_winds_sum += horiz_winds(i,c,k);
+//          }
+//          for (int q=0; q<m_num_tracers; ++q) {
+//            tracers_sum += tracers(i,q,k);
+//          }
+//        }
+//      }
+//    }
+
+//    std::cout << std::endl << "SHOC INPUT VARS" << std::endl
+//              << "pref_mid: " << pref_mid_sum << std::endl
+//              << "z_int: " << z_int_sum << std::endl
+//              << "z_mid: " << z_mid_sum << std::endl
+//              << "omega: " << omega_sum << std::endl
+//              << "surf_sens_flux: " << surf_sens_flux_sum << std::endl
+//              << "surf_latent_flux: " << surf_latent_flux_sum << std::endl
+//              << "surf_mom_flux: " << surf_mom_flux_sum << std::endl
+//              << "T_mid: " << T_mid_sum << std::endl
+//              << "qv: " << qv_sum << std::endl
+//              << "p_mid: " << p_mid_sum << std::endl
+//              << "p_int: " << p_int_sum << std::endl
+//              << "pseudo_density: " << pseudo_density_sum << std::endl
+//              << "phis: " << phis_sum << std::endl
+//              << "tke: " << tke_sum << std::endl
+//              << "horiz_winds: " << horiz_winds_sum << std::endl
+//              << "sgs_buoy_flux: " << sgs_buoy_flux_sum << std::endl
+//              << "eddy_diff_mom: " << eddy_diff_mom_sum << std::endl
+//              << "qc: " << qc_sum << std::endl
+//              << "cldfrac_liq: " << cldfrac_liq_sum << std::endl
+//              << "tracers: " << tracers_sum << std::endl
+//              << std::endl;
+//  }
+
+
   // Preprocessing of SHOC inputs
   Kokkos::parallel_for("shoc_preprocess",
                        policy,
@@ -398,6 +486,61 @@ void SHOCMacrophysics::run_impl (const Real dt)
                        policy,
                        shoc_postprocess);
   Kokkos::fence();
+
+//  {
+//    const auto& T_mid            = m_fields_out["T_mid"].get_view<Real**>();
+//    const auto& qv               = m_fields_out["qv"].get_view<Real**>();
+//    const auto& tke              = m_fields_out["tke"].get_view<Real**>();
+//    const auto& horiz_winds      = m_fields_out["horiz_winds"].get_view<Real***>();
+//    const auto& sgs_buoy_flux    = m_fields_out["sgs_buoy_flux"].get_view<Real**>();
+//    const auto& eddy_diff_mom    = m_fields_out["eddy_diff_mom"].get_view<Real**>();
+//    const auto& qc               = m_fields_out["qc"].get_view<Real**>();
+//    const auto& cldfrac_liq      = m_fields_out["cldfrac_liq"].get_view<Real**>();
+//    const auto& pbl_height       = m_fields_out["pbl_height"].get_view<Real*>();
+//    const auto& inv_qc_relvar    = m_fields_out["inv_qc_relvar"].get_view<Real**>();
+//    const auto& tracers          = m_fields_out["Q"].get_view<Real***>();
+
+//    Real T_mid_sum(0.0), qv_sum(0.0),tke_sum(0.0),horiz_winds_sum(0.0),sgs_buoy_flux_sum(0.0),
+//         eddy_diff_mom_sum(0.0),qc_sum(0.0),cldfrac_liq_sum(0.0),pbl_height_sum(0.0),
+//         inv_qc_relvar_sum(0.0),tracers_sum(0.0);
+
+//    for (int i=0; i<m_num_cols; ++i) {
+//      pbl_height_sum += pbl_height(i);
+//      for (int k=0; k<m_num_levs+1; ++k) {
+//        if (k < m_num_levs) {
+//          T_mid_sum += T_mid(i,k);
+//          qv_sum += qv(i,k);
+//          tke_sum += tke(i,k);
+//          sgs_buoy_flux_sum += sgs_buoy_flux(i,k);
+//          eddy_diff_mom_sum += eddy_diff_mom(i,k);
+//          qc_sum += qc(i,k);
+//          cldfrac_liq_sum += cldfrac_liq(i,k);
+//          inv_qc_relvar_sum += inv_qc_relvar(i,k);
+//          for (int c=0; c<2; ++c) {
+//            horiz_winds_sum += horiz_winds(i,c,k);
+//          }
+//          for (int q=0; q<m_num_tracers; ++q) {
+//            tracers_sum += tracers(i,q,k);
+//          }
+//        }
+//      }
+//    }
+
+//    std::cout << std::endl << "SHOC OUTPUT VARS" << std::endl
+//              << "T_mid: " << T_mid_sum << std::endl
+//              << "qv: " << qv_sum << std::endl
+//              << "tke: " << tke_sum << std::endl
+//              << "horiz_winds: " << horiz_winds_sum << std::endl
+//              << "sgs_buoy_flux: " << sgs_buoy_flux_sum << std::endl
+//              << "eddy_diff_mom: " << eddy_diff_mom_sum << std::endl
+//              << "qc: " << qc_sum << std::endl
+//              << "cldfrac_liq: " << cldfrac_liq_sum << std::endl
+//              << "pbl_height: " << pbl_height_sum << std::endl
+//              << "inv_qc_relvar: " << inv_qc_relvar_sum << std::endl
+//              << "tracers: " << tracers_sum << std::endl
+//              << std::endl;
+//  }
+
 
   // Get a copy of the current timestamp (at the beginning of the step) and
   // advance it, updating the shoc fields.
