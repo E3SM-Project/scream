@@ -17,10 +17,8 @@ set (NEED_LIBS cld_fraction shoc p3 scream_rrtmgp rrtmgp ${NETCDF_C} ${dynLibNam
 # Add source files
 set (SRC shoc_cld_p3_rrtmgp.cpp ${SCREAM_BASE_DIR}/src/physics/rrtmgp/tests/rrtmgp_test_utils.cpp)
 
-if (NOT SCREAM_AUTOTESTER)
-  CreateUnitTest(homme_shoc_cld_p3_rrtmgp "homme_shoc_cld_p3_rrtmgp.cpp" "${NEED_LIBS}" EXE_ARGS "< namelist.nl" LABELS "dynamics;driver;shoc;cld;p3;rrtmgp;physics")
-  set_target_properties(homme_shoc_cld_p3_rrtmgp PROPERTIES COMPILE_FLAGS "${YAKL_CXX_FLAGS}")
-endif()
+CreateUnitTest(homme_shoc_cld_p3_rrtmgp "homme_shoc_cld_p3_rrtmgp.cpp" "${NEED_LIBS}" EXE_ARGS "< namelist.nl" LABELS "dynamics;driver;shoc;cld;p3;rrtmgp;physics")
+set_target_properties(homme_shoc_cld_p3_rrtmgp PROPERTIES COMPILE_FLAGS "${YAKL_CXX_FLAGS}")
 
 # Copy yaml input file to run directory
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/input.yaml
@@ -73,10 +71,10 @@ configure_file(${HOMME_SOURCE_DIR}/test/vcoord/acme-72m.ascii
                ${CMAKE_CURRENT_BINARY_DIR}/vcoord COPYONLY)
 
 # P3 data files
-CONFIGURE_FILE(${SCREAM_DATA_DIR}/p3_lookup_table_1.dat-v4
-               ${CMAKE_CURRENT_BINARY_DIR}/data/p3_lookup_table_1.dat-v4 COPYONLY)
-CONFIGURE_FILE(${SCREAM_DATA_DIR}/p3_lookup_table_2.dat-v4
-               ${CMAKE_CURRENT_BINARY_DIR}/data/p3_lookup_table_2.dat-v4 COPYONLY)
+CONFIGURE_FILE(${SCREAM_DATA_DIR}/p3_lookup_table_1.dat-v4.1.1
+               ${CMAKE_CURRENT_BINARY_DIR}/data/p3_lookup_table_1.dat-v4.1.1 COPYONLY)
+CONFIGURE_FILE(${SCREAM_DATA_DIR}/p3_lookup_table_2.dat-v4.1.1
+               ${CMAKE_CURRENT_BINARY_DIR}/data/p3_lookup_table_2.dat-v4.1.1 COPYONLY)
 # RRTMGP data files
 CONFIGURE_FILE(${SCREAM_BASE_DIR}/../eam/src/physics/rrtmgp/external/rrtmgp/data/rrtmgp-data-sw-g224-2018-12-04.nc
                ${CMAKE_CURRENT_BINARY_DIR}/data COPYONLY)

@@ -168,9 +168,8 @@ IF (HOMME_STANDALONE)
   IF (HOMME_USE_CXX)
     MESSAGE(STATUS "This configuration of HOMME requires a C++ compiler")
     ENABLE_LANGUAGE(CXX)
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
   ENDIF ()
-ENDIF( )
+ENDIF ()
 
 # Option to use ARKode package from SUNDIALS
 OPTION(HOMME_USE_ARKODE "Use ARKode package from SUNDIALS" FALSE)

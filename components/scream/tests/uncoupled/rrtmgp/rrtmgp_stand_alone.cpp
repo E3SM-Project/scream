@@ -15,7 +15,7 @@
 #include "physics/rrtmgp/scream_rrtmgp_interface.hpp"
 #include "mo_gas_concentrations.h"
 #include "mo_garand_atmos_io.h"
-#include "Intrinsics.h"
+#include "YAKL.h"
 #include "rrtmgp_test_utils.hpp"
 // Other helper headers needed for the specifics of this test
 #include "physics/share/physics_constants.hpp"
@@ -100,7 +100,6 @@ namespace scream {
         int nlay = grid->get_num_vertical_levels();
 
         // Get number of shortwave bands and number of gases from RRTMGP
-        int nswbands = scream::rrtmgp::k_dist_sw.get_nband();
         int ngas     =   8;  // TODO: get this intelligently
 
         // Make sure we have the right dimension sizes
@@ -320,12 +319,10 @@ namespace scream {
         lw_flux_up_ref.deallocate();
         lw_flux_dn_ref.deallocate();
 
-        // Finalize the driver; needs to come before yakl::finalize because
-        // rrtmgp::finalize() frees YAKL arrays
+        // Finalize the driver. YAKL will be finalized inside
+        // RRTMGPRadiation::finalize_impl after RRTMGP has had the
+        // opportunity to deallocate all it's arrays.
         ad.finalize();
-
-        // Finalize YAKL
-        yakl::finalize();
 
         // If we got this far, we were able to run the code through the AD
         REQUIRE(true);
