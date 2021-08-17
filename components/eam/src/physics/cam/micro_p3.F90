@@ -834,10 +834,10 @@ contains
       call ni_conservation(ni(k),ni_nucleat_tend,nr2ni_immers_freeze_tend,nc2ni_immers_freeze_tend,dt,ni2nr_melt_tend,&
            ni_sublim_tend,ni_selfcollect_tend)
 
-      call prevent_ice_overdepletion(pres(k), t_atm(k), qv(k), latent_heat_vapor(k), latent_heat_sublim(k), inv_dt, dt, qidep, qinuc, & 
-            qi2qv_sublim_tend, qr2qv_evap_tend)
+      call prevent_liq_supersaturation(pres(k), t_atm(k), qv(k), latent_heat_vapor(k), latent_heat_sublim(k), dt, qidep, qinuc, & 
+           qi2qv_sublim_tend, qr2qv_evap_tend)
 
-      call ice_supersat_conservation(qidep,qinuc,cld_frac_i(k),qv(k),qv_sat_i(k),latent_heat_sublim(k),th_atm(k)/exner(k),dt, &
+      call ice_supersat_conservation(qidep,qinuc,cld_frac_i(k),qv(k),qv_sat_i(k),latent_heat_sublim(k),th_atm(k)*inv_exner(k),dt, &
                                      qi2qv_sublim_tend, qr2qv_evap_tend)
       
       !---------------------------------------------------------------------------------
@@ -2840,10 +2840,11 @@ subroutine back_to_cell_average(cld_frac_l,cld_frac_r,cld_frac_i,               
 
 end subroutine back_to_cell_average
 
-subroutine prevent_ice_overdepletion(pres,t_atm,qv,latent_heat_vapor,latent_heat_sublim,inv_dt,dt,qidep,qinuc,    &
-   qr2qv_evap_tend,qi2qv_sublim_tend)
 
-   !-- Limit evaporative processes to prevent the QV field from ice supersaturation (evaporation should not lead to supersaturation) 
+subroutine prevent_liq_supersaturation(pres,t_atm,qv,latent_heat_vapor,latent_heat_sublim,dt,qidep,qinuc,    &
+     qi2qv_sublim_tend,qr2qv_evap_tend)
+
+   !-- Limit sublimation and evaporationn to prevent qv from becoming supersaturated with respect to liquid
 
    implicit none
 
@@ -2851,42 +2852,55 @@ subroutine prevent_ice_overdepletion(pres,t_atm,qv,latent_heat_vapor,latent_heat
    real(rtype), intent(in) :: t_atm
    real(rtype), intent(in) :: qv
    real(rtype), intent(in) :: latent_heat_sublim,latent_heat_vapor
-   real(rtype), intent(in) :: inv_dt,dt
+   real(rtype), intent(in) :: dt
    real(rtype), intent(in) :: qidep,qinuc
-
    real(rtype), intent(inout) :: qi2qv_sublim_tend,qr2qv_evap_tend
-
-   real(rtype) :: dumqv_sat_i, qdep_satadj, qrevp_satadj
-   real(rtype) :: qtmp_all,ttmp_all,qv_sat_l,q_sink,t_sink,dumqv_sat_l,qv_source_evp,qi2qv_sublim_satadj
-
-   ! ... available water vapor 
-   qtmp_all = qv - (qidep + qinuc)*dt + (qi2qv_sublim_tend + qr2qv_evap_tend)*dt 
-   ! ... corresponding temperature
-   ttmp_all = t_atm + ((qidep-qi2qv_sublim_tend+qinuc)*latent_heat_sublim*inv_cp + (-qr2qv_evap_tend*latent_heat_vapor*inv_cp))*dt
-
-   ! ... water vapor needed for liquid saturation is the minimal requirment for both liquid and ice sturation
-   qv_sat_l = qv_sat(ttmp_all,pres,0)
-
-   ! ... if water vapor mass exceeds liquid saturation, we limit only source terms (e.g., sublimation, rain evp) 
-   if(qtmp_all > qv_sat_l)then
-
-      ! ... first, rain evaporation is limited to the sub-saturation defined by the water vapor sink terms (deposition, ice nucleation)
-      !     latent heat for vaporization is used
-      q_sink = qv - (qidep + qinuc)*dt
-      t_sink = t_atm + ((qidep+qinuc)*latent_heat_sublim*inv_cp)*dt
-      dumqv_sat_l = qv_sat(t_sink,pres,0)
-      qv_source_evp = qr2qv_evap_tend + qi2qv_sublim_tend
-      qrevp_satadj = (q_sink-dumqv_sat_l)/(1._rtype + bfb_square(latent_heat_vapor)*dumqv_sat_l/(cp*rv* bfb_square(t_sink) ))*inv_dt
-      qr2qv_evap_tend    = qr2qv_evap_tend*min(1._rtype,max(0._rtype,-qrevp_satadj)/max(qv_source_evp, 1.e-20_rtype))
-
-      ! ... next, ice-sublimation is limited in the same way but with latent heat for sublimation 
-      dumqv_sat_i = qv_sat(t_sink,pres,1)
-      qi2qv_sublim_satadj = (q_sink-dumqv_sat_i)/(1._rtype + bfb_square(latent_heat_sublim)*dumqv_sat_i/(cp*rv* bfb_square(t_sink) ))*inv_dt
-      qi2qv_sublim_tend  = qi2qv_sublim_tend*min(1._rtype,max(0._rtype,-qi2qv_sublim_satadj)/max(qv_source_evp, 1.e-20_rtype))
    
-   endif
+   real(rtype) :: qv_sinks, qv_sources, qv_endstep, T_endstep, qsl, A, frac
+   
+   qv_sinks   = qidep + qinuc
+   qv_sources = qi2qv_sublim_tend + qr2qv_evap_tend
+   
+   !Actual qv after micro step
+   qv_endstep = qv - qv_sinks*dt + qv_sources*dt 
+   ! ... corresponding temperature
+   T_endstep = t_atm + ( (qv_sinks-qi2qv_sublim_tend)*latent_heat_sublim/cp &
+               - qr2qv_evap_tend*latent_heat_vapor/cp )*dt
+   
+   !qv we would have at end of step if we were saturated with respect to liquid
+   qsl = qv_sat(T_endstep,pres,0)
+   
+   ! The balance we seek is:
+   ! qv-qv_sinks*dt+qv_sources*frac*dt=qsl+dqsl_dT*(T correction due to conservation)
+   ! where the T correction for conservation is:
+   ! dt*[latent_heat_sublim/cp*(qi2qv_sublim_tend-frac*qi2qv_sublim_tend)
+   !     +latent_heat_vapor /cp*(qr2qv_evap_tend  -frac*qr2qv_evap_tend)]
+   ! =(1-frac)*dt/cp*(latent_heat_sublim*qi2qv_sublim_tend + latent_heat_vap*qr2qv_evap_tend).
+   ! Note T correction is positive because frac *reduces* evaporative cooling. Note as well that
+   ! dqsl_dt comes from linearization of qsl around the end-of-step T computed before temperature
+   ! correction. dqsl_dt should be computed with respect to *liquid* even though frac also adjusts
+   ! sublimation because we want to be saturated with respect to liquid at the end of the step.
+   ! dqsl_dt=Latent_heat_vapor*qsl/rv*T^2 following Clausius Clapeyron. Combining and solving for
+   ! frac yields:
+   
+   A=latent_heat_vapor*qsl*dt/(cp*rv*T_endstep*T_endstep) &
+        *(latent_heat_sublim*qi2qv_sublim_tend + latent_heat_vapor*qr2qv_evap_tend)
 
-end subroutine prevent_ice_overdepletion
+   frac = (qsl-qv+qv_sinks*dt + A)/(qv_sources*dt + A)
+
+   !The only way frac<0 is if qv-qv_sinks*dt is already greater than qsl. In this case
+   !the best we can do is zero out qv_sources.
+   frac = max(0._rtype,frac)
+
+   !The only way frac>1 is if qv-qv_sinks*dt+qv_sources*dt < qsl, in which case we shouldn't 
+   !limit anyways so set frac to 1:
+   frac = min(1._rtype,frac)
+   
+   qi2qv_sublim_tend = frac*qi2qv_sublim_tend
+   qr2qv_evap_tend = frac*qr2qv_evap_tend
+
+   return
+end subroutine prevent_liq_supersaturation
 
 subroutine ice_supersat_conservation(qidep,qinuc,cld_frac_i,qv,qv_sat_i,latent_heat_sublim,T_atm,dt,qi2qv_sublim_tend, qr2qv_evap_tend)
   !Make sure ice processes don't drag qv below ice supersaturation
