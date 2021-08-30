@@ -422,7 +422,8 @@ void HommeDynamics::initialize_impl (const util::TimeStamp& /* t0 */)
   const auto policy = ESU::get_thread_range_parallel_scan_team_policy(num_elems*NP*NP,NVL);
 
   // Need two temporaries, for pi_mid and pi_int
-  ekat::WorkspaceManager<Pack,DefaultDevice> wsm(NVLI,2,policy);
+  using WS = ekat::WorkspaceManager<Pack,DefaultDevice>;
+  WS wsm(NVLI,2,policy);
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA (const KT::MemberType& team) {
     const int ie  =  team.league_rank() / (NP*NP);
     const int igp = (team.league_rank() / NP) % NP;
@@ -433,8 +434,8 @@ void HommeDynamics::initialize_impl (const util::TimeStamp& /* t0 */)
     // Compute p_mid
     auto dp = ekat::subview(dp3d,ie,n0,igp,jgp);
 
-    auto p_int = ws.take("p_int");
-    auto p_mid = ws.take("p_mid");
+    ekat::Unmanaged<WS::view_1d<Pack> > p_int, p_mid;
+    ws.template take_many_and_reset<2>({"p_int", "p_mid"}, {&p_int, &p_mid});
     ColOps::column_scan<true>(team,nlevs,dp,p_int,ps0);
     ColOps::compute_midpoint_values(team,nlevs,p_int,p_mid);
     
@@ -477,10 +478,6 @@ void HommeDynamics::initialize_impl (const util::TimeStamp& /* t0 */)
       phinh_i(ie,nm1,igp,jgp,NVLI-1) = phinh_i(ie,n0,igp,jgp,NVLI-1);
       phinh_i(ie,np1,igp,jgp,NVLI-1) = phinh_i(ie,n0,igp,jgp,NVLI-1);
     });
-
-    // Release the scratch mem
-    ws.release(p_int);
-    ws.release(p_mid);
   });
   Kokkos::fence();
 
