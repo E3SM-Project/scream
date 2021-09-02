@@ -48,7 +48,7 @@ if [ $skip_testing -eq 0 ]; then
   # IF such dir is not found, then the default (ctest-build/baselines) is used
   BASELINES_DIR=AUTO
 
-  ./scripts/gather-all-data "./scripts/test-all-scream --baseline-dir $BASELINES_DIR \$compiler -c EKAT_DISABLE_TPL_WARNINGS=ON $AUTOTESTER_CMAKE -p -i -m \$machine $SUBMIT" -l -m $SCREAM_MACHINE
+  ./scripts/gather-all-data "env && ./scripts/test-all-scream --baseline-dir $BASELINES_DIR \$compiler -c EKAT_DISABLE_TPL_WARNINGS=ON $AUTOTESTER_CMAKE -p -i -m \$machine $SUBMIT" -l -m $SCREAM_MACHINE
 
   # Add a valgrind and coverage tests for mappy for nightlies
   if [[ -n "$SUBMIT" && "$SCREAM_MACHINE" == "mappy" ]]; then
