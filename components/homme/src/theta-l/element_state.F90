@@ -76,6 +76,10 @@ module element_state
     real (kind=real_kind) :: FPHI(np,np,nlevp)                     ! PHI (NH) forcing
     real (kind=real_kind) :: FQps(np,np)                   ! forcing of FQ on ps_v
 
+    real (kind=real_kind) :: Q_reference(np,np,nlev,qsize_d)          ! Reference Q used to determine advective tendencies Hassan
+    real (kind=real_kind) :: dQ_horiz(np,np,nlev,qsize_d)             ! horizontal advection tendency
+    real (kind=real_kind) :: dQ_verti(np,np,nlev,qsize_d)             !vertical advection tendency
+
     real (kind=real_kind) :: gradphis(np,np,2)   ! grad phi at the surface, computed once in model initialization
     real (kind=real_kind) :: dp_ref(np,np,nlev)    ! ref states based on PHIS
     real (kind=real_kind) :: theta_ref(np,np,nlev)
