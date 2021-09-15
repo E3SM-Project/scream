@@ -9,6 +9,8 @@ Atmosphere Processes:
   Process 0:
     Process Name: SPA
     Grid: Physics
+    SPA Remap File: map_ne4np4_to_ne2np4_mono.nc
+    SPA Data File: spa_file_unified_and_complete_ne4_scream.nc
 
 Grids Manager:
   Type: Physics Only

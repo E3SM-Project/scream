@@ -101,6 +101,10 @@ protected:
   Int m_nswbands = 14;
   Int m_nlwbands = 16;
 
+  // SPA Remap File
+  std::string m_spa_remap_file;
+  std::string m_spa_data_file;
+
   // Struct which contains local variables
   Buffer m_buffer;
 
@@ -110,6 +114,7 @@ protected:
   SPAFunc::SPAData          SPAData_start;
   SPAFunc::SPAData          SPAData_end;
   SPAFunc::SPAOutput        SPAData_out;
+  SPAFunc::SPAInterp        SPAInterp_weights;
 
 }; // class SPA 
 

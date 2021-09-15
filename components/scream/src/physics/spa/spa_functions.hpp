@@ -105,6 +105,16 @@ struct SPAFunctions
     // AER_TAU_LW: unit = #/cm3, dimensions = (ncol,nswband=16,nlev)
     view_3d<Spack> AER_TAU_LW;
   }; // SPAPrescribedAerosolData
+
+  struct SPAInterp {
+    SPAInterp() = default;
+    // 1D index of weights. Needs decoder indexing.
+    view_1d<Real> weights;
+    // Index of Source Grid Column.
+    view_1d<Int> src_grid_loc;
+    // Index of Destination Grid Column.
+    view_1d<Int> des_grid_loc;
+  }; // SPAInterp
   /* ------------------------------------------------------------------------------------------- */
   // SPA routines
   static void spa_main(

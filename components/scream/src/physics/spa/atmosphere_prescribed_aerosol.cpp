@@ -140,6 +140,14 @@ void SPA::initialize_impl (const util::TimeStamp& /* t0 */)
 
   // Initialize SPA input data
   initialize_spa_impl();
+
+  // Set the location and name of the SPA remap file for horizontal interpolation
+  // TODO: Currently we only support loading remap data from file.  In the future we may want to allow for online interpolation
+  //       weights to be calculated.  If so, the follow REQUIRE can be removed.
+  EKAT_REQUIRE_MSG(m_spa_params.isParameter("SPA Remap File"),"ERROR: SPA Remap File is missing from SPA parameter list.");
+  m_spa_remap_file = m_spa_params.get<std::string>("SPA Remap File");
+  EKAT_REQUIRE_MSG(m_spa_params.isParameter("SPA Data File"),"ERROR: SPA Data File is missing from SPA parameter list.");
+  m_spa_data_file = m_spa_params.get<std::string>("SPA Data File");
 }
 
 // =========================================================================================
