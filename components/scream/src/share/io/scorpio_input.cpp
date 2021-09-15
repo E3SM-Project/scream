@@ -62,8 +62,8 @@ set_grid (const std::shared_ptr<const AbstractGrid>& grid)
   // Sanity checks
   EKAT_REQUIRE_MSG (not m_grid, "Error! Grid pointer was already set.\n");
   EKAT_REQUIRE_MSG (grid, "Error! Input grid pointer is invalid.\n");
-  EKAT_REQUIRE_MSG (grid->name()=="Physics" || grid->name()=="Physics GLL",
-      "Error! I/O only supports output on a Physics or Physics GLL grid.\n");
+  EKAT_REQUIRE_MSG (grid->name()=="Physics" || grid->name()=="Physics GLL" || grid->name()=="Remap Point",
+      "Error! I/O only supports output on a Physics or Physics GLL grid or Remap Point grid.\n");
 
   EKAT_REQUIRE_MSG(m_comm.size()<=grid->get_num_global_dofs(),
       "Error! PIO interface requires the size of the IO MPI group to be\n"

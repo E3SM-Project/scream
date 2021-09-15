@@ -35,6 +35,9 @@ public:
   using view_2d         = typename SPAFunc::view_2d<Spack>;
   using view_3d         = typename SPAFunc::view_3d<Spack>;
 
+  using view_1d_real    = typename SPAFunc::view_1d<Real>;
+  using view_1d_int     = typename SPAFunc::view_1d<Int>;
+
   template<typename ScalarT>
   using uview_1d = Unmanaged<typename KT::template view_1d<ScalarT>>;
   template<typename ScalarT>

@@ -2,6 +2,8 @@
 #define SPA_FUNCTIONS_IMPL_HPP
 
 #include "physics/share/physics_constants.hpp"
+#include "share/io/scorpio_input.hpp"
+#include "share/grid/point_grid.hpp"
 #include "ekat/kokkos/ekat_subview_utils.hpp"
 #include "ekat/util/ekat_lin_interp.hpp"
 
@@ -272,6 +274,94 @@ void SPAFunctions<S,D>
     });
   });
   Kokkos::fence();
+
+}
+/*-----------------------------------------------------------------*/
+// WARNING:  We currently only support remap weights from an ncremap file
+//           We will probably want to make this more general, perhaps with
+//           an enum that switches between valid remap file types.
+// TODO: Fix this so that we can use different types of remap file.
+template <typename S, typename D>
+void SPAFunctions<S,D>
+::read_remap_weights_from_file(
+  const ekat::Comm& comm,
+  const std::string& remap_file,
+  const SPAInterp& horiz_weights 
+)
+{
+  // We need to create a local abstract grid object for the input interface to use.  
+  // In the case of SPA remap data the current strategy is to have all mpi ranks pull 
+  // in all of the remap data and then later parse what is needed.
+  auto grid = std::make_shared<PointGrid>("Remap Point",horiz_weights.length,horiz_weights.length,1);
+  PointGrid::dofs_list_type dofs_gids ("phys dofs", horiz_weights.length);
+  grid->set_dofs(dofs_gids);
+
+  // Note: We need to load both real data and integer data from the remap file.
+  //       To accomodate the two different types we go through the same set of
+  //       actions in scope for real, and then again for integer.
+  using namespace ShortFieldTagsNames;
+  FieldLayout layout ({RMP_N_S},{horiz_weights.length});
+  {
+    using view_h = typename view_1d<Real>::HostMirror;
+    std::vector<std::string>          fnames;
+    std::map<std::string,view_h>      host_views;
+    std::map<std::string,FieldLayout> layouts;
+
+    // The names of the fields to load from file
+    fnames.push_back("S");    // weights
+    host_views["S"]   = Kokkos::create_mirror_view(horiz_weights.weights);
+    layouts.emplace("S",layout);
+
+    // Pointers to the data views to populate
+    // Parameter list to control input reading
+    ekat::ParameterList weights_params;
+    weights_params.set("Fields",fnames);
+    weights_params.set("Filename",remap_file);
+
+    AtmosphereInput weights_reader(comm,weights_params);
+    // Read data
+    weights_reader.init(grid,host_views,layouts);
+    weights_reader.read_variables();
+    weights_reader.finalize();
+
+    // Map back to device views  
+    Kokkos::deep_copy(horiz_weights.weights,host_views["S"]);
+  }
+//  {
+//    using view_h = typename view_1d<Int>::HostMirror;
+//    std::vector<std::string>          fnames;
+//    std::map<std::string,view_h>      host_views;
+//    std::map<std::string,FieldLayout> layouts;
+//
+//    // The names of the fields to load from file
+//    fnames.push_back("row");  // destination grid index
+//    host_views["row"] = Kokkos::create_mirror_view(horiz_weights.dst_grid_loc);
+//    layouts.emplace("row",layout);
+//
+//    fnames.push_back("col");  // source grid index
+//    host_views["col"] = Kokkos::create_mirror_view(horiz_weights.src_grid_loc);
+//    layouts.emplace("col",layout);
+//
+//    // Pointers to the data views to populate
+//    // Parameter list to control input reading
+//    ekat::ParameterList weights_params;
+//    weights_params.set("Fields",fnames);
+//    weights_params.set("Filename",remap_file);
+//
+//    AtmosphereInput weights_reader(comm,weights_params);
+//    // Read data
+//    weights_reader.init(grid,host_views,layouts);
+//    weights_reader.read_variables();
+//    weights_reader.finalize();
+//
+//    // Map back to device views  
+//    Kokkos::deep_copy(horiz_weights.src_grid_loc,host_views["col"]);
+//    Kokkos::deep_copy(horiz_weights.dst_grid_loc,host_views["row"]);
+//  }
+  printf("\n");
+  for (int i = 0; i<10; i++) {
+    printf(" (%2d) = %16.12f, %d, %d\n",i,horiz_weights.weights(i),horiz_weights.src_grid_loc(i),horiz_weights.dst_grid_loc(i));
+  }
 
 }
 /*-----------------------------------------------------------------*/

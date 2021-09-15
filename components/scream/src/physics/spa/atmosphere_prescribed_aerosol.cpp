@@ -148,6 +148,17 @@ void SPA::initialize_impl (const util::TimeStamp& /* t0 */)
   m_spa_remap_file = m_spa_params.get<std::string>("SPA Remap File");
   EKAT_REQUIRE_MSG(m_spa_params.isParameter("SPA Data File"),"ERROR: SPA Data File is missing from SPA parameter list.");
   m_spa_data_file = m_spa_params.get<std::string>("SPA Data File");
+  // HACKY, TODO: Fix this so that this value is gathered directly from the file.  Putting this hack into place now to continue SPA
+  // work since the fix will have to be in the IO code.
+  EKAT_REQUIRE_MSG(m_spa_params.isParameter("SPA Number of Weights"),"ERROR: SPA Number of Weights is missing from SPA parameter list.");
+  SPAInterp_weights.length = m_spa_params.get<int>("SPA Number of Weights");
+
+  SPAInterp_weights.weights = view_1d_real("weights",SPAInterp_weights.length);
+  SPAInterp_weights.src_grid_loc = view_1d_int("src_grid_loc",SPAInterp_weights.length);
+  SPAInterp_weights.dst_grid_loc = view_1d_int("dst_grid_loc",SPAInterp_weights.length);
+
+  // Read in weights from remap file
+  SPAFunc::read_remap_weights_from_file(m_spa_comm,m_spa_remap_file,SPAInterp_weights);
 }
 
 // =========================================================================================

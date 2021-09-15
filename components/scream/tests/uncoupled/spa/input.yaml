@@ -11,6 +11,7 @@ Atmosphere Processes:
     Grid: Physics
     SPA Remap File: map_ne4np4_to_ne2np4_mono.nc
     SPA Data File: spa_file_unified_and_complete_ne4_scream.nc
+    SPA Number of Weights: 17498
 
 Grids Manager:
   Type: Physics Only

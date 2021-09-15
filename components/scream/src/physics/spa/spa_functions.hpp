@@ -5,6 +5,7 @@
 
 #include "ekat/ekat_pack_kokkos.hpp"
 #include "ekat/ekat_workspace.hpp"
+#include "ekat/mpi/ekat_comm.hpp"
 
 namespace scream {
 namespace spa {
@@ -108,12 +109,14 @@ struct SPAFunctions
 
   struct SPAInterp {
     SPAInterp() = default;
+    // Length of remap data
+    Int length;
     // 1D index of weights. Needs decoder indexing.
     view_1d<Real> weights;
     // Index of Source Grid Column.
     view_1d<Int> src_grid_loc;
     // Index of Destination Grid Column.
-    view_1d<Int> des_grid_loc;
+    view_1d<Int> dst_grid_loc;
   }; // SPAInterp
   /* ------------------------------------------------------------------------------------------- */
   // SPA routines
@@ -127,6 +130,12 @@ struct SPAFunctions
     Int nlevs_scream,
     Int nswbands,
     Int nlwbands);
+
+  static void read_remap_weights_from_file(
+    const ekat::Comm& comm,
+    const std::string& remap_file,
+    const SPAInterp& horiz_weights 
+  );
 }; // struct Functions
 
 } // namespace spa 

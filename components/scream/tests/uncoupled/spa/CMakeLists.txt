@@ -10,5 +10,9 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/input.yaml
                ${CMAKE_CURRENT_BINARY_DIR}/input.yaml COPYONLY)
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/spa_init_ne2np4.nc
                ${CMAKE_CURRENT_BINARY_DIR}/spa_init_ne2np4.nc COPYONLY)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/map_ne4np4_to_ne2np4_mono.nc
+               ${CMAKE_CURRENT_BINARY_DIR}/map_ne4np4_to_ne2np4_mono.nc COPYONLY)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/spa_file_unified_and_complete_ne4_scream.nc
+               ${CMAKE_CURRENT_BINARY_DIR}/spa_file_unified_and_complete_ne4_scream.nc COPYONLY)
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/spa_output.yaml
                ${CMAKE_CURRENT_BINARY_DIR}/spa_output.yaml COPYONLY)

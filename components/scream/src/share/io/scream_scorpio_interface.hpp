@@ -114,6 +114,9 @@ inline std::string get_nc_tag_name (const FieldTag& t, const int extent) {
     case LWBND:
       name = "lwband";
       break;
+    case RMP_N_S: // Special tag used with ncremap files
+      name = "n_s";
+      break;
     default:
       EKAT_ERROR_MSG("Error! Field tag not supported in netcdf files.");
   }

@@ -39,7 +39,9 @@ enum class FieldTag {
   // Added for RRTMGP, TODO: Revisit this approach, is there a better way than adding more field tags?
   Gases,
   ShortWaveBand,
-  LongWaveBand
+  LongWaveBand,
+  // Added for SPA in order to access remapping data from an ncremap file.
+  Remap_n_s
 };
 
 inline std::string e2str (const FieldTag ft) {
@@ -88,6 +90,9 @@ inline std::string e2str (const FieldTag ft) {
     case FieldTag::LongWaveBand:
       name = "LWBND";
       break;
+    case FieldTag::Remap_n_s:  // Special tag used with ncremap variables
+      name = "N_S";
+      break;
     default:
       EKAT_ERROR_MSG("Error! Unrecognized field tag.");
   }
@@ -115,6 +120,7 @@ namespace ShortFieldTagsNames {
   constexpr auto NGAS = FieldTag::Gases;
   constexpr auto SWBND = FieldTag::ShortWaveBand;
   constexpr auto LWBND = FieldTag::LongWaveBand;
+  constexpr auto RMP_N_S = FieldTag::Remap_n_s;
 }
 
 } // namespace scream
