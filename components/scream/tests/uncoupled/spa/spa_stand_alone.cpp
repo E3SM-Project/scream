@@ -18,8 +18,14 @@ TEST_CASE("spa-stand-alone", "") {
   using namespace scream;
   using namespace scream::control;
 
+  constexpr int num_iters = 4;
+  constexpr Real dt = 864000;
+
+  // Create a comm
+  ekat::Comm atm_comm (MPI_COMM_WORLD);
+
   // Load ad parameter list
-  std::string fname = "input.yaml";
+  std::string fname = "input_np" + std::to_string(atm_comm.size()) + ".yaml";
   ekat::ParameterList ad_params("Atmosphere Driver");
   REQUIRE_NOTHROW ( parse_yaml_file(fname,ad_params) );
 
@@ -34,9 +40,6 @@ TEST_CASE("spa-stand-alone", "") {
 
   util::TimeStamp t0 (start_date, start_time);
   EKAT_ASSERT_MSG (t0.is_valid(), "Error! Invalid start date.\n");
-
-  // Create a comm
-  ekat::Comm atm_comm (MPI_COMM_WORLD);
 
   // Need to register products in the factory *before* we create any atm process or grids manager.
   auto& proc_factory = AtmosphereProcessFactory::instance();
