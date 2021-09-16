@@ -17,17 +17,17 @@ TEST_CASE("shoc-stand-alone", "") {
   using namespace scream;
   using namespace scream::control;
 
+  // Create a comm
+  ekat::Comm atm_comm (MPI_COMM_WORLD);
+
   // Load ad parameter list
-  std::string fname = "input.yaml";
+  std::string fname = "input_np" + std::to_string(atm_comm.size()) + ".yaml";
   ekat::ParameterList ad_params("Atmosphere Driver");
   REQUIRE_NOTHROW ( parse_yaml_file(fname,ad_params) );
 
   // run params:
   const auto& num_iters = ad_params.get<int>("Number of Iterations");
   const auto& dt        = ad_params.get<Real>("dt",300.0);
-
-  // Create a comm
-  ekat::Comm atm_comm (MPI_COMM_WORLD);
 
   // Need to register products in the factory *before* we create any atm process or grids manager.
   register_physics();

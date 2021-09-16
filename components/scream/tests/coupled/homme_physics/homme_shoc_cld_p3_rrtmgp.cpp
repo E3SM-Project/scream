@@ -44,10 +44,13 @@ TEST_CASE("scream_homme_physics", "scream_homme_physics") {
   using namespace scream;
   using namespace scream::control;
 
+  // Create a comm
+  ekat::Comm atm_comm (MPI_COMM_WORLD);
+
   ekat::enable_fpes(get_default_fpes());
 
   // Load ad parameter list
-  std::string fname = "input.yaml";
+  std::string fname = "input_np" + std::to_string(atm_comm.size()) + ".yaml";
   ekat::ParameterList ad_params("Atmosphere Driver");
   REQUIRE_NOTHROW ( parse_yaml_file(fname,ad_params) );
 
@@ -64,9 +67,6 @@ TEST_CASE("scream_homme_physics", "scream_homme_physics") {
   // Need to register grids managers before we create the driver
   auto& gm_factory = GridsManagerFactory::instance();
   gm_factory.register_product("Dynamics Driven",create_dynamics_driven_grids_manager);
-
-  // Create a comm
-  ekat::Comm atm_comm (MPI_COMM_WORLD);
 
   // Create the driver
   AtmosphereDriver ad;

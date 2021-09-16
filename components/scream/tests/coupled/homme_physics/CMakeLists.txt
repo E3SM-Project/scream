@@ -11,12 +11,20 @@ set (NEED_LIBS cld_fraction shoc p3 scream_rrtmgp rrtmgp ${NETCDF_C} ${dynLibNam
 # Add source files
 if (NOT SCREAM_AUTOTESTER) # TODO: This test should be reinstated once the homme+physics test is fixed.
   CreateUnitTest(homme_shoc_cld_p3_rrtmgp "homme_shoc_cld_p3_rrtmgp.cpp" "${NEED_LIBS}"
-                 LABELS "dynamics;driver;shoc;cld;p3;rrtmgp;physics")
+                 LABELS "dynamics;driver;shoc;cld;p3;rrtmgp;physics"
+                  MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
+  )
 endif()
 
-# Copy yaml input file to run directory
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/input.yaml
-               ${CMAKE_CURRENT_BINARY_DIR}/input.yaml COPYONLY)
+## Copy (and configure) yaml files needed by tests
+foreach (MPI_RANKS RANGE 1 ${SCREAM_TEST_MAX_RANKS})
+    
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/input.yaml
+                 ${CMAKE_CURRENT_BINARY_DIR}/input_np${MPI_RANKS}.yaml)
+  CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/homme_shoc_cld_p3_rrtmgp_standalone_output.yaml
+                 ${CMAKE_CURRENT_BINARY_DIR}/homme_shoc_cld_p3_rrtmgp_standalone_output_np${MPI_RANKS}.yaml)
+    
+endforeach()
 
 # Set homme's test options, so that we can configure the namelist correctly
 
