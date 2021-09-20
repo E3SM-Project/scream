@@ -1188,7 +1188,7 @@ end subroutine micro_p3_readnl
     ! Add cmeliq to  vap_liq_exchange
     vap_liq_exchange(:ncol,top_lev:pver) = vap_liq_exchange(:ncol,top_lev:pver) + cmeliq(:ncol,top_lev:pver) 
     ! assign condensation_from_macrophysics the value of cmeliq
-    condensation_from_macrophysics(:ncol,top_lev:pver) = cmeliq(:ncol,top_lev:pver
+    condensation_from_macrophysics(:ncol,top_lev:pver) = cmeliq(:ncol,top_lev:pver)
 
 !====================== Export variables/Conservation START ======================!
      !For precip, accumulate only total precip in prec_pcw and snow_pcw variables.
