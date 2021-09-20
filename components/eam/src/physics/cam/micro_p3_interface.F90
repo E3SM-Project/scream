@@ -827,7 +827,7 @@ end subroutine micro_p3_readnl
     ! DONE PBUF
     ! For recording inputs/outputs to p3_main
     real(rtype) :: p3_main_inputs(pcols,pver+1,17) ! Record of inputs for p3_main
-    real(rtype) :: p3_main_outputs(pcols,pver+1,31) ! Record of outputs for p3_main
+    real(rtype) :: p3_main_outputs(pcols,pver+1,32) ! Record of outputs for p3_main
 
     ! Derived Variables
     real(rtype) :: icimrst(pcols,pver) ! stratus ice mixing ratio - on grid
