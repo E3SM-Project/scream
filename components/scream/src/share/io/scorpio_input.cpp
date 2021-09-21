@@ -258,11 +258,12 @@ void AtmosphereInput::init_scorpio_structures()
 /* ---------------------------------------------------------- */
 void AtmosphereInput::register_variables()
 {
-  register_variables(m_filename,m_fields_names,m_layouts);
+  register_variables(m_filename,m_fields_names,m_layouts, PIO_REAL);
 }
 void AtmosphereInput::register_variables(const std::string& filename,
                               const std::vector<std::string>& fields_names, 
-                              const std::map<std::string, FieldLayout>& layouts)
+                              const std::map<std::string, FieldLayout>& layouts,
+                              const int pio_type)
 {
   // Register each variable in IO stream with the SCORPIO interface.
   // This allows SCORPIO to lookup vars in the nc file with the correct
@@ -272,7 +273,14 @@ void AtmosphereInput::register_variables(const std::string& filename,
   for (auto const& name : fields_names) {
     // Determine the IO-decomp and construct a vector of dimension ids for this variable:
     auto vec_of_dims   = get_vec_of_dims(layouts.at(name));
-    auto io_decomp_tag = get_io_decomp(vec_of_dims);
+    std::string io_decomp_tag;
+    if (pio_type==PIO_REAL) {
+      io_decomp_tag = get_io_decomp(vec_of_dims,"Real");
+    } else if (pio_type == PIO_INT) {
+      io_decomp_tag = get_io_decomp(vec_of_dims,"Int");
+    } else {
+      EKAT_REQUIRE_MSG (false, "ERROR: Attempting to register variables with incorrect PIO TYPE\n");
+    }
 
     // Register the variable
     // TODO  Need to change dtype to allow for other variables. 
@@ -280,7 +288,7 @@ void AtmosphereInput::register_variables(const std::string& filename,
     //  but in the future if non-Real variables are added we will want to accomodate that.
     //TODO: Should be able to simply inquire from the netCDF the dimensions for each variable.
     scorpio::get_variable(filename, name, name, vec_of_dims.size(),
-                          vec_of_dims, PIO_REAL, io_decomp_tag);
+                          vec_of_dims, pio_type, io_decomp_tag);
   }
 }
 
@@ -303,12 +311,12 @@ AtmosphereInput::get_vec_of_dims(const FieldLayout& layout)
 }
 
 /* ---------------------------------------------------------- */
-std::string AtmosphereInput::get_io_decomp(const std::vector<std::string>& dims_names)
+std::string AtmosphereInput::get_io_decomp(const std::vector<std::string>& dims_names, const std::string& type)
 {
   // Given a vector of dimensions names, create a unique decomp string to register with I/O
   // Note: We are hard-coding for only REAL input here.
   // TODO: would be to allow for other dtypes
-  std::string io_decomp_tag = "Real";
+  std::string io_decomp_tag = type;
   for (auto it = dims_names.crbegin(); it!=dims_names.crend(); ++it) {
     const auto& dim = *it;
     io_decomp_tag += "-" + dim;
@@ -333,12 +341,6 @@ void AtmosphereInput::set_degrees_of_freedom(const std::string& filename,
 void AtmosphereInput::set_degrees_of_freedom()
 {
   set_degrees_of_freedom(m_filename, m_fields_names, m_layouts);
-//  // For each field, tell PIO the offset of each DOF to be read.
-//  // Here, offset is meant in the *global* array in the nc file.
-//  for (auto const& name : m_fields_names) {
-//    auto var_dof = get_var_dof_offsets(m_layouts.at(name));
-//    scorpio::set_dof(m_filename,name,var_dof.size(),var_dof.data());
-//  }
 } // set_degrees_of_freedom
 
 /* ---------------------------------------------------------- */

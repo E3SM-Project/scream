@@ -135,25 +135,27 @@ public:
   int read_int_scalar (const std::string& name);
   void finalize();
 
+  void register_variables(const std::string& filename, 
+                          const std::vector<std::string>& fields_names, 
+                          const std::map<std::string, FieldLayout>& layouts,
+                          const int pio_type);
+  void set_degrees_of_freedom(const std::string& filename, 
+                              const std::vector<std::string>& fields_names, 
+                              const std::map<std::string, FieldLayout>& layouts);
+  void set_grid (const std::shared_ptr<const AbstractGrid>& grid);
+  void set_m_is_inited (const bool inited) {m_is_inited = inited;}
+
 protected:
   // Internal functions
   void set_parameters (const ekat::ParameterList& params);
-  void set_grid (const std::shared_ptr<const AbstractGrid>& grid);
   void set_field_manager (const std::shared_ptr<const fm_type>& field_mgr);
 
   void init_scorpio_structures ();
   void register_variables();
   void set_degrees_of_freedom();
 
-  void register_variables(const std::string& filename, 
-                          const std::vector<std::string>& fields_names, 
-                          const std::map<std::string, FieldLayout>& layouts);
-  void set_degrees_of_freedom(const std::string& filename, 
-                              const std::vector<std::string>& fields_names, 
-                              const std::map<std::string, FieldLayout>& layouts);
-
   std::vector<std::string> get_vec_of_dims (const FieldLayout& layout);
-  std::string get_io_decomp (const std::vector<std::string>& vec_of_dims);
+  std::string get_io_decomp (const std::vector<std::string>& vec_of_dims, const std::string& type);
   std::vector<int> get_var_dof_offsets (const FieldLayout& layout);
 
   // Internal variables

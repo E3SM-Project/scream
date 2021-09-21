@@ -350,6 +350,11 @@ void SPAFunctions<S,D>
     host_views["col"] = Kokkos::create_mirror_view(horiz_weights.src_grid_loc);
     layouts.emplace("col",layout);
 
+    ekat::ParameterList indices_params;
+    indices_params.set("Fields",fnames);
+    indices_params.set("Filename",remap_file);
+
+    AtmosphereInput indices_reader(comm,indices_params);
     // Init
     //   set_grid
     //   m_layouts
@@ -359,28 +364,26 @@ void SPAFunctions<S,D>
     //     register_variables
     //     set_degrees_of_freedom
     //     set_decomp
+    indices_reader.set_grid(grid);
+    scorpio::register_infile(remap_file);
+    indices_reader.register_variables(remap_file, fnames, layouts, 4); // PIO type INT = 4, so we hard-code here.
+    indices_reader.set_degrees_of_freedom(remap_file, fnames, layouts);
+    scorpio::set_decomp(remap_file);
+    indices_reader.set_m_is_inited(true);
+    // TODO: Maybe all we need is to make `init_scorpio_structures` a callable function and don't need the 4 lines above? 
     
     // Read Variables
     //     grid_read_data_array
     //     assign the data read to the actual field, if needed.
+    for (auto const& name : fnames) {
+      scorpio::grid_read_data_array(remap_file,name,horiz_weights.length,host_views.at(name).data());
+    }
+
+    indices_reader.finalize();
     
-    // Finalize
-    //   eam_pio_closefile
-//    // Pointers to the data views to populate
-//    // Parameter list to control input reading
-//    ekat::ParameterList weights_params;
-//    weights_params.set("Fields",fnames);
-//    weights_params.set("Filename",remap_file);
-//
-//    AtmosphereInput weights_reader(comm,weights_params);
-//    // Read data
-//    weights_reader.init(grid,host_views,layouts);
-//    weights_reader.read_variables();
-//    weights_reader.finalize();
-//
 //    // Map back to device views  
-//    Kokkos::deep_copy(horiz_weights.src_grid_loc,host_views["col"]);
-//    Kokkos::deep_copy(horiz_weights.dst_grid_loc,host_views["row"]);
+    Kokkos::deep_copy(horiz_weights.src_grid_loc,host_views["col"]);
+    Kokkos::deep_copy(horiz_weights.dst_grid_loc,host_views["row"]);
   }
   printf("\n");
   for (int i = 0; i<10; i++) {

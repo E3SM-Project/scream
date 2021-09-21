@@ -209,6 +209,7 @@ module scream_scorpio_interface
 !----------------------------------------------------------------------
   interface grid_read_data_array
     module procedure grid_read_darray_1d_real
+    module procedure grid_read_darray_1d_int
   end interface grid_read_data_array
 !----------------------------------------------------------------------
   interface grid_write_data_array
@@ -1220,7 +1221,6 @@ contains
   end subroutine grid_write_darray_1d_real
 !=====================================================================!
   ! Read output from file based on type (int or real) and dimensionality
-  ! (currently support 1-4 dimensions).
   ! --Note-- that any dimensionality could be read if it is flattened to 1D
   ! before calling a write routine.
   ! Mandatory inputs are:
@@ -1263,6 +1263,33 @@ contains
     call errorHandle( 'eam_grid_read_darray_1d_real: Error reading variable '//trim(varname),ierr)
 
   end subroutine grid_read_darray_1d_real
+  !---------------------------------------------------------------------------
+  !
+  !  grid_read_darray_1d_int: Read a variable defined on this grid
+  !
+  !---------------------------------------------------------------------------
+  subroutine grid_read_darray_1d_int(filename, varname, var_size, var_data)
+
+    ! Dummy arguments
+    character(len=*), intent(in) :: filename       ! PIO filename
+    character(len=*), intent(in) :: varname
+    integer, intent(in)          :: var_size
+    integer, intent(out)         :: var_data(var_size)
+
+    ! Local variables
+    type(pio_atm_file_t),pointer       :: pio_atm_file
+    type(hist_var_t), pointer          :: var
+    integer                            :: ierr, ndims, i
+    logical                            :: found
+
+    call lookup_pio_atm_file(trim(filename),pio_atm_file,found)
+    call get_var(pio_atm_file,varname,var)
+     
+    call PIO_setframe(pio_atm_file%pioFileDesc,var%piovar,int(max(1,pio_atm_file%numRecs),kind=pio_offset_kind))
+    call pio_read_darray(pio_atm_file%pioFileDesc, var%piovar, var%iodesc, var_data, ierr)
+    call errorHandle( 'eam_grid_read_darray_1d_int: Error reading variable '//trim(varname),ierr)
+
+  end subroutine grid_read_darray_1d_int
 !=====================================================================!
 
 end module scream_scorpio_interface
