@@ -327,21 +327,45 @@ void SPAFunctions<S,D>
     // Map back to device views  
     Kokkos::deep_copy(horiz_weights.weights,host_views["S"]);
   }
-//  {
-//    using view_h = typename view_1d<Int>::HostMirror;
-//    std::vector<std::string>          fnames;
-//    std::map<std::string,view_h>      host_views;
-//    std::map<std::string,FieldLayout> layouts;
-//
-//    // The names of the fields to load from file
-//    fnames.push_back("row");  // destination grid index
-//    host_views["row"] = Kokkos::create_mirror_view(horiz_weights.dst_grid_loc);
-//    layouts.emplace("row",layout);
-//
-//    fnames.push_back("col");  // source grid index
-//    host_views["col"] = Kokkos::create_mirror_view(horiz_weights.src_grid_loc);
-//    layouts.emplace("col",layout);
-//
+  // Currently the scorpio IO interface does not support integer
+  // input.  To get around this we manually go through all of the
+  // steps usally covered by running the init, read_variables and
+  // finalize routines in an io class object.
+  // TODO: When the scorpio io interface is able to handle integer
+  //       input, the following should be simplified by calling
+  //       the io class object directly similar to the above code
+  //       used for the weights.
+  {
+    using view_h = typename view_1d<Int>::HostMirror;
+    std::vector<std::string>          fnames;
+    std::map<std::string,view_h>      host_views;
+    std::map<std::string,FieldLayout> layouts;
+
+    // The names of the fields to load from file
+    fnames.push_back("row");  // destination grid index
+    host_views["row"] = Kokkos::create_mirror_view(horiz_weights.dst_grid_loc);
+    layouts.emplace("row",layout);
+
+    fnames.push_back("col");  // source grid index
+    host_views["col"] = Kokkos::create_mirror_view(horiz_weights.src_grid_loc);
+    layouts.emplace("col",layout);
+
+    // Init
+    //   set_grid
+    //   m_layouts
+    //   m_host_views
+    //   init_scorpio_structures
+    //     register_infile
+    //     register_variables
+    //     set_degrees_of_freedom
+    //     set_decomp
+    
+    // Read Variables
+    //     grid_read_data_array
+    //     assign the data read to the actual field, if needed.
+    
+    // Finalize
+    //   eam_pio_closefile
 //    // Pointers to the data views to populate
 //    // Parameter list to control input reading
 //    ekat::ParameterList weights_params;
@@ -357,7 +381,7 @@ void SPAFunctions<S,D>
 //    // Map back to device views  
 //    Kokkos::deep_copy(horiz_weights.src_grid_loc,host_views["col"]);
 //    Kokkos::deep_copy(horiz_weights.dst_grid_loc,host_views["row"]);
-//  }
+  }
   printf("\n");
   for (int i = 0; i<10; i++) {
     printf(" (%2d) = %16.12f, %d, %d\n",i,horiz_weights.weights(i),horiz_weights.src_grid_loc(i),horiz_weights.dst_grid_loc(i));

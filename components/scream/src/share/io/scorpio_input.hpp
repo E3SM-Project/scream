@@ -145,6 +145,13 @@ protected:
   void register_variables();
   void set_degrees_of_freedom();
 
+  void register_variables(const std::string& filename, 
+                          const std::vector<std::string>& fields_names, 
+                          const std::map<std::string, FieldLayout>& layouts);
+  void set_degrees_of_freedom(const std::string& filename, 
+                              const std::vector<std::string>& fields_names, 
+                              const std::map<std::string, FieldLayout>& layouts);
+
   std::vector<std::string> get_vec_of_dims (const FieldLayout& layout);
   std::string get_io_decomp (const std::vector<std::string>& vec_of_dims);
   std::vector<int> get_var_dof_offsets (const FieldLayout& layout);

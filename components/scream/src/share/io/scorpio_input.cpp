@@ -258,14 +258,20 @@ void AtmosphereInput::init_scorpio_structures()
 /* ---------------------------------------------------------- */
 void AtmosphereInput::register_variables()
 {
+  register_variables(m_filename,m_fields_names,m_layouts);
+}
+void AtmosphereInput::register_variables(const std::string& filename,
+                              const std::vector<std::string>& fields_names, 
+                              const std::map<std::string, FieldLayout>& layouts)
+{
   // Register each variable in IO stream with the SCORPIO interface.
   // This allows SCORPIO to lookup vars in the nc file with the correct
   // dof decomposition across different ranks.
 
   // Cycle through all fields
-  for (auto const& name : m_fields_names) {
+  for (auto const& name : fields_names) {
     // Determine the IO-decomp and construct a vector of dimension ids for this variable:
-    auto vec_of_dims   = get_vec_of_dims(m_layouts.at(name));
+    auto vec_of_dims   = get_vec_of_dims(layouts.at(name));
     auto io_decomp_tag = get_io_decomp(vec_of_dims);
 
     // Register the variable
@@ -273,7 +279,7 @@ void AtmosphereInput::register_variables()
     //  Currently the field_manager only stores Real variables so it is not an issue,
     //  but in the future if non-Real variables are added we will want to accomodate that.
     //TODO: Should be able to simply inquire from the netCDF the dimensions for each variable.
-    scorpio::get_variable(m_filename, name, name, vec_of_dims.size(),
+    scorpio::get_variable(filename, name, name, vec_of_dims.size(),
                           vec_of_dims, PIO_REAL, io_decomp_tag);
   }
 }
@@ -312,14 +318,27 @@ std::string AtmosphereInput::get_io_decomp(const std::vector<std::string>& dims_
 }
 
 /* ---------------------------------------------------------- */
-void AtmosphereInput::set_degrees_of_freedom()
+void AtmosphereInput::set_degrees_of_freedom(const std::string& filename, 
+                                             const std::vector<std::string>& fields_names, 
+                                             const std::map<std::string, FieldLayout>& layouts)
 {
   // For each field, tell PIO the offset of each DOF to be read.
   // Here, offset is meant in the *global* array in the nc file.
-  for (auto const& name : m_fields_names) {
-    auto var_dof = get_var_dof_offsets(m_layouts.at(name));
-    scorpio::set_dof(m_filename,name,var_dof.size(),var_dof.data());
+  for (auto const& name : fields_names) {
+    auto var_dof = get_var_dof_offsets(layouts.at(name));
+    scorpio::set_dof(filename,name,var_dof.size(),var_dof.data());
   }
+}
+/* ---------------------------------------------------------- */
+void AtmosphereInput::set_degrees_of_freedom()
+{
+  set_degrees_of_freedom(m_filename, m_fields_names, m_layouts);
+//  // For each field, tell PIO the offset of each DOF to be read.
+//  // Here, offset is meant in the *global* array in the nc file.
+//  for (auto const& name : m_fields_names) {
+//    auto var_dof = get_var_dof_offsets(m_layouts.at(name));
+//    scorpio::set_dof(m_filename,name,var_dof.size(),var_dof.data());
+//  }
 } // set_degrees_of_freedom
 
 /* ---------------------------------------------------------- */
