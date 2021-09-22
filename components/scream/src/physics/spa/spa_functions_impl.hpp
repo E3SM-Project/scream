@@ -93,10 +93,10 @@ void SPAFunctions<S,D>
   const SPAData&   data_beg,
   const SPAData&   data_end,
   const SPAOutput& data_out,
-  Int ncols_atm,
-  Int nlevs_atm,
-  Int nswbands,
-  Int nlwbands)
+  const Int ncols_atm,
+  const Int nlevs_atm,
+  const Int nswbands,
+  const Int nlwbands)
 {
   // Gather time stamp info
   auto& t_now = time_state.t_now;
@@ -390,6 +390,89 @@ void SPAFunctions<S,D>
     printf(" (%2d) = %16.12f, %d, %d\n",i,horiz_weights.weights(i),horiz_weights.src_grid_loc(i),horiz_weights.dst_grid_loc(i));
   }
 
+}
+/*-----------------------------------------------------------------*/
+template <typename S, typename D>
+void SPAFunctions<S,D>
+::spa_update_monthly_data(
+  const ekat::Comm& comm,
+  const std::string& spa_data_file,
+  const util::TimeStamp& ts,
+  const SPAInterp& horiz_weights, 
+        SPATimeState& time_state,
+        SPAPressureState& pressure_state,
+        SPAData&   data_beg,
+        SPAData&   data_end,
+  const Int ncols_atm,
+  const Int nlevs_atm,
+  const Int nswbands,
+  const Int nlwbands)
+{
+  // We always want to update the current time in the time_state.
+  time_state.t_now = ts.get_julian_day();
+  // Now we check if we have to update the data that changes monthly
+  if (ts.get_months() != time_state.current_month) {
+    // Update the SPA time state information
+    time_state.current_month = ts.get_months();
+    time_state.t_beg_month = util::julian_day(ts.get_years(),ts.get_months(),0,0);
+    time_state.days_this_month = (Real)ts.get_dpm();
+
+    // Update the SPA forcing data for this month and next month
+    // Start by copying next months data to this months data structure.  
+    // NOTE: If the timestep is bigger than monthly this could cause the wrong values
+    //       to be assigned.  A timestep greater than a month is very unlikely so we
+    //       will proceed.
+    data_beg = data_end;
+    pressure_state.ps_this_month = pressure_state.ps_next_month;
+    // Next we load next months data into the data_end structure and ps_next_month, and apply the horizontal weights.
+    auto grid = std::make_shared<PointGrid>("Physics",horiz_weights.src_grid_ncols * horiz_weights.src_grid_nlevs,
+                                                             horiz_weights.src_grid_ncols, horiz_weights.src_grid_nlevs);
+    PointGrid::dofs_list_type dofs_gids ("phys dofs", horiz_weights.src_grid_ncols);
+    grid->set_dofs(dofs_gids);
+
+    using namespace ShortFieldTagsNames;
+    FieldLayout scalar2d_layout_mid { {COL}, {horiz_weights.src_grid_ncols} };
+    FieldLayout scalar3d_layout_mid { {COL,LEV}, {horiz_weights.src_grid_ncols, horiz_weights.src_grid_nlevs} };
+    FieldLayout scalar3d_swband_layout { {COL,SWBND, LEV}, {horiz_weights.src_grid_ncols, nswbands, horiz_weights.src_grid_nlevs} }; 
+    FieldLayout scalar3d_lwband_layout { {COL,LWBND, LEV}, {horiz_weights.src_grid_ncols, nlwbands, horiz_weights.src_grid_nlevs} }; 
+    using view_h = typename view_1d<Real>::HostMirror;
+    std::vector<std::string>          fnames;
+    std::map<std::string,view_h>      host_views;
+    std::map<std::string,FieldLayout> layouts;
+    // Define each input variable we need
+    fnames.push_back("PS");
+    host_views["PS"] = view_h("",horiz_weights.src_grid_ncols);
+    layouts.emplace("PS", scalar2d_layout_mid);
+    //
+    fnames.push_back("CCN3");
+    host_views["CCN3"] = view_h("",horiz_weights.src_grid_ncols*horiz_weights.src_grid_nlevs);
+    layouts.emplace("CCN3",scalar3d_layout_mid);
+    //
+    fnames.push_back("AER_G_SW");
+    host_views["AER_G_SW"] = view_h("AER_G_SW",horiz_weights.src_grid_ncols*horiz_weights.src_grid_nlevs*nswbands);
+    layouts.emplace("AER_G_SW",scalar3d_swband_layout);
+    //
+    fnames.push_back("AER_SSA_SW");
+    host_views["AER_SSA_SW"] = view_h("AER_SSA_SW",horiz_weights.src_grid_ncols*horiz_weights.src_grid_nlevs*nswbands);
+    layouts.emplace("AER_SSA_SW",scalar3d_swband_layout);
+    //
+    fnames.push_back("AER_TAU_SW");
+    host_views["AER_TAU_SW"] = view_h("AER_TAU_SW",horiz_weights.src_grid_ncols*horiz_weights.src_grid_nlevs*nswbands);
+    layouts.emplace("AER_TAU_SW",scalar3d_swband_layout);
+    //
+    fnames.push_back("AER_TAU_LW");
+    host_views["AER_TAU_LW"] = view_h("AER_TAU_LW",horiz_weights.src_grid_ncols*horiz_weights.src_grid_nlevs*nlwbands);
+    layouts.emplace("AER_TAU_LW",scalar3d_lwband_layout);
+    //
+    ekat::ParameterList spa_data_in_params;
+    spa_data_in_params.set("Fields",fnames);
+    spa_data_in_params.set("Filename",spa_data_file);
+    AtmosphereInput spa_data_in(comm,spa_data_in_params);
+    spa_data_in.init(grid,host_views,layouts);
+    spa_data_in.read_variables(time_state.current_month+1);
+    spa_data_in.finalize();
+
+  } // if (ts.get_months() != time_state.current_month) 
 }
 /*-----------------------------------------------------------------*/
 // A helper function to manage basic linear interpolation in time.

@@ -2,6 +2,7 @@
 #define SPA_FUNCTIONS_HPP
 
 #include "share/scream_types.hpp"
+#include "share/util/scream_time_stamp.hpp"
 
 #include "ekat/ekat_pack_kokkos.hpp"
 #include "ekat/ekat_workspace.hpp"
@@ -117,6 +118,8 @@ struct SPAFunctions
     view_1d<Int> src_grid_loc;
     // Index of Destination Grid Column.
     view_1d<Int> dst_grid_loc;
+    // Number of columns and levels on source grid
+    Int src_grid_ncols, src_grid_nlevs;
   }; // SPAInterp
   /* ------------------------------------------------------------------------------------------- */
   // SPA routines
@@ -126,16 +129,31 @@ struct SPAFunctions
     const SPAData&   data_beg,
     const SPAData&   data_end,
     const SPAOutput& data_out,
-    Int ncols_scream,
-    Int nlevs_scream,
-    Int nswbands,
-    Int nlwbands);
+    const Int ncols_scream,
+    const Int nlevs_scream,
+    const Int nswbands,
+    const Int nlwbands);
 
   static void read_remap_weights_from_file(
     const ekat::Comm& comm,
     const std::string& remap_file,
     const SPAInterp& horiz_weights 
   );
+
+  static void spa_update_monthly_data(
+    const ekat::Comm& comm,
+    const std::string& spa_data_file,
+    const util::TimeStamp& ts,
+    const SPAInterp& horiz_weights, 
+          SPATimeState& time_state,
+          SPAPressureState& pressure_state,
+          SPAData&   data_beg,
+          SPAData&   data_end,
+    const Int ncols_atm,
+    const Int nlevs_atm,
+    const Int nswbands,
+    const Int nlwbands);
+
 }; // struct Functions
 
 } // namespace spa 

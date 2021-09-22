@@ -17,13 +17,13 @@ TEST_CASE("spa-stand-alone", "") {
   using namespace scream;
   using namespace scream::control;
 
-  constexpr int num_iters = 4;
-  constexpr Real dt = 864000;
-
   // Load ad parameter list
   std::string fname = "input.yaml";
   ekat::ParameterList ad_params("Atmosphere Driver");
   REQUIRE_NOTHROW ( parse_yaml_file(fname,ad_params) );
+
+  auto num_iters = ad_params.get<int>("Number of Iterations",4);
+  constexpr Real dt = 864000;
 
   // Create a comm
   ekat::Comm atm_comm (MPI_COMM_WORLD);

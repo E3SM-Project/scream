@@ -152,6 +152,10 @@ void SPA::initialize_impl (const util::TimeStamp& /* t0 */)
   // work since the fix will have to be in the IO code.
   EKAT_REQUIRE_MSG(m_spa_params.isParameter("SPA Number of Weights"),"ERROR: SPA Number of Weights is missing from SPA parameter list.");
   SPAInterp_weights.length = m_spa_params.get<int>("SPA Number of Weights");
+  EKAT_REQUIRE_MSG(m_spa_params.isParameter("SPA Source Grid n_cols"),"ERROR: SPA Source Grid n_cols is missing from SPA parameter list.");
+  SPAInterp_weights.src_grid_ncols = m_spa_params.get<int>("SPA Source Grid n_cols");
+  EKAT_REQUIRE_MSG(m_spa_params.isParameter("SPA Source Grid n_levs"),"ERROR: SPA Source Grid n_levs is missing from SPA parameter list.");
+  SPAInterp_weights.src_grid_nlevs = m_spa_params.get<int>("SPA Source Grid n_levs");
 
   SPAInterp_weights.weights = view_1d_real("weights",SPAInterp_weights.length);
   SPAInterp_weights.src_grid_loc = view_1d_int("src_grid_loc",SPAInterp_weights.length);
@@ -167,12 +171,12 @@ void SPA::run_impl (const Real /* dt */)
   /* Gather time and state information for interpolation */
   auto ts = timestamp();
   /* Update time data if the month has changed */
-  SPATimeState.t_now = ts.get_julian_day();
-  if (ts.get_months() != SPATimeState.current_month) {
-    SPATimeState.current_month = ts.get_months();
-    SPATimeState.t_beg_month = util::julian_day(ts.get_years(),ts.get_months(),0,0);
-    SPATimeState.days_this_month = (Real)ts.get_dpm();
-  }
+  SPAFunc::spa_update_monthly_data(m_spa_comm, m_spa_data_file, ts, 
+                                   SPAInterp_weights, SPATimeState, SPAPressureState, SPAData_start, SPAData_end,
+                                   m_num_cols, m_num_levs, m_nswbands, m_nlwbands);
+//  }
+  printf("ASD - %d, %f, %f %f (vs) %d, %f, %f %f\n",SPATimeState.current_month,SPATimeState.t_beg_month,SPATimeState.days_this_month,SPATimeState.t_now,
+        ts.get_months(),util::julian_day(ts.get_years(),ts.get_months(),0,0),(Real)ts.get_dpm(),ts.get_julian_day());
 
   // Call the main SPA routine to get interpolated aerosol forcings.
   SPAFunc::spa_main(SPATimeState, SPAPressureState,SPAData_start,SPAData_end,SPAData_out,m_num_cols,m_num_levs,m_nswbands,m_nlwbands);
