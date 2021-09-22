@@ -75,6 +75,82 @@ set_grid (const std::shared_ptr<const AbstractGrid>& grid)
 }
 
 /* ---------------------------------------------------------- */
+void AtmosphereInput::read_variables (const Int time_snap)
+{
+  EKAT_REQUIRE_MSG (m_is_inited,
+      "Error! The init method has not been called yet.\n");
+
+  for (auto const& name : m_fields_names) {
+
+    // Read the data
+    scorpio::grid_read_data_array(m_filename,name,time_snap,m_host_views_1d.at(name).data());
+
+    // If we have a field manager, make sure the data is correctly
+    // synced to both host and device views of the field.
+    if (m_field_mgr) {
+
+      auto f = m_field_mgr->get_field(name);
+      const auto& fh  = f.get_header();
+      const auto& fl  = fh.get_identifier().get_layout();
+      const auto& fap = fh.get_alloc_properties();
+
+      using field_type = decltype(f);
+      using RT         = typename field_type::RT;
+
+      // Check if the stored 1d view is sharing the data ptr with the field
+      const bool can_alias_field_view = fh.get_parent().expired() && fap.get_padding()==0;
+
+      // If the 1d view is a simple reshape of the field's Host view data,
+      // then we're already done. Otherwise, we need to manually copy.
+      if (not can_alias_field_view) {
+        // Get the host view of the field properly reshaped, and deep copy
+        // from temp_view (properly reshaped as well).
+        auto rank = fl.rank();
+        auto view_1d = m_host_views_1d.at(name);
+        switch (rank) {
+          case 1:
+            {
+              // No reshape needed, simply copy
+              auto dst = f.get_view<RT*,Host>();
+              for (int i=0; i<fl.dim(0); ++i) {
+                dst(i) = view_1d(i);
+              }
+              break;
+            }
+          case 2:
+            {
+              // Reshape temp_view to a 2d view, then copy
+              auto dst = f.get_view<RT**,Host>();
+              auto src = view_Nd_host<2>(view_1d.data(),fl.dim(0),fl.dim(1));
+              for (int i=0; i<fl.dim(0); ++i) {
+                for (int j=0; j<fl.dim(1); ++j) {
+                  dst(i,j) = src(i,j);
+              }}
+              break;
+            }
+          case 3:
+            {
+              // Reshape temp_view to a 3d view, then copy
+              auto dst = f.get_view<RT***,Host>();
+              auto src = view_Nd_host<3>(view_1d.data(),fl.dim(0),fl.dim(1),fl.dim(2));
+              for (int i=0; i<fl.dim(0); ++i) {
+                for (int j=0; j<fl.dim(1); ++j) {
+                  for (int k=0; k<fl.dim(2); ++k) {
+                    dst(i,j,k) = src(i,j,k);
+              }}}
+              break;
+            }
+          default:
+            EKAT_ERROR_MSG ("Error! Unexpected field rank (" + std::to_string(rank) + ").\n");
+        }
+      }
+
+      // Sync to device
+      f.sync_to_dev();
+    }
+  }
+} 
+/* ---------------------------------------------------------- */
 void AtmosphereInput::read_variables ()
 {
   EKAT_REQUIRE_MSG (m_is_inited,

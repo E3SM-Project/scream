@@ -138,6 +138,7 @@ protected:
   
   // The output filename root
   std::string       m_casename;
+  std::string       m_filename;
 
   // How to combine multiple snapshots in the output: Instant, Max, Min, Average
   std::string       m_avg_type;

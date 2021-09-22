@@ -36,6 +36,7 @@ foreach (MPI_RANKS RANGE 1 ${SCREAM_TEST_MAX_RANKS})
   set_property(TEST restart_test_ut_np${MPI_RANKS}_omp1 PROPERTY FIXTURES_SETUP restart_setup)
 
   configure_file(io_test_instant.yaml io_test_instant_np${MPI_RANKS}.yaml)
+  configure_file(io_test_multisnap.yaml io_test_multisnap_np${MPI_RANKS}.yaml)
   configure_file(io_test_average.yaml io_test_average_np${MPI_RANKS}.yaml)
   configure_file(io_test_max.yaml io_test_max_np${MPI_RANKS}.yaml)
   configure_file(io_test_min.yaml io_test_min_np${MPI_RANKS}.yaml)

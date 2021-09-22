@@ -116,6 +116,7 @@ TEST_CASE("input_output_basic","io")
   auto avg_params = get_in_params("Average",io_comm);
   auto min_params = get_in_params("Min",io_comm);
   auto max_params = get_in_params("Max",io_comm);
+  auto multi_params = get_in_params("Multisnap",io_comm);
   Real tol = pow(10,-6);
   // Check instant output
   input_type ins_input(io_comm,ins_params,field_manager);
@@ -143,6 +144,7 @@ TEST_CASE("input_output_basic","io")
   for (int jj=0;jj<num_levs;++jj) {
     REQUIRE(std::abs(f2_host(jj)-(max_steps*dt + (jj+1)/10.))<tol);
   }
+  ins_input.finalize();
 
   // Check average output
   input_type avg_input(io_comm,avg_params,field_manager);
@@ -163,6 +165,7 @@ TEST_CASE("input_output_basic","io")
     avg_val = (max_steps+1)/2.0*dt + (jj+1)/10.;  //note x0=(jj+1)/10 in this case.
     REQUIRE(std::abs(f2_host(jj)-avg_val)<tol);
   }
+  avg_input.finalize();
 
   // Check max output
   // The max should be equivalent to the instantaneous because this function is monotonically increasing.
@@ -180,6 +183,8 @@ TEST_CASE("input_output_basic","io")
   for (int jj=0;jj<num_levs;++jj) {
     REQUIRE(std::abs(f2_host(jj)-(max_steps*dt + (jj+1)/10.))<tol);
   }
+  max_input.finalize();
+
   // Check min output
   // The min should be equivalent to the first step because this function is monotonically increasing.
   input_type min_input(io_comm,min_params,field_manager);
@@ -196,7 +201,30 @@ TEST_CASE("input_output_basic","io")
   for (int jj=0;jj<num_levs;++jj) {
     REQUIRE(std::abs(f2_host(jj)-(dt+(jj+1)/10.))<tol);
   }
+  min_input.finalize();
   
+  // Check multisnap output; note, tt starts at 1 instead of 0 to follow netcdf time dimension indexing.
+  input_type multi_input(io_comm,multi_params,field_manager);
+  for (int tt = 1; tt<=std::min(max_steps,10); tt++) {
+    multi_input.read_variables(tt);
+    f1.sync_to_host();
+    f2.sync_to_host();
+    f3.sync_to_host();
+    f4.sync_to_host();
+  
+    for (int ii=0;ii<num_lcols;++ii) {
+      REQUIRE(std::abs(f1_host(ii)-(tt*dt+ii))<tol);
+      for (int jj=0;jj<num_levs;++jj) {
+        REQUIRE(std::abs(f3_host(ii,jj)-(ii+tt*dt + (jj+1)/10.))<tol);
+        REQUIRE(std::abs(f4_host(ii,jj)-(ii+tt*dt + (jj+1)/10.))<tol);
+      }
+    }
+    for (int jj=0;jj<num_levs;++jj) {
+      REQUIRE(std::abs(f2_host(jj)-(tt*dt + (jj+1)/10.))<tol);
+    }
+  }
+  multi_input.finalize();
+
   // All Done 
   scorpio::eam_pio_finalize();
 } // TEST_CASE output_instance
@@ -291,7 +319,7 @@ ekat::ParameterList get_om_params(const ekat::Comm& comm, const std::string& gri
   ekat::ParameterList om_params("Output Manager");
   auto& files = om_params.sublist("Output YAML Files");
   std::vector<std::string> fileNames = { "io_test_instant","io_test_average",
-                                          "io_test_max",    "io_test_min" };
+                                          "io_test_max",    "io_test_min", "io_test_multisnap" };
   for (auto& name : fileNames) {
     name += "_np" + std::to_string(comm.size()) + ".yaml";
   }
@@ -305,8 +333,13 @@ ekat::ParameterList get_in_params(const std::string type, const ekat::Comm& comm
 {
   using vos_type = std::vector<std::string>;
   ekat::ParameterList in_params("Input Parameters");
-  auto type_ci = ekat::upper_case(type);
-  in_params.set<std::string>("Filename","io_output_test_np" + std::to_string(comm.size()) +"."+type_ci+".Steps_x10.0000-01-01.000010.nc");
+  if (type == "Multisnap") {
+    auto type_ci = ekat::upper_case("Instant");
+    in_params.set<std::string>("Filename","io_multisnap_test_np" + std::to_string(comm.size()) +"."+type_ci+".Steps_x1.0000-01-01.000001.nc");
+  } else {
+    auto type_ci = ekat::upper_case(type);
+    in_params.set<std::string>("Filename","io_output_test_np" + std::to_string(comm.size()) +"."+type_ci+".Steps_x10.0000-01-01.000010.nc");
+  }
   in_params.set<vos_type>("Fields",{"field_1", "field_2", "field_3", "field_packed"});
   return in_params;
 }

@@ -213,7 +213,11 @@ void AtmosphereOutput::run_impl(const Real time, const std::string& time_str)
   const bool is_write_step = is_output_step || is_checkpoint_step;
   std::string filename;
   if (is_write_step) {
-    filename = compute_filename_root(m_casename) + "." + time_str;
+    if (m_num_snapshots_in_file == 0) {
+      // Then a new file has been opened so we need a new filename.
+      m_filename = compute_filename_root(m_casename) + "." + time_str;
+    }
+    filename = m_filename;
     // If we are going to write an output checkpoint file, or a model restart file,
     // we need to append to the filename ".rhist" or ".r" respectively, and add
     // the filename to the rpointer.atm file.

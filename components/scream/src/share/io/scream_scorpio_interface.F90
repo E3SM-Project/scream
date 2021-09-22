@@ -579,7 +579,9 @@ contains
     logical                      :: found
 
     call lookup_pio_atm_file(filename,pio_atm_file,found)
+    
     pio_atm_file%numRecs = pio_atm_file%numRecs + 1
+    if (.not.found)  call errorHandle("PIO ERROR: 'eam_update_time', could not find file "//trim(filename),-999)
     call get_var(pio_atm_file,'time',var)
     ! Only update time on the file if a valid time is provided
     if (time>=0) ierr = pio_put_var(pio_atm_file%pioFileDesc,var%piovar,(/ pio_atm_file%numRecs /), (/ 1 /), (/ time /))
@@ -1235,12 +1237,13 @@ contains
   !  grid_read_darray_1d_real: Read a variable defined on this grid
   !
   !---------------------------------------------------------------------------
-  subroutine grid_read_darray_1d_real(filename, varname, var_data_ptr)
+  subroutine grid_read_darray_1d_real(filename, varname, var_data_ptr, time_dim)
 
     ! Dummy arguments
-    character(len=*), intent(in) :: filename       ! PIO filename
-    character(len=*), intent(in) :: varname
-    type (c_ptr),     intent(in) :: var_data_ptr
+    character(len=*), intent(in)  :: filename       ! PIO filename
+    character(len=*), intent(in)  :: varname
+    type (c_ptr),     intent(in)  :: var_data_ptr
+    integer, optional, intent(in) :: time_dim
 
     ! Local variables
     type(pio_atm_file_t),pointer       :: pio_atm_file
@@ -1258,7 +1261,14 @@ contains
     ! Now we know the exact size of the array, and can shape the f90 pointer
     call c_f_pointer (var_data_ptr, var_data, [var_size])
 
-    call PIO_setframe(pio_atm_file%pioFileDesc,var%piovar,int(max(1,pio_atm_file%numRecs),kind=pio_offset_kind))
+    if (present(time_dim)) then
+      ! TODO: Add an error check that time_dim is not bigger than the length of
+      ! the time dimension.  Add error check in the read_darray_1d_int routine
+      ! below.
+      call PIO_setframe(pio_atm_file%pioFileDesc,var%piovar,int(max(1,time_dim),kind=pio_offset_kind))
+    else
+      call PIO_setframe(pio_atm_file%pioFileDesc,var%piovar,int(max(1,pio_atm_file%numRecs),kind=pio_offset_kind))
+    end if
     call pio_read_darray(pio_atm_file%pioFileDesc, var%piovar, var%iodesc, var_data, ierr)
     call errorHandle( 'eam_grid_read_darray_1d_real: Error reading variable '//trim(varname),ierr)
 
@@ -1268,13 +1278,14 @@ contains
   !  grid_read_darray_1d_int: Read a variable defined on this grid
   !
   !---------------------------------------------------------------------------
-  subroutine grid_read_darray_1d_int(filename, varname, var_size, var_data)
+  subroutine grid_read_darray_1d_int(filename, varname, var_size, var_data, time_dim)
 
     ! Dummy arguments
-    character(len=*), intent(in) :: filename       ! PIO filename
-    character(len=*), intent(in) :: varname
-    integer, intent(in)          :: var_size
-    integer, intent(out)         :: var_data(var_size)
+    character(len=*), intent(in)  :: filename       ! PIO filename
+    character(len=*), intent(in)  :: varname
+    integer, intent(in)           :: var_size
+    integer, intent(out)          :: var_data(var_size)
+    integer, optional, intent(in) :: time_dim
 
     ! Local variables
     type(pio_atm_file_t),pointer       :: pio_atm_file
@@ -1285,7 +1296,11 @@ contains
     call lookup_pio_atm_file(trim(filename),pio_atm_file,found)
     call get_var(pio_atm_file,varname,var)
      
-    call PIO_setframe(pio_atm_file%pioFileDesc,var%piovar,int(max(1,pio_atm_file%numRecs),kind=pio_offset_kind))
+    if (present(time_dim)) then
+      call PIO_setframe(pio_atm_file%pioFileDesc,var%piovar,int(max(1,time_dim),kind=pio_offset_kind))
+    else
+      call PIO_setframe(pio_atm_file%pioFileDesc,var%piovar,int(max(1,pio_atm_file%numRecs),kind=pio_offset_kind))
+    end if
     call pio_read_darray(pio_atm_file%pioFileDesc, var%piovar, var%iodesc, var_data, ierr)
     call errorHandle( 'eam_grid_read_darray_1d_int: Error reading variable '//trim(varname),ierr)
 

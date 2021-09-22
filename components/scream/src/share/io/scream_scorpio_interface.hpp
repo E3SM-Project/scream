@@ -55,6 +55,8 @@ namespace scorpio {
   /* Read data for a specific variable from a specific file. */
   void grid_read_data_array (const std::string &filename, const std::string &varname, Real* hbuf);
   void grid_read_data_array (const std::string &filename, const std::string &varname, const Int hbuf_size, Int* hbuf);
+  void grid_read_data_array (const std::string &filename, const std::string &varname, const Int time_dim, Real* hbuf);
+  void grid_read_data_array (const std::string &filename, const std::string &varname, const Int time_dim, const Int hbuf_size, Int* hbuf);
   /* Write data for a specific variable to a specific file. */
   void grid_write_data_array(const std::string &filename, const std::string &varname, const Real* hbuf);
 
