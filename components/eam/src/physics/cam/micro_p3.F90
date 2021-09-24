@@ -816,11 +816,6 @@ contains
       !   1) Should we be taking qinuc into consideration too?
       !   2) Is MG correct in NOT limiting qi2qv_sublim_tend?
 
-      call prevent_ice_overdepletion(pres(k), t_atm(k), qv(k), latent_heat_sublim(k), inv_dt, qidep, qi2qv_sublim_tend)
-
-      call ice_supersat_conservation(qidep,qinuc,cld_frac_i(k),qv(k),qv_sat_i(k),latent_heat_sublim(k),th_atm(k)/inv_exner(k),dt, &
-           qi2qv_sublim_tend, qr2qv_evap_tend)
-
       ! cloud
       call cloud_water_conservation(qc(k), dt, qc2qr_autoconv_tend, qc2qr_accret_tend, qccol, qc2qi_hetero_freeze_tend, &
            qc2qr_ice_shed_tend, qiberg, qi2qv_sublim_tend, qidep)
@@ -839,6 +834,11 @@ contains
            nr2ni_immers_freeze_tend,nr_selfcollect_tend,nr_evap_tend)
       call ni_conservation(ni(k),ni_nucleat_tend,nr2ni_immers_freeze_tend,nc2ni_immers_freeze_tend,dt,ni2nr_melt_tend,&
            ni_sublim_tend,ni_selfcollect_tend)
+      
+      call prevent_ice_overdepletion(pres(k), t_atm(k), qv(k), latent_heat_sublim(k), inv_dt, qidep, qi2qv_sublim_tend)
+
+      call ice_supersat_conservation(qidep,qinuc,cld_frac_i(k),qv(k),qv_sat_i(k),latent_heat_sublim(k),th_atm(k)/inv_exner(k),dt, &
+           qi2qv_sublim_tend, qr2qv_evap_tend)
 
       !---------------------------------------------------------------------------------
       ! update prognostic microphysics and thermodynamics variables
