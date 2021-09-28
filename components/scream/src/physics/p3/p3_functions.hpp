@@ -689,11 +689,9 @@ struct Functions
 
   // TODO (comments)
   KOKKOS_FUNCTION
-  static void ice_deposition_sublimation(const Spack& qi_incld,
-    const Spack& ni_incld, const Spack& T_atm, const Spack& qv_sat_l, const Spack& qv_sat_i,
-    const Spack& epsi, const Spack& abi, const Spack& qv, Spack& qv2qi_vapdep_tend,
-    Spack& qi2qv_sublim_tend, Spack& ni_sublim_tend, Spack& qc2qi_berg_tend,
-    const Smask& context = Smask(true));
+  KOKKOS_FUNCTION
+  KOKKOS_FUNCTION
+  static void ice_deposition_sublimation(const Spack& qi_incld, const Spack& ni_incld, const Spack& t_atm, const Spack& qv_sat_l, const Spack& qv_sat_i, const Spack& epsi, const Spack& abi, const Spack& qv, const Scalar& dt, Spack& qidep, Spack& qi2qv_sublim_tend, Spack& ni_sublim_tend, Spack& qiberg);
 
   KOKKOS_FUNCTION
   static void ice_relaxation_timescale(

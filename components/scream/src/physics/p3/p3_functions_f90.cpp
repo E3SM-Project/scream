@@ -144,9 +144,7 @@ void update_prognostic_liquid_c(
   Real inv_rho, Real inv_exner, Real latent_heat_vapor, Real dt, Real* th_atm, Real* qv,
   Real* qc, Real* nc, Real* qr, Real* nr);
 
-void ice_deposition_sublimation_c(
-  Real qi_incld, Real ni_incld, Real T_atm, Real qv_sat_l, Real qv_sat_i, Real epsi,
-  Real abi, Real qv, Real* qv2qi_vapdep_tend, Real* qi2qv_sublim_tend, Real* ni_sublim_tend, Real* qc2qi_berg_tend);
+void ice_deposition_sublimation_c(Real qi_incld, Real ni_incld, Real t_atm, Real qv_sat_l, Real qv_sat_i, Real epsi, Real abi, Real qv, Real dt, Real* qidep, Real* qi2qv_sublim_tend, Real* ni_sublim_tend, Real* qiberg);
 
 void compute_rain_fall_velocity_c(Real qr_incld, Real rhofacr,
                                   Real* nr_incld, Real* mu_r, Real* lamr, Real* V_qr, Real* V_nr);
@@ -579,11 +577,13 @@ void  update_prognostic_liquid(P3UpdatePrognosticLiqData& d){
 			      &d.qc, &d.nc, &d.qr, &d.nr);
 }
 
-void ice_deposition_sublimation(IceDepSublimationData& d){
+void ice_deposition_sublimation(IceDepositionSublimationData& d)
+{
   p3_init();
-  ice_deposition_sublimation_c(d.qi_incld, d.ni_incld, d.T_atm, d.qv_sat_l, d.qv_sat_i, d.epsi, d.abi,
-			       d.qv, &d.qv2qi_vapdep_tend, &d.qi2qv_sublim_tend, &d.ni_sublim_tend, &d.qc2qi_berg_tend);
+  ice_deposition_sublimation_c(d.qi_incld, d.ni_incld, d.t_atm, d.qv_sat_l, d.qv_sat_i, d.epsi, d.abi, d.qv, d.dt, &d.qidep, &d.qi2qv_sublim_tend, &d.ni_sublim_tend, &d.qiberg);
 }
+
+
 
 CalcUpwindData::CalcUpwindData(
   Int kts_, Int kte_, Int kdir_, Int kbot_, Int k_qxtop_, Int num_arrays_, Real dt_sub_) :
@@ -1314,40 +1314,34 @@ void update_prognostic_liquid_f(Real qc2qr_accret_tend_, Real nc_accret_tend_, R
   *nr_    = t_h(5);
 }
 
-void ice_deposition_sublimation_f(Real qi_incld_, Real ni_incld_, Real T_atm_, Real qv_sat_l_,
-				  Real qv_sat_i_, Real epsi_, Real abi_, Real qv_,
-				  Real* qv2qi_vapdep_tend_, Real* qi2qv_sublim_tend_, Real* ni_sublim_tend_, Real* qc2qi_berg_tend_)
+void ice_deposition_sublimation_f(Real qi_incld, Real ni_incld, Real t_atm, Real qv_sat_l, Real qv_sat_i, Real epsi, Real abi, Real qv, Real dt, Real* qidep, Real* qi2qv_sublim_tend, Real* ni_sublim_tend, Real* qiberg)
 {
-  using P3F = Functions<Real, DefaultDevice>;
+#if 0
+  using PF = Functions<Real, DefaultDevice>;
 
-  typename P3F::view_1d<Real> t_d("t_h", 4);
-  auto t_h = Kokkos::create_mirror_view(t_d);
+  using Spack   = typename PF::Spack;
+  using view_1d = typename PF::view_1d<Real>;
 
-  Real local_qv2qi_vapdep_tend  = *qv2qi_vapdep_tend_;
-  Real local_qi2qv_sublim_tend  = *qi2qv_sublim_tend_;
-  Real local_ni_sublim_tend  = *ni_sublim_tend_;
-  Real local_qc2qi_berg_tend = *qc2qi_berg_tend_;
+  view_1d t_d("t_d", 4);
+  const auto t_h = Kokkos::create_mirror_view(t_d);
 
+  typename P3F::Scalar dt(dt);
+  
   Kokkos::parallel_for(1, KOKKOS_LAMBDA(const Int&) {
-      typename P3F::Spack qi_incld(qi_incld_), ni_incld(ni_incld_), T_atm(T_atm_), qv_sat_l(qv_sat_l_), qv_sat_i(qv_sat_i_),
-	epsi(epsi_), abi(abi_), qv(qv_);
-
-      typename P3F::Spack qv2qi_vapdep_tend(local_qv2qi_vapdep_tend), qi2qv_sublim_tend(local_qi2qv_sublim_tend), ni_sublim_tend(local_ni_sublim_tend), qc2qi_berg_tend(local_qc2qi_berg_tend);
-
-      P3F::ice_deposition_sublimation(qi_incld, ni_incld, T_atm, qv_sat_l, qv_sat_i, epsi, abi, qv,
-				      qv2qi_vapdep_tend, qi2qv_sublim_tend, ni_sublim_tend, qc2qi_berg_tend);
-
-      t_d(0) = qv2qi_vapdep_tend[0];
-      t_d(1) = qi2qv_sublim_tend[0];
-      t_d(2) = ni_sublim_tend[0];
-      t_d(3) = qc2qi_berg_tend[0];
-    });
+    Spack abi_(abi), epsi_(epsi), ni_incld_(ni_incld), qi_incld_(qi_incld), qv_(qv), qv_sat_i_(qv_sat_i), qv_sat_l_(qv_sat_l), t_atm_(t_atm),  ni_sublim_tend_(), qi2qv_sublim_tend_(), qiberg_(), qidep_();
+    PF::ice_deposition_sublimation(qi_incld_, ni_incld_, t_atm_, qv_sat_l_, qv_sat_i_, epsi_, abi_, qv_, dt_, qidep_, qi2qv_sublim_tend_, ni_sublim_tend_, qiberg_);
+    t_d(0) = ni_sublim_tend_[0];
+    t_d(1) = qi2qv_sublim_tend_[0];
+    t_d(2) = qiberg_[0];
+    t_d(3) = qidep_[0];
+  });
   Kokkos::deep_copy(t_h, t_d);
+  *ni_sublim_tend = t_h(0);
+  *qi2qv_sublim_tend = t_h(1);
+  *qiberg = t_h(2);
+  *qidep = t_h(3);
+#endif
 
-  *qv2qi_vapdep_tend_  = t_h(0);
-  *qi2qv_sublim_tend_  = t_h(1);
-  *ni_sublim_tend_  = t_h(2);
-  *qc2qi_berg_tend_ = t_h(3);
 }
 
 template <typename T>

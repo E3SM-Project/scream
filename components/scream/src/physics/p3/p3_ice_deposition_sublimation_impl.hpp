@@ -12,7 +12,7 @@ KOKKOS_FUNCTION
 void Functions<S,D>
 ::ice_deposition_sublimation(
   const Spack& qi_incld, const Spack& ni_incld, const Spack& T_atm,   const Spack& qv_sat_l,
-  const Spack& qv_sat_i,         const Spack& epsi,        const Spack& abi, const Spack& qv,
+  const Spack& qv_sat_i,         const Spack& epsi,        const Spack& abi, const Spack& qv, const Scalar& dt,
   Spack& qv2qi_vapdep_tend, Spack& qi2qv_sublim_tend, Spack& ni_sublim_tend, Spack& qc2qi_berg_tend,
   const Smask& context)
 {
@@ -53,7 +53,6 @@ void Functions<S,D>
   qi2qv_sublim_tend.set (qi_incld_small, 0);
   ni_sublim_tend.set (qi_incld_small, 0);
 }
-
 } // namespace p3
 } // namespace scream
 

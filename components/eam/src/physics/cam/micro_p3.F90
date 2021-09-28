@@ -750,7 +750,7 @@ contains
            qr2qv_evap_tend,nr_evap_tend)
 
       call ice_deposition_sublimation(qi_incld(k), ni_incld(k), t_atm(k), &
-           qv_sat_l(k),qv_sat_i(k),epsi,abi,qv(k), &
+           qv_sat_l(k),qv_sat_i(k),epsi,abi,qv(k), dt, &
            qidep,qi2qv_sublim_tend,ni_sublim_tend,qiberg)
 
 444   continue
@@ -3216,7 +3216,7 @@ end subroutine update_prognostic_liquid
 
 
 subroutine ice_deposition_sublimation(qi_incld,ni_incld,t_atm,    &
-qv_sat_l,qv_sat_i,epsi,abi,qv,    &
+qv_sat_l,qv_sat_i,epsi,abi,qv, dt,   &
 qidep,qi2qv_sublim_tend,ni_sublim_tend,qiberg)
 
    implicit none
@@ -3229,6 +3229,7 @@ qidep,qi2qv_sublim_tend,ni_sublim_tend,qiberg)
    real(rtype), intent(in)  :: epsi
    real(rtype), intent(in)  :: abi
    real(rtype), intent(in)  :: qv
+   real(rtype), intent(in)  :: dt
    real(rtype), intent(out) :: qidep
    real(rtype), intent(out) :: qi2qv_sublim_tend
    real(rtype), intent(out) :: ni_sublim_tend

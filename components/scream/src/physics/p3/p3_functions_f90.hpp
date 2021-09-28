@@ -817,6 +817,17 @@ struct NiConservationData {
   void randomize(std::mt19937_64& engine);
 };
 
+struct IceDepositionSublimationData {
+  // Inputs
+  Real qi_incld, ni_incld, t_atm, qv_sat_l, qv_sat_i, epsi, abi, qv, dt;
+  
+  // Outputs
+  Real qidep, qi2qv_sublim_tend, ni_sublim_tend, qiberg;
+  
+  
+};
+
+
 // Glue functions to call fortran from from C++ with the Data struct
 void p3_init_a(P3InitAFortranData& d);
 void find_lookuptable_indices_1a(LookupIceData& d);
@@ -852,7 +863,7 @@ void get_time_space_phys_variables(GetTimeSpacePhysVarsData& d);
 void update_prognostic_ice(P3UpdatePrognosticIceData& d);
 void evaporate_rain(EvapRainData& d);
 void update_prognostic_liquid(P3UpdatePrognosticLiqData& d);
-void ice_deposition_sublimation(IceDepSublimationData& d);
+void ice_deposition_sublimation(IceDepositionSublimationData& d);
 void ice_cldliq_collection(IceCldliqCollectionData& d);
 void ice_rain_collection(IceRainCollectionData& d);
 void ice_self_collection(IceSelfCollectionData& d);
@@ -1016,9 +1027,7 @@ void update_prognostic_liquid_f(
   Real inv_rho, Real inv_exner, Real latent_heat_vapor, Real dt, Real* th_atm, Real* qv,
   Real* qc, Real* nc, Real* qr, Real* nr);
 
-void ice_deposition_sublimation_f(
-  Real qi_incld, Real ni_incld, Real T_atm, Real qv_sat_l, Real qv_sat_i,
-  Real epsi, Real abi, Real qv, Real* qv2qi_vapdep_tend, Real* qi2qv_sublim_tend, Real* ni_sublim_tend, Real* qc2qi_berg_tend);
+void ice_deposition_sublimation_f(Real qi_incld, Real ni_incld, Real t_atm, Real qv_sat_l, Real qv_sat_i, Real epsi, Real abi, Real qv, Real dt, Real* qidep, Real* qi2qv_sublim_tend, Real* ni_sublim_tend, Real* qiberg);
 
 void ice_cldliq_collection_f(Real rho, Real temp, Real rhofaci, Real table_val_qc2qi_collect,
                              Real qi_incld,Real qc_incld, Real ni_incld, Real nc_incld,
