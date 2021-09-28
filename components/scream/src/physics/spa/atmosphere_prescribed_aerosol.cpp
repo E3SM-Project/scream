@@ -132,12 +132,6 @@ void SPA::init_buffers(const ATMBufferManager &buffer_manager)
 // =========================================================================================
 void SPA::initialize_impl (const util::TimeStamp& /* t0 */)
 {
-  // Initialize Time Data
-  auto ts = timestamp();
-  SPATimeState.current_month = ts.get_months();
-  SPATimeState.t_beg_month = util::julian_day(ts.get_years(),ts.get_months(),0,0);
-  SPATimeState.days_this_month = (Real)ts.get_dpm();
-
   // Initialize SPA input data
   initialize_spa_impl();
 
@@ -163,6 +157,33 @@ void SPA::initialize_impl (const util::TimeStamp& /* t0 */)
 
   // Read in weights from remap file
   SPAFunc::read_remap_weights_from_file(m_spa_comm,m_spa_remap_file,SPAInterp_weights);
+
+  // Initialize Time Data
+  auto ts = timestamp();
+  SPATimeState.current_month = ts.get_months();
+  SPATimeState.t_beg_month = util::julian_day(ts.get_years(),ts.get_months(),0,0);
+  SPATimeState.days_this_month = (Real)ts.get_dpm();
+
+  SPAPressureState.ps_this_month = view_1d_real("ps_this_month",m_num_cols);
+  SPAPressureState.ps_next_month = view_1d_real("ps_next_month",m_num_cols);
+  
+  SPAData_start.CCN3             = view_2d("CCN3_beg",m_num_cols,m_num_levs);
+  SPAData_end.CCN3               = view_2d("CCN3_end",m_num_cols,m_num_levs);
+  SPAData_start.AER_G_SW         = view_3d("AER_G_SW_beg",m_num_cols,m_nswbands,m_num_levs);
+  SPAData_end.AER_G_SW           = view_3d("AER_G_SW_end",m_num_cols,m_nswbands,m_num_levs);
+  SPAData_start.AER_SSA_SW       = view_3d("AER_SSA_SW_beg",m_num_cols,m_nswbands,m_num_levs);
+  SPAData_end.AER_SSA_SW         = view_3d("AER_SSA_SW_end",m_num_cols,m_nswbands,m_num_levs);
+  SPAData_start.AER_TAU_SW       = view_3d("AER_TAU_SW_beg",m_num_cols,m_nswbands,m_num_levs);
+  SPAData_end.AER_TAU_SW         = view_3d("AER_TAU_SW_end",m_num_cols,m_nswbands,m_num_levs);
+  SPAData_start.AER_TAU_LW       = view_3d("AER_TAU_LW_beg",m_num_cols,m_nlwbands,m_num_levs);
+  SPAData_end.AER_TAU_LW         = view_3d("AER_TAU_LW_end",m_num_cols,m_nlwbands,m_num_levs);
+
+  // Note, get_months() starts at 0 for January
+  SPAFunc::load_and_interp_spa_data(m_spa_comm, m_spa_data_file,SPAInterp_weights, 
+                                    SPAPressureState.ps_this_month, SPAData_start, SPATimeState.current_month+1, m_nswbands, m_nlwbands);
+  SPAFunc::load_and_interp_spa_data(m_spa_comm, m_spa_data_file,SPAInterp_weights, 
+                                    SPAPressureState.ps_next_month, SPAData_end, SPATimeState.current_month+2, m_nswbands, m_nlwbands);
+
 }
 
 // =========================================================================================
@@ -174,7 +195,6 @@ void SPA::run_impl (const Real /* dt */)
   SPAFunc::spa_update_monthly_data(m_spa_comm, m_spa_data_file, ts, 
                                    SPAInterp_weights, SPATimeState, SPAPressureState, SPAData_start, SPAData_end,
                                    m_num_cols, m_num_levs, m_nswbands, m_nlwbands);
-//  }
   printf("ASD - %d, %f, %f %f (vs) %d, %f, %f %f\n",SPATimeState.current_month,SPATimeState.t_beg_month,SPATimeState.days_this_month,SPATimeState.t_now,
         ts.get_months(),util::julian_day(ts.get_years(),ts.get_months(),0,0),(Real)ts.get_dpm(),ts.get_julian_day());
 

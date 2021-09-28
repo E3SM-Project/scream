@@ -425,6 +425,24 @@ void SPAFunctions<S,D>
     data_beg = data_end;
     pressure_state.ps_this_month = pressure_state.ps_next_month;
     // Next we load next months data into the data_end structure and ps_next_month, and apply the horizontal weights.
+    load_and_interp_spa_data(comm, spa_data_file, horiz_weights, pressure_state.ps_next_month, data_end, time_state.current_month+1, nswbands, nlwbands);
+  } // if (ts.get_months() != time_state.current_month) 
+}  // update_montly_data
+/*-----------------------------------------------------------------*/
+// An internal function to load spa data from file and then interpolate
+template <typename S, typename D>
+void SPAFunctions<S,D>
+::load_and_interp_spa_data(
+  const ekat::Comm& comm,
+  const std::string&      spa_data_file,
+  const SPAInterp&        horiz_weights, 
+  const view_1d<Real>&    ps,
+        SPAData&          spa_data,
+  const Int timelevel,
+  const Int nswbands,
+  const Int nlwbands)
+{
+    // First we the data using a locally defined physics grid
     auto grid = std::make_shared<PointGrid>("Physics",horiz_weights.src_grid_ncols * horiz_weights.src_grid_nlevs,
                                                              horiz_weights.src_grid_ncols, horiz_weights.src_grid_nlevs);
     PointGrid::dofs_list_type dofs_gids ("phys dofs", horiz_weights.src_grid_ncols);
@@ -469,11 +487,40 @@ void SPAFunctions<S,D>
     spa_data_in_params.set("Filename",spa_data_file);
     AtmosphereInput spa_data_in(comm,spa_data_in_params);
     spa_data_in.init(grid,host_views,layouts);
-    spa_data_in.read_variables(time_state.current_month+1);
+    spa_data_in.read_variables(timelevel);
     spa_data_in.finalize();
 
-  } // if (ts.get_months() != time_state.current_month) 
-}
+    for (int ii=0;ii<10;ii++) {
+      printf("ASD - %2d: %f, %e, %e, %e, %e, %e\n",timelevel,host_views["PS"][ii],host_views["CCN3"][ii],host_views["AER_G_SW"][ii],host_views["AER_SSA_SW"][ii],host_views["AER_TAU_SW"][ii],host_views["AER_TAU_LW"][ii]);
+    }
+
+    // Now that the data has been loaded from the SPA data file we can apply the horizontal weights to
+    // get the spa data onto the simulation grid.
+    Kokkos::deep_copy(ps, 0.0);
+//    Kokkos::deep_copy(spa_data.CCN3, 0.0);
+//    Kokkos::deep_copy(spa_data.AER_G_SW, 0.0);
+//    Kokkos::deep_copy(spa_data.AER_SSA_SW, 0.0);
+//    Kokkos::deep_copy(spa_data.AER_TAU_SW, 0.0);
+//    Kokkos::deep_copy(spa_data.AER_TAU_LW, 0.0);
+    for (int ii=0;ii<10;ii++) {
+      printf("  ^ - %2d: %f, %e, %e, %e, %e, %e\n",timelevel,ps[ii],spa_data.CCN3.data()[ii],spa_data.AER_G_SW.data()[ii],spa_data.AER_SSA_SW.data()[ii],spa_data.AER_TAU_SW.data()[ii],spa_data.AER_TAU_LW.data()[ii]);
+    }
+//    for (int idx=0; idx<horiz_weights.length; idx++)
+//    {
+//      // Note: The remap column indices go from 1...MAX, so offset by -1 to match C++ indices.
+//      int src_col = horiz_weights.src_grid_loc[idx]-1;
+//      int dst_col = horiz_weights.dst_grid_loc[idx]-1;
+//      auto weight = horiz_weights.weights[idx];
+//      
+//      ps[dst_col] += host_views["PS"][src_col] * weight;
+//
+//    }
+    for (int ii=0;ii<10;ii++) {
+      printf("    - %2d: %f, %e, %e, %e, %e, %e\n",timelevel,ps[ii],spa_data.CCN3.data()[ii],spa_data.AER_G_SW.data()[ii],spa_data.AER_SSA_SW.data()[ii],spa_data.AER_TAU_SW.data()[ii],spa_data.AER_TAU_LW.data()[ii]);
+    }
+
+
+} // spa_load_and_interp_spa_data
 /*-----------------------------------------------------------------*/
 // A helper function to manage basic linear interpolation in time.
 // The inputs of x0 and x1 represent the data to interpolate from at
