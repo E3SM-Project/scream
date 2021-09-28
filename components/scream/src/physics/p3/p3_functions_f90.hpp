@@ -537,10 +537,10 @@ struct P3UpdatePrognosticLiqData
 
 ///////////////////////////////////////////////////////////////////////////////
 
-struct IceDepSublimationData
+struct IceDepositionSublimationData
 {
   //Inputs
-  Real qi_incld, ni_incld, T_atm, qv_sat_l, qv_sat_i, epsi, abi, qv;
+  Real qi_incld, ni_incld, T_atm, qv_sat_l, qv_sat_i, epsi, abi, qv, dt;
 
   //Outs
   Real qv2qi_vapdep_tend, qi2qv_sublim_tend, ni_sublim_tend, qc2qi_berg_tend;
@@ -816,17 +816,6 @@ struct NiConservationData {
 
   void randomize(std::mt19937_64& engine);
 };
-
-struct IceDepositionSublimationData {
-  // Inputs
-  Real qi_incld, ni_incld, t_atm, qv_sat_l, qv_sat_i, epsi, abi, qv, dt;
-  
-  // Outputs
-  Real qidep, qi2qv_sublim_tend, ni_sublim_tend, qiberg;
-  
-  
-};
-
 
 // Glue functions to call fortran from from C++ with the Data struct
 void p3_init_a(P3InitAFortranData& d);

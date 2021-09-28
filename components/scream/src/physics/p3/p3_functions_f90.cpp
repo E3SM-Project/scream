@@ -580,10 +580,8 @@ void  update_prognostic_liquid(P3UpdatePrognosticLiqData& d){
 void ice_deposition_sublimation(IceDepositionSublimationData& d)
 {
   p3_init();
-  ice_deposition_sublimation_c(d.qi_incld, d.ni_incld, d.t_atm, d.qv_sat_l, d.qv_sat_i, d.epsi, d.abi, d.qv, d.dt, &d.qidep, &d.qi2qv_sublim_tend, &d.ni_sublim_tend, &d.qiberg);
+  ice_deposition_sublimation_c(d.qi_incld, d.ni_incld, d.T_atm, d.qv_sat_l, d.qv_sat_i, d.epsi, d.abi, d.qv, d.dt, &d.qv2qi_vapdep_tend, &d.qi2qv_sublim_tend, &d.ni_sublim_tend, &d.qc2qi_berg_tend);
 }
-
-
 
 CalcUpwindData::CalcUpwindData(
   Int kts_, Int kte_, Int kdir_, Int kbot_, Int k_qxtop_, Int num_arrays_, Real dt_sub_) :
