@@ -20,6 +20,7 @@ void Functions<S,D>
   constexpr Scalar CONS3 = C::CONS3;
   if(qc_not_small.any()){
     Spack sgs_var_coef;
+    // sgs_var_coef = subgrid_variance_scaling(inv_qc_relvar, sp(2.47) );
     sgs_var_coef = 1;
 
     qc2qr_autoconv_tend.set(qc_not_small,
