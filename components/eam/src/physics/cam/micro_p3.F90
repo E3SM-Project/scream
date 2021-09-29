@@ -3213,11 +3213,9 @@ subroutine update_prognostic_liquid(qc2qr_accret_tend,nc_accret_tend,qc2qr_autoc
 
 end subroutine update_prognostic_liquid
 
-
-
-subroutine ice_deposition_sublimation(qi_incld,ni_incld,t_atm,    &
+ subroutine ice_deposition_sublimation(qi_incld,ni_incld,t_atm,    &
 qv_sat_l,qv_sat_i,epsi,abi,qv, inv_dt,   &
-qidep,qi2qv_sublim_tend,ni_sublim_tend,qiberg)
+qv2qi_depos_tend,qi2qv_sublim_tend,ni_sublim_tend,qc2qi_berg_tend)
 
    implicit none
 
@@ -3230,39 +3228,54 @@ qidep,qi2qv_sublim_tend,ni_sublim_tend,qiberg)
    real(rtype), intent(in)  :: abi
    real(rtype), intent(in)  :: qv
    real(rtype), intent(in)  :: inv_dt
-   real(rtype), intent(out) :: qidep
+   real(rtype), intent(out) :: qv2qi_depos_tend
    real(rtype), intent(out) :: qi2qv_sublim_tend
    real(rtype), intent(out) :: ni_sublim_tend
-   real(rtype), intent(out) :: qiberg
+   real(rtype), intent(out) :: qc2qi_berg_tend
 
-   real(rtype) :: oabi
+   real(rtype) :: qi_tend
 
-   oabi = 1._rtype/abi
-   if (qi_incld>=qsmall) then
-      !Compute deposition/sublimation
-      qidep = epsi * oabi * (qv - qv_sat_i)
-      !Split into deposition or sublimation.
-      if (t_atm < T_zerodegc .and. qidep>0._rtype) then
-         qi2qv_sublim_tend=0._rtype
-      else
-      ! make qi2qv_sublim_tend positive for consistency with other evap/sub processes
-         qi2qv_sublim_tend=-min(qidep,0._rtype)
-         qidep=0._rtype
+
+   !INITIALIZE EVERYTHING TO 0.
+   qc2qi_berg_tend = 0._rtype
+   qv2qi_depos_tend  = 0._rtype
+   qi2qv_sublim_tend  = 0._rtype
+   ni_sublim_tend  = 0._rtype
+
+   !NO ICE => NO DEPOS/SUBLIM SO SKIP ALL CALCULATIONS
+   if (qi_incld>qsmall) then
+
+      !USING MIN IN THE LINE BELOW TO PREVENT SUBLIM OR DEPOS FROM PUSHING qv BEYOND qv_sat_i
+      !WITHIN THE GIVEN TIMESTEP. APPLYING MIN HERE IS EQUIVALENT TO LIMITING THE
+      !TENDENCY LATER TO ENSURE END-OF-STEP QV ISN'T INAPPROPRIATELY SUPER OR SUBSATURATED.
+      qi_tend = min(epsi/abi,inv_dt) * (qv - qv_sat_i)
+
+      !SUBLIMATION:
+      if (qi_tend<0._rtype) then
+         qi2qv_sublim_tend = -qi_tend
+         ni_sublim_tend = qi2qv_sublim_tend*(ni_incld/qi_incld)
       end if
-      !sublimation occurs @ any T. Not so for berg.
+
+      !DEPOSITION ONLY OCCURS BELOW FREEZING
       if (t_atm < T_zerodegc) then
-         !Compute bergeron rate assuming cloud for whole step.
-         qiberg = max(epsi*oabi*(qv_sat_l - qv_sat_i), 0._rtype)
-      else !T>frz
-         qiberg=0._rtype
-      end if !T<frz
-      ni_sublim_tend = qi2qv_sublim_tend*(ni_incld/qi_incld)
-   else
-      qiberg = 0._rtype
-      qidep  = 0._rtype
-      qi2qv_sublim_tend  = 0._rtype
-      ni_sublim_tend  = 0._rtype
-   end if
+
+         !BERGERON OCCURS WHERE LIQUID IS PRESENT AND DEPOSITION FROM VAPOR OCCURS WHERE IT ISN'T.
+         !IF ALL LIQUID IS CONSUMED PARTWAY THROUGH A STEP, BERGERON SHOULD BE ACTIVE FOR THE
+         !FRACTION OF THE STEP WHEN LIQUID IS PRESENT AND DEPOSITION FROM VAPOR SHOULD BE ACTIVE FOR
+         !THE REST OF THE STEP. THE FRACTION OF THE STEP WITH LIQUID ISN'T KNOWN UNTIL THE 'CONSERVATION
+         !CHECKS' AT THE END OF THE STEP, SO WE COMPUTE BERGERON AND VAPOR DEPOSITION HERE ASSUMING
+         !LIQUID IS OR ISN'T PRESENT FOR THE WHOLE STEP (RESPECTIVELY). 
+
+         !VAPOR DEPOSITION
+         if (qi_tend>=0._rtype) then
+            qv2qi_depos_tend = qi_tend
+         end if
+
+         !BERGERON
+         qc2qi_berg_tend = max(epsi/abi*(qv_sat_l - qv_sat_i), 0._rtype)
+
+      end if !T<freezing
+   end if !qi_incld>qsmall
 
    return
 
