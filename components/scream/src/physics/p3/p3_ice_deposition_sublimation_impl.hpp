@@ -56,7 +56,8 @@ void Functions<S,D>
     //VAPOR DEPOSITION
     qv2qi_vapdep_tend.set(qi_incld_not_small && T_lt_frz && !neg_qi_tend, qi_tend);
     
-    //BERGERON
+    //BERGERON: NOTE THAT AS FORMULATED, BERG DOESN'T HAVE ANYTHING TO DO WITH QV, SO CAN'T
+    //PUSH IT BEYOND SATURATION. THUS, NOT LIMITING WITH INV_DT HERE. 
     qc2qi_berg_tend.set(qi_incld_not_small && T_lt_frz, max(epsi/abi*(qv_sat_l - qv_sat_i), 0));
     
   } //end if at least 1 qi is greater than qmall

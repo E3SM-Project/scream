@@ -5,7 +5,7 @@
 #include "ekat/kokkos/ekat_kokkos_utils.hpp"
 #include "physics/p3/p3_functions.hpp"
 #include "physics/p3/p3_functions_f90.hpp"
-
+#include "physics/share/physics_constants.hpp"
 #include "p3_unit_tests_common.hpp"
 
 namespace scream {
@@ -15,6 +15,39 @@ namespace unit_test {
 template <typename D>
 struct UnitWrap::UnitTest<D>::TestIceDepositionSublimation {
 
+  static void run_property(){
+    //Note that a lot of property tests are included in run_bfb for simplicity
+
+    //Choose default values (just grabbed a row from the array in run_bfb)
+    Spack qi_incld =  5.1000E-03;
+    Spack ni_incld=4.7790E+05;
+    Spack T_atm=2.7292E+02;
+    Spack qv_sat_l=4.5879E-03;
+    Spack qv_sat_i=4.5766E-03;
+    Spack epsi=6.2108E-02;
+    Spack abi=2.0649E+00;
+    Spack qv=5.0000E-03;
+    Scalar inv_dt=1.666667e-02;
+
+    //init output vars
+    Spack qv2qi_vapdep_tend, qi2qv_sublim_tend, ni_sublim_tend, qc2qi_berg_tend;
+    
+    //CHECK THAT UNREASONABLY LARGE VAPOR DEPOSITION DOESN'T LEAVE QV SUBSATURATED WRT QI
+    Spack epsi_tmp=1e6; //make 1/(sat removal timescale) huge so vapdep rate removes all supersat in 1 dt.
+    Functions::ice_deposition_sublimation(qi_incld, ni_incld, T_atm, qv_sat_l, qv_sat_i,
+	        epsi_tmp, abi, qv, inv_dt, qv2qi_vapdep_tend, qi2qv_sublim_tend, ni_sublim_tend, qc2qi_berg_tend);
+    REQUIRE( (qv2qi_vapdep_tend[0]==0 || std::abs( qv2qi_vapdep_tend[0] - (qv[0] - qv_sat_i[0])*inv_dt) <1e-8) );
+   
+    //CHECK THAT HUGE SUBLIMATION DOESN'T LEAVE QV SUPERSATURATED WRT QI
+    Spack qv_sat_i_tmp=1e-2;
+    Functions::ice_deposition_sublimation(qi_incld, ni_incld, T_atm, qv_sat_l, qv_sat_i_tmp,
+	        epsi_tmp, abi, qv, inv_dt, qv2qi_vapdep_tend, qi2qv_sublim_tend, ni_sublim_tend, qc2qi_berg_tend);
+    REQUIRE( (qi2qv_sublim_tend[0]==0 || abs( qi2qv_sublim_tend[0] - (qv_sat_i_tmp[0] - qv[0])*inv_dt) <1e-8) );
+
+    //CHECK BEHAVIOR AS DT->0?
+
+  }
+  
   static void run_bfb()
   {
     IceDepositionSublimationData f90_data[max_pack_size] = {
@@ -93,14 +126,29 @@ struct UnitWrap::UnitTest<D>::TestIceDepositionSublimation {
 
     Kokkos::deep_copy(cxx_host, cxx_device);
 
-    // Verify BFB results
     for (Int i = 0; i < num_runs; ++i) {
+      // Verify BFB results
       IceDepositionSublimationData& d_f90 = f90_data[i];
       IceDepositionSublimationData& d_cxx = cxx_host[i];
       REQUIRE(d_f90.qv2qi_vapdep_tend == d_cxx.qv2qi_vapdep_tend);
       REQUIRE(d_f90.qi2qv_sublim_tend == d_cxx.qi2qv_sublim_tend);
       REQUIRE(d_f90.ni_sublim_tend == d_cxx.ni_sublim_tend);
       REQUIRE(d_f90.qc2qi_berg_tend == d_cxx.qc2qi_berg_tend);
+
+      //MAKE SURE OUTPUT IS WITHIN EXPECTED BOUNDS:
+      REQUIRE(d_cxx.qv2qi_vapdep_tend >=0);
+      REQUIRE(d_cxx.qi2qv_sublim_tend >=0);
+      REQUIRE(d_cxx.ni_sublim_tend >=0);
+      REQUIRE(d_cxx.qc2qi_berg_tend >=0);
+
+      //vapdep should only occur when qv>qv_sat_i
+      REQUIRE( (d_cxx.qv2qi_vapdep_tend==0 || d_cxx.qv + d_cxx.qv2qi_vapdep_tend*d_cxx.inv_dt >= d_cxx.qv_sat_i) );
+      //sublim should only occur when qv<qv_sat_i
+      REQUIRE( (d_cxx.qi2qv_sublim_tend==0 || d_cxx.qv + d_cxx.qi2qv_sublim_tend*d_cxx.inv_dt <= d_cxx.qv_sat_i) );
+
+      //if T>frz, berg and vapdep should be 0:
+      REQUIRE( (d_cxx.T_atm<C::T_zerodegc || d_cxx.qc2qi_berg_tend==0) );
+      REQUIRE( (d_cxx.T_atm<C::T_zerodegc || d_cxx.qv2qi_vapdep_tend==0) );
 
     }
   } // run_bfb
@@ -113,6 +161,13 @@ struct UnitWrap::UnitTest<D>::TestIceDepositionSublimation {
 
 namespace {
 
+TEST_CASE("ice_deposition_sublimation_property", "[p3]")
+{
+  using TestStruct = scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestIceDepositionSublimation;
+
+  TestStruct::run_property();
+}
+  
 TEST_CASE("ice_deposition_sublimation_bfb", "[p3]")
 {
   using TestStruct = scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestIceDepositionSublimation;
