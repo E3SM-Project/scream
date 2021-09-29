@@ -828,7 +828,6 @@ void find_lookuptable_indices_1b(LookupIceDataB& d);
 void access_lookup_table(AccessLookupTableData& d);
 void access_lookup_table_coll(AccessLookupTableCollData& d);
 void back_to_cell_average(BackToCellAverageData& d);
-void prevent_ice_overdepletion(PreventIceOverdepletionData& d);
 void cloud_water_conservation(CloudWaterConservationData& d);
 void rain_water_conservation(RainWaterConservationData& d);
 void ice_water_conservation(IceWaterConservationData& d);
@@ -902,9 +901,6 @@ void back_to_cell_average_f(Real cld_frac_l, Real cld_frac_r, Real cld_frac_i,
                             Real* ni_selfcollect_tend, Real* qv2qi_vapdep_tend, Real* nr2ni_immers_freeze_tend,
                             Real* ni_sublim_tend, Real* qv2qi_nucleat_tend, Real* ni_nucleat_tend,
                             Real* qc2qi_berg_tend);
-
-void prevent_ice_overdepletion_f(Real pres, Real T_atm, Real qv, Real latent_heat_sublim,
-                                 Real inv_dt, Real* qv2qi_vapdep_tend, Real* qi2qv_sublim_tend);
 
 void cloud_water_conservation_f(
   Real qc, Real dt, Real* qc2qr_autoconv_tend, Real* qc2qr_accret_tend, Real* qc2qi_collect_tend,

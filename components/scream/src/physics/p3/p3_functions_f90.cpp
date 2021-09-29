@@ -44,9 +44,6 @@ void back_to_cell_average_c(Real cld_frac_l_, Real cld_frac_r_, Real cld_frac_i_
                             Real* ni_sublim_tend_, Real* qv2qi_nucleat_tend_, Real* ni_nucleat_tend_,
                             Real* qc2qi_berg_tend_);
 
-void prevent_ice_overdepletion_c(Real pres, Real T_atm, Real qv, Real latent_heat_sublim,
-                                 Real inv_dt, Real* qv2qi_vapdep_tend, Real* qi2qv_sublim_tend);
-
 void cloud_water_conservation_c(Real qc, Real dt, Real* qc2qr_autoconv_tend, Real* qc2qr_accret_tend, Real* qc2qi_collect_tend,
   Real* qc2qi_hetero_freeze_tend, Real* qc2qr_ice_shed_tend, Real* qc2qi_berg_tend, Real* qi2qv_sublim_tend, Real* qv2qi_vapdep_tend);
 
@@ -333,13 +330,6 @@ void back_to_cell_average(BackToCellAverageData& d)
     &d.qi2qr_melt_tend, &d.qc2qi_collect_tend, &d.qr2qi_immers_freeze_tend, &d.ni2nr_melt_tend, &d.nc_collect_tend, &d.ncshdc, &d.nc2ni_immers_freeze_tend,
     &d.nr_collect_tend, &d.ni_selfcollect_tend, &d.qv2qi_vapdep_tend, &d.nr2ni_immers_freeze_tend, &d.ni_sublim_tend, &d.qv2qi_nucleat_tend, &d.ni_nucleat_tend,
     &d.qc2qi_berg_tend);
-}
-
-void prevent_ice_overdepletion(PreventIceOverdepletionData& d)
-{
-  p3_init();
-  prevent_ice_overdepletion_c(d.pres, d.T_atm, d.qv, d.latent_heat_sublim, d.inv_dt, &d.qv2qi_vapdep_tend,
-                              &d.qi2qv_sublim_tend);
 }
 
 void calc_rime_density(CalcRimeDensityData& d)
@@ -1888,32 +1878,6 @@ void back_to_cell_average_f(Real cld_frac_l_, Real cld_frac_r_, Real cld_frac_i_
   *qv2qi_nucleat_tend_       = t_h(26);
   *ni_nucleat_tend_          = t_h(27);
   *qc2qi_berg_tend_          = t_h(28);
-}
-
-void prevent_ice_overdepletion_f(
-  Real pres_, Real T_atm_, Real qv_, Real latent_heat_sublim_, Real inv_dt_, Real* qv2qi_vapdep_tend_,
-  Real* qi2qv_sublim_tend_)
-{
-  using P3F = Functions<Real, DefaultDevice>;
-
-  typename P3F::view_1d<Real> t_d("t_h", 2);
-  auto t_h = Kokkos::create_mirror_view(t_d);
-  Real local_qv2qi_vapdep_tend = *qv2qi_vapdep_tend_;
-  Real local_qi2qv_sublim_tend = *qi2qv_sublim_tend_;
-
-  Kokkos::parallel_for(1, KOKKOS_LAMBDA(const Int&) {
-    typename P3F::Spack pres(pres_), T_atm(T_atm_), qv(qv_), latent_heat_sublim(latent_heat_sublim_),
-      qv2qi_vapdep_tend(local_qv2qi_vapdep_tend), qi2qv_sublim_tend(local_qi2qv_sublim_tend);
-    P3F::prevent_ice_overdepletion(pres, T_atm, qv, latent_heat_sublim, inv_dt_, qv2qi_vapdep_tend, qi2qv_sublim_tend);
-
-    t_d(0) = qv2qi_vapdep_tend[0];
-    t_d(1) = qi2qv_sublim_tend[0];
-
-  });
-  Kokkos::deep_copy(t_h, t_d);
-
-  *qv2qi_vapdep_tend_ = t_h(0);
-  *qi2qv_sublim_tend_ = t_h(1);
 }
 
 void calc_rime_density_f(

@@ -269,15 +269,6 @@ struct Functions
                                    Spack& ni_nucleat_tend, Spack& qc2qi_berg_tend,
                                    const Smask& context = Smask(true) );
 
-  // Limits ice process rates to prevent overdepletion of sources such that
-  // the subsequent adjustments are done with maximum possible rates for the
-  // time step.
-  KOKKOS_FUNCTION
-  static void prevent_ice_overdepletion(
-    const Spack& pres, const Spack& T_atm, const Spack& qv, const Spack& latent_heat_sublim, const Scalar& inv_dt,
-    Spack& qv2qi_vapdep_tend, Spack& qi2qv_sublim_tend, const Smask& range_mask = Smask(true),
-    const Smask& context = Smask(true) );
-
   //------------------------------------------------------------------------------------------!
   // Finds indices in 3D ice (only) lookup table
   // ------------------------------------------------------------------------------------------!
@@ -991,7 +982,6 @@ void init_tables_from_f90_c(Real* vn_table_vals_data, Real* vm_table_vals_data,
 # include "p3_table3_impl.hpp"
 # include "p3_table_ice_impl.hpp"
 # include "p3_back_to_cell_average_impl.hpp"
-# include "p3_prevent_ice_overdepletion_impl.hpp"
 # include "p3_dsd2_impl.hpp"
 # include "p3_upwind_impl.hpp"
 # include "p3_find_impl.hpp"

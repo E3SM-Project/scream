@@ -36,7 +36,6 @@ if (NOT CUDA_BUILD)
     p3_conservation.cpp
     p3_rain_self_collection.cpp
     p3_back_to_cell_average.cpp
-    p3_prevent_ice_overdepletion.cpp
     p3_cloud_rain_acc.cpp
     p3_calc_rime_density.cpp
     p3_cldliq_imm_freezing.cpp

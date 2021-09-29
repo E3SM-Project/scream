@@ -259,16 +259,6 @@ contains
       qv2qi_vapdep_tend, nr2ni_immers_freeze_tend, ni_sublim_tend, qv2qi_nucleat_tend, ni_nucleat_tend, qc2qi_berg_tend)
   end subroutine back_to_cell_average_c
 
-subroutine prevent_ice_overdepletion_c(pres,T_atm,qv,latent_heat_sublim,inv_dt,    &
-   qv2qi_vapdep_tend,qi2qv_sublim_tend) bind(C)
-    use micro_p3, only: prevent_ice_overdepletion
-
-    real(kind=c_real), value, intent(in) :: pres, T_atm, qv, latent_heat_sublim, inv_dt
-    real(kind=c_real), intent(inout) :: qv2qi_vapdep_tend, qi2qv_sublim_tend
-
-    call prevent_ice_overdepletion(pres, T_atm, qv, latent_heat_sublim, inv_dt, qv2qi_vapdep_tend, qi2qv_sublim_tend)
-end subroutine prevent_ice_overdepletion_c
-
   subroutine cloud_water_conservation_c(qc,dt,qc2qr_autoconv_tend,qc2qr_accret_tend,qc2qi_collect_tend,qc2qi_hetero_freeze_tend,qc2qr_ice_shed_tend,     &
     qc2qi_berg_tend,qi2qv_sublim_tend,qv2qi_vapdep_tend) bind(C)
     use micro_p3, only: cloud_water_conservation

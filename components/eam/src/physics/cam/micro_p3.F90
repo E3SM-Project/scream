@@ -835,8 +835,6 @@ contains
       call ni_conservation(ni(k),ni_nucleat_tend,nr2ni_immers_freeze_tend,nc2ni_immers_freeze_tend,dt,ni2nr_melt_tend,&
            ni_sublim_tend,ni_selfcollect_tend)
       
-      call prevent_ice_overdepletion(pres(k), t_atm(k), qv(k), latent_heat_sublim(k), inv_dt, qidep, qi2qv_sublim_tend)
-
       call ice_supersat_conservation(qidep,qinuc,cld_frac_i(k),qv(k),qv_sat_i(k),latent_heat_sublim(k),th_atm(k)/inv_exner(k),dt, &
            qi2qv_sublim_tend, qr2qv_evap_tend)
 
@@ -2839,36 +2837,6 @@ subroutine back_to_cell_average(cld_frac_l,cld_frac_r,cld_frac_i,               
    ni_nucleat_tend   = ni_nucleat_tend             ! Number change due to deposition and condensation-freezing, already cell-averaged
 
 end subroutine back_to_cell_average
-
-subroutine prevent_ice_overdepletion(pres,t_atm,qv,latent_heat_sublim,inv_dt,    &
-   qidep,qi2qv_sublim_tend)
-
-   !-- Limit ice process rates to prevent overdepletion of sources such that
-   !   the subsequent adjustments are done with maximum possible rates for the
-   !   time step.  (note: most ice rates are adjusted here since they must be done
-   !   simultaneously (outside of iice-loops) to distribute reduction proportionally
-   !   amongst categories.
-   !PMC - might need to rethink above statement since only one category now.
-
-   implicit none
-
-   real(rtype), intent(in) :: pres
-   real(rtype), intent(in) :: t_atm
-   real(rtype), intent(in) :: qv
-   real(rtype), intent(in) :: latent_heat_sublim
-   real(rtype), intent(in) :: inv_dt
-
-   real(rtype), intent(inout) :: qidep
-   real(rtype), intent(inout) :: qi2qv_sublim_tend
-
-   real(rtype) :: dumqv_sat_i, qdep_satadj
-
-   dumqv_sat_i = qv_sat(t_atm,pres,1)
-   qdep_satadj = (qv-dumqv_sat_i)/(1._rtype + bfb_square(latent_heat_sublim)*dumqv_sat_i/(cp*rv* bfb_square(t_atm) ))*inv_dt
-   qidep  = qidep*min(1._rtype,max(0._rtype, qdep_satadj)/max(qidep, 1.e-20_rtype))
-   qi2qv_sublim_tend  = qi2qv_sublim_tend*min(1._rtype,max(0._rtype,-qdep_satadj)/max(qi2qv_sublim_tend, 1.e-20_rtype))
-
-end subroutine prevent_ice_overdepletion
 
 subroutine ice_supersat_conservation(qidep,qinuc,cld_frac_i,qv,qv_sat_i,latent_heat_sublim,T_atm,dt,qi2qv_sublim_tend, qr2qv_evap_tend)
   !Make sure ice processes don't drag qv below ice supersaturation
