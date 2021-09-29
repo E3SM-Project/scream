@@ -144,7 +144,7 @@ void update_prognostic_liquid_c(
   Real inv_rho, Real inv_exner, Real latent_heat_vapor, Real dt, Real* th_atm, Real* qv,
   Real* qc, Real* nc, Real* qr, Real* nr);
 
-void ice_deposition_sublimation_c(Real qi_incld, Real ni_incld, Real t_atm, Real qv_sat_l, Real qv_sat_i, Real epsi, Real abi, Real qv, Real dt, Real* qidep, Real* qi2qv_sublim_tend, Real* ni_sublim_tend, Real* qiberg);
+void ice_deposition_sublimation_c(Real qi_incld, Real ni_incld, Real t_atm, Real qv_sat_l, Real qv_sat_i, Real epsi, Real abi, Real qv, Real inv_dt, Real* qidep, Real* qi2qv_sublim_tend, Real* ni_sublim_tend, Real* qiberg);
 
 void compute_rain_fall_velocity_c(Real qr_incld, Real rhofacr,
                                   Real* nr_incld, Real* mu_r, Real* lamr, Real* V_qr, Real* V_nr);
@@ -580,7 +580,7 @@ void  update_prognostic_liquid(P3UpdatePrognosticLiqData& d){
 void ice_deposition_sublimation(IceDepositionSublimationData& d)
 {
   p3_init();
-  ice_deposition_sublimation_c(d.qi_incld, d.ni_incld, d.T_atm, d.qv_sat_l, d.qv_sat_i, d.epsi, d.abi, d.qv, d.dt, &d.qv2qi_vapdep_tend, &d.qi2qv_sublim_tend, &d.ni_sublim_tend, &d.qc2qi_berg_tend);
+  ice_deposition_sublimation_c(d.qi_incld, d.ni_incld, d.T_atm, d.qv_sat_l, d.qv_sat_i, d.epsi, d.abi, d.qv, d.inv_dt, &d.qv2qi_vapdep_tend, &d.qi2qv_sublim_tend, &d.ni_sublim_tend, &d.qc2qi_berg_tend);
 }
 
 CalcUpwindData::CalcUpwindData(
@@ -1312,7 +1312,7 @@ void update_prognostic_liquid_f(Real qc2qr_accret_tend_, Real nc_accret_tend_, R
   *nr_    = t_h(5);
 }
 
-void ice_deposition_sublimation_f(Real qi_incld, Real ni_incld, Real t_atm, Real qv_sat_l, Real qv_sat_i, Real epsi, Real abi, Real qv, Real dt, Real* qidep, Real* qi2qv_sublim_tend, Real* ni_sublim_tend, Real* qiberg)
+void ice_deposition_sublimation_f(Real qi_incld, Real ni_incld, Real t_atm, Real qv_sat_l, Real qv_sat_i, Real epsi, Real abi, Real qv, Real inv_dt, Real* qidep, Real* qi2qv_sublim_tend, Real* ni_sublim_tend, Real* qiberg)
 {
 #if 0
   using PF = Functions<Real, DefaultDevice>;
@@ -1323,11 +1323,11 @@ void ice_deposition_sublimation_f(Real qi_incld, Real ni_incld, Real t_atm, Real
   view_1d t_d("t_d", 4);
   const auto t_h = Kokkos::create_mirror_view(t_d);
 
-  typename P3F::Scalar dt(dt);
+  typename P3F::Scalar inv_dt_(inv_dt);
   
   Kokkos::parallel_for(1, KOKKOS_LAMBDA(const Int&) {
     Spack abi_(abi), epsi_(epsi), ni_incld_(ni_incld), qi_incld_(qi_incld), qv_(qv), qv_sat_i_(qv_sat_i), qv_sat_l_(qv_sat_l), t_atm_(t_atm),  ni_sublim_tend_(), qi2qv_sublim_tend_(), qiberg_(), qidep_();
-    PF::ice_deposition_sublimation(qi_incld_, ni_incld_, t_atm_, qv_sat_l_, qv_sat_i_, epsi_, abi_, qv_, dt_, qidep_, qi2qv_sublim_tend_, ni_sublim_tend_, qiberg_);
+    PF::ice_deposition_sublimation(qi_incld_, ni_incld_, t_atm_, qv_sat_l_, qv_sat_i_, epsi_, abi_, qv_, inv_dt_, qidep_, qi2qv_sublim_tend_, ni_sublim_tend_, qiberg_);
     t_d(0) = ni_sublim_tend_[0];
     t_d(1) = qi2qv_sublim_tend_[0];
     t_d(2) = qiberg_[0];

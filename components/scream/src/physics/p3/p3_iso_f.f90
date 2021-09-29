@@ -432,10 +432,10 @@ subroutine  update_prognostic_ice_f(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
 
   end subroutine update_prognostic_liquid_f
 
-  subroutine ice_deposition_sublimation_f(qi_incld, ni_incld, t_atm, qv_sat_l, qv_sat_i, epsi, abi, qv, dt, qidep, qi2qv_sublim_tend, ni_sublim_tend, qiberg) bind(C)
+  subroutine ice_deposition_sublimation_f(qi_incld, ni_incld, t_atm, qv_sat_l, qv_sat_i, epsi, abi, qv, inv_dt, qidep, qi2qv_sublim_tend, ni_sublim_tend, qiberg) bind(C)
     use iso_c_binding
 
-    real(kind=c_real) , value, intent(in) :: qi_incld, ni_incld, t_atm, qv_sat_l, qv_sat_i, epsi, abi, qv, dt
+    real(kind=c_real) , value, intent(in) :: qi_incld, ni_incld, t_atm, qv_sat_l, qv_sat_i, epsi, abi, qv, inv_dt
     real(kind=c_real) , intent(out) :: qidep, qi2qv_sublim_tend, ni_sublim_tend, qiberg
   end subroutine ice_deposition_sublimation_f
 

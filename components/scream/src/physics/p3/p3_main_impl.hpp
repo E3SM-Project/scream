@@ -553,7 +553,7 @@ void Functions<S,D>
 		     ab,abi,epsr,epsi_tot,T_atm(k),t_prev(k),latent_heat_sublim(k),dqsdt,dt,
 		     qr2qv_evap_tend,nr_evap_tend, not_skip_micro);
 
-      ice_deposition_sublimation(qi_incld(k), ni_incld(k), T_atm(k), qv_sat_l(k), qv_sat_i(k), epsi, abi, qv(k), dt, qv2qi_vapdep_tend, qi2qv_sublim_tend, ni_sublim_tend, qc2qi_berg_tend, not_skip_micro);
+      ice_deposition_sublimation(qi_incld(k), ni_incld(k), T_atm(k), qv_sat_l(k), qv_sat_i(k), epsi, abi, qv(k), inv_dt, qv2qi_vapdep_tend, qi2qv_sublim_tend, ni_sublim_tend, qc2qi_berg_tend, not_skip_micro);
     }
     
     // deposition/condensation-freezing nucleation

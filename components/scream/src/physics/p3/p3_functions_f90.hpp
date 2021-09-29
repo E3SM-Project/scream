@@ -540,10 +540,14 @@ struct P3UpdatePrognosticLiqData
 struct IceDepositionSublimationData
 {
   //Inputs
-  Real qi_incld, ni_incld, T_atm, qv_sat_l, qv_sat_i, epsi, abi, qv, dt;
+  Real qi_incld, ni_incld, T_atm, qv_sat_l, qv_sat_i, epsi, abi, qv, inv_dt;
 
   //Outs
   Real qv2qi_vapdep_tend, qi2qv_sublim_tend, ni_sublim_tend, qc2qi_berg_tend;
+
+  // This populates all input fields with test data within [0,1].
+  void randomize(std::mt19937_64& engine);
+
 };
 
 struct IceCldliqCollectionData
@@ -1016,7 +1020,7 @@ void update_prognostic_liquid_f(
   Real inv_rho, Real inv_exner, Real latent_heat_vapor, Real dt, Real* th_atm, Real* qv,
   Real* qc, Real* nc, Real* qr, Real* nr);
 
-void ice_deposition_sublimation_f(Real qi_incld, Real ni_incld, Real t_atm, Real qv_sat_l, Real qv_sat_i, Real epsi, Real abi, Real qv, Real dt, Real* qidep, Real* qi2qv_sublim_tend, Real* ni_sublim_tend, Real* qiberg);
+void ice_deposition_sublimation_f(Real qi_incld, Real ni_incld, Real t_atm, Real qv_sat_l, Real qv_sat_i, Real epsi, Real abi, Real qv, Real inv_dt, Real* qidep, Real* qi2qv_sublim_tend, Real* ni_sublim_tend, Real* qiberg);
 
 void ice_cldliq_collection_f(Real rho, Real temp, Real rhofaci, Real table_val_qc2qi_collect,
                              Real qi_incld,Real qc_incld, Real ni_incld, Real nc_incld,
