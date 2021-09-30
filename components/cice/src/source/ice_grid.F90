@@ -1232,8 +1232,8 @@
             uarear(i,j,iblk)   = c1/uarea(i,j,iblk)
             tinyarea(i,j,iblk) = puny*tarea(i,j,iblk)
 
-            if (single_column) then
-               ULAT  (i,j,iblk) = TLAT(i,j,iblk)+(pi/ni)  
+            if (single_column .and. .not. scm_multcols) then
+	       ULAT  (i,j,iblk) = TLAT(i,j,iblk)+(pi/ni)
             else
                if (ny_global == 1) then
                   ULAT  (i,j,iblk) = TLAT(i,j,iblk)
