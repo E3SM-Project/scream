@@ -952,4 +952,12 @@ subroutine  update_prognostic_ice_c(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
 
     call ni_conservation(ni, ni_nucleat_tend, nr2ni_immers_freeze_tend, nc2ni_immers_freeze_tend, dt, ni2nr_melt_tend, ni_sublim_tend, ni_selfcollect_tend)
   end subroutine ni_conservation_c
+  subroutine prevent_liq_supersaturation_c(pres, t_atm, qv, latent_heat_vapor, latent_heat_sublim, dt, qidep, qinuc, qi2qv_sublim_tend, qr2qv_evap_tend) bind(C)
+    use micro_p3, only : prevent_liq_supersaturation
+
+    real(kind=c_real) , value, intent(in) :: pres, t_atm, qv, latent_heat_vapor, latent_heat_sublim, dt, qidep, qinuc
+    real(kind=c_real) , intent(inout) :: qi2qv_sublim_tend, qr2qv_evap_tend
+
+    call prevent_liq_supersaturation(pres, t_atm, qv, latent_heat_vapor, latent_heat_sublim, dt, qidep, qinuc, qi2qv_sublim_tend, qr2qv_evap_tend)
+  end subroutine prevent_liq_supersaturation_c
 end module p3_iso_c

@@ -233,6 +233,7 @@ void ice_supersat_conservation_c(Real* qidep, Real* qinuc, Real cld_frac_i, Real
 void nc_conservation_c(Real nc, Real nc_selfcollect_tend, Real dt, Real* nc_collect_tend, Real* nc2ni_immers_freeze_tend, Real* nc_accret_tend, Real* nc2nr_autoconv_tend);
 void nr_conservation_c(Real nr, Real ni2nr_melt_tend, Real nr_ice_shed_tend, Real ncshdc, Real nc2nr_autoconv_tend, Real dt, Real nmltratio, Real* nr_collect_tend, Real* nr2ni_immers_freeze_tend, Real* nr_selfcollect_tend, Real* nr_evap_tend);
 void ni_conservation_c(Real ni, Real ni_nucleat_tend, Real nr2ni_immers_freeze_tend, Real nc2ni_immers_freeze_tend, Real dt, Real* ni2nr_melt_tend, Real* ni_sublim_tend, Real* ni_selfcollect_tend);
+void prevent_liq_supersaturation_c(Real pres, Real t_atm, Real qv, Real latent_heat_vapor, Real latent_heat_sublim, Real dt, Real qidep, Real qinuc, Real* qi2qv_sublim_tend, Real* qr2qv_evap_tend);
 } // extern "C" : end _c decls
 
 namespace scream {
@@ -849,6 +850,12 @@ void ni_conservation(NiConservationData& d)
   ni_conservation_c(d.ni, d.ni_nucleat_tend, d.nr2ni_immers_freeze_tend, d.nc2ni_immers_freeze_tend, d.dt, &d.ni2nr_melt_tend, &d.ni_sublim_tend, &d.ni_selfcollect_tend);
 }
 
+void prevent_liq_supersaturation(PreventLiqSupersaturationData& d)
+{
+  p3_init();
+  prevent_liq_supersaturation_c(d.pres, d.t_atm, d.qv, d.latent_heat_vapor, d.latent_heat_sublim, d.dt, d.qidep, d.qinuc, &d.qi2qv_sublim_tend, &d.qr2qv_evap_tend);
+}
+
 void IceSupersatConservationData::randomize(std::mt19937_64& engine)
 {
   std::uniform_real_distribution<Real> data_dist(0.0, 1.0);
@@ -908,6 +915,60 @@ void NiConservationData::randomize(std::mt19937_64& engine)
   ni_sublim_tend           = data_dist(engine);
   ni_selfcollect_tend      = data_dist(engine);
 }
+
+void PreventLiqSupersaturationData::randomize(std::mt19937_64& engine)
+{
+  /*Create random test data which changes each invocation, yet is 
+    physically reasonable. Follows examples in common_physics_functions_tests.cpp.
+    Note that rates must be chosen carefully to prevent qv and T_atm from going negative.
+    Note also that I'm using crude approx of latent heats here because these tests shouldn't 
+    care about slight numerical inaccuracies. I'm hardcoding cp here because I can't figure out
+    how to make physics_constants.hpp available here. It may also be nice/needed to add eps to
+    "make T and q exactly zero" calculations to prevent neg values due to roundoff error.
+  */
+  
+  // Construct random input data
+  using RPDF = std::uniform_real_distribution<Real>;
+  RPDF pdf_qv(1e-5,1e-3),
+    pdf_pres(0.1,102000),
+    pdf_temp(200.0,300.0),
+    //pdf_dt(0.1,300.), //since dt is Scalar, always gets set to 1st index of Pack... so can't use rand val here.
+    pdf_rate(0.,1e-3);
+
+  Real cp=1004; //approx cp is good enough for testing.
+  
+  pres                     = pdf_pres(engine);
+  t_atm                    = pdf_temp(engine);
+  qv                       = pdf_qv(engine);
+  latent_heat_vapor        = 2.5e6; //approx val is good enough for testing
+  latent_heat_sublim       = 2.838e6; //approx val is good enough for testing
+  dt                       = 60; //pdf_dt(engine);
+  
+  //qv sinks: don't let qv go neg.
+  qidep                    = std::min(pdf_rate(engine), qv/dt ); //don't let dep make qv neg by itself  
+  qinuc                    = std::min(pdf_rate(engine), qv/dt - qidep); //don't let qidep+qinuc make qv neg 
+
+  //qv sources: don't let T go neg.
+  qi2qv_sublim_tend        = std::min(pdf_rate(engine), cp/latent_heat_sublim * t_atm/dt + qidep+qinuc ); //don't let sublim make T neg.
+
+  qr2qv_evap_tend          = std::min(pdf_rate(engine),
+				      cp/latent_heat_vapor*t_atm/dt
+    				      +(qidep+qinuc-qi2qv_sublim_tend)*latent_heat_sublim/latent_heat_vapor );
+
+  /*
+  pres                     = data_dist(engine);
+  t_atm                    = data_dist(engine);
+  qv                       = data_dist(engine);
+  latent_heat_vapor        = data_dist(engine);
+  latent_heat_sublim       = data_dist(engine);
+  dt                       = data_dist(engine);
+  qidep                    = data_dist(engine);
+  qinuc                    = data_dist(engine);
+  qi2qv_sublim_tend        = data_dist(engine);
+  qr2qv_evap_tend          = data_dist(engine);
+  */
+}
+
 // end _c impls
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -3341,5 +3402,29 @@ void ni_conservation_f(Real ni, Real ni_nucleat_tend, Real nr2ni_immers_freeze_t
   *ni_sublim_tend = t_h(2);
 }
 
+void prevent_liq_supersaturation_f(Real pres, Real t_atm, Real qv, Real latent_heat_vapor, Real latent_heat_sublim, Real dt, Real qidep, Real qinuc, Real* qi2qv_sublim_tend, Real* qr2qv_evap_tend)
+{
+#if 0
+  using PF = Functions<Real, DefaultDevice>;
+
+  using Spack   = typename PF::Spack;
+  using view_1d = typename PF::view_1d<Real>;
+
+  view_1d t_d("t_d", 2);
+  const auto t_h = Kokkos::create_mirror_view(t_d);
+
+  Real local_qi2qv_sublim_tend(*qi2qv_sublim_tend), local_qr2qv_evap_tend(*qr2qv_evap_tend);
+  Kokkos::parallel_for(1, KOKKOS_LAMBDA(const Int&) {
+    Spack dt_(dt), latent_heat_sublim_(latent_heat_sublim), latent_heat_vapor_(latent_heat_vapor), pres_(pres), qi2qv_sublim_tend_(local_qi2qv_sublim_tend), qidep_(qidep), qinuc_(qinuc), qr2qv_evap_tend_(local_qr2qv_evap_tend), qv_(qv), t_atm_(t_atm);
+    PF::prevent_liq_supersaturation(pres_, t_atm_, qv_, latent_heat_vapor_, latent_heat_sublim_, dt_, qidep_, qinuc_, qi2qv_sublim_tend_, qr2qv_evap_tend_);
+    t_d(0) = qi2qv_sublim_tend_[0];
+    t_d(1) = qr2qv_evap_tend_[0];
+  });
+  Kokkos::deep_copy(t_h, t_d);
+  *qi2qv_sublim_tend = t_h(0);
+  *qr2qv_evap_tend = t_h(1);
+#endif
+
+}
 } // namespace p3
 } // namespace scream

@@ -57,6 +57,7 @@ if (NOT CUDA_BUILD)
     p3_nc_conservation.cpp
     p3_nr_conservation.cpp
     p3_ni_conservation.cpp
+    p3_prevent_liq_supersaturation.cpp
   ) # P3 ETI SRCS
 endif()
 

@@ -149,17 +149,6 @@ struct BackToCellAverageData
 
 ///////////////////////////////////////////////////////////////////////////////
 
-struct PreventIceOverdepletionData
-{
-  // inputs
-  Real pres, T_atm, qv, latent_heat_sublim, inv_dt;
-
-  //output
-  Real qv2qi_vapdep_tend, qi2qv_sublim_tend;
-};
-
-///////////////////////////////////////////////////////////////////////////////
-
 struct CloudWaterConservationData
 {
   // inputs
@@ -821,6 +810,17 @@ struct NiConservationData {
   void randomize(std::mt19937_64& engine);
 };
 
+struct PreventLiqSupersaturationData {
+  // Inputs
+  Real pres, t_atm, qv, latent_heat_vapor, latent_heat_sublim, dt, qidep, qinuc;
+  
+  // Inputs/Outputs
+  Real qi2qv_sublim_tend, qr2qv_evap_tend;
+  
+  // This populates all fields with test data within [0,1].
+  void randomize(std::mt19937_64& engine);
+};
+
 // Glue functions to call fortran from from C++ with the Data struct
 void p3_init_a(P3InitAFortranData& d);
 void find_lookuptable_indices_1a(LookupIceData& d);
@@ -875,6 +875,7 @@ void ice_supersat_conservation(IceSupersatConservationData& d);
 void nc_conservation(NcConservationData& d);
 void nr_conservation(NrConservationData& d);
 void ni_conservation(NiConservationData& d);
+void prevent_liq_supersaturation(PreventLiqSupersaturationData& d);
 extern "C" { // _f function decls
 
 void find_lookuptable_indices_1a_f(Int* dumi, Int* dumjj, Int* dumii, Int* dumzz,
@@ -1100,6 +1101,7 @@ void ice_supersat_conservation_f(Real* qidep, Real* qinuc, Real cld_frac_i, Real
 void nc_conservation_f(Real nc, Real nc_selfcollect_tend, Real dt, Real* nc_collect_tend, Real* nc2ni_immers_freeze_tend, Real* nc_accret_tend, Real* nc2nr_autoconv_tend);
 void nr_conservation_f(Real nr, Real ni2nr_melt_tend, Real nr_ice_shed_tend, Real ncshdc, Real nc2nr_autoconv_tend, Real dt, Real* nr_collect_tend, Real* nr2ni_immers_freeze_tend, Real* nr_selfcollect_tend, Real* nr_evap_tend);
 void ni_conservation_f(Real ni, Real ni_nucleat_tend, Real nr2ni_immers_freeze_tend, Real nc2ni_immers_freeze_tend, Real dt, Real* ni2nr_melt_tend, Real* ni_sublim_tend, Real* ni_selfcollect_tend);
+void prevent_liq_supersaturation_f(Real pres, Real t_atm, Real qv, Real latent_heat_vapor, Real latent_heat_sublim, Real dt, Real qidep, Real qinuc, Real* qi2qv_sublim_tend, Real* qr2qv_evap_tend);
 } // end _f function decls
 
 }  // namespace p3

@@ -623,9 +623,13 @@ void Functions<S,D>
     ni_conservation(ni(k),ni_nucleat_tend,nr2ni_immers_freeze_tend,nc2ni_immers_freeze_tend,dt,ni2nr_melt_tend,
                     ni_sublim_tend,ni_selfcollect_tend, not_skip_all);
 
-    // make sure procs don't push qv beyond saturation
+    // make sure procs don't inappropriately push qv beyond ice saturation
     ice_supersat_conservation(qv2qi_vapdep_tend,qv2qi_nucleat_tend,cld_frac_i(k),qv(k),qv_sat_i(k),
 			      latent_heat_sublim(k),th_atm(k)/inv_exner(k),dt,qi2qv_sublim_tend,qr2qv_evap_tend, not_skip_all);
+    // make sure procs don't inappropriately push qv beyond liquid saturation
+    prevent_liq_supersaturation(pres(k), T_atm(k), qv(k), latent_heat_vapor(k), latent_heat_sublim(k),dt,
+				qv2qi_vapdep_tend, qv2qi_nucleat_tend, qi2qv_sublim_tend,qr2qv_evap_tend,
+				range_mask, not_skip_all);
 
     //---------------------------------------------------------------------------------
     // update prognostic microphysics and thermodynamics variables

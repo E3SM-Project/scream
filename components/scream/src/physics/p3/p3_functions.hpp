@@ -961,6 +961,8 @@ struct Functions
 
   KOKKOS_FUNCTION
   static void ni_conservation(const Spack& ni, const Spack& ni_nucleat_tend, const Spack& nr2ni_immers_freeze_tend, const Spack& nc2ni_immers_freeze_tend, const Real& dt, Spack& ni2nr_melt_tend, Spack& ni_sublim_tend, Spack& ni_selfcollect_tend, const Smask& context = Smask(true));
+  KOKKOS_FUNCTION
+  static void prevent_liq_supersaturation(const Spack& pres, const Spack& t_atm, const Spack& qv, const Spack& latent_heat_vapor, const Spack& latent_heat_sublim, const Scalar& dt, const Spack& qidep, const Spack& qinuc, Spack& qi2qv_sublim_tend, Spack& qr2qv_evap_tend, const Smask& range_mask = Smask(true), const Smask& context = Smask(true) );
 }; // struct Functions
 
 template <typename ScalarT, typename DeviceT>
@@ -1016,6 +1018,7 @@ void init_tables_from_f90_c(Real* vn_table_vals_data, Real* vm_table_vals_data,
 # include "p3_nc_conservation_impl.hpp"
 # include "p3_nr_conservation_impl.hpp"
 # include "p3_ni_conservation_impl.hpp"
+# include "p3_prevent_liq_supersaturation_impl.hpp"
 #endif // KOKKOS_ENABLE_CUDA
 
 #endif // P3_FUNCTIONS_HPP
