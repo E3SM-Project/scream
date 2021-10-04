@@ -52,7 +52,7 @@ module micro_p3
        clbfact_dep,iparam, isize, densize, rimsize, rcollsize, ice_table_size, collect_table_size, &
        get_latent_heat, T_zerodegc, pi=>pi_e3sm, dnu, &
        T_rainfrz, T_icenuc, T_homogfrz, iulog=>iulog_e3sm, &
-       masterproc=>masterproc_e3sm, calculate_incloud_mixingratios, mu_r_constant, &
+       masterproc=>masterproc_e3sm, calculate_incloud_mixingratios, mu_r_constant, inv_Drmax, &
        lookup_table_1a_dum1_c, &
        p3_qc_autocon_expon, p3_qc_accret_expon
 
@@ -1857,7 +1857,7 @@ contains
        mu_r = mu_r_constant
        lamr   = bfb_cbrt(cons1*nr*(mu_r+3._rtype)*(mu_r+2._rtype)*(mu_r+1._rtype)/(qr))  ! recalculate slope based on mu_r
        lammax = (mu_r+1._rtype)*1.e+5_rtype   ! check for slope
-       lammin = (mu_r+1._rtype)*1250._rtype   ! set to small value since breakup is explicitly included (mean size 0.8 mm)
+       lammin = (mu_r+1._rtype)*inv_Drmax     ! set to small value since breakup is explicitly included (mean size 2.0 mm)
 
        ! apply lambda limiters for rain
        if (lamr.lt.lammin) then

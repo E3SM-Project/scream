@@ -56,6 +56,8 @@ module micro_p3_utils
     real(rtype), parameter, public :: rho_h2os = 917._rtype  ! bulk density water solid
     real(rtype), parameter, public :: dropmass = 5.2e-7_rtype
 
+    real(rtype), parameter, public :: inv_Drmax = 1.0_rtype/(2.0e-3_rtype) ! inverse of maximum allowed rain number-weighted mean diameter in m (2-mm) 
+
     ! particle mass-diameter relationship
     ! currently we assume spherical particles for cloud ice/snow
     ! m = cD^d
