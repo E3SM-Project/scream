@@ -14,10 +14,9 @@ namespace p3 {
   
 template<typename S, typename D>
 KOKKOS_FUNCTION
-void Functions<S,D>::prevent_liq_supersaturation(const Spack& pres, const Spack& t_atm, const Spack& qv, const Spack& latent_heat_vapor, const Spack& latent_heat_sublim, const Scalar& dt, const Spack& qv2qi_vapdep_tend, const Spack& qinuc, Spack& qi2qv_sublim_tend, Spack& qr2qv_evap_tend, const Smask& range_mask,
-  const Smask& context)
-// Note: range_mask handles padded data in packed arrays and context handles legit cells that we
-// know don't have any condensate worth acting on
+void Functions<S,D>::prevent_liq_supersaturation(const Spack& pres, const Spack& t_atm, const Spack& qv, const Spack& latent_heat_vapor, const Spack& latent_heat_sublim, const Scalar& dt, const Spack& qv2qi_vapdep_tend, const Spack& qinuc, Spack& qi2qv_sublim_tend, Spack& qr2qv_evap_tend, const Smask& context)
+// Note: context masks cells which are just padding for packs or which don't have any condensate worth
+// performing calculations on.
 {
   using physics = scream::physics::Functions<Scalar, Device>;
   
@@ -28,25 +27,14 @@ void Functions<S,D>::prevent_liq_supersaturation(const Spack& pres, const Spack&
   
   qv_sinks.set(context, qv2qi_vapdep_tend + qinuc);
   qv_sources.set(context, qi2qv_sublim_tend + qr2qv_evap_tend);
-
-  //printf("qv=%f\n",qv[0]);
-  //printf("qv_sources=%f\n",qv_sources[0]);
-  //printf("t_atm=%f\n",t_atm[0]);
-
-  //printf("dt=%f\n",dt);
   
   //Actual qv and T after microphys step
   qv_endstep.set(context,qv - qv_sinks*dt + qv_sources*dt);
   T_endstep.set(context,t_atm + ( (qv_sinks-qi2qv_sublim_tend)*latent_heat_sublim*inv_cp
 				  - qr2qv_evap_tend*latent_heat_vapor*inv_cp )*dt);
 
-  //printf("qv_endstep=%f\n",qv_endstep[0]);
-  //printf("T_endstep=%f\n",T_endstep[0]);
-  
   //qv we would have at end of step if we were saturated with respect to liquid
-  const auto qsl = physics::qv_sat(T_endstep,pres,false,range_mask); //"false" means NOT sat w/ respect to ice
-
-  //printf("qsl=%f\n",qsl[0]);
+  const auto qsl = physics::qv_sat(T_endstep,pres,false,context); //"false" means NOT sat w/ respect to ice
   
   //The balance we seek is:
   // qv-qv_sinks*dt+qv_sources*frac*dt=qsl+dqsl_dT*(T correction due to conservation)
@@ -74,9 +62,6 @@ void Functions<S,D>::prevent_liq_supersaturation(const Spack& pres, const Spack&
   //The only way frac>1 is if qv-qv_sinks*dt+qv_sources*dt < qsl, in which case we shouldn't 
   //limit anyways so set frac to 1:
   frac = min(1,frac);
-
-  //printf("A=%f\n",A[0]);
-  //printf("frac=%f\n",frac[0]);
   
   qi2qv_sublim_tend.set(context, frac*qi2qv_sublim_tend );
   qr2qv_evap_tend.set(context, frac*qr2qv_evap_tend);

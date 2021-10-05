@@ -327,21 +327,22 @@ void Functions<S,D>
   team.team_barrier();
   hydrometeorsPresent = false;
   team.team_barrier();
-
+  
   Kokkos::parallel_for(
     Kokkos::TeamThreadRange(team, nk_pack), [&] (Int k) {
-
+      
+    //compute mask to identify padded values in packs which shouldn't be used in calculations
+    const auto range_pack = ekat::range<IntSmallPack>(k*Spack::n);
+    const auto range_mask = range_pack < nk;
+      
     // if relatively dry and no hydrometeors at this level, skip to end of k-loop (i.e. skip this level)
-    const auto skip_all = !(qc(k) >= qsmall || qr(k) >= qsmall || qi(k) >= qsmall) &&
-      (T_atm(k) < T_zerodegc && qv_supersat_i(k) < -0.05);
+    const auto skip_all = ( !( qc(k) >= qsmall || qr(k) >= qsmall || qi(k) >= qsmall ) //if {no condensate AND
+			    && ( T_atm(k) < T_zerodegc && qv_supersat_i(k) < -0.05 ) )//cold and subsaturated}
+      || !range_mask;                                                  //OR if padding rather than a used cell
     const auto not_skip_all = !skip_all;
     if (skip_all.all()) {
       return; // skip all process rates
     }
-
-    //compute mask to identify padded values in packs, which are undefined
-    const auto range_pack = ekat::range<IntSmallPack>(k*Spack::n);
-    const auto range_mask = range_pack < nk;
 
     // All microphysics tendencies will be computed as IN-CLOUD, they will be mapped back to cell-average later.
 
@@ -629,7 +630,7 @@ void Functions<S,D>
     // make sure procs don't inappropriately push qv beyond liquid saturation
     prevent_liq_supersaturation(pres(k), T_atm(k), qv(k), latent_heat_vapor(k), latent_heat_sublim(k),dt,
 				qv2qi_vapdep_tend, qv2qi_nucleat_tend, qi2qv_sublim_tend,qr2qv_evap_tend,
-				range_mask, not_skip_all);
+				not_skip_all);
 
     //---------------------------------------------------------------------------------
     // update prognostic microphysics and thermodynamics variables

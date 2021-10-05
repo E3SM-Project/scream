@@ -30,14 +30,21 @@ struct UnitWrap::UnitTest<D>::TestPreventLiqSupersaturation {
       d.dt = f90_data[0].dt; // Hold this fixed, this is not packed data
 
     }
-
-    // Create copies of data for use by cxx and sync it to device. Needs to happen before fortran calls so that
-    // inout data is in original state
+    
+    // Create copies of data for use by cxx and sync it to device. Needs to happen before 
+    // fortran calls so that inout data is in original state
     view_1d<PreventLiqSupersaturationData> cxx_device("cxx_device", max_pack_size);
     const auto cxx_host = Kokkos::create_mirror_view(cxx_device);
     std::copy(&f90_data[0], &f90_data[0] + max_pack_size, cxx_host.data());
     Kokkos::deep_copy(cxx_device, cxx_host);
-    
+
+    // Save copy of inout vars to check that prevent_liq_supersaturation always makes them smaller
+    Spack qi2qv_sublim_tend_init,qr2qv_evap_tend_init;
+    for (Int i = 0; i < max_pack_size; ++i) {
+      qi2qv_sublim_tend_init[i] = cxx_host(i).qi2qv_sublim_tend;
+      qr2qv_evap_tend_init[i] = cxx_host(i).qr2qv_evap_tend;
+    }
+      
     // Get data from fortran
     for (auto& d : f90_data) {
       prevent_liq_supersaturation(d);
@@ -81,6 +88,14 @@ struct UnitWrap::UnitTest<D>::TestPreventLiqSupersaturation {
       PreventLiqSupersaturationData& d_cxx = cxx_host[i];
       REQUIRE(d_f90.qi2qv_sublim_tend == d_cxx.qi2qv_sublim_tend);
       REQUIRE(d_f90.qr2qv_evap_tend == d_cxx.qr2qv_evap_tend);
+
+      //Verify tendencies are always >=0:
+      REQUIRE(d_cxx.qi2qv_sublim_tend>=0);
+      REQUIRE(d_cxx.qr2qv_evap_tend>=0);
+
+      //Verify function call always makes tendencies smaller
+      REQUIRE(d_cxx.qi2qv_sublim_tend<=qi2qv_sublim_tend_init[i]);
+      REQUIRE(d_cxx.qr2qv_evap_tend<=qr2qv_evap_tend_init[i]);
 
     }
   } // run_bfb

@@ -838,7 +838,7 @@ contains
       call ice_supersat_conservation(qidep,qinuc,cld_frac_i(k),qv(k),qv_sat_i(k),latent_heat_sublim(k),th_atm(k)/inv_exner(k),dt, &
            qi2qv_sublim_tend, qr2qv_evap_tend)
 
-            call prevent_liq_supersaturation(pres(k), t_atm(k), qv(k), latent_heat_vapor(k), latent_heat_sublim(k), dt, qidep, qinuc, & 
+      call prevent_liq_supersaturation(pres(k), t_atm(k), qv(k), latent_heat_vapor(k), latent_heat_sublim(k), dt, qidep, qinuc, & 
            qi2qv_sublim_tend, qr2qv_evap_tend)
 
       !---------------------------------------------------------------------------------
@@ -2875,8 +2875,9 @@ end subroutine ice_supersat_conservation
 
 subroutine prevent_liq_supersaturation(pres,t_atm,qv,latent_heat_vapor,latent_heat_sublim,dt,qidep,qinuc,    &
      qi2qv_sublim_tend,qr2qv_evap_tend)
-
    !-- Limit sublimation and evaporation to prevent qv from becoming supersaturated with respect to liquid
+
+   use micro_p3_utils, only: inv_cp
 
    implicit none
 
@@ -2890,9 +2891,6 @@ subroutine prevent_liq_supersaturation(pres,t_atm,qv,latent_heat_vapor,latent_he
    
    real(rtype) :: qv_sinks, qv_sources, qv_endstep, T_endstep, qsl, A, frac
 
-   real(rtype) :: inv_cp
-   inv_cp = 1._rtype/cp
-   
    qv_sinks   = qidep + qinuc
    qv_sources = qi2qv_sublim_tend + qr2qv_evap_tend
    

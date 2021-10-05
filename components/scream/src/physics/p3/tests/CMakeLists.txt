@@ -48,11 +48,6 @@ set(P3_TESTS_SRCS
 CreateUnitTest(p3_test_setup p3_test_setup.cpp "${NEED_LIBS}"
                PROPERTIES FIXTURES_SETUP p3_tables)
 
-#PMC single unit test for debugging. Delete before PR.
-CreateUnitTest(p3_tests_liq_supersat p3_prevent_liq_supersaturation_tests.cpp "${NEED_LIBS}"
-                 PROPERTIES FIXTURES_REQUIRED p3_tables
-                 LABELS "p3;physics")
-
 # NOTE: tests inside this if statement won't be built in a baselines-only build
 if (NOT ${SCREAM_BASELINES_ONLY})
   CreateUnitTest(p3_tests "${P3_TESTS_SRCS}" "${NEED_LIBS}"
