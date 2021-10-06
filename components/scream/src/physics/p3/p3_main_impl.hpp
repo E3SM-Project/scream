@@ -332,13 +332,16 @@ void Functions<S,D>
     Kokkos::TeamThreadRange(team, nk_pack), [&] (Int k) {
       
     //compute mask to identify padded values in packs which shouldn't be used in calculations
+
     const auto range_pack = ekat::range<IntSmallPack>(k*Spack::n);
     const auto range_mask = range_pack < nk;
       
     // if relatively dry and no hydrometeors at this level, skip to end of k-loop (i.e. skip this level)
-    const auto skip_all = ( !( qc(k) >= qsmall || qr(k) >= qsmall || qi(k) >= qsmall ) //if {no condensate AND
-			    && ( T_atm(k) < T_zerodegc && qv_supersat_i(k) < -0.05 ) )//cold and subsaturated}
-      || !range_mask;                                                  //OR if padding rather than a used cell
+
+    const auto skip_all = ( ( qc(k) < qsmall && qr(k) < qsmall && qi(k) < qsmall )
+			    && ( T_atm(k) < T_zerodegc && qv_supersat_i(k) < -0.05 ) 
+			    || !range_mask );
+    
     const auto not_skip_all = !skip_all;
     if (skip_all.all()) {
       return; // skip all process rates
@@ -506,15 +509,15 @@ void Functions<S,D>
       // melting
       ice_melting(
         rho(k), T_atm(k), pres(k), rhofaci(k), table_val_qi2qr_melting, table_val_qi2qr_vent_melt, latent_heat_vapor(k), latent_heat_fusion(k), dv, sc, mu, kap, qv(k), qi_incld(k), ni_incld(k),
-        qi2qr_melt_tend, ni2nr_melt_tend, range_mask, not_skip_micro);
+        qi2qr_melt_tend, ni2nr_melt_tend, not_skip_micro);
 
       // calculate wet growth
       ice_cldliq_wet_growth(
         rho(k), T_atm(k), pres(k), rhofaci(k), table_val_qi2qr_melting, table_val_qi2qr_vent_melt, latent_heat_vapor(k),
         latent_heat_fusion(k), dv, kap, mu, sc, qv(k), qc_incld(k), qi_incld(k), ni_incld(k), qr_incld(k),
-        wetgrowth, qr2qi_collect_tend, qc2qi_collect_tend, qc_growth_rate, nr_ice_shed_tend, qc2qr_ice_shed_tend, range_mask, not_skip_micro);
+        wetgrowth, qr2qi_collect_tend, qc2qi_collect_tend, qc_growth_rate, nr_ice_shed_tend, qc2qr_ice_shed_tend, not_skip_micro);
 
-      // calcualte total inverse ice relaxation timescale combined for all ice categories
+      // calculate total inverse ice relaxation timescale combined for all ice categories
       // note 'f1pr' values are normalized, so we need to multiply by N
       ice_relaxation_timescale(
         rho(k), T_atm(k), rhofaci(k), table_val_qi2qr_melting, table_val_qi2qr_vent_melt, dv, mu, sc, qi_incld(k), ni_incld(k),
