@@ -24,17 +24,19 @@ void Functions<S,D>::prevent_liq_supersaturation(const Spack& pres, const Spack&
   constexpr Scalar rv           = C::RV;
 
   Spack qv_sinks, qv_sources, qv_endstep, T_endstep, A, frac;
-  
-  qv_sinks.set(context, qv2qi_vapdep_tend + qinuc);
+
   qv_sources.set(context, qi2qv_sublim_tend + qr2qv_evap_tend);
+  const auto has_sources = (qv_sources>0 && context); //if nothing to rescale, no point in calculations.
+
+  qv_sinks.set(has_sources, qv2qi_vapdep_tend + qinuc);
   
   //Actual qv and T after microphys step
-  qv_endstep.set(context,qv - qv_sinks*dt + qv_sources*dt);
-  T_endstep.set(context,t_atm + ( (qv_sinks-qi2qv_sublim_tend)*latent_heat_sublim*inv_cp
+  qv_endstep.set(has_sources,qv - qv_sinks*dt + qv_sources*dt);
+  T_endstep.set(has_sources,t_atm + ( (qv_sinks-qi2qv_sublim_tend)*latent_heat_sublim*inv_cp
 				  - qr2qv_evap_tend*latent_heat_vapor*inv_cp )*dt);
 
   //qv we would have at end of step if we were saturated with respect to liquid
-  const auto qsl = physics::qv_sat(T_endstep,pres,false,context); //"false" means NOT sat w/ respect to ice
+  const auto qsl = physics::qv_sat(T_endstep,pres,false,has_sources); //"false" means NOT sat w/ respect to ice
   
   //The balance we seek is:
   // qv-qv_sinks*dt+qv_sources*frac*dt=qsl+dqsl_dT*(T correction due to conservation)
@@ -49,11 +51,11 @@ void Functions<S,D>::prevent_liq_supersaturation(const Spack& pres, const Spack&
   // dqsl_dt=Latent_heat_vapor*qsl/rv*T^2 following Clausius Clapeyron. Combining and solving for
   // frac yields:
    
-  A.set(context,latent_heat_vapor*qsl*dt*inv_cp/(rv*T_endstep*T_endstep)
+  A.set(has_sources,latent_heat_vapor*qsl*dt*inv_cp/(rv*T_endstep*T_endstep)
 	* (latent_heat_sublim*qi2qv_sublim_tend + latent_heat_vapor*qr2qv_evap_tend) );
 
   
-  frac.set(context, (qsl-qv+qv_sinks*dt + A)/(qv_sources*dt + A) );
+  frac.set(has_sources, (qsl-qv+qv_sinks*dt + A)/(qv_sources*dt + A) );
 
   //The only way frac<0 is if qv-qv_sinks*dt is already greater than qsl. In this case
   //the best we can do is zero out qv_sources.
@@ -63,8 +65,8 @@ void Functions<S,D>::prevent_liq_supersaturation(const Spack& pres, const Spack&
   //limit anyways so set frac to 1:
   frac = min(1,frac);
   
-  qi2qv_sublim_tend.set(context, frac*qi2qv_sublim_tend );
-  qr2qv_evap_tend.set(context, frac*qr2qv_evap_tend);
+  qi2qv_sublim_tend.set(has_sources, frac*qi2qv_sublim_tend );
+  qr2qv_evap_tend.set(has_sources, frac*qr2qv_evap_tend);
 
 } //end of prevent_liq_supersaturation
 

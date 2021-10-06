@@ -678,9 +678,7 @@ struct Functions
     const Scalar dt, Spack& th_atm, Spack& qv, Spack& qc, Spack& nc, Spack& qr, Spack& nr,
     const Smask& context = Smask(true));
 
-  // TODO (comments)
-  KOKKOS_FUNCTION
-  KOKKOS_FUNCTION
+  // compute deposition onto ice or sublimation from ice
   KOKKOS_FUNCTION
   static void ice_deposition_sublimation(const Spack& qi_incld, const Spack& ni_incld, const Spack& t_atm, const Spack& qv_sat_l, const Spack& qv_sat_i, const Spack& epsi, const Spack& abi, const Spack& qv, const Scalar& inv_dt, Spack& qidep, Spack& qi2qv_sublim_tend, Spack& ni_sublim_tend, Spack& qiberg, const Smask& context = Smask(true) );
 
@@ -961,6 +959,7 @@ struct Functions
 
   KOKKOS_FUNCTION
   static void ni_conservation(const Spack& ni, const Spack& ni_nucleat_tend, const Spack& nr2ni_immers_freeze_tend, const Spack& nc2ni_immers_freeze_tend, const Real& dt, Spack& ni2nr_melt_tend, Spack& ni_sublim_tend, Spack& ni_selfcollect_tend, const Smask& context = Smask(true));
+
   KOKKOS_FUNCTION
   static void prevent_liq_supersaturation(const Spack& pres, const Spack& t_atm, const Spack& qv, const Spack& latent_heat_vapor, const Spack& latent_heat_sublim, const Scalar& dt, const Spack& qidep, const Spack& qinuc, Spack& qi2qv_sublim_tend, Spack& qr2qv_evap_tend, const Smask& context = Smask(true) );
 }; // struct Functions
