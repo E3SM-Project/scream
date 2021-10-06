@@ -1,28 +1,31 @@
-#include <iostream>
-#include <cmath>
 #include <catch2/catch.hpp>
 
-// Boiler plate, needed for all runs
+// The atmosphere driver
 #include "control/atmosphere_driver.hpp"
-#include "share/atm_process/atmosphere_process.hpp"
-// Boiler plate, needed for when physics is part of the run
-#include "physics/register_physics.hpp"
-#include "physics/share/physics_only_grids_manager.hpp"
-// EKAT headers
-#include "ekat/ekat_pack.hpp"
-#include "ekat/ekat_parse_yaml_file.hpp"
+
 // Other rrtmgp specific code needed specifically for this test
+#include "physics/rrtmgp//tests/rrtmgp_test_utils.hpp"
 #include "physics/rrtmgp/scream_rrtmgp_interface.hpp"
+#include "physics/rrtmgp/atmosphere_radiation.hpp"
 #include "mo_gas_concentrations.h"
 #include "mo_garand_atmos_io.h"
 #include "YAKL.h"
-#include "rrtmgp_test_utils.hpp"
-// Other helper headers needed for the specifics of this test
+
 #include "physics/share/physics_constants.hpp"
-#include "physics/share/physics_only_grids_manager.hpp"
-#include "ekat/util/ekat_test_utils.hpp"
-#include "ekat/kokkos/ekat_kokkos_utils.hpp"
+
+// scream share headers
+#include "share/atm_process/atmosphere_process.hpp"
+#include "share/grid/mesh_free_grids_manager.hpp"
 #include "share/util/scream_common_physics_functions.hpp"
+
+// EKAT headers
+#include "ekat/ekat_parse_yaml_file.hpp"
+#include "ekat/kokkos/ekat_kokkos_utils.hpp"
+#include "ekat/util/ekat_test_utils.hpp"
+
+// System headers
+#include <iostream>
+#include <cmath>
 
 /*
  * Run standalone test problem for RRTMGP and compare with baseline
@@ -73,12 +76,7 @@ namespace scream {
         auto& proc_factory = AtmosphereProcessFactory::instance();
         auto& gm_factory = GridsManagerFactory::instance();
         proc_factory.register_product("RRTMGP",&create_atmosphere_process<RRTMGPRadiation>);
-        gm_factory.register_product("Physics Only",&physics::create_physics_only_grids_manager);
-
-        // Create the grids manager
-        auto& gm_params = ad_params.sublist("Grids Manager");
-        const std::string& gm_type = gm_params.get<std::string>("Type");
-        auto gm = GridsManagerFactory::instance().create(gm_type,atm_comm,gm_params);
+        gm_factory.register_product("Mesh Free",&create_mesh_free_grids_manager);
 
         // Create the driver
         AtmosphereDriver ad;
@@ -94,7 +92,7 @@ namespace scream {
          */
 
         // Get dimension sizes from the field manager
-        const auto& grid = ad.get_grids_manager()->get_grid("Physics");
+        const auto& grid = ad.get_grids_manager()->get_grid("Point Grid");
         const auto& field_mgr = *ad.get_field_mgr(grid->name());
         int ncol  = grid->get_num_local_dofs();
         int nlay  = grid->get_num_vertical_levels();
@@ -143,7 +141,7 @@ namespace scream {
             mu0,
             lwp, iwp, rel, rei, cld
         );
-        //
+
         // Need to calculate a dummy pseudo_density for our test problem
         parallel_for(Bounds<2>(nlay,ncol), YAKL_LAMBDA(int ilay, int icol) {
             p_del(icol,ilay) = abs(p_lev(icol,ilay+1) - p_lev(icol,ilay));
@@ -177,11 +175,11 @@ namespace scream {
         auto d_tmid = field_mgr.get_field("T_mid").get_view<Real**>();
         auto d_pint = field_mgr.get_field("p_int").get_view<Real**>();
         auto d_pdel = field_mgr.get_field("pseudo_density").get_view<Real**>();
-        auto d_tint = field_mgr.get_field("t_int").get_view<Real**>();
         auto d_sfc_alb_dir_vis = field_mgr.get_field("sfc_alb_dir_vis").get_view<Real*>();
         auto d_sfc_alb_dir_nir = field_mgr.get_field("sfc_alb_dir_nir").get_view<Real*>();
         auto d_sfc_alb_dif_vis = field_mgr.get_field("sfc_alb_dif_vis").get_view<Real*>();
         auto d_sfc_alb_dif_nir = field_mgr.get_field("sfc_alb_dif_nir").get_view<Real*>();
+        auto d_surf_lw_flux_up = field_mgr.get_field("surf_lw_flux_up").get_view<Real*>();
         auto d_qc = field_mgr.get_field("qc").get_view<Real**>();
         auto d_qi = field_mgr.get_field("qi").get_view<Real**>();
         auto d_rel = field_mgr.get_field("eff_radius_qc").get_view<Real**>();
@@ -232,7 +230,6 @@ namespace scream {
               d_rei(i,k)  = rei(i+1,k+1);
               d_cld(i,k)  = cld(i+1,k+1);
               d_pint(i,k) = p_lev(i+1,k+1);
-              d_tint(i,k) = t_lev(i+1,k+1);
               // Note that gas_vmr(i+1,k+1,1) should be the vmr for qv and since we need qv to calculate the mmr we derive qv separately.
               Real qv_dry = gas_vmr(i+1,k+1,1)*PC::ep_2;
               Real qv_wet = qv_dry/(1.0+qv_dry);
@@ -247,7 +244,10 @@ namespace scream {
             });
 
             d_pint(i,nlay) = p_lev(i+1,nlay+1);
-            d_tint(i,nlay) = t_lev(i+1,nlay+1);
+
+            // Compute surface flux from surface temperature
+            auto ibot = (p_lay(1,1) > p_lay(1,nlay)) ? 1 : nlay+1;
+            d_surf_lw_flux_up(i) = PC::stebol * pow(t_lev(i+1,ibot), 4.0);
           });
         }
         Kokkos::fence();
@@ -294,12 +294,14 @@ namespace scream {
         // to approximate the solar zenith angle used in the RRTMGP clear-sky
         // test problem with our trial and error lat/lon values, so fluxes will
         // be slightly off. We just verify that they are all "close" here, within
-        // some tolerance.
-        REQUIRE(rrtmgpTest::all_close(sw_flux_up_ref    , sw_flux_up_test    , 0.001));
-        REQUIRE(rrtmgpTest::all_close(sw_flux_dn_ref    , sw_flux_dn_test    , 0.001));
-        REQUIRE(rrtmgpTest::all_close(sw_flux_dn_dir_ref, sw_flux_dn_dir_test, 0.001));
-        REQUIRE(rrtmgpTest::all_close(lw_flux_up_ref    , lw_flux_up_test    , 0.001));
-        REQUIRE(rrtmgpTest::all_close(lw_flux_dn_ref    , lw_flux_dn_test    , 0.001));
+        // some tolerance. Computation of level temperatures from midpoints is
+        // also unable to exactly reproduce the values in the test problem, so
+        // computed fluxes will be further off from the reference calculation.
+        REQUIRE(rrtmgpTest::all_close(sw_flux_up_ref    , sw_flux_up_test    , 1.0));
+        REQUIRE(rrtmgpTest::all_close(sw_flux_dn_ref    , sw_flux_dn_test    , 1.0));
+        REQUIRE(rrtmgpTest::all_close(sw_flux_dn_dir_ref, sw_flux_dn_dir_test, 1.0));
+        REQUIRE(rrtmgpTest::all_close(lw_flux_up_ref    , lw_flux_up_test    , 1.0));
+        REQUIRE(rrtmgpTest::all_close(lw_flux_dn_ref    , lw_flux_dn_test    , 1.0));
 
         // Deallocate YAKL arrays
         p_lay.deallocate();

@@ -28,27 +28,17 @@ contains
     call eam_pio_finalize()
   end subroutine eam_pio_finalize_c2f
 !=====================================================================!
-  subroutine register_outfile_c2f(filename_in) bind(c)
-    use scream_scorpio_interface, only : register_outfile
-    type(c_ptr), intent(in) :: filename_in
+  subroutine register_file_c2f(filename_in,purpose) bind(c)
+    use scream_scorpio_interface, only : register_file
+    type(c_ptr), intent(in)         :: filename_in
+    integer(kind=c_int), intent(in) :: purpose
 
-    character(len=256)       :: filename
-
-    call convert_c_string(filename_in,filename)
-    call register_outfile(trim(filename))
-
-  end subroutine register_outfile_c2f
-!=====================================================================!
-  subroutine register_infile_c2f(filename_in) bind(c)
-    use scream_scorpio_interface, only : register_infile
-    type(c_ptr), intent(in) :: filename_in
-
-    character(len=256)       :: filename
+    character(len=256)      :: filename
 
     call convert_c_string(filename_in,filename)
-    call register_infile(trim(filename))
+    call register_file(trim(filename),purpose)
 
-  end subroutine register_infile_c2f
+  end subroutine register_file_c2f
 !=====================================================================!
   subroutine sync_outfile_c2f(filename_in) bind(c)
     use scream_scorpio_interface, only : eam_sync_piofile
@@ -266,11 +256,12 @@ contains
 
   end subroutine grid_write_data_array_c2f_real
 !=====================================================================!
-  subroutine grid_read_data_array_c2f_real(filename_in,varname_in,var_data_ptr) bind(c)
+  subroutine grid_read_data_array_c2f(filename_in,varname_in,time_index,var_data_ptr) bind(c)
     use scream_scorpio_interface, only: grid_read_data_array
 
     type(c_ptr), intent(in) :: filename_in
     type(c_ptr), intent(in) :: varname_in
+    integer(kind=c_int), value, intent(in) :: time_index
     type(c_ptr), intent(in) :: var_data_ptr
 
     character(len=256) :: filename
@@ -278,8 +269,8 @@ contains
 
     call convert_c_string(filename_in,filename)
     call convert_c_string(varname_in,varname)
-    call grid_read_data_array(filename,varname,var_data_ptr)
+    call grid_read_data_array(filename,varname,var_data_ptr,time_index)
 
-  end subroutine grid_read_data_array_c2f_real
+  end subroutine grid_read_data_array_c2f
 !=====================================================================!
 end module scream_scorpio_interface_iso_c2f

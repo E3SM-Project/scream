@@ -17,6 +17,8 @@ else()
     field/field_header.cpp
     field/field_layout.cpp
     field/field_tracking.cpp
+    grid/abstract_grid.cpp
+    grid/mesh_free_grids_manager.cpp
     grid/se_grid.cpp
     grid/point_grid.cpp
     grid/user_provided_grids_manager.cpp

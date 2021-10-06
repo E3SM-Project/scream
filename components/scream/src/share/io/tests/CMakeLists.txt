@@ -1,16 +1,12 @@
 #include(ScreamUtils)
 include(ScreamUtils)
 
-set (ARRAY_SCORPIO_SRCS
-  io.cpp
-  restart.cpp
-)
-
-## Test atmosphere processes
+## Test output
 CreateUnitTest(io_test "io.cpp" scream_io LABELS "io"
   MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
 )
 
+## Test restart
 CreateUnitTest(restart_test "restart.cpp" scream_io LABELS "io"
   MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
 )
@@ -39,6 +35,7 @@ foreach (MPI_RANKS RANGE 1 ${SCREAM_TEST_MAX_RANKS})
   configure_file(io_test_average.yaml io_test_average_np${MPI_RANKS}.yaml)
   configure_file(io_test_max.yaml io_test_max_np${MPI_RANKS}.yaml)
   configure_file(io_test_min.yaml io_test_min_np${MPI_RANKS}.yaml)
+  configure_file(io_test_multisnap.yaml io_test_multisnap_np${MPI_RANKS}.yaml)
   configure_file(io_test_restart.yaml io_test_restart_np${MPI_RANKS}.yaml)
   configure_file(io_test_restart_check.yaml io_test_restart_check_np${MPI_RANKS}.yaml)
 

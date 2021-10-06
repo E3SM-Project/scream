@@ -11,7 +11,7 @@
 #include "share/io/scorpio_input.hpp"
 #include "share/io/scream_scorpio_interface.hpp"
 
-#include "share/grid/user_provided_grids_manager.hpp"
+#include "share/grid/mesh_free_grids_manager.hpp"
 #include "share/grid/point_grid.hpp"
 
 #include "share/field/field_identifier.hpp"
@@ -32,8 +32,8 @@ get_test_fm(std::shared_ptr<const AbstractGrid> grid);
 std::shared_ptr<FieldManager<Real>>
 backup_fm(const std::shared_ptr<FieldManager<Real>>& src);
 
-std::shared_ptr<const AbstractGrid>
-get_test_grid(const ekat::Comm& io_comm, const Int num_gcols, const Int num_levs);
+std::shared_ptr<GridsManager>
+get_test_gm(const ekat::Comm& io_comm, const Int num_gcols, const Int num_levs);
 
 ekat::ParameterList get_om_params(const ekat::Comm& comm, const std::string& grid, const bool check);
 
@@ -59,7 +59,8 @@ TEST_CASE("restart","io")
   Int num_levs = 3;
 
   // First set up a field manager and grids manager to interact with the output functions
-  auto grid = get_test_grid(io_comm,num_gcols,num_levs);
+  auto gm = get_test_gm(io_comm,num_gcols,num_levs);
+  auto grid = gm->get_grid("Point Grid");
   auto field_manager = get_test_fm(grid);
   randomize_fields(*field_manager,seed);
 
@@ -70,7 +71,7 @@ TEST_CASE("restart","io")
   // Create an Output manager for testing output
   OutputManager output_manager;
   auto output_params = get_om_params(io_comm,grid->name(),false);
-  output_manager.setup(io_comm,output_params,field_manager,false);
+  output_manager.setup(io_comm,output_params,field_manager,gm,false);
 
   // Construct a timestamp
   util::TimeStamp time (0,0,0,0);
@@ -169,7 +170,7 @@ TEST_CASE("restart","io")
   util::TimeStamp time_res (0,0,0,15);
   auto output_params_res = get_om_params(io_comm,grid->name(),true);
   OutputManager output_manager_res;
-  output_manager_res.setup(io_comm,output_params_res,fm_res,true);
+  output_manager_res.setup(io_comm,output_params_res,fm_res,gm,true);
 
   // Run 5 more steps from the restart, to get to the next output step.
   // We should be generating the same output file as before.
@@ -270,10 +271,14 @@ void randomize_fields (const FieldManager<Real>& fm, const int seed)
 }
 
 /*===================================================================================================================*/
-std::shared_ptr<const AbstractGrid>
-get_test_grid(const ekat::Comm& io_comm, const Int num_gcols, const Int num_levs)
+std::shared_ptr<GridsManager> get_test_gm(const ekat::Comm& io_comm, const Int num_gcols, const Int num_levs)
 {
-  return create_point_grid("Physics",num_gcols,num_levs,io_comm);
+  ekat::ParameterList gm_params;
+  gm_params.sublist("Mesh Free").set("Number of Global Columns",num_gcols);
+  gm_params.sublist("Mesh Free").set("Number of Vertical Levels",num_levs);
+  auto gm = create_mesh_free_grids_manager(io_comm,gm_params);
+  gm->build_grids(std::set<std::string>{"Point Grid"});
+  return gm;
 }
 /*===================================================================================================================*/
 ekat::ParameterList get_om_params(const ekat::Comm& comm, const std::string& grid, const bool check)

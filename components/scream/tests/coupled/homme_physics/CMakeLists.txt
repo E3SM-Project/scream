@@ -9,9 +9,9 @@ CreateDynamicsLib("theta-l_kokkos"  4   72   35)
 set (NEED_LIBS cld_fraction shoc p3 scream_rrtmgp rrtmgp ${NETCDF_C} ${dynLibName} scream_control scream_share physics_share yakl)
 
 # Add source files
-set (SRC shoc_cld_p3_rrtmgp.cpp ${SCREAM_BASE_DIR}/src/physics/rrtmgp/tests/rrtmgp_test_utils.cpp)
 if (NOT SCREAM_AUTOTESTER) # TODO: This test should be reinstated once the homme+physics test is fixed.
-  CreateUnitTest(homme_shoc_cld_p3_rrtmgp "homme_shoc_cld_p3_rrtmgp.cpp" "${NEED_LIBS}" EXE_ARGS "< namelist.nl" LABELS "dynamics;driver;shoc;cld;p3;rrtmgp;physics")
+  CreateUnitTest(homme_shoc_cld_p3_rrtmgp "homme_shoc_cld_p3_rrtmgp.cpp" "${NEED_LIBS}"
+                 LABELS "dynamics;driver;shoc;cld;p3;rrtmgp;physics")
 endif()
 
 # Copy yaml input file to run directory
@@ -24,7 +24,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/input.yaml
 set (HOMME_TEST_NE 2)
 set (HOMME_TEST_LIM 9)
 set (HOMME_TEST_RSPLIT 3)
-set (HOMME_TEST_NMAX 24)
+SetVarDependingOnTestProfile(HOMME_TEST_NMAX 3 24 96)
 set (HOMME_TEST_TIME_STEP 300)
 SET (HOMME_THETA_FORM 1)
 SET (HOMME_TTYPE 5)
@@ -52,8 +52,8 @@ configure_file(${SCREAM_SOURCE_DIR}/src/dynamics/homme/tests/theta-nmax.nl
                ${CMAKE_CURRENT_BINARY_DIR}/namelist.nl)
 
 # Copy initial conditions files
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/homme_shoc_cld_p3_rad_init_ne2np4.nc
-               ${CMAKE_CURRENT_BINARY_DIR}/homme_shoc_cld_p3_rad_init_ne2np4.nc COPYONLY)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/homme_shoc_cld_p3_rrtmgp_init_ne2np4.nc
+               ${CMAKE_CURRENT_BINARY_DIR}/homme_shoc_cld_p3_rrtmgp_init_ne2np4.nc COPYONLY)
 
 # Create vcoord directory
 file (MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/vcoord)
