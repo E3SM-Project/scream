@@ -6,6 +6,7 @@
 #include "physics/p3/p3_functions_f90.hpp"
 #include "share/util/scream_setup_random_test.hpp"
 #include "share/scream_types.hpp"
+#include "physics/share/physics_functions.hpp"
 
 #include "p3_unit_tests_common.hpp"
 
@@ -16,6 +17,78 @@ namespace unit_test {
 template <typename D>
 struct UnitWrap::UnitTest<D>::TestPreventLiqSupersaturation {
 
+  static void run_property()
+  //Conceptual tests for prevent_liq_supersaturation. Note many conceptual tests make sense to run on
+  //random data, so are included in run_bfb rather than here.
+  {
+
+    using physics = scream::physics::Functions<Scalar, Device>;
+
+    constexpr Scalar inv_cp       = C::INV_CP;
+    constexpr Scalar rv           = C::RV;
+    
+    //Start with reasonable values
+    //============================
+    Spack pres(100000);
+    Spack t_atm(270);
+    Spack qv(1.7e-3);
+    Spack latent_heat_vapor(2.5e6);
+    Spack latent_heat_sublim(2.838e6);
+    Scalar dt=60;
+    Spack qidep(0); 
+    Spack qinuc(0); //dep and nuc only used together, so only fiddle with one
+    //Note that inout variables are initialized for each test to avoid using unintended vals
+    auto context= qinuc == 0; //want a pack-sized array which is all true.
+    
+    //Test that large initial endstep supersat is removed.
+    //=============================
+    //First, make copies of output variables and make them big
+    Spack qi2qv_sublim_tend_tmp(1e-5);
+    Spack qr2qv_evap_tend_tmp(1e-5);
+    
+    //Next, confirm that initial data is subsaturated at beginning of step and supersaturated at end
+    //(using code copied from prevent_liq_supersaturation_impl.hpp)
+    Spack qv_sinks=qidep + qinuc;
+    Spack qv_sources=qi2qv_sublim_tend_tmp + qr2qv_evap_tend_tmp;
+    Spack qv_endstep=qv - qv_sinks*dt + qv_sources*dt;
+    Spack T_endstep=t_atm + ( (qv_sinks-qi2qv_sublim_tend_tmp)*latent_heat_sublim*inv_cp
+			- qr2qv_evap_tend_tmp*latent_heat_vapor*inv_cp )*dt;
+    Spack qsl = physics::qv_sat(T_endstep,pres,false,context); //"false" means NOT sat w/ respect to ice
+    //just require index 0 since all entries are identical
+    
+    REQUIRE(        qv[0]<qsl[0]); //not a test of prevent_liq_supersat, just a sanity check that
+    REQUIRE(qv_endstep[0]>qsl[0]); // inputs to this test are testing what we want. 
+
+    //Now update sublim and evap tends using prevent_liq_supersaturation
+    Functions::prevent_liq_supersaturation(pres, t_atm, qv, latent_heat_vapor, latent_heat_sublim,
+					   dt, qidep, qinuc, qi2qv_sublim_tend_tmp, qr2qv_evap_tend_tmp);
+
+    //Finally, recompute liquid saturation
+    //(using code copied from prevent_liq_supersaturation_impl.hpp)
+    qv_sinks=qidep + qinuc;
+    qv_sources=qi2qv_sublim_tend_tmp + qr2qv_evap_tend_tmp;
+    qv_endstep=qv - qv_sinks*dt + qv_sources*dt;
+    T_endstep=t_atm + ( (qv_sinks-qi2qv_sublim_tend_tmp)*latent_heat_sublim*inv_cp
+			- qr2qv_evap_tend_tmp*latent_heat_vapor*inv_cp )*dt;
+    qsl = physics::qv_sat(T_endstep,pres,false,context); //"false" means NOT sat w/ respect to ice
+    //just require index 0 since all entries are identical
+
+    REQUIRE(qv_endstep[0]<=qsl[0]);
+
+    //If qv is supersaturated by itself, evap and sublim should be 0:
+    //============================
+    Spack qv_tmp(1e-2);
+    Spack qi2qv_sublim_tend_tmp2(1e-4);
+    Spack qr2qv_evap_tend_tmp2(1e-4);
+
+    Functions::prevent_liq_supersaturation(pres, t_atm, qv_tmp, latent_heat_vapor, latent_heat_sublim,
+					   dt, qidep, qinuc, qi2qv_sublim_tend_tmp2, qr2qv_evap_tend_tmp2);
+    //just require index 0 since all entries are identical.
+    REQUIRE( qi2qv_sublim_tend_tmp2[0] ==0 );
+    REQUIRE( qr2qv_evap_tend_tmp2[0] == 0 );
+   
+  } //end run_property
+    
   static void run_bfb()
   {
 
@@ -28,7 +101,6 @@ struct UnitWrap::UnitTest<D>::TestPreventLiqSupersaturation {
     for (auto& d : f90_data) {
       d.randomize(engine);
       d.dt = f90_data[0].dt; // Hold this fixed, this is not packed data
-
     }
     
     // Create copies of data for use by cxx and sync it to device. Needs to happen before 
@@ -82,8 +154,8 @@ struct UnitWrap::UnitTest<D>::TestPreventLiqSupersaturation {
 
     Kokkos::deep_copy(cxx_host, cxx_device);
 
-    // Verify BFB results
     for (Int i = 0; i < max_pack_size; ++i) {
+      // Verify BFB results
       PreventLiqSupersaturationData& d_f90 = f90_data[i];
       PreventLiqSupersaturationData& d_cxx = cxx_host[i];
       REQUIRE(d_f90.qi2qv_sublim_tend == d_cxx.qi2qv_sublim_tend);
@@ -108,10 +180,15 @@ struct UnitWrap::UnitTest<D>::TestPreventLiqSupersaturation {
 
 namespace {
 
+TEST_CASE("prevent_liq_supersaturation_property", "[p3]")
+{
+  using TestStruct = scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestPreventLiqSupersaturation;
+  TestStruct::run_property();
+}
+
 TEST_CASE("prevent_liq_supersaturation_bfb", "[p3]")
 {
   using TestStruct = scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestPreventLiqSupersaturation;
-
   TestStruct::run_bfb();
 }
 
