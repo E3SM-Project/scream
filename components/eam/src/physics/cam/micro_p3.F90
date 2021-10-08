@@ -2075,7 +2075,7 @@ contains
 
    if (qi_incld .ge.qsmall .and. qc_incld .ge.qsmall) then
       if  (t_atm .le.T_zerodegc) then
-         qccol = rhofaci*table_val_qc2qi_collect*qc_incld*eci*rho*ni_incld
+         qccol = rhofaci*table_val_qc2qi_collect*qc_incld*eci*rho*ni_incld         
          nc_collect_tend = rhofaci*table_val_qc2qi_collect*nc_incld*eci*rho*ni_incld
       else if (t_atm .gt. T_zerodegc) then
          ! for T > 273.15, assume cloud water is collected and shed as rain drops
@@ -2128,6 +2128,7 @@ contains
       if (t_atm.le.T_zerodegc) then
          ! note: table_val_qr2qi_collect and logn0r are already calculated as log_10
          qrcol = bfb_pow(10._rtype,(table_val_qr2qi_collect+logn0r))*rho*rhofaci*eri*ni_incld
+         
          nr_collect_tend = bfb_pow(10._rtype,(table_val_nr_collect+logn0r))*rho*rhofaci*eri*ni_incld
       else if (t_atm .gt. T_zerodegc) then
          ! rain number sink due to collection
@@ -2295,13 +2296,13 @@ qv,qc_incld,qi_incld,ni_incld,qr_incld,    &
          if ((qccol+qrcol).ge.1.e-10_rtype) then
             dum1  = 1._rtype/(qccol+qrcol)
             qc2qr_ice_shed_tend = qc2qr_ice_shed_tend + dum*qccol*dum1
-            qccol = qccol - dum*qccol*dum1
-            qrcol = qrcol - dum*qrcol*dum1
+            qccol = max(0._rtype,qccol - dum*qccol*dum1) !PMC: collection shouldn't work backwards
+            qrcol = max(0._rtype,qrcol - dum*qrcol*dum1) !PMC: collection shouldn't work backwards
+           
          endif
          ! densify due to wet growth
          log_wetgrowth = .true.
       endif
-
 
    end if
 
@@ -2895,7 +2896,7 @@ subroutine prevent_liq_supersaturation(pres,t_atm,qv,latent_heat_vapor,latent_he
   real(rtype) :: qv_sinks, qv_sources, qv_endstep, T_endstep, qsl, A, frac
 
   qv_sources = qi2qv_sublim_tend + qr2qv_evap_tend
-  if (qv_sources == 0._rtype) then
+  if (qv_sources == qsmall) then
      frac = 0._rtype
   else
      qv_sinks   = qidep + qinuc
@@ -2935,11 +2936,12 @@ subroutine prevent_liq_supersaturation(pres,t_atm,qv,latent_heat_vapor,latent_he
      !The only way frac>1 is if qv-qv_sinks*dt+qv_sources*dt < qsl, in which case we shouldn't 
      !limit anyways so set frac to 1:
      frac = min(1._rtype,frac)
+
+     qi2qv_sublim_tend = frac*qi2qv_sublim_tend
+     qr2qv_evap_tend = frac*qr2qv_evap_tend
      
   end if
 
-  qi2qv_sublim_tend = frac*qi2qv_sublim_tend
-  qr2qv_evap_tend = frac*qr2qv_evap_tend
 
   return
 end subroutine prevent_liq_supersaturation
@@ -3067,7 +3069,7 @@ subroutine rain_water_conservation(qr,qc2qr_autoconv_tend,qc2qr_accret_tend,qi2q
       qr2qv_evap_tend  = qr2qv_evap_tend*ratio
       qrcol  = qrcol*ratio
       qr2qi_immers_freeze_tend = qr2qi_immers_freeze_tend*ratio
-   endif
+   end if
 
 end subroutine rain_water_conservation
 
@@ -3277,7 +3279,6 @@ qv2qi_depos_tend,qi2qv_sublim_tend,ni_sublim_tend,qc2qi_berg_tend)
 
    real(rtype) :: qi_tend
 
-
    !INITIALIZE EVERYTHING TO 0.
    qc2qi_berg_tend = 0._rtype
    qv2qi_depos_tend  = 0._rtype
@@ -3291,7 +3292,7 @@ qv2qi_depos_tend,qi2qv_sublim_tend,ni_sublim_tend,qc2qi_berg_tend)
       !WITHIN THE GIVEN TIMESTEP. APPLYING MIN HERE IS EQUIVALENT TO LIMITING THE
       !TENDENCY LATER TO ENSURE END-OF-STEP QV ISN'T INAPPROPRIATELY SUPER OR SUBSATURATED.
       qi_tend = min(epsi/abi,inv_dt) * (qv - qv_sat_i)
-
+      
       !SUBLIMATION:
       if (qi_tend<0._rtype) then
          qi2qv_sublim_tend = -qi_tend

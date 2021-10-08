@@ -22,11 +22,12 @@ void Functions<S,D>::prevent_liq_supersaturation(const Spack& pres, const Spack&
   
   constexpr Scalar inv_cp       = C::INV_CP;
   constexpr Scalar rv           = C::RV;
+  constexpr Scalar qsmall       = C::QSMALL;
 
   Spack qv_sinks, qv_sources, qv_endstep, T_endstep, A, frac;
 
   qv_sources.set(context, qi2qv_sublim_tend + qr2qv_evap_tend);
-  const auto has_sources = (qv_sources>0 && context); //if nothing to rescale, no point in calculations.
+  const auto has_sources = (qv_sources>qsmall && context); //if nothing to rescale, no point in calculations.
 
   qv_sinks.set(has_sources, qv2qi_vapdep_tend + qinuc);
   
@@ -59,11 +60,11 @@ void Functions<S,D>::prevent_liq_supersaturation(const Spack& pres, const Spack&
 
   //The only way frac<0 is if qv-qv_sinks*dt is already greater than qsl. In this case
   //the best we can do is zero out qv_sources.
-  frac = max(0,frac);
+  frac.set(has_sources, max(0,frac));
 
   //The only way frac>1 is if qv-qv_sinks*dt+qv_sources*dt < qsl, in which case we shouldn't 
   //limit anyways so set frac to 1:
-  frac = min(1,frac);
+  frac.set(has_sources, min(1,frac));
   
   qi2qv_sublim_tend.set(has_sources, frac*qi2qv_sublim_tend );
   qr2qv_evap_tend.set(has_sources, frac*qr2qv_evap_tend);
