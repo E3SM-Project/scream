@@ -40,6 +40,21 @@ include(EkatMpiUtils)
 DisableMpiCxxBindings()
 
 if (Kokkos_ENABLE_CUDA)
+  if (Kokkos_ENABLE_CUDA_RELOCATABLE_DEVICE_CODE)
+    if (Kokkos_ENABLE_DEBUG_BOUNDS_CHECK)
+      string (CONCAT msg
+          "Kokkos_ENALBE_CUDA_RELOCATABLE_DEVICE_CODE=ON, and Kokkos_ENALBE_DEBUG_BOUNDS_CHECK=ON.\n"
+          "   -> Disabling bounds checks, to prevent internal compiler errors.")
+      message(WARNING "${msg}")
+      set (Kokkos_ENABLE_DEBUG_BOUNDS_CHECK OFF CACHE BOOL "" FORCE)
+    else()
+      string (CONCAT msg
+          "Kokkos_ENALBE_CUDA_RELOCATABLE_DEVICE_CODE=ON.\n"
+          "   -> Disabling bounds checks, to prevent internal compiler errors.")
+      message(STATUS "${msg}")
+      set (Kokkos_ENABLE_DEBUG_BOUNDS_CHECK OFF CACHE BOOL "" FORCE)
+    endif()
+  endif()
   include(EkatBuildKokkos)
   # Note: we need Kokkos_SOURCE_DIR to be defined *before* calling EkatSetNvccWrapper.
   EkatSetKokkosSourceDir()
@@ -316,6 +331,12 @@ if ($ENV{SCREAM_FORCE_RUN_DIFF_BFB_UNIT})
 endif()
 if ($ENV{SCREAM_FORCE_RUN_KOKKOS_OOB})
   add_definitions(-DSCREAM_FORCE_RUN_KOKKOS_OOB)
+endif()
+if ($ENV{SCREAM_FORCE_RUN_VALG_ERR})
+  add_definitions(-DSCREAM_FORCE_RUN_VALG_ERR)
+  if (NOT EKAT_ENABLE_VALGRIND)
+    message(FATAL_ERROR "Makes no sense to turn on valgrind error test without valgrind enabled")
+  endif()
 endif()
 
 set(DEFAULT_SCREAM_DYNAMICS_DYCORE "NONE")
