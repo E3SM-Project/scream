@@ -174,18 +174,18 @@ def buildnml(case, caseroot, compname):
 
     # Create homme namelists from scream inputs
     homme_nl_path = os.path.join(rundir, scream_input["Atmosphere Driver"]["Grids Manager"]["Dynamics Driven"]["Dynamics Namelist File Name"])
-    with open(homme_nl_path, "w") as fd:
-        for outer, inner in scream_input["HOMME"].items():
-            fd.write("&{}\n".format(outer))
-            for k, v in inner.items():
-                if type(v) is str:
-                    fd.write("{} = '{}'\n".format(k, v))
-                elif type(v) is bool:
-                    fd.write("{} = {}\n".format(k, str(v).lower()))
-                else:
-                    fd.write("{} = {}\n".format(k, v))
+    #with open(homme_nl_path, "w") as fd:
+    #    for outer, inner in scream_input["HOMME"].items():
+    #        fd.write("&{}\n".format(outer))
+    #        for k, v in inner.items():
+    #            if type(v) is str:
+    #                fd.write("{} = '{}'\n".format(k, v))
+    #            elif type(v) is bool:
+    #                fd.write("{} = {}\n".format(k, str(v).lower()))
+    #            else:
+    #                fd.write("{} = {}\n".format(k, v))
 
-            fd.write("/\n")
+    #        fd.write("/\n")
 
 ###############################################################################
 def _main_func():

@@ -21,6 +21,7 @@ module homme_params_mod
   use dimensions_mod, only: &
     ne,                     &
     np,                     &
+      nlev,               &
     npart,                  &
     qsize,                  &   ! number of SE tracers
     qsize_d                     ! Compile time upper bound for qsize
