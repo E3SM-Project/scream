@@ -2896,7 +2896,7 @@ subroutine prevent_liq_supersaturation(pres,t_atm,qv,latent_heat_vapor,latent_he
   real(rtype) :: qv_sinks, qv_sources, qv_endstep, T_endstep, qsl, A, frac
 
   qv_sources = qi2qv_sublim_tend + qr2qv_evap_tend
-  if (qv_sources == qsmall) then
+  if (qv_sources < qsmall) then
      frac = 0._rtype
   else
      qv_sinks   = qidep + qinuc
