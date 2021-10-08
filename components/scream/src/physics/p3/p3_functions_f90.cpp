@@ -1363,36 +1363,6 @@ void update_prognostic_liquid_f(Real qc2qr_accret_tend_, Real nc_accret_tend_, R
   *nr_    = t_h(5);
 }
 
-void ice_deposition_sublimation_f(Real qi_incld, Real ni_incld, Real t_atm, Real qv_sat_l, Real qv_sat_i, Real epsi, Real abi, Real qv, Real inv_dt, Real* qidep, Real* qi2qv_sublim_tend, Real* ni_sublim_tend, Real* qiberg)
-{
-#if 0
-  using PF = Functions<Real, DefaultDevice>;
-
-  using Spack   = typename PF::Spack;
-  using view_1d = typename PF::view_1d<Real>;
-
-  view_1d t_d("t_d", 4);
-  const auto t_h = Kokkos::create_mirror_view(t_d);
-
-  typename P3F::Scalar inv_dt_(inv_dt);
-  
-  Kokkos::parallel_for(1, KOKKOS_LAMBDA(const Int&) {
-    Spack abi_(abi), epsi_(epsi), ni_incld_(ni_incld), qi_incld_(qi_incld), qv_(qv), qv_sat_i_(qv_sat_i), qv_sat_l_(qv_sat_l), t_atm_(t_atm),  ni_sublim_tend_(), qi2qv_sublim_tend_(), qiberg_(), qidep_();
-    PF::ice_deposition_sublimation(qi_incld_, ni_incld_, t_atm_, qv_sat_l_, qv_sat_i_, epsi_, abi_, qv_, inv_dt_, qidep_, qi2qv_sublim_tend_, ni_sublim_tend_, qiberg_);
-    t_d(0) = ni_sublim_tend_[0];
-    t_d(1) = qi2qv_sublim_tend_[0];
-    t_d(2) = qiberg_[0];
-    t_d(3) = qidep_[0];
-  });
-  Kokkos::deep_copy(t_h, t_d);
-  *ni_sublim_tend = t_h(0);
-  *qi2qv_sublim_tend = t_h(1);
-  *qiberg = t_h(2);
-  *qidep = t_h(3);
-#endif
-
-}
-
 template <typename T>
 std::vector<T*> ptr_to_arr(T** data, int n)
 {
@@ -3402,29 +3372,5 @@ void ni_conservation_f(Real ni, Real ni_nucleat_tend, Real nr2ni_immers_freeze_t
   *ni_sublim_tend = t_h(2);
 }
 
-void prevent_liq_supersaturation_f(Real pres, Real t_atm, Real qv, Real latent_heat_vapor, Real latent_heat_sublim, Real dt, Real qidep, Real qinuc, Real* qi2qv_sublim_tend, Real* qr2qv_evap_tend)
-{
-#if 0
-  using PF = Functions<Real, DefaultDevice>;
-
-  using Spack   = typename PF::Spack;
-  using view_1d = typename PF::view_1d<Real>;
-
-  view_1d t_d("t_d", 2);
-  const auto t_h = Kokkos::create_mirror_view(t_d);
-
-  Real local_qi2qv_sublim_tend(*qi2qv_sublim_tend), local_qr2qv_evap_tend(*qr2qv_evap_tend);
-  Kokkos::parallel_for(1, KOKKOS_LAMBDA(const Int&) {
-    Spack dt_(dt), latent_heat_sublim_(latent_heat_sublim), latent_heat_vapor_(latent_heat_vapor), pres_(pres), qi2qv_sublim_tend_(local_qi2qv_sublim_tend), qidep_(qidep), qinuc_(qinuc), qr2qv_evap_tend_(local_qr2qv_evap_tend), qv_(qv), t_atm_(t_atm);
-    PF::prevent_liq_supersaturation(pres_, t_atm_, qv_, latent_heat_vapor_, latent_heat_sublim_, dt_, qidep_, qinuc_, qi2qv_sublim_tend_, qr2qv_evap_tend_);
-    t_d(0) = qi2qv_sublim_tend_[0];
-    t_d(1) = qr2qv_evap_tend_[0];
-  });
-  Kokkos::deep_copy(t_h, t_d);
-  *qi2qv_sublim_tend = t_h(0);
-  *qr2qv_evap_tend = t_h(1);
-#endif
-
-}
 } // namespace p3
 } // namespace scream
