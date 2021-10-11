@@ -154,20 +154,22 @@ struct UnitWrap::UnitTest<D>::TestPreventLiqSupersaturation {
 
     Kokkos::deep_copy(cxx_host, cxx_device);
 
-    for (Int i = 0; i < max_pack_size; ++i) {
-      // Verify BFB results
-      PreventLiqSupersaturationData& d_f90 = f90_data[i];
-      PreventLiqSupersaturationData& d_cxx = cxx_host[i];
-      REQUIRE(d_f90.qi2qv_sublim_tend == d_cxx.qi2qv_sublim_tend);
-      REQUIRE(d_f90.qr2qv_evap_tend == d_cxx.qr2qv_evap_tend);
+    if (SCREAM_BFB_TESTING) {
+      for (Int i = 0; i < max_pack_size; ++i) {
+        // Verify BFB results
+        PreventLiqSupersaturationData& d_f90 = f90_data[i];
+        PreventLiqSupersaturationData& d_cxx = cxx_host[i];
+        REQUIRE(d_f90.qi2qv_sublim_tend == d_cxx.qi2qv_sublim_tend);
+        REQUIRE(d_f90.qr2qv_evap_tend == d_cxx.qr2qv_evap_tend);
 
-      //Verify tendencies are always >=0:
-      REQUIRE(d_cxx.qi2qv_sublim_tend>=0);
-      REQUIRE(d_cxx.qr2qv_evap_tend>=0);
+        //Verify tendencies are always >=0:
+        REQUIRE(d_cxx.qi2qv_sublim_tend>=0);
+        REQUIRE(d_cxx.qr2qv_evap_tend>=0);
 
-      //Verify function call always makes tendencies smaller
-      REQUIRE(d_cxx.qi2qv_sublim_tend<=qi2qv_sublim_tend_init[i]);
-      REQUIRE(d_cxx.qr2qv_evap_tend<=qr2qv_evap_tend_init[i]);
+        //Verify function call always makes tendencies smaller
+        REQUIRE(d_cxx.qi2qv_sublim_tend<=qi2qv_sublim_tend_init[i]);
+        REQUIRE(d_cxx.qr2qv_evap_tend<=qr2qv_evap_tend_init[i]);
+      }
     }
   } // run_bfb
 
