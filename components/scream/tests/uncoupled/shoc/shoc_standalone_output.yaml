@@ -1,6 +1,6 @@
 %YAML 1.1
 ---
-Casename: shoc_standalone_output
+Casename: shoc_standalone_output_np${MPI_RANKS}
 Averaging Type: Instant
 Grid: Point Grid
 Max Snapshots Per File: 1

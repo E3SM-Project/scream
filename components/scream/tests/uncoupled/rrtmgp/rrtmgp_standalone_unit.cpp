@@ -66,7 +66,7 @@ namespace scream {
         rrtmgpTest::read_fluxes(baseline, sw_flux_up_ref, sw_flux_dn_ref, sw_flux_dn_dir_ref, lw_flux_up_ref, lw_flux_dn_ref );
 
         // Load ad parameter list
-        std::string fname = "input.yaml";
+        std::string fname = "input_unit.yaml";
         ekat::ParameterList ad_params("Atmosphere Driver");
         REQUIRE_NOTHROW ( parse_yaml_file(fname,ad_params) );
         // Create a MPI communicator
