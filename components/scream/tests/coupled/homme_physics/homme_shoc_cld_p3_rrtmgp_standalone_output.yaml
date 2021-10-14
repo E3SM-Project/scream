@@ -2,7 +2,7 @@
 ---
 Casename: homme_shoc_cld_p3_rrtmgp_standalone_output_np${MPI_RANKS}
 Averaging Type: Instant
-Grid: Physics
+Grid: Physics GLL
 Max Snapshots Per File: 1
 Fields:
   - T_mid
@@ -38,8 +38,6 @@ Fields:
   - horiz_winds_prev
   - phi_int
   - ps
-  - w_int
-  - w_int_prev
   - omega
   - p_int
   - p_mid
@@ -58,6 +56,7 @@ Fields:
   - sfc_alb_dir_vis
   - sfc_alb_dif_nir
   - sfc_alb_dif_vis
+  - surf_lw_flux_up
  
 Output:
   Frequency: 5
