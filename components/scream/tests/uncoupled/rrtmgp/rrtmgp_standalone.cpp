@@ -6,11 +6,9 @@
 #include "physics/rrtmgp/atmosphere_radiation.hpp"
 #include "YAKL.h"
 
-#include "physics/share/physics_only_grids_manager.hpp"
-
+#include "share/grid/mesh_free_grids_manager.hpp"
 #include "share/atm_process/atmosphere_process.hpp"
 
-#include "ekat/ekat_pack.hpp"
 #include "ekat/ekat_parse_yaml_file.hpp"
 
 namespace scream {
@@ -38,7 +36,7 @@ TEST_CASE("rrtmgp-stand-alone", "") {
   auto& proc_factory = AtmosphereProcessFactory::instance();
   auto& gm_factory = GridsManagerFactory::instance();
   proc_factory.register_product("RRTMGP",&create_atmosphere_process<RRTMGPRadiation>);
-  gm_factory.register_product("Physics Only",&physics::create_physics_only_grids_manager);
+  gm_factory.register_product("Mesh Free",&create_mesh_free_grids_manager);
 
   // Create the grids manager
   auto& gm_params = ad_params.sublist("Grids Manager");
@@ -55,7 +53,7 @@ TEST_CASE("rrtmgp-stand-alone", "") {
     if (i % 10 == 0) {
       printf("  -  %f%%\nRun iteration: %d, ",Real(i)/Real(num_iters)*100,i+1);
     } else {
-      printf("%d, ",i);
+      printf("%d, ",i+1);
     }
     ad.run(dt);
   }
