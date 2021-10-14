@@ -50,7 +50,7 @@ TEST_CASE("spa-stand-alone", "") {
 
   // Run the code
   for (int i=0; i<num_iters; ++i) {
-    printf("Run step %d ...",i);
+    printf("Run step %d ...",i+1);
     ad.run(dt);
     printf(" done\n");
   }

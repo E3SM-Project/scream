@@ -57,4 +57,21 @@ if (NOT ${SCREAM_BASELINES_ONLY})
                    ${CMAKE_CURRENT_BINARY_DIR}/data COPYONLY)
     configure_file(${SCREAM_BASE_DIR}/../eam/src/physics/rrtmgp/external/extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-lw.nc
                    ${CMAKE_CURRENT_BINARY_DIR}/data COPYONLY)
+
+  ## Finally compare all MPI rank output files against the single rank output as a baseline, using CPRNC
+  ## Only if max mpi ranks is >1
+  # This test requires CPRNC
+  include (BuildCprnc)
+  BuildCprnc()
+  SET (BASE_TEST_NAME "rrtmgp")
+  foreach (MPI_RANKS RANGE 2 ${SCREAM_TEST_MAX_RANKS})
+    set (SRC_FILE "${BASE_TEST_NAME}_standalone_output_np${MPI_RANKS}.INSTANT.Steps_x5.0000-01-01.002500.nc")
+    set (TGT_FILE "${BASE_TEST_NAME}_standalone_output_np1.INSTANT.Steps_x5.0000-01-01.002500.nc")
+    configure_file (${SCREAM_BASE_DIR}/cmake/CprncTest.cmake
+                    ${CMAKE_CURRENT_BINARY_DIR}/CprncTest_np${MPI_RANKS}.cmake @ONLY)
+    add_test (NAME "${BASE_TEST_NAME}_np1_vs_np${MPI_RANKS}_bfb"
+              COMMAND cmake -P CprncTest_${MPI_RANKS}.cmake
+              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+  
+  endforeach()
 endif()

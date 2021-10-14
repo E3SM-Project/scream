@@ -43,7 +43,7 @@ TEST_CASE("p3-stand-alone", "") {
     if (i % 10 == 0) {
       printf("  -  %f%%\nRun iteration: %d, ",Real(i)/Real(num_iters)*100,i+1);
     } else {
-      printf("%d, ",i);
+      printf("%d, ",i+1);
     }
     ad.run(dt);
   }

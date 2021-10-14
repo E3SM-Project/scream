@@ -44,7 +44,7 @@ TEST_CASE("shoc-stand-alone", "") {
     if (i % 10 == 0) {
       printf("  -  %5.2f%%\nRun iteration: %d, ",Real(i)/Real(num_iters)*100,i+1);
     } else {
-      printf("%d, ",i);
+      printf("%d, ",i+1);
     }
     ad.run(dt);
   }
