@@ -1,12 +1,13 @@
 INCLUDE (ScreamUtils)
 
+SET (TEST_LABELS "shoc;cld;p3;rrtmgp;physics")
 ## Create test
 # Required libraries
 find_library(NETCDF_C netcdf HINTS ${NetCDF_C_PATHS}/lib)
 SET (NEED_LIBS shoc cld_fraction p3 scream_rrtmgp rrtmgp ${NETCDF_C} scream_control scream_share physics_share yakl)
 
 # Test atmosphere processes.
-CreateUnitTest(shoc_cld_p3_rrtmgp shoc_cld_p3_rrtmgp.cpp "${NEED_LIBS}" LABELS "shoc;cld;p3;rrtmgp;physics"
+CreateUnitTest(shoc_cld_p3_rrtmgp shoc_cld_p3_rrtmgp.cpp "${NEED_LIBS}" LABELS ${TEST_LABELS}
   MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
 )
 target_include_directories(shoc_cld_p3_rrtmgp PUBLIC
@@ -44,8 +45,8 @@ foreach (MPI_RANKS RANGE 1 ${SCREAM_TEST_MAX_RANKS})
   
   CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/input.yaml
                  ${CMAKE_CURRENT_BINARY_DIR}/input_np${MPI_RANKS}.yaml)
-  CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/shoc_cld_p3_rrtmgp_standalone_output.yaml
-                 ${CMAKE_CURRENT_BINARY_DIR}/shoc_cld_p3_rrtmgp_standalone_output_np${MPI_RANKS}.yaml)
+  CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/shoc_cld_p3_rrtmgp_output.yaml
+                 ${CMAKE_CURRENT_BINARY_DIR}/shoc_cld_p3_rrtmgp_output_np${MPI_RANKS}.yaml)
   
 endforeach()
 
@@ -55,16 +56,20 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/shoc_cld_p3_rrtmgp_init_ne2np4.nc
 ## Finally compare all MPI rank output files against the single rank output as a baseline, using CPRNC
 ## Only if max mpi ranks is >1
 # This test requires CPRNC
-include (BuildCprnc)
-BuildCprnc()
-SET (BASE_TEST_NAME "shoc_cld_p3_rrtmgp")
-foreach (MPI_RANKS RANGE 2 ${SCREAM_TEST_MAX_RANKS})
-  set (SRC_FILE "${BASE_TEST_NAME}_standalone_output_np${MPI_RANKS}.INSTANT.Steps_x5.0000-01-01.002500.nc")
-  set (TGT_FILE "${BASE_TEST_NAME}_standalone_output_np1.INSTANT.Steps_x5.0000-01-01.002500.nc")
-  configure_file (${SCREAM_BASE_DIR}/cmake/CprncTest.cmake
-                  ${CMAKE_CURRENT_BINARY_DIR}/CprncTest_np${MPI_RANKS}.cmake @ONLY)
-  add_test (NAME "${BASE_TEST_NAME}_np1_vs_np${MPI_RANKS}_bfb"
-            COMMAND cmake -P CprncTest_${MPI_RANKS}.cmake
-            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
-endforeach()
+if (SCREAM_TEST_MAX_RANKS GREATER 1)
+  include (BuildCprnc)
+  BuildCprnc()
+  SET (BASE_TEST_NAME "shoc_cld_p3_rrtmgp")
+  foreach (MPI_RANKS RANGE 2 ${SCREAM_TEST_MAX_RANKS})
+    set (SRC_FILE "${BASE_TEST_NAME}_output_np${MPI_RANKS}.INSTANT.Steps_x5.0000-01-01.002500.nc")
+    set (TGT_FILE "${BASE_TEST_NAME}_output_np1.INSTANT.Steps_x5.0000-01-01.002500.nc")
+    configure_file (${SCREAM_BASE_DIR}/cmake/CprncTest.cmake
+                    ${CMAKE_CURRENT_BINARY_DIR}/CprncTest_np${MPI_RANKS}.cmake @ONLY)
+    set(TEST_NAME "${BASE_TEST_NAME}_np1_vs_np${MPI_RANKS}_bfb")
+    add_test (NAME ${TEST_NAME}
+              COMMAND cmake -P CprncTest_${MPI_RANKS}.cmake
+              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    set_tests_properties(${TEST_NAME} PROPERTIES LABELS "${TEST_LABELS}"
+              RESOURCE_LOCK ${BASE_TEST_NAME})
+  endforeach()
+endif()

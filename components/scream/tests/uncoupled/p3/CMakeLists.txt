@@ -1,9 +1,10 @@
 INCLUDE (ScreamUtils)
 
 SET (NEED_LIBS p3 scream_control scream_share)
+SET (TEST_LABELS "p3;physics")
 
 # Test atmosphere processes
-CreateUnitTest(p3_standalone "p3_standalone.cpp" "${NEED_LIBS}" LABELS "p3;physics"
+CreateUnitTest(p3_standalone "p3_standalone.cpp" "${NEED_LIBS}" LABELS ${TEST_LABELS}
   MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
 )
 
@@ -29,16 +30,20 @@ CONFIGURE_FILE(p3_init_ne2np4.nc p3_init_ne2np4.nc COPYONLY)
 ## Finally compare all MPI rank output files against the single rank output as a baseline, using CPRNC
 ## Only if max mpi ranks is >1
 # This test requires CPRNC
-include (BuildCprnc)
-BuildCprnc()
-SET (BASE_TEST_NAME "p3")
-foreach (MPI_RANKS RANGE 2 ${SCREAM_TEST_MAX_RANKS})
-  set (SRC_FILE "${BASE_TEST_NAME}_standalone_output_np${MPI_RANKS}.INSTANT.Steps_x5.0000-01-01.002500.nc")
-  set (TGT_FILE "${BASE_TEST_NAME}_standalone_output_np1.INSTANT.Steps_x5.0000-01-01.002500.nc")
-  configure_file (${SCREAM_BASE_DIR}/cmake/CprncTest.cmake
-                  ${CMAKE_CURRENT_BINARY_DIR}/CprncTest_np${MPI_RANKS}.cmake @ONLY)
-  add_test (NAME "${BASE_TEST_NAME}_np1_vs_np${MPI_RANKS}_bfb"
-            COMMAND cmake -P CprncTest_${MPI_RANKS}.cmake
-            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
-endforeach()
+if (SCREAM_TEST_MAX_RANKS GREATER 1)
+  include (BuildCprnc)
+  BuildCprnc()
+  SET (BASE_TEST_NAME "p3")
+  foreach (MPI_RANKS RANGE 2 ${SCREAM_TEST_MAX_RANKS})
+    set (SRC_FILE "${BASE_TEST_NAME}_standalone_output_np${MPI_RANKS}.INSTANT.Steps_x5.0000-01-01.002500.nc")
+    set (TGT_FILE "${BASE_TEST_NAME}_standalone_output_np1.INSTANT.Steps_x5.0000-01-01.002500.nc")
+    configure_file (${SCREAM_BASE_DIR}/cmake/CprncTest.cmake
+                    ${CMAKE_CURRENT_BINARY_DIR}/CprncTest_np${MPI_RANKS}.cmake @ONLY)
+    set(TEST_NAME "${BASE_TEST_NAME}_np1_vs_np${MPI_RANKS}_bfb")
+    add_test (NAME ${TEST_NAME}
+              COMMAND cmake -P CprncTest_${MPI_RANKS}.cmake
+              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    set_tests_properties(${TEST_NAME} PROPERTIES LABELS "${TEST_LABELS}"
+              RESOURCE_LOCK ${BASE_TEST_NAME})
+  endforeach()
+endif()
