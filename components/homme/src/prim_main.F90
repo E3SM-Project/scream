@@ -38,7 +38,8 @@ program prim_main
 #endif
 
   implicit none
-
+  include "mpif.h"
+  
 #if defined(HOMMEXX_BFB_TESTING) && !KOKKOS_TARGET
   interface
     subroutine initialize_kokkos_f90() bind(c)
@@ -61,6 +62,9 @@ program prim_main
   integer nets,nete
   integer ithr
   integer ierr
+
+  real*8 :: wc0,wc1,wcsum,wcmin,wcmax
+  integer :: nprocs, mystep
   
   character (len=20) :: numproc_char
   character (len=20) :: numtrac_char
@@ -222,7 +226,9 @@ program prim_main
 
   call compose_test(par, hvcoord, dom_mt, elem)
 
-  if(par%masterproc) print *,"Entering main timestepping loop"
+  call MPI_COMM_SIZE(MPI_COMM_WORLD, nprocs, ierr)
+  if(par%masterproc) print *,"Entering main timestepping loop nEndStep=", nEndStep
+  mystep=0
   call t_startf('prim_main_loop')
   do while(tl%nstep < nEndStep)
 #if (defined HORIZ_OPENMP)
@@ -236,9 +242,17 @@ program prim_main
      
      nstep = nextoutputstep(tl)
      do while(tl%nstep<nstep)
+        mystep=mystep+1
         call t_startf('prim_run')
+        wc0 = mpi_wtime()
         call prim_run_subcycle(elem, hybrid,nets,nete, tstep, .false., tl, hvcoord,1)
+        wc1 = mpi_wtime()
         call t_stopf('prim_run')
+        call MPI_reduce(wc1-wc0,  wcsum, 1, MPI_DOUBLE_PRECISION, MPI_SUM, 0,MPI_COMM_WORLD, ierr)
+        call MPI_reduce(wc1-wc0,  wcmin, 1, MPI_DOUBLE_PRECISION, MPI_MIN, 0,MPI_COMM_WORLD, ierr)
+        call MPI_reduce(wc1-wc0,  wcmax, 1, MPI_DOUBLE_PRECISION, MPI_MAX, 0,MPI_COMM_WORLD, ierr)
+        if (par%masterproc) write(*,'(a,i8,a,i8,a,es10.3,a,es10.3,a,es10.3, a,es10.3)') "prim_run mystep=", mystep, " tl%nstep=", tl%nstep, &
+             " wcr0=", wc1-wc0, " wcmin=", wcmin, " wcmax=", wcmax, " wc=", wcsum/real(nprocs)  !ndk
      end do
 #if (defined HORIZ_OPENMP)
      !$OMP END PARALLEL
