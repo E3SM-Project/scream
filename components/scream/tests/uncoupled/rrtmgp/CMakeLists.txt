@@ -8,10 +8,10 @@ if (NOT ${SCREAM_BASELINES_ONLY})
     set (NEED_LIBS scream_rrtmgp rrtmgp ${NETCDF_C} scream_control scream_share physics_share yakl)
 
     CreateUnitTest(
-        rrtmgp_standalone rrtmgp_standalone.cpp "${NEED_LIBS}" LABELS "rrtmgp;physics"
+        rrtmgp_standalone_unit rrtmgp_standalone_unit.cpp "${NEED_LIBS}" LABELS "rrtmgp;physics"
         EXE_ARGS "--ekat-test-params rrtmgp_inputfile=${CMAKE_CURRENT_BINARY_DIR}/data/rrtmgp-allsky.nc,rrtmgp_baseline=${SCREAM_TEST_DATA_DIR}/rrtmgp-allsky-baseline.nc"
     )
-    target_include_directories(rrtmgp_standalone PUBLIC
+    target_include_directories(rrtmgp_standalone_unit PUBLIC
           ${SCREAM_BASE_DIR}/src/physics/rrtmgp
           ${SCREAM_BASE_DIR}/src/physics/rrtmgp/tests
           ${SCREAM_BASE_DIR}/../eam/src/physics/rrtmgp/external/cpp
@@ -40,4 +40,24 @@ if (NOT ${SCREAM_BASELINES_ONLY})
                    ${CMAKE_CURRENT_BINARY_DIR}/data COPYONLY)
     configure_file(${SCREAM_BASE_DIR}/../eam/src/physics/rrtmgp/external/extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-lw.nc
                    ${CMAKE_CURRENT_BINARY_DIR}/data COPYONLY)
+
+    # The RRTMGP stand-alone test that runs multi-step
+    # Set AD configurable options
+    SetVarDependingOnTestProfile(NUM_STEPS 2 24 48)
+    set (ATM_TIME_STEP 1800)
+
+    CreateUnitTest(rrtmgp_standalone "rrtmgp_standalone.cpp" "${NEED_LIBS}" LABELS "rrtmgp;physics"
+      MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
+    )
+    ## Copy (and configure) yaml files needed by tests
+    foreach (MPI_RANKS RANGE 1 ${SCREAM_TEST_MAX_RANKS})
+      
+      CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/input.yaml
+                     ${CMAKE_CURRENT_BINARY_DIR}/input_np${MPI_RANKS}.yaml)
+      CONFIGURE_FILE(rrtmgp_standalone_output.yaml rrtmgp_standalone_output_np${MPI_RANKS}.yaml)
+      
+    endforeach()
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rrtmgp_init_ne2np4.nc
+                   ${CMAKE_CURRENT_BINARY_DIR}/rrtmgp_init_ne2np4.nc COPYONLY)
+
 endif()

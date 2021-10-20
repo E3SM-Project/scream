@@ -29,7 +29,6 @@ Fields:
   - ni_activated
   - p_mid
   - pseudo_density
-  - z_int
 Output:
   Frequency: 5
   Frequency Units: Steps

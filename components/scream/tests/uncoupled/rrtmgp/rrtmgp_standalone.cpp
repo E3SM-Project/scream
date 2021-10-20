@@ -2,19 +2,18 @@
 
 #include "control/atmosphere_driver.hpp"
 
-#include "physics/spa/atmosphere_prescribed_aerosol.hpp"
+#include "physics/rrtmgp/atmosphere_radiation.hpp"
 
 #include "share/grid/mesh_free_grids_manager.hpp"
 #include "share/atm_process/atmosphere_process.hpp"
 
-#include "ekat/ekat_pack.hpp"
 #include "ekat/ekat_parse_yaml_file.hpp"
 
 #include <iomanip>
 
 namespace scream {
 
-TEST_CASE("spa-stand-alone", "") {
+TEST_CASE("rrtmgp-stand-alone", "") {
   using namespace scream;
   using namespace scream::control;
 
@@ -41,26 +40,30 @@ TEST_CASE("spa-stand-alone", "") {
   // Need to register products in the factory *before* we create any atm process or grids manager.
   auto& proc_factory = AtmosphereProcessFactory::instance();
   auto& gm_factory = GridsManagerFactory::instance();
-  proc_factory.register_product("SPA",&create_atmosphere_process<SPA>);
+  proc_factory.register_product("rrtmgp",&create_atmosphere_process<RRTMGPRadiation>);
   gm_factory.register_product("Mesh Free",&create_mesh_free_grids_manager);
-
-  // Create the grids manager
-  auto& gm_params = ad_params.sublist("Grids Manager");
-  const std::string& gm_type = gm_params.get<std::string>("Type");
-  auto gm = GridsManagerFactory::instance().create(gm_type,atm_comm,gm_params);
 
   // Create the driver
   AtmosphereDriver ad;
 
-  // Init, run, and finalize
+  // Init and run
   ad.initialize(atm_comm,ad_params,t0);
+
   printf("Start time stepping loop...       [  0%%]\n");
   for (int i=0; i<nsteps; ++i) {
     ad.run(dt);
     std::cout << "  - Iteration " << std::setfill(' ') << std::setw(3) << i+1 << " completed";
     std::cout << "       [" << std::setfill(' ') << std::setw(3) << 100*(i+1)/nsteps << "%]\n";
   }
+
+  // TODO: get the field repo from the driver, and go get (one of)
+  //       the output(s) of SHOC, to check its numerical value (if possible)
+
+  // Finalize 
   ad.finalize();
+
+  // If we got here, we were able to run shoc
+  REQUIRE(true);
 }
 
 } // empty namespace

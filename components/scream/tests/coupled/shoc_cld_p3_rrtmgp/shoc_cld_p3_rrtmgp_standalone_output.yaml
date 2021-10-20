@@ -43,8 +43,6 @@ Fields:
   - surf_latent_flux
   - surf_mom_flux
   - surf_sens_flux
-  - z_int
-  - z_mid
   - cldfrac_ice
   - nc_activated
   - ni_activated
@@ -55,7 +53,6 @@ Fields:
   - sfc_alb_dir_vis
   - sfc_alb_dif_nir
   - sfc_alb_dif_vis
-  - t_int
  
 Output:
   Frequency: 5

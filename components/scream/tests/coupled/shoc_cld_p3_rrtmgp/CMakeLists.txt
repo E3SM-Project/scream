@@ -1,6 +1,5 @@
 INCLUDE (ScreamUtils)
 
-<<<<<<< HEAD
 # Create the test
 SET (NEED_LIBS shoc cld_fraction p3 scream_rrtmgp scream_control scream_share physics_share)
 CreateUnitTest(shoc_cld_p3_rrtmgp shoc_cld_p3_rrtmgp.cpp "${NEED_LIBS}" LABELS "shoc;cld;p3;rrtmgp;physics"

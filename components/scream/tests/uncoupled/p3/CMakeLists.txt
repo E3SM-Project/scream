@@ -1,6 +1,5 @@
 include (ScreamUtils)
 
-<<<<<<< HEAD
 # Create the test
 set (NEED_LIBS p3 scream_control scream_share)
 CreateUnitTest(p3_standalone "p3_standalone.cpp" "${NEED_LIBS}" LABELS "p3;physics"
