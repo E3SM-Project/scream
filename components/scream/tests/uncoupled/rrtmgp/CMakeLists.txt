@@ -53,9 +53,6 @@ if (NOT ${SCREAM_BASELINES_ONLY})
     SetVarDependingOnTestProfile(NUM_STEPS 2 24 48)
     set (ATM_TIME_STEP 1800)
 
-    CreateUnitTest(rrtmgp_standalone "rrtmgp_standalone.cpp" "${NEED_LIBS}" LABELS "rrtmgp;physics"
-      MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
-    )
     ## Copy (and configure) yaml files needed by tests
     foreach (MPI_RANKS RANGE 1 ${SCREAM_TEST_MAX_RANKS})
       

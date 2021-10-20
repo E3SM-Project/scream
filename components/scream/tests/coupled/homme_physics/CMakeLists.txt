@@ -1,25 +1,20 @@
 include (ScreamUtils)
 
-SET (TEST_LABELS "dynamics;driver;shoc;cld;p3;rrtmgp;physics")
 # Get or create the dynamics lib
 #                 HOMME_TARGET   NP PLEV QSIZE_D
 CreateDynamicsLib("theta-l_kokkos"  4   72   35)
 
 # Create the test
+SET (TEST_LABELS "dynamics;driver;shoc;cld;p3;rrtmgp;physics")
 set (NEED_LIBS cld_fraction shoc p3 scream_rrtmgp ${dynLibName} scream_control scream_share physics_share)
 CreateUnitTest(homme_shoc_cld_p3_rrtmgp "homme_shoc_cld_p3_rrtmgp.cpp" "${NEED_LIBS}"
-               LABELS "dynamics;driver;shoc;cld;p3;rrtmgp;physics"
-                MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
+               LABELS ${TEST_LABELS} 
+               MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
 )
 
 # Set AD configurable options
 set (ATM_TIME_STEP 1800)
 SetVarDependingOnTestProfile(NUM_STEPS 2 8 48)  # 1h 4h 24h
-# Add source files
-CreateUnitTest(homme_shoc_cld_p3_rrtmgp "homme_shoc_cld_p3_rrtmgp.cpp" "${NEED_LIBS}"
-               LABELS ${TEST_LABELS} 
-               MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
-)
 
 ## Copy (and configure) yaml files needed by tests
 foreach (MPI_RANKS RANGE 1 ${SCREAM_TEST_MAX_RANKS})
