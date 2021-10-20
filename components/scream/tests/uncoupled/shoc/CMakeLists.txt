@@ -1,6 +1,5 @@
 include (ScreamUtils)
 
-<<<<<<< HEAD
 # Create the test
 SET (TEST_LABELS "shoc;physics")
 set (NEED_LIBS shoc scream_control scream_share)

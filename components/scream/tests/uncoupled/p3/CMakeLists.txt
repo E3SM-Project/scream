@@ -1,6 +1,5 @@
 include (ScreamUtils)
 
-<<<<<<< HEAD
 # Create the test
 SET (TEST_LABELS "p3;physics")
 set (NEED_LIBS p3 scream_control scream_share)

@@ -1,6 +1,5 @@
 INCLUDE (ScreamUtils)
 
-<<<<<<< HEAD
 # Create the test
 SET (TEST_LABELS "shoc;cld;p3;rrtmgp;physics")
 SET (NEED_LIBS shoc cld_fraction p3 scream_rrtmgp scream_control scream_share physics_share)
