@@ -38,7 +38,7 @@ if (SCREAM_TEST_MAX_RANKS GREATER 1)
                     ${CMAKE_CURRENT_BINARY_DIR}/CprncTest_np${MPI_RANKS}.cmake @ONLY)
     set(TEST_NAME "${BASE_TEST_NAME}_np1_vs_np${MPI_RANKS}_bfb")
     add_test (NAME ${TEST_NAME} 
-              COMMAND cmake -P CprncTest_${MPI_RANKS}.cmake
+              COMMAND cmake -P CprncTest_np${MPI_RANKS}.cmake
               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     set_tests_properties(${TEST_NAME} PROPERTIES LABELS "${TEST_LABELS}"
               RESOURCE_LOCK ${BASE_TEST_NAME})
