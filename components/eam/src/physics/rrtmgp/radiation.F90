@@ -1287,7 +1287,9 @@ contains
       call pbuf_get_field(pbuf, pbuf_get_index('MU'), mu)
       ! May or may not have snow properties depending on microphysics
       if (do_snow_optics()) then
-         call pbuf_get_field(pbuf, pbuf_get_index('CLDFSNOW'), cldfsnow)
+         !call pbuf_get_field(pbuf, pbuf_get_index('CLDFSNOW'), cldfsnow)
+         !let cldfdnow take the value of APIST 
+         call pbuf_get_field(pbuf, pbuf_get_index('APIST'), cldfsnow)
          call pbuf_get_field(pbuf, pbuf_get_index('ICSWP'), icswp)
          call pbuf_get_field(pbuf, pbuf_get_index('DES'), des)
       else
