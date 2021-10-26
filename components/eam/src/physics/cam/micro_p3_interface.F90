@@ -98,8 +98,7 @@ module micro_p3_interface
 
 ! Physics buffer indices for fields registered by other modules
    integer :: &
-      ast_idx = -1, & 
-      apist_idx = -1          
+      ast_idx = -1 
 
    integer :: &
       ni_activated_idx = -1,           &
@@ -364,7 +363,6 @@ end subroutine micro_p3_readnl
     !==============
     !might want to add all E3SM parameter vals to p3_init call...
     ast_idx      = pbuf_get_index('AST') !! from CLUBB
-    apist_idx      = pbuf_get_index('APIST')  
     cmeliq_idx   = pbuf_get_index('CMELIQ') !! from CLUBB Rate of cond-evap of liq within the cloud
 
     !!
@@ -791,7 +789,6 @@ end subroutine micro_p3_readnl
 
     ! PBUF Variables
     real(rtype), pointer :: ast(:,:)      ! Relative humidity cloud fraction
-    real(rtype), pointer :: apist(:,:)      ! Relative humidity cloud fraction
     real(rtype), pointer :: ni_activated(:,:)     ! ice nucleation number
     real(rtype), pointer :: npccn(:,:)    ! liquid activation number tendency
     real(rtype), pointer :: cmeliq(:,:)
@@ -883,7 +880,6 @@ end subroutine micro_p3_readnl
     ! All external PBUF variables:
     ! INPUTS
     call pbuf_get_field(pbuf, ast_idx,         ast, start=(/1,1,itim_old/), kount=(/psetcols,pver,1/))
-    call pbuf_get_field(pbuf, apist_idx,         apist, start=(/1,1,itim_old/), kount=(/psetcols,pver,1/))
     call pbuf_get_field(pbuf, ni_activated_idx,        ni_activated                                                  ) 
     call pbuf_get_field(pbuf, npccn_idx,       npccn                                                 )
     call pbuf_get_field(pbuf, cmeliq_idx,      cmeliq                                                )
