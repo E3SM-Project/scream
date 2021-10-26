@@ -917,7 +917,7 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
    real(r8) rhminh                          ! Critical relative humidity for high-level liquid stratus
 
    real(r8) aist                            ! Non-physical ice stratus fraction ( 0<= aist <= 1 )  
-   real(r8) apist
+   real(r8) apist                           ! Precipitating ice fraction (binary)
    real(r8) ni_cloud_precip_threshold
 
    real(r8) rhmin                           ! Critical RH
@@ -1072,8 +1072,8 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
         aist =  max(0._r8,min(qi/icicval,1._r8))
         aist =  min(aist,1._r8)
      elseif (iceopt.eq.7) then
-       ! All-or-nothing scheme: 100% ice cloud fraction if enough ice is
-       ! present, 0% otherwise.
+       ! Cloud aware all-or-nothing scheme: 100% ice cloud fraction or precipitating
+       ! ice fraction depending on ice mass and number thresholds
        aist = 0.0_r8
        apist = 0.0_r8
        if (qi.ge.minice) then
