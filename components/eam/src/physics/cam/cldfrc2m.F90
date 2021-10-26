@@ -875,7 +875,7 @@ end subroutine aist_single
 !================================================================================================
 
 subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, aist_out, ncol, &
-                       rhmaxi_in, rhmini_in, rhminl_in, rhminl_adj_land_in, rhminh_in )
+                       rhmaxi_in, rhmini_in, rhminl_in, rhminl_adj_land_in, rhminh_in,  apist_out )
 
    ! --------------------------------------------------------- !
    ! Compute non-physical ice stratus fraction                 ! 
@@ -891,6 +891,8 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
 
    real(r8), intent(out) :: aist_out(pcols)    ! Non-physical ice stratus fraction ( 0<= aist <= 1 )
    integer,  intent(in)  :: ncol 
+
+   real(r8), optional, intent(inout), dimension(pcols) :: apist_out
 
    real(r8), optional, intent(in)  :: rhmaxi_in
    real(r8), optional, intent(in)  :: rhmini_in(pcols)          ! Critical relative humidity for               ice stratus
@@ -914,7 +916,9 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
    real(r8) rhminl_adj_land                 ! Adjustment drop of rhminl over the land
    real(r8) rhminh                          ! Critical relative humidity for high-level liquid stratus
 
-   real(r8) aist                            ! Non-physical ice stratus fraction ( 0<= aist <= 1 )
+   real(r8) aist                            ! Non-physical ice stratus fraction ( 0<= aist <= 1 )  
+   real(r8) apist
+   real(r8) ni_cloud_precip_threshold
 
    real(r8) rhmin                           ! Critical RH
    real(r8) rhwght
@@ -977,6 +981,8 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
      aist_out(:) = 0._r8
      esat_in(:)  = 0._r8
      qsat_in(:)  = 0._r8
+
+     if (present(apist_out)) apist_out(:) = 0._r8
 
      call qsat_water(T_in(1:ncol), p_in(1:ncol), &
           esat_in(1:ncol), qsat_in(1:ncol))
@@ -1069,8 +1075,15 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
        ! All-or-nothing scheme: 100% ice cloud fraction if enough ice is
        ! present, 0% otherwise.
        aist = 0.0_r8
+       apist = 0.0_r8
        if (qi.ge.minice) then
-         aist = 1.0_r8
+          !calculate ice number threshold for cloud vs precip
+          ni_cloud_precip_threshold = qi*66850_r8
+          if (ni > ni_cloud_precip_threshold) then
+             aist = 1.0_r8
+          else
+             apist = 1.0_r8
+          endif
        endif
      endif     
 
@@ -1108,6 +1121,8 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
      aist = max(0._r8,min(aist,0.999_r8))
 
      aist_out(i) = aist
+
+     if (present(apist_out)) apist_out(i) = apist
 
      enddo
 

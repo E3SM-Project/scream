@@ -42,6 +42,7 @@ module shoc_intr
              ast_idx, &          ! Stratiform cloud fraction
              alst_idx, &         ! Liquid stratiform cloud fraction
              aist_idx, &         ! Ice stratiform cloud fraction
+             apist_idx, &        ! Precipitating ice fraction
              qlst_idx, &         ! Physical in-cloud LWC
              qist_idx, &         ! Physical in-cloud IWC
              dp_frac_idx, &      ! deep convection cloud fraction
@@ -160,6 +161,7 @@ module shoc_intr
     call pbuf_add_field('tpert',      'global', dtype_r8, (/pcols/), tpert_idx)
     call pbuf_add_field('AST',        'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),    ast_idx)
     call pbuf_add_field('AIST',       'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),    aist_idx)
+    call pbuf_add_field('APIST',       'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),    apist_idx)
     call pbuf_add_field('ALST',       'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),    alst_idx)
     call pbuf_add_field('QIST',       'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),    qist_idx)
     call pbuf_add_field('QLST',       'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),    qlst_idx)
@@ -335,6 +337,7 @@ end function shoc_implements_cnst
     ast_idx     = pbuf_get_index('AST')         ! Stratiform cloud fraction
     alst_idx    = pbuf_get_index('ALST')        ! Liquid stratiform cloud fraction
     aist_idx    = pbuf_get_index('AIST')        ! Ice stratiform cloud fraction
+    apist_idx    = pbuf_get_index('APIST')      ! Precipitating ice fraction
     qlst_idx    = pbuf_get_index('QLST')        ! Physical in-stratus LWC 
     qist_idx    = pbuf_get_index('QIST')        ! Physical in-stratus IWC
     dp_frac_idx = pbuf_get_index('DP_FRAC')     ! Deep convection cloud fraction
@@ -356,7 +359,8 @@ end function shoc_implements_cnst
       call pbuf_set_field(pbuf2d, tke_idx, tke_tol)
       call pbuf_set_field(pbuf2d, alst_idx, 0.0_r8)
       call pbuf_set_field(pbuf2d, aist_idx, 0.0_r8)
-      
+      call pbuf_set_field(pbuf2d, apist_idx, 0.0_r8)     
+ 
       call pbuf_set_field(pbuf2d, vmag_gust_idx,    1.0_r8)
       
     endif
@@ -617,7 +621,8 @@ end function shoc_implements_cnst
    real(r8), pointer, dimension(:,:) :: concld   ! convective cloud fraction                    [fraction]
    real(r8), pointer, dimension(:,:) :: ast      ! stratiform cloud fraction                    [fraction]
    real(r8), pointer, dimension(:,:) :: alst     ! liquid stratiform cloud fraction             [fraction]
-   real(r8), pointer, dimension(:,:) :: aist     ! ice stratiform cloud fraction                [fraction] 
+   real(r8), pointer, dimension(:,:) :: aist     ! ice stratiform cloud fraction                [fraction]
+   real(r8), pointer, dimension(:,:) :: apist     ! precipitating ice fraction                [fraction] 
    real(r8), pointer, dimension(:,:) :: cmeliq 
            
    real(r8), pointer, dimension(:,:) :: qlst     ! Physical in-stratus LWC                      [kg/kg]
@@ -676,6 +681,7 @@ end function shoc_implements_cnst
    call pbuf_get_field(pbuf, ast_idx,     ast,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
    call pbuf_get_field(pbuf, alst_idx,    alst,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
    call pbuf_get_field(pbuf, aist_idx,    aist,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   call pbuf_get_field(pbuf, apist_idx,    apist,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
    call pbuf_get_field(pbuf, qlst_idx,    qlst,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
    call pbuf_get_field(pbuf, qist_idx,    qist,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
    
@@ -1043,7 +1049,7 @@ end function shoc_implements_cnst
    
     do k=1,pver
       call aist_vector(state1%q(:,k,ixq),state1%t(:,k),state1%pmid(:,k),state1%q(:,k,ixcldice), &
-           state1%q(:,k,ixnumice),cam_in%landfrac(:),cam_in%snowhland(:),aist(:,k),ncol)
+           state1%q(:,k,ixnumice),cam_in%landfrac(:),cam_in%snowhland(:),aist(:,k),ncol,apist(:,k))
     enddo
    
     ! --------------------------------------------------------------------------------- !  
@@ -1062,18 +1068,19 @@ end function shoc_implements_cnst
     do k=1,pver
       do i=1,ncol
 
-        ast(i,k) = max(alst(i,k),aist(i,k))
+        ast(i,k) = max(alst(i,k),aist(i,k),apist(i,k))
 
-        qist(i,k) = state1%q(i,k,ixcldice)/max(0.01_r8,aist(i,k)) 
+        qist(i,k) = state1%q(i,k,ixcldice)/max(0.01_r8,aist(i,k),apist(i,k)) 
       enddo
     enddo
    
     !  Probably need to add deepcu cloud fraction to the cloud fraction array, else would just 
     !  be outputting the shallow convective cloud fraction 
 
+    !discount apist from calculation of cloud_frac
     do k=1,pver
       do i=1,ncol
-        cloud_frac(i,k) = min(ast(i,k)+deepcu(i,k),1.0_r8)
+        cloud_frac(i,k) = min(alst(i,k)+deepcu(i,k),aist(i,k)+deepcu(i,k),1.0_r8)
       enddo
     enddo
    
