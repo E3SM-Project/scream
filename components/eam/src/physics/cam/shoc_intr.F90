@@ -1049,7 +1049,7 @@ end function shoc_implements_cnst
    
     do k=1,pver
       call aist_vector(state1%q(:,k,ixq),state1%t(:,k),state1%pmid(:,k),state1%q(:,k,ixcldice), &
-           state1%q(:,k,ixnumice),cam_in%landfrac(:),cam_in%snowhland(:),aist(:,k),ncol,apist(:,k))
+           state1%q(:,k,ixnumice),cam_in%landfrac(:),cam_in%snowhland(:),aist(:,k),ncol,apist_out=apist(:,k))
     enddo
    
     ! --------------------------------------------------------------------------------- !  
