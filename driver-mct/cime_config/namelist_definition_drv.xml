@@ -232,6 +232,18 @@
     </values>
   </entry>
 
+  <entry id="rof2ocn_nutrients">
+    <type>logical</type>
+    <category>seq_flds</category>
+    <group>seq_cplflds_inparm</group>
+    <desc>
+      If set to .true., adds fields needed to transfer nutrients from the runoff model to the ocn
+    </desc>
+    <values>
+      <value>.false.</value>
+    </values>
+  </entry>
+
   <!-- =========================== -->
   <!-- -group seq_cplflds_custom   -->
   <!-- =========================== -->
@@ -1451,6 +1463,7 @@
     <values>
       <value>$EPS_AGRID</value>
       <value atm_grid="ne0np4_northamericax4v1">3.e-10</value>
+      <value atm_grid="ne1024np4.pg2" lnd_grid="ne1024np4.pg2">1.e-10</value>
     </values>
   </entry>
 

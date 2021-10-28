@@ -38,7 +38,7 @@ public:
   // Overrides.
 
   // The name of the field check
-  std::string name () const override { return "Within Interval Field Check"; }
+  std::string name () const override { return "Within Interval [" + std::to_string(m_lower_bound) + "," + std::to_string(m_upper_bound) + "] Field Check"; }
 
   bool check(const Field<const_RT>& field) const override {
     using RT = non_const_RT;
@@ -137,14 +137,16 @@ public:
     const auto& dims = layout.dims();
     const int dim0 = dims[0];
 
+    auto lb = m_lower_bound;
+    auto ub = m_upper_bound;
     switch (layout.rank()) {
       case 1:
         {
           auto v = field.template get_view<non_const_RT*>();
           Kokkos::parallel_for(dim0, KOKKOS_LAMBDA(int i) {
             auto& ref = v(i);
-            ref = ekat::impl::min(m_upper_bound, ref);
-            ref = ekat::impl::max(m_lower_bound, ref);
+            ref = ekat::impl::min(ub, ref);
+            ref = ekat::impl::max(lb, ref);
           });
         }
         break;
@@ -156,8 +158,8 @@ public:
             const int i = idx / dim1;
             const int j = idx % dim1;
             auto& ref = v(i,j);
-            ref = ekat::impl::min(m_upper_bound, ref);
-            ref = ekat::impl::max(m_lower_bound, ref);
+            ref = ekat::impl::min(ub, ref);
+            ref = ekat::impl::max(lb, ref);
           });
         }
         break;
@@ -171,8 +173,8 @@ public:
             const int j = (idx / dim2) % dim1;
             const int k =  idx % dim2;
             auto& ref = v(i,j,k);
-            ref = ekat::impl::min(m_upper_bound, ref);
-            ref = ekat::impl::max(m_lower_bound, ref);
+            ref = ekat::impl::min(ub, ref);
+            ref = ekat::impl::max(lb, ref);
           });
         }
         break;
@@ -188,8 +190,8 @@ public:
             const int k =  (idx / dim3) % dim2;
             const int l =   idx % dim3;
             auto& ref = v(i,j,k,l);
-            ref = ekat::impl::min(m_upper_bound, ref);
-            ref = ekat::impl::max(m_lower_bound, ref);
+            ref = ekat::impl::min(ub, ref);
+            ref = ekat::impl::max(lb, ref);
           });
         }
         break;
@@ -207,8 +209,8 @@ public:
             const int l =   (idx / dim4) % dim3;
             const int m =    idx % dim4;
             auto& ref = v(i,j,k,l,m);
-            ref = ekat::impl::min(m_upper_bound, ref);
-            ref = ekat::impl::max(m_lower_bound, ref);
+            ref = ekat::impl::min(ub, ref);
+            ref = ekat::impl::max(lb, ref);
           });
         }
         break;

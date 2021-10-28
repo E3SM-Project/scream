@@ -32,9 +32,6 @@ public:
   // The name of the subcomponent
   std::string name () const { return "DeepConvection"; }
 
-  // The communicator used by subcomponent
-  const ekat::Comm& get_comm () const { return m_zm_comm; }
-
   // Get the required grid for subcomponent
   std::set<std::string> get_required_grids () const {
     static std::set<std::string> s;
@@ -46,8 +43,8 @@ public:
   void set_grids (const std::shared_ptr<const GridsManager> grids_manager);
 
   // The three main interfaces for the subcomponent
-  void initialize_impl (const util::TimeStamp& t0);
-  void run_impl        (const Real dt);
+  void initialize_impl ();
+  void run_impl        (const int dt);
   void finalize_impl   ();
 
   // Register all fields in the proper field manager(s).
@@ -55,10 +52,6 @@ public:
   void register_fields (const std::map<std::string,std::shared_ptr<FieldManager<Real>>>& field_mgrs) const;
 
 protected:
-
-  // Setting the fields in the atmospheric process
-  void set_required_field_impl (const Field<const Real>& f);
-  void set_computed_field_impl (const Field<      Real>& f);
 
   std::map<std::string,const_field_type>  m_zm_fields_in;
   std::map<std::string,field_type>        m_zm_fields_out;
@@ -74,14 +67,9 @@ protected:
 
   std::map<std::string,host_view_in_type>   m_zm_host_views_in;
   std::map<std::string,host_view_out_type>  m_zm_host_views_out;
-
-  util::TimeStamp   m_current_ts;
-  ekat::Comm              m_zm_comm;
   
   std::map<std::string,const Real*>  m_raw_ptrs_in;
   std::map<std::string,Real*>        m_raw_ptrs_out;
-
-  ekat::ParameterList     m_zm_params;
 
 }; // class ZMDeepConvection
 

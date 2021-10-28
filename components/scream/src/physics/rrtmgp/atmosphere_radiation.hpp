@@ -19,7 +19,12 @@ public:
   using field_type       = Field<      Real>;
   using const_field_type = Field<const Real>;
   using view_1d_real     = typename ekat::KokkosTypes<DefaultDevice>::template view_1d<Real>;
+  using view_2d_real     = typename ekat::KokkosTypes<DefaultDevice>::template view_2d<Real>;
   using ci_string        = ekat::CaseInsensitiveString;
+
+  using KT               = ekat::KokkosTypes<DefaultDevice>;
+  template<typename ScalarT>
+  using uview_1d         = Unmanaged<typename KT::template view_1d<ScalarT>>;
 
   // Constructors
   RRTMGPRadiation (const ekat::Comm& comm, const ekat::ParameterList& params);
@@ -30,13 +35,10 @@ public:
   // The name of the subcomponent
   std::string name () const { return "Radiation"; }
 
-  // The communicator used by the subcomponent
-  const ekat::Comm& get_comm () const { return m_rrtmgp_comm; }
-
   // Required grid for the subcomponent (??)
   std::set<std::string> get_required_grids () const {
       static std::set<std::string> s;
-      s.insert(m_rrtmgp_params.get<std::string>("Grid"));
+      s.insert(m_params.get<std::string>("Grid"));
       return s;
   }
 
@@ -46,27 +48,24 @@ public:
 // NOTE: cannot use lambda functions for CUDA devices if these are protected!
 public:
   // The three main interfaces for the subcomponent
-  void initialize_impl (const util::TimeStamp& t0);
-  void run_impl        (const Real dt);
+  void initialize_impl ();
+  void run_impl        (const int dt);
   void finalize_impl   ();
-
-  // Set fields in the atmosphere process
-  void set_required_field_impl (const Field<const Real>& f);
-  void set_computed_field_impl (const Field<      Real>& f);
-
-  // Input and input/output fields
-  std::map<std::string,const_field_type> m_rrtmgp_fields_in;
-  std::map<std::string,field_type>       m_rrtmgp_fields_out;
-
-  util::TimeStamp m_current_ts;
-  ekat::Comm            m_rrtmgp_comm;
-  ekat::ParameterList   m_rrtmgp_params;
 
   // Keep track of number of columns and levels
   int m_ncol;
   int m_nlay;
   view_1d_real m_lat;
   view_1d_real m_lon;
+
+  // The orbital year, used for zenith angle calculations:
+  // If > 0, use constant orbital year for duration of simulation
+  // If < 0, use year from timestamp for orbital parameters
+  Int m_orbital_year;
+
+  // Fixed solar zenith angle to use for shortwave calculations
+  // This is only used if a positive value is supplied
+  Real m_fixed_solar_zenith_angle;
 
   // Need to hard-code some dimension sizes for now. 
   // TODO: find a better way of configuring this
@@ -81,7 +80,7 @@ public:
 
   // Structure for storing local variables initialized using the ATMBufferManager
   struct Buffer {
-    static constexpr int num_1d_ncol        = 5;
+    static constexpr int num_1d_ncol        = 6;
     static constexpr int num_2d_nlay        = 14;
     static constexpr int num_2d_nlay_p1     = 7;
     static constexpr int num_2d_nswbands    = 2;
@@ -92,6 +91,7 @@ public:
     real1d sfc_alb_dir_nir;
     real1d sfc_alb_dif_vis;
     real1d sfc_alb_dif_nir;
+    uview_1d<Real> cosine_zenith;
 
     // 2d size (ncol, nlay)
     real2d p_lay;

@@ -1,14 +1,13 @@
 #include <catch2/catch.hpp>
+#include <memory>
 
-#include "scream_config.h"
-#include "share/scream_types.hpp"
-
-#include "share/io/output_manager.hpp"
+#include "ekat/util/ekat_string_utils.hpp"
+#include "share/io/scream_output_manager.hpp"
 #include "share/io/scorpio_output.hpp"
 #include "share/io/scorpio_input.hpp"
 #include "share/io/scream_scorpio_interface.hpp"
 
-#include "share/grid/user_provided_grids_manager.hpp"
+#include "share/grid/mesh_free_grids_manager.hpp"
 #include "share/grid/point_grid.hpp"
 
 #include "share/field/field_identifier.hpp"
@@ -16,6 +15,11 @@
 #include "share/field/field.hpp"
 #include "share/field/field_manager.hpp"
 
+#include "share/util/scream_time_stamp.hpp"
+#include "share/scream_types.hpp"
+#include "scream_config.h"
+
+#include "ekat/util/ekat_units.hpp"
 #include "ekat/ekat_parameter_list.hpp"
 #include "ekat/ekat_scalar_traits.hpp"
 #include "ekat/ekat_assert.hpp"
@@ -29,10 +33,17 @@ using input_type = AtmosphereInput;
 const int packsize = 2;
 using Pack         = ekat::Pack<Real,packsize>;
 
-std::shared_ptr<FieldManager<Real>>      get_test_fm(std::shared_ptr<const AbstractGrid> grid);
-std::shared_ptr<UserProvidedGridsManager>   get_test_gm(const ekat::Comm& io_comm, const Int num_gcols, const Int num_levs);
-ekat::ParameterList                         get_om_params(const Int casenum, const ekat::Comm& comm);
-ekat::ParameterList                         get_in_params(const std::string type, const ekat::Comm& comm);
+std::shared_ptr<FieldManager<Real>>
+get_test_fm(std::shared_ptr<const AbstractGrid> grid);
+
+std::shared_ptr<GridsManager>
+get_test_gm(const ekat::Comm& io_comm, const Int num_gcols, const Int num_levs);
+
+ekat::ParameterList get_om_params(const ekat::Comm& comm, const std::string& grid);
+
+ekat::ParameterList get_in_params(const std::string type,
+                                  const ekat::Comm& comm,
+                                  const util::TimeStamp& t_first_write);
 
 TEST_CASE("input_output_basic","io")
 {
@@ -46,27 +57,24 @@ TEST_CASE("input_output_basic","io")
   scorpio::eam_init_pio_subsystem(fcomm);   // Gather the initial PIO subsystem data creater by component coupler
 
   // First set up a field manager and grids manager to interact with the output functions
-  auto grid_man = get_test_gm(io_comm,num_gcols,num_levs);
-  auto grid = grid_man->get_grid("Physics");
+  auto gm = get_test_gm(io_comm,num_gcols,num_levs);
+  auto grid = gm->get_grid("Point Grid");
   int num_lcols = grid->get_num_local_dofs();
   auto field_manager = get_test_fm(grid);
 
   // Create an Output manager for testing output
-  OutputManager m_output_manager;
-  auto output_params = get_om_params(1,io_comm);
-  m_output_manager.set_params(output_params);
-  m_output_manager.set_comm(io_comm);
-  m_output_manager.set_grids(grid_man);
-  m_output_manager.set_field_mgr(field_manager);
-  m_output_manager.init();
+  OutputManager output_manager;
+  auto output_params = get_om_params(io_comm,grid->name());
+  output_manager.setup(io_comm,output_params,field_manager,gm,false);
 
   // Construct a timestamp
-  util::TimeStamp time (0,0,0,0);
+  util::TimeStamp t0 ({2000,1,1},{0,0,0});
+  util::TimeStamp time = t0;
 
   //  Cycle through data and write output
   const auto& out_fields = field_manager->get_groups_info().at("output");
   Int max_steps = 10;
-  Real dt = 1.0;
+  Int dt = 1;
   for (Int ii=0;ii<max_steps;++ii) {
     time += dt;
     for (const auto& fname : out_fields->m_fields_names) {
@@ -97,9 +105,9 @@ TEST_CASE("input_output_basic","io")
       }
       f.sync_to_dev();
     }
-    m_output_manager.run(time);
+    output_manager.run(time);
   }
-  m_output_manager.finalize();
+  output_manager.finalize();
   // Because the next test for input in this sequence relies on the same fields.  We set all field values
   // to nan to ensure no false-positive tests if a field is simply not read in as input.
   for (const auto& fname : out_fields->m_fields_names)
@@ -108,19 +116,23 @@ TEST_CASE("input_output_basic","io")
     f.deep_copy(ekat::ScalarTraits<Real>::invalid());
   }
 
-  // At this point we should have 4 files output:
+  // At this point we should have 5 files output:
   // 1 file each for averaged, instantaneous, min and max data.
+  // And 1 file with multiple time snaps of instantaneous data.
   // Cycle through each output and make sure it is correct.
   // We can use the produced output files to simultaneously check output quality and the
   // ability to read input.
-  auto ins_params = get_in_params("Instant",io_comm);
-  auto avg_params = get_in_params("Average",io_comm);
-  auto min_params = get_in_params("Min",io_comm);
-  auto max_params = get_in_params("Max",io_comm);
-  Real tol = pow(10,-6);
+  // NOTE: single-snap file start outputing at the final time only,
+  //       while multi-snap starts to output at the first time step
+  auto ins_params = get_in_params("Instant",io_comm,time);
+  auto avg_params = get_in_params("Average",io_comm,time);
+  auto min_params = get_in_params("Min",io_comm,time);
+  auto max_params = get_in_params("Max",io_comm,time);
+  auto multi_params = get_in_params("Multisnap",io_comm,t0+dt);
+  Real tol = 100*std::numeric_limits<Real>::epsilon();
   // Check instant output
-  input_type ins_input(io_comm,ins_params,field_manager,grid_man);
-  ins_input.pull_input();
+  input_type ins_input(io_comm,ins_params,field_manager);
+  ins_input.read_variables();
   auto f1 = field_manager->get_field("field_1");
   auto f2 = field_manager->get_field("field_2");
   auto f3 = field_manager->get_field("field_3");
@@ -144,10 +156,11 @@ TEST_CASE("input_output_basic","io")
   for (int jj=0;jj<num_levs;++jj) {
     REQUIRE(std::abs(f2_host(jj)-(max_steps*dt + (jj+1)/10.))<tol);
   }
+  ins_input.finalize();
 
   // Check average output
-  input_type avg_input(io_comm,avg_params,field_manager,grid_man);
-  avg_input.pull_input();
+  input_type avg_input(io_comm,avg_params,field_manager);
+  avg_input.read_variables();
   f1.sync_to_host();
   f2.sync_to_host();
   f3.sync_to_host();
@@ -164,11 +177,12 @@ TEST_CASE("input_output_basic","io")
     avg_val = (max_steps+1)/2.0*dt + (jj+1)/10.;  //note x0=(jj+1)/10 in this case.
     REQUIRE(std::abs(f2_host(jj)-avg_val)<tol);
   }
+  avg_input.finalize();
 
   // Check max output
   // The max should be equivalent to the instantaneous because this function is monotonically increasing.
-  input_type max_input(io_comm,max_params,field_manager,grid_man);
-  max_input.pull_input();
+  input_type max_input(io_comm,max_params,field_manager);
+  max_input.read_variables();
   f1.sync_to_host();
   f2.sync_to_host();
   f3.sync_to_host();
@@ -181,10 +195,11 @@ TEST_CASE("input_output_basic","io")
   for (int jj=0;jj<num_levs;++jj) {
     REQUIRE(std::abs(f2_host(jj)-(max_steps*dt + (jj+1)/10.))<tol);
   }
+  max_input.finalize();
   // Check min output
   // The min should be equivalent to the first step because this function is monotonically increasing.
-  input_type min_input(io_comm,min_params,field_manager,grid_man);
-  min_input.pull_input();
+  input_type min_input(io_comm,min_params,field_manager);
+  min_input.read_variables();
   f1.sync_to_host();
   f2.sync_to_host();
   f3.sync_to_host();
@@ -197,32 +212,32 @@ TEST_CASE("input_output_basic","io")
   for (int jj=0;jj<num_levs;++jj) {
     REQUIRE(std::abs(f2_host(jj)-(dt+(jj+1)/10.))<tol);
   }
-  
-  // Test pulling input without the field manager:
-  using view_2d  = typename KokkosTypes<DefaultDevice>::template view_2d<Real>;
-  using pview_2d = typename KokkosTypes<DefaultDevice>::template view_2d<Pack>;
-  int num_packs = ekat::npack<Pack>(num_levs);
-  view_2d::HostMirror loc_field_3("field_3",num_lcols,num_levs);
-  pview_2d::HostMirror loc_field_4("field_packed",num_lcols,num_packs);
-  std::string filename = ins_params.get<std::string>("FILENAME");
-  std::vector<std::string> var_dims = {"lev","ncol"};
-  bool has_columns = true;
-  std::vector<int> dim_lens = {num_lcols,num_levs};
-  input_type loc_input(io_comm,"Physics",grid_man);
-  loc_input.pull_input<Real>(filename, loc_field_3.label(), var_dims, has_columns, dim_lens, loc_field_3.data());
-  loc_input.pull_input<Pack>(filename, loc_field_4.label(), var_dims, has_columns, dim_lens, loc_field_4.data());
-  for (int ii=0;ii<num_lcols;++ii) {
+  min_input.finalize();
+
+  // Check multisnap output; note, tt starts at 1 instead of 0 to follow netcdf time dimension indexing.
+  input_type multi_input(io_comm,multi_params,field_manager);
+  for (int tt = 1; tt<=std::min(max_steps,10); tt++) {
+    multi_input.read_variables(tt);
+    f1.sync_to_host();
+    f2.sync_to_host();
+    f3.sync_to_host();
+    f4.sync_to_host();
+
+    for (int ii=0;ii<num_lcols;++ii) {
+      REQUIRE(std::abs(f1_host(ii)-(tt*dt+ii))<tol);
+      for (int jj=0;jj<num_levs;++jj) {
+        REQUIRE(std::abs(f3_host(ii,jj)-(ii+tt*dt + (jj+1)/10.))<tol);
+        REQUIRE(std::abs(f4_host(ii,jj)-(ii+tt*dt + (jj+1)/10.))<tol);
+      }
+    }
     for (int jj=0;jj<num_levs;++jj) {
-      int ipack = jj / packsize;
-      int ivec  = jj % packsize;
-      REQUIRE(std::abs(loc_field_3(ii,jj)-(ii+max_steps*dt + (jj+1)/10.))<tol);
-      REQUIRE(std::abs(loc_field_4(ii,ipack)[ivec]-(ii+max_steps*dt + (jj+1)/10.))<tol);
+      REQUIRE(std::abs(f2_host(jj)-(tt*dt + (jj+1)/10.))<tol);
     }
   }
-
+  multi_input.finalize();
+  
   // All Done 
   scorpio::eam_pio_finalize();
-  (*grid_man).clean_up();
 } // TEST_CASE output_instance
 /* ----------------------------------*/
 
@@ -294,7 +309,7 @@ std::shared_ptr<FieldManager<Real>> get_test_fm(std::shared_ptr<const AbstractGr
     }
   }
   // Update timestamp
-  util::TimeStamp time (0,0,0,0);
+  util::TimeStamp time ({2000,1,1},{0,0,0});
   fm->init_fields_time_stamp(time);
   // Sync back to device
   f1.sync_to_dev();
@@ -305,55 +320,49 @@ std::shared_ptr<FieldManager<Real>> get_test_fm(std::shared_ptr<const AbstractGr
   return fm;
 }
 /*===================================================================================================================*/
-std::shared_ptr<UserProvidedGridsManager> get_test_gm(const ekat::Comm& io_comm, const Int num_gcols, const Int num_levs)
+std::shared_ptr<GridsManager> get_test_gm(const ekat::Comm& io_comm, const Int num_gcols, const Int num_levs)
 {
-
-  auto& gm_factory = GridsManagerFactory::instance();
-  gm_factory.register_product("User Provided",create_user_provided_grids_manager);
-  auto dummy_grid = create_point_grid("Physics",num_gcols,num_levs,io_comm);
-  auto upgm = std::make_shared<UserProvidedGridsManager>();
-  upgm->set_grid(dummy_grid);
-
-  return upgm;
+  ekat::ParameterList gm_params;
+  gm_params.sublist("Mesh Free").set("Number of Global Columns",num_gcols);
+  gm_params.sublist("Mesh Free").set("Number of Vertical Levels",num_levs);
+  auto gm = create_mesh_free_grids_manager(io_comm,gm_params);
+  gm->build_grids(std::set<std::string>{"Point Grid"});
+  return gm;
 }
 /*===================================================================================================================*/
-ekat::ParameterList get_om_params(const Int casenum, const ekat::Comm& comm)
+ekat::ParameterList get_om_params(const ekat::Comm& comm, const std::string& grid)
 {
   ekat::ParameterList om_params("Output Manager");
-  om_params.set<Int>("PIO Stride",1);
-  if (casenum == 1) {
-    std::vector<std::string> fileNames = { "io_test_instant","io_test_average",
-                                            "io_test_max",    "io_test_min" };
-    for (auto& name : fileNames) {
-      name += "_np" + std::to_string(comm.size()) + ".yaml";
-    }
-
-    om_params.set("Output YAML Files",fileNames);
-  } else if (casenum == 2) {
-    std::vector<std::string> fileNames = { "io_test_restart_np" + std::to_string(comm.size()) + ".yaml" };
-    om_params.set("Output YAML Files",fileNames);
-    auto& res_sub = om_params.sublist("Restart Control");
-    auto& freq_sub = res_sub.sublist("FREQUENCY");
-    freq_sub.set<Int>("OUT_N",5);
-    freq_sub.set<std::string>("OUT_OPTION","Steps");
-  } else {
-    EKAT_REQUIRE_MSG(false,"Error, incorrect case number for get_om_params");
+  auto& files = om_params.sublist("Output YAML Files");
+  std::vector<std::string> fileNames = { "io_test_instant","io_test_average",
+                                         "io_test_max",    "io_test_min",
+                                         "io_test_multisnap" };
+  for (auto& name : fileNames) {
+    name += "_np" + std::to_string(comm.size()) + ".yaml";
   }
+
+  files.set(grid,fileNames);
 
   return om_params;  
 }
 /*===================================================================================================================*/
-ekat::ParameterList get_in_params(const std::string type, const ekat::Comm& comm)
+ekat::ParameterList get_in_params(const std::string type,
+                                  const ekat::Comm& comm,
+                                  const util::TimeStamp& t_first_write)
 {
+  using vos_type = std::vector<std::string>;
   ekat::ParameterList in_params("Input Parameters");
-  in_params.set<std::string>("FILENAME","io_output_test_np" + std::to_string(comm.size()) +"."+type+".Steps_x10.0000-01-01.000010.nc");
-  in_params.set<std::string>("GRID","Physics");
-  auto& f_list = in_params.sublist("FIELDS");
-  f_list.set<Int>("Number of Fields",4);
-  for (int ii=1;ii<=3+1;++ii) {
-    f_list.set<std::string>("field "+std::to_string(ii),"field_"+std::to_string(ii));
-  }
-  f_list.set<std::string>("field 4","field_packed");
+  bool multisnap = type=="Multisnap";
+
+  std::string filename =
+        "io_" + std::string(multisnap ? "multisnap" : "output")
+      + "_test_np" + std::to_string(comm.size())
+      + "." + (multisnap ? ekat::upper_case("Instant") : ekat::upper_case(type))
+      + ".Steps_x1" + std::string(multisnap ? "" : "0")
+      + "." + t_first_write.to_string() + ".nc";
+
+  in_params.set<std::string>("Filename",filename);
+  in_params.set<vos_type>("Fields",{"field_1", "field_2", "field_3", "field_packed"});
   return in_params;
 }
 /*===================================================================================================================*/

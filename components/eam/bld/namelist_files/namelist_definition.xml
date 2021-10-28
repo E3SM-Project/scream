@@ -4296,6 +4296,18 @@ Type of E3SM-MMF microphysics scheme employed.
 Default: sam1mom
 </entry>
 
+<entry id="MMF_orientation_angle" type="real" category="conv"
+       group="phys_ctl_nl" valid_values="">
+Angle of CRM domain in degrees used to apply large scale wind forcing.
+Default value depends on whether CRM domain is 2D or 3D. For 2D runs a value 
+of 90deg used for a south-north orientation to reduce precipitation biases
+that tend to occur when the CRM aligns with the prevailing wind.
+A value of -1 enables an experimental randomly rotating CRM orientation.
+Defaults: 
+  2D CRM: 90 (i.e. north-south)
+  3D CRM: 0
+</entry>
+
 <entry id="MMF_VT_wn_max" type="real" category="conv"
        group="phys_ctl_nl" valid_values="">
 Wavenumber cutoff for filtered MMF variance transport.
@@ -6116,15 +6128,6 @@ Remap algorithm to use to map between FV physics grid and GLL dynamics
 grid. 0, default, provides the original algorithms; 1 provides
 high-order algorithms implemented in gllfvremap_mod.
 Default: (set by dycore).
-</entry>
-
-<entry id="se_fv_nphys" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Number of equally-spaced horizontal physics points per spectral
-element. A number greater than zero will define [se_fv_nphys] equally
-spaced physics points in each direction (e.g., se_fv_nphys = 2 will
-result in 4 equally-spaced physics points per element).
-Default: set based on atmosphere grid
 </entry>
 
 <!-- CAM I/O  -->

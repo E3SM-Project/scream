@@ -1,13 +1,14 @@
 #ifndef SCREAM_FIELD_ALLOC_PROP_HPP
 #define SCREAM_FIELD_ALLOC_PROP_HPP
 
-#include "share/field/field_identifier.hpp"
+#include "share/field/field_layout.hpp"
 #include "share/scream_types.hpp"
 
 #include "ekat/ekat_scalar_traits.hpp"
 #include "ekat/ekat_assert.hpp"
 
 #include <vector>
+#include <memory>
 
 namespace scream
 {
@@ -55,7 +56,7 @@ namespace scream
  *
  *  Note: at every request for a new value_type, this class checks the
  *        underlying scalar_type. We ASSUME that the dimensions in the
- *        field identifier refer to that scalar_type.
+ *        field layout refer to that scalar_type.
  */
 
 class FieldAllocProp {
@@ -64,6 +65,7 @@ public:
   using layout_ptr_type  = std::shared_ptr<const layout_type>;
 
   FieldAllocProp ();
+  FieldAllocProp (const FieldAllocProp&) = default;
 
   FieldAllocProp& operator= (const FieldAllocProp&);
 
@@ -101,6 +103,9 @@ public:
   // Get number of m_scalar_type_size-sized scalars in the allocation.
   int  get_num_scalars () const { return get_alloc_size () / m_scalar_type_size; }
 
+  // Get the largest pack size that this allocation was requested to accommodate
+  int  get_largest_pack_size () const;
+
   // Wether this allocation is contiguous
   bool contiguous () const { return m_contiguous; }
 
@@ -125,6 +130,9 @@ protected:
 
   // The size of the scalar type
   int   m_scalar_type_size;
+
+  // The largest pack size that was requested
+  int   m_pack_size_max;
 
   // The extent along the last dimension for this allocation
   int   m_last_extent;

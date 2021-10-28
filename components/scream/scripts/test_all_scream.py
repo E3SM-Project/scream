@@ -27,7 +27,8 @@ class TestAllScream(object):
                  custom_cmake_opts=(), custom_env_vars=(), preserve_env=False, tests=(),
                  integration_test=False, local=False, root_dir=None, work_dir=None,
                  quick_rerun=False,quick_rerun_failed=False,dry_run=False,
-                 make_parallel_level=0, ctest_parallel_level=0, update_expired_baselines=False):
+                 make_parallel_level=0, ctest_parallel_level=0, update_expired_baselines=False,
+                 extra_verbose=False, limit_test_regex=None):
     ###########################################################################
 
         # When using scripts-tests, we can't pass "-l" to test-all-scream,
@@ -54,13 +55,15 @@ class TestAllScream(object):
         self._preserve_env            = preserve_env
         self._tests                   = tests
         self._root_dir                = root_dir
-        self._work_dir                = work_dir
+        self._work_dir                = None if work_dir is None else Path(work_dir)
         self._integration_test        = integration_test
         self._quick_rerun             = quick_rerun
         self._quick_rerun_failed      = quick_rerun_failed
         self._dry_run                 = dry_run
         self._tests_needing_baselines = []
         self._update_expired_baselines= update_expired_baselines
+        self._extra_verbose           = extra_verbose
+        self._limit_test_regex        = limit_test_regex
 
         self._test_full_names = OrderedDict([
             ("dbg" , "full_debug"),
@@ -68,6 +71,7 @@ class TestAllScream(object):
             ("fpe" , "debug_nopack_fpe"),
             ("opt" , "release"),
             ("valg", "valgrind"),
+            ("cmc",  "cuda_mem_check"),
             ("cov" , "coverage"),
         ])
 
@@ -97,6 +101,7 @@ class TestAllScream(object):
             self._tests = list(self._test_full_names.keys())
             self._tests.remove("valg") # don't want this on by default
             self._tests.remove("cov") # don't want this on by default
+            self._tests.remove("cmc") # don't want this on by default
             if is_cuda_machine(self._machine):
                 self._tests.remove("fpe")
         else:
@@ -233,7 +238,11 @@ class TestAllScream(object):
                      ("EKAT_DEFAULT_BFB", "True")],
             "opt" : [("CMAKE_BUILD_TYPE", "Release")],
             "valg" : [("CMAKE_BUILD_TYPE", "Debug"),
+                      ("SCREAM_TEST_PROFILE", "SHORT"),
                       ("EKAT_ENABLE_VALGRIND", "True")],
+            "cmc"  : [("CMAKE_BUILD_TYPE", "Debug"),
+                      ("SCREAM_TEST_PROFILE", "SHORT"),
+                      ("EKAT_ENABLE_CUDA_MEMCHECK", "True")],
             "cov" : [("CMAKE_BUILD_TYPE", "Debug"),
                       ("EKAT_ENABLE_COVERAGE", "True")],
         }
@@ -321,7 +330,7 @@ class TestAllScream(object):
     ###############################################################################
         baseline_file = (self.get_preexisting_baseline(test).parent)/"baseline_git_sha"
         if baseline_file.exists():
-            with baseline_file.open("r") as fd:
+            with baseline_file.open("r", encoding="utf-8") as fd:
                 return fd.read().strip()
 
         return None
@@ -330,7 +339,7 @@ class TestAllScream(object):
     def set_baseline_file_sha(self, test, sha):
     ###############################################################################
         baseline_file = (self.get_preexisting_baseline(test).parent)/"baseline_git_sha"
-        with baseline_file.open("w") as fd:
+        with baseline_file.open("w", encoding="utf-8") as fd:
             return fd.write(sha)
 
     ###############################################################################
@@ -506,8 +515,10 @@ remove existing baselines first. Otherwise, please run 'git fetch $remote'.
         # Add resource groups
         data['local'] = [{"devices":devices}]
 
-        with open("{}/ctest_resource_file.json".format(build_dir),'w') as outfile:
+        with open("{}/ctest_resource_file.json".format(build_dir),'w', encoding="utf-8") as outfile:
             json.dump(data,outfile,indent=2)
+
+        return end-start
 
     ###############################################################################
     def generate_ctest_config(self, cmake_config, extra_configs, test):
@@ -518,9 +529,11 @@ remove existing baselines first. Otherwise, please run 'git fetch $remote'.
             result += "CIME_MACHINE={} ".format(self._machine)
 
         test_dir = self.get_test_dir(self._work_dir,test)
-        self.create_ctest_resource_file(test,test_dir)
+        num_test_res = self.create_ctest_resource_file(test,test_dir)
+        cmake_config += " -DSCREAM_TEST_MAX_TOTAL_THREADS={}".format(num_test_res)
+        verbosity = "-V --output-on-failure" if not self._extra_verbose else "-VV"
 
-        result += "SCREAM_BUILD_PARALLEL_LEVEL={} CTEST_PARALLEL_LEVEL={} ctest -V --output-on-failure ".format(self._compile_res_count[test], self._testing_res_count[test])
+        result += "SCREAM_BUILD_PARALLEL_LEVEL={} CTEST_PARALLEL_LEVEL={} ctest {} ".format(self._compile_res_count[test], self._testing_res_count[test], verbosity)
         result += "--resource-spec-file {}/ctest_resource_file.json ".format(test_dir)
 
         if self._baseline_dir is not None:
@@ -538,6 +551,8 @@ remove existing baselines first. Otherwise, please run 'git fetch $remote'.
         work_dir = self._work_dir/name
         result += "-DBUILD_WORK_DIR={} ".format(work_dir)
         result += "-DBUILD_NAME_MOD={} ".format(name)
+        if self._limit_test_regex:
+            result += "-DINCLUDE_REGEX={} ".format(self._limit_test_regex)
         result += '-S {}/cmake/ctest_script.cmake -DCMAKE_COMMAND="{}" '.format(self._root_dir, cmake_config)
 
         # Ctest can only competently manage test pinning across a single instance of ctest. For

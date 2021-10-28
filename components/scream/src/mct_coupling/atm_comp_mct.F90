@@ -53,8 +53,10 @@ CONTAINS
     use iso_c_binding,      only: c_ptr, c_loc, c_int, c_char
     use scream_f2c_mod,     only: scream_create_atm_instance, scream_setup_surface_coupling, &
                                   scream_init_atm
-    use scream_cpl_indices, only: scream_set_cpl_indices, num_exports, num_cpl_imports, num_scream_imports, &
-                                  scr_names_x2a, scr_names_a2x, index_x2a, index_a2x, vec_comp_x2a, vec_comp_a2x
+    use scream_cpl_indices, only: scream_set_cpl_indices, num_cpl_exports, &
+                                  num_cpl_imports, num_scream_imports, &
+                                  scr_names_x2a, scr_names_a2x, index_x2a, index_a2x, vec_comp_x2a, vec_comp_a2x, &
+                                  can_be_exported_during_init
     use ekat_string_utils,  only: string_f2c
 
     use mct_mod,        only: mct_aVect_init, mct_gsMap_lsize
@@ -85,7 +87,7 @@ CONTAINS
     type(c_ptr) :: x2a_ptr, a2x_ptr
 
     ! TODO: read this from the namelist?
-    character(len=256)                :: yaml_fname = "data/scream_input.yaml"
+    character(len=256)                :: yaml_fname = "./data/scream_input.yaml"
     character(kind=c_char,len=256), target :: yaml_fname_c
     !-------------------------------------------------------------------------------
 
@@ -97,6 +99,7 @@ CONTAINS
          dom=dom_atm, &
          infodata=infodata)
     call seq_infodata_getData(infodata, atm_phase=phase)
+    call seq_infodata_PutData(infodata, atm_aero=.true.)
 
     if (phase > 1) RETURN
 
@@ -154,7 +157,7 @@ CONTAINS
     call scream_setup_surface_coupling (c_loc(scr_names_x2a), c_loc(index_x2a), c_loc(x2a%rAttr), c_loc(vec_comp_x2a), &
                                         num_cpl_imports, num_scream_imports, &
                                         c_loc(scr_names_a2x), c_loc(index_a2x), c_loc(a2x%rAttr), c_loc(vec_comp_a2x), &
-                                        num_exports)
+                                        c_loc(can_be_exported_during_init), num_cpl_exports)
 
     !----------------------------------------------------------------------------
     ! Reset shr logging to my log file

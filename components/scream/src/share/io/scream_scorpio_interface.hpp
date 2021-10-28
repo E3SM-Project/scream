@@ -1,6 +1,7 @@
 #ifndef SCREAM_SCORPIO_INTERFACE_HPP
 #define SCREAM_SCORPIO_INTERFACE_HPP
 
+#include "ekat/util/ekat_string_utils.hpp"
 #include "share/field/field_tag.hpp"
 #include "share/scream_types.hpp"
 #include <vector>
@@ -21,16 +22,21 @@ static constexpr int PIO_INT = 4;
 
 namespace scream {
 namespace scorpio {
+
+  // WARNING: these values must match the ones of file_purpose_in and file_purpose_out
+  // in the scream_scorpio_interface F90 module
+  enum FileMode {
+    Read = 1,
+    Write = 2
+  };
   /* All scorpio usage requires that the pio_subsystem is initialized. Happens only once per simulation */
   void eam_init_pio_subsystem(const int mpicom);
   /* Cleanup scorpio with pio_finalize */
   void eam_pio_finalize();
   /* Close a file currently open in scorpio */
   void eam_pio_closefile(const std::string& filename);
-  /* Register a new file for output with scorpio module */
-  void register_outfile(const std::string& filename);
-  /* Register a new file to be used for input with the scorpio module */
-  void register_infile(const std::string& filename);
+  /* Register a new file to be used for input/output with the scorpio module */
+  void register_file(const std::string& filename, const FileMode mode);
   /* Every timestep each output file needs to be synced, call once per timestep, per file */
   void sync_outfile(const std::string& filename);
   /* Sets the IO decompostion for all variables in a particular filename.  Required after all variables have been registered.  Called once per file. */
@@ -52,20 +58,19 @@ namespace scorpio {
   void pio_update_time(const std::string &filename, const Real time);
 
   /* Read data for a specific variable from a specific file. */
-  void grid_read_data_array (const std::string &filename, const std::string &varname, const Int& dim_length, Real* hbuf);
-  void grid_read_data_array (const std::string &filename, const std::string &varname, const std::vector<int>& dims, const Int& dim_length, const Int& padding, Real* hbuf);
+  void grid_read_data_array (const std::string &filename, const std::string &varname, const int time_index, Real* hbuf);
   /* Write data for a specific variable to a specific file. */
-  void grid_write_data_array(const std::string &filename, const std::string &varname, const Int& dim_length, const Real* hbuf);
-  void grid_write_data_array(const std::string &filename, const std::string &varname, const std::vector<int>& dims, const Int& dim_length, const Int& padding, const Real* hbuf);
+  void grid_write_data_array(const std::string &filename, const std::string &varname, const Real* hbuf);
 
   /* Helper functions */
-  void add_remove_padding(const int slow_dim_len, const int pad_dim_len, const int padding, const Real *hbuf_in, Real *hbuf_out, bool add_padding);
   void count_pio_atm_file();
 
 extern "C" {
   /* Query whether the pio subsystem is inited or not */
   bool is_eam_pio_subsystem_inited();
   int  eam_pio_subsystem_comm ();
+  int get_int_attribute_c2f (const char*&& filename, const char*&& attr_name);
+  void set_int_attribute_c2f (const char*&& filename, const char*&& attr_name, const int& value);
 } // extern "C"
 
 // The strings returned by e2str(const FieldTag&) are different from

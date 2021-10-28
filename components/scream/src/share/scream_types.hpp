@@ -31,10 +31,13 @@ enum class RepoState {
   Closed
 };
 
-#ifdef NDEBUG
-static constexpr bool SCREAM_BFB_TESTING = true;
-#else
+// We cannot expect BFB results between f90 and cxx if optimizations are on.
+// Same goes for cuda-memcheck because it makes the bfb math layer prohibitively
+// expensive and so must be turned off.
+#if defined (NDEBUG) || defined (EKAT_ENABLE_CUDA_MEMCHECK)
 static constexpr bool SCREAM_BFB_TESTING = false;
+#else
+static constexpr bool SCREAM_BFB_TESTING = true;
 #endif
 
 /*
@@ -47,18 +50,6 @@ template<typename T> KOKKOS_INLINE_FUNCTION
 constexpr typename std::enable_if<std::is_arithmetic<T>::value,Real>::type
 sp (const T val) {
   return Real(val);
-}
-
-// Micro-utility, that given an enum returns the underlying int.
-// The only use of this is if you need to sort scoped enums.
-template<typename EnumT>
-KOKKOS_FUNCTION
-constexpr typename
-std::enable_if<std::is_enum<EnumT>::value,
-               typename std::underlying_type<EnumT>::type
-              >::type
-etoi (const EnumT e) {
-  return static_cast<typename std::underlying_type<EnumT>::type>(e);
 }
 
 } // namespace scream
