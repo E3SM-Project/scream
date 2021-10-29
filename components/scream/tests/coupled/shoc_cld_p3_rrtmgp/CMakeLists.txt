@@ -5,11 +5,12 @@ SET (TEST_LABELS "shoc;cld;p3;rrtmgp;physics")
 SET (NEED_LIBS shoc cld_fraction p3 scream_rrtmgp scream_control scream_share physics_share)
 CreateUnitTest(shoc_cld_p3_rrtmgp shoc_cld_p3_rrtmgp.cpp "${NEED_LIBS}" LABELS ${TEST_LABELS}
   MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
+  PROPERTIES FIXTURES_SETUP shoc_cld_p3_rrmtgp_main
 )
 
 # Set AD configurable options
 set (ATM_TIME_STEP 1800)
-SetVarDependingOnTestProfile(NUM_STEPS 2 8 48)  # 1h 4h 24h
+SetVarDependingOnTestProfile(NUM_STEPS 2 5 48)  # 1h 4h 24h
 
 ## Copy input files to run directory
 file (MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/data)
@@ -59,6 +60,7 @@ if (SCREAM_TEST_MAX_RANKS GREATER 1)
               COMMAND cmake -P CprncTest_np${MPI_RANKS}.cmake
               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     set_tests_properties(${TEST_NAME} PROPERTIES LABELS "${TEST_LABELS}"
-              RESOURCE_LOCK ${BASE_TEST_NAME})
+              RESOURCE_LOCK ${BASE_TEST_NAME}
+              FIXTURES_REQUIRED shoc_cld_p3_rrmtgp_main)
   endforeach()
 endif()

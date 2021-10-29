@@ -5,10 +5,11 @@ SET (TEST_LABELS "shoc;physics")
 set (NEED_LIBS shoc scream_control scream_share)
 CreateUnitTest(shoc_standalone "shoc_standalone.cpp" "${NEED_LIBS}" LABELS ${TEST_LABELS}
   MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
+  PROPERTIES FIXTURES_SETUP shoc_main
 )
 
 # Set AD configurable options
-SetVarDependingOnTestProfile(NUM_STEPS 2 24 48)
+SetVarDependingOnTestProfile(NUM_STEPS 2 5 48)
 set (ATM_TIME_STEP 1800)
 
 # Copy input files to run directory
@@ -41,6 +42,7 @@ if (SCREAM_TEST_MAX_RANKS GREATER 1)
               COMMAND cmake -P CprncTest_np${MPI_RANKS}.cmake
               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     set_tests_properties(${TEST_NAME} PROPERTIES LABELS "${TEST_LABELS}"
-              RESOURCE_LOCK ${BASE_TEST_NAME})
+              RESOURCE_LOCK ${BASE_TEST_NAME}
+              FIXTURES_REQUIRED shoc_main)
   endforeach()
 endif()

@@ -10,6 +10,7 @@ set (NEED_LIBS cld_fraction shoc p3 scream_rrtmgp ${dynLibName} scream_control s
 CreateUnitTest(homme_shoc_cld_p3_rrtmgp "homme_shoc_cld_p3_rrtmgp.cpp" "${NEED_LIBS}"
                LABELS ${TEST_LABELS} 
                MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
+               PROPERTIES FIXTURES_SETUP homme_shoc_cld_p3_rrtmgp_main
 )
 
 # Set AD configurable options
@@ -103,6 +104,7 @@ if (SCREAM_TEST_MAX_RANKS GREATER 1)
               COMMAND cmake -P CprncTest_np${MPI_RANKS}.cmake
               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     set_tests_properties(${TEST_NAME} PROPERTIES LABELS "${TEST_LABELS}"
-              RESOURCE_LOCK ${BASE_TEST_NAME})
+              RESOURCE_LOCK ${BASE_TEST_NAME}
+              FIXTURES_REQUIRED homme_shoc_cld_p3_rrtmgp_main)
   endforeach()
 endif()

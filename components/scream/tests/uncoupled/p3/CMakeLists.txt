@@ -5,11 +5,12 @@ SET (TEST_LABELS "p3;physics")
 set (NEED_LIBS p3 scream_control scream_share)
 CreateUnitTest(p3_standalone "p3_standalone.cpp" "${NEED_LIBS}" LABELS ${TEST_LABELS}
   MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
+  PROPERTIES FIXTURES_SETUP p3_main
 )
 
 # Set AD configurable options
 set (ATM_TIME_STEP 1800)
-SetVarDependingOnTestProfile(NUM_STEPS 2 8 48)  # 1h 4h 24h
+SetVarDependingOnTestProfile(NUM_STEPS 2 5 48)  # 1h 2.5h 24h
 
 ## Copy (and configure) yaml files needed by tests
 foreach (MPI_RANKS RANGE 1 ${SCREAM_TEST_MAX_RANKS})
@@ -47,6 +48,7 @@ if (SCREAM_TEST_MAX_RANKS GREATER 1)
               COMMAND cmake -P CprncTest_np${MPI_RANKS}.cmake
               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     set_tests_properties(${TEST_NAME} PROPERTIES LABELS "${TEST_LABELS}"
-              RESOURCE_LOCK ${BASE_TEST_NAME})
+              RESOURCE_LOCK ${BASE_TEST_NAME}
+              FIXTURES_REQUIRED p3_main)
   endforeach()
 endif()

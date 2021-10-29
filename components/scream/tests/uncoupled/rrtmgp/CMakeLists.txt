@@ -27,11 +27,12 @@ if (NOT ${SCREAM_BASELINES_ONLY})
     CreateUnitTest(
         rrtmgp_standalone "rrtmgp_standalone.cpp" "${NEED_LIBS}" LABELS ${TEST_LABELS}
         MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
+        PROPERTIES FIXTURES_SETUP rrtmgp_main
     )
 
     # Copy yaml input file to run directory
-    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/input.yaml
-                   ${CMAKE_CURRENT_BINARY_DIR}/input.yaml COPYONLY)
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/input_unit.yaml
+                   ${CMAKE_CURRENT_BINARY_DIR}/input_unit.yaml COPYONLY)
 
     # Copy RRTMGP initial condition to local data directory
     file (MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/data)
@@ -50,7 +51,7 @@ if (NOT ${SCREAM_BASELINES_ONLY})
 
     # The RRTMGP stand-alone test that runs multi-step
     # Set AD configurable options
-    SetVarDependingOnTestProfile(NUM_STEPS 2 24 48)
+    SetVarDependingOnTestProfile(NUM_STEPS 2 5 48)
     set (ATM_TIME_STEP 1800)
 
     ## Copy (and configure) yaml files needed by tests
@@ -81,7 +82,8 @@ if (NOT ${SCREAM_BASELINES_ONLY})
                 COMMAND cmake -P CprncTest_np${MPI_RANKS}.cmake
                 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
       set_tests_properties(${TEST_NAME} PROPERTIES LABELS "${TEST_LABELS}"
-                RESOURCE_LOCK ${BASE_TEST_NAME})
+                RESOURCE_LOCK ${BASE_TEST_NAME}
+                FIXTURES_REQUIRED rrtmgp_main)
     endforeach()
   endif()
 endif()
