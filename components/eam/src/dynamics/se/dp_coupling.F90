@@ -330,27 +330,34 @@ CONTAINS
   end subroutine d_p_coupling
   !=================================================================================================
   !=================================================================================================
-  subroutine p_d_coupling(phys_state, phys_tend,  dyn_in)
+  subroutine p_d_coupling(phys_state, phys_tend, pbuf2d, dyn_in)
+    use physics_buffer,          only: physics_buffer_desc, pbuf_get_chunk, pbuf_get_field, &
+                                       pbuf_old_tim_idx
     use shr_vmath_mod,           only: shr_vmath_log
     use cam_control_mod,         only: adiabatic
     use control_mod,             only: ftype
     use dyn_comp,                only: dom_mt, hvcoord
     use gllfvremap_mod,          only: gfr_fv_phys_to_dyn
     use time_manager,            only: get_step_size
+    use shoc_intr,               only: tk_idx, tkh_idx
     implicit none
     ! INPUT PARAMETERS:
     type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
     type(physics_tend),  intent(inout), dimension(begchunk:endchunk) :: phys_tend
+    type(physics_buffer_desc), pointer :: pbuf2d(:,:)     ! physics buffer
     ! OUTPUT PARAMETERS:
     type(dyn_import_t),  intent(inout)   :: dyn_in
     ! LOCAL VARIABLES
     integer :: ic , ncols                                  ! index
     type(element_t), pointer :: elem(:)                    ! pointer to dyn_in element array
+    type(physics_buffer_desc),pointer :: pbuf_chnk(:)     ! temporary pbuf pointer
     integer(kind=int_kind)   :: ie, iep                    ! indices over elements
     integer(kind=int_kind)   :: lchnk, icol, ilyr          ! indices over chunks, columns, layers
     real (kind=real_kind), dimension(npsq,pver,nelemd)       :: T_tmp  ! temp array to hold T
     real (kind=real_kind), dimension(npsq,2,pver,nelemd)     :: uv_tmp ! temp array to hold u and v
     real (kind=real_kind), dimension(npsq,pver,pcnst,nelemd) :: q_tmp  ! temp to hold advected constituents
+    real (kind=real_kind), dimension(npsq,pver,nelemd)       :: tkh_tmp ! temp to hold heat diffusivity
+    real (kind=real_kind), dimension(npsq,pver,nelemd)       :: tk_tmp ! temp tot hold mom diffusivity
     real (kind=real_kind)    :: dtime
     integer(kind=int_kind)   :: m, i, j, k                 ! loop iterators
     integer(kind=int_kind)   :: gi(2), gj(2)               ! index list used to simplify pg2 case
@@ -360,13 +367,19 @@ CONTAINS
     integer(kind=int_kind)   :: idmb1(1)
     integer(kind=int_kind)   :: idmb2(1)
     integer(kind=int_kind)   :: idmb3(1)
-    integer                  :: nphys, nphys_sq
+    integer                  :: nphys, nphys_sq, itim_old
     integer                  :: tsize                 ! # vars per grid point passed to physics
     integer                  :: cpter(pcols,0:pver)   ! offsets into chunk buffer for packing 
     integer                  :: bpter(npsq,0:pver)    ! offsets into block buffer for unpacking 
     ! Transpose buffers
     real (kind=real_kind), allocatable, dimension(:) :: bbuffer, cbuffer 
+
+    real(r8), pointer, dimension(:,:) :: tkh
+    real(r8), pointer, dimension(:,:) :: tk
     !---------------------------------------------------------------------------
+
+    nullify(pbuf_chnk)
+
     if (par%dynproc) then
       elem => dyn_in%elem
     else
@@ -379,6 +392,9 @@ CONTAINS
       nphys = np
     end if
     nphys_sq = nphys*nphys
+
+    !  Determine time step of physics buffer
+    itim_old = pbuf_old_tim_idx()
 
     T_tmp  = 0.0_r8
     uv_tmp = 0.0_r8
@@ -393,6 +409,10 @@ CONTAINS
       do lchnk = begchunk,endchunk
         ncols = get_ncols_p(lchnk)
         call get_gcol_all_p(lchnk,pcols,pgcols)
+
+        pbuf_chnk => pbuf_get_chunk(pbuf2d,lchnk)
+        call pbuf_get_field(pbuf_chnk, tkh_idx, tkh)
+        call pbuf_get_field(pbuf_chnk, tk_idx, tk)
         do icol = 1,ncols
           call get_gcol_block_d(pgcols(icol),1,idmb1,idmb2,idmb3)
           ie = idmb3(1)
@@ -404,13 +424,15 @@ CONTAINS
             do m = 1,pcnst
               q_tmp(ioff,ilyr,m,ie) = phys_state(lchnk)%q(icol,ilyr,m)
             end do
+            tkh_tmp(ioff,ilyr,ie) = tkh(icol,ilyr)
+            tk_tmp(ioff,ilyr,ie) = tk(icol,ilyr)
           end do ! ilyr
       	end do ! icol
       end do ! lchnk
 
     else ! local_dp_map
 
-      tsize = 3 + pcnst
+      tsize = 5 + pcnst
 
       allocate( bbuffer(tsize*block_buf_nrecs) )
       allocate( cbuffer(tsize*chunk_buf_nrecs) )
@@ -419,6 +441,10 @@ CONTAINS
       do lchnk = begchunk,endchunk
         ncols = get_ncols_p(lchnk)
         call chunk_to_block_send_pters(lchnk,pcols,pver+1,tsize,cpter)
+
+        pbuf_chnk => pbuf_get_chunk(pbuf2d,lchnk)
+        call pbuf_get_field(pbuf_chnk, tkh_idx, tkh)
+        call pbuf_get_field(pbuf_chnk, tk_idx, tk)
         do i = 1,ncols
            cbuffer(cpter(i,0):cpter(i,0)+2+pcnst) = 0.0_r8
         end do
@@ -427,8 +453,10 @@ CONTAINS
             cbuffer(cpter(icol,ilyr))   = phys_tend(lchnk)%dtdt(icol,ilyr)
             cbuffer(cpter(icol,ilyr)+1) = phys_tend(lchnk)%dudt(icol,ilyr)
             cbuffer(cpter(icol,ilyr)+2) = phys_tend(lchnk)%dvdt(icol,ilyr)
+            cbuffer(cpter(icol,ilyr)+3) = tkh(icol,ilyr)
+            cbuffer(cpter(icol,ilyr)+4) = tk(icol,ilyr)
             do m=1,pcnst
-              cbuffer(cpter(icol,ilyr)+2+m) = phys_state(lchnk)%q(icol,ilyr,m)
+              cbuffer(cpter(icol,ilyr)+4+m) = phys_state(lchnk)%q(icol,ilyr,m)
             end do
           end do ! ilyr
         end do ! icol
@@ -453,8 +481,10 @@ CONTAINS
               T_tmp  (icol,ilyr,ie)   = bbuffer(bpter(icol,ilyr))
               uv_tmp (icol,1,ilyr,ie) = bbuffer(bpter(icol,ilyr)+1)
               uv_tmp (icol,2,ilyr,ie) = bbuffer(bpter(icol,ilyr)+2)
+              tkh_tmp(icol,ilyr,ie)   = bbuffer(bpter(icol,ilyr)+3)
+              tk_tmp (icol,ilyr,ie)   = bbuffer(bpter(icol,ilyr)+4)
               do m = 1,pcnst
-                q_tmp(icol,ilyr,m,ie) = bbuffer(bpter(icol,ilyr)+2+m)
+                q_tmp(icol,ilyr,m,ie) = bbuffer(bpter(icol,ilyr)+4+m)
               end do
             end do ! ilyr
           end do ! icol
@@ -487,6 +517,10 @@ CONTAINS
                                elem(ie)%derived%fM(:,:,:,:))
           call putUniquePoints(elem(ie)%idxP,    nlev,pcnst, q_tmp(1:ncols,:,:,ie),   &
                                elem(ie)%derived%fQ(:,:,:,:))
+          call putUniquePoints(elem(ie)%idxP,    nlev,       tkh_tmp(1:ncols,:,ie), &
+                               elem(ie)%derived%turb_diff_heat(:,:,:))
+          call putUniquePoints(elem(ie)%idxP,    nlev,       tk_tmp(1:ncols,:,ie), &
+                               elem(ie)%derived%turb_diff_mom(:,:,:))                   
         end do ! ie
         call t_stopf('putUniquePoints')
 

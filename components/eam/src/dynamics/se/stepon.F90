@@ -243,7 +243,7 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
    
 end subroutine stepon_run1
 
-subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
+subroutine stepon_run2(phys_state, phys_tend, pbuf2d, dyn_in, dyn_out )
    use bndry_mod,       only: bndry_exchangeV
    use dimensions_mod,  only: nlev, nlevp, nelemd, np, npsq
    use dyn_grid,        only: fv_nphys
@@ -257,11 +257,13 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
    use prim_driver_base,only: applyCAMforcing_tracers
    use prim_advance_mod,only: applyCAMforcing_dynamics
    use element_ops,     only: get_temperature
+   use physics_buffer, only : physics_buffer_desc
 
    type(physics_state), intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend),  intent(inout) :: phys_tend(begchunk:endchunk)
    type (dyn_import_t), intent(inout) :: dyn_in  ! Dynamics import container
    type (dyn_export_t), intent(inout) :: dyn_out ! Dynamics export container
+   type (physics_buffer_desc), pointer :: pbuf2d(:,:)
    real(r8) :: temperature(np,np,nlev)   ! Temperature from dynamics
    integer :: kptr, ie, ic, m, i, j, k, tl_f, tl_fQdp, velcomp
    real(r8) :: rec2dt
@@ -283,7 +285,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
    ! copy from phys structures -> dynamics structures
    call t_barrierf('sync_p_d_coupling', mpicom)
    call t_startf('p_d_coupling')
-   call p_d_coupling(phys_state, phys_tend,  dyn_in)
+   call p_d_coupling(phys_state, phys_tend, pbuf2d,  dyn_in)
    call t_stopf('p_d_coupling')
 
    if(.not.par%dynproc) return
