@@ -1,6 +1,7 @@
 %YAML 1.1
 ---
 Casename: rrtmgp_standalone_output_np${MPI_RANKS}
+Timestamp in Filename: false
 Averaging Type: Instant
 Grid: Physics
 Max Snapshots Per File: 1
@@ -27,6 +28,6 @@ Fields:
   - surf_lw_flux_up
  
 Output:
-  Frequency: 5
+  Frequency: ${NUM_STEPS}
   Frequency Units: Steps
 ...
