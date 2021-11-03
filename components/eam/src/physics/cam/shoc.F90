@@ -231,6 +231,7 @@ subroutine shoc_main ( &
      wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, & ! Input
      wtracer_sfc,num_qtracers,w_field, &  ! Input
      inv_exner,phis, &                        ! Input
+     col_location, &                      ! Input
      host_dse, tke, thetal, qw, &         ! Input/Output
      u_wind, v_wind,qtracers,&            ! Input/Output
      wthv_sec,tkh,tk,&                    ! Input/Output
@@ -298,6 +299,9 @@ subroutine shoc_main ( &
   real(rtype), intent(in) :: inv_exner(shcol,nlev)
   ! Host model surface geopotential height
   real(rtype), intent(in) :: phis(shcol)
+
+  ! Col location
+  real(rtype), intent(in) :: col_location(shcol,3)
 
 ! INPUT/OUTPUT VARIABLES
   ! prognostic temp variable of host model
@@ -532,6 +536,7 @@ subroutine shoc_main ( &
        wthl_sec,w_sec,&                     ! Input
        wqw_sec,qwthl_sec,w3,pres,&          ! Input
        zt_grid,zi_grid,&                    ! Input
+       col_location,&                       ! Input
        shoc_cldfrac,shoc_ql,&               ! Output
        wqls_sec,wthv_sec,shoc_ql2)          ! Output
 
@@ -2193,6 +2198,7 @@ subroutine shoc_assumed_pdf(&
          wthl_sec,w_sec, &                  ! Input
          wqw_sec,qwthl_sec,w3,pres, &       ! Input
          zt_grid,zi_grid,&                  ! Input
+         col_location,&                     ! Input
          shoc_cldfrac,shoc_ql,&             ! Output
          wqls,wthv_sec,shoc_ql2)            ! Output
 
@@ -2244,6 +2250,9 @@ subroutine shoc_assumed_pdf(&
   real(rtype), intent(in) :: zt_grid(shcol,nlev)
   ! heights on interface grid [m]
   real(rtype), intent(in) :: zi_grid(shcol,nlevi)
+  
+  ! Col location
+  real(rtype), intent(in) :: col_location(shcol,3)
 
 ! OUTPUT VARIABLES
   ! SGS cloud fraction [-]
@@ -2398,12 +2407,12 @@ subroutine shoc_assumed_pdf(&
 
       ! Check to ensure Tl1_1 and Tl1_2 are not negative. endrun otherwise
       if (Tl1_1 .le. 0._rtype) then
-         write(err_msg,*)'ERROR: Tl1_1 is .le. 0 before shoc_assumed_pdf_compute_qs in shoc. Tl1_1 is:',Tl1_1
+         write(err_msg,*)'ERROR: Tl1_1 is .le. 0 before shoc_assumed_pdf_compute_qs in shoc. Tl1_1, k, lon, lat, gcol is:',Tl1_1, k, col_location(i,2), col_location(i,3), int(col_location(i,1))
          call endscreamrun(err_msg)
       endif
 
       if (Tl1_2 .le. 0._rtype) then
-         write(err_msg,*)'ERROR: Tl1_2 is .le. 0 before shoc_assumed_pdf_compute_qs in shoc. Tl1_2 is:',Tl1_2
+         write(err_msg,*)'ERROR: Tl1_2 is .le. 0 before shoc_assumed_pdf_compute_qs in shoc. Tl1_2, k, lon, lat, gcol is:',Tl1_1, k, col_location(i,2), col_location(i,3), int(col_location(i,1))
          call endscreamrun(err_msg)
       endif
 
