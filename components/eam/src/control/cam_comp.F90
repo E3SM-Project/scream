@@ -255,7 +255,7 @@ subroutine cam_run1(cam_in, cam_out)
    !
    call t_barrierf ('sync_phys_run1', mpicom)
    call t_startf ('phys_run1')
-   call phys_run1(phys_state, dtime, phys_tend, pbuf2d,  cam_in, cam_out, dyn_out)
+   call phys_run1(phys_state, dtime, phys_tend, pbuf2d,  cam_in, cam_out)
    call t_stopf  ('phys_run1')
 
 end subroutine cam_run1

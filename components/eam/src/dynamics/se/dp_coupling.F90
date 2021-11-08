@@ -335,7 +335,7 @@ CONTAINS
                                        pbuf_old_tim_idx
     use shr_vmath_mod,           only: shr_vmath_log
     use cam_control_mod,         only: adiabatic
-    use control_mod,             only: ftype
+    use control_mod,             only: ftype, horiz_diff
     use dyn_comp,                only: dom_mt, hvcoord
     use gllfvremap_mod,          only: gfr_fv_phys_to_dyn
     use time_manager,            only: get_step_size
@@ -399,6 +399,8 @@ CONTAINS
     T_tmp  = 0.0_r8
     uv_tmp = 0.0_r8
     q_tmp  = 0.0_r8
+    tkh_tmp = 0.0_r8
+    tk_tmp = 0.0_r8
 
     if(adiabatic) return
 
@@ -424,8 +426,10 @@ CONTAINS
             do m = 1,pcnst
               q_tmp(ioff,ilyr,m,ie) = phys_state(lchnk)%q(icol,ilyr,m)
             end do
-            tkh_tmp(ioff,ilyr,ie) = tkh(icol,ilyr)
-            tk_tmp(ioff,ilyr,ie) = tk(icol,ilyr)
+            if (horiz_diff) then
+              tkh_tmp(ioff,ilyr,ie) = tkh(icol,ilyr)
+              tk_tmp(ioff,ilyr,ie) = tk(icol,ilyr)
+            endif
           end do ! ilyr
       	end do ! icol
       end do ! lchnk
@@ -453,8 +457,10 @@ CONTAINS
             cbuffer(cpter(icol,ilyr))   = phys_tend(lchnk)%dtdt(icol,ilyr)
             cbuffer(cpter(icol,ilyr)+1) = phys_tend(lchnk)%dudt(icol,ilyr)
             cbuffer(cpter(icol,ilyr)+2) = phys_tend(lchnk)%dvdt(icol,ilyr)
-            cbuffer(cpter(icol,ilyr)+3) = tkh(icol,ilyr)
-            cbuffer(cpter(icol,ilyr)+4) = tk(icol,ilyr)
+            if (horiz_diff) then
+              cbuffer(cpter(icol,ilyr)+3) = tkh(icol,ilyr)
+              cbuffer(cpter(icol,ilyr)+4) = tk(icol,ilyr)
+            endif
             do m=1,pcnst
               cbuffer(cpter(icol,ilyr)+4+m) = phys_state(lchnk)%q(icol,ilyr,m)
             end do
@@ -481,8 +487,10 @@ CONTAINS
               T_tmp  (icol,ilyr,ie)   = bbuffer(bpter(icol,ilyr))
               uv_tmp (icol,1,ilyr,ie) = bbuffer(bpter(icol,ilyr)+1)
               uv_tmp (icol,2,ilyr,ie) = bbuffer(bpter(icol,ilyr)+2)
-              tkh_tmp(icol,ilyr,ie)   = bbuffer(bpter(icol,ilyr)+3)
-              tk_tmp (icol,ilyr,ie)   = bbuffer(bpter(icol,ilyr)+4)
+              if (horiz_diff) then
+                tkh_tmp(icol,ilyr,ie)   = bbuffer(bpter(icol,ilyr)+3)
+                tk_tmp (icol,ilyr,ie)   = bbuffer(bpter(icol,ilyr)+4)
+              endif
               do m = 1,pcnst
                 q_tmp(icol,ilyr,m,ie) = bbuffer(bpter(icol,ilyr)+4+m)
               end do
