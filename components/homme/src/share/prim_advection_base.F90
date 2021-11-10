@@ -276,7 +276,7 @@ contains
   use hybrid_mod     , only : hybrid_t
   use element_mod    , only : element_t
   use derivative_mod , only : derivative_t, divergence_sphere, gradient_sphere, vorticity_sphere, &
-                              limiter_optim_iter_full, limiter_clip_and_sum
+                              limiter_optim_iter_full, limiter_clip_and_sum, laplace_sphere_wk
   use bndry_mod      , only : bndry_exchangev
   use hybvcoord_mod  , only : hvcoord_t
   implicit none
@@ -299,6 +299,7 @@ contains
   real(kind=real_kind), dimension(np,np  ,nlev                ) :: Qtens
   real(kind=real_kind), dimension(np,np  ,nlev                ) :: dp,dp_star
   real(kind=real_kind), dimension(np,np  ,nlev,qsize,nets:nete) :: Qtens_biharmonic
+  real(kind=real_kind), dimension(np,np)                        :: lap_p, qtens_diff
   real(kind=real_kind), pointer, dimension(:,:,:)               :: DSSvar
   integer :: ie,q,i,j,k, kptr
   integer :: rhs_viss
@@ -418,6 +419,19 @@ OMP_SIMD
           enddo
         enddo
       enddo
+
+      ! Compute horizontal diffusion due to SGS turbulence
+      do ie = nets, nete
+        do q = 1, qsize
+          do k = 1, nlev
+            lap_p(:,:) = elem(ie)%spheremp(:,:)*qtens_biharmonic(:,:,k,q,ie)
+            qtens_diff(:,:)=laplace_sphere_wk(lap_p,deriv,elem(ie),var_coef=.false.)
+            qtens_biharmonic(:,:,k,q,ie) = (dt*elem(ie)%derived%turb_diff_heat(:,:,k)*qtens_diff(:,:)) / &
+              elem(ie)%spheremp(:,:)
+          enddo
+        enddo
+      enddo
+
       call neighbor_minmax_finish(hybrid,edgeAdvQminmax,nets,nete,qmin(:,:,nets:nete),qmax(:,:,nets:nete))
     endif
     call t_stopf('bihmix_qminmax')
