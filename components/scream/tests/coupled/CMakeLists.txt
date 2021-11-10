@@ -2,6 +2,7 @@
 if (NOT ${SCREAM_BASELINES_ONLY})
   if ("${SCREAM_DYNAMICS_DYCORE}" STREQUAL "HOMME")
     add_subdirectory(homme_physics)
+    add_subdirectory(model_restart)
   endif()
   if (SCREAM_DOUBLE_PRECISION)
     add_subdirectory(shoc_cld_p3_rrtmgp)
