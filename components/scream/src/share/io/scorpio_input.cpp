@@ -74,7 +74,7 @@ set_parameters (const ekat::ParameterList& params, const std::string& grid_name)
     }
   } else if (params.isSublist("Fields") && grid_name!="") {
     const auto& pl = params.sublist("Fields").sublist(grid_name);
-    m_fields_names = pl.get<vos_t>("Fields");
+    m_fields_names = pl.get<vos_t>("Fields Names");
     if (pl.isParameter("IO Grid Name")) {
       m_io_grid_name = pl.get<std::string>("IO Grid Name");
     }
