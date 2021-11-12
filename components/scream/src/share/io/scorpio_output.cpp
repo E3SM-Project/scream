@@ -4,6 +4,7 @@
 
 #include "ekat/util/ekat_string_utils.hpp"
 
+#include <iomanip>
 #include <numeric>
 #include <fstream>
 
@@ -125,15 +126,67 @@ void AtmosphereOutput::run (const std::string& filename, const bool is_write_ste
   // If needed, remap fields from their grid to the unique grid, for I/O
   if (m_remapper) {
     m_remapper->remap(true);
+
+    auto pg = m_remapper->get_tgt_grid();
+    auto dg = m_remapper->get_src_grid();
+    for (int i=0; i<m_remapper->get_num_fields(); ++i) {
+      // Need to update the time stamp of the unique-grid fields
+      auto src = m_remapper->get_src_field(i);
+      auto tgt = m_remapper->get_tgt_field(i);
+
+      auto src_t = src.get_header().get_tracking().get_time_stamp();
+      tgt.get_header().get_tracking().update_time_stamp(src_t);
+      if (src.get_header().get_identifier().name()=="v_dyn" && filename.find(".r.")!=std::string::npos) {
+        std::cout << "dyn fid: " << src.get_header().get_identifier().get_id_string() << "\n";
+        std::cout << "phs fid: " << tgt.get_header().get_identifier().get_id_string() << "\n";
+        auto f_phs = tgt.get_view<Real***>();
+        auto f_dyn = src.get_view<Real******>();
+        // const int np = 4;
+        // const int ncols = pg->get_num_local_dofs();
+        // const int nlev  = pg->get_num_vertical_levels();
+        // const int nelem = dg->get_num_local_dofs() / (np*np);
+        std::cout << std::setprecision(17);
+        std::cout << "v dyn( 7,:,0,3,3,51): [" << f_dyn( 7,0,0,3,3,51) << "," << f_dyn( 7,1,0,3,3,51) << "," << f_dyn( 7,2,0,3,3,51) << "]\n";
+        std::cout << "v dyn(10,:,0,3,0,51): [" << f_dyn(10,0,0,3,0,51) << "," << f_dyn(10,1,0,3,0,51) << "," << f_dyn(10,2,0,3,0,51) << "]\n";
+        std::cout << "v dyn(23,:,0,3,3,51): [" << f_dyn(23,0,0,3,3,51) << "," << f_dyn(23,1,0,3,3,51) << "," << f_dyn(23,2,0,3,3,51) << "]\n";
+        std::cout << "v phys(90,0,51): " << f_phs(90,0,51) << "\n";
+        // for (int ie=0; ie<nelem; ++ie) {
+        //   for (int ip=0; ip<np; ++ip) {
+        //     for (int jp=0; jp<np; ++jp) {
+        //       std::cout << "q_dyn(" << ie << "," << ip << "," << jp << ",:):";
+        //       for (int k=0; k<nlev; ++k) {
+        //         std::cout << " " << f_dyn(ie,0,ip,jp,k);
+        //       }
+        //       std::cout << "\n";
+        //     }
+        //   }
+        // }
+        for (int icol=0; icol<pg->get_num_local_dofs(); ++icol) {
+          // std::cout << "q_dyn_phys(" << icol << ",0,:):";
+          // for (int ilev=0; ilev<pg->get_num_vertical_levels(); ++ilev) {
+          //   std::cout << " " << f_phs(icol,0,ilev);
+          // }
+          // std::cout << "\n";
+        }
+      }
+    }
+
+    std::cout << "m_field_mgr->get_grid()->name(): " << m_field_mgr->get_grid()->name() << "\n";
   }
 
   // Take care of updating and possibly writing fields.
   for (auto const& name : m_fields_names) {
     // Get all the info for this field.
+
     const auto  field = m_field_mgr->get_field(name);
     const auto& layout = m_layouts.at(name);
     const auto& dims = layout.dims();
     const auto  rank = layout.rank();
+
+    if (name=="field_1") {
+      auto fv = field.get_view<Real**>();
+      std::cout << " f_out(0,0): " << fv(0,0) << "\n";
+    }
 
     // Safety check: make sure that the field was written at least once before using it.
     EKAT_REQUIRE_MSG (field.get_header().get_tracking().get_time_stamp().is_valid(),
@@ -165,6 +218,9 @@ void AtmosphereOutput::run (const std::string& filename, const bool is_write_ste
           for (int j=0; j<dims[1]; ++j) {
             combine(new_view_2d(i,j), avg_view_2d(i,j),nsteps_since_last_output);
         }}
+        if (name=="field_1") {
+          std::cout << " avg_out(0,0): " << avg_view_2d(0,0) << "\n";
+        }
         break;
       }
       case 3:
@@ -336,6 +392,12 @@ std::vector<int> AtmosphereOutput::get_var_dof_offsets(const FieldLayout& layout
   // NOTE: we allow gid_0!=0, so that we don't have to worry about 1-based numbering
   //       vs 0-based numbering. The key feature is that the global gids are a
   //       contiguous array. The starting point doesn't matter.
+  // NOTE: a "dof" in the grid object is not the same as a "dof" in scorpio.
+  //       For a SEGrid 3d vector field with (MPI local) layout (nelem,2,np,np,nlev),
+  //       scorpio sees nelem*2*np*np*nlev dofs, while the SE grid sees nelem*np*np dofs.
+  //       All we need to do in this routine is to compute the offset of all the entries
+  //       of the MPI-local array w.r.t. the global array. So long as the offsets are in
+  //       the same order as the corresponding entry in the data to be read/written, we're good.
   if (layout.has_tag(ShortFieldTagsNames::COL)) {
     const int num_cols = m_io_grid->get_num_local_dofs();
 

@@ -128,7 +128,7 @@ TEST_CASE("dyn_grid_io")
 
   std::vector<std::string> fnames = {"field_1", "field_2", "field_3"};
 
-  // Ranodmize control fields, then remap to dyn fields
+  // Randomize control fields, then remap to dyn fields
   std::uniform_real_distribution<Real> pdf(0.01,100.0);
   auto engine = setup_random_test(&comm);
   auto dyn2phys = gm->create_remapper(dyn_grid,phys_grid);
@@ -156,7 +156,8 @@ TEST_CASE("dyn_grid_io")
   io_params.set<std::string>("Averaging Type","Instant");
   io_params.set<std::vector<std::string>>("Grids",{"Dynamics"});
   io_params.set<std::string>("Casename","dyn_grid_io_np" + std::to_string(comm.size()));
-  io_params.sublist("Fields").set<std::vector<std::string>>("Dynamics",fnames);
+  io_params.sublist("Fields").sublist("Dynamics").set<std::vector<std::string>>("Fields Names",fnames);
+  io_params.sublist("Fields").sublist("Dynamics").set<std::string>("IO Grid Name","Physics GLL");
   io_params.sublist("Output Control").set<int>("Frequency",1);
   io_params.sublist("Output Control").set<std::string>("Frequency Units","Steps");
 
@@ -169,8 +170,10 @@ TEST_CASE("dyn_grid_io")
   // Clear the content of the dyn fields, to avoid seeing the same numbers
   // only b/c nothing was in fact read.
   for (const auto& fn : fnames) {
-    auto f = fm_dyn->get_field(fn);
-    f.deep_copy(-1.0);
+    auto fd = fm_dyn->get_field(fn);
+    fd.deep_copy(-1.0);
+    auto fp = fm_phys->get_field(fn);
+    fp.deep_copy(0.0);
   }
 
   // Next, let's load all fields from file directly into the dyn grid fm
@@ -189,6 +192,35 @@ TEST_CASE("dyn_grid_io")
   for (const auto& fn : fnames) {
     auto fp = fm_phys->get_field(fn);
     auto fc = fm_ctrl->get_field(fn);
+    if(true && !views_are_equal(fp,fc)) {
+      std::cout << "field " << fn << " differs.\n";
+      auto fpv = fp.get_view<Real**>();
+      auto fcv = fc.get_view<Real**>();
+      std::cout << " fm_phys(0,0): " << fpv(0,0) << "\n";
+      // for (int ilev=0; ilev<nlev; ++ilev) {
+      //   std::cout << " " << fpv(0,ilev);
+      // }
+      // std::cout << "\n";
+      // for (int icol=1; icol<2; ++icol) {
+      //   std::cout << "          ";
+      //   for (int ilev=0; ilev<nlev; ++ilev) {
+      //     std::cout << " " << fpv(icol,ilev);
+      //   }
+      //   std::cout << "\n";
+      // }
+      std::cout << " fm_ctrl(0,0): " << fcv(0,0) << "\n";
+      // for (int ilev=0; ilev<nlev; ++ilev) {
+      //   std::cout << " " << fcv(0,ilev);
+      // }
+      // std::cout << "\n";
+      // for (int icol=1; icol<2; ++icol) {
+      //   std::cout << "          ";
+      //   for (int ilev=0; ilev<nlev; ++ilev) {
+      //     std::cout << " " << fcv(icol,ilev);
+      //   }
+      //   std::cout << "\n";
+      // }
+    }
     REQUIRE(views_are_equal(fp,fc));
   }
 

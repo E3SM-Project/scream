@@ -224,7 +224,7 @@ TEST_CASE("remap", "") {
       // Note: for the dyn->phys test to run correctly, the dynamics input v must be synced,
       //       meaning that the values at the interface between two elements must match.
       //       To do this, we initialize each entry in the dynamic v with the id
-      //       of the corresponding column.
+      //       of the corresponding physics column.
       //       But since this approach makes checking answers much easier, we use it also for phys->dyn.
 
       if (fwd) {

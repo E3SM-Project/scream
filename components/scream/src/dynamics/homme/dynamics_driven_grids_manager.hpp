@@ -30,7 +30,7 @@ public:
 protected:
 #endif
 
-  void build_dynamics_grid ();
+  void build_dynamics_grid (const bool DG);
   void build_physics_grid  (const std::string& name);
 
 protected:

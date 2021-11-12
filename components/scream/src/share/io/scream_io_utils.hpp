@@ -38,6 +38,11 @@ inline OutputAvgType str2avg (const std::string& s) {
   return OAT::Invalid;
 }
 
+enum OutputType {
+  Restart = 1,
+  Normal  = 2
+};
+
 // Mini struct to hold IO frequency info
 struct IOControl {
   // A non-positive frequency can be used to signal IO disabled

@@ -1,4 +1,5 @@
 #include "dynamics/homme/dynamics_driven_grids_manager.hpp"
+#include <memory>
 #include "dynamics/homme/interface/scream_homme_interface.hpp"
 #include "dynamics/homme/physics_dynamics_remapper.hpp"
 
@@ -117,7 +118,7 @@ build_grids (const std::set<std::string>& grid_names)
   init_grids_f90 (codes_ptr,pg_codes.size());
 
   // We know we need the dyn grid, so build it
-  build_dynamics_grid ();
+  build_dynamics_grid (true);
 
   for (const auto& gn : grid_names) {
     if (gn!="Dynamics") {
@@ -133,14 +134,25 @@ build_grids (const std::set<std::string>& grid_names)
   cleanup_grid_init_data_f90 ();
 }
 
-void DynamicsDrivenGridsManager::build_dynamics_grid () {
-  if (m_grids.find("Dynamics")==m_grids.end()) {
+void DynamicsDrivenGridsManager::build_dynamics_grid (const bool DG) {
+  if (DG) {
+    // First, create a CG SEGrid, so we can set it in the DG one
+    build_dynamics_grid(false);
+  }
 
+  const std::string name = "Dynamics" + std::string(DG ? "" : "CG");
+  if (m_grids.find(name)==m_grids.end()) {
     // Get dimensions and create "empty" grid
     const int nlelem = get_num_local_elems_f90();
     const int nlev   = get_nlev_f90();
-    auto dyn_grid = std::make_shared<SEGrid>("Dynamics",nlelem,HOMMEXX_NP,nlev,m_comm);
+
+    SEType se_type = DG ? SEType::DG : SEType::CG;
+    auto dyn_grid = std::make_shared<SEGrid>("Dynamics",nlelem,HOMMEXX_NP,nlev,se_type,m_comm);
     dyn_grid->setSelfPointer(dyn_grid);
+    if (DG) {
+      auto cg_grid = m_grids.at("DynamicsCG");
+      dyn_grid->set_cg_grid(std::dynamic_pointer_cast<const SEGrid>(cg_grid));
+    }
 
     const int ndofs = nlelem*HOMMEXX_NP*HOMMEXX_NP;
 
@@ -155,7 +167,7 @@ void DynamicsDrivenGridsManager::build_dynamics_grid () {
     auto h_lon    = Kokkos::create_mirror_view(lon);
 
     // Get (ie,igp,jgp,gid) data for each dof
-    get_dyn_grid_data_f90 (h_dofs.data(),h_elgpgp.data(), h_lat.data(), h_lon.data());
+    get_dyn_grid_data_f90 (h_dofs.data(),h_elgpgp.data(), h_lat.data(), h_lon.data(), DG);
 
     Kokkos::deep_copy(dofs,h_dofs);
     Kokkos::deep_copy(elgpgp,h_elgpgp);

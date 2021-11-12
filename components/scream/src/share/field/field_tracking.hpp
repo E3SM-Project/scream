@@ -39,18 +39,24 @@ public:
   // Please, notice this is not the OS time stamp (see time_stamp.hpp for details).
   const TimeStamp& get_time_stamp () const { return m_time_stamp; }
 
-  // List of providers/customers for this field
+  // List of providers/customers and owner for this field. Meaning:
+  //  - provider: can compute the field as an output
+  //  - customer: requires the field as an input
+  //  - owner: the field is "private" to the owner, which might need it for BFB restart
+  //    (we do still allow other atm procs to be customers though).
   const atm_proc_set_type& get_providers () const { return m_providers; }
   const atm_proc_set_type& get_customers () const { return m_customers; }
+  const atm_proc_ptr_type& get_owner     () const { return m_owner;     }
 
   // List of field groups that this field belongs to
   const ekat::WeakPtrSet<const FieldGroupInfo>& get_groups_info () const { return m_groups; }
 
   // ----- Setters ----- //
 
-  // Add to the list of providers/customers
+  // Add to the list of providers/customers or set the owner
   void add_provider (const std::weak_ptr<AtmosphereProcess>& provider);
   void add_customer (const std::weak_ptr<AtmosphereProcess>& customer);
+  void set_owner    (const std::weak_ptr<AtmosphereProcess>& owner);
 
   // Add the field to a given group
   void add_to_group (const std::shared_ptr<const FieldGroupInfo>& group);
@@ -73,6 +79,7 @@ protected:
   // NOTE: do NOT use shared_ptr, since you would create circular references.
   atm_proc_set_type       m_providers;
   atm_proc_set_type       m_customers;
+  atm_proc_ptr_type       m_owner;
 
   // Groups are used to bundle together fields, so that a process can request all of them
   // without knowing/listing all their names. For instance, the dynamics process needs to

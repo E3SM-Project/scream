@@ -19,6 +19,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
 
 namespace scream
 {
@@ -69,7 +70,6 @@ public:
   void registration_ends ();
   void clean_up ();
 
-
   // Get information about the state of the repo
   int size () const { return m_fields.size(); }
   RepoState repository_state () const { return m_repo_state; }
@@ -79,6 +79,11 @@ public:
 
   // Get the group_name->group_info map of all stored groups
   const group_info_map& get_groups_info () const { return m_field_groups; }
+
+  // Adds $field_name to group $group_name (creating the group, if necessary).
+  // NOTE: if $group_name is allocated as a bundled field, this throws.
+  // NOTE: must be called after registration ends
+  void add_to_group (const std::string& field_name, const std::string& group_name);
 
   // Query for a particular field or group of fields
   bool has_field (const std::string& name) const { return m_fields.find(name)!=m_fields.end(); }
@@ -246,7 +251,32 @@ void FieldManager<RealType>::register_group (const GroupRequest& req)
 }
 
 template<typename RealType>
-bool FieldManager<RealType>::has_field (const identifier_type& id) const {
+void FieldManager<RealType>::
+add_to_group (const std::string& field_name, const std::string& group_name)
+{
+  EKAT_REQUIRE_MSG (m_repo_state==RepoState::Closed,
+      "Error! You cannot call 'add_to_group' until after 'registration_ends' has been called.\n");
+  auto& group = m_field_groups[group_name];
+  if (not group) {
+    group = std::make_shared<FieldGroupInfo>(group_name);
+  }
+  EKAT_REQUIRE_MSG (not group->m_bundled,
+      "Error! Cannot add fields to a group that is bundled.\n"
+      "   group name: " + field_name + "\n");
+
+  EKAT_REQUIRE_MSG (has_field(field_name),
+      "Error! Cannot add field to group, since the field is not present in this FieldManager.\n"
+      "   field name: " + field_name + "\n"
+      "   group name: " + group_name + "\n");
+
+  group->m_fields_names.push_back(field_name);
+  auto& ft = get_field(field_name).get_header().get_tracking();
+  ft.add_to_group(group);
+}
+
+template<typename RealType>
+bool FieldManager<RealType>::has_field (const identifier_type& id) const
+{
   return has_field(id.name()) && m_fields.at(id.name())->get_header()->get_identifier()==id;
 }
 
@@ -506,10 +536,25 @@ registration_ends ()
   // (for now), and rearrange groups/fields so that we can expect qv to be the
   // first tracer.
   if (has_field("qv")) {
-    auto it = ekat::find(groups_to_bundle,"tracers");
-    if (it!=groups_to_bundle.end()) {
+    auto it1 = ekat::find(groups_to_bundle,"tracers");
+    auto it2 = ekat::find(groups_to_bundle,"tracers_dyn");
+    EKAT_REQUIRE_MSG (it1==groups_to_bundle.end() || it2==groups_to_bundle.end(),
+        "Error! This super-hack related to qv only works if the field manager has ONE 'tracers' group.\n");
+    if (it1!=groups_to_bundle.end()) {
       // Bring tracers to the front, so it will be processed first
-      std::swap(*it,groups_to_bundle.front());
+      std::swap(*it1,groups_to_bundle.front());
+
+      // Adding the 'fake' group G=(qv) at the front of groups_to_bundle ensures qv won't be put
+      // in the middle of the tracers group. We use a highly unlikely group name, to avoid clashing
+      // with a real group name. Later, after having found an global ordering for the tracers fields,
+      // we will remove this group.
+      groups_to_bundle.push_front("__qv__");
+      m_field_groups.emplace("__qv__",std::make_shared<group_info_type>("__qv__"));
+      m_field_groups.at("__qv__")->m_fields_names.push_back("qv");
+    }
+    if (it2!=groups_to_bundle.end()) {
+      // Bring tracers to the front, so it will be processed first
+      std::swap(*it2,groups_to_bundle.front());
 
       // Adding the 'fake' group G=(qv) at the front of groups_to_bundle ensures qv won't be put
       // in the middle of the tracers group. We use a highly unlikely group name, to avoid clashing

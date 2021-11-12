@@ -76,7 +76,6 @@ TEST_CASE("scream_homme_physics", "scream_homme_physics") {
   }
   ad.finalize();
 
-
   // If we got here, we were able to run without errors.
   REQUIRE (true);
 }

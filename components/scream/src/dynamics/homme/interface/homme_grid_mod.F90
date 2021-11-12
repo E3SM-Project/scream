@@ -50,7 +50,6 @@ contains
     !
     ! Local(s)
     !
-    integer :: ipg
     integer (kind=c_int), pointer :: pg_types(:)
 
     call c_f_pointer(pg_types_ptr, pg_types, [num_pg_types])
@@ -91,13 +90,17 @@ contains
     is_geometry_inited = .false.
   end subroutine finalize_geometry_f90
 
-  subroutine get_dyn_grid_data_f90 (gids_ptr, elgpgp_ptr, lat_ptr, lon_ptr) bind(c)
+  ! Note: dg_grid=.true. is to request dofs for a Discontinuous Galerkin grid,
+  !       that is, corresponding edge dofs on bordering elems have different gids.
+  !       If dg_grid=.false., the shared dofs have the same gid.
+  subroutine get_dyn_grid_data_f90 (gids_ptr, elgpgp_ptr, lat_ptr, lon_ptr, dg_grid) bind(c)
     use dimensions_mod,    only: nelemd, np
-    use dyn_grid_mod,      only: get_my_dyn_data
+    use dyn_grid_mod,      only: get_my_cg_dyn_data, get_my_dg_dyn_data
     !
     ! Input(s)
     !
     type (c_ptr), intent(in) :: gids_ptr, elgpgp_ptr, lat_ptr, lon_ptr
+    logical (c_bool), value, intent(in) :: dg_grid
     !
     ! Local(s)
     !
@@ -112,7 +115,11 @@ contains
     call c_f_pointer (lat_ptr,    lat,    [nelemd*np*np])
     call c_f_pointer (lon_ptr,    lon,    [nelemd*np*np])
 
-    call get_my_dyn_data (gids, elgpgp, lat, lon)
+    if (dg_grid) then
+      call get_my_dg_dyn_data (gids, elgpgp, lat, lon)
+    else
+      call get_my_cg_dyn_data (gids, elgpgp, lat, lon)
+    endif
   end subroutine get_dyn_grid_data_f90
 
   subroutine get_phys_grid_data_f90 (pg_type, gids_ptr, lat_ptr, lon_ptr, area_ptr) bind(c)

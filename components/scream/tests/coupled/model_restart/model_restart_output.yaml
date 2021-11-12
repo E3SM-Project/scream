@@ -5,13 +5,15 @@ Averaging Type: Instant
 Max Snapshots Per File: 1
 Fields:
   Physics GLL:
-    - T_mid
-    - qv
-    - horiz_winds
-    - v_prev_homme
+    Fields Names:
+      - T_mid
+      - qv
+      - horiz_winds
+      - v_prev_homme
   Dynamics:
-    - tracers_dyn
-    - v_dyn
+    Fields Names:
+      - tracers_dyn
+      - v_dyn
 Output Control:
   Frequency: 1
   Frequency Units: Steps

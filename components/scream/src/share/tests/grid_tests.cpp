@@ -55,22 +55,33 @@ TEST_CASE("se_grid", "") {
   const int num_gp = 4;
   const int num_levels = 72;
 
-  auto gm = create_mesh_free_grids_manager(comm,num_local_elems,num_gp,num_levels);
-  auto grid = gm->get_grid("SE Grid");
+  auto gm = create_mesh_free_grids_manager(comm,num_local_elems,num_gp,num_levels,0);
+  gm->build_grids(std::set<std::string>{"SE Grid CG","SE Grid DG"});
 
-  REQUIRE(grid->type() == GridType::SE);
-  REQUIRE(grid->name() == "SE Grid");
-  REQUIRE(grid->get_num_vertical_levels() == num_levels);
-  REQUIRE(grid->get_num_local_dofs() == num_local_elems*num_gp*num_gp);
+  // CG grid (replicated dofs have the same gid)
+  auto se_cg = gm->get_grid("SE Grid CG");
 
-  auto layout = grid->get_2d_scalar_layout();
+  REQUIRE(se_cg->type() == GridType::SE);
+  REQUIRE(se_cg->name() == "SE Grid CG");
+  REQUIRE(se_cg->get_num_vertical_levels() == num_levels);
+  REQUIRE(se_cg->get_num_local_dofs() == num_local_elems*num_gp*num_gp);
+
+  auto layout = se_cg->get_2d_scalar_layout();
   REQUIRE(layout.tags().size() == 3);
   REQUIRE(layout.tag(0) == EL);
   REQUIRE(layout.tag(1) == GP);
   REQUIRE(layout.tag(2) == GP);
 
-  // Dofs gids are replicated along edges, so the SE grid should *not* be unique
-  REQUIRE (not grid->is_unique());
+  REQUIRE (not se_cg->is_unique());
+
+  // DG grid (replicated dofs have different gids)
+  auto se_dg = gm->get_grid("SE Grid DG");
+  REQUIRE (se_dg->is_unique());
+  REQUIRE (se_dg->get_2d_scalar_layout()==layout);
+
+  const auto max_gid = se_dg->get_global_max_dof_gid();
+  const auto min_gid = se_dg->get_global_min_dof_gid();
+  REQUIRE( (max_gid-min_gid+1)==se_dg->get_num_global_dofs() );
 }
 
 } // anonymous namespace

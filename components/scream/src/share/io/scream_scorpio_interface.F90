@@ -52,7 +52,8 @@ module scream_scorpio_interface
       PIO_double, pio_rearr_subset, pio_write, pio_nowrite
   use pio_kinds,  only : PIO_OFFSET_KIND, i4
   use pio_nf,     only : PIO_redef, PIO_def_dim, PIO_def_var, PIO_enddef, PIO_inq_dimid, &
-                         PIO_inq_dimlen, PIO_inq_varid, PIO_inq_att
+                         PIO_inq_dimlen, PIO_inq_varid, PIO_inq_att, PIO_inq_varndims, &
+                         PIO_inq_vardimid
   use piodarray,  only : PIO_write_darray, PIO_read_darray
   use pionfatt_mod, only : PIO_put_att   => put_att
   use pionfput_mod, only : PIO_put_var   => put_var
@@ -171,10 +172,11 @@ module scream_scorpio_interface
   type pio_file_list_t
     type(pio_atm_file_t),  pointer :: pio_file => NULL() ! Pointer to an atm. pio file
     type(pio_file_list_t), pointer :: next => NULL()     ! Needed for recursive definition
+    type(pio_file_list_t), pointer :: prev => NULL()     ! A doubly-linked list is easier to handle
   end type pio_file_list_t
   ! Define the first pio_file_list
-  type(pio_file_list_t), target  :: pio_file_list_top
-  type(pio_file_list_t), pointer :: pio_file_list_bottom
+  type(pio_file_list_t), pointer :: pio_file_list_front
+  type(pio_file_list_t), pointer :: pio_file_list_back
 !----------------------------------------------------------------------
   type, public :: pio_atm_file_t
         !> @brief Filename.
@@ -197,12 +199,6 @@ module scream_scorpio_interface
 
         !> @brief Number of history records on this file
         integer               :: numRecs
-
-        !> @brief Coordinate Dimensions Array
-        type(hist_coord_t), allocatable :: dimensions(:)
-
-        !> @brief Whether or not this pio file is still open
-        logical                         :: isopen = .false.
 
         !> @brief Whether or not the dim/var definition phase is still open
         logical                         :: is_enddef = .false.
@@ -230,12 +226,27 @@ contains
     character(len=*), intent(in) :: filename
     integer, intent(in)          :: file_purpose
 
-    type(pio_atm_file_t), pointer :: current_atm_file
+    integer :: ierr
+    type(pio_atm_file_t), pointer :: pio_file
+    logical:: found
 
     if (.not.associated(pio_subsystem)) then
       call errorHandle("PIO ERROR: local pio_subsystem pointer has not been established yet.",-999)
     endif
-    call get_pio_atm_file(filename,current_atm_file,file_purpose)
+
+    ! Check if the file was already existing, and already open (will need this later)
+    call lookup_pio_atm_file(trim(filename),pio_file,found)
+    call get_pio_atm_file(filename,pio_file,file_purpose)
+
+    ! It might be we're opening for write a file that was previously opened and closed,
+    ! and might be in enddef mode.
+    ! Assuming the file was previously closed, we should allow re-opening the define mode.
+    if (found .and. pio_file%is_enddef .and. file_purpose .eq. file_purpose_out) then
+      ierr = PIO_redef(pio_file%pioFileDesc)
+      if (ierr .ne. 0) then
+        call errorHandle("Error while calling PIO_redef on file " // trim(filename) // ".", -999)
+      endif
+    endif
 
   end subroutine register_file
 !=====================================================================!
@@ -248,10 +259,10 @@ contains
 
     type(pio_atm_file_t), pointer :: current_atm_file
     integer                       :: ierr
-    logical                       :: found, is_open
+    logical                       :: found
 
-    call lookup_pio_atm_file(filename,current_atm_file,found,is_open)
-    if (.not.found .or. .not. is_open) then
+    call lookup_pio_atm_file(filename,current_atm_file,found)
+    if (.not.found) then
       call errorHandle("PIO ERROR: error running enddef on file "//trim(filename)//".\n PIO file not found or not open.",-999)
     endif
 
@@ -288,8 +299,8 @@ contains
     type(pio_atm_file_t), pointer       :: pio_atm_file
     type(hist_coord_t), pointer         :: hist_coord
     type(hist_coord_list_t), pointer    :: curr, prev
-    integer                             :: ierr
-    logical                             :: found, is_open, dim_found
+    logical                             :: found, dim_found
+    integer                             :: ierr, dim_len
 
     dim_found = .false.
 
@@ -297,8 +308,8 @@ contains
     if (length<0) call errorHandle("PIO Error: dimension "//trim(shortname)//", can't have a negative dimension length",-999)
 
     ! Find the pointer for this file
-    call lookup_pio_atm_file(trim(filename),pio_atm_file,found,is_open)
-    if (.not.found .or. .not. is_open) then
+    call lookup_pio_atm_file(trim(filename),pio_atm_file,found)
+    if (.not.found ) then
       call errorHandle("PIO ERROR: error registering dimension "//trim(shortname)//" in file "//trim(filename)//".\n PIO file not found or not open.",-999)
     endif
 
@@ -324,12 +335,30 @@ contains
       hist_coord%name      = trim(shortname)
       hist_coord%long_name = trim(longname)
       hist_coord%dimsize   = length
-      if (length.eq.0) then
-        ierr = PIO_def_dim(pio_atm_file%pioFileDesc, trim(shortname), pio_unlimited , hist_coord%dimid)
+      ! If this is the second time we open this file (e.g., during testing) but not in the same run,
+      ! we might be trying to re-register the same dimension, and PIO can error out in certain cases.
+      ! Therefore, first query PIO for the dimid, if existing.
+      ierr = pio_inq_dimid(pio_atm_file%pioFileDesc,shortname,hist_coord%dimid)
+      if (ierr.eq.0) then
+        ! The dimension already exists in the file. Let's make sure the dimension matches
+        ierr = pio_inq_dimlen(pio_atm_file%pioFileDesc,hist_coord%dimid,dim_len)
+        call errorHandle("PIO ERROR: could not retrieve length of dimension "//trim(shortname)//" on file: "//trim(filename),ierr)
+        ! If this is not an UNLIMITED dim, the length must match
+        if (length .gt. 0 .and. dim_len .ne. length) then
+          print *, "PIO ERROR: bad length for dimension " // trim(shortname) // " on file " // trim(filename)
+          print *, "  length of dimension on file:", dim_len
+          print *, "  length attempted to be registered:", length
+          call errorHandle("",-999)
+        endif
       else
-        ierr = PIO_def_dim(pio_atm_file%pioFileDesc, trim(shortname), length , hist_coord%dimid)
-      end if
-      call errorHandle("PIO ERROR: could not define dimension "//trim(shortname)//" on file: "//trim(filename),ierr)
+        ! dimension is not present in the file
+        if (length.eq.0) then
+          ierr = PIO_def_dim(pio_atm_file%pioFileDesc, trim(shortname), pio_unlimited , hist_coord%dimid)
+        else
+          ierr = PIO_def_dim(pio_atm_file%pioFileDesc, trim(shortname), length , hist_coord%dimid)
+        end if
+        call errorHandle("PIO ERROR: could not define dimension "//trim(shortname)//" on file: "//trim(filename),ierr)
+      endif
     else
       ! The dim was already registered by another input/output instance. Check that everything matches
       hist_coord => curr%coord
@@ -374,7 +403,7 @@ contains
     type(hist_var_t), pointer    :: hist_var
     integer                      :: dim_ii
     integer                      :: ierr
-    logical                      :: found,is_open,var_found
+    logical                      :: found,var_found
     character(len=256)           :: dimlen_str
 
     type(hist_var_list_t), pointer :: curr, prev
@@ -382,8 +411,8 @@ contains
     var_found = .false.
 
     ! Find the pointer for this file
-    call lookup_pio_atm_file(trim(filename),pio_atm_file,found,is_open)
-    if (.not.found .or. .not. is_open) then
+    call lookup_pio_atm_file(trim(filename),pio_atm_file,found)
+    if (.not.found ) then
       call errorHandle("PIO ERROR: error registering variable "//trim(shortname)//" in file "//trim(filename)//".\n PIO file not found or not open.",-999)
     endif
 
@@ -437,24 +466,44 @@ contains
     else
       ! The var was already registered by another input/output instance. Check that everything matches
       hist_var => curr%var
-      if ( trim(hist_var%name) .ne. trim(shortname) &
-               .or. &
-           trim(hist_var%long_name) .ne. trim(longname) &
-               .or. &
-           hist_var%dtype .ne. dtype &
-                .or. &
-           (pio_atm_file%purpose .eq. file_purpose_out .and. & ! Out files must match the decomp tag
-            (hist_var%numdims .ne. numdims .or. &
-             trim(hist_var%pio_decomp_tag) .ne. trim(pio_decomp_tag))) &
-! TODO: Check on this last conditional statement.  I don't think it is defined
-! correctly.  Commenting out for now.
-!                 .or. &
-!           (pio_atm_file%purpose .eq. file_purpose_in .and. & ! In files *may* use a decomp tag
-!            (hist_var%numdims .ne. (numdims+1) .or. &           ! without "-time" at the end
-!             trim(hist_var%pio_decomp_tag) .ne. trim(pio_decomp_tag)//"-time")) &
-          ) then
-        call errorHandle("PIO Error: variable "//trim(shortname)//", already registered with different name and/or dims and/or dtype and/or decomp tag, in file: "//trim(filename),-999)
+      if ( trim(hist_var%long_name) .ne. trim(longname) ) then
+        ! Different long name
+        call errorHandle("PIO Error: variable "//trim(shortname)//", already registered with different longname, in file: "//trim(filename),-999)
+      elseif (hist_var%dtype .ne. dtype) then
+        ! Different data type
+        call errorHandle("PIO Error: variable "//trim(shortname)//", already registered with different dtype, in file: "//trim(filename),-999)
+      elseif (pio_atm_file%purpose .eq. file_purpose_out .and. & ! Out files must match the decomp tag
+              (hist_var%numdims .ne. numdims .or. &
+               trim(hist_var%pio_decomp_tag) .ne. trim(pio_decomp_tag))) then
+        ! Different decomp tag in output file
+        call errorHandle("PIO Error: variable "//trim(shortname)//", already registered with different decomp tag, in file: "//trim(filename),-999)
+      elseif (hist_var%numdims .ne. numdims .and. &
+              hist_var%numdims .ne. (numdims+1)) then
+        ! Invalid dimlen
+        call errorHandle("PIO Error: variable "//trim(shortname)//", already registered with different dimlen, in file: "//trim(filename),-999)
+      elseif (pio_atm_file%purpose .eq. file_purpose_in .and. &
+              hist_var%numdims .eq. numdims .and. &
+              trim(hist_var%pio_decomp_tag) .ne. trim(pio_decomp_tag)) then
+        ! Same dimlen, but different decomp tag in input file
+        call errorHandle("PIO Error: variable "//trim(shortname)//", already registered with different decomp tag, in file: "//trim(filename),-999)
+      elseif (pio_atm_file%purpose .eq. file_purpose_in .and. & ! In files *may* use a decomp tag
+             (hist_var%numdims .eq. (numdims+1) .and. &           ! without "-time" at the end
+              trim(hist_var%pio_decomp_tag) .ne. trim(pio_decomp_tag)//"-time")) then
+        ! Different dimlen, but different decomp tag even if attaching "-time" in input file
+        call errorHandle("PIO Error: variable "//trim(shortname)//", already registered with different decomp tag, in file: "//trim(filename),-999)
       endif
+      ! if (hist_var%has_t_dim) then
+      !   ! If the registered var also has time dimension, match all n-1 dims
+
+      ! else
+      ! endif
+      !       (hist_var%numdims .ne. numdims .or. &
+      !        trim(hist_var%pio_decomp_tag) .ne. trim(pio_decomp_tag))) .or. &
+      !      (pio_atm_file%purpose .eq. file_purpose_in .and. & ! In files *may* use a decomp tag
+      !       (hist_var%numdims .ne. (numdims+1) .or. &           ! without "-time" at the end
+      !        trim(hist_var%pio_decomp_tag) .ne. trim(pio_decomp_tag)//"-time")) )then
+      !   call errorHandle("PIO Error: variable "//trim(shortname)//", already registered with different name and/or dims and/or dtype and/or decomp tag, in file: "//trim(filename),-999)
+      ! endif
     endif
   end subroutine get_variable
 !=====================================================================!
@@ -489,8 +538,9 @@ contains
     type(pio_atm_file_t),pointer :: pio_atm_file
     type(hist_var_t), pointer    :: hist_var
     integer                      :: dim_ii
-    integer                      :: ierr
-    logical                      :: found,is_open,var_found
+    logical                      :: found,var_found
+    integer                      :: ierr, int_tmp
+    integer, allocatable         :: dimids(:)
     character(len=256)           :: dimlen_str
 
     type(hist_var_list_t), pointer :: curr, prev
@@ -498,8 +548,8 @@ contains
     var_found = .false.
 
     ! Find the pointer for this file
-    call lookup_pio_atm_file(trim(filename),pio_atm_file,found,is_open)
-    if (.not.found .or. .not. is_open) then
+    call lookup_pio_atm_file(trim(filename),pio_atm_file,found)
+    if (.not.found ) then
       call errorHandle("PIO ERROR: error registering variable "//trim(shortname)//" in file "//trim(filename)//".\n PIO file not found or not open.",-999)
     endif
 
@@ -544,31 +594,54 @@ contains
         hist_var%pio_decomp_tag = hist_var%pio_decomp_tag//"_"//trim(dimlen_str)
       end do
 
-      ! Register Variable with PIO
-      ! First, check to see if variable already is defined with file
+      ! If this is the second time we open this file (e.g., during testing) but not in the same run,
+      ! we might be trying to re-register the same dimension, and PIO can error out in certain cases.
+      ! Therefore, first query PIO for the dimid, if existing.
       ierr = PIO_inq_varid(pio_atm_file%pioFileDesc,trim(shortname),hist_var%piovar)
-      if (ierr == PIO_NOERR) call errorHandle("PIO ERROR: could not define variable "//trim(shortname)//" in file "//trim(filename)//", already exists",-999)
-
-      ! if ierr is not pio_noerror then the variable needs to be defined
-      if (ierr.ne.pio_noerr) ierr = PIO_def_var(pio_atm_file%pioFileDesc, trim(shortname), hist_var%dtype, hist_var%dimid(:numdims), hist_var%piovar)
-      call errorHandle("PIO ERROR: could not define variable "//trim(shortname),ierr)
+      if (ierr == PIO_NOERR) then
+        ! The variable already exists in the file. Let's make sure the dimensions matches
+        ierr = pio_inq_varndims(pio_atm_file%pioFileDesc,hist_var%piovar,int_tmp)
+        call errorHandle("PIO ERROR: could not retrieve number of dimension of var "//trim(shortname)//" on file: "//trim(filename),ierr)
+        if (int_tmp .ne. numdims) then
+          print *, "PIO ERROR: bad number of dimensions for var " // trim(shortname) // " on file " // trim(filename)
+          print *, "  number of dimensions on file:", int_tmp
+          print *, "  number of dimensions of var attempted to be registered:", numdims
+          call errorHandle("",-999)
+        endif
+        allocate (dimids(numdims))
+        ierr = pio_inq_vardimid(pio_atm_file%pioFileDesc,hist_var%piovar,dimids)
+        call errorHandle("PIO ERROR: could not retrieve dimids for variable "//trim(shortname) // " on file " // trim(filename),ierr)
+        do dim_ii=1,numdims
+          if (dimids(dim_ii) .ne. hist_var%dimid(dim_ii)) then
+            print *, "PIO ERROR: bad dimension for var " // trim(shortname) // " on file " // trim(filename)
+            print *, "  dim_id on file:", dimids(dim_ii)
+            print *, "  dim_id of var attempted to be registered:", hist_var%dimid(dim_ii)
+            call errorHandle("",-999)
+          endif
+        enddo
+      else
+        ! if ierr is not pio_noerror then the variable needs to be defined
+        ierr = PIO_def_var(pio_atm_file%pioFileDesc, trim(shortname), hist_var%dtype, hist_var%dimid(:numdims), hist_var%piovar)
+        call errorHandle("PIO ERROR: could not define variable "//trim(shortname),ierr)
+      endif
 
       ! Update the number of variables on file
       pio_atm_file%varcounter = pio_atm_file%varcounter + 1
     else
       ! The var was already registered by another input/output instance. Check that everything matches
       hist_var => curr%var
-      if ( trim(hist_var%name) .ne. trim(shortname) .or. &
-           trim(hist_var%long_name) .ne. trim(longname) .or. &
-           hist_var%dtype .ne. dtype .or. &
-           (pio_atm_file%purpose .eq. file_purpose_out .and. & ! Out files must match the decomp tag
-            (hist_var%numdims .ne. numdims .or. &
-             trim(hist_var%pio_decomp_tag) .ne. trim(pio_decomp_tag))) .or. &
-           (pio_atm_file%purpose .eq. file_purpose_in .and. & ! In files *may* use a decomp tag
-            (hist_var%numdims .ne. (numdims+1) .or. &           ! without "-time" at the end
-             trim(hist_var%pio_decomp_tag) .ne. trim(pio_decomp_tag)//"-time")) )then
-        call errorHandle("PIO Error: variable "//trim(shortname)//", already registered with different name and/or dims and/or dtype and/or decomp tag, in file: "//trim(filename),-999)
-      endif
+      ! if ( trim(hist_var%name) .ne. trim(shortname) .or. &
+      !      trim(hist_var%long_name) .ne. trim(longname) .or. &
+      !      hist_var%dtype .ne. dtype .or. &
+      !      (pio_atm_file%purpose .eq. file_purpose_out .and. & ! Out files must match the decomp tag
+      !       (hist_var%numdims .ne. numdims .or. &
+      !        trim(hist_var%pio_decomp_tag) .ne. trim(pio_decomp_tag))) .or. &
+      !      (pio_atm_file%purpose .eq. file_purpose_in .and. & ! In files *may* use a decomp tag
+      !       (hist_var%numdims .ne. (numdims+1) .or. &           ! without "-time" at the end
+      !        trim(hist_var%pio_decomp_tag) .ne. trim(pio_decomp_tag)//"-time")) )then
+
+      !   call errorHandle("PIO Error: variable "//trim(shortname)//", already registered with different name and/or dims and/or dtype and/or decomp tag, in file: "//trim(filename),-999)
+      ! endif
     endif
 
   end subroutine register_variable
@@ -682,6 +755,9 @@ contains
     end if
 #endif
 
+    ! Init the list of pio files so that begin==end==null
+    pio_file_list_back   => null()
+    pio_file_list_front => null()
   end subroutine eam_init_pio_subsystem
 !=====================================================================!
   ! Query whether the pio subsystem is inited already
@@ -748,19 +824,31 @@ contains
     character(len=*),  intent(in)    :: fname            ! Pio file name
     !--
     type(pio_atm_file_t),pointer     :: pio_atm_file
+    type(pio_file_list_t), pointer   :: pio_file_list_ptr
     logical                          :: found
 
     ! Find the pointer for this file
-    call lookup_pio_atm_file(trim(fname),pio_atm_file,found)
+    call lookup_pio_atm_file(trim(fname),pio_atm_file,found,pio_file_list_ptr)
     if (found) then
       if (pio_atm_file%num_customers .eq. 1) then
         if (pio_atm_file%purpose .eq. file_purpose_out) then
           call PIO_syncfile(pio_atm_file%pioFileDesc)
         endif
         call PIO_closefile(pio_atm_file%pioFileDesc)
-        pio_atm_file%isopen = .false.
-        pio_atm_file%purpose = file_purpose_not_set
-        pio_atm_file%num_customers = 0
+
+        ! Adjust pointers in the pio file list
+        if (associated(pio_file_list_ptr%prev)) then
+          pio_file_list_ptr%prev%next => pio_file_list_ptr%next
+        else
+          ! We're deleting the first item in the lists. Update pio_file_list_front
+          pio_file_list_front => pio_file_list_ptr%next
+        endif
+        if (associated(pio_file_list_ptr%next)) then
+          pio_file_list_ptr%next%prev => pio_file_list_ptr%prev
+        else
+          ! We're deleting the last item in the lists. Update pio_file_list_back
+          pio_file_list_back => pio_file_list_ptr%prev
+        endif
       else if (pio_atm_file%num_customers .gt. 1) then
         pio_atm_file%num_customers = pio_atm_file%num_customers - 1
       else
@@ -778,25 +866,25 @@ contains
     ! May not be needed, possibly handled by PIO directly.
 
     integer :: ierr
-    type(pio_file_list_t), pointer :: curr
-    type(iodesc_list_t),   pointer :: curr_iodesc
+    type(pio_file_list_t), pointer :: curr_file_ptr, prev_file_ptr
+    type(iodesc_list_t),   pointer :: iodesc_ptr
 
     ! Close all the PIO Files
-    curr => pio_file_list_top
-    do while (associated(curr))
-      if (associated(curr%pio_file)) then
-        if (curr%pio_file%isopen) call PIO_closefile(curr%pio_file%pioFileDesc)
-        curr%pio_file%isopen = .false.
-      end if
-      curr => curr%next
+    curr_file_ptr => pio_file_list_front
+    do while (associated(curr_file_ptr))
+      call eam_pio_closefile(curr_file_ptr%pio_file%filename)
+      prev_file_ptr => curr_file_ptr
+      curr_file_ptr => curr_file_ptr%next
+      deallocate(prev_file_ptr%pio_file)
+      deallocate(prev_file_ptr)
     end do
     ! Free all decompositions from PIO
-    curr_iodesc => iodesc_list_top
-    do while(associated(curr_iodesc))
-      if (associated(curr_iodesc%iodesc).and.curr_iodesc%iodesc_set) then
-        call pio_freedecomp(pio_subsystem,curr_iodesc%iodesc)
+    iodesc_ptr => iodesc_list_top
+    do while(associated(iodesc_ptr))
+      if (associated(iodesc_ptr%iodesc).and.iodesc_ptr%iodesc_set) then
+        call pio_freedecomp(pio_subsystem,iodesc_ptr%iodesc)
       end if
-      curr_iodesc => curr_iodesc%next
+      iodesc_ptr => iodesc_ptr%next
     end do
 
     call PIO_finalize(pio_subsystem, ierr)
@@ -1024,25 +1112,18 @@ contains
   end subroutine get_var
 !=====================================================================!
   ! Diagnostic routine to determine how many pio files are currently open:
-  subroutine count_pio_atm_file()
+  function count_pio_atm_file() result(total_count)
     integer :: total_count
 
-    type(pio_file_list_t), pointer :: curr => NULL(), prev => NULL() ! Used to cycle through recursive list of pio atm files
+    type(pio_file_list_t), pointer :: curr_file_ptr ! Used to cycle through recursive list of pio atm files
 
     total_count = 0
-    curr => pio_file_list_top
-    do while (associated(curr))
-      if (associated(curr%pio_file)) then
-        if (curr%pio_file%isopen) then
-          total_count = total_count+1
-          write(*,*) "File: ", trim(curr%pio_file%filename), " is open"
-        end if
-      end if
-      prev => curr
-      curr => prev%next
+    curr_file_ptr => pio_file_list_front
+    do while (associated(curr_file_ptr))
+      total_count = total_count+1
+      curr_file_ptr => curr_file_ptr%next
     end do
-    write(*,*) "Total number of files open: ", total_count
-  end subroutine count_pio_atm_file
+  end function count_pio_atm_file
 !=====================================================================!
   ! Retrieves an integer global attribute from the nc file
   function get_int_attribute (file_name, attr_name) result(val)
@@ -1112,37 +1193,30 @@ contains
   end subroutine set_int_attribute
 !=====================================================================!
   ! Lookup pointer for pio file based on filename.
-  subroutine lookup_pio_atm_file(filename,pio_file,found,is_open)
+  subroutine lookup_pio_atm_file(filename,pio_file,found,pio_file_list_ptr_in)
 
     character(len=*),intent(in)   :: filename     ! Name of file to be found
     type(pio_atm_file_t), pointer :: pio_file     ! Pointer to pio_atm_output structure associated with this filename
     logical, intent(out)          :: found        ! whether or not the file was found
-    logical, intent(out),optional :: is_open      ! whether or not the file was open (if found)
+    type(pio_file_list_t), pointer, optional :: pio_file_list_ptr_in
 
-    type(pio_file_list_t), pointer :: curr, prev  ! Used to cycle through recursive list of pio atm files
-    integer :: cnt
-    ! Starting at the top of the current list of PIO_FILES search for this
-    ! filename.
-    cnt = 0
+    type(pio_file_list_t), pointer :: pio_file_list_ptr
+
+    ! Scan pio file list, search for this filename
     found = .false.
-    curr => pio_file_list_top
-    do while (associated(curr))
-      cnt = cnt+1
-      if (associated(curr%pio_file)) then
-        if (trim(filename)==trim(curr%pio_file%filename)) then
-          pio_file => curr%pio_file
-          found = .true.
-          if (present(is_open)) then
-            is_open = pio_file%isopen
-          endif
-          return
-        end if
+    pio_file_list_ptr => pio_file_list_front
+    pio_file => null()
+    do while (associated(pio_file_list_ptr))
+      if (trim(filename)==trim(pio_file_list_ptr%pio_file%filename)) then
+        pio_file => pio_file_list_ptr%pio_file
+        found = .true.
+        if (present(pio_file_list_ptr_in)) then
+          pio_file_list_ptr_in => pio_file_list_ptr
+        endif
+        return
       end if
-      prev => curr
-      curr => prev%next
+      pio_file_list_ptr => pio_file_list_ptr%next
     end do
-    allocate(prev%next)
-    pio_file_list_bottom => prev%next
 
   end subroutine lookup_pio_atm_file
 !=====================================================================!
@@ -1153,8 +1227,8 @@ contains
     type(pio_atm_file_t), pointer :: pio_file     ! Pointer to pio_atm_output structure associated with this filename
     integer,intent(in)            :: purpose      ! Purpose for this file lookup, 0 = find already existing, 1 = create new as output, 2 = open new as input
 
-    logical                        :: found, is_open
-    type(pio_file_list_t), pointer :: curr
+    logical                        :: found
+    type(pio_file_list_t), pointer :: new_list_item
 
     integer                        :: ierr, time_id
 
@@ -1162,40 +1236,35 @@ contains
     if (purpose .ne. file_purpose_in .and. purpose .ne. file_purpose_out) then
       call errorHandle("PIO Error: unrecognized file purpose for file '"//filename//"'.",-999)
     endif
-    ! Make sure a there isn't a pio_atm_file pointer already estalished for a
-    ! file with this filename.
-    call lookup_pio_atm_file(trim(filename),pio_file,found,is_open)
+
+    ! If the file already exists, return that file
+    call lookup_pio_atm_file(trim(filename),pio_file,found)
     if (found) then
-      if (is_open .and. (purpose .ne. file_purpose_in .or. &
-          pio_file%purpose .ne. file_purpose_in) ) then
+      if (purpose .ne. file_purpose_in .or. &
+          pio_file%purpose .ne. file_purpose_in ) then
         ! We only allow multiple customers of the file if they all use it in read mode.
         call errorHandle("PIO Error: file '"//trim(filename)//"' was already open for writing.",-999)
       else
         pio_file%purpose = purpose
         call eam_pio_openfile(pio_file,trim(pio_file%filename))
         pio_file%num_customers = pio_file%num_customers + 1
-        pio_file%isopen = .true.
       endif
-    endif
+    else
+      allocate(new_list_item)
+      allocate(new_list_item%pio_file)
+      pio_file => new_list_item%pio_file
 
-    if (.not. found) then
-      curr => pio_file_list_bottom
-      allocate(curr%pio_file)
-      pio_file => curr%pio_file
-      pio_file_list_bottom => curr%next
       ! Create and initialize the new pio file:
       pio_file%filename = trim(filename)
-      pio_file%isopen = .true.
       pio_file%numRecs = 0
       pio_file%num_customers = 1
-      pio_file%isopen = .true.
+      pio_file%purpose = purpose
       if (purpose == file_purpose_out) then  ! Will be used for output.  Set numrecs to zero and create the new file.
         call eam_pio_createfile(pio_file%pioFileDesc,trim(pio_file%filename))
         call eam_pio_createHeader(pio_file%pioFileDesc)
-        pio_file%purpose = file_purpose_out
       elseif (purpose == file_purpose_in) then ! Will be used for input, just open it
-        pio_file%purpose = file_purpose_in
         call eam_pio_openfile(pio_file,trim(pio_file%filename))
+        pio_file%is_enddef = .true. ! Files open in read mode are in data mode already
         ! Update the numRecs to match the number of recs in this file.
         ierr = pio_inq_dimid(pio_file%pioFileDesc,"time",time_id)
         if (ierr.ne.0) then
@@ -1209,13 +1278,21 @@ contains
       else
         call errorHandle("PIO Error: get_pio_atm_file with filename = "//trim(filename)//", purpose (int) assigned to this lookup is not valid" ,-999)
       end if
-    endif
 
-    if (purpose .eq. file_purpose_in) then
-      ! We should not be able to add def for a input file
-      pio_file%is_enddef = .true.
+      ! Update the pio file list
+      if (associated(pio_file_list_back)) then
+        ! 1) Link new file to the new_list_itement back of the list
+        new_list_item%prev => pio_file_list_back
+        ! 2) Link the current last element of the list to the new one
+        pio_file_list_back%next => new_list_item
+        ! 3) and update the pointer to the last
+        pio_file_list_back => new_list_item
+      else
+        ! The list was empty. Set both front/back to point to the new item
+        pio_file_list_front => new_list_item
+        pio_file_list_back  => new_list_item
+      endif
     endif
-
   end subroutine get_pio_atm_file
 !=====================================================================!
   ! Retrieve the dimension length for a file.

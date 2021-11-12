@@ -1,9 +1,10 @@
 #include "atmosphere_dynamics.hpp"
-#include <string>
 
 // HOMMEXX Includes
 #include "Context.hpp"
 #include "Elements.hpp"
+#include "ElementsState.hpp"
+#include "HommexxEnums.hpp"
 #include "SimulationParams.hpp"
 #include "ElementsForcing.hpp"
 #include "EulerStepFunctor.hpp"
@@ -11,6 +12,7 @@
 #include "DirkFunctor.hpp"
 #include "ForcingFunctor.hpp"
 #include "CaarFunctor.hpp"
+#include "utilities/SubviewUtils.hpp"
 #include "VerticalRemapManager.hpp"
 #include "HyperviscosityFunctor.hpp"
 #include "ExecSpaceDefs.hpp"
@@ -18,9 +20,11 @@
 #include "ekat/ekat_workspace.hpp"
 #include "TimeLevel.hpp"
 #include "Tracers.hpp"
+#include "mpi/ConnectivityHelpers.hpp"
 #include "Types.hpp"
 
 // Scream includes
+#include "dynamics/homme/physics_dynamics_remapper.hpp"
 #include "dynamics/homme/homme_dimensions.hpp"
 #include "dynamics/homme/homme_dynamics_helpers.hpp"
 #include "dynamics/homme/interface/scream_homme_interface.hpp"
@@ -32,6 +36,9 @@
 // Ekat includes
 #include "ekat/ekat_assert.hpp"
 #include "ekat/kokkos//ekat_subview_utils.hpp"
+
+#include <iostream>
+#include <iomanip>
 
 namespace scream
 {
@@ -65,7 +72,6 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
   using FL  = FieldLayout;
 
   constexpr int NGP  = HOMMEXX_NP;
-  constexpr int NVL  = HOMMEXX_NUM_PHYSICAL_LEV;
   constexpr int NTL  = HOMMEXX_NUM_TIME_LEVELS;
 
   // Some units
@@ -79,14 +85,34 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
   m_ref_grid = grids_manager->get_reference_grid();
   const auto& rgn = m_ref_grid->name();
 
-  const int ne = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
   const int ncols = m_ref_grid->get_num_local_dofs();
+  const int nelem = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
+  const int nlev_mid = m_dyn_grid->get_num_vertical_levels();
+  const int nlev_int = nlev_mid+1;
 
   // Sanity check for the grid. This should *always* pass, since Homme builds the grids
-  EKAT_REQUIRE_MSG(get_num_local_elems_f90()==ne,
+  EKAT_REQUIRE_MSG(get_num_local_elems_f90()==nelem,
       "Error! The number of elements computed from the Dynamics grid num_dof()\n"
       "       does not match the number of elements internal in Homme.\n");
 
+  /*
+     Explanation of what Homme needs, including what it needs for BFB restarts
+
+     From the pt of view of the atmosphere, Homme has v,w,dp,T,phi,Q on physics grid
+     as both inputs and outputs.
+     Homme stores *prognostic states* on the dyn grid (v, w, dp, vtheta_dp, Qdp, phi),
+     which have to be saved to file for BFB restart.
+     Additionally, Homme computes forcing as:
+       - FT (temperature forcing): FT_dyn=PD( (T_phys_new - T_phys_old)/dt )
+       - FM (momentum forcing): FM_dyn=PD( (v_phys_new-v_phys_old)/dt) )
+       - FQ (tracers forcing):
+          - ftype==FORCING_DEBUG(0): FQ_dyn =( PD(Q_phys_new) - Q_dyn_old )/dt (a tendency value)
+          - ftype==FORCING_2(2): FQ_dyn = Q_dyn_old + ( PD(Q_phys_new - Q_phys_old) ) (a new state value)
+     Here, PD(x) is quantity x remapped from physics to dynamics grid.
+     So for BFB restart, we need so store T_phys_old, v_phys_old, and Q_dyn_old.
+     However, Homme computes Q=Qdp/dp at the end of the time step, so for BFB restarts we need to
+     save Qdp only, and recompute Q_dyn_old=Qdp/dp.
+   */
   // Notes:
   //  - physics will update T_mid, Q, horiz_winds, but not w_i, phi_i, and pseudo_density.
   //    Dyn will have to back out tendencies, as well as convert T->VTheta_dp.
@@ -102,127 +128,60 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
   //       into the n0 time-slice of Homme's vtheta_dp, and then do the conversion
   //       T_mid->VTheta_dp in place.
 
-  // Note: qv is needed to make sure Q is not empty (dyn needs qv to transform T<->Theta),
+  // Note: qv is needed to transform T<->Theta
   constexpr int N = sizeof(Homme::Scalar) / sizeof(Real);
-  add_field<Updated> ("horiz_winds",   FL({COL,CMP, LEV},{ncols,2,NVL}),  m/s,   rgn,N);
-  add_field<Updated> ("T_mid",         FL({COL,     LEV},{ncols,  NVL}),  K,     rgn,N);
-  add_field<Updated> ("w_int",         FL({COL,    ILEV},{ncols,  NVL+1}),m/s,   rgn,N);
-  add_field<Updated> ("phi_int",       FL({COL,    ILEV},{ncols,  NVL+1}),Pa/rho,rgn,N);
-  add_field<Updated> ("pseudo_density",FL({COL,     LEV},{ncols,  NVL}),  Pa,    rgn,N);
-  add_field<Updated> ("ps",            FL({COL         },{ncols      }),  Pa,    rgn);
-  add_field<Required>("qv",            FL({COL,     LEV},{ncols,  NVL}),  Q,     rgn,"tracers",N);
-  add_field<Computed>("p_int",         FL({COL,    ILEV},{ncols,  NVL+1}),Pa,    rgn,N);
-  add_field<Computed>("p_mid",         FL({COL,     LEV},{ncols,  NVL}),  Pa,    rgn,N);
+  add_field<Updated> ("horiz_winds",   FL({COL,CMP, LEV},{ncols,2,nlev_mid}),m/s,   rgn,N);
+  add_field<Updated> ("T_mid",         FL({COL,     LEV},{ncols,  nlev_mid}),K,     rgn,N);
+  add_field<Updated> ("w_int",         FL({COL,    ILEV},{ncols,  nlev_int}),m/s,   rgn,N);
+  add_field<Updated> ("phi_int",       FL({COL,    ILEV},{ncols,  nlev_int}),Pa/rho,rgn,N);
+  add_field<Updated> ("pseudo_density",FL({COL,     LEV},{ncols,  nlev_mid}),Pa,    rgn,N);
+  add_field<Updated> ("ps",            FL({COL         },{ncols           }),Pa,    rgn);
+  add_field<Required>("qv",            FL({COL,     LEV},{ncols,  nlev_mid}),Q,     rgn,"tracers",N);
+  add_field<Computed>("p_int",         FL({COL,    ILEV},{ncols,  nlev_int}),Pa,    rgn,N);
+  add_field<Computed>("p_mid",         FL({COL,     LEV},{ncols,  nlev_mid}),Pa,    rgn,N);
+  add_group<Updated>("tracers",rgn,N, Bundling::Required);
 
-  // These are used to back out tendencies
-  add_field<Updated>("T_mid_prev",      FL({COL,LEV},    {ncols,  NVL}),  K/s,    rgn,N);
-  add_field<Updated>("horiz_winds_prev",FL({COL,CMP,LEV},{ncols,2,NVL}),  m/(s*s),rgn,N);
-  add_field<Updated>("w_int_prev",      FL({COL,LEV},    {ncols,  NVL+1}),m/(s*s),rgn,N);
+  // Dynamics grid states, used for BFB restart
+  add_field<Internal>("v_dyn",        FL({EL,TL,CMP,GP,GP,LEV}, {nelem,NTL,2,NP,NP,nlev_mid}),m/s,     dgn);
+  add_field<Internal>("vtheta_dp_dyn",FL({EL,TL,    GP,GP,LEV}, {nelem,NTL,  NP,NP,nlev_mid}),K*Pa,    dgn);
+  add_field<Internal>("dp3d_dyn",     FL({EL,TL,    GP,GP,LEV}, {nelem,NTL,  NP,NP,nlev_mid}),Pa,      dgn);
+  add_field<Internal>("w_int_dyn",    FL({EL,TL,    GP,GP,ILEV},{nelem,NTL,  NP,NP,nlev_int}),m/s,     dgn);
+  add_field<Internal>("phi_int_dyn",  FL({EL,TL,    GP,GP,ILEV},{nelem,NTL,  NP,NP,nlev_int}),Pa/rho,  dgn);
+  add_field<Internal>("ps_dyn",       FL({EL,TL,    GP,GP},     {nelem,NTL,  NP,NP         }),Pa,      dgn);
 
-  // Input-output groups.
-  // Note: HommeDynamics needs Q (tracers) and FQ (tracers forcing). Depending on ftype
-  // (the forcing type), the latter may be computed as FQ=(Qnew-Qold)/dt, where
-  // Qnew is the new value of Q (coming from physics), and Qold is the value of Q
-  // at the end of the last dyn step.
-  // So we register 2 groups:
-  //   - Q on ref grid: every atm proc interacts with other atm procs on the ref grid,
-  //     so we *must* use this as the main input/output.
-  //   - Q on dyn grid: what Homme will use for its computations. Also, this will store
-  //     the end-of-step values for the tracers. Homme will make sure that *no other atm proc*
-  //     updates this field (or any subfield) since it's needed for exact restart.
-  // The forcing FQ is instead stored as an internal field, without storing it in the field manager.
-  GroupRequest tracers_ref("tracers",m_ref_grid->name(),N, Bundling::Required);
-  GroupRequest tracers_dyn("tracers",m_dyn_grid->name(),N, Bundling::Required,
-                           DerivationType::Import, "tracers", m_ref_grid->name());
-  add_group<Updated>(tracers_ref);
-  add_group<Updated>(tracers_dyn);
-
-  // NOTE: since these fields are internal, and they don't end up in the FieldManager,
-  //       we don't care about units.
-  // Note: the dyn grid names do not follow the FieldManager conventions,
-  //       but rather the var names in Homme. That's ok, since these fields are
-  //       not exposed to the ourside world. We use fields (rather than raw views)
-  //       to leverage the scream remapper structures.
-  const int nelem = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
-  const int nlevs = m_dyn_grid->get_num_vertical_levels();
-
-  create_internal_field("FM",       {EL,   CMP,GP,GP,LEV}, {nelem,    3,NP,NP,nlevs},  m_dyn_grid->name());
-  create_internal_field("FT",       {EL,       GP,GP,LEV}, {nelem,      NP,NP,nlevs},  m_dyn_grid->name());
-  create_internal_field("v",        {EL,TL,CMP,GP,GP,LEV}, {nelem,NTL,2,NP,NP,nlevs},  m_dyn_grid->name());
-  create_internal_field("vtheta_dp",{EL,TL,    GP,GP,LEV}, {nelem,NTL,  NP,NP,nlevs},  m_dyn_grid->name());
-  create_internal_field("dp3d",     {EL,TL,    GP,GP,LEV}, {nelem,NTL,  NP,NP,nlevs},  m_dyn_grid->name());
-  create_internal_field("w_i",      {EL,TL,    GP,GP,ILEV},{nelem,NTL,  NP,NP,nlevs+1},m_dyn_grid->name());
-  create_internal_field("phinh_i",  {EL,TL,    GP,GP,ILEV},{nelem,NTL,  NP,NP,nlevs+1},m_dyn_grid->name());
-  create_internal_field("ps",       {EL,TL,    GP,GP},     {nelem,NTL,  NP,NP},        m_dyn_grid->name());
-
-  // For momentum and temperature, we back out tendencies on the ref grid,
-  // and then remap them. So we need extra fields for FM and FT on the ref grid,
-  // but we don't expose them, since they are internal. And we don't care about units.
-  // We need a temp also for tracers, but at the time this fcn is called, we still don't
-  // know the size of the tracers group. We can create that temp later.
-  create_internal_field("FM",{COL,CMP,LEV},{ncols,3,NVL},m_ref_grid->name());
-  create_internal_field("FT",{COL,    LEV},{ncols,  NVL},m_ref_grid->name());
+  // End-of-step fields, used to back out tendencies. Must be in the FM, for BFB restart
+  add_field<Internal>("T_mid_prev_homme", FL({COL,LEV},    {ncols,  nlev_mid}),K,  rgn,N);
+  add_field<Internal>("v_prev_homme",     FL({COL,CMP,LEV},{ncols,3,nlev_mid}),m/s,rgn,N);
+  // Import the whole tracers group from the ref grid to the dyn grid
+  add_group<Internal>("tracers_dyn",m_dyn_grid->name(),N, Bundling::Required,
+                      DerivationType::Import, "tracers", rgn);
 
   // Dynamics backs out tendencies from the states, and passes those to Homme.
   // After Homme completes, we remap the updates state to the ref grid.
   // Thus, is more convenient to use two different remappers: the pd remapper
   // will remap into Homme's forcing views, while the dp remapper will remap
   // from Homme's states.
-  m_p2d_remapper = grids_manager->create_remapper_from_ref_grid(m_dyn_grid);
-  m_d2p_remapper = grids_manager->create_remapper_to_ref_grid(m_dyn_grid);
+  m_p2d_remapper = grids_manager->create_remapper(m_ref_grid,m_dyn_grid);
+  m_d2p_remapper = grids_manager->create_remapper(m_dyn_grid,m_ref_grid);
 
-  // Create separate remapper for Initial Conditions, since for those we
-  // remap not into forcings, but directly into states.
-  m_ic_remapper_fwd = grids_manager->create_remapper_from_ref_grid(m_dyn_grid);
-  m_ic_remapper_bwd = grids_manager->create_remapper_from_ref_grid(m_dyn_grid);
-}
-
-void HommeDynamics::
-set_computed_group_impl (const FieldGroup<Real>& group)
-{
-  const auto& name = group.m_info->m_group_name;
-  EKAT_REQUIRE_MSG(name=="tracers",
-    "Error! We were not expecting a field group called '" << name << "\n");
-
-  EKAT_REQUIRE_MSG(not group.m_info->empty(),
-    "Error! There should be at least one tracer (qv) in the '" + name + "' group.\n");
-
-  EKAT_REQUIRE_MSG(group.m_info->m_bundled,
-      "Error! Homme expects a bundled field for the group '" + name + "'.\n");
-
-  // Now that we have Q, we have the exact count for tracers,
-  // and we can use that info to setup tracers stuff in Homme
-  const auto& c = Homme::Context::singleton();
-  auto& params = c.get<Homme::SimulationParams>();
-  if (params.qsize==0) {
-    auto& tracers = c.get<Homme::Tracers>();
-    const int qsize = group.m_info->size();
-    params.qsize = qsize; // Set in the CXX data structure
-    set_homme_param("qsize",qsize); // Set in the F90 module
-    tracers.init(tracers.num_elems(),qsize);
-  } else {
-    EKAT_REQUIRE_MSG (params.qsize==group.m_info->size(),
-        "Error! Input tracers group has a size different from the already initialized qsize param in Homme.\n"
-        "    - homme qsize: " + std::to_string(params.qsize) + "\n"
-        "    - tracers group size: " + std::to_string(group.m_info->size()) + "\n");
-  }
+  // Create separate remapper for Initial Conditions
+  m_ic_remapper = grids_manager->create_remapper(m_ref_grid,m_dyn_grid);
 }
 
 int HommeDynamics::requested_buffer_size_in_bytes() const
 {
   using namespace Homme;
-  auto& c = Context::singleton();
 
-  auto& elems   = c.get<Elements>();
-  auto& tracers = c.get<Tracers>();
+  auto& c = Context::singleton();
+  const auto num_elems   = c.get<Elements>().num_elems();
   auto& params  = c.get<SimulationParams>();
 
-  auto& caar = c.create_if_not_there<CaarFunctor>(elems.num_elems(),params);
-  auto& esf  = c.create_if_not_there<EulerStepFunctor>(elems.num_elems());
-  auto& hvf  = c.create_if_not_there<HyperviscosityFunctor>(elems.num_elems(), params);
-  auto& ff   = c.create_if_not_there<ForcingFunctor>(elems.num_elems(), tracers.num_elems(), tracers.num_tracers());
-  auto& diag = c.create_if_not_there<Diagnostics> (elems.num_elems(),params.theta_hydrostatic_mode);
-  auto& vrm  = c.create_if_not_there<VerticalRemapManager>(elems.num_elems());
+  auto& caar = c.create_if_not_there<CaarFunctor>(num_elems,params);
+  auto& esf  = c.create_if_not_there<EulerStepFunctor>(num_elems);
+  auto& hvf  = c.create_if_not_there<HyperviscosityFunctor>(num_elems, params);
+  auto& ff   = c.create_if_not_there<ForcingFunctor>(num_elems, num_elems, params.qsize);
+  auto& diag = c.create_if_not_there<Diagnostics> (num_elems,params.theta_hydrostatic_mode);
+  auto& vrm  = c.create_if_not_there<VerticalRemapManager>(num_elems);
 
   const bool need_dirk = (params.time_step_type==TimeStepType::IMEX_KG243 ||
                           params.time_step_type==TimeStepType::IMEX_KG254 ||
@@ -230,7 +189,7 @@ int HommeDynamics::requested_buffer_size_in_bytes() const
                           params.time_step_type==TimeStepType::IMEX_KG355);
   if (need_dirk) {
     // Create dirk functor only if needed
-    c.create_if_not_there<DirkFunctor>(elems.num_elems());
+    c.create_if_not_there<DirkFunctor>(num_elems);
   }
 
   // Request buffer sizes in FunctorsBuffersManager and then
@@ -265,53 +224,124 @@ void HommeDynamics::init_buffers(const ATMBufferManager &buffer_manager)
   fbm.allocate(buffer_manager.get_memory(), buffer_manager.allocated_bytes()/sizeof(Real));
 }
 
-void HommeDynamics::initialize_impl ()
+void HommeDynamics::initialize_impl (const RunType run_type)
 {
   const auto& dgn = m_dyn_grid->name();
   const auto& rgn = m_ref_grid->name();
 
-  // Use common names for some fields.
+  if (run_type==RunType::Restarted) {
+    // The PD remapper, when remapping p->d for dyn states, remaps the phys field into the n0
+    // time slice of the dyn states.
+    auto vd = get_internal_field("v_dyn");
+    vd.sync_to_host();
+    auto vdvh = vd.get_view<Real******,Host>();
+    auto& tl = Homme::Context::singleton().get<Homme::TimeLevel>();
+    auto un0 = ekat::subview(vdvh,0,tl.n0,0,0,0);
+    auto unp1 = ekat::subview(vdvh,0,tl.np1,0,0,0);
+    std::cout << "un0:";
+    for (int i=0; i<m_dyn_grid->get_num_vertical_levels(); ++i) {
+      std::cout << " " << un0[i];
+    }
+    std::cout << "\nunp1:";
+    for (int i=0; i<m_dyn_grid->get_num_vertical_levels(); ++i) {
+      std::cout << " " << un0[i];
+    }
+    std::cout << "\n";
+  }
+
+  // Use common/shorter names for tracers.
   alias_group_in  ("tracers",rgn,"Q");
   alias_group_out ("tracers",rgn,"Q");
-  alias_group_in  ("tracers",dgn,"Q");
-  alias_group_out ("tracers",dgn,"Q");
+  alias_internal_group ("tracers_dyn",dgn,"Qdp");
 
   // ------ Sanity checks ------- //
 
-  // Nobody should claim to be a provider for dp, w_i, or tracers (on dyn grid).
-  // Homme needs Q at the end of the timestep to not be altered by any other atm proc,
-  // since it HAS to be saved correctly to allow exact restarts.
+  // Nobody should claim to be a provider for dp, w_i.
   const auto& rho_track = get_field_out("pseudo_density").get_header().get_tracking();
   const auto& w_i_track = get_field_out("w_int").get_header().get_tracking();
-  const auto& Q_dyn_track = get_group_out("Q",dgn).m_bundle->get_header().get_tracking();
   EKAT_REQUIRE_MSG (
       rho_track.get_providers().size()==1,
       "Error! Someone other than Dynamics is trying to update the pseudo_density.\n");
   EKAT_REQUIRE_MSG (
       w_i_track.get_providers().size()==1,
       "Error! Someone other than Dynamics is trying to update the vertical velocity.\n");
-  EKAT_REQUIRE_MSG (Q_dyn_track.get_providers().size()==1,
-      "Error! Only HommeDynamics is allowed to update the tracers field on the dynamics grid.\n"
-      "       Homme needs this field to be saved exactly as it is at the end of the dyn call,\n"
-      "       in order to allow an exact restart.\n");
+
+  // The groups 'tracers' and 'tracers_dyn' should contain the same fields
+  auto Q = get_group_out("Q",rgn);
+  auto Qdp = get_internal_group("Qdp",dgn);
+  EKAT_REQUIRE_MSG (Q.m_info->size()==Qdp.m_info->size(),
+      "Error! Something went wrong with the request/allocation of the 'tracers_dyn' group.\n");
+  EKAT_REQUIRE_MSG(not Q.m_info->empty(),
+    "Error! There should be at least one tracer (qv) in the tracers group.\n");
+  EKAT_REQUIRE_MSG(Q.m_info->m_bundled && Qdp.m_info->m_bundled,
+      "Error! Homme expects a bundled field for the 'tracers' and 'tracers_dyn' groups.\n");
 
   // Create remaining internal fields
-  // TODO: tracers_prev on physics grid is only needed if you need to remap dQ.
-  const auto& Q_ref_lt = get_group_out("Q",rgn).m_bundle->get_header().get_identifier().get_layout();
-  const auto& Q_dyn_lt = get_group_out("Q",dgn).m_bundle->get_header().get_identifier().get_layout();
-  create_internal_field("FQ",Q_dyn_lt.tags(),Q_dyn_lt.dims(),m_dyn_grid->name());
-  create_internal_field("Q_prev",Q_ref_lt.tags(),Q_ref_lt.dims(),m_ref_grid->name());
+  const auto& c = Homme::Context::singleton();
+  const auto& params = c.get<Homme::SimulationParams>();
+  constexpr int NGP  = HOMMEXX_NP;
+  const int qsize = params.qsize;
+  const int nelem = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
+  const int nlevs = m_dyn_grid->get_num_vertical_levels();
+
+  using namespace ShortFieldTagsNames;
+  create_helper_field("FQ_dyn",{EL,CMP,GP,GP,LEV},{nelem,qsize,NGP,NGP,nlevs},dgn);
+  create_helper_field("FT_dyn",{EL,    GP,GP,LEV},{nelem,      NGP,NGP,nlevs},dgn);
+  create_helper_field("FM_dyn",{EL,CMP,GP,GP,LEV},{nelem,    3,NGP,NGP,nlevs},dgn);
+  create_helper_field("Q_dyn" ,{EL,CMP,GP,GP,LEV},{nelem,qsize,NGP,NGP,nlevs},dgn);
+
+  // Setup the p2d and d2p remappers
+  m_p2d_remapper->registration_begins();
+  m_d2p_remapper->registration_begins();
+
+  // ftype==FORCING_DEBUG:
+  //  1) remap Q_rgn->Q_dyn
+  //  2) compute FQ_dyn=(Q_dyn-Q_dyn_old)/dt
+  // ftype!=FORCING_DEBUG:
+  //  1) compute dQ_rgn=Q_rgn-Q_rgn_old
+  //  2) remap dQ_rgn->dQ_dyn
+  //  3) Q_dyn=Q_dyn_old+dQ_dyn
+  // Note: calling 'register_field_from_src' also *creates* the tgt field
+  const auto ftype = params.ftype;
+  if (ftype==Homme::ForcingAlg::FORCING_2) {
+    // Need a tmp for dQ_rgn
+    using namespace ShortFieldTagsNames;
+    const int ncols = m_ref_grid->get_num_local_dofs();
+    create_helper_field("dQ_ref",{COL,CMP,LEV},{ncols,qsize,nlevs},rgn);
+    m_p2d_remapper->register_field(m_helper_fields.at("dQ_ref"),m_helper_fields.at("FQ_dyn"));
+  } else {
+    // Can remap Q directly into FQ, tendency computed in pre_process step
+    m_p2d_remapper->register_field(*get_group_out("Q",rgn).m_bundle,m_helper_fields.at("FQ_dyn"));
+  }
+  m_p2d_remapper->register_field(get_internal_field("T_mid_prev_homme"),m_helper_fields.at("FT_dyn"));
+  m_p2d_remapper->register_field(get_internal_field("v_prev_homme"),m_helper_fields.at("FM_dyn"));
+
+  m_d2p_remapper->register_field(get_internal_field("vtheta_dp_dyn",dgn),get_field_out("T_mid"));
+  m_d2p_remapper->register_field(get_internal_field("v_dyn",dgn),get_field_out("horiz_winds"));
+  m_d2p_remapper->register_field(get_internal_field("dp3d_dyn",dgn), get_field_out("pseudo_density"));
+  m_d2p_remapper->register_field(get_internal_field("phi_int_dyn",dgn), get_field_out("phi_int"));
+  m_d2p_remapper->register_field(get_internal_field("w_int_dyn",dgn), get_field_out("w_int"));
+  m_d2p_remapper->register_field(get_internal_field("ps_dyn",dgn), get_field_out("ps"));
+  m_d2p_remapper->register_field(m_helper_fields.at("Q_dyn"),*get_group_out("Q",rgn).m_bundle);
+
+  m_p2d_remapper->registration_ends();
+  m_d2p_remapper->registration_ends();
 
   // Sets the scream views into the hommexx internal data structures
   init_homme_views ();
 
   // Import I.C. from the ref grid to the dyn grid.
-  import_initial_conditions ();
+  process_initial_conditions (run_type);
 
   // Update p_int and p_mid. Other models might import these values from
   // SurfaceCoupling during initialization. They will be overwritten
   // during postprocessing.
   update_pressure();
+
+  // For BFB restarts, set nstep counter in Homme's TimeLevel to match
+  // what's in the timestamp (which, for restarted runs, is
+  set_homme_param("num_steps",timestamp().get_num_steps());
+  Homme::Context::singleton().get<Homme::TimeLevel>().nstep = timestamp().get_num_steps();
 
   // Complete homme model initialization
   prim_init_model_f90 ();
@@ -335,6 +365,161 @@ void HommeDynamics::run_impl (const int dt)
     // Post process Homme's output, to produce what the rest of Atm expects
     Kokkos::fence();
     homme_post_process ();
+  //   auto t = timestamp();
+  //   t += dt;
+  // if (t.get_num_steps()==1) {
+    // std::cout << "saved Qdp\n";
+    // auto Qdp_homme = Homme::Context::singleton().get<Homme::Tracers>().qdp;
+    // const int nelem = Qdp_homme.extent(0);
+    // const int NGP = 4;
+    // const int nlevs = m_dyn_grid->get_num_vertical_levels();
+    // const int np1 = Homme::Context::singleton().get<Homme::TimeLevel>().np1_qdp;
+    //     std::cout << std::setprecision(17);
+    //     for (int ie=0; ie<nelem; ++ie) {
+    //       for (int ip=0; ip<NGP; ++ip) {
+    //         for (int jp=0; jp<NGP; ++jp) {
+    //           std::cout << "q_dyn(" << ie << "," << ip << "," << jp << ",:):";
+    //           for (int k=0; k<nlevs; ++k) {
+    //             std::cout << " " << Qdp_homme(ie,np1,0,ip,jp,k)[0];
+    //           }
+    //           std::cout << "\n";
+    //         }
+    //       }
+    //     }
+    std::cout << "saved u dyn\n";
+  const auto& c = Homme::Context::singleton();
+  const int NGP = 4;
+    const int  nm1 = c.get<Homme::TimeLevel>().nm1;
+    const int  n0  = c.get<Homme::TimeLevel>().n0;
+    const int  np1 = c.get<Homme::TimeLevel>().np1;
+    auto elems = c.get<Homme::ElementsState>();
+    const int nelem = elems.num_elems();
+    const int nlevs = m_dyn_grid->get_num_vertical_levels();
+    auto v_homme = elems.m_v;
+        std::cout << std::setprecision(17);
+        for (int ie=0; ie<nelem; ++ie) {
+          for (int ip=0; ip<NGP; ++ip) {
+            for (int jp=0; jp<NGP; ++jp) {
+              std::cout << "u_dyn(" << ie << "," << ip << "," << jp << ",:):";
+              for (int k=0; k<nlevs; ++k) {
+                std::cout << " " << v_homme(ie,n0,0,ip,jp,k)[0];
+              }
+              std::cout << "\n";
+            }
+          }
+        }
+        std::cout << "nm1, n0, np1: " << nm1 << ", " << n0 << ", " << np1 << "\n";
+
+
+    const auto& context = Homme::Context::singleton();
+    const auto& conn = context.get<Homme::Connectivity>();
+    auto h_c = conn.get_connections<Homme::HostMemSpace>();
+    auto h_ccs = Homme::subview(h_c,23);
+
+
+  // Edges
+  constexpr auto SOUTH = Homme::ConnectionName::SOUTH ;
+  constexpr auto NORTH = Homme::ConnectionName::NORTH ;
+  constexpr auto WEST  = Homme::ConnectionName::WEST  ;
+  constexpr auto EAST  = Homme::ConnectionName::EAST  ;
+  constexpr auto SWEST  = Homme::ConnectionName::SWEST  ;
+  constexpr auto SEAST  = Homme::ConnectionName::SEAST  ;
+  constexpr auto NWEST  = Homme::ConnectionName::NWEST  ;
+  constexpr auto NEAST  = Homme::ConnectionName::NEAST  ;
+  Homme::ConnectionHelpers helpers;
+    
+    int ic = -1;
+    auto k = -1;
+    auto i = 3;
+    auto j = 3;
+    // auto lev = 51;
+    for (Homme::ConnectionName cn : {SOUTH, NORTH, WEST, EAST, SWEST, SEAST, NWEST, NEAST} ) {
+      auto idx_c = Homme::etoi(cn);
+      const auto& this_c = h_ccs(idx_c);
+      bool has_33 = false;
+      if (this_c.sharing == Homme::etoi(Homme::ConnectionSharing::MISSING)) {
+        std::cout << "connection " << idx_c << " is missing.\n";
+        continue;
+      }
+      auto kind = Homme::etoi(helpers.CONNECTION_KIND[idx_c]);
+      for (int ii=0; ii<helpers.CONNECTION_SIZE[kind]; ++ii) {
+        const auto& l_pts = helpers.CONNECTION_PTS[Homme::etoi(Homme::Direction::FORWARD)][this_c.local.pos];
+        const auto& gp = l_pts[ii];
+        if (gp.ip==i && gp.jp==j) {
+          has_33 = true;
+          break;
+        }
+      }
+
+      if (has_33) {
+        int kk=-1;
+        const auto& l_pts = helpers.CONNECTION_PTS[Homme::etoi(Homme::Direction::FORWARD)][this_c.local.pos];
+        for (int ii=0; ii<4; ++ii) {
+          if (l_pts[ii].ip==i && l_pts[ii].jp==j) {
+            kk = ii;
+            break;
+          }
+        }
+
+        EKAT_REQUIRE_MSG (kk>=0, "WTF!\n");
+
+        const auto& r_pts = helpers.CONNECTION_PTS[this_c.direction][this_c.remote.pos];
+            std::cout << "connection idx: " << idx_c << "\n";
+            std::cout << "  remote lid: " << this_c.remote.lid << "\n";
+            std::cout << "  remote (i,j): " << r_pts[kk].ip << ", " << r_pts[kk].jp << "\n";
+      }
+
+    }
+    for (Homme::ConnectionName cn : {SOUTH, NORTH, WEST, EAST} ) {
+      const auto& this_c = h_ccs(Homme::etoi(cn));
+      EKAT_REQUIRE_MSG (this_c.local.lid==23, "WHAT?!?\n");
+      auto l_pts = helpers.CONNECTION_PTS[Homme::etoi(Homme::Direction::FORWARD)][this_c.local.pos];
+      for (int ii=0; ii<4; ++ii) {
+        if (l_pts[ii].ip==i && l_pts[ii].jp==j) {
+          k = ii;
+          ic = Homme::etoi(cn);
+          break;
+        }
+      }
+      if (k>=0) { break;}
+    }
+    EKAT_REQUIRE_MSG (ic>=0 && k>=0, "WTF!\n");
+      const auto& this_c = h_ccs(ic);
+      // const auto& r = this_c.remote;
+      // auto dir = this_c.direction;
+      // auto r_pts = helpers.CONNECTION_PTS[dir][this_c.local.pos];
+
+      // auto tgt = Qdp_homme(23,np1,0,i,j,lev)[0];
+      // auto remote = Qdp_homme(r.lid,np1,0,r_pts[k].ip,r_pts[k].jp,lev)[0];
+      // std::cout << "qdp(23," << np1 << ",0,3,3,52): " << tgt << "\n";
+      // std::cout << "qdp(" << r.lid << "," << np1 << ",0," << r_pts[k].ip << "," << r_pts[k].jp << ",52): " << remote << "\n";
+
+      auto gids = m_dyn_grid->get_dofs_gids();
+      auto lids = m_dyn_grid->get_lid_to_idx_map();
+      int idx = -1;
+      for (int ilid=0; ilid<lids.extent_int(0); ++ilid) {
+        auto native = ekat::subview(lids,ilid);
+        if (native(0)==this_c.local.lid && native(1)==i && native(2)==j) {
+          idx = ilid;
+          break;
+        }
+      }
+      EKAT_REQUIRE_MSG(idx>=0, "You serious?\n");
+      auto gid = gids(idx);
+      auto gids_p = m_ref_grid->get_dofs_gids();
+      int idx_p = -1;
+      for (int ii=0; ii<gids_p.extent_int(0); ++ii) {
+        if (gids_p(ii)==gid) {
+          idx_p = ii;
+          break;
+        }
+      }
+      EKAT_REQUIRE_MSG(idx_p>=0, "Oh no...\n");
+      std::cout << "dof gid, lid_p: " << gid << ", " << idx_p << "\n";
+
+
+    // for (int i=0
+  // }
   } catch (std::exception& e) {
     EKAT_ERROR_MSG(e.what());
   } catch (...) {
@@ -346,6 +531,20 @@ void HommeDynamics::finalize_impl (/* what inputs? */)
 {
   Homme::Context::singleton().finalize_singleton();
   prim_finalize_f90();
+}
+
+void HommeDynamics::set_required_group_impl (const FieldGroup<const Real>& group)
+{
+  if (group.m_info->m_group_name=="tracers") {
+    // Set runtime number of tracers in Homme
+    const auto& c = Homme::Context::singleton();
+    auto& params = c.get<Homme::SimulationParams>();
+    auto& tracers = c.get<Homme::Tracers>();
+    const int qsize = group.m_info->size();
+    params.qsize = qsize;           // Set in the CXX data structure
+    set_homme_param("qsize",qsize); // Set in the F90 module
+    tracers.init(tracers.num_elems(),qsize);
+  }
 }
 
 void HommeDynamics::homme_pre_process (const int dt) {
@@ -360,11 +559,13 @@ void HommeDynamics::homme_pre_process (const int dt) {
   const int nlevs = m_ref_grid->get_num_vertical_levels();
   const int npacks = ekat::PackInfo<N>::num_packs(nlevs);
 
-  auto T  = get_field_out("T_mid").get_view<Pack**>();
-  auto FT = get_field_out("T_mid_prev").get_view<Pack**>();
-  auto v  = get_field_out("horiz_winds").get_view<Pack***>();
-  auto w  = get_field_out("w_int").get_view<Pack**>();
-  auto FM = get_field_out("horiz_winds_prev").get_view<Pack***>();
+  const auto& rgn = m_ref_grid->name();
+
+  auto T  = get_field_in("T_mid").get_view<const Pack**>();
+  auto v  = get_field_in("horiz_winds").get_view<const Pack***>();
+  auto w  = get_field_in("w_int").get_view<const Pack**>();
+  auto FT = get_internal_field("T_mid_prev_homme").get_view<Pack**>();
+  auto FM = get_internal_field("v_prev_homme").get_view<Pack***>();
 
   // If there are other atm procs updating the vertical velocity,
   // then we need to compute forcing for w as well
@@ -379,7 +580,6 @@ void HommeDynamics::homme_pre_process (const int dt) {
     const auto& t_new =  T(icol,ilev);
     const auto& t_old = FT(icol,ilev);
           auto& ft    = FT(icol,ilev);
-
     ft = (t_new - t_old) / dt;
 
     // Horizontal velocity forcing
@@ -387,7 +587,6 @@ void HommeDynamics::homme_pre_process (const int dt) {
     const auto& u_old = FM(icol,0,ilev);
           auto& fu    = FM(icol,0,ilev);
     fu = (u_new - u_old) / dt;
-
 
     const auto& v_new =  v(icol,1,ilev);
     const auto& v_old = FM(icol,1,ilev);
@@ -405,16 +604,29 @@ void HommeDynamics::homme_pre_process (const int dt) {
     }
   });
 
-  // Remap FT, FM, and Q
-  m_p2d_remapper->remap(true);
-
   using namespace Homme;
   const auto& c = Context::singleton();
   const auto& params = c.get<SimulationParams>();
+  const auto ftype = params.ftype;
+  if (ftype==Homme::ForcingAlg::FORCING_2) {
+    const auto Q  = get_group_in("Q",rgn).m_bundle->get_view<const Pack***>();
+    const auto dQ = m_helper_fields.at("dQ_ref").get_view<Pack***>();
+    const int qsize = Q.extent(1);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,ncols*qsize*npacks),
+                         KOKKOS_LAMBDA (const int idx) {
+      const int icol =  idx / (qsize*npacks);
+      const int iq   = (idx / (npacks)) % qsize;
+      const int ilev = idx % npacks;
+      dQ(icol,iq,ilev) = Q(icol,iq,ilev) - dQ(icol,iq,ilev);
+    });
+  }
+
+  // Remap FT, FM, and Q (or dQ, depending on ftype)
+  m_p2d_remapper->remap(true);
+
   auto& tl = c.get<TimeLevel>();
   auto& ff = c.get<ForcingFunctor>();
 
-  const auto ftype = params.ftype;
   const auto& tracers = c.get<Tracers>();
   const auto& state = c.get<ElementsState>();
   auto Q    = tracers.Q;
@@ -432,13 +644,14 @@ void HommeDynamics::homme_pre_process (const int dt) {
   constexpr int NVL = HOMMEXX_NUM_LEV;
   const int qsize = params.qsize;
   const auto n0_qdp = tl.n0_qdp;
+  const auto Q_dyn = m_helper_fields.at("Q_dyn").get_view<Homme::Scalar*****>();
 
   // At this point, FQ contains Qnew (coming from physics).
   // Depending on ftype, we are going to do different things:
   //  ftype=0: FQ = dp*(Qnew-Qold) / dt
   //  ftype=2: qdp = dp*Qnew
   switch(ftype) {
-    case ForcingAlg::FORCING_DEBUG:
+    case ForcingAlg::FORCING_0:
       // Back out tracers tendency for Qdp
       Kokkos::parallel_for(Kokkos::RangePolicy<>(0,Q.size()),KOKKOS_LAMBDA(const int idx) {
         const int ie = idx / (qsize*NP*NP*NVL);
@@ -459,6 +672,17 @@ void HommeDynamics::homme_pre_process (const int dt) {
       Kokkos::fence();
       break;
     case ForcingAlg::FORCING_2:
+      Kokkos::parallel_for(Kokkos::RangePolicy<>(0,Q.size()),KOKKOS_LAMBDA(const int idx) {
+        const int ie = idx / (qsize*NP*NP*NVL);
+        const int iq = (idx / (NP*NP*NVL)) % qsize;
+        const int ip = (idx / (NP*NVL)) % NP;
+        const int jp = (idx / NVL) % NP;
+        const int k  =  idx % NVL;
+
+        // So far, FQ contains the remap of Q_ref_new - Q_ref_old. Add Q_dyn_old to get new state.
+        FQ(ie,iq,ip,jp,k) += Q_dyn(ie,iq,ip,jp,k);
+      });
+
       // Hard adjustment of qdp
       ff.tracers_forcing(dt,n0,n0_qdp,true,params.moisture);
       break;
@@ -482,18 +706,16 @@ void HommeDynamics::homme_post_process () {
 
   // Convert VTheta_dp->T, store T,uv, and possibly w in FT, FM,
   // compute p_int on ref grid.
-  const auto ps_view = get_field_out("ps").get_view<Real*>();
   const auto dp_view = get_field_out("pseudo_density").get_view<Pack**>();
   const auto p_mid_view = get_field_out("p_mid").get_view<Pack**>();
   const auto p_int_view = get_field_out("p_int").get_view<Pack**>();
-  const auto Q_view  = get_group_out("Q",rgn).m_bundle->get_view<Pack***>();
+  const auto Q_view   = get_group_out("Q",rgn).m_bundle->get_view<Pack***>();
 
   const auto T_view  = get_field_out("T_mid").get_view<Pack**>();
   const auto v_view  = get_field_out("horiz_winds").get_view<Pack***>();
   const auto w_view  = get_field_out("w_int").get_view<Pack**>();
-  const auto T_prev_view = get_field_out("T_mid_prev").get_view<Pack**>();
-  const auto v_prev_view = get_field_out("horiz_winds_prev").get_view<Pack***>();
-  const auto w_prev_view = get_field_out("w_int_prev").get_view<Pack**>();
+  const auto T_prev_view = get_internal_field("T_mid_prev_homme").get_view<Pack**>();
+  const auto v_prev_view = get_internal_field("v_prev_homme").get_view<Pack***>();
 
   const auto ncols = m_ref_grid->get_num_local_dofs();
   const auto nlevs = m_ref_grid->get_num_vertical_levels();
@@ -532,7 +754,6 @@ void HommeDynamics::homme_post_process () {
 
     auto T_prev = ekat::subview(T_prev_view,icol);
     auto v_prev = ekat::subview(v_prev_view,icol);
-    auto w_prev = ekat::subview(w_prev_view,icol);
 
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team,npacks),
                          [&](const int ilev) {
@@ -547,17 +768,45 @@ void HommeDynamics::homme_post_process () {
       v_prev(0,ilev) = v(0,ilev);
       v_prev(1,ilev) = v(1,ilev);
       if (has_w_forcing) {
-        w_prev(ilev) = w(ilev);
+        v_prev(2,ilev) = w(ilev);
       }
     });
   });
+
+  // Finally, for BFB restarts we need Qdp.
+  // NOTE: if we could save just a subview of homme's Qdp (the right time-level, and possibly
+  //       the right qsize), this local copy would not be necessary
+  const auto Qdp_save = get_internal_group("Qdp").m_bundle->get_view<Homme::Scalar*****>();
+  const auto qdp = c.get<Homme::Tracers>().qdp;
+  const int nelem = Qdp_save.extent(0);
+  const int qsize = Qdp_save.extent(1);
+  const int np    = Qdp_save.extent(2);
+  const int np1_qdp = c.get<Homme::TimeLevel>().np1_qdp;
+  Kokkos::parallel_for(Kokkos::RangePolicy<>(0,nelem*qsize*np*np*npacks),
+                       KOKKOS_LAMBDA (const int idx) {
+    const int ie =  idx / (qsize*np*np*npacks);
+    const int iq = (idx / (np*np*npacks)) % qsize;
+    const int ip = (idx / (np*npacks)) % np;
+    const int jp = (idx / npacks) % np;
+    const int k  =  idx % npacks;
+
+    Qdp_save(ie,iq,ip,jp,k) = qdp(ie,np1_qdp,iq,ip,jp,k);
+  });
+  
+  // If ftype==FORCING_2, also set dQ_ref=Q_ref. Next step's Q_dyn will be set
+  // as Q_dyn = Q_dyn_old + PD_remap(Q_ref-Q_ref_old)
+  const auto ftype = c.get<Homme::SimulationParams>().ftype;
+  if (ftype==Homme::ForcingAlg::FORCING_2) {
+    auto dQ_ref = m_helper_fields.at("dQ_ref").get_view<Real***>();
+    Kokkos::deep_copy(dQ_ref,get_group_out("Q",rgn).m_bundle->get_view<Real***>());
+  }
 }
 
 void HommeDynamics::
-create_internal_field (const std::string& name,
-                       const std::vector<FieldTag>& tags,
-                       const std::vector<int>& dims,
-                       const std::string& grid) {
+create_helper_field (const std::string& name,
+                     const std::vector<FieldTag>& tags,
+                     const std::vector<int>& dims,
+                     const std::string& grid) {
   using namespace ekat::units;
   FieldIdentifier id(name,FieldLayout{tags,dims},Units::nondimensional(),grid);
 
@@ -573,22 +822,14 @@ create_internal_field (const std::string& name,
   f.get_header().get_alloc_properties().request_allocation<Real>(pack_size);
   f.allocate_view();
 
-  m_internal_fields[name+grid] = f;
-}
-
-const Field<Real>& HommeDynamics::
-get_internal_field (const std::string& name, const std::string& grid) const {
-  auto it = m_internal_fields.find(name+grid);
-  EKAT_REQUIRE_MSG (it!=m_internal_fields.end(),
-      "Error! Internal field '" + name + "' on grid '" + grid + "' not found.\n");
-  return it->second;
+  m_helper_fields[name] = f;
 }
 
 void HommeDynamics::init_homme_views () {
   const auto& dgn = m_dyn_grid->name();
 
   const auto& c = Homme::Context::singleton();
-  auto& state = c.get<Homme::ElementsState>();
+  auto& state  = c.get<Homme::ElementsState>();
   auto& tracers = c.get<Homme::Tracers>();
   auto& forcing = c.get<Homme::ElementsForcing>();
 
@@ -598,142 +839,314 @@ void HommeDynamics::init_homme_views () {
   constexpr int NVLI = HOMMEXX_NUM_LEV_P;
 
   const int nelem = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
-  const int qsize = get_group_out("Q",dgn).m_info->size();
+  const int qsize = tracers.num_tracers();
 
   // Print homme's parameters, so user can see whether something wasn't set right.
   if (get_comm().am_i_root()) c.get<Homme::SimulationParams>().print();
 
   // ------------ Set views in Homme ------------- //
   // Velocity
-  auto v_in = get_internal_field("v",dgn).get_view<Homme::Scalar*[NTL][2][NP][NP][NVL]>();
+  auto v_in = get_internal_field("v_dyn",dgn).get_view<Homme::Scalar*[NTL][2][NP][NP][NVL]>();
   using v_type = std::remove_reference<decltype(state.m_v)>::type;
   state.m_v = v_type (v_in.data(),nelem);
 
   // Virtual potential temperature
-  auto vtheta_in = get_internal_field("vtheta_dp",dgn).get_view<Homme::Scalar*[NTL][NP][NP][NVL]>();
+  auto vtheta_in = get_internal_field("vtheta_dp_dyn",dgn).get_view<Homme::Scalar*[NTL][NP][NP][NVL]>();
   using vtheta_type = std::remove_reference<decltype(state.m_vtheta_dp)>::type;
   state.m_vtheta_dp = vtheta_type(vtheta_in.data(),nelem);
 
   // Geopotential
-  auto phi_in = get_internal_field("phinh_i",dgn).get_view<Homme::Scalar*[NTL][NP][NP][NVLI]>();
+  auto phi_in = get_internal_field("phi_int_dyn",dgn).get_view<Homme::Scalar*[NTL][NP][NP][NVLI]>();
   using phi_type = std::remove_reference<decltype(state.m_phinh_i)>::type;
   state.m_phinh_i = phi_type(phi_in.data(),nelem);
 
   // Vertical velocity
-  auto w_in = get_internal_field("w_i",dgn).get_view<Homme::Scalar*[NTL][NP][NP][NVLI]>();
+  auto w_in = get_internal_field("w_int_dyn",dgn).get_view<Homme::Scalar*[NTL][NP][NP][NVLI]>();
   using w_type = std::remove_reference<decltype(state.m_w_i)>::type;
   state.m_w_i = w_type(w_in.data(),nelem);
 
   // Pseudo-density
-  auto dp3d_in = get_internal_field("dp3d",dgn).template get_view<Homme::Scalar*[NTL][NP][NP][NVL]>();
+  auto dp3d_in = get_internal_field("dp3d_dyn",dgn).template get_view<Homme::Scalar*[NTL][NP][NP][NVL]>();
   using dp3d_type = std::remove_reference<decltype(state.m_dp3d)>::type;
   state.m_dp3d = dp3d_type(dp3d_in.data(),nelem);
 
   // Surface pressure
-  auto ps_in = get_internal_field("ps",dgn).template get_view<Real*[NTL][NP][NP]>();
+  auto ps_in = get_internal_field("ps_dyn",dgn).template get_view<Real*[NTL][NP][NP]>();
   using ps_type = std::remove_reference<decltype(state.m_ps_v)>::type;
   state.m_ps_v = ps_type(ps_in.data(),nelem);
 
-  // Tracers
-  auto q_in = get_group_out("Q",dgn).m_bundle->template get_view<Homme::Scalar**[NP][NP][NVL]>();
+  // Tracers mixing ratio
+  auto q_in = m_helper_fields.at("Q_dyn").template get_view<Homme::Scalar**[NP][NP][NVL]>();
   using q_type = std::remove_reference<decltype(tracers.Q)>::type;
   tracers.Q = q_type(q_in.data(),nelem,qsize);
 
   // Tracers forcing
-  auto fq_in = get_internal_field("FQ",dgn).template get_view<Homme::Scalar**[NP][NP][NVL]>();
+  auto fq_in = m_helper_fields.at("FQ_dyn").template get_view<Homme::Scalar**[NP][NP][NVL]>();
   using fq_type = std::remove_reference<decltype(tracers.fq)>::type;
   tracers.fq = fq_type(fq_in.data(),nelem,qsize);
 
   // Temperature forcing
-  auto ft_in = get_internal_field("FT",dgn).template get_view<Homme::Scalar*[NP][NP][NVL]>();
+  auto ft_in = m_helper_fields.at("FT_dyn").template get_view<Homme::Scalar*[NP][NP][NVL]>();
   using ft_type = std::remove_reference<decltype(forcing.m_ft)>::type;
   forcing.m_ft = ft_type(ft_in.data(),nelem);
 
   // Momentum forcing
-  auto fm_in = get_internal_field("FM",dgn).template get_view<Homme::Scalar**[NP][NP][NVL]>();
+  auto fm_in = m_helper_fields.at("FM_dyn").template get_view<Homme::Scalar**[NP][NP][NVL]>();
   using fm_type = std::remove_reference<decltype(forcing.m_fm)>::type;
   forcing.m_fm = fm_type(fm_in.data(),nelem);
 }
 
-void HommeDynamics::import_initial_conditions () {
+void HommeDynamics::process_initial_conditions (const RunType run_type) {
+  const auto& c = Homme::Context::singleton();
+  auto& params = c.get<Homme::SimulationParams>();
+
   const auto& dgn = m_dyn_grid->name();
   const auto& rgn = m_ref_grid->name();
+  if (run_type==RunType::Restarted) {
+    // Safety checks: internal fields *should* have been restarted (and therefore have a valid timestamp)
+    for (auto& f : get_internal_fields()) {
+      auto ts = f.get_header().get_tracking().get_time_stamp();
+      EKAT_REQUIRE_MSG(ts.is_valid(), "WHAT?!?\n");
+    }
+    for (auto& g : get_internal_groups()) {
+      auto ts = g.m_bundle->get_header().get_tracking().get_time_stamp();
+      EKAT_REQUIRE_MSG(ts.is_valid(), "WHAT?!?\n");
+    }
 
-  // Setup the p2d and d2p remappers
-  m_p2d_remapper->registration_begins();
-  m_d2p_remapper->registration_begins();
+    // All internal fields should have been read from restart file. The only field we need
+    // to handle is dQ_ref, in case of ftype!=FORCING_DEBUG.
+    if (params.ftype==Homme::ForcingAlg::FORCING_2) {
+      // Recall, we store Q_old in dQ_ref, and do dQ_ref = Q_new - dQ_ref during pre-process
+      // Q_old is the tracers at the end of last step, which we can recompute by remapping
+      // Q_dyn, which was part of the restart
+      auto dQ = m_helper_fields.at("dQ_ref");  
+      auto Q_dyn = m_helper_fields.at("Q_dyn");
+      m_ic_remapper->registration_begins();
+      m_ic_remapper->register_field(dQ,Q_dyn);
+      m_ic_remapper->registration_ends();
+      m_ic_remapper->remap(/*forward = */false);
+    }
 
-  m_p2d_remapper->register_field(get_field_out("T_mid_prev"),get_internal_field("FT",dgn));
-  m_p2d_remapper->register_field(get_field_out("horiz_winds_prev"),get_internal_field("FM",dgn));
-  m_p2d_remapper->register_field(*get_group_out("Q",rgn).m_bundle, get_internal_field("FQ",dgn));
+    // Can clean up the IC remapper now.
+    m_ic_remapper = nullptr;
 
-  m_d2p_remapper->register_field(get_internal_field("vtheta_dp",dgn),get_field_out("T_mid"));
-  m_d2p_remapper->register_field(get_internal_field("v",dgn),get_field_out("horiz_winds"));
-  m_d2p_remapper->register_field(get_internal_field("dp3d",dgn), get_field_out("pseudo_density"));
-  m_d2p_remapper->register_field(get_internal_field("phinh_i",dgn), get_field_out("phi_int"));
-  m_d2p_remapper->register_field(get_internal_field("w_i",dgn), get_field_out("w_int"));
-  m_d2p_remapper->register_field(get_internal_field("ps",dgn), get_field_out("ps"));
-  m_d2p_remapper->register_field(*get_group_out("Q",dgn).m_bundle,*get_group_out("Q",rgn).m_bundle);
+    // Copy Homme states from timelevel n0 to nm1,np1, and init p_mid/p_int
+    // Do not compute Theta from T_mid
+    copy_states_and_init_pressure (false);
 
-  m_p2d_remapper->registration_ends();
-  m_d2p_remapper->registration_ends();
+    // Need to copy the Qdp internal group into Qdp in homme
+    // NOTE: if we found a way to load the restart field directly into a time slice
+    //       of Homme's Qdp, we could make the internal Qdp group alias the Qdp view
+    //       in Homme directly. Instead, we use a (nelem,qsize,np,np,nlev) temporary,
+    //       load the restart field in it, and then copy into Homme's qdp
+    auto Qdp_loaded = get_internal_group("Qdp",dgn).m_bundle->get_view<Real*****>();
+    auto Q_dyn = m_helper_fields.at("Q_dyn").get_view<Real*****>();
+    auto dp_dyn = get_internal_field("dp3d_dyn",dgn).get_view<Real*****>();
+    const auto& tracers = c.get<Homme::Tracers>();
+    const int nelem = tracers.num_elems();
+    const int qsize = tracers.num_tracers();
+    const int nlevs = m_dyn_grid->get_num_vertical_levels();
+    constexpr int NGP = HOMMEXX_NP;
+    const auto& Qdp_homme = c.get<Homme::Tracers>().qdp;
+    const int  n0 = c.get<Homme::TimeLevel>().n0;
+    // const int qn0 = c.get<Homme::TimeLevel>().n0_qdp;
+    std::cout << "initializeing homme tracers: qsize=" << qsize << "\n";
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,nelem*qsize*NGP*NGP*nlevs),
+                         KOKKOS_LAMBDA (const int idx) {
+      const int ie =  idx / (qsize*NGP*NGP*nlevs);
+      const int iq = (idx / (NGP*NGP*nlevs)) % qsize;
+      const int ip = (idx / (NGP*nlevs)) % NGP;
+      const int jp = (idx / nlevs) % NGP;
+      const int k  =  idx % nlevs;
+      const int ilev = k / HOMMEXX_PACK_SIZE;
+      const int ivec = k % HOMMEXX_PACK_SIZE;
+      // TODO: should we copy only into tl.n0_qdp?
+      Qdp_homme(ie,0,iq,ip,jp,ilev)[ivec] = Qdp_homme(ie,1,iq,ip,jp,ilev)[ivec] = Qdp_loaded(ie,iq,ip,jp,k);
+      Q_dyn(ie,iq,ip,jp,k) = Qdp_loaded(ie,iq,ip,jp,k) / dp_dyn(ie,n0,ip,jp,k);
+    });
+    std::cout << "restarted u dyn\n";
+    auto v_homme = c.get<Homme::ElementsState>().m_v;
+        std::cout << std::setprecision(17);
+        for (int ie=0; ie<nelem; ++ie) {
+          for (int ip=0; ip<NGP; ++ip) {
+            for (int jp=0; jp<NGP; ++jp) {
+              std::cout << "u_dyn(" << ie << "," << ip << "," << jp << ",:):";
+              for (int k=0; k<nlevs; ++k) {
+                std::cout << " " << v_homme(ie,n0,0,ip,jp,k)[0];
+              }
+              std::cout << "\n";
+            }
+          }
+        }
+    // std::cout << "restarted Qdp\n";
+    //     std::cout << std::setprecision(17);
+    //     for (int ie=0; ie<nelem; ++ie) {
+    //       for (int ip=0; ip<NGP; ++ip) {
+    //         for (int jp=0; jp<NGP; ++jp) {
+    //           std::cout << "q_dyn(" << ie << "," << ip << "," << jp << ",:):";
+    //           for (int k=0; k<nlevs; ++k) {
+    //             std::cout << " " << Qdp_homme(ie,0,0,ip,jp,k)[0];
+    //           }
+    //           std::cout << "\n";
+    //         }
+    //       }
+    //     }
+  //   const auto& context = Homme::Context::singleton();
+  //   const auto& conn = context.get<Homme::Connectivity>();
+  //   auto h_c = conn.get_connections<Homme::HostMemSpace>();
+  //   auto h_ccs = Homme::subview(h_c,23);
 
-  // Setup, run, and destroy the IC remapper, to remap IC directly into Homme's states
-  m_ic_remapper_fwd->registration_begins();
-  m_ic_remapper_fwd->register_field(get_field_out("w_int",rgn),get_internal_field("w_i",dgn));
-  m_ic_remapper_fwd->register_field(get_field_out("phi_int",rgn),get_internal_field("phinh_i",dgn));
-  m_ic_remapper_fwd->register_field(get_field_out("horiz_winds",rgn),get_internal_field("v",dgn));
-  m_ic_remapper_fwd->register_field(get_field_out("pseudo_density",rgn),get_internal_field("dp3d",dgn));
-  m_ic_remapper_fwd->register_field(get_field_out("ps",rgn),get_internal_field("ps",dgn));
-  m_ic_remapper_fwd->register_field(get_field_out("T_mid",rgn),get_internal_field("vtheta_dp",dgn));
-  // m_ic_remapper->register_field(get_field_out("Q",rgn),get_internal_field("Q"));
-  m_ic_remapper_fwd->registration_ends();
-  
-  m_ic_remapper_fwd->remap(true);
-  m_ic_remapper_fwd = nullptr;
 
-  // We keep a copy of Q_prev on the ref grid, since we remap dQ=Qnew-Qprev from
-  // ref grid to dyn grid, and dynamics will then do Qnew_dyn = Qold_dyn+dQ_dyn
-  // It would be tempting to init Q_prev on ref grid with the value of Q on the
-  // ref grid, but that's not necessarily the same (it depends on the atm procs
-  // order in the atm DAG). So we just create a remapper dyn->ref on the fly
-  m_ic_remapper_bwd->registration_begins();
-  m_ic_remapper_bwd->register_field(get_internal_field("Q_prev",rgn),*get_group_out("Q",dgn).m_bundle);
-  m_ic_remapper_bwd->registration_ends();
-  m_ic_remapper_bwd->remap(false);
-  m_ic_remapper_bwd = nullptr;
+  // // Edges
+  // constexpr auto SOUTH = Homme::ConnectionName::SOUTH ;
+  // constexpr auto NORTH = Homme::ConnectionName::NORTH ;
+  // constexpr auto WEST  = Homme::ConnectionName::WEST  ;
+  // constexpr auto EAST  = Homme::ConnectionName::EAST  ;
+  // Homme::ConnectionHelpers helpers;
+    
+  //   int ic = -1;
+  //   auto k = -1;
+  //   auto i = 3;
+  //   auto j = 3;
+  //   auto lev = 51;
+  //   for (Homme::ConnectionName cn : {SOUTH, NORTH, WEST, EAST} ) {
+  //     const auto& this_c = h_ccs(Homme::etoi(cn));
+  //     EKAT_REQUIRE_MSG (this_c.local.lid==23, "WHAT?!?\n");
+  //     auto l_pts = helpers.CONNECTION_PTS[Homme::etoi(Homme::Direction::FORWARD)][this_c.local.pos];
+  //     for (int ii=0; ii<4; ++ii) {
+  //       if (l_pts[ii].ip==i && l_pts[ii].jp==j) {
+  //         k = ii;
+  //         ic = Homme::etoi(cn);
+  //         break;
+  //       }
+  //     }
+  //     if (k>=0) { break;}
+  //   }
+  //   const int  n0_qdp = c.get<Homme::TimeLevel>().n0_qdp;
+  //   EKAT_REQUIRE_MSG (ic>=0 && k>=0, "WTF!\n");
+  //     const auto& this_c = h_ccs(ic);
+  //     const auto& r = this_c.remote;
+  //     auto dir = this_c.direction;
+  //     auto r_pts = helpers.CONNECTION_PTS[dir][this_c.local.pos];
 
-  // Convert T->vtheta_dp (in place).
+  //     auto tgt = Qdp_homme(23,n0_qdp,0,i,j,lev)[0];
+  //     auto remote = Qdp_homme(r.lid,n0_qdp,0,r_pts[k].ip,r_pts[k].jp,lev)[0];
+  //     std::cout << "qdp(23," << n0_qdp << ",0,3,3,52): " << tgt << "\n";
+  //     std::cout << "qdp(" << r.lid << "," << n0_qdp << ",0," << r_pts[k].ip << "," << r_pts[k].jp << ",52): " << remote << "\n";
+
+    return;
+  }
+
+  // Import IC from ref grid to dyn grid internal fields
+  m_ic_remapper->registration_begins();
+  m_ic_remapper->register_field(get_field_out("w_int",rgn),get_internal_field("w_int_dyn",dgn));
+  m_ic_remapper->register_field(get_field_out("phi_int",rgn),get_internal_field("phi_int_dyn",dgn));
+  m_ic_remapper->register_field(get_field_out("horiz_winds",rgn),get_internal_field("v_dyn",dgn));
+  m_ic_remapper->register_field(get_field_out("pseudo_density",rgn),get_internal_field("dp3d_dyn",dgn));
+  m_ic_remapper->register_field(get_field_out("ps",rgn),get_internal_field("ps_dyn",dgn));
+  m_ic_remapper->register_field(get_field_out("T_mid",rgn),get_internal_field("vtheta_dp_dyn",dgn));
+  m_ic_remapper->register_field(*get_group_out("Q",rgn).m_bundle,m_helper_fields.at("Q_dyn"));
+  m_ic_remapper->registration_ends();
+  m_ic_remapper->remap(true);
+
+  // Update internal fields time stamp
+  for (const auto& it : get_internal_fields()) {
+    // Unfortunately, get_internal_fields() returns a list of const fields,
+    // so grab the name and grid name, then call get_internal_field(name,grid)
+    // It's a bit clunky, but not that bad
+    const auto& name = it.get_header().get_identifier().name();
+    const auto& grid = it.get_header().get_identifier().get_grid_name();
+    auto& f = get_internal_field(name,grid);
+    f.get_header().get_tracking().update_time_stamp(timestamp());
+  }
+  get_internal_group("Qdp",dgn).m_bundle->get_header().get_tracking().update_time_stamp(timestamp());
+
+  // Spatial extents of views
+  constexpr int NGP  = HOMMEXX_NP;
+  constexpr int NVL  = HOMMEXX_NUM_LEV;
+  const int nelem = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
+  const int nlevs = m_dyn_grid->get_num_vertical_levels();
+
+  // Initialize p_mid/p_int, and also copy IC states on all timelevel slices
+  copy_states_and_init_pressure (true);
+
+  // Init previous timestep quantity to the corresponding IC value
+  const auto ncols = m_ref_grid->get_num_local_dofs();
+  if (params.ftype==Homme::ForcingAlg::FORCING_2) {
+    m_helper_fields.at("dQ_ref").deep_copy(*get_group_out("Q",rgn).m_bundle);
+  }
+  get_internal_field("T_mid_prev_homme",rgn).deep_copy(get_field_in("T_mid",rgn));
+  auto v_prev = get_internal_field("v_prev_homme",rgn).get_view<Real***>();
+  auto horiz_winds = get_field_out("horiz_winds",rgn).get_view<Real***>();
+  auto w_int = get_field_out("w_int",rgn).get_view<Real**>();
+  Kokkos::parallel_for(Kokkos::RangePolicy<>(0,ncols*nlevs),
+                       KOKKOS_LAMBDA (const int idx) {
+    const int icol = idx / nlevs;
+    const int ilev = idx % nlevs;
+    v_prev(icol,0,ilev) = horiz_winds(icol,0,ilev);
+    v_prev(icol,1,ilev) = horiz_winds(icol,1,ilev);
+    v_prev(icol,2,ilev) = w_int(icol,ilev);
+  });
+
+  // For initial runs, it's easier to prescribe IC for Q,
+  // and compute Qdp = Q*dp
+  auto& tracers = c.get<Homme::Tracers>();
+  const auto qdp = tracers.qdp;
+  const auto q   = tracers.Q;
+  const auto dp  = c.get<Homme::ElementsState>().m_dp3d;
+  const int n0_qdp = c.get<Homme::TimeLevel>().n0_qdp;
+  const int n0  = c.get<Homme::TimeLevel>().n0;
+  const int qsize = tracers.num_tracers(); 
+  Kokkos::parallel_for(Kokkos::RangePolicy<>(0,nelem*qsize*NP*NP*NVL),
+                       KOKKOS_LAMBDA (const int idx) {
+    const int ie =  idx / (qsize*NP*NP*NVL);
+    const int iq = (idx / (NP*NP*NVL)) % qsize;
+    const int ip = (idx / (NP*NVL)) % NP;
+    const int jp = (idx / NVL) % NP;
+    const int k  = idx % NVL;
+
+    qdp(ie,n0_qdp,iq,ip,jp,k) = q(ie,iq,ip,jp,k) * dp(ie,n0,ip,jp,k);
+  });
+
+  // Can clean up the IC remapper now.
+  m_ic_remapper = nullptr;
+}
+// =========================================================================================
+void HommeDynamics::
+copy_states_and_init_pressure (const bool compute_theta_from_T) {
+  // Some types
   constexpr int N = sizeof(Homme::Scalar) / sizeof(Real);
   using KT = KokkosTypes<DefaultDevice>;
   using Pack = ekat::Pack<Real,N>;
   using ColOps = ColumnOps<DefaultDevice,Real>;
   using PF = PhysicsFunctions<DefaultDevice>;
 
-  const auto dp3d      = get_internal_field("dp3d",dgn).get_view<Pack*****>();
-  const auto ps        = get_internal_field("ps",dgn).get_view<Real****>();
-  const auto v         = get_internal_field("v",dgn).get_view<Pack******>();
-  const auto w_i       = get_internal_field("w_i",dgn).get_view<Pack*****>();
-  const auto phinh_i   = get_internal_field("phinh_i",dgn).get_view<Pack*****>();
-  const auto vtheta_dp = get_internal_field("vtheta_dp",dgn).get_view<Pack*****>();
-  const auto Q         = get_group_out("tracers",dgn).m_bundle->get_view<Pack*****>();
-
-  const auto& c = Homme::Context::singleton();
-
-  // Time slices indices
-  const int n0 = c.get<Homme::TimeLevel>().n0;
-  const int nm1 = c.get<Homme::TimeLevel>().nm1;
-  const int np1 = c.get<Homme::TimeLevel>().np1;
-
-  // Spatial extents of views
+  // Fields extents
   constexpr int NGP  = HOMMEXX_NP;
   constexpr int NVL  = HOMMEXX_NUM_LEV;
   constexpr int NVLI = HOMMEXX_NUM_LEV_P;
   const int nelem = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
   const int nlevs = m_dyn_grid->get_num_vertical_levels();
 
+  const auto& dgn = m_dyn_grid->name();
+
+  const auto& c = Homme::Context::singleton();
   const auto& hvcoord = c.get<Homme::HybridVCoord>();
   const auto ps0 = hvcoord.ps0 * hvcoord.hybrid_ai0;
+
+  // Homme states
+  const auto dp3d      = get_internal_field("dp3d_dyn",dgn).get_view<Pack*****>();
+  const auto ps        = get_internal_field("ps_dyn",dgn).get_view<Real****>();
+  const auto v         = get_internal_field("v_dyn",dgn).get_view<Pack******>();
+  const auto w_i       = get_internal_field("w_int_dyn",dgn).get_view<Pack*****>();
+  const auto phinh_i   = get_internal_field("phi_int_dyn",dgn).get_view<Pack*****>();
+  const auto vtheta_dp = get_internal_field("vtheta_dp_dyn",dgn).get_view<Pack*****>();
+  const auto Q         = m_helper_fields.at("Q_dyn").get_view<Pack*****>();
+
+  // State time slices
+  const int nm1 = c.get<Homme::TimeLevel>().nm1;
+  const int n0  = c.get<Homme::TimeLevel>().n0;
+  const int np1 = c.get<Homme::TimeLevel>().np1;
 
   using ESU = ekat::ExeSpaceUtils<KT::ExeSpace>;
   const auto policy = ESU::get_thread_range_parallel_scan_team_policy(nelem*NP*NP,NVL);
@@ -757,15 +1170,17 @@ void HommeDynamics::import_initial_conditions () {
     ColOps::compute_midpoint_values(team,nlevs,p_int,p_mid);
     team.team_barrier();
     
-    // Convert T->Theta->Theta*dp->VTheta*dp
     auto T      = ekat::subview(vtheta_dp,ie,n0,igp,jgp);
     auto vTh_dp = ekat::subview(vtheta_dp,ie,n0,igp,jgp);
     auto qv     = ekat::subview(Q,ie,0,igp,jgp);
 
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team,NVL),
                          [&](const int ilev) {
-      const auto vthdp = dp(ilev)*PF::calculate_theta_from_T(T(ilev),p_mid(ilev));
-      vTh_dp(ilev) = PF::calculate_virtual_temperature(vthdp,qv(ilev));
+      if (compute_theta_from_T) {
+        // Convert T->Theta->Theta*dp->VTheta*dp
+        const auto vthdp = dp(ilev)*PF::calculate_theta_from_T(T(ilev),p_mid(ilev));
+        vTh_dp(ilev) = PF::calculate_virtual_temperature(vthdp,qv(ilev));
+      }
 
       // Copy states from the n0 timelevel to all the other ones
       dp3d(ie,nm1,igp,jgp,ilev) = dp3d(ie,n0,igp,jgp,ilev);
@@ -800,26 +1215,6 @@ void HommeDynamics::import_initial_conditions () {
     // Release the scratch mem
     ws.release(p_int);
     ws.release(p_mid);
-  });
-  Kokkos::fence();
-
-  // Init qdp = q*dp (q comes from initial conditions)
-  auto& tracers = c.get<Homme::Tracers>();
-  const auto qdp = tracers.qdp;
-  const auto q   = tracers.Q;
-  const auto dp  = c.get<Homme::ElementsState>().m_dp3d;
-  const int n0_qdp = c.get<Homme::TimeLevel>().n0_qdp;
-  const int qsize = get_group_out("tracers",dgn).m_info->size();
-
-  Kokkos::parallel_for(Kokkos::RangePolicy<>(0,nelem*qsize*NP*NP*NVL),
-                       KOKKOS_LAMBDA (const int idx) {
-    const int ie =  idx / (qsize*NP*NP*NVL);
-    const int iq = (idx / (NP*NP*NVL)) % qsize;
-    const int ip = (idx / (NP*NVL)) % NP;
-    const int jp = (idx / NVL) % NP;
-    const int k  = idx % NVL;
-
-    qdp(ie,n0_qdp,iq,ip,jp,k) = q(ie,iq,ip,jp,k) * dp(ie,n0,ip,jp,k);
   });
 }
 // =========================================================================================

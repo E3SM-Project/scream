@@ -63,19 +63,23 @@ protected:
   void init_homme_views ();
 
   // Propagates initial conditions to homme
-  void import_initial_conditions ();
+  void process_initial_conditions (const RunType run_type);
 
   // Updates p_mid
   void update_pressure ();
 
-  void initialize_impl ();
+  // Copy initial states from n0 timelevel to other timelevels,
+  // and compute initial p_mid/p_int
+  void copy_states_and_init_pressure (const bool compute_theta_from_T);
 
+  void initialize_impl (const RunType run_type);
 protected:
   void run_impl        (const int dt);
   void finalize_impl   ();
 
-  // Dynamics updates the "tracers" group, and needs to do some extra checks on the group.
-  void set_computed_group_impl (const FieldGroup<Real>& group);
+  // For simplicity, it's best to store the size of the tracers as soon as it is available.
+  // We can do it the first time that the 'tracers' group is set
+  void set_required_group_impl (const FieldGroup<const Real>& group);
 
   // Override the check computed fields impl so we can repair slightly negative tracer values.
   void check_computed_fields_impl ();
@@ -87,20 +91,19 @@ protected:
   // the ATMBufferManager
   void init_buffers(const ATMBufferManager &buffer_manager);
 
-  // Creates an internal field, not to be shared with the AD's FieldManager
-  void create_internal_field (const std::string& name,
-                              const std::vector<FieldTag>& tags,
-                              const std::vector<int>& dims,
-                              const std::string& grid);
+  // Creates an helper field, not to be shared with the AD's FieldManager
+  void create_helper_field (const std::string& name,
+                            const std::vector<FieldTag>& tags,
+                            const std::vector<int>& dims,
+                            const std::string& grid);
 
-  // Some helper fields. WARNING: only one copy for each internal field!
-  std::map<std::string,field_type>  m_internal_fields;
+  // Some helper fields.
+  std::map<std::string,field_type>  m_helper_fields;
 
   // Remapper for inputs and outputs, plus a special one for initial conditions
   std::shared_ptr<AbstractRemapper<Real>>   m_p2d_remapper;
   std::shared_ptr<AbstractRemapper<Real>>   m_d2p_remapper;
-  std::shared_ptr<AbstractRemapper<Real>>   m_ic_remapper_fwd;
-  std::shared_ptr<AbstractRemapper<Real>>   m_ic_remapper_bwd;
+  std::shared_ptr<AbstractRemapper<Real>>   m_ic_remapper;
 
   // The dynamics and reference grids
   std::shared_ptr<const AbstractGrid>  m_dyn_grid;

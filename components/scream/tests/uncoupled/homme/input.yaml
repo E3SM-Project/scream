@@ -18,7 +18,7 @@ Initial Conditions:
     w_int: 0.0 # Start from zero vert velocity
     w_int_prev: 0.0
   Dynamics:
-    tracers: tracers, Physics GLL
+    tracers_dyn: tracers, Physics GLL
 
 Atmosphere Processes:
   Number of Entries: 1

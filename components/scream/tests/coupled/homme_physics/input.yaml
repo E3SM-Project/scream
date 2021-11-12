@@ -20,7 +20,7 @@ Initial Conditions:
     surf_latent_flux: 0.0
     surf_sens_flux: 0.0
   Dynamics:
-    tracers: tracers, Physics GLL
+    tracers_dyn: tracers, Physics GLL
 
 Atmosphere Processes:
   Number of Entries: 5

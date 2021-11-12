@@ -81,12 +81,15 @@ public:
               const util::TimeStamp& t0,
               const bool is_model_restart_output,
               const bool is_restarted_run);
-  void run(util::TimeStamp& current_ts);
+  void run (const util::TimeStamp& current_ts);
   void finalize();
+
+  bool is_model_restart_output () const { return m_is_model_restart_output; }
 
 protected:
 
   std::string compute_filename_root (const IOControl& control, const IOFileSpecs& file_specs) const;
+  std::string find_filename_in_rpointer (const std::string& casename, const std::string& suffix) const;
 
   // Craft the restart parameter list
   void set_params (const ekat::ParameterList& params,

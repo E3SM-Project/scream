@@ -1,9 +1,122 @@
 #ifndef SCREAM_FIELD_UTILS_HPP
 #define SCREAM_FIELD_UTILS_HPP
 
-#include "field.hpp"
+#include <string>
+#include "ekat/kokkos/ekat_subview_utils.hpp"
+#include "share/field/field.hpp"
+#include "share/grid//abstract_grid.hpp"
 
 namespace scream {
+
+template<typename RT>
+RT& access_2d_dof (const Field<RT>& f, const std::shared_ptr<const AbstractGrid>& grid, const int idof, const int icomp = -1) {
+  using namespace ShortFieldTagsNames;
+
+  auto i2s = [](const int i) -> std::string { return std::to_string(i); };
+
+  const auto& fh  = f.get_header();
+  const auto& fid = fh.get_identifier();
+  EKAT_REQUIRE_MSG (grid->name()==fid.get_grid_name(),
+      "Error! Input grid is not the same as the one associated with the input field.\n"
+      "   - input grid name: " + grid->name() + "\n"
+      "   - field grid name: " + fid.get_grid_name() + "\n");
+  const auto& lt = fid.get_layout();
+  const auto lt_type = get_layout_type(lt.tags());
+  EKAT_REQUIRE_MSG (lt_type==LayoutType::Scalar2D ||
+                    lt_type==LayoutType::Vector2D,
+      "Error! Function 'access_2d_dof' called on a non-2d field.\n");
+  const bool vector = lt_type==LayoutType::Vector2D;
+  EKAT_REQUIRE_MSG ( (vector && icomp>=0) || (not vector && icomp==-1),
+      "Error! Vector component must be specified if and only if the field is a vector field.\n");
+  EKAT_REQUIRE_MSG ( not vector || icomp<lt.dim(CMP),
+      "Error! Vector component (" + i2s(icomp) + ") out of bounds [0," + i2s(lt.dim(CMP)) + ")\n");
+
+  const auto& lid2idx = grid->get_lid_to_idx_map();
+  EKAT_REQUIRE_MSG (idof>=0 && idof<=lid2idx.extent_int(0),
+      "Error! Dof index (" + i2s(idof) + ") out of bounds [0," + i2s(lid2idx.extent(0)) + ").\n");
+
+  const auto& idx = ekat::subview(lid2idx,idof);
+  switch (grid->type()) {
+    case GridType::Point: 
+      {
+        if (vector) {
+          const auto v = f.template get_view<RT**,Host>();
+          return v(idx(0),icomp);
+        } else {
+          const auto v = f.template get_view<RT*,Host>();
+          return v(idx(0));
+        }
+      }
+    case GridType::SE:
+      {
+        if (vector) {
+          const auto v = f.template get_view<RT****,Host>();
+          return v(idx(0),icomp,idx(1),idx(2));
+        } else {
+          const auto v = f.template get_view<RT***,Host>();
+          return v(idx(0),idx(1),idx(2));
+        }
+      }
+    default:
+      EKAT_ERROR_MSG("Error! Unexpected grid type.\n");
+  }
+}
+
+template<typename RT>
+auto access_3d_column (const Field<RT>& f, const std::shared_ptr<const AbstractGrid>& grid, const int idof, const int icomp = -1) 
+-> decltype(f.template get_view<RT*,Host>())
+{
+  using namespace ShortFieldTagsNames;
+
+  auto i2s = [](const int i) -> std::string { return std::to_string(i); };
+
+  const auto& fh  = f.get_header();
+  const auto& fid = fh.get_identifier();
+  EKAT_REQUIRE_MSG (grid->name()==fid.get_grid_name(),
+      "Error! Input grid is not the same as the one associated with the input field.\n"
+      "   - input grid name: " + grid->name() + "\n"
+      "   - field grid name: " + fid.get_grid_name() + "\n");
+  const auto& lt = fid.get_layout();
+  const auto lt_type = get_layout_type(lt.tags());
+  EKAT_REQUIRE_MSG (lt_type==LayoutType::Scalar3D ||
+                    lt_type==LayoutType::Vector3D,
+      "Error! Function 'access_2d_dof' called on a non-2d field.\n");
+  const bool vector = lt_type==LayoutType::Vector3D;
+  EKAT_REQUIRE_MSG ( (vector && icomp>=0) || (not vector && icomp==-1),
+      "Error! Vector component must be specified if and only if the field is a vector field.\n");
+  EKAT_REQUIRE_MSG ( not vector || icomp<lt.dim(CMP),
+      "Error! Vector component (" + i2s(icomp) + ") out of bounds [0," + i2s(lt.dim(CMP)) + ")\n");
+
+  const auto& lid2idx = grid->get_lid_to_idx_map();
+  EKAT_REQUIRE_MSG (idof>=0 && idof<=lid2idx.extent_int(0),
+      "Error! Dof index (" + i2s(idof) + ") out of bounds [0," + i2s(lid2idx.extent(0)) + ").\n");
+
+  const auto& idx = ekat::subview(lid2idx,idof);
+  switch (grid->type()) {
+    case GridType::Point: 
+      {
+        if (vector) {
+          const auto v = f.template get_view<RT**,Host>();
+          return ekat::subview(v,idx(0),icomp);
+        } else {
+          const auto v = f.template get_view<RT*,Host>();
+          return ekat::subview(v,idx(0));
+        }
+      }
+    case GridType::SE:
+      {
+        if (vector) {
+          const auto v = f.template get_view<RT****,Host>();
+          return ekat::subview(v,idx(0),icomp,idx(1),idx(2));
+        } else {
+          const auto v = f.template get_view<RT***,Host>();
+          return ekat::subview(v,idx(0),idx(1),idx(2));
+        }
+      }
+    default:
+      EKAT_ERROR_MSG("Error! Unexpected grid type.\n");
+  }
+}
 
 // Check that two fields store the same entries.
 // NOTE: if the field is padded, padding entries are NOT checked.

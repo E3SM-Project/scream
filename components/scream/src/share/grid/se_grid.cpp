@@ -1,5 +1,7 @@
 #include "share/grid/se_grid.hpp"
 
+#include <ekat/kokkos/ekat_subview_utils.hpp>
+
 namespace scream {
 
 SEGrid::
@@ -7,6 +9,7 @@ SEGrid (const std::string& grid_name,
         const int num_my_elements,
         const int num_gauss_pts,
         const int num_vertical_levels,
+        const SEType se_type,
         const ekat::Comm& comm)
  : AbstractGrid (grid_name,GridType::SE,num_my_elements*num_gauss_pts*num_gauss_pts,num_vertical_levels,comm)
 {
@@ -17,6 +20,7 @@ SEGrid (const std::string& grid_name,
 
   m_num_local_elem = num_my_elements;
   m_num_gp         = num_gauss_pts;
+  m_se_type        = se_type;
 }
 
 void SEGrid::
@@ -64,6 +68,36 @@ SEGrid::get_3d_vector_layout (const bool midpoints, const FieldTag vector_tag, c
   auto VL = midpoints ? LEV : ILEV;
 
   return FieldLayout({EL,vector_tag,GP,GP,VL},{m_num_local_elem,vector_dim,m_num_gp,m_num_gp,nvl});
+}
+
+void SEGrid::set_cg_grid (const std::shared_ptr<const SEGrid>& cg_grid)
+{
+  // Sanity checks
+  EKAT_REQUIRE_MSG (not m_cg_grid, "Error! Cannot reset CG grid once set.\n");
+  EKAT_REQUIRE_MSG (cg_grid->get_se_type()==SEType::CG, "Error! Input grid is not CG.\n");
+  EKAT_REQUIRE_MSG (get_se_type()==SEType::DG, "Error! This grid is already CG.\n");
+  EKAT_REQUIRE_MSG (cg_grid->m_num_local_elem==m_num_local_elem, "Error! Incompatible CG grid.\n");
+  EKAT_REQUIRE_MSG (cg_grid->m_num_gp==m_num_gp, "Error! Incompatible CG grid.\n");
+  EKAT_REQUIRE_MSG (cg_grid->get_num_vertical_levels()==get_num_vertical_levels(), "Error! Incompatible CG grid.\n");
+
+  m_cg_grid = cg_grid;
+}
+
+std::shared_ptr<const AbstractGrid>
+SEGrid::get_cg_grid () const {
+  if (m_se_type==SEType::CG) {
+    return shared_from_this();
+  } else {
+    return m_cg_grid;
+  }
+}
+
+void SEGrid::check_dofs_list () const
+{
+  if (m_se_type==SEType::DG) {
+    EKAT_REQUIRE_MSG (is_unique(),
+      "Error! SEGrid of type 'DG' requires unique dof gids.\n");
+  }
 }
 
 void SEGrid::check_lid_to_idx_map () const

@@ -11,7 +11,7 @@ module dyn_grid_mod
 ! We need MPI in here, so include it
 #include <mpif.h>
 
-  public :: dyn_grid_init, get_my_dyn_data, cleanup_grid_init_data
+  public :: dyn_grid_init, get_my_cg_dyn_data, get_my_dg_dyn_data, cleanup_grid_init_data
 
   type (EdgeBuffer_t) :: edge
 
@@ -42,7 +42,41 @@ contains
 
   end subroutine dyn_grid_init
 
-  subroutine get_my_dyn_data (gids, elgpgp, lat, lon)
+  subroutine get_my_dg_dyn_data (gids, elgpgp, lat, lon)
+    use iso_c_binding,     only: c_int, c_double
+    use dimensions_mod,    only: nelemd, np
+    use homme_context_mod, only: elem
+    use shr_const_mod,     only: pi=>SHR_CONST_PI
+    use kinds,             only: int_kind
+    use dof_mod,           only: genLocalDof
+    !
+    ! Inputs
+    !
+    real(kind=c_double), pointer :: lat (:), lon(:)
+    integer(kind=c_int), pointer :: gids (:), elgpgp(:,:)
+    !
+    ! Local(s)
+    !
+    integer(kind=int_kind) :: el_gids (np,np,nelemd)  ! Homme's getLocalDof might not work with c_int
+    integer :: idof, ip,jp, ie
+
+    do ie=1,nelemd
+      call genLocalDof(elem(ie)%vertex%number,np,el_gids(:,:,ie))
+      do ip=1,np
+        do jp=1,np
+          idof = (ie-1)*np*np+(jp-1)*np+ip
+          gids(idof) = INT(el_gids(ip,jp,ie),kind=c_int)
+          lat(idof)  = elem(ie)%spherep(ip,jp)%lat * 180.0_c_double/pi
+          lon(idof)  = elem(ie)%spherep(ip,jp)%lon * 180.0_c_double/pi
+          elgpgp(1,idof) = ie-1
+          elgpgp(2,idof) = jp-1
+          elgpgp(3,idof) = ip-1
+        enddo
+      enddo
+    enddo
+  end subroutine get_my_dg_dyn_data
+
+  subroutine get_my_cg_dyn_data (gids, elgpgp, lat, lon)
     use iso_c_binding,     only: c_int, c_double
     use dimensions_mod,    only: nelemd, np
     use homme_context_mod, only: elem, par
@@ -87,7 +121,7 @@ contains
         enddo
       enddo
     enddo
-  end subroutine get_my_dyn_data
+  end subroutine get_my_cg_dyn_data
 
   subroutine cleanup_grid_init_data ()
     use prim_driver_base, only: prim_init1_cleanup

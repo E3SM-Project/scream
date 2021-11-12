@@ -1,10 +1,13 @@
 #include "share/io/scorpio_input.hpp"
 
 #include "ekat/ekat_parameter_list.hpp"
+#include "ekat/kokkos/ekat_subview_utils.hpp"
 #include "share/io/scream_scorpio_interface.hpp"
 
 #include <memory>
 #include <numeric>
+#include <iostream>
+#include <iomanip>
 
 namespace scream
 {
@@ -259,6 +262,30 @@ void AtmosphereInput::read_variables (const int time_index)
               }}}
               break;
             }
+          case 4:
+            {
+              // Reshape temp_view to a 3d view, then copy
+              auto dst = f.get_view<RT***,Host>();
+              auto src = view_Nd_host<3>(view_1d.data(),fl.dim(0),fl.dim(1),fl.dim(2));
+              for (int i=0; i<fl.dim(0); ++i) {
+                for (int j=0; j<fl.dim(1); ++j) {
+                  for (int k=0; k<fl.dim(2); ++k) {
+                    dst(i,j,k) = src(i,j,k);
+              }}}
+              break;
+            }
+          case 5:
+            {
+              // Reshape temp_view to a 3d view, then copy
+              auto dst = f.get_view<RT***,Host>();
+              auto src = view_Nd_host<3>(view_1d.data(),fl.dim(0),fl.dim(1),fl.dim(2));
+              for (int i=0; i<fl.dim(0); ++i) {
+                for (int j=0; j<fl.dim(1); ++j) {
+                  for (int k=0; k<fl.dim(2); ++k) {
+                    dst(i,j,k) = src(i,j,k);
+              }}}
+              break;
+            }
           default:
             EKAT_ERROR_MSG ("Error! Unexpected field rank (" + std::to_string(rank) + ").\n");
         }
@@ -270,7 +297,44 @@ void AtmosphereInput::read_variables (const int time_index)
   }
 
   if (m_remapper) {
+    auto gid = m_remapper->get_src_grid()->get_dofs_gids()(0);
+    auto dgids = m_remapper->get_tgt_grid()->get_dofs_gids();
+    auto start = dgids.data();
+    auto end   = start+dgids.size();
+    auto it = std::find(start,end,gid);
+    EKAT_REQUIRE_MSG(it!=end, "oh-oh...\n");
+    int dlid = std::distance(start,it);
+    auto elgp = ekat::subview(m_remapper->get_tgt_grid()->get_lid_to_idx_map(),dlid);
+    printf("icol=0, gid=%d, dlid=%d, el=%d, ip=%d, jp=%d\n",gid,dlid,elgp(0),elgp(1),elgp(2));
+    for (int i=0; i<m_remapper->get_num_fields(); ++i) {
+      auto tgt = m_remapper->get_tgt_field(i);
+
+      if (tgt.get_header().get_identifier().name()=="field_1") {
+        std::cout << " f_in_d_pre_remap(0,0,0,0): " << tgt.get_view<Real****>()(0,0,0,0) << "\n";
+      }
+    }
     m_remapper->remap(true);
+    std::cout << "running input remapper...\n";
+    for (int i=0; i<m_remapper->get_num_fields(); ++i) {
+      auto src = m_remapper->get_src_field(i);
+      auto tgt = m_remapper->get_tgt_field(i);
+
+      if (tgt.get_header().get_identifier().name()=="field_1") {
+        std::cout << " f_in_d(0,0,0,0): " << tgt.get_view<Real****>()(0,0,0,0) << "\n";
+      }
+      if (src.get_header().get_identifier().name()=="tracers_dyn") {
+        std::cout << "tracers_dyn fid: " << tgt.get_header().get_identifier().get_id_string() << "\n";
+        std::cout << "tracers_phs fid: " << src.get_header().get_identifier().get_id_string() << "\n";
+        auto f_phs = src.get_view<Real***>();
+        auto f_dyn = tgt.get_view<Real*****>();
+        // const int ncols = pg->get_num_local_dofs();
+        // const int nlev  = pg->get_num_vertical_levels();
+        // const int nelem = dg->get_num_local_dofs() / (np*np);
+        std::cout << std::setprecision(17);
+        std::cout << "Q dyn(23,0,3,3,51): " << f_dyn(23,0,3,3,51) << "\n";
+        std::cout << "Q phys(90,0,51): " << f_phs(90,0,51) << "\n";
+      }
+    }
   }
 } 
 
@@ -399,6 +463,12 @@ get_var_dof_offsets(const FieldLayout& layout)
   // check this during set_grid) that the grid global gids are in the interval
   // [gid_0, gid_0+num_global_dofs), the offset is simply given by
   // (dof_gid-gid_0)*column_size (for partitioned arrays).
+  // NOTE: a "dof" in the grid object is not the same as a "dof" in scorpio.
+  //       For a SEGrid 3d vector field with (MPI local) layout (nelem,2,np,np,nlev),
+  //       scorpio sees nelem*2*np*np*nlev dofs, while the SE grid sees nelem*np*np dofs.
+  //       All we need to do in this routine is to compute the offset of all the entries
+  //       of the MPI-local array w.r.t. the global array. So long as the offsets are in
+  //       the same order as the corresponding entry in the data to be read/written, we're good.
   if (layout.has_tag(ShortFieldTagsNames::COL)) {
     const int num_cols = m_io_grid->get_num_local_dofs();
 

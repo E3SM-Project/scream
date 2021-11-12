@@ -45,8 +45,9 @@ namespace scream
  *     knowledge of what fields are (e.g., advect them, or apply fix/limiter).
  *   - Fields and groups must be requested via FieldRequest and GroupRequest
  *     respectively (see field_request.hpp). To add a request, use the methods
- *     add_field<RT>(..) and add_group<RT>(..), with RT=Required, Updated, or
- *     Computed (Updated = Required + Computed).
+ *     add_field<RT>(..) and add_group<RT>(..), with RT=Required, Computed,
+ *     Internal, or Updated (Updated = Required + Computed, and Internal is
+ *     a "private" field/group, needed for BFB model restart).
  *   - If the same group is needed on multiple grids, the AP will issue a separate
  *     request for each grid.
  *   - Notice that it is unlikely that an AP computes a group, without requiring
@@ -117,8 +118,10 @@ public:
   //       to perform some extra action *before* setting the field/group.
   virtual void set_required_field (const Field<const Real>& f);
   virtual void set_computed_field (const Field<Real>& f);
+  virtual void set_internal_field (const Field<Real>& f);
   virtual void set_required_group (const FieldGroup<const Real>& group);
   virtual void set_computed_group (const FieldGroup<Real>& group);
+  virtual void set_internal_group (const FieldGroup<Real>& group);
 
   // These methods checks that all the in/out fields of this atm process are valid.
   // For each field, these routines run all the property checks stored in the field.
@@ -136,8 +139,10 @@ public:
   // grain detail. See field_request.hpp for more info on what FieldRequest and GroupRequest
   // are, and field_group.hpp for what groups of fields are.
   const std::set<FieldRequest>& get_required_field_requests () const { return m_required_field_requests; }
+  const std::set<FieldRequest>& get_internal_field_requests () const { return m_internal_field_requests; }
   const std::set<FieldRequest>& get_computed_field_requests () const { return m_computed_field_requests; }
   const std::set<GroupRequest>& get_required_group_requests () const { return m_required_group_requests; }
+  const std::set<GroupRequest>& get_internal_group_requests () const { return m_internal_group_requests; }
   const std::set<GroupRequest>& get_computed_group_requests () const { return m_computed_group_requests; }
 
   // These sets allow to get all the actual in/out fields stored by the atm proc
@@ -148,12 +153,16 @@ public:
   const std::list<      field_type>& get_fields_out () const { return m_fields_out; }
   const std::list<const_group_type>& get_groups_in  () const { return m_groups_in;  }
   const std::list<      group_type>& get_groups_out () const { return m_groups_out; }
+  const std::list<field_type>& get_internal_fields  () const { return m_internal_fields;  }
+  const std::list<group_type>& get_internal_groups  () const { return m_internal_groups; }
 
-  // Whether this atm proc requested the field/group as in/out/inout, via a FieldRequest/GroupRequest.
-  bool requires_field (const FieldIdentifier& id) const;
-  bool computes_field (const FieldIdentifier& id) const;
-  bool requires_group (const std::string& name, const std::string& grid) const;
-  bool computes_group (const std::string& name, const std::string& grid) const;
+  // Whether this atm proc requested the field/group as in/out/internal, via a FieldRequest/GroupRequest.
+  bool is_required_field (const FieldIdentifier& id) const;
+  bool is_computed_field (const FieldIdentifier& id) const;
+  bool is_internal_field (const FieldIdentifier& id) const;
+  bool is_required_group (const std::string& name, const std::string& grid) const;
+  bool is_computed_group (const std::string& name, const std::string& grid) const;
+  bool is_internal_group (const std::string& name, const std::string& grid) const;
 
   // Computes total number of bytes needed for local variables
   virtual int requested_buffer_size_in_bytes () const { return 0; }
@@ -164,10 +173,15 @@ public:
 
 protected:
 
+  // Notes:
+  //  - Updated = Required+Computed
+  //  - Internal: fields/groups needed for BFB model restart, but that is not
+  //              considered as an 'input' to the atm proc.
   enum RequestType {
     Required,
     Computed,
-    Updated   // For convenience, triggers Required+Computed
+    Internal,
+    Updated
   };
 
   // Derived classes can used these method, so that if we change how fields/groups
@@ -216,15 +230,23 @@ protected:
   void add_field (const FieldRequest& req)
   {
     // Since we use C-style enum, let's avoid invalid integers casts
-    static_assert(RT==Required || RT==Computed || RT==Updated,
+    static_assert(RT==Required || RT==Computed || RT==Updated || RT==Internal,
                   "Error! Invalid request type in call to add_field.\n");
 
-    if (RT==Updated) {
-      add_field<Required>(req);
-      add_field<Computed>(req);
-    } else {
-      auto& fields = RT==Required ? m_required_field_requests : m_computed_field_requests;
-      fields.emplace(req);
+    switch (RT) {
+      case Internal:
+        m_internal_field_requests.emplace(req);
+        break;
+      case Required:
+        m_required_field_requests.emplace(req);
+        break;
+      case Computed:
+        m_computed_field_requests.emplace(req);
+        break;
+      case Updated:
+        m_required_field_requests.emplace(req);
+        m_computed_field_requests.emplace(req);
+        break;
     }
   }
 
@@ -232,7 +254,7 @@ protected:
   template<RequestType RT>
   void add_group (const std::string& name, const std::string& grid, const int ps, const Bundling b,
                   const DerivationType t, const std::string& src_name, const std::string& src_grid,
-                  const std::list<std::string>& excl)
+                  const std::list<std::string>& excl = {})
   { add_group<RT>(GroupRequest(name,grid,ps,b,t,src_name,src_grid,excl)); }
 
   template<RequestType RT>
@@ -249,14 +271,22 @@ protected:
   void add_group (const GroupRequest& req)
   {
     // Since we use C-style enum, let's avoid invalid integers casts
-    static_assert(RT==Required || RT==Updated || RT==Computed,
+    static_assert(RT==Required || RT==Updated || RT==Computed || RT==Internal,
         "Error! Invalid request type in call to add_group.\n");
-    if (RT==Updated) {
-      add_group<Required>(req);
-      add_group<Computed>(req);
-    } else {
-      auto& groups = RT==Required ? m_required_group_requests : m_computed_group_requests;
-      groups.emplace(req);
+    switch (RT) {
+      case Internal:
+        m_internal_group_requests.emplace(req);
+        break;
+      case Required:
+        m_required_group_requests.emplace(req);
+        break;
+      case Computed:
+        m_computed_group_requests.emplace(req);
+        break;
+      case Updated:
+        m_required_group_requests.emplace(req);
+        m_computed_group_requests.emplace(req);
+        break;
     }
   }
 
@@ -275,19 +305,22 @@ protected:
 
   // These three methods modify the FieldTracking of the input field (see field_tracking.hpp)
   void update_time_stamps ();
+  void add_me_as_owner (const Field<Real>& f);
   void add_me_as_provider (const Field<Real>& f);
   void add_me_as_customer (const Field<const Real>& f);
 
   // The base class already registers the required/computed/updated fields/groups in
-  // the set_required/computed_field and set_required/computed_group routines.
+  // the set_required/computed/internal_field and set_required/computed/internal_group routines.
   // These impl methods provide a way for derived classes to add more specialized
   // actions, such as extra fields bookkeeping, extra checks, or create copies.
   // Since most derived classes do not need to perform additional actions,
   // we provide empty implementations.
   virtual void set_required_field_impl (const Field<const Real>& /* f */) {}
   virtual void set_computed_field_impl (const Field<      Real>& /* f */) {}
+  virtual void set_internal_field_impl (const Field<      Real>& /* f */) {}
   virtual void set_required_group_impl (const FieldGroup<const Real>& /* group */) {}
   virtual void set_computed_group_impl (const FieldGroup<      Real>& /* group */) {}
+  virtual void set_internal_group_impl (const FieldGroup<      Real>& /* group */) {}
 
   // The Base class already runs all registered field checks for all fields.
   // Similar to the set_required/computed_field_impl comment above, it is
@@ -311,14 +344,18 @@ protected:
   FieldGroup<Real>& get_group_out(const std::string& group_name, const std::string& grid_name);
   FieldGroup<Real>& get_group_out(const std::string& group_name);
 
+  Field<Real>& get_internal_field(const std::string& field_name, const std::string& grid_name);
+  Field<Real>& get_internal_field(const std::string& field_name);
+  FieldGroup<Real>& get_internal_group(const std::string& group_name, const std::string& grid_name);
+  FieldGroup<Real>& get_internal_group(const std::string& group_name);
+
   // These methods set up an extra pointer in the m_[fields|groups]_[in|out]_pointers,
   // for convenience of use (e.g., use a short name for a field/group).
   // Note: these methods do *not* create a copy of the field/group. Also, notice that
-  //       these methods need to be created *after* set_fields_and_groups_pointers().
+  //       these methods need to be called *after* set_fields_and_groups_pointers().
   void alias_field_in (const std::string& field_name,
                        const std::string& grid_name,
                        const std::string& alias_name);
-
   void alias_field_out (const std::string& field_name,
                         const std::string& grid_name,
                         const std::string& alias_name);
@@ -326,10 +363,16 @@ protected:
   void alias_group_in (const std::string& group_name,
                        const std::string& grid_name,
                        const std::string& alias_name);
-
   void alias_group_out (const std::string& group_name,
                         const std::string& grid_name,
                         const std::string& alias_name);
+
+  void alias_internal_field (const std::string& field_name,
+                             const std::string& grid_name,
+                             const std::string& alias_name);
+  void alias_internal_group (const std::string& group_name,
+                             const std::string& grid_name,
+                             const std::string& alias_name);
 
   // MPI communicator
   ekat::Comm m_comm;
@@ -342,11 +385,13 @@ private:
   // maps, which are used inside the get_[field|group]_[in|out] methods.
   void set_fields_and_groups_pointers ();
 
-  // Store input/output fields and groups.
+  // Store input/output/internal fields and groups.
   std::list<const_group_type>  m_groups_in;
   std::list<      group_type>  m_groups_out;
   std::list<const_field_type>  m_fields_in;
   std::list<      field_type>  m_fields_out;
+  std::list<      group_type>  m_internal_groups;
+  std::list<      field_type>  m_internal_fields;
 
   // These maps help to retrieve a field/group stored in the lists above. E.g.,
   //   auto ptr = m_field_in_pointers[field_name][grid_name];
@@ -355,12 +400,16 @@ private:
   str_map<str_map<       group_type* >> m_groups_out_pointers;
   str_map<str_map< const_field_type* >> m_fields_in_pointers;
   str_map<str_map<       field_type* >> m_fields_out_pointers;
+  str_map<str_map<       group_type* >> m_internal_groups_pointers;
+  str_map<str_map<       field_type* >> m_internal_fields_pointers;
 
-  // The list of in/out/inout field/group requests.
+  // The list of in/out/internal field/group requests.
   std::set<FieldRequest>   m_required_field_requests;
   std::set<FieldRequest>   m_computed_field_requests;
+  std::set<FieldRequest>   m_internal_field_requests;
   std::set<GroupRequest>   m_required_group_requests;
   std::set<GroupRequest>   m_computed_group_requests;
+  std::set<GroupRequest>   m_internal_group_requests;
 
   // This process's copy of the timestamp, which is set on initialization and
   // updated during stepping.
