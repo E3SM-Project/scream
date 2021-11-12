@@ -55,9 +55,10 @@ int get_num_local_columns_f90 (const int pgN);
 int get_num_global_columns_f90 (const int pgN);
 int get_num_local_elems_f90 ();
 int get_num_global_elems_f90 ();
-void get_dyn_grid_data_f90 (AbstractGrid::gid_type* const& gids,
+void get_dyn_grid_data_f90 (AbstractGrid::gid_type* const& dg_gids,
+                            AbstractGrid::gid_type* const& cg_gids,
                             int* const& elgp,
-                            double* const& lat, double* const& lon, const bool dg_grid);
+                            double* const& lat, double* const& lon);
 void get_phys_grid_data_f90 (const int& pg_type,
                              AbstractGrid::gid_type* const& gids,
                              double* const& lat, double* const& lon, double* const& area);

@@ -27,7 +27,7 @@ public:
 
   // Set/retrieve the CG grid dofs
   void set_cg_dofs (const dofs_list_type& cg_dofs);
-  const dofs_list_type& get_cg_dofs () const;
+  const dofs_list_type& get_cg_dofs_gids () const;
 
 protected:
   void check_dofs_list () const override;
@@ -39,8 +39,8 @@ protected:
   int       m_num_gp;
 
   // The dofs gids for a CG version of this grid
-  dofs_list_type m_cg_dofs;
-  bool m_cg_dofs_set;
+  dofs_list_type m_cg_dofs_gids;
+  bool m_cg_dofs_set = false;
 };
 
 } // namespace scream

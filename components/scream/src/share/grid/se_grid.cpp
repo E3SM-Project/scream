@@ -68,27 +68,18 @@ SEGrid::get_3d_vector_layout (const bool midpoints, const FieldTag vector_tag, c
   return FieldLayout({EL,vector_tag,GP,GP,VL},{m_num_local_elem,vector_dim,m_num_gp,m_num_gp,nvl});
 }
 
-// void SEGrid::set_cg_grid (const std::shared_ptr<const SEGrid>& cg_grid)
-// {
-//   // Sanity checks
-//   EKAT_REQUIRE_MSG (not m_cg_grid, "Error! Cannot reset CG grid once set.\n");
-//   EKAT_REQUIRE_MSG (cg_grid->get_se_type()==SEType::CG, "Error! Input grid is not CG.\n");
-//   EKAT_REQUIRE_MSG (get_se_type()==SEType::DG, "Error! This grid is already CG.\n");
-//   EKAT_REQUIRE_MSG (cg_grid->m_num_local_elem==m_num_local_elem, "Error! Incompatible CG grid.\n");
-//   EKAT_REQUIRE_MSG (cg_grid->m_num_gp==m_num_gp, "Error! Incompatible CG grid.\n");
-//   EKAT_REQUIRE_MSG (cg_grid->get_num_vertical_levels()==get_num_vertical_levels(), "Error! Incompatible CG grid.\n");
+auto SEGrid::get_cg_dofs_gids () const -> const dofs_list_type&
+{
+  EKAT_REQUIRE_MSG (m_cg_dofs_set, "Error! CG dofs not yet set.\n");
+  return m_cg_dofs_gids;
+}
 
-//   m_cg_grid = cg_grid;
-// }
-
-// std::shared_ptr<const AbstractGrid>
-// SEGrid::get_cg_grid () const {
-//   if (m_se_type==SEType::CG) {
-//     return shared_from_this();
-//   } else {
-//     return m_cg_grid;
-//   }
-// }
+void SEGrid::set_cg_dofs (const dofs_list_type& cg_dofs)
+{
+  EKAT_REQUIRE_MSG (not m_cg_dofs_set, "Error! CG dofs were already set.\n");
+  m_cg_dofs_gids = cg_dofs;
+  m_cg_dofs_set = true;
+}
 
 void SEGrid::check_dofs_list () const
 {

@@ -31,8 +31,7 @@ public:
     std::set<std::string> gnames;
 
     gnames.insert("Point Grid");
-    gnames.insert("SE Grid CG");
-    gnames.insert("SE Grid DG");
+    gnames.insert("SE Grid");
 
     return gnames;
   }
