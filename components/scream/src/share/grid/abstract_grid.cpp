@@ -142,6 +142,7 @@ set_geometry_data (const std::string& name, const geo_view_type& data) {
   m_geo_views[name] = data;
 }
 
+
 AbstractGrid::gid_type
 AbstractGrid::get_global_min_dof_gid () const
 {

@@ -146,8 +146,7 @@ void DynamicsDrivenGridsManager::build_dynamics_grid (const bool DG) {
     const int nlelem = get_num_local_elems_f90();
     const int nlev   = get_nlev_f90();
 
-    SEType se_type = DG ? SEType::DG : SEType::CG;
-    auto dyn_grid = std::make_shared<SEGrid>("Dynamics",nlelem,HOMMEXX_NP,nlev,se_type,m_comm);
+    auto dyn_grid = std::make_shared<SEGrid>("Dynamics",nlelem,HOMMEXX_NP,nlev,m_comm);
     dyn_grid->setSelfPointer(dyn_grid);
     if (DG) {
       auto cg_grid = m_grids.at("DynamicsCG");
