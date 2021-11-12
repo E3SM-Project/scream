@@ -297,44 +297,44 @@ void AtmosphereInput::read_variables (const int time_index)
   }
 
   if (m_remapper) {
-    auto gid = m_remapper->get_src_grid()->get_dofs_gids()(0);
-    auto dgids = m_remapper->get_tgt_grid()->get_dofs_gids();
-    auto start = dgids.data();
-    auto end   = start+dgids.size();
-    auto it = std::find(start,end,gid);
-    EKAT_REQUIRE_MSG(it!=end, "oh-oh...\n");
-    int dlid = std::distance(start,it);
-    auto elgp = ekat::subview(m_remapper->get_tgt_grid()->get_lid_to_idx_map(),dlid);
-    printf("icol=0, gid=%d, dlid=%d, el=%d, ip=%d, jp=%d\n",gid,dlid,elgp(0),elgp(1),elgp(2));
-    for (int i=0; i<m_remapper->get_num_fields(); ++i) {
-      auto tgt = m_remapper->get_tgt_field(i);
+    // auto gid = m_remapper->get_src_grid()->get_dofs_gids()(0);
+    // auto dgids = m_remapper->get_tgt_grid()->get_dofs_gids();
+    // auto start = dgids.data();
+    // auto end   = start+dgids.size();
+    // auto it = std::find(start,end,gid);
+    // EKAT_REQUIRE_MSG(it!=end, "oh-oh...\n");
+    // int dlid = std::distance(start,it);
+    // auto elgp = ekat::subview(m_remapper->get_tgt_grid()->get_lid_to_idx_map(),dlid);
+    // printf("icol=0, gid=%d, dlid=%d, el=%d, ip=%d, jp=%d\n",gid,dlid,elgp(0),elgp(1),elgp(2));
+    // for (int i=0; i<m_remapper->get_num_fields(); ++i) {
+    //   auto tgt = m_remapper->get_tgt_field(i);
 
-      if (tgt.get_header().get_identifier().name()=="field_1") {
-        std::cout << " f_in_d_pre_remap(0,0,0,0): " << tgt.get_view<Real****>()(0,0,0,0) << "\n";
-      }
-    }
+    //   if (tgt.get_header().get_identifier().name()=="field_1") {
+    //     std::cout << " f_in_d_pre_remap(0,0,0,0): " << tgt.get_view<Real****>()(0,0,0,0) << "\n";
+    //   }
+    // }
     m_remapper->remap(true);
     std::cout << "running input remapper...\n";
-    for (int i=0; i<m_remapper->get_num_fields(); ++i) {
-      auto src = m_remapper->get_src_field(i);
-      auto tgt = m_remapper->get_tgt_field(i);
+    // for (int i=0; i<m_remapper->get_num_fields(); ++i) {
+    //   auto src = m_remapper->get_src_field(i);
+    //   auto tgt = m_remapper->get_tgt_field(i);
 
-      if (tgt.get_header().get_identifier().name()=="field_1") {
-        std::cout << " f_in_d(0,0,0,0): " << tgt.get_view<Real****>()(0,0,0,0) << "\n";
-      }
-      if (src.get_header().get_identifier().name()=="tracers_dyn") {
-        std::cout << "tracers_dyn fid: " << tgt.get_header().get_identifier().get_id_string() << "\n";
-        std::cout << "tracers_phs fid: " << src.get_header().get_identifier().get_id_string() << "\n";
-        auto f_phs = src.get_view<Real***>();
-        auto f_dyn = tgt.get_view<Real*****>();
-        // const int ncols = pg->get_num_local_dofs();
-        // const int nlev  = pg->get_num_vertical_levels();
-        // const int nelem = dg->get_num_local_dofs() / (np*np);
-        std::cout << std::setprecision(17);
-        std::cout << "Q dyn(23,0,3,3,51): " << f_dyn(23,0,3,3,51) << "\n";
-        std::cout << "Q phys(90,0,51): " << f_phs(90,0,51) << "\n";
-      }
-    }
+    //   if (tgt.get_header().get_identifier().name()=="field_1") {
+    //     std::cout << " f_in_d(0,0,0,0): " << tgt.get_view<Real****>()(0,0,0,0) << "\n";
+    //   }
+    //   if (src.get_header().get_identifier().name()=="tracers_dyn") {
+    //     std::cout << "tracers_dyn fid: " << tgt.get_header().get_identifier().get_id_string() << "\n";
+    //     std::cout << "tracers_phs fid: " << src.get_header().get_identifier().get_id_string() << "\n";
+    //     auto f_phs = src.get_view<Real***>();
+    //     auto f_dyn = tgt.get_view<Real*****>();
+    //     // const int ncols = pg->get_num_local_dofs();
+    //     // const int nlev  = pg->get_num_vertical_levels();
+    //     // const int nelem = dg->get_num_local_dofs() / (np*np);
+    //     std::cout << std::setprecision(17);
+    //     std::cout << "Q dyn(23,0,3,3,51): " << f_dyn(23,0,3,3,51) << "\n";
+    //     std::cout << "Q phys(90,0,51): " << f_phs(90,0,51) << "\n";
+    //   }
+    // }
   }
 } 
 

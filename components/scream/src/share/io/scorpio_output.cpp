@@ -136,42 +136,42 @@ void AtmosphereOutput::run (const std::string& filename, const bool is_write_ste
 
       auto src_t = src.get_header().get_tracking().get_time_stamp();
       tgt.get_header().get_tracking().update_time_stamp(src_t);
-      if (src.get_header().get_identifier().name()=="v_dyn" && filename.find(".r.")!=std::string::npos) {
-        std::cout << "dyn fid: " << src.get_header().get_identifier().get_id_string() << "\n";
-        std::cout << "phs fid: " << tgt.get_header().get_identifier().get_id_string() << "\n";
-        auto f_phs = tgt.get_view<Real***>();
-        auto f_dyn = src.get_view<Real******>();
-        // const int np = 4;
-        // const int ncols = pg->get_num_local_dofs();
-        // const int nlev  = pg->get_num_vertical_levels();
-        // const int nelem = dg->get_num_local_dofs() / (np*np);
-        std::cout << std::setprecision(17);
-        std::cout << "v dyn( 7,:,0,3,3,51): [" << f_dyn( 7,0,0,3,3,51) << "," << f_dyn( 7,1,0,3,3,51) << "," << f_dyn( 7,2,0,3,3,51) << "]\n";
-        std::cout << "v dyn(10,:,0,3,0,51): [" << f_dyn(10,0,0,3,0,51) << "," << f_dyn(10,1,0,3,0,51) << "," << f_dyn(10,2,0,3,0,51) << "]\n";
-        std::cout << "v dyn(23,:,0,3,3,51): [" << f_dyn(23,0,0,3,3,51) << "," << f_dyn(23,1,0,3,3,51) << "," << f_dyn(23,2,0,3,3,51) << "]\n";
-        std::cout << "v phys(90,0,51): " << f_phs(90,0,51) << "\n";
-        // for (int ie=0; ie<nelem; ++ie) {
-        //   for (int ip=0; ip<np; ++ip) {
-        //     for (int jp=0; jp<np; ++jp) {
-        //       std::cout << "q_dyn(" << ie << "," << ip << "," << jp << ",:):";
-        //       for (int k=0; k<nlev; ++k) {
-        //         std::cout << " " << f_dyn(ie,0,ip,jp,k);
-        //       }
-        //       std::cout << "\n";
-        //     }
-        //   }
-        // }
-        for (int icol=0; icol<pg->get_num_local_dofs(); ++icol) {
-          // std::cout << "q_dyn_phys(" << icol << ",0,:):";
-          // for (int ilev=0; ilev<pg->get_num_vertical_levels(); ++ilev) {
-          //   std::cout << " " << f_phs(icol,0,ilev);
-          // }
-          // std::cout << "\n";
-        }
-      }
+      // if (src.get_header().get_identifier().name()=="v_dyn" && filename.find(".r.")!=std::string::npos) {
+      //   std::cout << "dyn fid: " << src.get_header().get_identifier().get_id_string() << "\n";
+      //   std::cout << "phs fid: " << tgt.get_header().get_identifier().get_id_string() << "\n";
+      //   auto f_phs = tgt.get_view<Real***>();
+      //   auto f_dyn = src.get_view<Real******>();
+      //   // const int np = 4;
+      //   // const int ncols = pg->get_num_local_dofs();
+      //   // const int nlev  = pg->get_num_vertical_levels();
+      //   // const int nelem = dg->get_num_local_dofs() / (np*np);
+      //   std::cout << std::setprecision(17);
+      //   std::cout << "v dyn( 7,:,0,3,3,51): [" << f_dyn( 7,0,0,3,3,51) << "," << f_dyn( 7,1,0,3,3,51) << "," << f_dyn( 7,2,0,3,3,51) << "]\n";
+      //   std::cout << "v dyn(10,:,0,3,0,51): [" << f_dyn(10,0,0,3,0,51) << "," << f_dyn(10,1,0,3,0,51) << "," << f_dyn(10,2,0,3,0,51) << "]\n";
+      //   std::cout << "v dyn(23,:,0,3,3,51): [" << f_dyn(23,0,0,3,3,51) << "," << f_dyn(23,1,0,3,3,51) << "," << f_dyn(23,2,0,3,3,51) << "]\n";
+      //   std::cout << "v phys(90,0,51): " << f_phs(90,0,51) << "\n";
+      //   // for (int ie=0; ie<nelem; ++ie) {
+      //   //   for (int ip=0; ip<np; ++ip) {
+      //   //     for (int jp=0; jp<np; ++jp) {
+      //   //       std::cout << "q_dyn(" << ie << "," << ip << "," << jp << ",:):";
+      //   //       for (int k=0; k<nlev; ++k) {
+      //   //         std::cout << " " << f_dyn(ie,0,ip,jp,k);
+      //   //       }
+      //   //       std::cout << "\n";
+      //   //     }
+      //   //   }
+      //   // }
+      //   for (int icol=0; icol<pg->get_num_local_dofs(); ++icol) {
+      //     // std::cout << "q_dyn_phys(" << icol << ",0,:):";
+      //     // for (int ilev=0; ilev<pg->get_num_vertical_levels(); ++ilev) {
+      //     //   std::cout << " " << f_phs(icol,0,ilev);
+      //     // }
+      //     // std::cout << "\n";
+      //   }
+      // }
     }
 
-    std::cout << "m_field_mgr->get_grid()->name(): " << m_field_mgr->get_grid()->name() << "\n";
+    // std::cout << "m_field_mgr->get_grid()->name(): " << m_field_mgr->get_grid()->name() << "\n";
   }
 
   // Take care of updating and possibly writing fields.
@@ -183,10 +183,10 @@ void AtmosphereOutput::run (const std::string& filename, const bool is_write_ste
     const auto& dims = layout.dims();
     const auto  rank = layout.rank();
 
-    if (name=="field_1") {
-      auto fv = field.get_view<Real**>();
-      std::cout << " f_out(0,0): " << fv(0,0) << "\n";
-    }
+    // if (name=="field_1") {
+    //   auto fv = field.get_view<Real**>();
+    //   std::cout << " f_out(0,0): " << fv(0,0) << "\n";
+    // }
 
     // Safety check: make sure that the field was written at least once before using it.
     EKAT_REQUIRE_MSG (field.get_header().get_tracking().get_time_stamp().is_valid(),
@@ -218,9 +218,9 @@ void AtmosphereOutput::run (const std::string& filename, const bool is_write_ste
           for (int j=0; j<dims[1]; ++j) {
             combine(new_view_2d(i,j), avg_view_2d(i,j),nsteps_since_last_output);
         }}
-        if (name=="field_1") {
-          std::cout << " avg_out(0,0): " << avg_view_2d(0,0) << "\n";
-        }
+        // if (name=="field_1") {
+        //   std::cout << " avg_out(0,0): " << avg_view_2d(0,0) << "\n";
+        // }
         break;
       }
       case 3:

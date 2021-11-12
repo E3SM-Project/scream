@@ -59,7 +59,7 @@ TEST_CASE("se_grid", "") {
   gm->build_grids(std::set<std::string>{"SE Grid"});
 
   // SE grid
-  auto se_grid = gm->get_grid("SE Grid CG");
+  auto se_grid = gm->get_grid("SE Grid");
 
   REQUIRE(se_grid->type() == GridType::SE);
   REQUIRE(se_grid->name() == "SE Grid");

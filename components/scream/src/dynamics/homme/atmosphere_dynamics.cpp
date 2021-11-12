@@ -386,136 +386,136 @@ void HommeDynamics::run_impl (const int dt)
     //         }
     //       }
     //     }
-    std::cout << "saved u dyn\n";
-  const auto& c = Homme::Context::singleton();
-  const int NGP = 4;
-    const int  nm1 = c.get<Homme::TimeLevel>().nm1;
-    const int  n0  = c.get<Homme::TimeLevel>().n0;
-    const int  np1 = c.get<Homme::TimeLevel>().np1;
-    auto elems = c.get<Homme::ElementsState>();
-    const int nelem = elems.num_elems();
-    const int nlevs = m_dyn_grid->get_num_vertical_levels();
-    auto v_homme = elems.m_v;
-        std::cout << std::setprecision(17);
-        for (int ie=0; ie<nelem; ++ie) {
-          for (int ip=0; ip<NGP; ++ip) {
-            for (int jp=0; jp<NGP; ++jp) {
-              std::cout << "u_dyn(" << ie << "," << ip << "," << jp << ",:):";
-              for (int k=0; k<nlevs; ++k) {
-                std::cout << " " << v_homme(ie,n0,0,ip,jp,k)[0];
-              }
-              std::cout << "\n";
-            }
-          }
-        }
-        std::cout << "nm1, n0, np1: " << nm1 << ", " << n0 << ", " << np1 << "\n";
+  //   std::cout << "saved u dyn\n";
+  // const auto& c = Homme::Context::singleton();
+  // const int NGP = 4;
+  //   const int  nm1 = c.get<Homme::TimeLevel>().nm1;
+  //   const int  n0  = c.get<Homme::TimeLevel>().n0;
+  //   const int  np1 = c.get<Homme::TimeLevel>().np1;
+  //   auto elems = c.get<Homme::ElementsState>();
+  //   const int nelem = elems.num_elems();
+  //   const int nlevs = m_dyn_grid->get_num_vertical_levels();
+  //   auto v_homme = elems.m_v;
+  //       std::cout << std::setprecision(17);
+  //       for (int ie=0; ie<nelem; ++ie) {
+  //         for (int ip=0; ip<NGP; ++ip) {
+  //           for (int jp=0; jp<NGP; ++jp) {
+  //             std::cout << "u_dyn(" << ie << "," << ip << "," << jp << ",:):";
+  //             for (int k=0; k<nlevs; ++k) {
+  //               std::cout << " " << v_homme(ie,n0,0,ip,jp,k)[0];
+  //             }
+  //             std::cout << "\n";
+  //           }
+  //         }
+  //       }
+  //       std::cout << "nm1, n0, np1: " << nm1 << ", " << n0 << ", " << np1 << "\n";
 
 
-    const auto& context = Homme::Context::singleton();
-    const auto& conn = context.get<Homme::Connectivity>();
-    auto h_c = conn.get_connections<Homme::HostMemSpace>();
-    auto h_ccs = Homme::subview(h_c,23);
+    // const auto& context = Homme::Context::singleton();
+    // const auto& conn = context.get<Homme::Connectivity>();
+    // auto h_c = conn.get_connections<Homme::HostMemSpace>();
+    // auto h_ccs = Homme::subview(h_c,23);
 
 
   // Edges
-  constexpr auto SOUTH = Homme::ConnectionName::SOUTH ;
-  constexpr auto NORTH = Homme::ConnectionName::NORTH ;
-  constexpr auto WEST  = Homme::ConnectionName::WEST  ;
-  constexpr auto EAST  = Homme::ConnectionName::EAST  ;
-  constexpr auto SWEST  = Homme::ConnectionName::SWEST  ;
-  constexpr auto SEAST  = Homme::ConnectionName::SEAST  ;
-  constexpr auto NWEST  = Homme::ConnectionName::NWEST  ;
-  constexpr auto NEAST  = Homme::ConnectionName::NEAST  ;
-  Homme::ConnectionHelpers helpers;
+  // constexpr auto SOUTH = Homme::ConnectionName::SOUTH ;
+  // constexpr auto NORTH = Homme::ConnectionName::NORTH ;
+  // constexpr auto WEST  = Homme::ConnectionName::WEST  ;
+  // constexpr auto EAST  = Homme::ConnectionName::EAST  ;
+  // constexpr auto SWEST  = Homme::ConnectionName::SWEST  ;
+  // constexpr auto SEAST  = Homme::ConnectionName::SEAST  ;
+  // constexpr auto NWEST  = Homme::ConnectionName::NWEST  ;
+  // constexpr auto NEAST  = Homme::ConnectionName::NEAST  ;
+  // Homme::ConnectionHelpers helpers;
     
-    int ic = -1;
-    auto k = -1;
-    auto i = 3;
-    auto j = 3;
-    // auto lev = 51;
-    for (Homme::ConnectionName cn : {SOUTH, NORTH, WEST, EAST, SWEST, SEAST, NWEST, NEAST} ) {
-      auto idx_c = Homme::etoi(cn);
-      const auto& this_c = h_ccs(idx_c);
-      bool has_33 = false;
-      if (this_c.sharing == Homme::etoi(Homme::ConnectionSharing::MISSING)) {
-        std::cout << "connection " << idx_c << " is missing.\n";
-        continue;
-      }
-      auto kind = Homme::etoi(helpers.CONNECTION_KIND[idx_c]);
-      for (int ii=0; ii<helpers.CONNECTION_SIZE[kind]; ++ii) {
-        const auto& l_pts = helpers.CONNECTION_PTS[Homme::etoi(Homme::Direction::FORWARD)][this_c.local.pos];
-        const auto& gp = l_pts[ii];
-        if (gp.ip==i && gp.jp==j) {
-          has_33 = true;
-          break;
-        }
-      }
+  //   int ic = -1;
+  //   auto k = -1;
+  //   auto i = 3;
+  //   auto j = 3;
+  //   // auto lev = 51;
+  //   for (Homme::ConnectionName cn : {SOUTH, NORTH, WEST, EAST, SWEST, SEAST, NWEST, NEAST} ) {
+  //     auto idx_c = Homme::etoi(cn);
+  //     const auto& this_c = h_ccs(idx_c);
+  //     bool has_33 = false;
+  //     if (this_c.sharing == Homme::etoi(Homme::ConnectionSharing::MISSING)) {
+  //       std::cout << "connection " << idx_c << " is missing.\n";
+  //       continue;
+  //     }
+  //     auto kind = Homme::etoi(helpers.CONNECTION_KIND[idx_c]);
+  //     for (int ii=0; ii<helpers.CONNECTION_SIZE[kind]; ++ii) {
+  //       const auto& l_pts = helpers.CONNECTION_PTS[Homme::etoi(Homme::Direction::FORWARD)][this_c.local.pos];
+  //       const auto& gp = l_pts[ii];
+  //       if (gp.ip==i && gp.jp==j) {
+  //         has_33 = true;
+  //         break;
+  //       }
+  //     }
 
-      if (has_33) {
-        int kk=-1;
-        const auto& l_pts = helpers.CONNECTION_PTS[Homme::etoi(Homme::Direction::FORWARD)][this_c.local.pos];
-        for (int ii=0; ii<4; ++ii) {
-          if (l_pts[ii].ip==i && l_pts[ii].jp==j) {
-            kk = ii;
-            break;
-          }
-        }
+  //     if (has_33) {
+  //       int kk=-1;
+  //       const auto& l_pts = helpers.CONNECTION_PTS[Homme::etoi(Homme::Direction::FORWARD)][this_c.local.pos];
+  //       for (int ii=0; ii<4; ++ii) {
+  //         if (l_pts[ii].ip==i && l_pts[ii].jp==j) {
+  //           kk = ii;
+  //           break;
+  //         }
+  //       }
 
-        EKAT_REQUIRE_MSG (kk>=0, "WTF!\n");
+  //       EKAT_REQUIRE_MSG (kk>=0, "WTF!\n");
 
-        const auto& r_pts = helpers.CONNECTION_PTS[this_c.direction][this_c.remote.pos];
-            std::cout << "connection idx: " << idx_c << "\n";
-            std::cout << "  remote lid: " << this_c.remote.lid << "\n";
-            std::cout << "  remote (i,j): " << r_pts[kk].ip << ", " << r_pts[kk].jp << "\n";
-      }
+  //       const auto& r_pts = helpers.CONNECTION_PTS[this_c.direction][this_c.remote.pos];
+  //           std::cout << "connection idx: " << idx_c << "\n";
+  //           std::cout << "  remote lid: " << this_c.remote.lid << "\n";
+  //           std::cout << "  remote (i,j): " << r_pts[kk].ip << ", " << r_pts[kk].jp << "\n";
+  //     }
 
-    }
-    for (Homme::ConnectionName cn : {SOUTH, NORTH, WEST, EAST} ) {
-      const auto& this_c = h_ccs(Homme::etoi(cn));
-      EKAT_REQUIRE_MSG (this_c.local.lid==23, "WHAT?!?\n");
-      auto l_pts = helpers.CONNECTION_PTS[Homme::etoi(Homme::Direction::FORWARD)][this_c.local.pos];
-      for (int ii=0; ii<4; ++ii) {
-        if (l_pts[ii].ip==i && l_pts[ii].jp==j) {
-          k = ii;
-          ic = Homme::etoi(cn);
-          break;
-        }
-      }
-      if (k>=0) { break;}
-    }
-    EKAT_REQUIRE_MSG (ic>=0 && k>=0, "WTF!\n");
-      const auto& this_c = h_ccs(ic);
-      // const auto& r = this_c.remote;
-      // auto dir = this_c.direction;
-      // auto r_pts = helpers.CONNECTION_PTS[dir][this_c.local.pos];
+  //   }
+    // for (Homme::ConnectionName cn : {SOUTH, NORTH, WEST, EAST} ) {
+    //   const auto& this_c = h_ccs(Homme::etoi(cn));
+    //   EKAT_REQUIRE_MSG (this_c.local.lid==23, "WHAT?!?\n");
+    //   auto l_pts = helpers.CONNECTION_PTS[Homme::etoi(Homme::Direction::FORWARD)][this_c.local.pos];
+    //   for (int ii=0; ii<4; ++ii) {
+    //     if (l_pts[ii].ip==i && l_pts[ii].jp==j) {
+    //       k = ii;
+    //       ic = Homme::etoi(cn);
+    //       break;
+    //     }
+    //   }
+    //   if (k>=0) { break;}
+    // }
+    // EKAT_REQUIRE_MSG (ic>=0 && k>=0, "WTF!\n");
+    //   const auto& this_c = h_ccs(ic);
+    //   // const auto& r = this_c.remote;
+    //   // auto dir = this_c.direction;
+    //   // auto r_pts = helpers.CONNECTION_PTS[dir][this_c.local.pos];
 
-      // auto tgt = Qdp_homme(23,np1,0,i,j,lev)[0];
-      // auto remote = Qdp_homme(r.lid,np1,0,r_pts[k].ip,r_pts[k].jp,lev)[0];
-      // std::cout << "qdp(23," << np1 << ",0,3,3,52): " << tgt << "\n";
-      // std::cout << "qdp(" << r.lid << "," << np1 << ",0," << r_pts[k].ip << "," << r_pts[k].jp << ",52): " << remote << "\n";
+    //   // auto tgt = Qdp_homme(23,np1,0,i,j,lev)[0];
+    //   // auto remote = Qdp_homme(r.lid,np1,0,r_pts[k].ip,r_pts[k].jp,lev)[0];
+    //   // std::cout << "qdp(23," << np1 << ",0,3,3,52): " << tgt << "\n";
+    //   // std::cout << "qdp(" << r.lid << "," << np1 << ",0," << r_pts[k].ip << "," << r_pts[k].jp << ",52): " << remote << "\n";
 
-      auto gids = m_dyn_grid->get_dofs_gids();
-      auto lids = m_dyn_grid->get_lid_to_idx_map();
-      int idx = -1;
-      for (int ilid=0; ilid<lids.extent_int(0); ++ilid) {
-        auto native = ekat::subview(lids,ilid);
-        if (native(0)==this_c.local.lid && native(1)==i && native(2)==j) {
-          idx = ilid;
-          break;
-        }
-      }
-      EKAT_REQUIRE_MSG(idx>=0, "You serious?\n");
-      auto gid = gids(idx);
-      auto gids_p = m_ref_grid->get_dofs_gids();
-      int idx_p = -1;
-      for (int ii=0; ii<gids_p.extent_int(0); ++ii) {
-        if (gids_p(ii)==gid) {
-          idx_p = ii;
-          break;
-        }
-      }
-      EKAT_REQUIRE_MSG(idx_p>=0, "Oh no...\n");
-      std::cout << "dof gid, lid_p: " << gid << ", " << idx_p << "\n";
+    //   auto gids = m_dyn_grid->get_dofs_gids();
+    //   auto lids = m_dyn_grid->get_lid_to_idx_map();
+    //   int idx = -1;
+    //   for (int ilid=0; ilid<lids.extent_int(0); ++ilid) {
+    //     auto native = ekat::subview(lids,ilid);
+    //     if (native(0)==this_c.local.lid && native(1)==i && native(2)==j) {
+    //       idx = ilid;
+    //       break;
+    //     }
+    //   }
+    //   EKAT_REQUIRE_MSG(idx>=0, "You serious?\n");
+    //   auto gid = gids(idx);
+    //   auto gids_p = m_ref_grid->get_dofs_gids();
+    //   int idx_p = -1;
+    //   for (int ii=0; ii<gids_p.extent_int(0); ++ii) {
+    //     if (gids_p(ii)==gid) {
+    //       idx_p = ii;
+    //       break;
+    //     }
+    //   }
+    //   EKAT_REQUIRE_MSG(idx_p>=0, "Oh no...\n");
+    //   std::cout << "dof gid, lid_p: " << gid << ", " << idx_p << "\n";
 
 
     // for (int i=0
