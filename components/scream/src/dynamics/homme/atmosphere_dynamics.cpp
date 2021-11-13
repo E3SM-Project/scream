@@ -37,8 +37,8 @@
 #include "ekat/ekat_assert.hpp"
 #include "ekat/kokkos//ekat_subview_utils.hpp"
 
-#include <iostream>
-#include <iomanip>
+// #include <iostream>
+// #include <iomanip>
 
 namespace scream
 {
@@ -149,11 +149,9 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
   add_field<Internal>("phi_int_dyn",  FL({EL,TL,    GP,GP,ILEV},{nelem,NTL,  NP,NP,nlev_int}),Pa/rho,  dgn);
   add_field<Internal>("ps_dyn",       FL({EL,TL,    GP,GP},     {nelem,NTL,  NP,NP         }),Pa,      dgn);
 
-  // End-of-step fields, used to back out tendencies. Must be in the FM, for BFB restart
-  add_field<Internal>("T_mid_prev_homme", FL({COL,LEV},    {ncols,  nlev_mid}),K,  rgn,N);
-  add_field<Internal>("v_prev_homme",     FL({COL,CMP,LEV},{ncols,3,nlev_mid}),m/s,rgn,N);
-  // Import the whole tracers group from the ref grid to the dyn grid
-  add_group<Internal>("tracers_dyn",m_dyn_grid->name(),N, Bundling::Required,
+  // Import the whole tracers group from the ref grid to the dyn grid.
+  // NOTE: this group is in the FM to allow for BFB restarts
+  add_group<Internal>("tracers_mass_dyn",m_dyn_grid->name(),N, Bundling::Required,
                       DerivationType::Import, "tracers", rgn);
 
   // Dynamics backs out tendencies from the states, and passes those to Homme.
@@ -229,30 +227,30 @@ void HommeDynamics::initialize_impl (const RunType run_type)
   const auto& dgn = m_dyn_grid->name();
   const auto& rgn = m_ref_grid->name();
 
-  if (run_type==RunType::Restarted) {
-    // The PD remapper, when remapping p->d for dyn states, remaps the phys field into the n0
-    // time slice of the dyn states.
-    auto vd = get_internal_field("v_dyn");
-    vd.sync_to_host();
-    auto vdvh = vd.get_view<Real******,Host>();
-    auto& tl = Homme::Context::singleton().get<Homme::TimeLevel>();
-    auto un0 = ekat::subview(vdvh,0,tl.n0,0,0,0);
-    auto unp1 = ekat::subview(vdvh,0,tl.np1,0,0,0);
-    std::cout << "un0:";
-    for (int i=0; i<m_dyn_grid->get_num_vertical_levels(); ++i) {
-      std::cout << " " << un0[i];
-    }
-    std::cout << "\nunp1:";
-    for (int i=0; i<m_dyn_grid->get_num_vertical_levels(); ++i) {
-      std::cout << " " << un0[i];
-    }
-    std::cout << "\n";
-  }
+  // if (run_type==RunType::Restarted) {
+  //   // The PD remapper, when remapping p->d for dyn states, remaps the phys field into the n0
+  //   // time slice of the dyn states.
+  //   auto vd = get_internal_field("v_dyn");
+  //   vd.sync_to_host();
+  //   auto vdvh = vd.get_view<Real******,Host>();
+  //   auto& tl = Homme::Context::singleton().get<Homme::TimeLevel>();
+  //   auto un0 = ekat::subview(vdvh,0,tl.n0,0,0,0);
+  //   auto unp1 = ekat::subview(vdvh,0,tl.np1,0,0,0);
+  //   std::cout << "un0:";
+  //   for (int i=0; i<m_dyn_grid->get_num_vertical_levels(); ++i) {
+  //     std::cout << " " << un0[i];
+  //   }
+  //   std::cout << "\nunp1:";
+  //   for (int i=0; i<m_dyn_grid->get_num_vertical_levels(); ++i) {
+  //     std::cout << " " << un0[i];
+  //   }
+  //   std::cout << "\n";
+  // }
 
   // Use common/shorter names for tracers.
   alias_group_in  ("tracers",rgn,"Q");
   alias_group_out ("tracers",rgn,"Q");
-  alias_internal_group ("tracers_dyn",dgn,"Qdp");
+  alias_internal_group ("tracers_mass_dyn",dgn,"Qdp");
 
   // ------ Sanity checks ------- //
 
@@ -266,15 +264,15 @@ void HommeDynamics::initialize_impl (const RunType run_type)
       w_i_track.get_providers().size()==1,
       "Error! Someone other than Dynamics is trying to update the vertical velocity.\n");
 
-  // The groups 'tracers' and 'tracers_dyn' should contain the same fields
+  // The groups 'tracers' and 'tracers_mass_dyn' should contain the same fields
   auto Q = get_group_out("Q",rgn);
   auto Qdp = get_internal_group("Qdp",dgn);
   EKAT_REQUIRE_MSG (Q.m_info->size()==Qdp.m_info->size(),
-      "Error! Something went wrong with the request/allocation of the 'tracers_dyn' group.\n");
+      "Error! Something went wrong with the request/allocation of the 'tracers_mass_dyn' group.\n");
   EKAT_REQUIRE_MSG(not Q.m_info->empty(),
     "Error! There should be at least one tracer (qv) in the tracers group.\n");
   EKAT_REQUIRE_MSG(Q.m_info->m_bundled && Qdp.m_info->m_bundled,
-      "Error! Homme expects a bundled field for the 'tracers' and 'tracers_dyn' groups.\n");
+      "Error! Homme expects a bundled field for the 'tracers' and 'tracers_mass_dyn' groups.\n");
 
   // Create remaining internal fields
   const auto& c = Homme::Context::singleton();
@@ -282,6 +280,7 @@ void HommeDynamics::initialize_impl (const RunType run_type)
   constexpr int NGP  = HOMMEXX_NP;
   const int qsize = params.qsize;
   const int nelem = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
+  const int ncols = m_ref_grid->get_num_local_dofs();
   const int nlevs = m_dyn_grid->get_num_vertical_levels();
 
   using namespace ShortFieldTagsNames;
@@ -289,6 +288,9 @@ void HommeDynamics::initialize_impl (const RunType run_type)
   create_helper_field("FT_dyn",{EL,    GP,GP,LEV},{nelem,      NGP,NGP,nlevs},dgn);
   create_helper_field("FM_dyn",{EL,CMP,GP,GP,LEV},{nelem,    3,NGP,NGP,nlevs},dgn);
   create_helper_field("Q_dyn" ,{EL,CMP,GP,GP,LEV},{nelem,qsize,NGP,NGP,nlevs},dgn);
+  // Used to back out tendencies FT and FM
+  create_helper_field("T_prev",{COL,LEV},    {ncols,  nlevs},rgn);
+  create_helper_field("v3d_prev",{COL,CMP,LEV},{ncols,3,nlevs},rgn);
 
   // Setup the p2d and d2p remappers
   m_p2d_remapper->registration_begins();
@@ -306,15 +308,14 @@ void HommeDynamics::initialize_impl (const RunType run_type)
   if (ftype==Homme::ForcingAlg::FORCING_2) {
     // Need a tmp for dQ_rgn
     using namespace ShortFieldTagsNames;
-    const int ncols = m_ref_grid->get_num_local_dofs();
     create_helper_field("dQ_ref",{COL,CMP,LEV},{ncols,qsize,nlevs},rgn);
     m_p2d_remapper->register_field(m_helper_fields.at("dQ_ref"),m_helper_fields.at("FQ_dyn"));
   } else {
     // Can remap Q directly into FQ, tendency computed in pre_process step
     m_p2d_remapper->register_field(*get_group_out("Q",rgn).m_bundle,m_helper_fields.at("FQ_dyn"));
   }
-  m_p2d_remapper->register_field(get_internal_field("T_mid_prev_homme"),m_helper_fields.at("FT_dyn"));
-  m_p2d_remapper->register_field(get_internal_field("v_prev_homme"),m_helper_fields.at("FM_dyn"));
+  m_p2d_remapper->register_field(m_helper_fields.at("T_prev"),m_helper_fields.at("FT_dyn"));
+  m_p2d_remapper->register_field(m_helper_fields.at("v3d_prev"),m_helper_fields.at("FM_dyn"));
 
   m_d2p_remapper->register_field(get_internal_field("vtheta_dp_dyn",dgn),get_field_out("T_mid"));
   m_d2p_remapper->register_field(get_internal_field("v_dyn",dgn),get_field_out("horiz_winds"));
@@ -561,11 +562,12 @@ void HommeDynamics::homme_pre_process (const int dt) {
 
   const auto& rgn = m_ref_grid->name();
 
+  // We can compute FT and FM in place, using T_prev and v3d_prev fields
   auto T  = get_field_in("T_mid").get_view<const Pack**>();
   auto v  = get_field_in("horiz_winds").get_view<const Pack***>();
   auto w  = get_field_in("w_int").get_view<const Pack**>();
-  auto FT = get_internal_field("T_mid_prev_homme").get_view<Pack**>();
-  auto FM = get_internal_field("v_prev_homme").get_view<Pack***>();
+  auto FT = m_helper_fields.at("T_prev").get_view<Pack**>();
+  auto FM = m_helper_fields.at("v3d_prev").get_view<Pack***>();
 
   // If there are other atm procs updating the vertical velocity,
   // then we need to compute forcing for w as well
@@ -714,8 +716,8 @@ void HommeDynamics::homme_post_process () {
   const auto T_view  = get_field_out("T_mid").get_view<Pack**>();
   const auto v_view  = get_field_out("horiz_winds").get_view<Pack***>();
   const auto w_view  = get_field_out("w_int").get_view<Pack**>();
-  const auto T_prev_view = get_internal_field("T_mid_prev_homme").get_view<Pack**>();
-  const auto v_prev_view = get_internal_field("v_prev_homme").get_view<Pack***>();
+  const auto T_prev_view = m_helper_fields.at("T_prev").get_view<Pack**>();
+  const auto V_prev_view = m_helper_fields.at("v3d_prev").get_view<Pack***>();
 
   const auto ncols = m_ref_grid->get_num_local_dofs();
   const auto nlevs = m_ref_grid->get_num_vertical_levels();
@@ -753,7 +755,7 @@ void HommeDynamics::homme_post_process () {
     auto qv  = ekat::subview(Q_view,icol,0);
 
     auto T_prev = ekat::subview(T_prev_view,icol);
-    auto v_prev = ekat::subview(v_prev_view,icol);
+    auto V_prev = ekat::subview(V_prev_view,icol);
 
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team,npacks),
                          [&](const int ilev) {
@@ -765,10 +767,10 @@ void HommeDynamics::homme_post_process () {
 
       // Store T, v (and possibly w) at end of the dyn timestep (to back out tendencies later)
       T_prev(ilev) = T_val;
-      v_prev(0,ilev) = v(0,ilev);
-      v_prev(1,ilev) = v(1,ilev);
+      V_prev(0,ilev) = v(0,ilev);
+      V_prev(1,ilev) = v(1,ilev);
       if (has_w_forcing) {
-        v_prev(2,ilev) = w(ilev);
+        V_prev(2,ilev) = w(ilev);
       }
     });
   });
@@ -902,6 +904,7 @@ void HommeDynamics::process_initial_conditions (const RunType run_type) {
 
   const auto& dgn = m_dyn_grid->name();
   const auto& rgn = m_ref_grid->name();
+  const auto nlevs = m_ref_grid->get_num_vertical_levels();
   if (run_type==RunType::Restarted) {
     // Safety checks: internal fields *should* have been restarted (and therefore have a valid timestamp)
     for (auto& f : get_internal_fields()) {
@@ -913,22 +916,57 @@ void HommeDynamics::process_initial_conditions (const RunType run_type) {
       EKAT_REQUIRE_MSG(ts.is_valid(), "WHAT?!?\n");
     }
 
-    // All internal fields should have been read from restart file. The only field we need
-    // to handle is dQ_ref, in case of ftype!=FORCING_DEBUG.
+    // All internal fields should have been read from restart file.
+    // We need to remap Q_dyn, v_dyn, w_dyn, T_dyn back to ref grid,
+    // to handle the backing out of the tendencies
+    // Note: Q_ref only in case of ftype!=FORCING_DEBUG.
+    // TODO: p2d remapper does not support subfields, so we need to create temps
+    //       to remap v_dyn and w_dyn separately, then copy into v3d_prev.
+    using namespace ShortFieldTagsNames;
+    const auto ncols = m_ref_grid->get_num_local_dofs();
+
+    create_helper_field("uv_prev",{COL,CMP,LEV},{ncols,3,nlevs},rgn);
+    create_helper_field("w_prev", {COL,    LEV},{ncols,  nlevs+1},rgn);
+    m_ic_remapper->registration_begins();
+    m_ic_remapper->register_field(m_helper_fields.at("T_prev"),get_internal_field("vtheta_dp_dyn",dgn));
+    m_ic_remapper->register_field(m_helper_fields.at("uv_prev"),get_internal_field("v_dyn",dgn));
+    m_ic_remapper->register_field(m_helper_fields.at("w_prev"),get_internal_field("w_dyn",dgn));
     if (params.ftype==Homme::ForcingAlg::FORCING_2) {
       // Recall, we store Q_old in dQ_ref, and do dQ_ref = Q_new - dQ_ref during pre-process
       // Q_old is the tracers at the end of last step, which we can recompute by remapping
       // Q_dyn, which was part of the restart
       auto dQ = m_helper_fields.at("dQ_ref");  
       auto Q_dyn = m_helper_fields.at("Q_dyn");
-      m_ic_remapper->registration_begins();
       m_ic_remapper->register_field(dQ,Q_dyn);
-      m_ic_remapper->registration_ends();
-      m_ic_remapper->remap(/*forward = */false);
     }
+    m_ic_remapper->registration_ends();
+    m_ic_remapper->remap(/*forward = */false);
 
     // Can clean up the IC remapper now.
     m_ic_remapper = nullptr;
+
+    // Copy uv_prev and w_prev into v3d_prev. Also, T_prev contains vtheta_dp,
+    // so convert it to actual temperature
+//////////////////////////////////
+    // TODO! Convert vtheta_dp to T for T_prev.
+    // NOTE: you MUST do the conversion on ref grid, cause that's what happens during post process
+//////////////////////////////////
+    using KT = KokkosTypes<DefaultDevice>;
+    auto uv_view  = m_helper_fields.at("uv_prev").get_view<Real***>();
+    auto w_view   = m_helper_fields.at("w_prev").get_view<Real**>();
+    auto v3d_view = m_helper_fields.at("v3d_prev").get_view<Real***>();
+    Kokkos::parallel_for(KT::RangePolicy(0,ncols*nlevs),
+                         KOKKOS_LAMBDA (const int idx){
+      const int icol = idx / nlevs;
+      const int ilev = idx % nlevs;
+      v3d_view(icol,0,ilev) = uv_view(icol,0,ilev);
+      v3d_view(icol,1,ilev) = uv_view(icol,1,ilev);
+      v3d_view(icol,2,ilev) = w_view (icol,  ilev);
+    });
+    Kokkos::fence();
+    // We can now erase the uv_prev and w_prev fields
+    m_helper_fields.erase("uv_prev");
+    m_helper_fields.erase("w_prev");
 
     // Copy Homme states from timelevel n0 to nm1,np1, and init p_mid/p_int
     // Do not compute Theta from T_mid
@@ -945,12 +983,11 @@ void HommeDynamics::process_initial_conditions (const RunType run_type) {
     const auto& tracers = c.get<Homme::Tracers>();
     const int nelem = tracers.num_elems();
     const int qsize = tracers.num_tracers();
-    const int nlevs = m_dyn_grid->get_num_vertical_levels();
     constexpr int NGP = HOMMEXX_NP;
     const auto& Qdp_homme = c.get<Homme::Tracers>().qdp;
     const int  n0 = c.get<Homme::TimeLevel>().n0;
     // const int qn0 = c.get<Homme::TimeLevel>().n0_qdp;
-    std::cout << "initializeing homme tracers: qsize=" << qsize << "\n";
+    // std::cout << "initializeing homme tracers: qsize=" << qsize << "\n";
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,nelem*qsize*NGP*NGP*nlevs),
                          KOKKOS_LAMBDA (const int idx) {
       const int ie =  idx / (qsize*NGP*NGP*nlevs);
@@ -964,20 +1001,20 @@ void HommeDynamics::process_initial_conditions (const RunType run_type) {
       Qdp_homme(ie,0,iq,ip,jp,ilev)[ivec] = Qdp_homme(ie,1,iq,ip,jp,ilev)[ivec] = Qdp_loaded(ie,iq,ip,jp,k);
       Q_dyn(ie,iq,ip,jp,k) = Qdp_loaded(ie,iq,ip,jp,k) / dp_dyn(ie,n0,ip,jp,k);
     });
-    std::cout << "restarted u dyn\n";
-    auto v_homme = c.get<Homme::ElementsState>().m_v;
-        std::cout << std::setprecision(17);
-        for (int ie=0; ie<nelem; ++ie) {
-          for (int ip=0; ip<NGP; ++ip) {
-            for (int jp=0; jp<NGP; ++jp) {
-              std::cout << "u_dyn(" << ie << "," << ip << "," << jp << ",:):";
-              for (int k=0; k<nlevs; ++k) {
-                std::cout << " " << v_homme(ie,n0,0,ip,jp,k)[0];
-              }
-              std::cout << "\n";
-            }
-          }
-        }
+    // std::cout << "restarted u dyn\n";
+    // auto v_homme = c.get<Homme::ElementsState>().m_v;
+    //     std::cout << std::setprecision(17);
+    //     for (int ie=0; ie<nelem; ++ie) {
+    //       for (int ip=0; ip<NGP; ++ip) {
+    //         for (int jp=0; jp<NGP; ++jp) {
+    //           std::cout << "u_dyn(" << ie << "," << ip << "," << jp << ",:):";
+    //           for (int k=0; k<nlevs; ++k) {
+    //             std::cout << " " << v_homme(ie,n0,0,ip,jp,k)[0];
+    //           }
+    //           std::cout << "\n";
+    //         }
+    //       }
+    //     }
     // std::cout << "restarted Qdp\n";
     //     std::cout << std::setprecision(17);
     //     for (int ie=0; ie<nelem; ++ie) {
@@ -1065,7 +1102,6 @@ void HommeDynamics::process_initial_conditions (const RunType run_type) {
   constexpr int NGP  = HOMMEXX_NP;
   constexpr int NVL  = HOMMEXX_NUM_LEV;
   const int nelem = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
-  const int nlevs = m_dyn_grid->get_num_vertical_levels();
 
   // Initialize p_mid/p_int, and also copy IC states on all timelevel slices
   copy_states_and_init_pressure (true);
@@ -1075,8 +1111,8 @@ void HommeDynamics::process_initial_conditions (const RunType run_type) {
   if (params.ftype==Homme::ForcingAlg::FORCING_2) {
     m_helper_fields.at("dQ_ref").deep_copy(*get_group_out("Q",rgn).m_bundle);
   }
-  get_internal_field("T_mid_prev_homme",rgn).deep_copy(get_field_in("T_mid",rgn));
-  auto v_prev = get_internal_field("v_prev_homme",rgn).get_view<Real***>();
+  m_helper_fields.at("T_prev").deep_copy(get_field_in("T_mid",rgn));
+  auto v_prev = m_helper_fields.at("v3d_prev").get_view<Real***>();
   auto horiz_winds = get_field_out("horiz_winds",rgn).get_view<Real***>();
   auto w_int = get_field_out("w_int",rgn).get_view<Real**>();
   Kokkos::parallel_for(Kokkos::RangePolicy<>(0,ncols*nlevs),

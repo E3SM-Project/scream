@@ -9,10 +9,9 @@ Fields:
       - T_mid
       - qv
       - horiz_winds
-      - v_prev_homme
   Dynamics:
     Fields Names:
-      - tracers_dyn
+      - tracers_mass_dyn
       - v_dyn
 Output Control:
   Frequency: 1

@@ -14,13 +14,7 @@ Initial Conditions:
   Restart Run: false
   Physics GLL:
     Filename: homme_physics_ne2np4.nc
-    # Set X_prev = X
-    T_mid_prev: T_mid
-    horiz_winds_prev: horiz_winds
     w_int: 0.0 # Start from zero vert velocity
-    w_int_prev: 0.0
-  Dynamics:
-    tracers_dyn: tracers, Physics GLL
 
 Atmosphere Processes:
   Number of Entries: 1

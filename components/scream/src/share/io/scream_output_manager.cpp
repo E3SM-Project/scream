@@ -340,7 +340,7 @@ set_params (const ekat::ParameterList& params,
     using vos_t = std::vector<std::string>;
 
     // We build some restart parameters internally
-    auto avg_type = params.get<std::string>("Averaging Type");
+    auto avg_type = m_params.get<std::string>("Averaging Type","INSTANT");
     m_avg_type = str2avg(avg_type);
     EKAT_REQUIRE_MSG (m_avg_type==OutputAvgType::Instant,
         "Error! For restart output, the averaging type must be 'Instant'.\n"
@@ -359,11 +359,11 @@ set_params (const ekat::ParameterList& params,
       for (const auto& n : restart_group->m_fields_names) {
         fnames.push_back(n);
       }
-      fields_pl.set(it.first,fnames);
+      fields_pl.sublist(it.first).set("Fields Names",fnames);
     }
     m_casename = m_params.get<std::string>("Casename", "scream_restart");
   } else {
-    auto avg_type = params.get<std::string>("Averaging Type");
+    auto avg_type = m_params.get<std::string>("Averaging Type");
     m_avg_type = str2avg(avg_type);
     EKAT_REQUIRE_MSG (m_avg_type!=OutputAvgType::Invalid,
         "Error! Unsupported averaging type '" + avg_type + "'.\n"
