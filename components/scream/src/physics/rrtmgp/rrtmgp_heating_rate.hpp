@@ -2,7 +2,7 @@
 #define RRTMGP_HEATING_RATE_HPP
 #include "physics/share/physics_constants.hpp"
 #include "YAKL/YAKL.h"
-#include "cpp/const.h"
+#include "cpp/rrtmgp_const.h"
 namespace scream {
     namespace rrtmgp {
         // Provide a routine to compute heating due to radiative fluxes. This is
