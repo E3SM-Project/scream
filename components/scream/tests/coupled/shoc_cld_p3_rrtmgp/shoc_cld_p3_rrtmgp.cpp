@@ -17,6 +17,9 @@ TEST_CASE("shoc-stand-alone", "") {
   using namespace scream;
   using namespace scream::control;
 
+  // Create a comm
+  ekat::Comm atm_comm (MPI_COMM_WORLD);
+
   // Load ad parameter list
   std::string fname = "input.yaml";
   ekat::ParameterList ad_params("Atmosphere Driver");
@@ -32,9 +35,6 @@ TEST_CASE("shoc-stand-alone", "") {
   util::TimeStamp t0 (start_date, start_time);
   EKAT_ASSERT_MSG (t0.is_valid(), "Error! Invalid start date.\n");
 
-  // Create a comm
-  ekat::Comm atm_comm (MPI_COMM_WORLD);
-
   // Need to register products in the factory *before* we create any atm process or grids manager.
   register_physics();
   register_mesh_free_grids_manager();
@@ -44,11 +44,16 @@ TEST_CASE("shoc-stand-alone", "") {
 
   // Init, run, and finalize
   ad.initialize(atm_comm,ad_params,t0);
-  printf("Start time stepping loop...       [  0%%]\n");
+
+  if (atm_comm.am_i_root()) {
+    printf("Start time stepping loop...       [  0%%]\n");
+  }
   for (int i=0; i<nsteps; ++i) {
     ad.run(dt);
-    std::cout << "  - Iteration " << std::setfill(' ') << std::setw(3) << i+1 << " completed";
-    std::cout << "       [" << std::setfill(' ') << std::setw(3) << 100*(i+1)/nsteps << "%]\n";
+    if (atm_comm.am_i_root()) {
+      std::cout << "  - Iteration " << std::setfill(' ') << std::setw(3) << i+1 << " completed";
+      std::cout << "       [" << std::setfill(' ') << std::setw(3) << 100*(i+1)/nsteps << "%]\n";
+    }
   }
   ad.finalize();
 

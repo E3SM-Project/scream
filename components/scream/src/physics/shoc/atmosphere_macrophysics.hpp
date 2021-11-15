@@ -131,6 +131,7 @@ public:
       PF::calculate_z_int(team,nlev,dz_s,z_surf,z_int_s);
       team.team_barrier();
       PF::calculate_z_mid(team,nlev,z_int_s,z_mid_s);
+      team.team_barrier();
 
       const int nlevi_v = nlev/Spack::n;
       const int nlevi_p = nlev%Spack::n;
@@ -402,7 +403,7 @@ protected:
   void finalize_impl   ();
 
   // SHOC updates the 'tracers' group.
-  void set_updated_group_impl (const FieldGroup<Real>& group);
+  void set_computed_group_impl (const FieldGroup<Real>& group);
 
   // Computes total number of bytes needed for local variables
   int requested_buffer_size_in_bytes() const;

@@ -33,6 +33,9 @@ TEST_CASE("scream_homme_standalone", "scream_homme_standalone") {
 
   ekat::enable_fpes(get_default_fpes());
 
+  // Create a comm
+  ekat::Comm atm_comm (MPI_COMM_WORLD);
+
   // Load ad parameter list
   std::string fname = "input.yaml";
   ekat::ParameterList ad_params("Atmosphere Driver");
@@ -60,9 +63,6 @@ TEST_CASE("scream_homme_standalone", "scream_homme_standalone") {
   auto& gm_factory = GridsManagerFactory::instance();
   gm_factory.register_product("Dynamics Driven",create_dynamics_driven_grids_manager);
 
-  // Create a comm
-  ekat::Comm atm_comm (MPI_COMM_WORLD);
-
   // Create the driver
   AtmosphereDriver ad;
 
@@ -73,16 +73,21 @@ TEST_CASE("scream_homme_standalone", "scream_homme_standalone") {
   // are the same size and reference the same memory.
   auto& fbm  = Homme::Context::singleton().get<Homme::FunctorsBuffersManager>();
   auto& memory_buffer = ad.get_memory_buffer();
-  EKAT_ASSERT_MSG(fbm.allocated_size()*sizeof(Real) == (long unsigned int)memory_buffer.allocated_bytes(),
+  REQUIRE (memory_buffer);
+  EKAT_ASSERT_MSG(fbm.allocated_size()*sizeof(Real) == (long unsigned int)memory_buffer->allocated_bytes(),
                   "Error! AD memory buffer and Homme FunctorsBuffersManager have mismatched sizes.");
-  EKAT_ASSERT_MSG(fbm.get_memory() == memory_buffer.get_memory(),
+  EKAT_ASSERT_MSG(fbm.get_memory() == memory_buffer->get_memory(),
                   "Error! AD memory buffer and Homme FunctorsBuffersManager reference different memory.");
 
-  printf("Start time stepping loop...       [  0%%]\n");
+  if (atm_comm.am_i_root()) {
+    printf("Start time stepping loop...       [  0%%]\n");
+  }
   for (int i=0; i<nsteps; ++i) {
     ad.run(dt);
-    std::cout << "  - Iteration " << std::setfill(' ') << std::setw(3) << i+1 << " completed";
-    std::cout << "       [" << std::setfill(' ') << std::setw(3) << 100*(i+1)/nsteps << "%]\n";
+    if (atm_comm.am_i_root()) {
+      std::cout << "  - Iteration " << std::setfill(' ') << std::setw(3) << i+1 << " completed";
+      std::cout << "       [" << std::setfill(' ') << std::setw(3) << 100*(i+1)/nsteps << "%]\n";
+    }
   }
   ad.finalize();
 

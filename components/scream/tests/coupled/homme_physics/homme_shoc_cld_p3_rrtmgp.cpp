@@ -30,6 +30,9 @@ TEST_CASE("scream_homme_physics", "scream_homme_physics") {
   using namespace scream;
   using namespace scream::control;
 
+  // Create a comm
+  ekat::Comm atm_comm (MPI_COMM_WORLD);
+
   ekat::enable_fpes(get_default_fpes());
 
   // Load ad parameter list
@@ -55,19 +58,21 @@ TEST_CASE("scream_homme_physics", "scream_homme_physics") {
   // Create the driver
   AtmosphereDriver ad;
 
-  // Create a comm
-  ekat::Comm atm_comm (MPI_COMM_WORLD);
-
   // Init, run, and finalize
   // NOTE: Kokkos is finalize in ekat_catch_main.cpp, and YAKL is finalized
   //       during RRTMGPRatiation::finalize_impl, after RRTMGP has deallocated
   //       all its arrays.
   ad.initialize(atm_comm,ad_params,t0);
-  printf("Start time stepping loop...       [  0%%]\n");
+
+  if (atm_comm.am_i_root()) {
+    printf("Start time stepping loop...       [  0%%]\n");
+  }
   for (int i=0; i<nsteps; ++i) {
     ad.run(dt);
-    std::cout << "  - Iteration " << std::setfill(' ') << std::setw(3) << i+1 << " completed";
-    std::cout << "       [" << std::setfill(' ') << std::setw(3) << 100*(i+1)/nsteps << "%]\n";
+    if (atm_comm.am_i_root()) {
+      std::cout << "  - Iteration " << std::setfill(' ') << std::setw(3) << i+1 << " completed";
+      std::cout << "       [" << std::setfill(' ') << std::setw(3) << 100*(i+1)/nsteps << "%]\n";
+    }
   }
   ad.finalize();
 
