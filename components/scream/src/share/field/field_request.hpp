@@ -234,23 +234,19 @@ struct FieldRequest {
    : FieldRequest(FID(name,layout,u,grid),std::list<std::string>{group},ps)
   { /* Nothing to do here */ }
 
-  FieldRequest (const FID& fid, const FieldRequest& parent, int idim, int k, bool dynamic)
-   : FieldRequest (fid)
-  {
-    subview_info.dim_idx = idim;
-    subview_info.slice_idx = k;
-    subview_info.dim_extent = parent.fid.get_layout().dim(idim);
-    subview_info.dynamic = dynamic;
-
-    parent_name = parent.fid.name();
-  }
+  // FieldRequest (const FID& fid, const std::string& parent, const SubviewInfo& sv_info)
+  //  : FieldRequest (fid)
+  // {
+  //   subview_info = sv_info;
+  //   parent_name = parent;
+  // }
 
   // Data
   FieldIdentifier           fid;
   int                       pack_size;
   std::list<std::string>    groups;
-  SubviewInfo               subview_info;
-  std::string               parent_name;
+  // SubviewInfo               subview_info;
+  // std::string               parent_name;
 };
 
 // In order to use FieldRequest in std sorted containers (like std::set),

@@ -1,6 +1,6 @@
 %YAML 1.1
 ---
-Casename: model_restart
+Casename: model_output
 Averaging Type: Instant
 Max Snapshots Per File: 1
 Fields:
@@ -11,10 +11,10 @@ Fields:
       - horiz_winds
   Dynamics:
     Fields Names:
-      - tracers_mass_dyn
+      - Qdp_dyn
       - v_dyn
 Output Control:
-  Frequency: 1
+  Frequency: 2
   Frequency Units: Steps
 Checkpoint Control:
   Frequency: 1

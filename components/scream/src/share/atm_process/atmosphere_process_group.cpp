@@ -1,4 +1,5 @@
 #include "share/atm_process/atmosphere_process_group.hpp"
+#include <memory>
 #include "share/field/field_utils.hpp"
 
 #include "ekat/std_meta/ekat_std_utils.hpp"
@@ -99,17 +100,41 @@ void AtmosphereProcessGroup::set_grids (const std::shared_ptr<const GridsManager
     for (const auto& req : atm_proc->get_computed_field_requests()) {
       add_field<Computed>(req);
     }
-    for (const auto& req : atm_proc->get_internal_field_requests()) {
-      add_field<Internal>(req);
-    }
+    // for (const auto& req : atm_proc->get_internal_field_requests()) {
+    //   add_field<Internal>(req);
+    // }
     for (const auto& req : atm_proc->get_required_group_requests()) {
       process_required_group(req);
     }
     for (const auto& req : atm_proc->get_computed_group_requests()) {
       add_group<Computed>(req);
     }
-    for (const auto& req : atm_proc->get_internal_group_requests()) {
-      add_group<Internal>(req);
+    // for (const auto& req : atm_proc->get_internal_group_requests()) {
+    //   add_group<Internal>(req);
+    // }
+  }
+}
+
+void AtmosphereProcessGroup::
+gather_internal_fields  () {
+  // For debug purposes
+  std::map<std::string,std::string> f2proc;
+  for (auto& atm_proc : m_atm_processes) {
+    auto apg = std::dynamic_pointer_cast<AtmosphereProcessGroup>(atm_proc);
+    if (apg) {
+      // Have this apg build its list of internal fields first
+      apg->gather_internal_fields();
+    }
+    const auto& ifs = atm_proc->get_internal_fields();
+    for (const auto& f : ifs) {
+      const auto& name = f.get_header().get_identifier().name();
+      EKAT_REQUIRE_MSG (f2proc.find(name)==f2proc.end(),
+          "Error! Two atm procs created the same internal field.\n"
+          "  - field name: " + name + "\n"
+          "  - first atm proc: " + f2proc.at(name) + "\n"
+          "  - second atm proc: " + atm_proc->name() + "\n");
+      add_internal_field(f);
+      f2proc[name] = atm_proc->name();
     }
   }
 }
@@ -322,19 +347,19 @@ set_computed_group_impl (const FieldGroup<Real>& group)
   }
 }
 
-void AtmosphereProcessGroup::
-set_internal_group_impl (const FieldGroup<Real>& group)
-{
-  for (auto atm_proc : m_atm_processes) {
-    if (atm_proc->is_internal_group(group.m_info->m_group_name,group.grid_name())) {
-      atm_proc->set_internal_group(group);
-      // Note: we *could* break here, since a group can only be internal to ONE
-      //       atm proc. However, if by mistake there's another atm proc claiming
-      //       the group as internal, we can catch the bug by letting it try
-      //       to set itself as the field owner.
-    }
-  }
-}
+// void AtmosphereProcessGroup::
+// set_internal_group_impl (const FieldGroup<Real>& group)
+// {
+//   for (auto atm_proc : m_atm_processes) {
+//     if (atm_proc->is_internal_group(group.m_info->m_group_name,group.grid_name())) {
+//       atm_proc->set_internal_group(group);
+//       // Note: we *could* break here, since a group can only be internal to ONE
+//       //       atm proc. However, if by mistake there's another atm proc claiming
+//       //       the group as internal, we can catch the bug by letting it try
+//       //       to set itself as the field owner.
+//     }
+//   }
+// }
 
 void AtmosphereProcessGroup::set_required_field_impl (const Field<const Real>& f) {
   const auto& fid = f.get_header().get_identifier();
@@ -361,18 +386,18 @@ void AtmosphereProcessGroup::set_computed_field_impl (const Field<Real>& f) {
   }
 }
 
-void AtmosphereProcessGroup::set_internal_field_impl (const Field<Real>& f) {
-  const auto& fid = f.get_header().get_identifier();
-  for (auto atm_proc : m_atm_processes) {
-    if (atm_proc->is_internal_field(fid)) {
-      atm_proc->set_internal_field(f);
-      // Note: we *could* break here, since a field can only be internal to ONE
-      //       atm proc. However, if by mistake there's another atm proc claiming
-      //       the field as internal, we can catch the bug by letting it try
-      //       to set itself as the field owner.
-    }
-  }
-}
+// void AtmosphereProcessGroup::set_internal_field_impl (const Field<Real>& f) {
+//   const auto& fid = f.get_header().get_identifier();
+//   for (auto atm_proc : m_atm_processes) {
+//     if (atm_proc->is_internal_field(fid)) {
+//       atm_proc->set_internal_field(f);
+//       // Note: we *could* break here, since a field can only be internal to ONE
+//       //       atm proc. However, if by mistake there's another atm proc claiming
+//       //       the field as internal, we can catch the bug by letting it try
+//       //       to set itself as the field owner.
+//     }
+//   }
+// }
 
 void AtmosphereProcessGroup::
 process_required_group (const GroupRequest& req) {

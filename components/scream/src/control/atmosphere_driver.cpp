@@ -153,16 +153,16 @@ void AtmosphereDriver::create_fields()
     m_field_mgrs[grid->name()]->registration_begins();
   }
 
-  // Register required/computed/internal fields
+  // Register required/computed fields
   for (const auto& req : m_atm_process_group->get_required_field_requests()) {
     m_field_mgrs.at(req.fid.get_grid_name())->register_field(req);
   }
   for (const auto& req : m_atm_process_group->get_computed_field_requests()) {
     m_field_mgrs.at(req.fid.get_grid_name())->register_field(req);
   }
-  for (const auto& req : m_atm_process_group->get_internal_field_requests()) {
-    m_field_mgrs.at(req.fid.get_grid_name())->register_field(req);
-  }
+  // for (const auto& req : m_atm_process_group->get_internal_field_requests()) {
+  //   m_field_mgrs.at(req.fid.get_grid_name())->register_field(req);
+  // }
 
   // Register required/updated groups
   // IMPORTANT: Some group requests might be formulated in terms of another
@@ -217,7 +217,7 @@ void AtmosphereDriver::create_fields()
 
   process_imported_groups (m_atm_process_group->get_required_group_requests());
   process_imported_groups (m_atm_process_group->get_computed_group_requests());
-  process_imported_groups (m_atm_process_group->get_internal_group_requests());
+  // process_imported_groups (m_atm_process_group->get_internal_group_requests());
 
   // Close the FM's, allocate all fields
   for (auto it : m_grids_manager->get_repo()) {
@@ -253,15 +253,31 @@ void AtmosphereDriver::create_fields()
     auto fm = get_field_mgr(fid.get_grid_name());
     m_atm_process_group->set_required_field(fm->get_field(fid).get_const());
   }
-  for (const auto& req : m_atm_process_group->get_internal_field_requests()) {
-    const auto& fid = req.fid;
+  // for (const auto& req : m_atm_process_group->get_internal_field_requests()) {
+  //   const auto& fid = req.fid;
+  //   auto fm = get_field_mgr(fid.get_grid_name());
+  //   m_atm_process_group->set_internal_field(fm->get_field(fid));
+  // }
+  // for (const auto& it : m_atm_process_group->get_internal_group_requests()) {
+  //   auto fm = get_field_mgr(it.grid);
+  //   auto group = fm->get_field_group(it.name);
+  //   m_atm_process_group->set_internal_group(group);
+  // }
+
+  // Now that all processes have all the required/computed fields/groups, they
+  // have also created any possible internal field (if needed). Notice that some
+  // atm proc might have created internal fields already during the set_grids
+  // call. However, some atm proc might need to create an internal field based
+  // on the dimension of a group, or create an internal field as a subfield
+  // of another one. Therefore, we had to wait till this point to query the
+  // atm proc group for any internal field, and add it to the field manager
+  // Besides, the field manager(s) can accept pre-built fields only after
+  // the registration phase has ended.
+  m_atm_process_group->gather_internal_fields();
+  for (const auto& f : m_atm_process_group->get_internal_fields()) {
+    const auto& fid = f.get_header().get_identifier();
     auto fm = get_field_mgr(fid.get_grid_name());
-    m_atm_process_group->set_internal_field(fm->get_field(fid));
-  }
-  for (const auto& it : m_atm_process_group->get_internal_group_requests()) {
-    auto fm = get_field_mgr(it.grid);
-    auto group = fm->get_field_group(it.name);
-    m_atm_process_group->set_internal_group(group);
+    fm->add_field(f);
   }
 
   // Now go through the input fields/groups to the atm proc group, as well as
@@ -281,21 +297,10 @@ void AtmosphereDriver::create_fields()
       }
     }
   }
-
   for (const auto& f : m_atm_process_group->get_internal_fields()) {
     const auto& fid = f.get_header().get_identifier();
     auto fm = get_field_mgr(fid.get_grid_name());
     fm->add_to_group(fid.name(),"RESTART");
-  }
-  for (const auto& g : m_atm_process_group->get_internal_groups()) {
-    auto fm = get_field_mgr(g.grid_name());
-    if (g.m_bundle) {
-      fm->add_to_group(g.m_bundle->get_header().get_identifier().name(),"RESTART");
-    } else {
-      for (const auto& fn : g.m_info->m_fields_names) {
-        fm->add_to_group(fn,"RESTART");
-      }
-    }
   }
 
   m_ad_status |= s_fields_created;
@@ -309,16 +314,13 @@ void AtmosphereDriver::initialize_output_managers () {
   auto& io_params = m_atm_params.sublist("Scorpio");
 
   std::cout << "Initializing Output managers...\n";
-  // Build one manager per output yaml file
-  using vos_t = std::vector<std::string>;
-  const auto& output_yaml_files = io_params.get<vos_t>("Output YAML Files",vos_t{});
-  for (const auto& fname : output_yaml_files) {
-    ekat::ParameterList params;
-    ekat::parse_yaml_file(fname,params);
-    m_output_managers.emplace_back();
-    auto& om = m_output_managers.back();
-    om.setup(m_atm_comm,params,m_field_mgrs,m_grids_manager,m_current_ts,false,restarted_run);
-  }
+
+  // Simulation start time. Will be overwritten if this is a restarted run.
+  auto simulation_start_time = m_current_ts;
+
+  // IMPORTANT: create model restart OutputManager first! This OM will be able to
+  // retrieve the original simulation start date, which we later pass to the
+  // OM of all the requested outputs.
 
   // Check for model restart output
   if (io_params.isSublist("Model Restart")) {
@@ -327,6 +329,18 @@ void AtmosphereDriver::initialize_output_managers () {
     m_output_managers.emplace_back();
     auto& om = m_output_managers.back();
     om.setup(m_atm_comm,restart_pl,m_field_mgrs,m_grids_manager,m_current_ts,true,restarted_run);
+    simulation_start_time = om.simulation_start_time();
+  }
+
+  // Build one manager per output yaml file
+  using vos_t = std::vector<std::string>;
+  const auto& output_yaml_files = io_params.get<vos_t>("Output YAML Files",vos_t{});
+  for (const auto& fname : output_yaml_files) {
+    ekat::ParameterList params;
+    ekat::parse_yaml_file(fname,params);
+    m_output_managers.emplace_back();
+    auto& om = m_output_managers.back();
+    om.setup(m_atm_comm,params,m_field_mgrs,m_grids_manager,simulation_start_time,false,restarted_run);
   }
 
   m_ad_status |= s_output_inited;

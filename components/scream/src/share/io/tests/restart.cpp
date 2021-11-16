@@ -172,8 +172,6 @@ TEST_CASE("restart","io")
   util::TimeStamp time_res ({2000,1,1},{0,0,15});
   ekat::ParameterList output_params_res;
   ekat::parse_yaml_file(param_filename,output_params_res);
-  // We don't have a model restart file, and are not interested in restarting the initial Timestamp
-  output_params_res.sublist("Restart").set("Load Simulation Start Timestamp",false);
   OutputManager output_manager_res;
   output_manager_res.setup(io_comm,output_params_res,fm_res,gm,t0,false,true);
 

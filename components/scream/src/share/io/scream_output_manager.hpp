@@ -86,6 +86,8 @@ public:
 
   bool is_model_restart_output () const { return m_is_model_restart_output; }
 
+  const util::TimeStamp& simulation_start_time () const { return m_t0; }
+
 protected:
 
   std::string compute_filename_root (const IOControl& control, const IOFileSpecs& file_specs) const;
@@ -127,6 +129,7 @@ protected:
 
   // The simulation start date/time. We use this to produce a 'time'
   // var in the output file, corresponding to seconds_since_start_of_simulation.
+  // Note: in case of restarted runs, this is the start time of the *original* run.
   util::TimeStamp   m_t0;
 };
 

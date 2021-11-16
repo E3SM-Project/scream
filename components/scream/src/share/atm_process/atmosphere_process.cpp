@@ -82,28 +82,6 @@ void AtmosphereProcess::set_computed_field (const Field<Real>& f) {
   set_computed_field_impl (f);
 }
 
-void AtmosphereProcess::set_internal_field (const Field<Real>& f) {
-  // Sanity check
-  EKAT_REQUIRE_MSG (is_internal_field(f.get_header().get_identifier()),
-    "Error! Input field is not internal to this atm process.\n"
-    "   field id: " + f.get_header().get_identifier().get_id_string() + "\n"
-    "   atm process: " + this->name() + "\n"
-    "Something is wrong up the call stack. Please, contact developers.\n");
-
-  if (not ekat::contains(m_internal_fields,f)) {
-    m_internal_fields.emplace_back(f);
-  }
-
-  // AtmosphereProcessGroup is just a "container" of *real* atm processes,
-  // so don't add me as owner if I'm an atm proc group.
-  if (this->type()!=AtmosphereProcessType::Group) {
-    // Add myself as provider for the field
-    add_me_as_owner(f);
-  }
-
-  set_internal_field_impl (f);
-}
-
 void AtmosphereProcess::set_required_group (const FieldGroup<const Real>& group) {
   // Sanity check
   EKAT_REQUIRE_MSG (is_required_group(group.m_info->m_group_name,group.grid_name()),
@@ -156,33 +134,6 @@ void AtmosphereProcess::set_computed_group (const FieldGroup<Real>& group) {
   }
 
   set_computed_group_impl(group);
-}
-
-void AtmosphereProcess::set_internal_group (const FieldGroup<Real>& group) {
-  // Sanity check
-  EKAT_REQUIRE_MSG (is_internal_group(group.m_info->m_group_name,group.grid_name()),
-    "Error! This atmosphere process does not list the input group as internal.\n"
-    "   group name: " + group.m_info->m_group_name + "\n"
-    "   grid name : " + group.grid_name() + "\n"
-    "   atm process: " + this->name() + "\n"
-    "Something is wrong up the call stack. Please, contact developers.\n");
-
-  if (not ekat::contains(m_internal_groups,group)) {
-    m_internal_groups.emplace_back(group);
-    // AtmosphereProcessGroup is just a "container" of *real* atm processes,
-    // so don't add me as owner if I'm an atm proc group.
-    if (this->type()!=AtmosphereProcessType::Group) {
-      if (group.m_bundle) {
-        add_me_as_owner(*group.m_bundle);
-      } else {
-        for (auto& it : group.m_fields) {
-          add_me_as_owner(*it.second);
-        }
-      }
-    }
-  }
-
-  set_internal_group_impl(group);
 }
 
 void AtmosphereProcess::check_required_fields () const { 
@@ -310,14 +261,6 @@ bool AtmosphereProcess::is_computed_field (const FieldIdentifier& id) const {
   }
   return false;
 }
-bool AtmosphereProcess::is_internal_field (const FieldIdentifier& id) const {
-  for (const auto& it : m_internal_field_requests) {
-    if (it.fid==id) {
-      return true;
-    }
-  }
-  return false;
-}
 
 bool AtmosphereProcess::is_required_group (const std::string& name, const std::string& grid) const {
   for (const auto& it : m_required_group_requests) {
@@ -335,37 +278,17 @@ bool AtmosphereProcess::is_computed_group (const std::string& name, const std::s
   }
   return false;
 }
-bool AtmosphereProcess::is_internal_group (const std::string& name, const std::string& grid) const {
-  for (const auto& it : m_internal_group_requests) {
-    if (it.name==name && it.grid==grid) {
-      return true;
-    }
-  }
-  return false;
-}
 
 void AtmosphereProcess::update_time_stamps () {
   const auto& t = timestamp();
 
-  // Update *all* output/internal fields/groups, regardless of whether
+  // Update *all* output fields/groups, regardless of whether
   // they were touched at all during this time step.
   // TODO: this might have to be changed
   for (auto& f : m_fields_out) {
     f.get_header().get_tracking().update_time_stamp(t);
   }
-  for (auto& f : m_internal_fields) {
-    f.get_header().get_tracking().update_time_stamp(t);
-  }
   for (auto& g : m_groups_out) {
-    if (g.m_bundle) {
-      g.m_bundle->get_header().get_tracking().update_time_stamp(t);
-    } else {
-      for (auto& f : g.m_fields) {
-        f.second->get_header().get_tracking().update_time_stamp(t);
-      }
-    }
-  }
-  for (auto& g : m_internal_groups) {
     if (g.m_bundle) {
       g.m_bundle->get_header().get_tracking().update_time_stamp(t);
     } else {
@@ -384,9 +307,13 @@ void AtmosphereProcess::add_me_as_customer (const Field<const Real>& f) {
   f.get_header_ptr()->get_tracking().add_customer(weak_from_this());
 }
 
-void AtmosphereProcess::add_me_as_owner (const Field<Real>& f) {
-  f.get_header_ptr()->get_tracking().set_owner(weak_from_this());
+void AtmosphereProcess::add_internal_field (const Field<Real>& f) {
+  m_internal_fields.push_back(f);
 }
+
+// void AtmosphereProcess::add_me_as_owner (const Field<Real>& f) {
+//   f.get_header_ptr()->get_tracking().set_owner(weak_from_this());
+// }
 
 // Convenience function to retrieve input/output fields
 Field<const Real>& AtmosphereProcess::
@@ -569,41 +496,41 @@ get_internal_field(const std::string& field_name) {
   }
 }
 
-FieldGroup<Real>& AtmosphereProcess::
-get_internal_group(const std::string& group_name, const std::string& grid_name) {
-  try {
-    return *m_internal_groups_pointers.at(group_name).at(grid_name);
-  } catch (const std::out_of_range&) {
-    // std::out_of_range message would not help detecting where
-    // the exception originated, so print a more meaningful message.
-    EKAT_ERROR_MSG (
-        "Error! Could not locate internal group in this atm proces.\n"
-        "   atm proc name: " + this->name() + "\n"
-        "   group name: " + group_name + "\n"
-        "   grid name: " + grid_name + "\n");
-  }
-}
+// FieldGroup<Real>& AtmosphereProcess::
+// get_internal_group(const std::string& group_name, const std::string& grid_name) {
+//   try {
+//     return *m_internal_groups_pointers.at(group_name).at(grid_name);
+//   } catch (const std::out_of_range&) {
+//     // std::out_of_range message would not help detecting where
+//     // the exception originated, so print a more meaningful message.
+//     EKAT_ERROR_MSG (
+//         "Error! Could not locate internal group in this atm proces.\n"
+//         "   atm proc name: " + this->name() + "\n"
+//         "   group name: " + group_name + "\n"
+//         "   grid name: " + grid_name + "\n");
+//   }
+// }
 
-FieldGroup<Real>& AtmosphereProcess::
-get_internal_group(const std::string& group_name) {
-  try {
-    auto& copies = m_internal_groups_pointers.at(group_name);
-    EKAT_REQUIRE_MSG (copies.size()==1,
-        "Error! Attempt to find internal group providing only the name,\n"
-        "       but multiple copies (on different grids) are present.\n"
-        "  group name: " + group_name + "\n"
-        "  atm process: " + this->name() + "\n"
-        "  number of copies: " + std::to_string(copies.size()) + "\n");
-    return *copies.begin()->second;
-  } catch (const std::out_of_range&) {
-    // std::out_of_range would message would not help detecting where
-    // the exception originated, so print a more meaningful message.
-    EKAT_ERROR_MSG (
-        "Error! Could not locate internal group in this atm proces.\n"
-        "   atm proc name: " + this->name() + "\n"
-        "   group name: " + group_name + "\n");
-  }
-}
+// FieldGroup<Real>& AtmosphereProcess::
+// get_internal_group(const std::string& group_name) {
+//   try {
+//     auto& copies = m_internal_groups_pointers.at(group_name);
+//     EKAT_REQUIRE_MSG (copies.size()==1,
+//         "Error! Attempt to find internal group providing only the name,\n"
+//         "       but multiple copies (on different grids) are present.\n"
+//         "  group name: " + group_name + "\n"
+//         "  atm process: " + this->name() + "\n"
+//         "  number of copies: " + std::to_string(copies.size()) + "\n");
+//     return *copies.begin()->second;
+//   } catch (const std::out_of_range&) {
+//     // std::out_of_range would message would not help detecting where
+//     // the exception originated, so print a more meaningful message.
+//     EKAT_ERROR_MSG (
+//         "Error! Could not locate internal group in this atm proces.\n"
+//         "   atm proc name: " + this->name() + "\n"
+//         "   group name: " + group_name + "\n");
+//   }
+// }
 
 void AtmosphereProcess::set_fields_and_groups_pointers () {
   for (auto& f : m_fields_in) {
@@ -626,10 +553,10 @@ void AtmosphereProcess::set_fields_and_groups_pointers () {
     const auto& fid = f.get_header().get_identifier();
     m_internal_fields_pointers[fid.name()][fid.get_grid_name()] = &f;
   }
-  for (auto& g : m_internal_groups) {
-    const auto& group_name = g.m_info->m_group_name;
-    m_internal_groups_pointers[group_name][g.grid_name()] = &g;
-  }
+  // for (auto& g : m_internal_groups) {
+  //   const auto& group_name = g.m_info->m_group_name;
+  //   m_internal_groups_pointers[group_name][g.grid_name()] = &g;
+  // }
 }
 
 void AtmosphereProcess::
@@ -692,34 +619,34 @@ alias_group_out (const std::string& group_name,
   }
 }
 
-void AtmosphereProcess::
-alias_internal_field (const std::string& field_name,
-                      const std::string& grid_name,
-                      const std::string& alias_name)
-{
-  try {
-    m_internal_fields_pointers[alias_name][grid_name] = m_internal_fields_pointers.at(field_name).at(grid_name);
-  } catch (const std::out_of_range&) {
-    EKAT_ERROR_MSG (
-        "Error! Could not locate internal field for aliasing request.\n"
-        "    - field name: " + field_name + "\n"
-        "    - grid name:  " + grid_name + "\n");
-  }
-}
+// void AtmosphereProcess::
+// alias_internal_field (const std::string& field_name,
+//                       const std::string& grid_name,
+//                       const std::string& alias_name)
+// {
+//   try {
+//     m_internal_fields_pointers[alias_name][grid_name] = m_internal_fields_pointers.at(field_name).at(grid_name);
+//   } catch (const std::out_of_range&) {
+//     EKAT_ERROR_MSG (
+//         "Error! Could not locate internal field for aliasing request.\n"
+//         "    - field name: " + field_name + "\n"
+//         "    - grid name:  " + grid_name + "\n");
+//   }
+// }
 
-void AtmosphereProcess::
-alias_internal_group (const std::string& group_name,
-                      const std::string& grid_name,
-                      const std::string& alias_name)
-{
-  try {
-    m_internal_groups_pointers[alias_name][grid_name] = m_internal_groups_pointers.at(group_name).at(grid_name);
-  } catch (const std::out_of_range&) {
-    EKAT_ERROR_MSG (
-        "Error! Could not locate internal group for aliasing request.\n"
-        "    - group name: " + group_name + "\n"
-        "    - grid name:  " + grid_name + "\n");
-  }
-}
+// void AtmosphereProcess::
+// alias_internal_group (const std::string& group_name,
+//                       const std::string& grid_name,
+//                       const std::string& alias_name)
+// {
+//   try {
+//     m_internal_groups_pointers[alias_name][grid_name] = m_internal_groups_pointers.at(group_name).at(grid_name);
+//   } catch (const std::out_of_range&) {
+//     EKAT_ERROR_MSG (
+//         "Error! Could not locate internal group for aliasing request.\n"
+//         "    - group name: " + group_name + "\n"
+//         "    - grid name:  " + grid_name + "\n");
+//   }
+// }
 
 } // namespace scream

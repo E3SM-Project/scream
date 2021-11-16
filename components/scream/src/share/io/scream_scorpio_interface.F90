@@ -812,7 +812,11 @@ contains
     else
       mode = pio_write
     endif
+    print *, "opening:",fname
     retval = pio_openfile(pio_subsystem,pio_file%pioFileDesc,pio_iotype,fname,mode)
+    if (retval .ne. pio_noerr) then
+      print *,"Could not open file:",fname
+    endif
     call errorHandle("PIO ERROR: unable to open file: "//trim(fname),retval)
 
   end subroutine eam_pio_openfile

@@ -24,6 +24,8 @@ class HommeDynamics : public AtmosphereProcess
 public:
   using field_type       = Field<      Real>;
   using const_field_type = Field<const Real>;
+  template<int N>
+  using view_Nd_type = typename field_type::view_ND_type<Real,N>;
 
   // Constructor(s)
   HommeDynamics (const ekat::Comm& comm, const ekat::ParameterList& params);
@@ -71,6 +73,7 @@ protected:
   // Copy initial states from n0 timelevel to other timelevels,
   // and compute initial p_mid/p_int
   void copy_states_and_init_pressure (const bool compute_theta_from_T);
+  // void store_prev_fields (const view_Nd_type<3>& uv, const view_Nd_type<2>& w);
 
   void initialize_impl (const RunType run_type);
 protected:
@@ -79,7 +82,7 @@ protected:
 
   // For simplicity, it's best to store the size of the tracers as soon as it is available.
   // We can do it the first time that the 'tracers' group is set
-  void set_required_group_impl (const FieldGroup<const Real>& group);
+  void set_computed_group_impl (const FieldGroup<Real>& group);
 
   // Override the check computed fields impl so we can repair slightly negative tracer values.
   void check_computed_fields_impl ();

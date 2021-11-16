@@ -102,13 +102,6 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
   //       of disabling the restart. Also, the user might want to change the
   //       casename, so allow to specify a different casename for the restart file.
   if (m_is_restarted_run) {
-    // We look for the original start date/time in the model restart file rather than
-    // in the history restart file, since the model restart file is *guaranteed to exist*,
-    // while the history restart file might not exist if the avg type does not require
-    // restart data, or if the last restart step coincided with a model output.
-    // HOWEVER, some unit tests for IO, simply generate .rhist.nc files, without creating
-    // a .r.nc (model restart) file. Therefore, we offer the ability to skip loading
-    // the initial simulation start date/time, via parameter list option.
 
     // Allow to skip history restart, or to specify a casename for the restart file
     // that is different from the casename of the current output.
@@ -116,11 +109,25 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
     bool perform_history_restart = has_restart_data && restart_pl.get("Perform Restart",true);
     auto hist_restart_casename = restart_pl.get("Casename",m_casename);
 
-    if (restart_pl.get("Load Simulation Start Timestamp",true)) {
+    if (m_is_model_restart_output) {
+      // If this is the model restart output, We look for the original start date/time
+      // in the model restart file. For "normal" output, we fully trust the t0 that was
+      // passed to the setup method. The reasons are the following:
+      //  - history restart files may not have been written, if the last model restart
+      //    step coincided with an output step.
+      //  - reading the model restart file would require this OutputManager to be provided
+      //    with the casename of the model restart output file.
+      // It is simpler to just have the AD handle the retrieval of the original simulation
+      // start date/time, and pass it to the setup method. This can be easily achieved by
+      // setting up the OM for the model restart *before* those of the normal output.
+
       // Find out model restart file name
       auto model_restart_filename = find_filename_in_rpointer(hist_restart_casename,".r.nc");
 
       // Recover the original simulation start date/time
+      if (m_io_comm.am_i_root()) {
+        std::cout << "Restarting simulation from '" << model_restart_filename << "' nc file.\n";
+      }
       ekat::ParameterList res_params("Input Parameters");
       res_params.set<std::string>("Filename",model_restart_filename);
       AtmosphereInput model_restart (m_io_comm,res_params);
@@ -132,6 +139,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
       std::vector<int> time = {start_time/10000, (start_time/100) % 100, start_time % 100};
       m_t0 = util::TimeStamp(date,time);
     } else {
+      // Not a model restart output. Trust what the input t0 is.
       m_t0 = t0;
     }
 
@@ -175,6 +183,13 @@ void OutputManager::run(const util::TimeStamp& timestamp)
   auto& filespecs = is_checkpoint_step ? m_checkpoint_file_specs : m_output_file_specs;
   auto& filename  = filespecs.filename;
 
+  std::cout << "timestamp: " << timestamp.to_string() << "\n"
+            << "  output: " << (is_output_step ? "yes\n" : "no\n")
+            << "  checkpoint: " << (is_checkpoint_step ? "yes\n" : "no\n")
+            << "  casename: " << m_casename << "\n"
+            << "  steps since last output: " << m_output_control.nsteps_since_last_write << "\n"
+            << "  steps since last checkpoint: " << m_checkpoint_control.nsteps_since_last_write << "\n";
+
   // Compute filename (if write step)
   if (is_write_step) {
     // Check if we need to open a new file
@@ -185,6 +200,7 @@ void OutputManager::run(const util::TimeStamp& timestamp)
         filename += "." + timestamp.to_string();
       }
       if (is_output_step) {
+        std::cout << "It's output. Model restart: " << (m_is_model_restart_output ? "yes\n" : "no\n");
         filename += m_is_model_restart_output ? ".r.nc" : ".nc";
       } else if (is_checkpoint_step) {
         filename += ".rhist.nc";
@@ -247,10 +263,14 @@ void OutputManager::run(const util::TimeStamp& timestamp)
   }
 
   // Run the output streams
+  std::cout << "number of streams: " << m_output_streams.size() << "\n";
   for (auto& it : m_output_streams) {
     // Note: filename might referencing an invalid string, but it's only used
     //       in case is_write_step=true, in which case it will *for sure* contain
     //       a valid file name.
+    printf("running stream, is write: %s\n",is_write_step ? "yes" : "no");
+    printf("time: %s\n", timestamp.to_string().c_str());
+    printf("filename: %s\n", filename.c_str());
     it->run(filename,is_write_step,m_output_control.nsteps_since_last_write);
   }
 

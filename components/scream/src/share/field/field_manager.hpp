@@ -70,6 +70,12 @@ public:
   void registration_ends ();
   void clean_up ();
 
+  // Adds a pre-existing field to the FieldManager.
+  // Notes: the repo must be in closed state, and the field must not exist already.
+  // This can be used to allow atm procs to create some helper fields internally,
+  // but still leverage the FM class for certain features (e.g., I/O).
+  void add_field (const Field<RealType>& f);
+
   // Get information about the state of the repo
   int size () const { return m_fields.size(); }
   RepoState repository_state () const { return m_repo_state; }
@@ -119,7 +125,7 @@ protected:
   // When registering subfields, we might end up registering the subfield before
   // the parent field. So at registration time, simply keep track of the subfields,
   // and create them at registration_ends() time, after all other fields.
-  std::map<std::string,FieldRequest> m_subfield_requests;
+  // std::map<std::string,FieldRequest> m_subfield_requests;
 
   // The map group_name -> FieldGroupInfo
   group_info_map      m_field_groups;
@@ -186,25 +192,25 @@ void FieldManager<RealType>::register_field (const FieldRequest& req)
         "         - stored id: " + id0.get_id_string() + "\n"
         "       Please, check and make sure all atmosphere processes use the same layout for a given field.\n");
 
-    // Do not allow to mix subfield requests with normal requests for now.
-    // TODO: you might be able to relax this. It's ok if field F was requested as subfield of G,
-    //       and also requested without knowledge of parent fields.
-    EKAT_REQUIRE_MSG (
-        (req.subview_info.dim_idx==-1) ||
-        m_subfield_requests.find(id.name())==m_subfield_requests.end() ||
-        m_subfield_requests.at(id.name()).subview_info==req.subview_info,
-        "Error! Inconsistent requests for a subfield.");
+    // // Do not allow to mix subfield requests with normal requests for now.
+    // // TODO: you might be able to relax this. It's ok if field F was requested as subfield of G,
+    // //       and also requested without knowledge of parent fields.
+    // EKAT_REQUIRE_MSG (
+    //     (req.subview_info.dim_idx==-1) ||
+    //     m_subfield_requests.find(id.name())==m_subfield_requests.end() ||
+    //     m_subfield_requests.at(id.name()).subview_info==req.subview_info,
+    //     "Error! Inconsistent requests for a subfield.");
   }
 
-  if (req.subview_info.dim_idx>=0) {
-    // This is a request for a subfield. Store request info, so we can correctly set up
-    // the subfield at the end of registration_ends() call
-    m_subfield_requests.emplace(id.name(),req);
-  } else {
-    // Make sure the field can accommodate the requested value type
-    constexpr int real_size = sizeof(RealType);
-    m_fields[id.name()]->get_header().get_alloc_properties().request_allocation(real_size,req.pack_size);
-  }
+  // if (req.subview_info.dim_idx>=0) {
+  //   // This is a request for a subfield. Store request info, so we can correctly set up
+  //   // the subfield at the end of registration_ends() call
+  //   m_subfield_requests.emplace(id.name(),req);
+  // } else {
+  // Make sure the field can accommodate the requested value type
+  constexpr int real_size = sizeof(RealType);
+  m_fields[id.name()]->get_header().get_alloc_properties().request_allocation(real_size,req.pack_size);
+  // }
 
   // Finally, add the field to the given groups
   // Note: we do *not* set the group info struct in the field header yet.
@@ -897,23 +903,25 @@ registration_ends ()
       // If the field has been already allocated, then it was in a bunlded group, so skip it.
       continue;
     }
+    // A brand new field. Allocate it
+    it.second->allocate_view();
 
     // Skip requests for subfields, since we need to have all fields allocated first
-    if (m_subfield_requests.find(it.first)==m_subfield_requests.end()) {
-      // A brand new field. Allocate it
-      it.second->allocate_view();
-    }
+    // if (m_subfield_requests.find(it.first)==m_subfield_requests.end()) {
+    //   // A brand new field. Allocate it
+    //   it.second->allocate_view();
+    // }
   }
 
-  // Now allocate subfields
-  for (const auto& it : m_subfield_requests) {
-    auto f = get_field_ptr(it.first);
-    const auto& sv_info = it.second.subview_info;
-    const auto& fid = f->get_header().get_identifier();
-    const auto& p = m_fields.at(it.second.parent_name);
+  // // Now allocate subfields
+  // for (const auto& it : m_subfield_requests) {
+  //   auto f = get_field_ptr(it.first);
+  //   const auto& sv_info = it.second.subview_info;
+  //   const auto& fid = f->get_header().get_identifier();
+  //   const auto& p = m_fields.at(it.second.parent_name);
 
-    *f = p->subfield (fid.name(),fid.get_units(),sv_info.dim_idx,sv_info.slice_idx,sv_info.dynamic);
-  }
+  //   *f = p->subfield (fid.name(),fid.get_units(),sv_info.dim_idx,sv_info.slice_idx,sv_info.dynamic);
+  // }
 
   for (const auto& it : m_field_groups) {
     if (ekat::contains(copied_groups,it.first)) {
@@ -942,6 +950,27 @@ void FieldManager<RealType>::clean_up() {
 
   // Reset repo state
   m_repo_state = RepoState::Clean;
+}
+
+template<typename RealType>
+void FieldManager<RealType>::add_field (const Field<RealType>& f) {
+  // This method has a few restrictions on the input field.
+  EKAT_REQUIRE_MSG (m_repo_state==RepoState::Closed,
+      "Error! The method 'add_field' can only be called on a closed repo.\n");
+  EKAT_REQUIRE_MSG (f.is_allocated(),
+      "Error! The method 'add_field' requires the input field to be already allocated.\n");
+  EKAT_REQUIRE_MSG (f.get_header().get_identifier().get_grid_name()==m_grid->name(),
+      "Error! Input field to 'add_field' is defined on a grid different from the one stored.\n"
+      "  - field manager grid: " + m_grid->name() + "\n"
+      "  - input field grid:   " + f.get_header().get_identifier().get_grid_name() + "\n");
+  EKAT_REQUIRE_MSG (not has_field(f.get_header().get_identifier().name()),
+      "Error! The method 'add_field' requires the input field to not be already existing.\n"
+      "  - field name: " + f.get_header().get_identifier().name() + "\n");
+  EKAT_REQUIRE_MSG (f.get_header().get_tracking().get_groups_info().size()==0,
+      "Error! The method 'add_field' requires the input field to not be part of any group.\n");
+
+  // All good, add the field to the repo
+  m_fields[f.get_header().get_identifier().name()] = std::make_shared<Field<Real>>(f);
 }
 
 template<typename RealType>

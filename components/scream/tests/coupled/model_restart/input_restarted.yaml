@@ -2,7 +2,6 @@
 ---
 Debug:
   Atmosphere DAG Verbosity Level: 5
-  Output Initial State: true
 
 Time Stepping:
   # IMPORTANT: make sure Start Time equals to the initial run start time PLUS one time step
@@ -14,10 +13,6 @@ Time Stepping:
 Initial Conditions:
   Restart Run: true
   Restart Casename: model_restart
-  Physics GLL:
-    Filename: homme_physics_restart.nc
-  Dynamics:
-    Filename: homme_physics_restart.nc
 
 Atmosphere Processes:
   Number of Entries: 1

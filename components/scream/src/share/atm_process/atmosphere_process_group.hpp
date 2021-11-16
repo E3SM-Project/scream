@@ -65,6 +65,9 @@ public:
   void set_required_field (const Field<const Real>& field);
   void set_required_group (const FieldGroup<const Real>& group);
 
+  // Gather internal fields from all processes in the group
+  void gather_internal_fields ();
+
 protected:
 
   // Adds fid to the list of required/computed fields of the group (as a whole).
@@ -83,10 +86,8 @@ protected:
   // The methods to set the fields/groups in the right processes of the group
   void set_required_field_impl (const Field<const Real>& f);
   void set_computed_field_impl (const Field<      Real>& f);
-  void set_internal_field_impl (const Field<      Real>& f);
   void set_required_group_impl (const FieldGroup<const Real>& group);
   void set_computed_group_impl (const FieldGroup<      Real>& group);
-  void set_internal_group_impl (const FieldGroup<      Real>& group);
 
   // The name of the group. This is usually a concatenation of the names of the individual processes
   std::string       m_group_name;

@@ -257,6 +257,8 @@ void AtmosphereOutput::run (const std::string& filename, const bool is_write_ste
                 for (int m=0; m<dims[4]; ++m) {
                   combine(new_view_5d(i,j,k,l,m), avg_view_5d(i,j,k,l,m),nsteps_since_last_output);
         }}}}}
+        if (is_write_step) {
+        }
         break;
       }
       case 6:
