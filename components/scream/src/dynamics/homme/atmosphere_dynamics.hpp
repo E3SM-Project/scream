@@ -47,9 +47,6 @@ public:
   // Note: field_mgrs[grid_name] is the FM on grid $grid_name
   void register_fields (const std::map<std::string,std::shared_ptr<FieldManager<Real>>>& field_mgrs) const;
 
-  // Retrieves an internal field, given field name and grid name.
-  const Field<Real>& get_internal_field (const std::string& name, const std::string& grid) const;
-
 #ifndef KOKKOS_ENABLE_CUDA
   // Cuda requires methods enclosing __device__ lambda's to be public
 protected:
@@ -73,8 +70,7 @@ protected:
   void update_pressure ();
 
   // Copy initial states from n0 timelevel to other timelevels
-  void copy_dyn_states_to_all_timelevels (const bool compute_theta_from_T);
-  // void store_prev_fields (const view_Nd_type<3>& uv, const view_Nd_type<2>& w);
+  void copy_dyn_states_to_all_timelevels ();
 
   void initialize_impl (const RunType run_type);
 protected:

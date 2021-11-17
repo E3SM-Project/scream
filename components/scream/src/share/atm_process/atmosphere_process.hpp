@@ -175,6 +175,34 @@ public:
   // the ATMBufferManager
   virtual void init_buffers(const ATMBufferManager& /*buffer_manager*/) {}
 
+  // Convenience function to retrieve input/output fields from the field/group (and grid) name.
+  // Note: the version without grid name only works if there is only one copy of the field/group.
+  //       In that case, the single copy is returned, regardless of the associated grid name.
+  const Field<const Real>& get_field_in(const std::string& field_name, const std::string& grid_name) const;
+        Field<const Real>& get_field_in(const std::string& field_name, const std::string& grid_name);
+  const Field<const Real>& get_field_in(const std::string& field_name) const;
+        Field<const Real>& get_field_in(const std::string& field_name);
+
+  const Field<      Real>& get_field_out(const std::string& field_name, const std::string& grid_name) const;
+        Field<      Real>& get_field_out(const std::string& field_name, const std::string& grid_name);
+  const Field<      Real>& get_field_out(const std::string& field_name) const;
+        Field<      Real>& get_field_out(const std::string& field_name);
+
+  const FieldGroup<const Real>& get_group_in(const std::string& group_name, const std::string& grid_name) const;
+        FieldGroup<const Real>& get_group_in(const std::string& group_name, const std::string& grid_name);
+  const FieldGroup<const Real>& get_group_in(const std::string& group_name) const;
+        FieldGroup<const Real>& get_group_in(const std::string& group_name);
+
+  const FieldGroup<      Real>& get_group_out(const std::string& group_name, const std::string& grid_name) const;
+        FieldGroup<      Real>& get_group_out(const std::string& group_name, const std::string& grid_name);
+  const FieldGroup<      Real>& get_group_out(const std::string& group_name) const;
+        FieldGroup<      Real>& get_group_out(const std::string& group_name);
+
+  const Field<Real>& get_internal_field(const std::string& field_name, const std::string& grid_name) const;
+        Field<Real>& get_internal_field(const std::string& field_name, const std::string& grid_name);
+  const Field<Real>& get_internal_field(const std::string& field_name) const;
+        Field<Real>& get_internal_field(const std::string& field_name);
+
 protected:
 
   // Note: Updated = Required+Computed
@@ -323,24 +351,9 @@ protected:
   virtual void check_required_fields_impl () const {}
   virtual void check_computed_fields_impl () {}
 
-  // Convenience function to retrieve input/output fields from the field/group (and grid) name.
-  // Note: the version without grid name only works if there is only one copy of the field/group.
-  //       In that case, the single copy is returned, regardless of the associated grid name.
-  Field<const Real>& get_field_in(const std::string& field_name, const std::string& grid_name);
-  Field<const Real>& get_field_in(const std::string& field_name);
-  Field<Real>& get_field_out(const std::string& field_name, const std::string& grid_name);
-  Field<Real>& get_field_out(const std::string& field_name);
-
-  FieldGroup<const Real>& get_group_in(const std::string& group_name, const std::string& grid_name);
-  FieldGroup<const Real>& get_group_in(const std::string& group_name);
-  FieldGroup<Real>& get_group_out(const std::string& group_name, const std::string& grid_name);
-  FieldGroup<Real>& get_group_out(const std::string& group_name);
-
   // Adds a field to the list of internal fields
   void add_internal_field (const Field<Real>& f);
 
-  Field<Real>& get_internal_field(const std::string& field_name, const std::string& grid_name);
-  Field<Real>& get_internal_field(const std::string& field_name);
   // FieldGroup<Real>& get_internal_group(const std::string& group_name, const std::string& grid_name);
   // FieldGroup<Real>& get_internal_group(const std::string& group_name);
 
@@ -379,6 +392,19 @@ private:
   // Called from initialize, this method creates the m_[fields|groups]_[in|out]_pointers
   // maps, which are used inside the get_[field|group]_[in|out] methods.
   void set_fields_and_groups_pointers ();
+
+  // Getters that can be called on both const and non-const objects
+  Field<const Real>& get_field_in_impl(const std::string& field_name, const std::string& grid_name) const;
+  Field<const Real>& get_field_in_impl(const std::string& field_name) const;
+  Field<      Real>& get_field_out_impl(const std::string& field_name, const std::string& grid_name) const;
+  Field<      Real>& get_field_out_impl(const std::string& field_name) const;
+  Field<      Real>& get_internal_field_impl(const std::string& field_name, const std::string& grid_name) const;
+  Field<      Real>& get_internal_field_impl(const std::string& field_name) const;
+
+  FieldGroup<const Real>& get_group_in_impl(const std::string& group_name, const std::string& grid_name) const;
+  FieldGroup<const Real>& get_group_in_impl(const std::string& group_name) const;
+  FieldGroup<      Real>& get_group_out_impl(const std::string& group_name, const std::string& grid_name) const;
+  FieldGroup<      Real>& get_group_out_impl(const std::string& group_name) const;
 
   // Store input/output/internal fields and groups.
   std::list<const_group_type>  m_groups_in;

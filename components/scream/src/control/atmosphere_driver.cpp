@@ -12,6 +12,7 @@
 #include "ekat/util/ekat_string_utils.hpp"
 
 #include <fstream>
+#include <iomanip>
 #include <vector>
 
 namespace scream {
@@ -817,6 +818,14 @@ initialize (const ekat::Comm& atm_comm,
 void AtmosphereDriver::run (const int dt) {
   // Make sure the end of the time step is after the current start_time
   EKAT_REQUIRE_MSG (dt>0, "Error! Input time step must be positive.\n");
+
+  std::cout << "AD run:\n";
+  for (auto f : m_atm_process_group->get_fields_in()) {
+    std::cout << std::setprecision(17) << "  ||" << f.get_header().get_identifier().name() << "||_F = " << field_max(f) << "\n";
+  }
+  for (auto f : m_atm_process_group->get_internal_fields()) {
+    std::cout << std::setprecision(17) << "  ||" << f.get_header().get_identifier().name() << "||_F = " << field_max(f) << "\n";
+  }
 
   if (m_surface_coupling) {
     // Import fluxes from the component coupler (if any)

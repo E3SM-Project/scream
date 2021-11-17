@@ -4,7 +4,7 @@ Debug:
   Atmosphere DAG Verbosity Level: 5
 
 Time Stepping:
-  Time Step: ${ATM_TIME_STEP}
+  Time Step: 300
   Start Time: [12, 00, 00]      # Hours, Minutes, Seconds
   Start Date: [2021, 10, 12]    # Year, Month, Day
   Number of Steps: 1
@@ -16,7 +16,7 @@ Initial Conditions:
     w_int: 0.0 # Start from zero vert velocity
 
 Atmosphere Processes:
-  Number of Entries: 1
+  Number of Entries: 5
   Schedule Type: Sequential
   Process 0:
     Process Name: Homme

@@ -187,6 +187,8 @@ void OutputManager::run(const util::TimeStamp& timestamp)
             << "  output: " << (is_output_step ? "yes\n" : "no\n")
             << "  checkpoint: " << (is_checkpoint_step ? "yes\n" : "no\n")
             << "  casename: " << m_casename << "\n"
+            << "  output freq: " << m_output_control.frequency << "\n"
+            << "  checkpt freq: " << m_checkpoint_control.frequency << "\n"
             << "  steps since last output: " << m_output_control.nsteps_since_last_write << "\n"
             << "  steps since last checkpoint: " << m_checkpoint_control.nsteps_since_last_write << "\n";
 

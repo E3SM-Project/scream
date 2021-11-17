@@ -126,6 +126,7 @@ void prim_advance_exp (TimeLevel& tl, const Real dt, const bool compute_diagnost
   }
 
   if (compute_diagnostics) {
+    printf("COMPUTING DIAGS 5\n");
     auto& diags = context.get<Diagnostics>();
     diags.run_diagnostics(false,5);
   }

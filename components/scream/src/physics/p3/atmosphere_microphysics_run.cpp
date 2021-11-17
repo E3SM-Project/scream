@@ -1,10 +1,11 @@
 #include "physics/p3/atmosphere_microphysics.hpp"
 
+#include "share/field//field_utils.hpp"
+
 namespace scream {
 
 void P3Microphysics::run_impl (const int dt)
 {
-  // Assign values to local arrays used by P3, these are now stored in p3_loc.
   Kokkos::parallel_for(
     "p3_main_local_vals",
     Kokkos::RangePolicy<>(0,m_num_cols),

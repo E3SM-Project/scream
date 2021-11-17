@@ -492,18 +492,6 @@ contains
         ! Different dimlen, but different decomp tag even if attaching "-time" in input file
         call errorHandle("PIO Error: variable "//trim(shortname)//", already registered with different decomp tag, in file: "//trim(filename),-999)
       endif
-      ! if (hist_var%has_t_dim) then
-      !   ! If the registered var also has time dimension, match all n-1 dims
-
-      ! else
-      ! endif
-      !       (hist_var%numdims .ne. numdims .or. &
-      !        trim(hist_var%pio_decomp_tag) .ne. trim(pio_decomp_tag))) .or. &
-      !      (pio_atm_file%purpose .eq. file_purpose_in .and. & ! In files *may* use a decomp tag
-      !       (hist_var%numdims .ne. (numdims+1) .or. &           ! without "-time" at the end
-      !        trim(hist_var%pio_decomp_tag) .ne. trim(pio_decomp_tag)//"-time")) )then
-      !   call errorHandle("PIO Error: variable "//trim(shortname)//", already registered with different name and/or dims and/or dtype and/or decomp tag, in file: "//trim(filename),-999)
-      ! endif
     endif
   end subroutine get_variable
 !=====================================================================!
@@ -812,7 +800,7 @@ contains
     else
       mode = pio_write
     endif
-    print *, "opening:",fname
+    print *, "opening ",fname
     retval = pio_openfile(pio_subsystem,pio_file%pioFileDesc,pio_iotype,fname,mode)
     if (retval .ne. pio_noerr) then
       print *,"Could not open file:",fname
@@ -853,8 +841,10 @@ contains
           ! We're deleting the last item in the lists. Update pio_file_list_back
           pio_file_list_back => pio_file_list_ptr%prev
         endif
+        print *, "closing "//trim(fname)
       else if (pio_atm_file%num_customers .gt. 1) then
         pio_atm_file%num_customers = pio_atm_file%num_customers - 1
+        print *, "decreasing customers of "//trim(fname)//" to:",pio_atm_file%num_customers
       else
         call errorHandle("PIO ERROR: while closing file: "//trim(fname)//", found num_customers<=0",-999)
       endif
@@ -1253,6 +1243,7 @@ contains
         call eam_pio_openfile(pio_file,trim(pio_file%filename))
         pio_file%num_customers = pio_file%num_customers + 1
       endif
+      print *, "found "//trim(filename)//", purpose,customers:", purpose,pio_file%num_customers
     else
       allocate(new_list_item)
       allocate(new_list_item%pio_file)
@@ -1263,6 +1254,7 @@ contains
       pio_file%numRecs = 0
       pio_file%num_customers = 1
       pio_file%purpose = purpose
+      print *, "creating "//trim(filename)//", purpose:", purpose
       if (purpose == file_purpose_out) then  ! Will be used for output.  Set numrecs to zero and create the new file.
         call eam_pio_createfile(pio_file%pioFileDesc,trim(pio_file%filename))
         call eam_pio_createHeader(pio_file%pioFileDesc)
