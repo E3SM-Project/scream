@@ -65,14 +65,15 @@ protected:
   void init_homme_views ();
 
   // Propagates initial conditions to homme
-  void process_initial_conditions (const RunType run_type);
+  void initialize_homme_state ();
+  // Restart homme
+  void restart_homme_state ();
 
   // Updates p_mid
   void update_pressure ();
 
-  // Copy initial states from n0 timelevel to other timelevels,
-  // and compute initial p_mid/p_int
-  void copy_states_and_init_pressure (const bool compute_theta_from_T);
+  // Copy initial states from n0 timelevel to other timelevels
+  void copy_dyn_states_to_all_timelevels (const bool compute_theta_from_T);
   // void store_prev_fields (const view_Nd_type<3>& uv, const view_Nd_type<2>& w);
 
   void initialize_impl (const RunType run_type);

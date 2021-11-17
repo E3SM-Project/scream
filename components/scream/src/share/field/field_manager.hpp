@@ -1,8 +1,6 @@
 #ifndef SCREAM_FIELD_MANAGER_HPP
 #define SCREAM_FIELD_MANAGER_HPP
 
-#include "ekat/std_meta/ekat_std_utils.hpp"
-#include "ekat/util/ekat_units.hpp"
 #include "share/grid/grids_manager.hpp"
 #include "share/field/field.hpp"
 #include "share/field/field_request.hpp"
@@ -13,6 +11,8 @@
 
 #include "ekat/ekat_assert.hpp"
 #include "ekat/util/ekat_string_utils.hpp"
+#include "ekat/std_meta/ekat_std_utils.hpp"
+#include "ekat/util/ekat_units.hpp"
 
 #include <algorithm>
 #include <initializer_list>
@@ -781,6 +781,7 @@ registration_ends ()
 
       // Allocate
       C->allocate_view();
+      // C->deep_copy(ekat::ScalarTraits<RT>::invalid());
 
       // Note: as of 02/2021, idim should *always* be 1, but we store it just in case,
       //       to avoid bugs in the future.
@@ -879,6 +880,7 @@ registration_ends ()
       G_ap.request_allocation(real_size,req.pack_size);
     }
     G->allocate_view();
+    // G->deep_copy(ekat::ScalarTraits<RT>::invalid());
 
     // Now, update the group info of the copied group, by setting the
     // correct subview_idx, in case the user wants to extract the
@@ -905,6 +907,7 @@ registration_ends ()
     }
     // A brand new field. Allocate it
     it.second->allocate_view();
+    // it.second->deep_copy(ekat::ScalarTraits<RT>::invalid());
 
     // Skip requests for subfields, since we need to have all fields allocated first
     // if (m_subfield_requests.find(it.first)==m_subfield_requests.end()) {
