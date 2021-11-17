@@ -502,6 +502,10 @@ void AtmosphereDriver::restart_model ()
   m_current_ts.set_num_steps(model_restart.read_int_scalar("nsteps"));
 
   for (auto& it : m_field_mgrs) {
+    if (not it.second->has_group("RESTART")) {
+      // No field needs to be restarted on this grid.
+      continue;
+    }
     const auto& restart_group = it.second->get_groups_info().at("RESTART");
     std::vector<std::string> fnames;
     for (const auto& fn : restart_group->m_fields_names) {

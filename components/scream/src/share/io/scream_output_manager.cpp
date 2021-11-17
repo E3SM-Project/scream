@@ -372,12 +372,16 @@ set_params (const ekat::ParameterList& params,
 
     auto& fields_pl = m_params.sublist("Fields");
     for (const auto& it : field_mgrs) {
-      auto restart_group = it.second->get_groups_info().at("RESTART");
+      const auto& fm = it.second;
       vos_t fnames;
-      EKAT_REQUIRE_MSG (not fields_pl.isParameter(it.first),
-        "Error! For restart output, don't specify the fields names. We will create this info internally.\n");
-      for (const auto& n : restart_group->m_fields_names) {
-        fnames.push_back(n);
+      // There may be no RESTART group on this grid
+      if (fm->has_group("RESTART")) {
+        auto restart_group = fm->get_groups_info().at("RESTART");
+        EKAT_REQUIRE_MSG (not fields_pl.isParameter(it.first),
+          "Error! For restart output, don't specify the fields names. We will create this info internally.\n");
+        for (const auto& n : restart_group->m_fields_names) {
+          fnames.push_back(n);
+        }
       }
       fields_pl.sublist(it.first).set("Fields Names",fnames);
     }
