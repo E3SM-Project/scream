@@ -53,7 +53,7 @@ module prim_advection_base
   use hybvcoord_mod, only      : hvcoord_t
   use time_mod, only           : TimeLevel_t, TimeLevel_Qdp
   use control_mod, only        : integration, test_case, hypervis_order, &
-         nu_q, nu_p, limiter_option, hypervis_subcycle_q, rsplit
+         nu_q, nu_p, limiter_option, hypervis_subcycle_q, rsplit, horiz_diff
   use edge_mod, only           : initedgesbuffer, edge_g, edgevpack_nlyr, edgevunpack_nlyr
   use edgetype_mod, only       : EdgeDescriptor_t, EdgeBuffer_t
   use hybrid_mod, only         : hybrid_t
@@ -279,6 +279,7 @@ contains
                               limiter_optim_iter_full, limiter_clip_and_sum, laplace_sphere_wk
   use bndry_mod      , only : bndry_exchangev
   use hybvcoord_mod  , only : hvcoord_t
+  use edge_mod       , only : edge_g
   implicit none
   integer              , intent(in   )         :: np1_qdp, n0_qdp
   real (kind=real_kind), intent(in   )         :: dt
@@ -421,16 +422,18 @@ OMP_SIMD
       enddo
 
       ! Compute horizontal diffusion due to SGS turbulence
-      do ie = nets, nete
-        do q = 1, qsize
-          do k = 1, nlev
-            lap_p(:,:) = elem(ie)%spheremp(:,:)*qtens_biharmonic(:,:,k,q,ie)
-            qtens_diff(:,:)=laplace_sphere_wk(lap_p,deriv,elem(ie),var_coef=.false.)
-            qtens_biharmonic(:,:,k,q,ie) = (dt*elem(ie)%derived%turb_diff_heat(:,:,k)*qtens_diff(:,:)) / &
-              elem(ie)%spheremp(:,:)
+      if (horiz_diff) then
+        do ie = nets, nete
+          do q = 1, qsize
+            do k = 1, nlev
+              lap_p(:,:) = elem(ie)%spheremp(:,:)*qtens_biharmonic(:,:,k,q,ie)
+              qtens_diff(:,:)=laplace_sphere_wk(lap_p,deriv,elem(ie),var_coef=.false.)
+              qtens_biharmonic(:,:,k,q,ie) = -(dt*elem(ie)%derived%turb_diff_heat(:,:,k)*qtens_diff(:,:)) / &
+                elem(ie)%spheremp(:,:)
+            enddo
           enddo
         enddo
-      enddo
+      endif
 
       call neighbor_minmax_finish(hybrid,edgeAdvQminmax,nets,nete,qmin(:,:,nets:nete),qmax(:,:,nets:nete))
     endif
