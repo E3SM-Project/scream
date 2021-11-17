@@ -356,8 +356,8 @@ CONTAINS
     real (kind=real_kind), dimension(npsq,pver,nelemd)       :: T_tmp  ! temp array to hold T
     real (kind=real_kind), dimension(npsq,2,pver,nelemd)     :: uv_tmp ! temp array to hold u and v
     real (kind=real_kind), dimension(npsq,pver,pcnst,nelemd) :: q_tmp  ! temp to hold advected constituents
-    real (kind=real_kind), dimension(npsq,pver,nelemd)       :: tkh_tmp ! temp to hold heat diffusivity
-    real (kind=real_kind), dimension(npsq,pver,nelemd)       :: tk_tmp ! temp tot hold mom diffusivity
+    real (kind=real_kind), dimension(npsq,pver,nelemd)       :: tkh_tmp ! temp to hold heat diffusivity [m2/s]
+    real (kind=real_kind), dimension(npsq,pver,nelemd)       :: tk_tmp ! temp tot hold mom diffusivity [m2/s]
     real (kind=real_kind)    :: dtime
     integer(kind=int_kind)   :: m, i, j, k                 ! loop iterators
     integer(kind=int_kind)   :: gi(2), gj(2)               ! index list used to simplify pg2 case
@@ -374,8 +374,8 @@ CONTAINS
     ! Transpose buffers
     real (kind=real_kind), allocatable, dimension(:) :: bbuffer, cbuffer 
 
-    real(r8), pointer, dimension(:,:) :: tkh
-    real(r8), pointer, dimension(:,:) :: tk
+    real(r8), pointer, dimension(:,:) :: tkh ! turbulent heat diffusivity [m2/s]
+    real(r8), pointer, dimension(:,:) :: tk  ! turbulent momentum diffusivity [m2/s]
     !---------------------------------------------------------------------------
 
     nullify(pbuf_chnk)
@@ -413,6 +413,7 @@ CONTAINS
         call get_gcol_all_p(lchnk,pcols,pgcols)
 
         pbuf_chnk => pbuf_get_chunk(pbuf2d,lchnk)
+        ! read in turbulent diffusivities from physics
         call pbuf_get_field(pbuf_chnk, tkh_idx, tkh)
         call pbuf_get_field(pbuf_chnk, tk_idx, tk)
         do icol = 1,ncols
