@@ -1,12 +1,14 @@
 #ifndef SCREAM_PHYSICS_DYNAMICS_REMAPPER_HPP
 #define SCREAM_PHYSICS_DYNAMICS_REMAPPER_HPP
 
+#include <memory>
 #include "share/scream_config.hpp"
 
 #include "dynamics/homme/homme_dimensions.hpp"
 #include "dynamics/homme/homme_dynamics_helpers.hpp"
 
 #include "share/grid/remap/abstract_remapper.hpp"
+#include "share/grid/se_grid.hpp"
 #include "share/util/scream_utils.hpp"
 
 #include "ekat/ekat_pack.hpp"
@@ -88,11 +90,11 @@ protected:
 
   std::vector<bool>         m_is_state_field;
 
-  grid_ptr_type     m_dyn_grid;
-  grid_ptr_type     m_phys_grid;
+  grid_ptr_type             m_dyn_grid;
+  grid_ptr_type             m_phys_grid;
 
   int m_num_phys_cols;
-  typename grid_type::lid_to_idx_map_type    m_lid2elgp;
+  typename grid_type::lid_to_idx_map_type   m_lid2elgp;
 
   std::shared_ptr<Homme::BoundaryExchange>  m_be[HOMMEXX_NUM_TIME_LEVELS];
 
@@ -256,7 +258,7 @@ PhysicsDynamicsRemapper (const grid_ptr_type& phys_grid,
   EKAT_REQUIRE_MSG(dyn_grid->type()==GridType::SE,     "Error! Input dynamics grid is not a SE grid.\n");
   EKAT_REQUIRE_MSG(phys_grid->type()==GridType::Point, "Error! Input physics grid is not a Point grid.\n");
 
-  m_dyn_grid  = dyn_grid;
+  m_dyn_grid = dyn_grid;
   m_phys_grid = phys_grid;
 
   m_num_phys_cols = phys_grid->get_num_local_dofs();
@@ -1185,7 +1187,9 @@ create_p2d_map () {
   auto num_phys_dofs = m_phys_grid->get_num_local_dofs();
   auto num_dyn_dofs  = m_dyn_grid->get_num_local_dofs();
 
-  auto dyn_gids  = m_dyn_grid->get_dofs_gids();
+  auto se_dyn = std::dynamic_pointer_cast<const SEGrid>(m_dyn_grid);
+  EKAT_REQUIRE_MSG(se_dyn, "Error! Something went wrong casting dyn grid to a SEGrid.\n");
+  auto dyn_gids  = se_dyn->get_cg_dofs_gids();
   auto phys_gids = m_phys_grid->get_dofs_gids();
 
   auto policy = KokkosTypes<DefaultDevice>::RangePolicy(0,num_phys_dofs);
