@@ -209,6 +209,10 @@ contains
     endif
 !    call extrae_user_function(0)
 
+    if (horiz_diff) then
+      call advance_hypervis_turb_scalar(elem,hvcoord,hybrid,deriv,tl%np1,np1_qdp,nets,nete,dt)
+    endif
+
     ! physical viscosity for supercell test case
     if (dcmip16_mu_q>0) then
         call advance_physical_vis(elem,hvcoord,hybrid,deriv,tl%np1,np1_qdp,nets,nete,dt,dcmip16_mu_q)
@@ -422,18 +426,18 @@ OMP_SIMD
       enddo
 
       ! Compute horizontal diffusion due to SGS turbulence
-      if (horiz_diff) then
-        do ie = nets, nete
-          do q = 1, qsize
-            do k = 1, nlev
-              lap_p(:,:) = elem(ie)%spheremp(:,:)*qtens_biharmonic(:,:,k,q,ie)
-              qtens_diff(:,:)=laplace_sphere_wk(lap_p,deriv,elem(ie),var_coef=.false.)
-              qtens_biharmonic(:,:,k,q,ie) = -(dt*elem(ie)%derived%turb_diff_heat(:,:,k)*qtens_diff(:,:)) / &
-                elem(ie)%spheremp(:,:)
-            enddo
-          enddo
-        enddo
-      endif
+!      if (horiz_diff) then
+!        do ie = nets, nete
+!          do q = 1, qsize
+!            do k = 1, nlev
+!              lap_p(:,:) = elem(ie)%spheremp(:,:)*qtens_biharmonic(:,:,k,q,ie)
+!              qtens_diff(:,:)=laplace_sphere_wk(lap_p,deriv,elem(ie),var_coef=.false.)
+!              qtens_biharmonic(:,:,k,q,ie) = -(dt*elem(ie)%derived%turb_diff_heat(:,:,k)*qtens_diff(:,:)) / &
+!                elem(ie)%spheremp(:,:)
+!            enddo
+!          enddo
+!        enddo
+!      endif
 
       call neighbor_minmax_finish(hybrid,edgeAdvQminmax,nets,nete,qmin(:,:,nets:nete),qmax(:,:,nets:nete))
     endif
@@ -749,10 +753,120 @@ OMP_SIMD
   call t_stopf('advance_hypervis_scalar')
   end subroutine advance_hypervis_scalar
 
+  subroutine advance_hypervis_turb_scalar(elem, hvcoord , hybrid , deriv , nt , nt_qdp , nets , nete , dt2 )
+  !  compute horizontal diffusion due to turbulent processes
 
+  use kinds          , only : real_kind
+  use dimensions_mod , only : np, nlev
+  use hybrid_mod     , only : hybrid_t
+  use element_mod    , only : element_t
+  use derivative_mod , only : derivative_t, laplace_sphere_wk
+  use bndry_mod      , only : bndry_exchangev
+  use perf_mod       , only : t_startf, t_stopf                          ! _EXTERNAL
+  implicit none
+  type (element_t)     , intent(inout), target :: elem(:)
+  type (hvcoord_t)     , intent(in   )         :: hvcoord
+  type (hybrid_t)      , intent(in   )         :: hybrid
+  type (derivative_t)  , intent(in   )         :: deriv
+  integer              , intent(in   )         :: nt
+  integer              , intent(in   )         :: nt_qdp
+  integer              , intent(in   )         :: nets
+  integer              , intent(in   )         :: nete
+  real (kind=real_kind), intent(in   )         :: dt2
 
+  ! local
+  real (kind=real_kind), dimension(np,np,nlev,qsize,nets:nete) :: Qtens
+  real (kind=real_kind), dimension(np,np,nlev                ) :: dp
+  real (kind=real_kind), dimension(np,np) :: qtens_diff
+  real (kind=real_kind) :: dt
+  integer :: k , i , j , ie , ic , q
 
+  call t_startf('advance_hypervis_scalar')
 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !  hyper viscosity
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  dt = dt2 / hypervis_subcycle_q
+
+  do ic = 1 , hypervis_subcycle_q
+    do ie = nets , nete
+
+      if (nu_p>0) then
+#if (defined COLUMN_OPENMP)
+!$omp parallel do private(q,k) collapse(2)
+#endif
+        do q = 1 , qsize
+          do k = 1 , nlev
+            dp(:,:,k) = elem(ie)%derived%dp(:,:,k) - dt2*elem(ie)%derived%divdp_proj(:,:,k)
+            Qtens(:,:,k,q,ie) = elem(ie)%derived%dpdiss_ave(:,:,k)*&
+                                elem(ie)%state%Qdp(:,:,k,q,nt_qdp) / dp(:,:,k)
+          enddo
+        enddo
+
+      else
+#if (defined COLUMN_OPENMP)
+!$omp parallel do private(q,k) collapse(2)
+#endif
+        do q = 1 , qsize
+          do k = 1 , nlev
+            dp(:,:,k) = elem(ie)%derived%dp(:,:,k) - dt2*elem(ie)%derived%divdp_proj(:,:,k)
+            Qtens(:,:,k,q,ie) = hvcoord%dp0(k)*elem(ie)%state%Qdp(:,:,k,q,nt_qdp) / dp(:,:,k)
+          enddo
+        enddo
+      endif
+    enddo ! ie loop
+
+    do ie = nets , nete
+#if (defined COLUMN_OPENMP)
+!$omp parallel do private(q,k,j,i)
+#endif
+      do q = 1 , qsize
+        do k = 1 , nlev
+          ! Compute single laplacian
+          qtens_diff(:,:)=laplace_sphere_wk(Qtens(:,:,k,q,ie),deriv,elem(ie),var_coef=.false.)
+          do j = 1 , np
+            do i = 1 , np
+              ! advection Qdp.  For mass advection consistency:
+              ! DIFF( Qdp) ~   dp0 DIFF (Q)  =  dp0 DIFF ( Qdp/dp )
+              elem(ie)%state%Qdp(i,j,k,q,nt_qdp) = elem(ie)%state%Qdp(i,j,k,q,nt_qdp) * elem(ie)%spheremp(i,j) &
+                                                   + dt * elem(ie)%derived%turb_diff_heat(i,j,k) * qtens_diff(i,j)
+            enddo
+          enddo
+        enddo
+
+        if (limiter_option .ne. 0 ) then
+           ! smooth some of the negativities introduced by diffusion:
+           call limiter2d_zero( elem(ie)%state%Qdp(:,:,:,q,nt_qdp) )
+        endif
+
+      enddo
+      call edgeVpack_nlyr(edge_g , elem(ie)%desc, elem(ie)%state%Qdp(:,:,:,:,nt_qdp) , qsize*nlev , 0 , qsize*nlev )
+    enddo ! ie loop
+
+    call t_startf('ah_scalar_bexchV')
+    call bndry_exchangeV( hybrid , edge_g )
+    call t_stopf('ah_scalar_bexchV')
+
+    do ie = nets , nete
+      call edgeVunpack_nlyr(edge_g , elem(ie)%desc, elem(ie)%state%Qdp(:,:,:,:,nt_qdp) , qsize*nlev , 0, qsize*nlev)
+#if (defined COLUMN_OPENMP)
+!$omp parallel do private(q,k) collapse(2)
+#endif
+      do q = 1 , qsize
+        ! apply inverse mass matrix
+        do k = 1 , nlev
+          elem(ie)%state%Qdp(:,:,k,q,nt_qdp) = elem(ie)%rspheremp(:,:) * elem(ie)%state%Qdp(:,:,k,q,nt_qdp)
+        enddo
+      enddo
+    enddo ! ie loop
+#ifdef DEBUGOMP
+#if (defined HORIZ_OPENMP)
+!$OMP BARRIER
+#endif
+#endif
+  enddo
+  call t_stopf('advance_hypervis_scalar')
+  end subroutine advance_hypervis_turb_scalar
 
   subroutine advance_physical_vis(elem,hvcoord,hybrid,deriv,nt,nt_qdp,nets,nete,dt,mu)
   !
