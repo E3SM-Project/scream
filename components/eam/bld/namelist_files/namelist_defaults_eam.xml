@@ -1279,7 +1279,7 @@
 <se_ly> 0.0 </se_ly>
 <statefreq> 480 </statefreq>
 <integration> "explicit" </integration>
-<se_horiz_diff> .false. </se_horiz_diff>
+<se_horiz_turb_diff> .false. </se_horiz_turb_diff>
 
 <se_ftype> 2 </se_ftype>
 

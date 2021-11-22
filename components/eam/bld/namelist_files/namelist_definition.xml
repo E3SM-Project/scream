@@ -5833,7 +5833,7 @@ Length of domain in meters in y direction, for doubly periodic mode
 Default: Set by build-namelist.
 </entry>
 
-<entry id="se_horiz_diff" type="logical" category="se"
+<entry id="se_horiz_turb_diff" type="logical" category="se"
        group="ctl_nl" valid_values="" >
 Use eddy diffusivities to compute the horizontal diffusion due to turbulent processes
 Default: false

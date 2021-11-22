@@ -55,7 +55,7 @@ module control_mod
   integer, public :: rsplit = 0           ! for vertically lagrangian dynamics, apply remap
                                           ! every rsplit tracer timesteps
 
-  logical, public :: horiz_diff = .false. ! apply diffusivities from turbulence scheme to compute
+  logical, public :: horiz_turb_diff = .false. ! apply diffusivities from turbulence scheme to compute
                                           ! horizontal diffusion
 
   ! These factors replace rsplit and qsplit.

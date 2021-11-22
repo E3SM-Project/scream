@@ -335,7 +335,7 @@ CONTAINS
                                        pbuf_old_tim_idx
     use shr_vmath_mod,           only: shr_vmath_log
     use cam_control_mod,         only: adiabatic
-    use control_mod,             only: ftype, horiz_diff
+    use control_mod,             only: ftype, horiz_turb_diff
     use dyn_comp,                only: dom_mt, hvcoord
     use gllfvremap_mod,          only: gfr_fv_phys_to_dyn
     use time_manager,            only: get_step_size
@@ -427,7 +427,7 @@ CONTAINS
             do m = 1,pcnst
               q_tmp(ioff,ilyr,m,ie) = phys_state(lchnk)%q(icol,ilyr,m)
             end do
-            if (horiz_diff) then
+            if (horiz_turb_diff) then
               tkh_tmp(ioff,ilyr,ie) = tkh(icol,ilyr)
               tk_tmp(ioff,ilyr,ie) = tk(icol,ilyr)
             endif
@@ -458,7 +458,7 @@ CONTAINS
             cbuffer(cpter(icol,ilyr))   = phys_tend(lchnk)%dtdt(icol,ilyr)
             cbuffer(cpter(icol,ilyr)+1) = phys_tend(lchnk)%dudt(icol,ilyr)
             cbuffer(cpter(icol,ilyr)+2) = phys_tend(lchnk)%dvdt(icol,ilyr)
-            if (horiz_diff) then
+            if (horiz_turb_diff) then
               cbuffer(cpter(icol,ilyr)+3) = tkh(icol,ilyr)
               cbuffer(cpter(icol,ilyr)+4) = tk(icol,ilyr)
             endif
@@ -488,7 +488,7 @@ CONTAINS
               T_tmp  (icol,ilyr,ie)   = bbuffer(bpter(icol,ilyr))
               uv_tmp (icol,1,ilyr,ie) = bbuffer(bpter(icol,ilyr)+1)
               uv_tmp (icol,2,ilyr,ie) = bbuffer(bpter(icol,ilyr)+2)
-              if (horiz_diff) then
+              if (horiz_turb_diff) then
                 tkh_tmp(icol,ilyr,ie)   = bbuffer(bpter(icol,ilyr)+3)
                 tk_tmp (icol,ilyr,ie)   = bbuffer(bpter(icol,ilyr)+4)
               endif

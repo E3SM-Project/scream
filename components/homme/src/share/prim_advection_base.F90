@@ -53,7 +53,7 @@ module prim_advection_base
   use hybvcoord_mod, only      : hvcoord_t
   use time_mod, only           : TimeLevel_t, TimeLevel_Qdp
   use control_mod, only        : integration, test_case, hypervis_order, &
-         nu_q, nu_p, limiter_option, hypervis_subcycle_q, rsplit, horiz_diff
+         nu_q, nu_p, limiter_option, hypervis_subcycle_q, rsplit, horiz_turb_diff
   use edge_mod, only           : initedgesbuffer, edge_g, edgevpack_nlyr, edgevunpack_nlyr
   use edgetype_mod, only       : EdgeDescriptor_t, EdgeBuffer_t
   use hybrid_mod, only         : hybrid_t
@@ -209,8 +209,8 @@ contains
     endif
 !    call extrae_user_function(0)
 
-    if (horiz_diff) then
-      call advance_hypervis_turb_scalar(elem,hvcoord,hybrid,deriv,tl%np1,np1_qdp,nets,nete,dt)
+    if (horiz_turb_diff) then
+      call advance_horiz_turb_scalar(elem,hvcoord,hybrid,deriv,tl%np1,np1_qdp,nets,nete,dt)
     endif
 
     ! physical viscosity for supercell test case
@@ -424,20 +424,6 @@ OMP_SIMD
           enddo
         enddo
       enddo
-
-      ! Compute horizontal diffusion due to SGS turbulence
-!      if (horiz_diff) then
-!        do ie = nets, nete
-!          do q = 1, qsize
-!            do k = 1, nlev
-!              lap_p(:,:) = elem(ie)%spheremp(:,:)*qtens_biharmonic(:,:,k,q,ie)
-!              qtens_diff(:,:)=laplace_sphere_wk(lap_p,deriv,elem(ie),var_coef=.false.)
-!              qtens_biharmonic(:,:,k,q,ie) = -(dt*elem(ie)%derived%turb_diff_heat(:,:,k)*qtens_diff(:,:)) / &
-!                elem(ie)%spheremp(:,:)
-!            enddo
-!          enddo
-!        enddo
-!      endif
 
       call neighbor_minmax_finish(hybrid,edgeAdvQminmax,nets,nete,qmin(:,:,nets:nete),qmax(:,:,nets:nete))
     endif
@@ -753,8 +739,9 @@ OMP_SIMD
   call t_stopf('advance_hypervis_scalar')
   end subroutine advance_hypervis_scalar
 
-  subroutine advance_hypervis_turb_scalar(elem, hvcoord , hybrid , deriv , nt , nt_qdp , nets , nete , dt2 )
+  subroutine advance_horiz_turb_scalar(elem, hvcoord , hybrid , deriv , nt , nt_qdp , nets , nete , dt2 )
   !  compute horizontal diffusion due to turbulent processes
+  !  Uses diffusivities [m2/s] from turbulence scheme and applies a single laplacian
 
   use kinds          , only : real_kind
   use dimensions_mod , only : np, nlev
@@ -781,12 +768,14 @@ OMP_SIMD
   real (kind=real_kind) :: dt
   integer :: k , i , j , ie , ic , q
 
-  call t_startf('advance_hypervis_scalar')
+  call t_startf('advance_turb_diff')
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !  hyper viscosity
+  !  turbulent diffusion
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  dt = dt2 / hypervis_subcycle_q
+  dt = dt2 / hypervis_subcycle_q    ! PAB either remove this loop or make a new
+                                    !  subcycle option for horizontal diffusion.  Currently
+                                    !  this is set to 1 and seems to run fine with that.
 
   do ic = 1 , hypervis_subcycle_q
     do ie = nets , nete
@@ -822,12 +811,11 @@ OMP_SIMD
 #endif
       do q = 1 , qsize
         do k = 1 , nlev
-          ! Compute single laplacian
+          ! Compute single laplacian at each level
           qtens_diff(:,:)=laplace_sphere_wk(Qtens(:,:,k,q,ie),deriv,elem(ie),var_coef=.false.)
           do j = 1 , np
             do i = 1 , np
-              ! advection Qdp.  For mass advection consistency:
-              ! DIFF( Qdp) ~   dp0 DIFF (Q)  =  dp0 DIFF ( Qdp/dp )
+              ! Apply single laplacian and turbulent diffusivity
               elem(ie)%state%Qdp(i,j,k,q,nt_qdp) = elem(ie)%state%Qdp(i,j,k,q,nt_qdp) * elem(ie)%spheremp(i,j) &
                                                    + dt * elem(ie)%derived%turb_diff_heat(i,j,k) * qtens_diff(i,j)
             enddo
@@ -865,8 +853,8 @@ OMP_SIMD
 #endif
 #endif
   enddo
-  call t_stopf('advance_hypervis_scalar')
-  end subroutine advance_hypervis_turb_scalar
+  call t_stopf('advance_turb_diff')
+  end subroutine advance_horiz_turb_scalar
 
   subroutine advance_physical_vis(elem,hvcoord,hybrid,deriv,nt,nt_qdp,nets,nete,dt,mu)
   !

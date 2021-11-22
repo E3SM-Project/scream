@@ -18,7 +18,7 @@ module prim_advance_mod
   use control_mod,        only: dcmip16_mu, dcmip16_mu_s, hypervis_order, hypervis_subcycle,&
     integration, nu, nu_div, nu_p, nu_s, nu_top, prescribed_wind, qsplit, rsplit, test_case,&
     theta_hydrostatic_mode, tstep_type, theta_advect_form, hypervis_subcycle_tom, pgrad_correction,&
-    vtheta_thresh
+    vtheta_thresh, horiz_turb_diff
   use derivative_mod,     only: derivative_t, divergence_sphere, gradient_sphere, laplace_sphere_wk,&
     laplace_z, vorticity_sphere, vlaplace_sphere_wk 
   use derivative_mod,     only: subcell_div_fluxes, subcell_dss_fluxes
@@ -677,21 +677,25 @@ contains
            enddo
         endif
         
-        ! Horizontal turbulent diffusion
-        do k=1,nlev
-          lap_s(:,:,1)=laplace_sphere_wk(elem(ie)%state%dp3d       (:,:,k,nt),deriv,elem(ie),var_coef=.false.)
-          lap_s(:,:,2)=laplace_sphere_wk(elem(ie)%state%vtheta_dp(:,:,k,nt)  ,deriv,elem(ie),var_coef=.false.)
-          lap_s(:,:,3)=laplace_sphere_wk(elem(ie)%state%w_i        (:,:,k,nt),deriv,elem(ie),var_coef=.false.)
-          lap_s(:,:,4)=laplace_sphere_wk(elem(ie)%state%phinh_i    (:,:,k,nt),deriv,elem(ie),var_coef=.false.)
-          lap_v=vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),var_coef=.false.)
+        if (horiz_turb_diff) then
+        
+          ! Horizontal turbulent diffusion
+          do k=1,nlev
+            lap_s(:,:,1)=laplace_sphere_wk(elem(ie)%state%dp3d       (:,:,k,nt),deriv,elem(ie),var_coef=.false.)
+            lap_s(:,:,2)=laplace_sphere_wk(elem(ie)%state%vtheta_dp(:,:,k,nt)  ,deriv,elem(ie),var_coef=.false.)
+            lap_s(:,:,3)=laplace_sphere_wk(elem(ie)%state%w_i        (:,:,k,nt),deriv,elem(ie),var_coef=.false.)
+            lap_s(:,:,4)=laplace_sphere_wk(elem(ie)%state%phinh_i    (:,:,k,nt),deriv,elem(ie),var_coef=.false.)
+            lap_v=vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),var_coef=.false.)
 
-          vtens(:,:,1,k,ie)=vtens(:,:,1,k,ie) + elem(ie)%derived%turb_diff_mom(:,:,k)*lap_v(:,:,1) ! u and v
-          vtens(:,:,2,k,ie)=vtens(:,:,2,k,ie) + elem(ie)%derived%turb_diff_mom(:,:,k)*lap_v(:,:,2) ! u and v
-          stens(:,:,k,1,ie)=stens(:,:,k,1,ie) + elem(ie)%derived%turb_diff_heat(:,:,k)*lap_s(:,:,1) ! dp3d
-          stens(:,:,k,2,ie)=stens(:,:,k,2,ie) + elem(ie)%derived%turb_diff_heat(:,:,k)*lap_s(:,:,2) ! theta
-          stens(:,:,k,3,ie)=stens(:,:,k,3,ie) + elem(ie)%derived%turb_diff_heat(:,:,k)*lap_s(:,:,3) ! w
-          stens(:,:,k,4,ie)=stens(:,:,k,4,ie) + elem(ie)%derived%turb_diff_heat(:,:,k)*lap_s(:,:,4) ! phi
-        enddo
+            vtens(:,:,1,k,ie)=vtens(:,:,1,k,ie) + elem(ie)%derived%turb_diff_mom(:,:,k)*lap_v(:,:,1) ! u and v
+            vtens(:,:,2,k,ie)=vtens(:,:,2,k,ie) + elem(ie)%derived%turb_diff_mom(:,:,k)*lap_v(:,:,2) ! u and v
+            stens(:,:,k,1,ie)=stens(:,:,k,1,ie) + elem(ie)%derived%turb_diff_heat(:,:,k)*lap_s(:,:,1) ! dp3d
+            stens(:,:,k,2,ie)=stens(:,:,k,2,ie) + elem(ie)%derived%turb_diff_heat(:,:,k)*lap_s(:,:,2) ! theta
+            stens(:,:,k,3,ie)=stens(:,:,k,3,ie) + elem(ie)%derived%turb_diff_heat(:,:,k)*lap_s(:,:,3) ! w
+            stens(:,:,k,4,ie)=stens(:,:,k,4,ie) + elem(ie)%derived%turb_diff_heat(:,:,k)*lap_s(:,:,4) ! phi
+          enddo
+        
+        endif
 
         kptr=0;      call edgeVpack_nlyr(edge_g,elem(ie)%desc,vtens(:,:,:,:,ie),2*nlev,kptr,nlyr_tot)
         kptr=2*nlev; call edgeVpack_nlyr(edge_g,elem(ie)%desc,stens(:,:,:,:,ie),ssize,kptr,nlyr_tot)

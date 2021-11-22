@@ -103,7 +103,7 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
     vert_remap_q_alg, &
     se_fv_phys_remap_alg, &
     timestep_make_subcycle_parameters_consistent, &
-    horiz_diff
+    horiz_turb_diff
 
 
 !PLANAR setup
@@ -223,7 +223,7 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
     integer :: se_partmethod
     integer :: se_ne
     integer :: se_ne_x, se_ne_y
-    logical :: se_horiz_diff
+    logical :: se_horiz_turb_diff
     real(kind=real_kind) :: se_lx, se_ly
     integer :: unitn
     character(len=*), parameter ::  subname = "homme:namelist_mod"
@@ -247,7 +247,7 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
       se_lx,             &
       se_ly,             &
       se_limiter_option, &
-      se_horiz_diff,     &
+      se_horiz_turb_diff,     &
 #else
       qsize,             &         ! number of SE tracers
       nthreads,          &         ! number of threads per process
@@ -446,7 +446,7 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
     ne              = 0
     ne_x              = 0
     ne_y              = 0
-    horiz_diff = .false.
+    horiz_turb_diff = .false.
     transport_alg = 0
     semi_lagrange_cdr_alg = 3
     semi_lagrange_cdr_check = .false.
@@ -717,7 +717,7 @@ endif
        ne         = se_ne
        ne_x       = se_ne_x
        ne_y       = se_ne_y
-       horiz_diff = se_horiz_diff
+       horiz_turb_diff = se_horiz_turb_diff
        Lx         = se_lx
        Ly         = se_ly
        topology   = se_topology
@@ -753,7 +753,7 @@ endif
     call MPI_bcast(ne,              1,MPIinteger_t,par%root,par%comm,ierr)
     call MPI_bcast(ne_x,              1,MPIinteger_t,par%root,par%comm,ierr)
     call MPI_bcast(ne_y,              1,MPIinteger_t,par%root,par%comm,ierr)
-    call MPI_bcast(horiz_diff,      1,MPIlogical_t,par%root,par%comm,ierr)
+    call MPI_bcast(horiz_turb_diff,      1,MPIlogical_t,par%root,par%comm,ierr)
     call MPI_bcast(qsize,           1,MPIinteger_t,par%root,par%comm,ierr)
     call MPI_bcast(sub_case,        1,MPIinteger_t,par%root,par%comm,ierr)
     call MPI_bcast(statefreq,       1,MPIinteger_t,par%root,par%comm,ierr)
