@@ -49,7 +49,7 @@ _TESTS = {
     "e3sm_atm_developer" : {
         "inherit" : ("eam_theta_pg2"),
         "tests"   : (
-            "ERP_Ld3.ne4_oQU240.F2010",
+            "ERP_Ln18.ne4_oQU240.F2010",
             "SMS_Ln9.ne4_oQU240.F2010.eam-outfrq9s",
             "SMS.ne4_oQU240.F2010.eam-cosplite",
             "SMS_R_Ld5.ne4_ne4.FSCM5A97.eam-scm",
@@ -70,6 +70,7 @@ _TESTS = {
             "SMS_Ln1.ne4_oQU240.F2010.eam-chem_pp",
             "SMS_D_Ln5.ne4_oQU240.F2010.eam-clubb_sp",
             "ERS_Ld5.ne4_oQU240.F2010.eam-rrtmgp",
+            "ERS_Ld5.ne4_oQU240.F2010.eam-rrtmgpxx",
             "REP_Ln5.ne4_oQU240.F2010",
             "SMS_Ld9.ne4pg2_oQU480.F2010.eam-thetahy_sl_pg2_mass",
             )
