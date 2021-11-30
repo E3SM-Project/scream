@@ -1,12 +1,14 @@
 #include "scream_rrtmgp_interface.hpp"
+
 #include "mo_load_coefficients.h"
 #include "mo_load_cloud_coefficients.h"
+
 #include "cpp/rrtmgp/mo_gas_concentrations.h"
 #include "cpp/rrtmgp/mo_gas_optics_rrtmgp.h"
 #include "cpp/extensions/cloud_optics/mo_cloud_optics.h"
 #include "cpp/rte/mo_rte_sw.h"
 #include "cpp/rte/mo_rte_lw.h"
-#include "cpp/const.h"
+#include "cpp/rrtmgp_const.h"
 
 namespace scream {
     namespace rrtmgp {

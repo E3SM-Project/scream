@@ -1,11 +1,12 @@
 #ifndef SCREAM_RRTMGP_INTERFACE_HPP
 #define SCREAM_RRTMGP_INTERFACE_HPP
 
+#include "physics/share/physics_constants.hpp"
+
 #include "cpp/rrtmgp/mo_gas_optics_rrtmgp.h"
 #include "cpp/extensions/cloud_optics/mo_cloud_optics.h"
 #include "cpp/rte/mo_fluxes.h"
-#include "cpp/const.h"
-#include "physics/share/physics_constants.hpp"
+#include "cpp/rrtmgp_const.h"
 
 #include "ekat/mpi/ekat_comm.hpp"
 

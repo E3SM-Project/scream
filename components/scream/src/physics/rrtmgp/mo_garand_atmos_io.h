@@ -1,6 +1,7 @@
 #ifndef MO_GARAND_ATMOS_IO_HPP
 #define MO_GARAND_ATMOS_IO_HPP
-#include "cpp/const.h"
+
+#include "cpp/rrtmgp_const.h"
 #include "YAKL/YAKL.h"
 #include "cpp/rrtmgp/mo_gas_concentrations.h"
 
