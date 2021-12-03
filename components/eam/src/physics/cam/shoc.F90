@@ -2864,6 +2864,13 @@ subroutine shoc_assumed_pdf_compute_s(&
       qn=s
     endif
   endif
+  
+  ! Prevent possibility of empty clouds or rare occurence of 
+  !  cloud liquid less than zero
+  if (qn .le. 0._rtype) then
+    C=0._rtype
+    qn=0._rtype
+  endif
 
 end subroutine shoc_assumed_pdf_compute_s
 
