@@ -45,6 +45,9 @@ public:
   // Note: field_mgrs[grid_name] is the FM on grid $grid_name
   void register_fields (const std::map<std::string,std::shared_ptr<FieldManager<Real>>>& field_mgrs) const;
 
+  // Retrieves an internal field, given field name and grid name.
+  const Field<Real>& get_internal_field (const std::string& name, const std::string& grid) const;
+
 #ifndef KOKKOS_ENABLE_CUDA
   // Cuda requires methods enclosing __device__ lambda's to be public
 protected:
@@ -66,12 +69,13 @@ protected:
   void update_pressure ();
 
   void initialize_impl ();
+
 protected:
   void run_impl        (const int dt);
   void finalize_impl   ();
 
   // Dynamics updates the "tracers" group, and needs to do some extra checks on the group.
-  void set_updated_group_impl (const FieldGroup<Real>& group);
+  void set_computed_group_impl (const FieldGroup<Real>& group);
 
   // Override the check computed fields impl so we can repair slightly negative tracer values.
   void check_computed_fields_impl ();
@@ -88,10 +92,6 @@ protected:
                               const std::vector<FieldTag>& tags,
                               const std::vector<int>& dims,
                               const std::string& grid);
-
-  // Retrieves an internal field, given field name and grid name.
-  Field<Real>& get_internal_field (const std::string& name, const std::string& grid);
-
 
   // Some helper fields. WARNING: only one copy for each internal field!
   std::map<std::string,field_type>  m_internal_fields;

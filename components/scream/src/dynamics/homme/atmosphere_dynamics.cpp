@@ -178,7 +178,7 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
 }
 
 void HommeDynamics::
-set_updated_group_impl (const FieldGroup<Real>& group)
+set_computed_group_impl (const FieldGroup<Real>& group)
 {
   const auto& name = group.m_info->m_group_name;
   EKAT_REQUIRE_MSG(name=="tracers",
@@ -576,8 +576,8 @@ create_internal_field (const std::string& name,
   m_internal_fields[name+grid] = f;
 }
 
-Field<Real>& HommeDynamics::
-get_internal_field (const std::string& name, const std::string& grid) {
+const Field<Real>& HommeDynamics::
+get_internal_field (const std::string& name, const std::string& grid) const {
   auto it = m_internal_fields.find(name+grid);
   EKAT_REQUIRE_MSG (it!=m_internal_fields.end(),
       "Error! Internal field '" + name + "' on grid '" + grid + "' not found.\n");

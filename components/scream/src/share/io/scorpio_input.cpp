@@ -25,7 +25,11 @@ AtmosphereInput (const ekat::Comm& comm,
                  const std::shared_ptr<const gm_type>& grids_mgr)
  : AtmosphereInput(comm,params)
 {
-  init (field_mgr,grids_mgr);
+  // Sets the internal field mgr, and possibly sets up the remapper
+  set_field_manager(field_mgr,grids_mgr);
+
+  // Init scorpio internal structures
+  init_scorpio_structures ();
 }
 
 AtmosphereInput::
@@ -36,14 +40,45 @@ AtmosphereInput (const ekat::Comm& comm,
                  const std::map<std::string,FieldLayout>&  layouts)
  : AtmosphereInput(comm,params)
 {
-  init(grid,host_views_1d,layouts);
+  // Set the grid associated with the input views
+  set_grid(grid);
+
+  // Set the host views
+  set_views(host_views_1d,layouts);
+
+  // Init scorpio internal structures
+  init_scorpio_structures ();
 }
 
 /* ---------------------------------------------------------- */
 void AtmosphereInput::
 set_parameters (const ekat::ParameterList& params) {
   m_filename = params.get<std::string>("Filename");
-  m_fields_names = params.get<std::vector<std::string>>("Fields");
+
+  // The user might just want to read some global attributes (no fields),
+  // so get the list of fields names only if present.
+  using vos_t = std::vector<std::string>;
+  if (params.isParameter("Fields")) {
+    m_fields_names = params.get<vos_t>("Fields");
+  } else if (params.isSublist("Fields")) {
+    EKAT_REQUIRE_MSG (params.isParameter("Grid"),
+        "Error! To specify fields, you have two choices:\n"
+        "  - use the parameter 'Fields'\n"
+        "  - specify grid in parameter 'Grid', and fields in 'Fields->$grid_name'\n");
+
+    const auto& gname = params.get<std::string>("Grid");
+    EKAT_REQUIRE_MSG (params.sublist("Fields").isParameter(gname),
+        "Error! To specify fields, you have two choices:\n"
+        "  - use the parameter 'Fields'\n"
+        "  - specify grid in parameter 'Grid', and fields in 'Fields->$grid_name'\n");
+
+    m_fields_names = params.sublist("Fields").get<vos_t>(gname);
+  }
+
+  // This ensures that the nc file is open, even if init() doesn't
+  // get called. This allows users to read global scalar values from
+  // an nc file, by easily creating an AtmosphereInput on the fly.
+  scorpio::register_file(m_filename,scorpio::Read);
 }
 
 void AtmosphereInput::
@@ -51,66 +86,104 @@ set_field_manager (const std::shared_ptr<const fm_type>& field_mgr,
                    const std::shared_ptr<const gm_type>& grids_mgr)
 {
   // Sanity checks
+  EKAT_REQUIRE_MSG (not m_field_mgr, "Error! Field manager was already set.\n");
   EKAT_REQUIRE_MSG (field_mgr, "Error! Invalid field manager pointer.\n");
 
-  auto fm_grid = field_mgr->get_grid();
-  auto unique_grid = fm_grid->get_unique_grid();
-  if (fm_grid->is_unique()) {
-    // The fm is defined on a unique grid. Store it, then set the grid.
-    m_field_mgr = field_mgr;
+  m_field_mgr = field_mgr;
+
+  if (not m_field_mgr->get_grid()->is_unique()) {
+    // The grid is not unique. Build a unique field manager
+    // and a remapper, and we call this method again.
+    build_remapper(grids_mgr);
   } else {
-    // The fm is not on a unique grid. We need to create a helper fm,
-    // with all the import fields defined on the unique grid,
-    // set up scorpio with the helper fm, then create a remapper
-    // from the unique grid to the input fm grid.
-    EKAT_REQUIRE_MSG (unique_grid,
-        "Error! The grid stored in the input field manager is not unique,\n"
-        "       and is not storing a unique grid.\n"
-        "    grid name: " + fm_grid->name());
-    EKAT_REQUIRE_MSG (grids_mgr,
-        "Error! The input fields manager is defined on a non-unique grid,\n"
-        "       but no grids manager was provided.\n"
-        "    grid name: " + fm_grid->name());
+    // The grid is unique. Store it (and performs some checks)
+    set_grid(m_field_mgr->get_grid());
 
-    // Create the remapper and register fields from the fid's taken from the input fm
-    m_remapper = grids_mgr->create_remapper(unique_grid,fm_grid);
-    m_remapper->registration_begins();
-    for (const auto& fname : m_fields_names) {
-      auto f = field_mgr->get_field(fname);
-      const auto& tgt_fid = f.get_header().get_identifier();
+    for (auto const& name : m_fields_names) {
+      auto f = m_field_mgr->get_field(name);
+      const auto& fh  = f.get_header();
+      const auto& fap = fh.get_alloc_properties();
+      const auto& fid = fh.get_identifier();
+      const auto& fl  = fid.get_layout();
 
-      m_remapper->register_field_from_tgt(tgt_fid);
+      // Store the layout
+      m_layouts.emplace(name,fl);
+
+      // If we can alias the field's host view, do it.
+      // Otherwise, create a temporary.
+      bool can_alias_field_view = fh.get_parent().expired() && fap.get_padding()==0;
+      if (can_alias_field_view) {
+        auto data = f.get_internal_view_data<Host>();
+        m_host_views_1d[name] = view_1d_host(data,fl.size());
+      } else {
+        // We have padding, or the field is a subfield (or both).
+        // Either way, we need a temporary view.
+        m_host_views_1d[name] = view_1d_host("",fl.size());
+      }
     }
-    m_remapper->registration_ends();
+  }
+}
 
-    // Now register the fields in the unique_fm. To generate their
-    // field identifiers, use the src fids from the remapper
-    auto unique_fm = std::make_shared<fm_type>(unique_grid);
-    unique_fm->registration_begins();
-    for (int i=0; i<m_remapper->get_num_fields(); ++i) {
-      const auto& src_fid = m_remapper->get_src_field_id(i);
-      auto f = field_mgr->get_field(src_fid.name());
+void AtmosphereInput::
+build_remapper(const std::shared_ptr<const gm_type>& grids_mgr) {
+  EKAT_REQUIRE_MSG (grids_mgr,
+      "Error! Cannot build a remapper without a valid grids manager.\n");
 
-      const int ps = f.get_header().get_alloc_properties().get_largest_pack_size();
-      FieldRequest src_freq(src_fid,ps);
-      unique_fm->register_field(src_freq);
-    }
-    unique_fm->registration_ends();
-    m_field_mgr = unique_fm;
+  auto fm_grid = m_field_mgr->get_grid();
+  auto unique_grid = fm_grid->get_unique_grid();
+  // The fm is not on a unique grid. We need to create a helper fm,
+  // with all the import fields defined on the unique grid,
+  // set up scorpio with the helper fm, then create a remapper
+  // from the unique grid to the input fm grid.
+  EKAT_REQUIRE_MSG (unique_grid,
+      "Error! The grid stored in the input field manager is not unique,\n"
+      "       and is not storing a unique grid.\n"
+      "    grid name: " + fm_grid->name());
 
-    // Finally, bind the src/tgt fields in the remapper
-    for (const auto& fname : m_fields_names) {
-      auto src = unique_fm->get_field(fname);
-      auto tgt = field_mgr->get_field(fname);
-      m_remapper->bind_field(src,tgt);
-    }
+  // Create the remapper and register fields from the fid's taken from the input fm
+  m_remapper = grids_mgr->create_remapper(unique_grid,fm_grid);
+  m_remapper->registration_begins();
+  for (const auto& fname : m_fields_names) {
+    auto f = m_field_mgr->get_field(fname);
+    const auto& tgt_fid = f.get_header().get_identifier();
 
-    // This should never fail, but just in case
-    EKAT_REQUIRE_MSG (m_remapper->get_num_fields()==m_remapper->get_num_bound_fields(),
-        "Error! Something went wrong while building the scorpio input remapper.\n");
+    m_remapper->register_field_from_tgt(tgt_fid);
+  }
+  m_remapper->registration_ends();
+
+  // Now register the fields in the unique_fm. To generate their
+  // field identifiers, use the src fids from the remapper
+  auto unique_fm = std::make_shared<fm_type>(unique_grid);
+  unique_fm->registration_begins();
+  for (int i=0; i<m_remapper->get_num_fields(); ++i) {
+    const auto& src_fid = m_remapper->get_src_field_id(i);
+    auto f = m_field_mgr->get_field(src_fid.name());
+
+    const int ps = f.get_header().get_alloc_properties().get_largest_pack_size();
+    FieldRequest src_freq(src_fid,ps);
+    unique_fm->register_field(src_freq);
+  }
+  unique_fm->registration_ends();
+
+  // Finally, bind the src/tgt fields in the remapper
+  for (const auto& fname : m_fields_names) {
+    auto src = unique_fm->get_field(fname);
+    auto tgt = m_field_mgr->get_field(fname);
+    m_remapper->bind_field(src,tgt);
   }
 
-  set_grid(unique_grid);
+  // This should never fail, but just in case
+  EKAT_REQUIRE_MSG (m_remapper->get_num_fields()==m_remapper->get_num_bound_fields(),
+      "Error! Something went wrong while building the scorpio input remapper.\n");
+
+  // Invalidate field mgr ptr, so the checks in the following call don't' throw
+  m_field_mgr = nullptr;
+
+  // Replace the field mgr with the unique one
+  // NOTE: this call to set_field_manager should not have to call build_remapper anymore.
+  //       Therefore, pass nullptr as grids manager, in case there's some bug and this function
+  //       gets called again (recursively). A nullptr will cause this function to crap out.
+  set_field_manager(unique_fm,nullptr);
 }
 
 /* ---------------------------------------------------------- */
@@ -123,6 +196,9 @@ set_grid (const std::shared_ptr<const AbstractGrid>& grid)
   EKAT_REQUIRE_MSG (grid->is_unique(),
       "Error! I/O only supports grids which are 'unique', meaning that the\n"
       "       map dof_gid->proc_id is well defined.\n");
+  EKAT_REQUIRE_MSG (
+      (grid->get_global_max_dof_gid()-grid->get_global_min_dof_gid()+1)==grid->get_num_global_dofs(),
+      "Error! In order for IO to work, the grid must (globally) have dof gids in interval [gid_0,gid_0+num_global_dofs).\n");
 
   EKAT_REQUIRE_MSG(m_comm.size()<=grid->get_num_global_dofs(),
       "Error! PIO interface requires the size of the IO MPI group to be\n"
@@ -221,59 +297,13 @@ void AtmosphereInput::read_variables (const int time_index)
 int AtmosphereInput::
 read_int_scalar (const std::string& name)
 {
-  EKAT_REQUIRE_MSG (m_is_inited,
-      "Error! The init method has not been called yet.\n");
-
   return scorpio::get_int_attribute_c2f(m_filename.c_str(),name.c_str());
 }
 
 void AtmosphereInput::
-init(const std::shared_ptr<const fm_type>& field_mgr,
-     const std::shared_ptr<const gm_type>& grids_mgr)
+set_views (const std::map<std::string,view_1d_host>& host_views_1d,
+           const std::map<std::string,FieldLayout>&  layouts)
 {
-  EKAT_REQUIRE_MSG (not m_is_inited,
-      "Error! This instance of AtmosphereInput was already inited.\n"
-      "       We do not allow re-initialization.\n");
-
-  set_field_manager(field_mgr,grids_mgr);
-
-  for (auto const& name : m_fields_names) {
-    auto f = m_field_mgr->get_field(name);
-    const auto& fh  = f.get_header();
-    const auto& fap = fh.get_alloc_properties();
-    const auto& fid = fh.get_identifier();
-    const auto& fl  = fid.get_layout();
-
-    // Store tha layout
-    m_layouts.emplace(name,fl);
-
-    // If we can alias the field's host view, do it.
-    // Otherwise, create a temporary.
-    bool can_alias_field_view = fh.get_parent().expired() && fap.get_padding()==0;
-    if (can_alias_field_view) {
-      auto data = f.get_internal_view_data<Host>();
-      m_host_views_1d[name] = view_1d_host(data,fl.size());
-    } else {
-      // We have padding, or the field is a subfield (or both).
-      // Either way, we need a temporary view.
-      m_host_views_1d[name] = view_1d_host("",fl.size());
-    }
-  }
-
-  init_scorpio_structures ();
-}
-
-void AtmosphereInput::
-init(const std::shared_ptr<const grid_type>& grid,
-     const std::map<std::string,view_1d_host>& host_views_1d,
-     const std::map<std::string,FieldLayout>&  layouts)
-{
-  EKAT_REQUIRE_MSG (not m_is_inited,
-      "Error! This instance of AtmosphereInput was already inited.\n"
-      "       We do not allow re-initialization.\n");
-
-  set_grid(grid);
-
   // Sanity checks
   EKAT_REQUIRE_MSG (host_views_1d.size()==m_fields_names.size(),
       "Error! Input host views map has the wrong size.\n"
@@ -290,29 +320,17 @@ init(const std::shared_ptr<const grid_type>& grid,
     m_layouts.emplace(name,layouts.at(name));
     m_host_views_1d[name] = host_views_1d.at(name);
   }
-
-  init_scorpio_structures ();
 }
 
 /* ---------------------------------------------------------- */
 void AtmosphereInput::finalize() 
 {
-  EKAT_REQUIRE_MSG (m_is_inited,
-      "Error! The init method has not been called yet.\n");
-
   scorpio::eam_pio_closefile(m_filename);
 } // finalize
 
 /* ---------------------------------------------------------- */
 void AtmosphereInput::init_scorpio_structures() 
 {
-  // This method ensures that the nc file is open, and that all
-  // the variables (along with their dimensions) are correctly
-  // registered, and sets up scorpio for reading.
-
-  // Register netCDF file for input.
-  scorpio::register_file(m_filename,scorpio::Read);
-
   // Register variables with netCDF file.
   register_variables();
   set_degrees_of_freedom();
@@ -321,7 +339,7 @@ void AtmosphereInput::init_scorpio_structures()
   scorpio::set_decomp  (m_filename); 
 
   m_is_inited = true;
-} // init
+}
 
 /* ---------------------------------------------------------- */
 void AtmosphereInput::register_variables()
@@ -397,24 +415,35 @@ get_var_dof_offsets(const FieldLayout& layout)
   std::vector<int> var_dof(layout.size());
 
   // Gather the offsets of the dofs of this variable w.r.t. the *global* array.
-  // These are not the dofs global ids (which are just labels, and can be whatever,
-  // and in fact are not even contiguous when Homme generates the dof gids).
-  // So, if the returned vector is {2,3,4,5}, it means that the 4 dofs on this rank
-  // correspond to the 3rd,4th,5th, and 6th dofs globally.
+  // Since we order the global array based on dof gid, and we *assume* (we actually
+  // check this during set_grid) that the grid global gids are in the interval
+  // [gid_0, gid_0+num_global_dofs), the offset is simply given by
+  // (dof_gid-gid_0)*column_size (for partitioned arrays).
   if (layout.has_tag(ShortFieldTagsNames::COL)) {
     const int num_cols = m_grid->get_num_local_dofs();
 
     // Note: col_size might be *larger* than the number of vertical levels, or even smalle.
     //       E.g., (ncols,2,nlevs), or (ncols,2) respectively.
-    Int col_size = layout.size() / num_cols;
+    int col_size = layout.size() / num_cols;
 
-    // Compute the number of columns owned by all previous ranks.
-    int offset = 0;
-    m_comm.scan(&num_cols,&offset,1,MPI_SUM);
-    offset -= num_cols;
+    auto dofs = m_grid->get_dofs_gids();
+    auto dofs_h = Kokkos::create_mirror_view(dofs);
+    Kokkos::deep_copy(dofs_h,dofs);
 
-    // Compute offsets of all my dofs
-    std::iota(var_dof.begin(), var_dof.end(), offset*col_size);
+    // Precompute this *before* the loop, since it involves expensive collectives.
+    // Besides, the loop might have different length on different ranks, so
+    // computing it inside might cause deadlocks.
+    auto min_gid = m_grid->get_global_min_dof_gid();
+    for (int icol=0; icol<num_cols; ++icol) {
+      // Get chunk of var_dof to fill
+      auto start = var_dof.begin()+icol*col_size;
+      auto end   = start+col_size;
+
+      // Compute start of the column offset, then fill column adding 1 to each entry
+      auto gid = dofs_h(icol);
+      auto offset = (gid-min_gid)*col_size;
+      std::iota(start,end,offset);
+    }
   } else {
     // This field is *not* defined over columns, so it is not partitioned.
     std::iota(var_dof.begin(),var_dof.end(),0);
