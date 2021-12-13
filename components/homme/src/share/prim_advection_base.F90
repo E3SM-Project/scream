@@ -855,6 +855,35 @@ OMP_SIMD
   enddo
   call t_stopf('advance_turb_diff')
   end subroutine advance_horiz_turb_scalar
+  
+  subroutine turb_diff_updraft(elem, nt , nets , nete)
+  
+  use kinds          , only : real_kind
+  use dimensions_mod , only : np, nlev
+  use hybrid_mod     , only : hybrid_t
+  use element_mod    , only : element_t
+  use perf_mod       , only : t_startf, t_stopf
+  implicit none
+  type (element_t)     , intent(inout), target :: elem(:)
+  integer              , intent(in   )         :: nt
+  integer              , intent(in   )         :: nets
+  integer              , intent(in   )         :: nete
+
+  do ie = nets , nete
+    do k = 1 , nlev
+      do j = 1 , np
+        do i = 1 , np
+	  if (elem(ie)%state%w_i(i,j,k,nt) .gt. 0.1D0) then
+	    elem(ie)%derived%turb_diff_heat(i,j,k) = 100.0D0
+	  else
+	    elem(ie)%derived%turb_diff_heat(i,j,k) = 0.0D0
+	  endif
+	enddo
+      enddo
+    enddo
+  enddo
+  
+  end subroutine turb_diff_updraft
 
   subroutine advance_physical_vis(elem,hvcoord,hybrid,deriv,nt,nt_qdp,nets,nete,dt,mu)
   !
