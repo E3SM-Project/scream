@@ -40,6 +40,7 @@ module prim_advance_mod
   use reduction_mod,      only: parallelmax, reductionbuffer_ordered_1d_t
   use time_mod,           only: timelevel_qdp, timelevel_t
   use prim_state_mod,     only: prim_diag_scalars, prim_energy_halftimes
+  use prim_advection_base, only: turb_diff_updraft
 #ifndef CAM
   use test_mod,           only: set_prescribed_wind
 #endif
@@ -617,6 +618,10 @@ contains
              elem(ie)%state%vtheta_dp(:,:,k,nt)/elem(ie)%state%dp3d(:,:,k,nt)
      enddo
   enddo
+
+  if (horiz_turb_diff) then
+    call turb_diff_updraft(elem, nt, nets, nete)
+  endif
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !  hyper viscosity

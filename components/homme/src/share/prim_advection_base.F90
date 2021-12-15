@@ -74,6 +74,7 @@ module prim_advection_base
   public :: Prim_Advec_Tracers_remap
   public :: Prim_Advec_Tracers_remap_rk2   
   public :: advance_physical_vis ! so sl_advection can use it
+  public :: turb_diff_updraft
 
   type (EdgeBuffer_t), public :: edgeAdvQminmax ! so gllfvremap_mod can use it
 
@@ -770,6 +771,8 @@ OMP_SIMD
 
   call t_startf('advance_turb_diff')
 
+  call turb_diff_updraft(elem, nt, nets, nete)
+
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !  turbulent diffusion
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -869,14 +872,18 @@ OMP_SIMD
   integer              , intent(in   )         :: nets
   integer              , intent(in   )         :: nete
 
+  integer :: i, j, k, ie
+
   do ie = nets , nete
     do k = 1 , nlev
       do j = 1 , np
         do i = 1 , np
 	  if (elem(ie)%state%w_i(i,j,k,nt) .gt. 0.1D0) then
-	    elem(ie)%derived%turb_diff_heat(i,j,k) = 100.0D0
+	    elem(ie)%derived%turb_diff_heat(i,j,k) = 10000.0D0
+	    elem(ie)%derived%turb_diff_mom(i,j,k) = 10000.0D0
 	  else
 	    elem(ie)%derived%turb_diff_heat(i,j,k) = 0.0D0
+	    elem(ie)%derived%turb_diff_mom(i,j,k) = 0.0D0
 	  endif
 	enddo
       enddo
