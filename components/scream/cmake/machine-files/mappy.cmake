@@ -2,4 +2,6 @@
 set (EKAT_MACH_FILES_PATH ${CMAKE_CURRENT_LIST_DIR}/../../../../externals/ekat/cmake/machine-files)
 set(SCREAM_SPA_DATA_DIR "/sems-data-store/ACME/inputdata/scream" CACHE STRING "")
 
+set (CMAKE_Fortran_FLAGS "-fallow-argument-mismatch" CACHE STRING "")
+
 include (${EKAT_MACH_FILES_PATH}/mappy.cmake)
