@@ -782,30 +782,12 @@ OMP_SIMD
 
   do ic = 1 , hypervis_subcycle_q
     do ie = nets , nete
-
-      if (nu_p>0) then
-#if (defined COLUMN_OPENMP)
-!$omp parallel do private(q,k) collapse(2)
-#endif
-        do q = 1 , qsize
+       do q = 1 , qsize
           do k = 1 , nlev
-            dp(:,:,k) = elem(ie)%derived%dp(:,:,k) - dt2*elem(ie)%derived%divdp_proj(:,:,k)
-            Qtens(:,:,k,q,ie) = elem(ie)%derived%dpdiss_ave(:,:,k)*&
-                                elem(ie)%state%Qdp(:,:,k,q,nt_qdp) / dp(:,:,k)
-          enddo
-        enddo
-
-      else
-#if (defined COLUMN_OPENMP)
-!$omp parallel do private(q,k) collapse(2)
-#endif
-        do q = 1 , qsize
-          do k = 1 , nlev
-            dp(:,:,k) = elem(ie)%derived%dp(:,:,k) - dt2*elem(ie)%derived%divdp_proj(:,:,k)
+            dp(:,:,k) = elem(ie)%derived%dp(:,:,k) - dt*elem(ie)%derived%divdp_proj(:,:,k)
             Qtens(:,:,k,q,ie) = hvcoord%dp0(k)*elem(ie)%state%Qdp(:,:,k,q,nt_qdp) / dp(:,:,k)
-          enddo
-        enddo
-      endif
+         enddo
+      enddo
     enddo ! ie loop
 
     do ie = nets , nete
