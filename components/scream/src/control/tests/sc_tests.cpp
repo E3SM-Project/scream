@@ -257,7 +257,7 @@ TEST_CASE ("recreate_mct_coupling")
 
   // Create import fields
   const auto nondim = Units::nondimensional();
-  FID surf_evaporation_id ("surf_evaporation",   scalar2d_layout, kg/(m*m)/s, grid_name);
+  FID surf_evap_id        ("surf_evap",   scalar2d_layout, kg/(m*m)/s, grid_name);
   FID surf_sens_flux_id   ("surf_sens_flux",     scalar2d_layout, W/(m*m), grid_name);
   FID surf_mom_flux_id    ("surf_mom_flux",      vector2d_layout, W/(m*m), grid_name);
   FID sfc_alb_dir_vis_id  ("sfc_alb_dir_vis",    scalar2d_layout, nondim,  grid_name);
@@ -283,7 +283,7 @@ TEST_CASE ("recreate_mct_coupling")
   // Register fields and tracer group in a FieldManager
   auto fm = std::make_shared<FieldManager> (grid);
   fm->registration_begins();
-  fm->register_field(FR{surf_evaporation_id});
+  fm->register_field(FR{surf_evap_id});
   fm->register_field(FR{surf_sens_flux_id});
   fm->register_field(FR{surf_mom_flux_id});
   fm->register_field(FR{sfc_alb_dir_vis_id});
@@ -302,7 +302,7 @@ TEST_CASE ("recreate_mct_coupling")
   fm->registration_ends();
 
   // Create alias to field views
-  auto surf_evaporation_f = fm->get_field(surf_evaporation_id);
+  auto surf_evap_f        = fm->get_field(surf_evap_id);
   auto surf_sens_flux_f   = fm->get_field(surf_sens_flux_id);
   auto surf_mom_flux_f    = fm->get_field(surf_mom_flux_id);
   auto sfc_alb_dir_vis_f  = fm->get_field(sfc_alb_dir_vis_id);
@@ -321,7 +321,7 @@ TEST_CASE ("recreate_mct_coupling")
   const auto& Q_name = group.m_bundle->get_header().get_identifier().name();
   auto Q = fm->get_field(Q_name);
 
-  auto surf_evaporation_d = surf_evaporation_f.get_view<Real*>();
+  auto surf_evap_d        = surf_evap_f.get_view<Real*>();
   auto surf_sens_flux_d   = surf_sens_flux_f.get_view<Real*>();
   auto surf_mom_flux_d    = surf_mom_flux_f.get_view<Real**>();
   auto sfc_alb_dir_vis_d  = sfc_alb_dir_vis_f.get_view<Real*>();
@@ -336,7 +336,7 @@ TEST_CASE ("recreate_mct_coupling")
   auto qv_d               = qv_f.get_view<Real**>();
   auto precip_liq_surf_d  = precip_liq_surf_f.get_view<Real*>();
 
-  auto surf_evaporation_h = surf_evaporation_f.get_view<Real*,Host>();
+  auto surf_evap_h        = surf_evap_f.get_view<Real*,Host>();
   auto surf_sens_flux_h   = surf_sens_flux_f.get_view<Real*,Host>();
   auto surf_mom_flux_h    = surf_mom_flux_f.get_view<Real**,Host>();
   auto sfc_alb_dir_vis_h  = sfc_alb_dir_vis_f.get_view<Real*,Host>();
@@ -382,7 +382,7 @@ TEST_CASE ("recreate_mct_coupling")
   coupler.register_import("unused",           21);
   coupler.register_import("surf_sens_flux",   22);
   coupler.register_import("surf_lw_flux_up",  23);
-  coupler.register_import("surf_evaporation", 24);
+  coupler.register_import("surf_evap",        24);
   coupler.register_import("unused",           25);
   coupler.register_import("unused",           26);
   coupler.register_import("unused",           27);
@@ -434,7 +434,7 @@ TEST_CASE ("recreate_mct_coupling")
   for (int i=0; i<nruns; ++i) {
 
     // Set import field views to 0
-    surf_evaporation_f.deep_copy(0.0);
+    surf_evap_f.deep_copy(0.0);
     surf_sens_flux_f.deep_copy(0.0);
     surf_mom_flux_f.deep_copy(0.0);
     sfc_alb_dir_vis_f.deep_copy(0.0);
@@ -467,7 +467,7 @@ TEST_CASE ("recreate_mct_coupling")
     coupler.do_export();
 
     // Sync host to device
-    surf_evaporation_f.sync_to_host();
+    surf_evap_f.sync_to_host();
     surf_sens_flux_f.sync_to_host();
     surf_mom_flux_f.sync_to_host();
     sfc_alb_dir_vis_f.sync_to_host();
@@ -496,7 +496,7 @@ TEST_CASE ("recreate_mct_coupling")
       REQUIRE (surf_mom_flux_h   (icol, 1) == -import_raw_data[20 + icol*num_cpl_imports]); // 6th scream import (21st cpl import)
       REQUIRE (surf_sens_flux_h  (icol)    == -import_raw_data[22 + icol*num_cpl_imports]); // 7th scream import (23rd cpl import)
       REQUIRE (surf_lw_flux_up_h (icol)    == -import_raw_data[23 + icol*num_cpl_imports]); // 8th scream import (24th cpl import)
-      REQUIRE (surf_evaporation_h(icol)    == -import_raw_data[24 + icol*num_cpl_imports]); // 9th scream import (24th cpl import)
+      REQUIRE (surf_evap_h       (icol)    == -import_raw_data[24 + icol*num_cpl_imports]); // 9th scream import (24th cpl import)
 
       // Exports
 

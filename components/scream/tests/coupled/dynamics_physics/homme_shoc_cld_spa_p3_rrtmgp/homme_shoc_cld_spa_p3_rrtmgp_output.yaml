@@ -42,7 +42,7 @@ Fields:
       - p_mid
       - phis
       - pseudo_density
-      - surf_evaporation
+      - surf_evap
       - surf_mom_flux
       - surf_sens_flux
       - cldfrac_ice
