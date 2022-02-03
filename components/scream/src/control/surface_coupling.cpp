@@ -112,7 +112,7 @@ register_import(const std::string& fname,
 
     // For import fluxes, we must change the sign as cpl and atm interprete the direction differently.
     if (fname == "surf_mom_flux"    || fname == "surf_sens_flux" ||
-        fname == "surf_latent_flux" || fname == "surf_lw_flux_up") {
+        fname == "surf_evaporation" || fname == "surf_lw_flux_up") {
       m_cpl_scream_sign_change_host(m_num_scream_imports) = -1;
     } else {
       m_cpl_scream_sign_change_host(m_num_scream_imports) = 1;

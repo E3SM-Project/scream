@@ -39,7 +39,7 @@ Field Names:
   - p_mid
   - phis
   - pseudo_density
-  - surf_latent_flux
+  - surf_evaporation
   - surf_mom_flux
   - surf_sens_flux
   - cldfrac_ice

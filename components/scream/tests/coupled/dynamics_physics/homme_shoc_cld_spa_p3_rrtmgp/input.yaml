@@ -12,7 +12,7 @@ Time Stepping:
 Initial Conditions:
   Physics GLL:
     Filename: homme_shoc_cld_spa_p3_rrtmgp_init_ne2np4.nc
-    surf_latent_flux: 0.0
+    surf_evaporation: 0.0
     surf_sens_flux: 0.0
 
 Atmosphere Processes:
