@@ -1,0 +1,35 @@
+====================
+SCREAM Documentation
+====================
+
+This plain-text README is meta-documentation for you, the reader, if you're
+interested in contributing to our nascent documentation effort.
+
+We are trying out MkDocs (https://mkdocs.org), a simple static website generator
+for people who are tired of trying to get Sphinx to work properly. Our goal is
+to use MkDocs to build two important pieces of documentation for SCREAM:
+
+1. A User Guide, which explains to climate scientists how to build SCREAM and
+   configure and run cases of interest.
+2. A Developer Guide, which serves as the primary resource for developers who
+   contribute to SCREAM.
+
+You can read all you want about MkDocs at the above link, but here are the
+essentials:
+
+* In the MkDocs universe, all documentation is written using Markdown and a set
+  of nifty configurable extensions (including Latex-style math!).
+* Documentation files are organized into folders corresponding to the User
+  Guide (user/), the Developer Guide (dev/), and common elements (common/). In
+  principle, we can make as deep a hierarchy as we want (and people with
+  advanced degrees love to go nuts with deep hierachies!), but let's start
+  simple.
+* MkDocs is configured using settings in mkdocs.yml, which lives in SCREAM's
+  top-level source directory.
+* The only thing you'll probably have to change in mkdocs.yml is the nav
+  section, near the top of the file. This section contains three basic elements:
+  * The SCREAM documentation home page
+  * A link to the User Guide and its sections
+  * A link to the Developer Guide and its sections
+
+
