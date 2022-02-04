@@ -117,9 +117,6 @@ else ()
   set (SCREAM_DEBUG FALSE)
 endif()
 
-enable_testing()
-include(CTest)
-
 set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -cpp")
 
 # Determine if this is a Cuda build.
@@ -336,10 +333,6 @@ print_var(SCREAM_TPL_LIBRARIES)
 # whether to include scream_config.h.
 add_definitions(-DSCREAM_CONFIG_IS_CMAKE)
 
-if (EKAT_ENABLE_CUDA_MEMCHECK)
-  add_definitions(-DEKAT_ENABLE_CUDA_MEMCHECK)
-endif()
-
 # Hooks for testing test-all-scream within test-scripts
 if ($ENV{SCREAM_FORCE_BUILD_FAIL})
   add_definitions(-DSCREAM_FORCE_BUILD_FAIL)
@@ -374,6 +367,44 @@ print_var(SCREAM_DYNAMICS_DYCORE)
 set (SCREAM_F90_MODULES ${CMAKE_CURRENT_BINARY_DIR}/modules)
 
 file(MAKE_DIRECTORY ${SCREAM_TEST_DATA_DIR})
+
+#######################################
+#         Testing configs             #
+#######################################
+
+# Only add testing options if we're not in a "lib-only" build
+# or in a 'fake' build (used to test the testing scripts)
+if (NOT SCREAM_LIB_ONLY OR DEFINED ENV{SCREAM_FAKE_ONLY})
+  enable_testing()
+  include(CTest)
+  option (SCREAM_TEST_LAUNCHER_BUFFER "Whether test-launcher should buffer all out and print all at once. Useful for avoiding interleaving output when multiple tests are running concurrently" OFF)
+  option (SCREAM_ENABLE_VALGRIND "Whether tests should be run through valgrind" OFF)
+  option (SCREAM_ENABLE_CUDA_MEMCHECK "Whether tests should be run through cuda-memcheck" OFF)
+  if (SCREAM_ENABLE_CUDA_MEMCHECK AND NOT Kokkos_ENABLE_CUDA)
+    message(FATAL_ERROR "Makes no sense to turn on cuda-memcheck without CUDA")
+  endif()
+
+  if (SCREAM_ENABLE_CUDA_MEMCHECK AND SCREAM_ENABLE_VALGRIND)
+    message(FATAL_ERROR "Cannot simultanously enable valgrind and cuda-memcheck")
+  endif()
+
+  # Generate suppressions file for testing
+  include (EkatValgrindSupport)
+  EkatGenerateValgrindSuppressions (
+    MPIEXEC ${CMAKE_CXX_COMPILER}
+    SUPP_FILE_DIR ${SCREAM_BIN_DIR}
+  )
+
+  # Configure/install test-launcher to build/install folder
+  if (CUDA_BUILD)
+    set (TEST_LAUNCHER_ON_GPU True)
+  else()
+    set (TEST_LAUNCHER_ON_GPU False)
+  endif()
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/bin/test-launcher
+                 ${CMAKE_BINARY_DIR}/bin/test-launcher)
+endif()
+#######################################
 
 add_custom_target(baseline)
 add_custom_target(baseline_cxx)

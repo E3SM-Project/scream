@@ -46,7 +46,7 @@ set(P3_TESTS_SRCS
 # it via the FIXTURES_REQUIRED property.
 # (See https://cmake.org/cmake/help/latest/prop_test/FIXTURES_REQUIRED.html)
 CreateUnitTest(p3_test_setup p3_test_setup.cpp "${NEED_LIBS}"
-               EXCLUDE_MAIN_CPP PROPERTIES FIXTURES_SETUP p3_tables)
+               EXCLUDE_CATCH_MAIN PROPERTIES FIXTURES_SETUP p3_tables)
 
 if (SCREAM_DEBUG AND NOT EKAT_ENABLE_CUDA_MEMCHECK)
   set (FORCE_RUN_DIFF_FAILS TRUE)
@@ -73,14 +73,14 @@ CreateUnitTest(p3_run_and_cmp_cxx "p3_run_and_cmp.cpp" "${NEED_LIBS}"
                THREADS ${SCREAM_TEST_MAX_THREADS}
                EXE_ARGS "-b ${SCREAM_TEST_DATA_DIR}/p3_run_and_cmp.baseline"
                PROPERTIES FIXTURES_REQUIRED p3_tables
-               EXCLUDE_MAIN_CPP
+               EXCLUDE_CATCH_MAIN
                LABELS "p3;physics")
 
 CreateUnitTest(p3_run_and_cmp_f90 "p3_run_and_cmp.cpp" "${NEED_LIBS}"
                THREADS ${SCREAM_TEST_MAX_THREADS}
                EXE_ARGS "-f -b ${SCREAM_TEST_DATA_DIR}/p3_run_and_cmp.baseline"
                PROPERTIES FIXTURES_REQUIRED p3_tables
-               EXCLUDE_MAIN_CPP
+               EXCLUDE_CATCH_MAIN
                LABELS "p3;physics")
 
 # Make sure that a diff from baselines triggers a failed test (in debug only)
@@ -89,7 +89,7 @@ CreateUnitTest(p3_run_and_cmp_cxx_fail "p3_run_and_cmp.cpp" "${NEED_LIBS}"
                THREADS ${SCREAM_TEST_MAX_THREADS}
                EXE_ARGS "-b ${SCREAM_TEST_DATA_DIR}/p3_run_and_cmp.baseline"
                PROPERTIES FIXTURES_REQUIRED p3_tables WILL_FAIL ${FORCE_RUN_DIFF_FAILS}
-               EXCLUDE_MAIN_CPP
+               EXCLUDE_CATCH_MAIN
                LABELS "p3;physics;fail")
 
 # By default, baselines should be created using all fortran (make baseline). If the user wants

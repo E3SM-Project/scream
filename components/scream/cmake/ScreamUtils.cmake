@@ -91,6 +91,24 @@ function(CreateUnitTestFromExec test_name test_exec)
     list(APPEND options MPI_EXTRA_ARGS ${SCREAM_MPI_EXTRA_ARGS})
   endif ()
 
+  # Set up launcher
+  set(launcher "${CMAKE_BINARY_DIR}/bin/test-launcher")
+  if (cutfe_PRINT_OMP_AFFINITY)
+    string(APPEND launcher " -p")
+  endif()
+  if (SCREAM_TEST_LAUNCHER_BUFFER)
+    string(APPEND launcher " -b")
+  endif()
+  string(APPEND launcher " --")
+
+  # Setup valgrind/memcheck commmand modifications
+  if (SCREAM_ENABLE_VALGRIND)
+    set(VALGRIND_SUP_FILE "${SCREAM_BIN_DIR}/mpi.supp")
+    string (APPEND launcher " valgrind --error-exitcode=1 --suppressions=${VALGRIND_SUP_FILE} ${invokeExec}")
+  elseif(SCREAM_ENABLE_CUDA_MEMCHECK)
+    string(APPEND launcher " cuda-memcheck --error-exitcode 1")
+  endif()
+
   #
   # If asking for mpi/omp ranks/threads, verify we stay below the max number of threads
   #
@@ -129,7 +147,8 @@ function(CreateUnitTestFromExec test_name test_exec)
   endif()
 
   EkatCreateUnitTestFromExec("${test_name}" "${test_exec}" ${options}
-    MPI_EXEC_NAME ${SCREAM_MPIRUN_EXE} MPI_NP_FLAG ${SCREAM_MPI_NP_FLAG})
+    MPI_EXEC_NAME ${SCREAM_MPIRUN_EXE} MPI_NP_FLAG ${SCREAM_MPI_NP_FLAG}
+    EXEC_LAUNCHER ${launcher})
 
 endfunction(CreateUnitTestFromExec)
 

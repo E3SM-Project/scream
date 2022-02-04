@@ -79,12 +79,12 @@ endif()
 CreateUnitTest(shoc_run_and_cmp_cxx "shoc_run_and_cmp.cpp" "${NEED_LIBS}"
                THREADS ${SCREAM_TEST_MAX_THREADS}
                EXE_ARGS "-b ${SCREAM_TEST_DATA_DIR}/shoc_run_and_cmp.baseline"
-               EXCLUDE_MAIN_CPP)
+               EXCLUDE_CATCH_MAIN)
 
 CreateUnitTest(shoc_run_and_cmp_f90 "shoc_run_and_cmp.cpp" "${NEED_LIBS}"
                THREADS ${SCREAM_TEST_MAX_THREADS}
                EXE_ARGS "-f -b ${SCREAM_TEST_DATA_DIR}/shoc_run_and_cmp.baseline"
-               EXCLUDE_MAIN_CPP)
+               EXCLUDE_CATCH_MAIN)
 
 # By default, baselines should be created using all fortran (make baseline). If the user wants
 # to use CXX to generate their baselines, they should use "make baseline_cxx".

@@ -93,10 +93,10 @@ class TestAllScream(object):
             "opt" : [("CMAKE_BUILD_TYPE", "Release")],
             "valg" : [("CMAKE_BUILD_TYPE", "Debug"),
                       ("SCREAM_TEST_PROFILE", "SHORT"),
-                      ("EKAT_ENABLE_VALGRIND", "True")],
+                      ("SCREAM_ENABLE_VALGRIND", "True")],
             "cmc"  : [("CMAKE_BUILD_TYPE", "Debug"),
                       ("SCREAM_TEST_PROFILE", "SHORT"),
-                      ("EKAT_ENABLE_CUDA_MEMCHECK", "True")],
+                      ("SCREAM_ENABLE_CUDA_MEMCHECK", "True")],
             "cov" : [("CMAKE_BUILD_TYPE", "Debug"),
                       ("EKAT_ENABLE_COVERAGE", "True")],
         }
@@ -460,7 +460,7 @@ remove existing baselines first. Otherwise, please run 'git fetch $remote'.
         # The output coming from all tests at the same time will be a mixed-up mess
         # unless we tell test-launcher to buffer all output
         if self._extra_verbose:
-            result += " -DEKAT_TEST_LAUNCHER_BUFFER=True "
+            result += " -DSCREAM_TEST_LAUNCHER_BUFFER=True "
 
         # User-requested config options
         custom_opts_keys = []

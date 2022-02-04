@@ -49,4 +49,7 @@
 // Whether experimental code should be enabled
 #cmakedefine SCREAM_ENABLE_EXPERIMENTAL
 
+// Whether scream is configured to be tested with cuda-memcheck
+#cmakedefine SCREAM_ENABLE_CUDA_MEMCHECK
+
 #endif
