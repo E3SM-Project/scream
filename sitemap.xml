@@ -16,17 +16,12 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://e3sm-project.github.io/scream/dev/ad/</loc>
+         <loc>https://e3sm-project.github.io/scream/dev/data_structures/</loc>
          <lastmod>2022-02-05</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://e3sm-project.github.io/scream/dev/architecture/</loc>
-         <lastmod>2022-02-05</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
-    <url>
-         <loc>https://e3sm-project.github.io/scream/dev/building_blocks/</loc>
+         <loc>https://e3sm-project.github.io/scream/dev/perf_blocks/</loc>
          <lastmod>2022-02-05</lastmod>
          <changefreq>daily</changefreq>
     </url>
@@ -42,6 +37,46 @@
     </url>
     <url>
          <loc>https://e3sm-project.github.io/scream/dev/testing/</loc>
+         <lastmod>2022-02-05</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://e3sm-project.github.io/scream/dev/concepts/ad/</loc>
+         <lastmod>2022-02-05</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://e3sm-project.github.io/scream/dev/concepts/atm_proc/</loc>
+         <lastmod>2022-02-05</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://e3sm-project.github.io/scream/dev/concepts/field/</loc>
+         <lastmod>2022-02-05</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://e3sm-project.github.io/scream/dev/concepts/fm/</loc>
+         <lastmod>2022-02-05</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://e3sm-project.github.io/scream/dev/concepts/grid/</loc>
+         <lastmod>2022-02-05</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://e3sm-project.github.io/scream/dev/concepts/io/</loc>
+         <lastmod>2022-02-05</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://e3sm-project.github.io/scream/dev/concepts/remap/</loc>
+         <lastmod>2022-02-05</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://e3sm-project.github.io/scream/dev/concepts/sc/</loc>
          <lastmod>2022-02-05</lastmod>
          <changefreq>daily</changefreq>
     </url>

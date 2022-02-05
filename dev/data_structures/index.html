@@ -8,14 +8,14 @@
       
       
       
-        <link rel="canonical" href="https://e3sm-project.github.io/scream/dev/processes/">
+        <link rel="canonical" href="https://e3sm-project.github.io/scream/dev/data_structures/">
       
       <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.2.3, mkdocs-material-8.1.9">
     
     
       
-        <title>Atmospheric Processes - Simple Cloud-Resolving E3SM Atmosphere Model (SCREAM)</title>
+        <title>SCREAM data structures - Simple Cloud-Resolving E3SM Atmosphere Model (SCREAM)</title>
       
     
     
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#atmospheric-processes" class="md-skip">
+        <a href="#scream-data-structures" class="md-skip">
           Skip to content
         </a>
       
@@ -97,7 +97,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Atmospheric Processes
+              SCREAM data structures
             
           </span>
         </div>
@@ -378,11 +378,21 @@
               
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../data_structures/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         SCREAM data structures
       </a>
+      
     </li>
   
 
@@ -406,87 +416,11 @@
               
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          Atmospheric Processes
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../processes/" class="md-nav__link">
         Atmospheric Processes
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#the-atmosphereprocess-class" class="md-nav__link">
-    The AtmosphereProcess Class
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#microphysics-p3" class="md-nav__link">
-    Microphysics (P3)
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#macrophysicsturbulence-shoc" class="md-nav__link">
-    Macrophysics/Turbulence (SHOC)
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cloud-fraction-cld" class="md-nav__link">
-    Cloud fraction (CLD)
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#radiation-rrtmgp" class="md-nav__link">
-    Radiation (RRTMGP)
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#aerosols-spa" class="md-nav__link">
-    Aerosols (SPA)
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -532,56 +466,6 @@
     
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#the-atmosphereprocess-class" class="md-nav__link">
-    The AtmosphereProcess Class
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#microphysics-p3" class="md-nav__link">
-    Microphysics (P3)
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#macrophysicsturbulence-shoc" class="md-nav__link">
-    Macrophysics/Turbulence (SHOC)
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cloud-fraction-cld" class="md-nav__link">
-    Cloud fraction (CLD)
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#radiation-rrtmgp" class="md-nav__link">
-    Radiation (RRTMGP)
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#aerosols-spa" class="md-nav__link">
-    Aerosols (SPA)
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -593,16 +477,32 @@
               
                 
 
-<h1 id="atmospheric-processes">Atmospheric Processes</h1>
-<p>Should we describe them in detail? Maybe just point out
-characteristic features.</p>
-<h2 id="the-atmosphereprocess-class">The AtmosphereProcess Class</h2>
-<h2 id="microphysics-p3">Microphysics (P3)</h2>
-<h2 id="macrophysicsturbulence-shoc">Macrophysics/Turbulence (SHOC)</h2>
-<h2 id="cloud-fraction-cld">Cloud fraction (CLD)</h2>
-<p>This maybe can be skipped...</p>
-<h2 id="radiation-rrtmgp">Radiation (RRTMGP)</h2>
-<h2 id="aerosols-spa">Aerosols (SPA)</h2>
+<h1 id="scream-data-structures">SCREAM data structures</h1>
+<p>Here's a list of the most important data structures that are used in SCREAM.</p>
+<ul>
+<li>The <a href="../concepts/field/">Field</a> class stack.</li>
+<li>The <a href="../concepts/grid/">AbstractGrid</a> interface.</li>
+<li>The <a href="../concepts/remap/">AbstractRemapper</a> interface.</li>
+<li>The <a href="../concepts/fm/">FieldManager and GridsManager</a> classes.</li>
+<li>The <a href="../concepts/atm_proc/">AtmosphereProcess</a> interface.</li>
+<li>The <a href="../concepts/io/">IO</a> classes.</li>
+<li>The <a href="../concepts/sc/">SurfaceCoupling</a> class.</li>
+<li>The <a href="../concepts/ad/">AtmosphereDriver</a> class.</li>
+</ul>
+<p>Talk also about where concrete instances of the abstract interfaces are.
+E.g., talk about HommeDynamics, P3Microphysics, etc, or the AtmosphereProcessGroup.
+Also talk about the very important PhysicsDynamicsRemapper.</p>
+<p>Finally, find the place to talk about how scream hooks up to E3SM. Part of it
+is the SurfaceCoupling, but there's more (all the content of <code>mct_coupling</code> folder).
+Maybe AD, SC, and mct hooks should be in their own page?</p>
+<p>In the rest of this page, give a bird-eye view of how the above classes are interconnected,
+like "each atm proc receives input fields and compute output fields, stored in the
+field manager. each field is defined on a particular grid, and grid remapping is handled
+by the remappers. IO classes allow to read inputd (such as IC files), and write output
+(including restart files). The AD stores everything, and is in charge of init-ing everything, calling
+all routines in the right order during normal time-step, and cleanup at the end."</p>
+<p>Details on pre-post conditions, impl details, etc., for each class/data struct will be given
+in their own pages.</p>
 
               
             </article>
@@ -621,7 +521,7 @@ characteristic features.</p>
     <nav class="md-footer__inner md-grid" aria-label="Footer">
       
         
-        <a href="../perf_blocks/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Performance portability structures" rel="prev">
+        <a href="../style_guide/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Style Guide" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
           </div>
@@ -630,20 +530,20 @@ characteristic features.</p>
               <span class="md-footer__direction">
                 Previous
               </span>
-              Performance portability structures
+              Style Guide
             </div>
           </div>
         </a>
       
       
         
-        <a href="../testing/" class="md-footer__link md-footer__link--next" aria-label="Next: Testing" rel="next">
+        <a href="../perf_blocks/" class="md-footer__link md-footer__link--next" aria-label="Next: Performance portability structures" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Testing
+              Performance portability structures
             </div>
           </div>
           <div class="md-footer__button md-icon">

@@ -8,21 +8,21 @@
       
       
       
-        <link rel="canonical" href="https://e3sm-project.github.io/scream/dev/processes/">
+        <link rel="canonical" href="https://e3sm-project.github.io/scream/dev/concepts/remap/">
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.2.3, mkdocs-material-8.1.9">
     
     
       
-        <title>Atmospheric Processes - Simple Cloud-Resolving E3SM Atmosphere Model (SCREAM)</title>
+        <title>Remap - Simple Cloud-Resolving E3SM Atmosphere Model (SCREAM)</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.2b4465f4.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.2b4465f4.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.e6a45f82.min.css">
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.e6a45f82.min.css">
         
       
     
@@ -36,7 +36,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#atmospheric-processes" class="md-skip">
+        <a href="#remap" class="md-skip">
           Skip to content
         </a>
       
@@ -78,7 +78,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="Simple Cloud-Resolving E3SM Atmosphere Model (SCREAM)" class="md-header__button md-logo" aria-label="Simple Cloud-Resolving E3SM Atmosphere Model (SCREAM)" data-md-component="logo">
+    <a href="../../.." title="Simple Cloud-Resolving E3SM Atmosphere Model (SCREAM)" class="md-header__button md-logo" aria-label="Simple Cloud-Resolving E3SM Atmosphere Model (SCREAM)" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
@@ -97,7 +97,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Atmospheric Processes
+              Remap
             
           </span>
         </div>
@@ -198,7 +198,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="Simple Cloud-Resolving E3SM Atmosphere Model (SCREAM)" class="md-nav__button md-logo" aria-label="Simple Cloud-Resolving E3SM Atmosphere Model (SCREAM)" data-md-component="logo">
+    <a href="../../.." title="Simple Cloud-Resolving E3SM Atmosphere Model (SCREAM)" class="md-nav__button md-logo" aria-label="Simple Cloud-Resolving E3SM Atmosphere Model (SCREAM)" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
@@ -229,7 +229,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         Home
       </a>
     </li>
@@ -272,7 +272,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user/" class="md-nav__link">
+      <a href="../../../user/" class="md-nav__link">
         Overview
       </a>
     </li>
@@ -286,7 +286,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/installation/" class="md-nav__link">
+      <a href="../../../common/installation/" class="md-nav__link">
         Installation
       </a>
     </li>
@@ -306,16 +306,14 @@
 
   
   
-    
-  
   
     
       
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
       
-        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3" type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3" type="checkbox" id="__nav_3" >
       
       
       
@@ -338,7 +336,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+      <a href="../../" class="md-nav__link">
         Overview
       </a>
     </li>
@@ -352,7 +350,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/installation/" class="md-nav__link">
+      <a href="../../../common/installation/" class="md-nav__link">
         Installation
       </a>
     </li>
@@ -366,7 +364,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../style_guide/" class="md-nav__link">
+      <a href="../../style_guide/" class="md-nav__link">
         Style Guide
       </a>
     </li>
@@ -380,7 +378,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../data_structures/" class="md-nav__link">
+      <a href="../../data_structures/" class="md-nav__link">
         SCREAM data structures
       </a>
     </li>
@@ -394,7 +392,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../perf_blocks/" class="md-nav__link">
+      <a href="../../perf_blocks/" class="md-nav__link">
         Performance portability structures
       </a>
     </li>
@@ -406,87 +404,11 @@
               
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          Atmospheric Processes
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../processes/" class="md-nav__link">
         Atmospheric Processes
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#the-atmosphereprocess-class" class="md-nav__link">
-    The AtmosphereProcess Class
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#microphysics-p3" class="md-nav__link">
-    Microphysics (P3)
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#macrophysicsturbulence-shoc" class="md-nav__link">
-    Macrophysics/Turbulence (SHOC)
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cloud-fraction-cld" class="md-nav__link">
-    Cloud fraction (CLD)
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#radiation-rrtmgp" class="md-nav__link">
-    Radiation (RRTMGP)
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#aerosols-spa" class="md-nav__link">
-    Aerosols (SPA)
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -498,7 +420,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/" class="md-nav__link">
+      <a href="../../testing/" class="md-nav__link">
         Testing
       </a>
     </li>
@@ -532,56 +454,6 @@
     
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#the-atmosphereprocess-class" class="md-nav__link">
-    The AtmosphereProcess Class
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#microphysics-p3" class="md-nav__link">
-    Microphysics (P3)
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#macrophysicsturbulence-shoc" class="md-nav__link">
-    Macrophysics/Turbulence (SHOC)
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cloud-fraction-cld" class="md-nav__link">
-    Cloud fraction (CLD)
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#radiation-rrtmgp" class="md-nav__link">
-    Radiation (RRTMGP)
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#aerosols-spa" class="md-nav__link">
-    Aerosols (SPA)
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -593,16 +465,9 @@
               
                 
 
-<h1 id="atmospheric-processes">Atmospheric Processes</h1>
-<p>Should we describe them in detail? Maybe just point out
-characteristic features.</p>
-<h2 id="the-atmosphereprocess-class">The AtmosphereProcess Class</h2>
-<h2 id="microphysics-p3">Microphysics (P3)</h2>
-<h2 id="macrophysicsturbulence-shoc">Macrophysics/Turbulence (SHOC)</h2>
-<h2 id="cloud-fraction-cld">Cloud fraction (CLD)</h2>
-<p>This maybe can be skipped...</p>
-<h2 id="radiation-rrtmgp">Radiation (RRTMGP)</h2>
-<h2 id="aerosols-spa">Aerosols (SPA)</h2>
+<h1 id="remap">Remap</h1>
+<p>Describe what a remapper does. Should be very fast for the generic class.</p>
+<p>Should we put this in grid.md? Maybe.</p>
 
               
             </article>
@@ -617,41 +482,6 @@ characteristic features.</p>
       </main>
       
         <footer class="md-footer">
-  
-    <nav class="md-footer__inner md-grid" aria-label="Footer">
-      
-        
-        <a href="../perf_blocks/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Performance portability structures" rel="prev">
-          <div class="md-footer__button md-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
-          </div>
-          <div class="md-footer__title">
-            <div class="md-ellipsis">
-              <span class="md-footer__direction">
-                Previous
-              </span>
-              Performance portability structures
-            </div>
-          </div>
-        </a>
-      
-      
-        
-        <a href="../testing/" class="md-footer__link md-footer__link--next" aria-label="Next: Testing" rel="next">
-          <div class="md-footer__title">
-            <div class="md-ellipsis">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              Testing
-            </div>
-          </div>
-          <div class="md-footer__button md-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>
-          </div>
-        </a>
-      
-    </nav>
   
   <div class="md-footer-meta md-typeset">
     <div class="md-footer-meta__inner md-grid">
@@ -673,12 +503,12 @@ characteristic features.</p>
     <div class="md-dialog" data-md-component="dialog">
       <div class="md-dialog__inner md-typeset"></div>
     </div>
-    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.indices", "navigation.instant", "navigation.sections", "navigation.top"], "translations": {"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.term.missing": "Missing", "select.version.title": "Select version"}, "search": "../../assets/javascripts/workers/search.22074ed6.min.js"}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.indices", "navigation.instant", "navigation.sections", "navigation.top"], "translations": {"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.term.missing": "Missing", "select.version.title": "Select version"}, "search": "../../../assets/javascripts/workers/search.22074ed6.min.js"}</script>
     
     
-      <script src="../../assets/javascripts/bundle.960e086b.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.960e086b.min.js"></script>
       
-        <script src="../../javascript/mathjax.js"></script>
+        <script src="../../../javascript/mathjax.js"></script>
       
         <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
       
