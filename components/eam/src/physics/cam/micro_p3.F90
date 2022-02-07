@@ -2760,7 +2760,7 @@ subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,inv_qc_relvar,    &
       !Khroutdinov and Kogan (2000)
       !print*,'p3_qc_autocon_expon = ',p3_qc_autocon_expon
       !sbgrd_var_coef = subgrid_variance_scaling(inv_qc_relvar, 2.47_rtype)
-      sbgrd_var_coef = 1._rtype    ! no subgrid enhancement
+      sbgrd_var_coef = 1.e-1_rtype    ! no subgrid enhancement + 10% reduction
       qc2qr_autoconv_tend = sbgrd_var_coef*1350._rtype*bfb_pow(qc_incld,2.47_rtype)*bfb_pow(nc_incld*1.e-6_rtype*rho,-1.79_rtype)
       !ncautr is change in nr: assume all new raindrops are 25 micron in diameter
       ncautr = qc2qr_autoconv_tend*cons3
