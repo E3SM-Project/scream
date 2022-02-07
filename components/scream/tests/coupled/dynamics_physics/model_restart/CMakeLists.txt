@@ -98,8 +98,8 @@ configure_file(${SCREAM_SRC_DIR}/dynamics/homme/tests/theta.nl
                ${CMAKE_CURRENT_BINARY_DIR}/namelist.nl)
 
 # Copy initial conditions files
-GetInputFile(init/homme_physics_ne2np4.nc
-  ${CMAKE_CURRENT_BINARY_DIR}/homme_physics_ne2np4.nc)
+GetInputFile(init/homme_physics_ne2np4_20220204.nc
+  ${CMAKE_CURRENT_BINARY_DIR}/homme_physics_ne2np4_20220204.nc)
 
 # Create vcoord directory
 file (MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/vcoord)
