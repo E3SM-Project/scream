@@ -2760,7 +2760,7 @@ subroutine cloud_water_autoconversion(rho,qc_incld,nc_incld,inv_qc_relvar,    &
       !Khroutdinov and Kogan (2000)
       !print*,'p3_qc_autocon_expon = ',p3_qc_autocon_expon
       !sbgrd_var_coef = subgrid_variance_scaling(inv_qc_relvar, 2.47_rtype)
-      sbgrd_var_coef = 1.e-1_rtype    ! no subgrid enhancement + 10% reduction
+      sbgrd_var_coef = 1.0_rtype    ! no subgrid enhancement
       qc2qr_autoconv_tend = sbgrd_var_coef*1350._rtype*bfb_pow(qc_incld,2.47_rtype)*bfb_pow(nc_incld*1.e-6_rtype*rho,-1.79_rtype)
       !ncautr is change in nr: assume all new raindrops are 25 micron in diameter
       ncautr = qc2qr_autoconv_tend*cons3
@@ -3466,6 +3466,7 @@ qr2qv_evap_tend,nr_evap_tend)
       !If there's negligible qr and conditions are subsaturated, evaporate all qr
       if (qr_incld < 1e-12_rtype .and. qv/qv_sat_l < 0.999_rtype) then
          qr2qv_evap_tend = qr_incld*inv_dt
+         qr2qv_evap_tend = 0.0_rtype !CRT:Enforce no rain evaporation
 
       !If sizable qr, compute tend.
       else
@@ -3493,6 +3494,7 @@ qr2qv_evap_tend,nr_evap_tend)
 
          qr2qv_evap_tend = instant_evap_tend*tscale_weight &
               + equilib_evap_tend*(1._rtype-tscale_weight)
+         qr2qv_evap_tend = 0.0_rtype !CRT:Enforce no rain evaporation
 
       end if
 
