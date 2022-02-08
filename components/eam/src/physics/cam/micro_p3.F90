@@ -3466,7 +3466,6 @@ qr2qv_evap_tend,nr_evap_tend)
       !If there's negligible qr and conditions are subsaturated, evaporate all qr
       if (qr_incld < 1e-12_rtype .and. qv/qv_sat_l < 0.999_rtype) then
          qr2qv_evap_tend = qr_incld*inv_dt
-         qr2qv_evap_tend = 0.0_rtype !CRT:Enforce no rain evaporation
 
       !If sizable qr, compute tend.
       else
@@ -3494,7 +3493,7 @@ qr2qv_evap_tend,nr_evap_tend)
 
          qr2qv_evap_tend = instant_evap_tend*tscale_weight &
               + equilib_evap_tend*(1._rtype-tscale_weight)
-         qr2qv_evap_tend = 0.0_rtype !CRT:Enforce no rain evaporation
+         qr2qv_evap_tend = 0.1_rtype*qr2qv_evap_tend !CRT:Enforce 1/10 rain evaporation
 
       end if
 
