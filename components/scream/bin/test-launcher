@@ -119,7 +119,6 @@ def run_test(buffer_output,print_omp_affinity,exec_args):
 
     # If run with --resource-spec-file, we will have some special env var set
     if "CTEST_RESOURCE_GROUP_COUNT" in env:
-        print ("HAS RESOURCE SPECS")
         # Total number of resources for this test (for all ranks/threads)
         res_count = int(env["CTEST_RESOURCE_GROUP_COUNT"])
         my_res_id = myrank % res_count
@@ -156,7 +155,7 @@ def run_test(buffer_output,print_omp_affinity,exec_args):
 
         # This file is to be run through cmake's configure_file, which will expand the
         # variable TEST_LAUNCHER_ON_GPU to either True or False
-        if ${CUDA_BUILD}:
+        if ${TEST_LAUNCHER_ON_GPU}:
             expect (len(my_ids)==1, "Error! For GPU runs, each rank should use only one device.")
             exec_args.append(" --ekat-kokkos-device {}".format(ids[0]))
         else:
