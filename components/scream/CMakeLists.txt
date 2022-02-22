@@ -22,44 +22,12 @@ list(APPEND CMAKE_MODULE_PATH
      ${CMAKE_CURRENT_SOURCE_DIR}/cmake
      ${CMAKE_CURRENT_SOURCE_DIR}/cmake/tpls
      ${EKAT_CMAKE_PATH}
-     ${EKAT_CMAKE_PATH}/mpi
      ${EKAT_CMAKE_PATH}/pkg_build
 )
 if (SCREAM_CIME_BUILD)
   list(APPEND CMAKE_MODULE_PATH
        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/cime)
 endif ()
-
-include(EkatMpiUtils)
-
-# We should avoid cxx bindings in mpi; they are already deprecated,
-# and can cause headaches at link time, cause they require -lmpi_cxx
-# (for openpmi; -lmpicxx for mpich) flag.
-DisableMpiCxxBindings()
-
-if (Kokkos_ENABLE_CUDA)
-  if (Kokkos_ENABLE_CUDA_RELOCATABLE_DEVICE_CODE)
-    if (Kokkos_ENABLE_DEBUG_BOUNDS_CHECK)
-      string (CONCAT msg
-          "Kokkos_ENALBE_CUDA_RELOCATABLE_DEVICE_CODE=ON, and Kokkos_ENALBE_DEBUG_BOUNDS_CHECK=ON.\n"
-          "   -> Disabling bounds checks, to prevent internal compiler errors.")
-      message(WARNING "${msg}")
-      set (Kokkos_ENABLE_DEBUG_BOUNDS_CHECK OFF CACHE BOOL "" FORCE)
-    else()
-      string (CONCAT msg
-          "Kokkos_ENALBE_CUDA_RELOCATABLE_DEVICE_CODE=ON.\n"
-          "   -> Disabling bounds checks, to prevent internal compiler errors.")
-      message(STATUS "${msg}")
-      set (Kokkos_ENABLE_DEBUG_BOUNDS_CHECK OFF CACHE BOOL "" FORCE)
-    endif()
-  endif()
-  include(EkatBuildKokkos)
-  # Note: we need Kokkos_SOURCE_DIR to be defined *before* calling EkatSetNvccWrapper.
-  EkatSetKokkosSourceDir()
-
-  include (EkatSetNvccWrapper)
-  EkatSetNvccWrapper()
-endif()
 
 # Homme's composef90 library (built for f90 support) requires Kokkos::Serial
 # to be defined, which in turn requires the CMake var Kokkos_ENABLE_SERIAL
@@ -83,6 +51,24 @@ if (NOT SCREAM_CIME_BUILD)
     OUTPUT_STRIP_TRAILING_WHITESPACE)
   set(LAST_GIT_COMMIT_SHA ${LAST_GIT_COMMIT_SHA} CACHE STRING "The sha of the last git commit.")
   message(STATUS "The sha of the last commit is ${LAST_GIT_COMMIT_SHA}")
+endif()
+
+if (Kokkos_ENABLE_CUDA)
+  if (Kokkos_ENABLE_CUDA_RELOCATABLE_DEVICE_CODE)
+    if (Kokkos_ENABLE_DEBUG_BOUNDS_CHECK)
+      string (CONCAT msg
+          "Kokkos_ENALBE_CUDA_RELOCATABLE_DEVICE_CODE=ON, and Kokkos_ENALBE_DEBUG_BOUNDS_CHECK=ON.\n"
+          "   -> Disabling bounds checks, to prevent internal compiler errors.")
+      message(WARNING "${msg}")
+      set (Kokkos_ENABLE_DEBUG_BOUNDS_CHECK OFF CACHE BOOL "" FORCE)
+    else()
+      string (CONCAT msg
+          "Kokkos_ENALBE_CUDA_RELOCATABLE_DEVICE_CODE=ON.\n"
+          "   -> Disabling bounds checks, to prevent internal compiler errors.")
+      message(STATUS "${msg}")
+      set (Kokkos_ENABLE_DEBUG_BOUNDS_CHECK OFF CACHE BOOL "" FORCE)
+    endif()
+  endif()
 endif()
 
 set(SCREAM_DOUBLE_PRECISION TRUE CACHE BOOL "Set to double precision (default True)")
