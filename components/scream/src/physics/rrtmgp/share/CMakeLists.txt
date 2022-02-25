@@ -48,4 +48,14 @@ foreach (SRC_FILE ${GENF90_SOURCE})
 endforeach ()
 set(share_sources ${FORTRAN_SOURCE})
 
+find_package (MPI REQUIRED COMPONENTS Fortran)
 add_library(share_util ${share_sources})
+if (NOT MPI_Fortran_FOUND)
+  message (FATAL_ERROR "share_util library *requires* MPI (Fortran component)")
+endif()
+target_link_libraries (share_util PUBLIC MPI::MPI_Fortran)
+
+# These CPP macros are needed in shr_infnan_mod
+target_compile_definitions(share_util PUBLIC
+  $<$<AND:$<COMPILE_LANGUAGE:Fortran>,$<CXX_COMPILER_ID:GNU>>:CPRGNU>
+  $<$<AND:$<COMPILE_LANGUAGE:Fortran>,$<CXX_COMPILER_ID:Intel>>:CPRINTEL>)

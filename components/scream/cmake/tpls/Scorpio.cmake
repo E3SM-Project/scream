@@ -53,6 +53,9 @@ macro (CreateScorpioTarget CREATE_FLIB)
         target_link_libraries(piof INTERFACE "${netcdf_f_lib};pioc")
       endif ()
     else ()
+      # We don't need (yet) SCORPIO tools
+      option (PIO_ENABLE_TOOLS "Enable SCORPIO tools" OFF)
+
       # Not a CIME build. Add scorpio as a subdir
       add_subdirectory (${E3SM_EXTERNALS_DIR}/scorpio ${CMAKE_BINARY_DIR}/externals/scorpio)
       EkatDisableAllWarning(pioc)
