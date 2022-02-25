@@ -1,8 +1,7 @@
 \documentclass[12pt]{article}
-\usepackage{authblk}
-\bibliographystyle{amermeteorsoc} %uses amermeteorsoc.bib
-\usepackage{natbib} %allows use of \citep{} and \citet{}
-\usepackage{graphicx}
+\usepackage{authblk}      %needed for compiling parts or entire documentation
+\usepackage{graphicx}     %needed for graphics
+\bibliographystyle{../../amermeteorsoc}
 
 \title{Converting Surface Pressure to Sea Level Pressure}
 
@@ -15,5 +14,11 @@
 \maketitle{}
 
 \input{psl_doc.tex}
+
+%bib needs to be tacked onto main so all-text compilation doesn't look for bib in bad location.
+%================================
+\subsection{Bibliography}
+%================================
+\bibliography{../../biblio.bib}
 
 \end{document}

@@ -1,7 +1,8 @@
 \documentclass[12pt]{article}
-\usepackage{authblk}
+\usepackage{authblk} %needed to compile chunks as standalone
+\bibliographystyle{../amermeteorsoc}
 
-\title{Design Document for the Microphysics Scheme Used by SCREAM}
+\title{A next generation driver for EAMxx}
 
 \author[1]{Peter Caldwell}
 \author[2]{Andy Salinger}
@@ -37,5 +38,12 @@
 NOTE: author list for just this section should be culled to just the people working on this section.
 
 \input{driver_doc.tex}
+
+%bibliography needs to be in main b/c will be called from different directories when an individual
+%section is compiled versus when all documentation is compiled.
+%================================
+\subsection{Bibliography}
+%================================
+\bibliography{../bibliography.bib}
 
 \end{document}
