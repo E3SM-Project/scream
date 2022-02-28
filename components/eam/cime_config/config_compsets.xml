@@ -145,52 +145,62 @@
 
   <!-- SCREAM compsets with CMIP6 2010 forcings -->
   <compset>
-    <alias>F2010-SCREAM-LR</alias>
+    <alias>F2010-SCREAM-LR-CICE</alias>
     <lname>2010_EAM%SCREAM-LR_ELM45%SPBC_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset> 
   
   <compset>
-    <alias>F2010-SCREAM-HR</alias>
+    <alias>F2010-SCREAM-HR-CICE</alias>
     <lname>2010_EAM%SCREAM-HR_ELM45%SPBC_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset> 
 
   <compset>
-    <alias>F2010-SCREAM-LR-DYAMOND1</alias>
+    <alias>F2010-SCREAM-LR</alias>
+    <lname>2010_EAM%SCREAM-LR_ELM45%SPBC_MPASSI%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset> 
+  
+  <compset>
+    <alias>F2010-SCREAM-HR</alias>
+    <lname>2010_EAM%SCREAM-HR_ELM45%SPBC_MPASSI%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset> 
+
+  <compset>
+    <alias>F2010-SCREAM-LR-DYAMOND1-CICE</alias>
     <lname>2010_EAM%SCREAM-LR-DYAMOND1_ELM45%SPBC_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
-    <alias>F2010-SCREAM-HR-DYAMOND1</alias>
+    <alias>F2010-SCREAM-HR-DYAMOND1-CICE</alias>
     <lname>2010_EAM%SCREAM-HR-DYAMOND1_ELM45%SPBC_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
-    <alias>F2010-SCREAM-LR-DYAMOND1-MPASSI</alias>
+    <alias>F2010-SCREAM-LR-DYAMOND1</alias>
     <lname>2010_EAM%SCREAM-LR-DYAMOND1_ELM45%SPBC_MPASSI%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
-    <alias>F2010-SCREAM-HR-DYAMOND1-MPASSI</alias>
+    <alias>F2010-SCREAM-HR-DYAMOND1</alias>
     <lname>2010_EAM%SCREAM-HR-DYAMOND1_ELM45%SPBC_MPASSI%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
    <compset>
-    <alias>F2010-SCREAM-LR-DYAMOND2</alias>
+    <alias>F2010-SCREAM-LR-DYAMOND2-CICE</alias>
     <lname>2010_EAM%SCREAM-LR-DYAMOND2_ELM45%SPBC_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
-    <alias>F2010-SCREAM-HR-DYAMOND2</alias>
+    <alias>F2010-SCREAM-HR-DYAMOND2-CICE</alias>
     <lname>2010_EAM%SCREAM-HR-DYAMOND2_ELM45%SPBC_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
   
   <compset>
-    <alias>F2010-SCREAM-LR-DYAMOND2-MPASSI</alias>
+    <alias>F2010-SCREAM-LR-DYAMOND2</alias>
     <lname>2010_EAM%SCREAM-LR-DYAMOND2_ELM45%SPBC_MPASSI%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
-    <alias>F2010-SCREAM-HR-DYAMOND2-MPASSI</alias>
+    <alias>F2010-SCREAM-HR-DYAMOND2</alias>
     <lname>2010_EAM%SCREAM-HR-DYAMOND2_ELM45%SPBC_MPASSI%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
