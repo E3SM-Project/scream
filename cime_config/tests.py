@@ -419,6 +419,8 @@ _TESTS = {
     "e3sm_scream" : {
         "time"  : "03:00:00",
         "tests" : (
+            "SMS_D.ne4pg2_ne4pg2.F2010-SCREAM-HR-CICE",
+            "SMS_D.ne4pg2_ne4pg2.F2010-SCREAM-LR-CICE",
             "SMS_D.ne4pg2_oQU480.F2010-SCREAM-HR",
             "SMS_D.ne4pg2_oQU480.F2010-SCREAM-LR",
             "ERS.ne4pg2_oQU480.F2010-SCREAM-HR",
