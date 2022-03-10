@@ -1,0 +1,2316 @@
+<?xml-stylesheet type="text/xsl" href="http://www.cgd.ucar.edu/~cam/namelist/namelist_definition_CAM.xsl"?>
+
+<namelist_definition>
+
+<!-- Each namelist variable is defined in an <entry> element.  The
+     content of the element is the documentation of how the variable is
+     used.  Other aspects of the variable's definition are expressed as
+     attributes of the <entry> element.  Note that it is an XML requirement
+     that the attribute values are enclosed in quotes.  The attributes are:
+
+     id
+          The variable's name.  *** N.B. *** The name must be lower case.
+          The module convert all namelist variable names to lower case
+          since Fortran is case insensitive.
+
+     type
+          An abbreviation of the fortran declaration for the variable.
+	  Valid declarations are:
+
+          char*n
+	  integer
+	  logical
+	  real
+
+	  Any of these types may be followed by a comma separated list of
+	  integers enclosed in parenthesis to indicate an array.
+
+	  The current namelist validation code only distinquishes between
+	  string and non-string types.
+
+     input_pathname
+          Only include this attribute to indicate that the variable
+          contains the pathname of an input dataset that resides in the
+          CCSM inputdata directory tree.  Note that the variables
+          containing the names of restart files that are used in branch
+          runs don't reside in the inputdata tree and should not be given
+          this attribute.
+
+	  The recognized values are "abs" to indicate that an absolute
+          pathname is required, or "rel:var_name" to indicate that the
+          pathname is relative and that the namelist variable "var_name"
+          contains the absolute root directory.
+
+     category
+          A category assigned for organizing the documentation.
+
+     group
+          The namelist group that the variable is declared in.
+
+     valid_values
+          This is an optional attribute that is mainly useful for variables
+          that have only a small number of allowed values.
+                                                                        -->
+<!-- There is a duplicated nml definitions for nudging parameters
+     in the current master branch, and it is removed in the PR          -->
+
+<!-- Coupler between Physics and Dynamics -->
+
+<entry id="phys_chnk_fdim" type="integer"  category="perf_dp_coup"
+       group="cam_inparm" valid_values="">
+The basic data structure for fields in the physics is the chunk. The
+horizontal (column) dimension is factored between the first chunk dimension
+and the number of chunks, with the size of the first dimension influencing
+serial performance (e.g. vectorization or fit into cache) and the
+number of chunks limiting the available MPI and OpenMP parallelism.
+The number of chunks is always chosen to provide an equal number of chunks
+per computational thread (subject to the constraint that each chunk is
+assigned at least one column). However, the declared size of the first
+dimension is a free parameter, indicating the maximum number of columns
+that can be assigned to a chunk (thus also impacting the total number of
+chunks). This was originally specified at compile-time, based on
+experiments in the early 2000s indicating that the compilers at the time
+generated more efficient code when the first dimension was known
+at compile time, perhaps for improved alignment in memory layout or improved
+vectorization. This is now exposed as a runtime parameter. If phys_chnk_fdim
+is greater then 0, then the runtime pcols parameter is set to phys_chnk_fdim.
+If phys_chnk_fdim is less than or equal to 0, then pcols is calculated based
+on the values of the namelist variables phys_loadbalance, phys_chnk_fdim_max,
+and phys_chnk_fdim_mult, and on the problem specifics, attempting to
+minimize load imbalance between chunks, wasted space within chunks, and the
+number of chunks. The original compile-time behavior can be restored by
+defining the CPP token PPCOLS when building the model, in which case the
+original compile-time maximum (PCOLS) is still used. Note that PPCOLS is
+defined when the '-pcols' option is specifed in the call to CAM configure,
+in which case PCOLS is set to value of the '-pcols' argument.
+Default: 0
+</entry>
+
+<entry id="phys_chnk_fdim_max" type="integer"  category="perf_dp_coup"
+       group="cam_inparm" valid_values="">
+If phys_chnk_fdim is less than 1 (so runtime pcols is calculated)
+and phys_chnk_fdim_max is greater than 0, then phys_chnk_fdim_max
+is an upper bound on the size of the runtime pcols parameter.
+Otherwise it is ignored.
+Default: 16 when no overriding rules. See namelist_defaults_eam.xml
+</entry>
+
+<entry id="phys_chnk_fdim_mult" type="integer"  category="perf_dp_coup"
+       group="cam_inparm" valid_values="">
+If phys_chnk_fdim is less than 1 (so runtime pcols is calculated) and
+phys_chnk_fdim_mult is greater than 1 and either phys_chnk_fdim_max is
+less than 1 (so ignored) or phys_chnk_fdim_mult is less than or equal to
+phys_chnk_fdim_max, then the runtime pcols is required to be an integer
+multiple of phys_chnk_fdim_mult. This can be useful for memory alignment
+of local variables.
+Default: 1 when no overriding rules. See namelist_defaults_eam.xml
+</entry>
+
+<entry id="phys_alltoall" type="integer"  category="perf_dp_coup"
+       group="cam_inparm" valid_values="0,1,2,11,12,13">
+Dynamics/physics transpose method for nonlocal load-balance.  0: use
+mpi_alltoallv. 1: use point-to-point MPI-1 two-sided implementation. 2: use
+point-to-point MPI-2 one-sided implementation if supported, otherwise use
+MPI-1 implementation. 3: use Co-Array Fortran implementation if supported,
+otherwise use MPI-1 implementation. 11-13: use mod_comm, choosing any of
+several methods internal to mod_comm.  The method within mod_comm (denoted
+mod_method) has possible values 0,1,2 and is set according to mod_method =
+phys_alltoall - modmin_alltoall, where modmin_alltoall is 11. -1: use
+option 1 when each process communicates with less than half of the other
+processes, otherwise use option 0 (approx.).
+Default: -1
+</entry>
+
+<entry id="phys_chnk_cost_write" type="logical"  category="perf_dp_coup"
+       group="cam_inparm" valid_values="">
+Enable/disable output of measured physics cost per chunk.
+Default: .true.
+</entry>
+
+<entry id="phys_chnk_per_thd" type="integer"  category="perf_dp_coup"
+       group="cam_inparm" valid_values="">
+Select target number of chunks per thread.  Must be positive.
+Default: 1
+</entry>
+
+<entry id="phys_loadbalance" type="integer"  category="perf_dp_coup"
+       group="cam_inparm" valid_values="">
+Physics grid decomposition options.
+-1: each chunk is a dynamics block.
+ 0: chunk definitions and assignments do not require interprocess comm.
+ 1: chunk definitions and assignments do not require internode comm.
+ 2: optimal diurnal, seasonal, and latitude load-balanced chunk definition and assignments.
+ 3: chunk definitions and assignments only require communication with one other process.
+ 4: concatenated blocks, no load balancing, no interprocess communication.
+Default: 0
+</entry>
+
+<entry id="phys_twin_algorithm" type="integer"  category="perf_dp_coup"
+       group="cam_inparm" valid_values="">
+Physics grid decomposition options.
+ 0: assign columns to chunks as single columns, wrap mapped across chunks
+ 1: use (day/night; north/south) twin algorithm to determine load-balanced pairs of
+      columns and assign columns to chunks in pairs, wrap mapped
+Default: 0 for unstructured grid dycores, 1 for lat/lon grid dycores
+</entry>
+
+<!-- Greenhouse Gases: CO2, CH4, N2O, CFC11, CFC12 (original CAM versions) -->
+
+<entry id="bndtvghg" type="char*256" input_pathname="abs" category="ghg_cam"
+       group="chem_surfvals_nl" valid_values="" >
+Full pathname of time-variant boundary dataset for greenhouse gas surface
+values.
+Default: set by build-namelist.
+</entry>
+
+<entry id="ch4vmr" type="real"  category="ghg_cam"
+       group="chem_surfvals_nl" valid_values="" >
+CH4 volume mixing ratio.  This is used as the time invariant surface value
+of CH4 if no time varying values are specified.
+Default: set by build-namelist.
+</entry>
+
+<entry id="co2vmr" type="real"  category="ghg_cam"
+       group="chem_surfvals_nl" valid_values="" >
+CO2 volume mixing ratio.  This is used as the time invariant surface value
+of CO2 if no time varying values are specified.
+Default: set by build-namelist.
+</entry>
+
+<entry id="co2vmr_rad" type="real"  category="ghg_cam"
+       group="chem_surfvals_nl" valid_values="" >
+User override for the prescribed CO2 volume mixing ratio used by the radiation
+calculation.  Note however that the prescribed value of CO2 which is sent
+to the surface models is still the one that is set using either the
+<varname>co2vmr</varname> or the <varname>scenario_ghg</varname> variables.
+Default: not used
+</entry>
+
+<entry id="f11vmr" type="real"  category="ghg_cam"
+       group="chem_surfvals_nl" valid_values="" >
+CFC11 volume mixing ratio adjusted to reflect contributions from many GHG
+species.  This is used as the time invariant surface value of F11 if no
+time varying values are specified.
+Default: set by build-namelist.
+</entry>
+
+<entry id="f12vmr" type="real"  category="ghg_cam"
+       group="chem_surfvals_nl" valid_values="" >
+CFC12 volume mixing ratio.  This is used as the time invariant surface value
+of CFC12 if no time varying values are specified.
+Default: set by build-namelist.
+</entry>
+
+<entry id="n2ovmr" type="real"  category="ghg_cam"
+       group="chem_surfvals_nl" valid_values="" >
+N2O volume mixing ratio.  This is used as the time invariant surface value
+of N2O if no time varying values are specified.
+Default: 0.311e-6
+</entry>
+
+<entry id="ghg_yearstart_data" type="integer"  category="ghg_cam"
+       group="chem_surfvals_nl" valid_values="" >
+Data start year.  Use in conjunction
+with <varname>ghg_yearstart_model</varname>.
+Default: 0
+</entry>
+
+<entry id="ghg_yearstart_model" type="integer"  category="ghg_cam"
+       group="chem_surfvals_nl" valid_values="" >
+Model start year.  Use in conjunction
+with <varname>ghg_yearstart_data</varname>.
+Default: 0
+</entry>
+
+<entry id="ramp_co2_annual_rate" type="real"  category="ghg_cam"
+       group="chem_surfvals_nl" valid_values="" >
+Amount of co2 ramping per year (percent).  Only used
+if <varname>scenario_ghg</varname> = 'RAMP_CO2_ONLY'
+Default: 1.0
+</entry>
+
+<entry id="ramp_co2_cap" type="real"  category="ghg_cam"
+       group="chem_surfvals_nl" valid_values="" >
+CO2 cap if &gt; 0, floor otherwise.  Specified as multiple or fraction of
+inital value; e.g., setting to 4.0 will cap at 4x initial CO2 setting.
+Only used if <varname>scenario_ghg</varname> = 'RAMP_CO2_ONLY'
+Default: boundless if <varname>ramp_co2_annual_rate</varname> &gt; 0, zero otherwise.
+</entry>
+
+<entry id="ramp_co2_start_ymd" type="integer"  category="ghg_cam"
+       group="chem_surfvals_nl" valid_values="" >
+Date on which ramping of co2 begins.  The date is encoded as an integer in
+the form YYYYMMDD.  Only used if <varname>scenario_ghg</varname> = 'RAMP_CO2_ONLY'
+Default: 0
+</entry>
+
+<entry id="rampyear_ghg" type="integer"  category="ghg_cam"
+       group="chem_surfvals_nl" valid_values="" >
+If <varname>scenario_ghg</varname> is set to "RAMPED" then the greenhouse
+gas surface values are interpolated between the annual average values
+read from the file specified by <varname>bndtvghg</varname>.
+In that case, the value of this variable (&gt; 0) fixes the year of the
+lower bounding value (i.e., the value for calendar day 1.0) used in the
+interpolation.  For example, if rampyear_ghg = 1950, then the GHG surface
+values will be the result of interpolating between the values for 1950 and
+1951 from the dataset.
+Default: 0
+</entry>
+
+<entry id="scenario_ghg" type="char*16"  category="ghg_cam"
+       group="chem_surfvals_nl" valid_values="FIXED,RAMPED,RAMP_CO2_ONLY,CHEM_LBC_FILE" >
+Controls treatment of prescribed co2, ch4, n2o, cfc11, cfc12 volume mixing
+ratios.  May be set to 'FIXED', 'RAMPED', 'RAMP_CO2_ONLY', or 'CHEM_LBC_FILE'.
+FIXED =&gt; volume mixing ratios are fixed and have either default or namelist
+         input values.
+RAMPED =&gt; volume mixing ratios are time interpolated from the dataset
+          specified by <varname>bndtvghg</varname>.
+RAMP_CO2_ONLY =&gt; only co2 mixing ratios are ramped at a rate determined by
+                    the variables <varname>ramp_co2_annual_rate</varname>, <varname>ramp_co2_cap</varname>,
+                    and <varname>ramp_co2_start_ymd</varname>.
+CHEM_LBC_FILE =&gt; volume mixing ratios are set from the chemistry lower boundary
+                    conditions dataset specified by <varname>flbc_file</varname>.
+Default: FIXED
+</entry>
+
+<!-- Greenhouse Gases: prognostic CH4, N2O, CFC11, CFC12 (original CAM versions) -->
+
+<entry id="bndtvg" type="char*256" input_pathname="abs" category="ghg_chem"
+       group="chem_inparm" valid_values="" >
+Full pathname of time-variant boundary dataset for greenhouse gas production/loss
+rates.  Only used by the simple prognostic GHG chemistry scheme that is
+enabled via the argument "-prog_species GHG" to configure.
+Default: set by build-namelist.
+</entry>
+
+<entry id="ghg_chem" type="logical"  category="ghg_chem"
+       group="chem_inparm" valid_values="" >
+This variable should not be set by the user.  It is set by build-namelist
+when the user specifies the argument "-prog_species GHG" to configure which
+turns on a simple prognostic chemistry scheme for CH4, N2O, CFC11 and
+CFC12.
+Default: set by build-namelist
+</entry>
+
+<!-- History and Initial Conditions Output -->
+
+<entry id="avgflag_pertape" type="char*1(10)"  category="history"
+       group="cam_history_nl" valid_values="A,B,I,X,M" >
+Sets the averaging flag for all variables on a particular history file
+series. Valid values are:
+
+ A ==&gt; Average
+ B ==&gt; GMT 00:00:00 average
+ I ==&gt; Instantaneous
+ M ==&gt; Minimum
+ X ==&gt; Maximum
+
+The default is to use the averaging flags for each variable that are set in
+the code via calls to subroutine addfld.
+
+Defaults: set in code via the addfld and add_default subroutine calls.
+</entry>
+
+<entry id="empty_htapes" type="logical"  category="history"
+       group="cam_history_nl" valid_values="" >
+If true don't put any of the variables on the history tapes by
+default. Only output the variables that the user explicitly lists in
+the <varname>fincl#</varname> namelist items.  Default: FALSE
+</entry>
+
+<entry id="fexcl1" type="char*24(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+List of fields to exclude from the 1st history file (by default the name
+of this file contains the string "h0").
+Default: none
+</entry>
+<entry id="fexcl2" type="char*24(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+List of fields to exclude from the 2nd history file (by default the name
+of this file contains the string "h1").
+Default: none
+</entry>
+<entry id="fexcl3" type="char*24(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+List of fields to exclude from the 3rd history file (by default the name
+of this file contains the string "h2").
+Default: none
+</entry>
+<entry id="fexcl4" type="char*24(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+List of fields to exclude from the 4th history file (by default the name
+of this file contains the string "h3").
+Default: none
+</entry>
+<entry id="fexcl5" type="char*24(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+List of fields to exclude from the 5th history file (by default the name
+of this file contains the string "h4").
+Default: none
+</entry>
+<entry id="fexcl6" type="char*24(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+List of fields to exclude from the 6th history file (by default the name
+of this file contains the string "h5").
+Default: none
+</entry>
+<entry id="fexcl7" type="char*24(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+List of fields to exclude from the 7th history file (by default the name
+of this file contains the string "h6").
+Default: none
+</entry>
+<entry id="fexcl8" type="char*24(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+List of fields to exclude from the 8th history file (by default the name
+of this file contains the string "h7").
+Default: none
+</entry>
+<entry id="fexcl9" type="char*24(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+List of fields to exclude from the 9th history file (by default the name
+of this file contains the string "h8").
+Default: none
+</entry>
+<entry id="fexcl10" type="char*24(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+List of fields to exclude from the 10th history file (by default the name
+of this file contains the string "h9").
+Default: none
+</entry>
+
+<entry id="fincl1" type="char*26(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+List of fields to include on the first history file (by default the name of
+this file contains the string "h0").  The added fields must be in Master
+Field List.  The averaging flag for the output field can be specified by
+appending a ":" and a valid averaging flag to the field name.  Valid flags
+are:
+
+ A ==&gt; Average
+ B ==&gt; GMT 00:00:00 average
+ I ==&gt; Instantaneous
+ M ==&gt; Minimum
+ X ==&gt; Maximum
+
+Default:  set in code via the addfld and add_default subroutine calls.
+</entry>
+<entry id="fincl2" type="char*26(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1</varname>, but for the 2nd history file (by default
+the name of this file contains the string "h1").
+Default: none.
+</entry>
+<entry id="fincl3" type="char*26(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1</varname>, but for the 3rd history file (by default
+the name of this file contains the string "h2").
+Default: none.
+</entry>
+<entry id="fincl4" type="char*26(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1</varname>, but for the 4th history file (by default
+the name of this file contains the string "h3").
+Default: none.
+</entry>
+<entry id="fincl5" type="char*26(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1</varname>, but for the 5th history file (by default
+the name of this file contains the string "h4").
+Default: none.
+</entry>
+<entry id="fincl6" type="char*26(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1</varname>, but for the 6th history file (by default
+the name of this file contains the string "h5").
+Default: none.
+</entry>
+<entry id="fincl7" type="char*26(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1</varname>, but for the 7th history file (by default
+the name of this file contains the string "h6").
+Default: none.
+</entry>
+<entry id="fincl8" type="char*26(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1</varname>, but for the 8th history file (by default
+the name of this file contains the string "h7").
+Default: none.
+</entry>
+<entry id="fincl9" type="char*26(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1</varname>, but for the 9th history file (by default
+the name of this file contains the string "h8").
+Default: none.
+</entry>
+<entry id="fincl10" type="char*26(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1</varname>, but for the 10th history file (by default
+the name of this file contains the string "h9").
+Default: none.
+</entry>
+
+
+<entry id="collect_column_output" type="logical(10)" category="history"
+   group="cam_history_nl" valid_values="">
+Collect all column data into a single field and output in ncol format,
+much faster than default when you have a lot of columns.
+</entry>
+
+<entry id="fincl1lonlat" type="char*128(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+List of columns or contiguous columns at which the fincl1 fields will be
+output. Individual columns are specified as a string using a longitude
+degree (greater or equal to 0.) followed by a single character
+(e)ast/(w)est identifer, an underscore '_' , and a latitude degree followed
+by a single character (n)orth/(s)outh identifier.  For example, '10e_20n'
+would pick the model column closest to 10 degrees east longitude by 20
+degrees north latitude.  A group of contiguous columns can be specified
+using bounding latitudes and longitudes separated by a colon.  For example,
+'10e:20e_15n:20n' would select the model columns which fall with in the
+longitude range from 10 east to 20 east and the latitude range from 15
+north to 20 north.
+Default: none
+</entry>
+<entry id="fincl2lonlat" type="char*128(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1lonlat</varname>, but for 2nd history file.
+</entry>
+<entry id="fincl3lonlat" type="char*128(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1lonlat</varname>, but for 3rd history file.
+</entry>
+<entry id="fincl4lonlat" type="char*128(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1lonlat</varname>, but for 4th history file.
+</entry>
+<entry id="fincl5lonlat" type="char*128(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1lonlat</varname>, but for 5th history file.
+</entry>
+<entry id="fincl6lonlat" type="char*128(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1lonlat</varname>, but for 6th history file.
+</entry>
+<entry id="fincl7lonlat" type="char*128(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1lonlat</varname>, but for 7th history file.
+</entry>
+<entry id="fincl8lonlat" type="char*128(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1lonlat</varname>, but for 8th history file.
+</entry>
+<entry id="fincl9lonlat" type="char*128(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1lonlat</varname>, but for 9th history file.
+</entry>
+<entry id="fincl10lonlat" type="char*128(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Same as <varname>fincl1lonlat</varname>, but for 10th history file.
+</entry>
+
+
+<entry id="fwrtpr1" type="char*26(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Specific fields which will be written using the non-default precision on
+the 1st history file.
+Default: none
+</entry>
+<entry id="fwrtpr2" type="char*26(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Specific fields which will be written using the non-default precision on
+the 2nd history file.
+Default: none
+</entry>
+<entry id="fwrtpr3" type="char*26(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Specific fields which will be written using the non-default precision on
+the 3rd history file.
+Default: none
+</entry>
+<entry id="fwrtpr4" type="char*26(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Specific fields which will be written using the non-default precision on
+the 4th history file.
+Default: none
+</entry>
+<entry id="fwrtpr5" type="char*26(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Specific fields which will be written using the non-default precision on
+the 5th history file.
+Default: none
+</entry>
+<entry id="fwrtpr6" type="char*26(750)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Specific fields which will be written using the non-default precision on
+the 6th history file.
+Default: none
+</entry>
+
+<entry id="hfilename_spec" type="char*256(10)"  category="history"
+       group="cam_history_nl" valid_values="" >
+
+Array of history filename specifiers.  The filenames of up to ten history
+output files can be controlled via this variable.  Filename specifiers give
+generic formats for the filenames with specific date and time components,
+file series number (0-9), and caseid, filled in when the files are
+created. The following strings are expanded when the filename is created:
+%c=caseid; %t=file series number (0-9); %y=year (normally 4 digits, more
+digits if needed); %m=month; %d=day; %s=seconds into current day; %%=%
+symbol.  Note that the caseid may be set using the namelist
+variable <varname>case_name</varname>.
+
+For example, for a simulation with caseid="test" and current date and time
+of 0000-12-31 0:00UT, a filename specifier of "%c.cam2.h%t.%y-%m.nc" would
+expand into "test.cam2.h0.0000-12.nc" for the first history file.  The
+filename specifier "%c.cam2.h%t.%y-%m-%d-%s.nc" would expand to
+"test.cam2.h1.0000-12-31-00000.nc" for the second history file. Spaces are
+not allowed in filename specifiers. Although the character "/" is allowed
+in the specifier, it will be interpreted as a directory name and the
+corresponding directories will have to be created in the model execution
+directory (directory given to configure with -cam_exedir option) before
+model execution.  The first element is for the primary history file which
+is output by default as a monthly history file.  Entries 2 through 10 are
+user specified auxilliary output files.
+
+Defaults: "%c.cam2.h0.%y-%m.nc", "%c.cam2.h1.%y-%m-%d-%s.nc", ...,
+          "%c.cam2.h5.%y-%m-%d-%s.nc"
+</entry>
+
+<entry id="inithist" type="char*8"  category="history"
+       group="cam_history_nl" valid_values="NONE,NSTEPS,HOURLY,6-HOURLY,DAILY,MONTHLY,YEARLY,CAMIOP,ENDOFRUN" >
+Frequency that initial files will be output: 6-hourly, daily, monthly,
+yearly, or never.  Valid values: 'NONE', 'NSTEPS','HOURLY', '6-HOURLY', 'DAILY', 'MONTHLY',
+'YEARLY', 'CAMIOP', 'ENDOFRUN'.
+Default: 'YEARLY'
+</entry>
+
+<entry id="inithist_nsteps" type="integer"  category="history"
+       group="cam_history_nl" valid_values="" >
+Number of physics steps that initial files will be output. Used only when inithist == 'NSTEPS'
+Default: 1
+</entry>
+
+<entry id="inithist_all" type="logical"  category="history"
+       group="cam_history_nl" valid_values="" >
+If false then include only REQUIRED fields on IC file.  If true then
+include required AND optional fields on IC file.
+Default: FALSE
+</entry>
+
+<entry id="mfilt" type="integer(10)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Array containing the maximum number of time samples written to a history
+file.  The first value applies to the primary history file, the second
+through sixth to the auxillary history files.
+Default: 1,30,30,30,30,30,30,30,30,30
+</entry>
+
+<entry id="lcltod_start" type="integer(10)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Array containing the starting time of day for local time history averaging.
+Used in conjuction with lcltod_stop. If lcltod_stop is less than lcltod_start,
+then the time range wraps around 24 hours. The start time is included in the
+interval. Time is in seconds and defaults to 39600 (11:00 AM).  The first value
+applies to the primary hist. file, the second to the first aux. hist. file, etc.
+Default: none
+</entry>
+
+<entry id="lcltod_stop" type="integer(10)"  category="history"
+       group="cam_history_nl" valid_values="" >
+Array containing the stopping time of day for local time history averaging.
+Used in conjuction with lcltod_start. If lcltod_stop is less than lcltod_start,
+then the time range wraps around 24 hours. The stop time is not included in the
+interval. Time is in seconds and defaults to 0 (midnight).  The first value
+applies to the primary hist. file, the second to the first aux. hist. file, etc.
+Default: none
+</entry>
+
+<entry id="ndens" type="integer(10)"  category="history"
+       group="cam_history_nl" valid_values="1,2" >
+
+Array specifying the precision of real data written to each history file
+series. Valid values are 1 or 2. '1' implies output real values are 8-byte
+and '2' implies output real values are 4-byte.
+
+Default: 2,2,2,2,2,2,2,2,2,2
+</entry>
+
+
+<entry id="nhtfrq" type="integer(10)"  category="history"
+       group="cam_history_nl" valid_values="" >
+
+Array of write frequencies for each history file series.
+If <varname>nhtfrq(1)</varname> = 0, the file will be a monthly average.
+Only the first file series may be a monthly average.  If
+<varname>nhtfrq(i)</varname> &gt; 0, frequency is specified as number of
+timesteps.  If <varname>nhtfrq(i)</varname> &lt; 0, frequency is specified
+as number of hours.
+
+Default: 0,-24,-24,-24,-24,-24,-24,-24,-24,-24
+</entry>
+
+<!-- Initial Conditions -->
+
+<entry id="ncdata" type="char*256" input_pathname="abs" category="initial_conditions"
+       group="cam_inparm" valid_values="" >
+Full pathname of initial atmospheric state dataset (NetCDF format).
+Default: set by build-namelist.
+</entry>
+
+<entry id="pertlim" type="real"  category="initial_conditions"
+       group="cam_inparm" valid_values="" >
+Perturb the initial conditions for temperature randomly by up to the given
+amount. Only applied for initial simulations.
+Default: 0.0
+</entry>
+
+<entry id="new_random" type="logical"  category="initial_conditions"
+       group="cam_inparm" valid_values="" >
+Use a new RNG in dynamics/se/random_xgc.F90 that is more robust and repeatable than the compiler-dependent
+fortran intrinsic random_number.
+Default: FALSE
+</entry>
+
+<entry id="seed_custom" type="integer"  category="initial_conditions"
+       group="cam_inparm" valid_values="" >
+Specify a custom seed value for RNG when pertlim /= 0.0. If seed_custom == 0,
+Then the default seed is used, which is the same from run to run, based only
+on a unique column index
+Default: 0
+</entry>
+
+<entry id="seed_clock" type="logical"  category="initial_conditions"
+       group="cam_inparm" valid_values="" >
+bitwise XOR the system_clock with the existing seed value to ensure it is unique.
+Default: FALSE
+</entry>
+
+<entry id="readtrace" type="logical"  category="initial_conditions"
+       group="cam_inparm" valid_values="" >
+If TRUE, try to initialize data for all consituents by reading from the
+initial conditions dataset. If variable not found then data will be
+initialized using internally-specified default values.  If FALSE then don't
+try reading constituent data from the IC file; just use the
+internally-specified defaults.
+Default: TRUE
+</entry>
+
+<!-- COSP Cloud Simulator control LOGICALS -->
+
+<entry id="docosp" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+If true, the COSP cloud simulator is run.
+Setting this namelist variable happens automatically if you compile with COSP.
+COSP will not run unless this is set to .true. in the namelist!
+Turn on the desired simulators using lXXX_sim namelist vars
+If no specific simulators are specified, all of the simulators
+are run on all columns and all output is saved. (useful for testing).
+COSP is available with CAM4 and CAM5 physics.
+This default logical is set in cospsimulator_intr.F90.
+Default: FALSE
+</entry>
+
+<entry id="cosp_amwg" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+If true, COSP cloud simulators are run to produce
+all output required for the COSP plots in the AMWG diagnostics package.
+sets cosp_ncolumns=10 and cosp_nradsteps=3
+(appropriate for COSP statistics derived from seasonal averages),
+and runs MISR, ISCCP, MODIS, CloudSat radar and CALIPSO lidar simulators
+(cosp_lmisr_sim=.true.,cosp_lisccp_sim=.true.,
+cosp_lmodis_sim=.true.,cosp_lradar_sim=.true.,cosp_llidar_sim=.true.).
+This default logical is set in cospsimulator_intr.F90.
+Default: TRUE
+</entry>
+
+<entry id="cosp_lite" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+If true, the COSP cloud simulators are run to produce
+select output for the AMWG diagnostics package.
+sets cosp_ncolumns=10 and cosp_nradsteps=3
+(appropriate for COSP statistics derived from seasonal averages),
+and runs MISR, ISCCP, MODIS, and CALIPSO lidar simulators
+(cosp_lmisr_sim=.true.,cosp_lisccp_sim=.true.,
+cosp_lmodis_sim=.true.,cosp_llidar_sim=.true.).
+This default logical is set in cospsimulator_intr.F90.
+Default: FALSE
+</entry>
+
+<entry id="cosp_passive" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+If true, the passive COSP cloud simulators are run to produce
+select output for the AMWG diagnostics package.
+sets cosp_ncolumns=10 and cosp_nradsteps=3
+(appropriate for COSP statistics derived from seasonal averages),
+and runs MISR, ISCCP, and MODIS simulators
+(cosp_lmisr_sim=.true.,cosp_lisccp_sim=.true.,cosp_lmodis_sim=.true.).
+This default logical is set in cospsimulator_intr.F90.
+Default: FALSE
+</entry>
+
+<entry id="cosp_active" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+If true, the active COSP cloud simulators are run to produce
+select output for the AMWG diagnostics package.
+sets cosp_ncolumns=10 and cosp_nradsteps=3
+(appropriate for COSP statistics derived from seasonal averages),
+and runs CloudSat radar and CALIPSO lidar simulators
+(cosp_lradar_sim=.true.,cosp_llidar_sim=.true.).
+This default logical is set in cospsimulator_intr.F90.
+Default: FALSE
+</entry>
+
+<entry id="cosp_isccp" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+If true, the ISCCP cloud simulator is run to produce
+select output for the AMWG diagnostics package.
+sets cosp_ncolumns=10 and cosp_nradsteps=3
+(appropriate for COSP statistics derived from seasonal averages),
+and runs ISCCP simulator
+(cosp_lmisr_sim=.false.,cosp_lisccp_sim=.true.,
+cosp_lmodis_sim=.false.,cosp_lradar_sim=.false.,cosp_llidar_sim=.false.).
+This default logical is set in cospsimulator_intr.F90.
+1236: Default: FALSE
+</entry>
+
+<entry id="cosp_runall" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+If true, run all simulators using the default values cosp_ncolumns=50 and
+cosp_nradsteps=1.  This option is mainly intended for testing, but it also
+must be used in order to output the input fields needed to run the
+simulator in an offline mode (via setting cosp_histfile_aux=.true.).
+Default: FALSE
+</entry>
+
+<entry id="cosp_lradar_sim" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+If true, COSP radar simulator will be run and all non-subcolumn output
+will be saved.
+Default: FALSE
+</entry>
+
+<entry id="cosp_llidar_sim" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+If true, COSP lidar simulator will be run and all non-subcolumn output
+will be saved
+Default: FALSE
+</entry>
+
+<entry id="cosp_lisccp_sim" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+If true, COSP ISCCP simulator will be run and all non-subcolumn output
+will be saved.  ISCCP simulator is run on only daylight
+columns.
+Default: FALSE
+</entry>
+
+<entry id="cosp_lmisr_sim" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+If true, MISR simulator will be run and all non-subcolumn output
+will be saved.  MISR simulator is run on only daylight
+columns.
+Default: FALSE
+</entry>
+
+<entry id="cosp_lmodis_sim" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+If true, MODIS simulator will be run and all non-subcolumn output
+will be saved.
+
+Default: FALSE
+</entry>
+
+<!-- COSP input control parameters -->
+
+<entry id="cosp_ncolumns" type="integer"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+Number of subcolumns in SCOPS
+This default logical is set in cospsimulator_intr.F90
+Default: 50
+</entry>
+
+<!-- COSP sampling parameters -->
+
+<entry id="cosp_sample_atrain" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+Turns on sampling along a-train orbit for radar and lidar simulators.
+This default logical is set in cospsimulator_intr.F90
+Default: FALSE
+</entry>
+
+<entry id="cosp_atrainorbitdata" type="char*256"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+Path for the Atrain orbit data file provided by CFMIP.
+There is no default for this, but sample_atrain = .true. will not work
+if this namelist variable is undefined.
+currently /project/cms/jenkay/SCAM/repository/cloudsat_orbit_08921_14250.nc
+Default: no default set now, need to specify in namelist
+</entry>
+
+<!-- COSP output parameters -->
+
+<entry id="cosp_histfile_num" type="integer"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+This specifies the CAM history tape where COSP diagnostics will be written.
+Ignored/not used if any of the cosp_cfmip_* namelist variables are invoked.
+
+This default is set in cospsimulator_intr.F90
+Default: 1
+</entry>
+<entry id="cosp_histfile_aux" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+If true, additional output is added to make it possible to
+run COSP off-line.
+
+This default is set in cospsimulator_intr.F90
+Default: FALSE
+</entry>
+<entry id="cosp_histfile_aux_num" type="integer"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+This specifies the CAM history tape where extra COSP diagnostics will be written.
+
+This default is set in cospsimulator_intr.F90
+Default: 2
+</entry>
+
+<entry id="cosp_nradsteps" type="integer"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+This specifies the frequency at which is COSP is called,
+every cosp_nradsteps radiation timestep.
+
+This default is set in cospsimulator_intr.F90
+Default: 1
+</entry>
+
+<entry id="cosp_lfrac_out" type="logical"  category="cosp"
+       group="cospsimulator_nl" valid_values="">
+Turns on sub-column output from COSP.
+If both the isccp/misr simulators and the lidar/radar simulators
+are run, lfrac_out is from the isccp/misr simulators columns.
+This default logical is set in cospsimulator_intr.F90
+Default: FALSE
+</entry>
+
+<!-- Cloud Macro/Micro-physics -->
+
+<entry id="cld_macmic_num_steps" type="integer" category="conv"
+       group="phys_ctl_nl" valid_values="" >
+Number of macrophysics/microphysics substeps.
+Default: 1
+</entry>
+
+<!-- general microphysics -->
+<entry id="micro_p3_tableversion" type="char*16" category="microphys"
+       group="micro_nl" valid_values="" >
+Version number for P3 microphysics tables.
+Default: 1
+</entry>
+
+<entry id="micro_p3_lookup_dir" type="char*128" input_pathname="abs" category="conv"
+       group="micro_nl" valid_values="" >
+Directory where P3 initialization files are located.
+</entry>
+
+<entry id="spa_datapath" type="char*256" input_pathname="abs" category="cam_chem"
+       group="spa_nl" valid_values="" >
+Full pathname of the directory that contains the spa input file
+Default: None
+</entry>
+
+<entry id="spa_file" type="char*256" input_pathname="rel:spa_datapath" category="cam_chem"
+       group="spa_nl" valid_values="" >
+Filename of dataset for spa
+Default: None
+</entry>
+
+<entry id="spa_type" type="char*32" category="cam_chem"
+       group="spa_nl" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
+Type of time interpolation for data in spa files.
+Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
+Default: 'SERIAL'
+</entry>
+
+<entry id="spa_cycle_yr" type="integer" category="cam_chem"
+       group="spa_nl" valid_values="" >
+The  cycle year of the prescribed aerosol data
+if <varname>spa_type</varname>  is 'CYCLICAL'.
+Format: YYYY
+Default: 0
+</entry>
+
+<entry id="micro_aerosolactivation" type="logical" category="microphys"
+       group="micro_nl" valid_values="" >
+Specify if aerosol activation is used in microphysics scheme.
+Default: TRUE
+</entry>
+
+<entry id="micro_subgrid_cloud" type="logical" category="microphys"
+       group="micro_nl" valid_values="" >
+Specify if cloud fraction is applied to microphysics tendencies.
+Default: TRUE
+</entry>
+
+<entry id="micro_tend_output" type="logical" category="microphys"
+       group="micro_nl" valid_values="" >
+Output microphysics tendencies in standard atm output file.
+Default: TRUE
+</entry>
+
+<!-- micro_p3 -->
+<entry id="p3_qc_autoCon_Expon" type="real" category="microphysics"
+	group="micro_nl" valid_values="" >
+Exponent of power function fit used by P3 qc in autoconversion
+Default: 2.47_rtype
+</entry>
+
+<entry id="p3_qc_accret_Expon" type="real" category="microphysics"
+	group="micro_nl" valid_values="" >
+Exponent of power function fit used by P3 qc in accretion
+Default: 1.15_rtype
+</entry>
+
+<entry id="do_prescribed_CCN" type="logical" category="microphys"
+       group="micro_nl" valid_values="" >
+Specify if CCN concentration is read in from ncdf file within p3.
+Default: FALSE
+</entry>
+
+
+<!-- Moist Convection and Microphysics -->
+
+<entry id="deep_scheme" type="char*16" category="conv"
+       group="phys_ctl_nl" valid_values="ZM,CLUBB_SGS,off" >
+Type of deep convection scheme employed.  'ZM' for Zhang-McFarlane;
+'off' for none.
+Default: 'ZM'
+</entry>
+
+<entry id="microp_scheme" type="char*16" category="conv"
+       group="phys_ctl_nl" valid_values="RK,MG,P3,off" >
+Type of microphysics scheme employed.  'RK' for Rasch and Kristjansson
+(1998); 'MG' for Morrison and Gettelman (2008), Gettelman et al (2010)
+two moment scheme for CAM5.1; P3 for the P3 microphysics scheme,
+Morrison et al (2015)
+Default: set by build-namelist (depends on value set in configure).
+</entry>
+
+<entry id="macrop_scheme" type="char*16" category="conv"
+       group="phys_ctl_nl" valid_values="park,RK,CLUBB_SGS,off" >
+Type of macrophysics scheme employed.  'park' for Park
+(1998); 'RK' for Rasch and Kristjansson (1998); 'CLUBB_SGS' clubb.
+Default: set by build-namelist
+</entry>
+
+<entry id="do_clubb_sgs" type="logical" category="conv"
+       group="phys_ctl_nl" valid_values="" >
+Switch for CLUBB_SGS
+Default: FALSE
+</entry>
+
+<entry id="do_shoc_sgs" type="logical" category="conv"
+       group="phys_ctl_nl" valid_values="" >
+Switch for SHOC_SGS
+Default: FALSE
+</entry>
+
+<entry id="shallow_scheme" type="char*16" category="conv"
+       group="phys_ctl_nl" valid_values="off,Hack,UW,CLUBB_SGS" >
+Type of shallow convection scheme employed.  'Hack' for Hack shallow convection;
+'UW' for original McCaa UW pbl scheme, modified by Sungsu Park; 'CLUBB_SGS' for CLUBB_SGS
+Default: set by build-namelist (depends on <varname>eddy_scheme</varname>).
+</entry>
+
+<!-- SHOC timestep -->
+<entry id="shoc_timestep" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+SHOC timestep.  Setting to < 0 will set SHOC timestep equal to the
+macrophysics and microphysics timestep (i.e. dtime/cld_macmic_num_steps).
+Default: -1
+</entry>
+
+<!-- SHOC tunable parameters -->
+<entry id="shoc_thl2tune" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Temperature variance tuning factor.
+Default: set by build-namelist
+</entry>
+
+<entry id="shoc_qw2tune" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Moisture variance tuning factor.
+Default: set by build-namelist
+</entry>
+
+<entry id="shoc_qwthl2tune" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Temperature moisture covariance tuning factor.
+Default: set by build-namelist
+</entry>
+
+<entry id="shoc_w2tune" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Vertical velocity variance tuning factor.
+Default: set by build-namelist
+</entry>
+
+<entry id="shoc_length_fac" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Length scale tuning factor.
+Default: set by build-namelist
+</entry>
+
+<entry id="shoc_c_diag_3rd_mom" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Third moment vertical velocity tuning factor.
+Default: set by build-namelist
+</entry>
+
+<entry id="shoc_lambda_low" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Lowest allowable value for stability correction for isotropic timescale.
+Default: set by build-namelist
+</entry>
+
+<entry id="shoc_lambda_high" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Higest allowable value for stability correction for isotropic timescale.
+Should be set to value equal to or greater than lambda_low.
+Default: set by build-namelist
+</entry>
+
+<entry id="shoc_lambda_slope" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Controls the slope of increase of stability correction term from low to high values.
+Default: set by build-namelist
+</entry>
+
+<entry id="shoc_lambda_thresh" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Minimum threshold of integrated stability to increase the stability correction term.
+Default: set by build-namelist
+</entry>
+
+<entry id="shoc_Ckh" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Coefficient for eddy diffusivity of heat.
+Default: set by build-namelist
+</entry>
+
+<entry id="shoc_Ckm" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Coefficient for eddy diffusivity of momentum.
+Default: set by build-namelist
+</entry>
+
+<entry id="shoc_Ckh_s_min" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Minimum allowable value for coefficient for eddy diffusivity for heat for stable boundary layers.
+Default: set by build-namelist
+</entry>
+
+<entry id="shoc_Ckh_s_max" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Maximum allowable value for coefficient for eddy diffusivity for heat for stable boundary layers.
+Default: set by build-namelist
+</entry>
+
+<entry id="shoc_Ckm_s_min" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Minimum allowable value for coefficient for eddy diffusivity for momentum for stable boundary layers.
+Default: set by build-namelist
+</entry>
+
+<entry id="shoc_Ckm_s_max" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Maximum allowable value for coefficient for eddy diffusivity for momentum for stable boundary layers.
+Default: set by build-namelist
+</entry>
+
+
+<!-- Physics control -->
+
+<entry id="cam_physpkg" type="char*16" category="build"
+       group="phys_ctl_nl" valid_values="cam3,cam4,cam5,ideal,adiabatic,default" >
+Name of the CAM physics package.  N.B. this variable may not be set by
+the user.  It is set by build-namelist via information in the configure
+cache file to be consistent with how CAM was built.
+Default: set by build-namelist
+</entry>
+
+<entry id="cam_chempkg" type="char*16" category="build"
+       group="phys_ctl_nl" valid_values="waccm_mozart,waccm_ghg,trop_mozart,
+                                         trop_ghg,trop_bam,trop_mam3,trop_mam4,trop_mam4_resus_soag,
+					 trop_mam4_mom,trop_mam7,trop_mam9,
+                                         linoz_mam3,linoz_mam4_resus,
+					 linoz_mam4_resus_soag,linoz_mam4_resus_mom,
+					 linoz_mam4_resus_mom_soag,
+                                         super_fast_llnl,super_fast_llnl_mam3,
+					 superfast_mam4_resus_mom_soag,none " >
+Name of the CAM chemistry package.  N.B. this variable may not be set by
+the user.  It is set by build-namelist via information in the configure
+cache file to be consistent with how CAM was built.
+Default: set by build-namelist
+</entry>
+
+<!-- Reference Pressures -->
+
+<entry id="trop_cloud_top_press" type="real" category="press_lim"
+       group="ref_pres_nl" valid_values="" >
+Troposphere cloud physics will be done only below the top defined
+by this pressure (Pa).
+Default: set by build-namelist
+</entry>
+
+<entry id="clim_modal_aero_top_press" type="real" category="press_lim"
+       group="ref_pres_nl" valid_values="" >
+MAM affects climate only below the top defined by this pressure (Pa).
+Default: 0 for non-MAM cases, otherwise set by build-namelist
+</entry>
+
+<entry id="do_molec_press" type="real" category="press_lim"
+       group="ref_pres_nl" valid_values="" >
+Molecular diffusion will be done only if the lowest pressure is
+below this limit (Pa).
+Default: 0.1
+</entry>
+
+<entry id="molec_diff_bot_press" type="real" category="press_lim"
+       group="ref_pres_nl" valid_values="" >
+The level closest to this pressure (Pa) is the bottom of the region
+where molecular diffusion is done.
+Default: 50.
+</entry>
+
+<!-- Physics Debugging -->
+
+<entry id="phys_debug_lat" type="real"  category="phys_debug"
+       group="phys_debug_nl" valid_values="">
+Use this variable to specify the latitude (in degrees) of a column to
+debug.  The closest column in the physics grid will be used.
+Default: none
+</entry>
+
+<entry id="phys_debug_lon" type="real"  category="phys_debug"
+       group="phys_debug_nl" valid_values="">
+Use this variable to specify the longitude (in degrees) of a column to
+debug.  The closest column in the physics grid will be used.
+Default: none
+</entry>
+
+<entry id="state_debug_checks" type="logical"  category="phys_debug"
+       group="phys_ctl_nl" valid_values="">
+If set to .true., turns on extra validation of physics_state objects
+in physics_update. Used mainly to track down which package is the
+source of invalid data in state.
+Default: .false.
+</entry>
+
+
+<!-- Planetary Boundary Layer and Vertical Diffusion -->
+
+<entry id="srf_flux_avg" type="integer" category="pbl"
+       group="phys_ctl_nl" valid_values="0,1" >
+Switch to turn on adjustment of the surface fluxes to reduce instabilities
+in the surface layer.  Set to 1 to turn on the adjustments.
+Default: 0
+</entry>
+
+<entry id="eddy_scheme" type="char*16" category="pbl"
+       group="phys_ctl_nl" valid_values="off,HB,diag_TKE,HBR,CLUBB_SGS" >
+Type of eddy scheme employed by the vertical diffusion package.  'HB' for
+Holtslag and Boville; 'diag_TKE' for diagnostic tke version of Grenier and
+Bretherton; 'HBR' for Rasch modified version of 'HB'.
+Default: 'HB'
+</entry>
+
+<entry id="linearize_pbl_winds" type="logical" category="pbl"
+       group="phys_ctl_nl" valid_values="" >
+If .true., a linearization of the response of the pbl scheme to surface stresses
+is sent to the coupler every time step, using the fields 'wsresp' and 'tau_est'.
+</entry>
+
+<entry id="export_gustiness" type="logical" category="pbl"
+       group="phys_ctl_nl" valid_values="" >
+If .true., a gustiness value will be exported to the coupler, which allows
+surface components to distinguish between the effect of mean wind and gustiness
+when calculating fluxes (and in particular surface drag).
+
+If .false., no extra value is exported, and gustiness is instead applied by the
+atmosphere by scaling up the exported wind fields (ubot and vbot). This is
+simpler and requires slightly less coupling overhead, but produces numerical
+artifacts (oscillations) in surface stresses, particularly when the gustiness is
+large compared with the mean wind.
+</entry>
+
+
+<!-- Flags for implementing code modifications under polar project -->
+
+<entry id="pergro_mods" type="logical"  category="perturbation"
+       group="phys_ctl_nl" valid_values="" >
+switch to turn on pergro code changes
+Default: .false.
+</entry>
+
+<entry id="pergro_test_active" type="logical"  category="perturbation"
+       group="phys_ctl_nl" valid_values="" >
+switch to turn on code instrumentations for running pergro test
+Default: .false.
+</entry>
+
+
+<!-- Diagnostics -->
+
+<entry id="history_amwg" type="logical"  category="diagnostics"
+       group="phys_ctl_nl" valid_values="" >
+Produce output for the AMWG diagnostic package.
+Default: .true.
+</entry>
+
+<entry id="history_verbose" type="logical"  category="diagnostics"
+       group="phys_ctl_nl" valid_values="" >
+Produce verbose history output by default
+Default: .false.
+</entry>
+
+<entry id="history_vdiag" type="logical"  category="diagnostics"
+       group="phys_ctl_nl" valid_values="" >
+Produce output for the AMWG variability diagnostics.
+Default: .false.
+</entry>
+
+<entry id="history_aerosol" type="logical"  category="diagnostics"
+       group="phys_ctl_nl" valid_values="" >
+Switch for diagnostic output of the aerosol tendencies
+Default: .false.
+</entry>
+
+<entry id="history_aero_optics" type="logical"  category="diagnostics"
+       group="phys_ctl_nl" valid_values="" >
+Switch for diagnostic output of the aerosol optics
+Default: .false.
+</entry>
+
+<entry id="history_eddy" type="logical"  category="diagnostics"
+       group="phys_ctl_nl" valid_values="" >
+Switch for diagnostic output of eddy variables
+Default: .false.
+</entry>
+
+<entry id="history_budget" type="logical"  category="diagnostics"
+       group="phys_ctl_nl" valid_values="" >
+Switch for cam4 T/Q budget diagnostic output
+Default: .false.
+</entry>
+
+<entry id="get_presc_aero_data" type="logical"  category="diagnostics"
+       group="phys_ctl_nl" valid_values="" >
+Output needed to generate input to drive a prescribed aerosol climate run.
+Requires that history_aerosol be set to true. Note that additional
+post processing is required with output in order to generate a
+prescribed aerosol climate run.
+Default: .false.
+</entry>
+
+<!-- Radiation -->
+<entry id="radiation_scheme" type="char*16" category="radiation"
+       group="phys_ctl_nl" valid_values="rrtmg,rrtmgp" >
+Type of radiation scheme employed.
+Default: set by build-namelist
+</entry>
+
+<entry id="constant_zenith_deg" type="real"  category="radiation"
+       group="phys_ctl_nl" valid_values="" >
+Constant solar zenith angle value in degrees for idealized configurations
+such as radiative-convective equilibrium experiments. This is disabled when
+the value is less than 0
+Default: -1
+</entry>
+
+<entry id="do_spa_optics" type="logical" category="radiation"
+       group="radiation_nl" valid_values=".true.,.false." >
+Specify if optics are read in from spa ncdf file.
+Default: FALSE
+</entry>
+
+<entry id="conv_water_in_rad" type="integer" category="radiation"
+       group="phys_ctl_nl" valid_values="0,1,2" >
+Convective water used in radiation?
+0 ==> No
+1 ==> Yes - Arithmetic average.
+2 ==> Yes - Average in emissivity.
+Default: set by build-namelist
+</entry>
+
+<entry id="iradlw" type="integer"  category="radiation"
+       group="radiation_nl" valid_values="">
+Interval of long-wave radiation calculation in timesteps (if positive) or
+model hours (if negative).
+Default: -1
+</entry>
+
+<entry id="iradsw" type="integer"  category="radiation"
+       group="radiation_nl" valid_values="">
+Interval of short-wave radiation calculation in timesteps (if positive) or
+model hours (if negative).
+Default: -1
+</entry>
+
+<entry id="irad_always" type="integer"  category="radiation"
+       group="radiation_nl" valid_values="">
+Specifies length of time in timesteps (positive) or hours (negative) SW/LW
+radiation will be run for every timestep from the start of an initial run.
+Default: 0
+</entry>
+
+<entry id="do_aerosol_rad" type="logical"  category="radiation"
+       group="radiation_nl" valid_values="" >
+Indicates whether to consider aerosols in radiative calculations
+Default: TRUE
+</entry>
+
+<entry id="fixed_total_solar_irradiance" type="real"  category="radiation"
+       group="radiation_nl" valid_values="" >
+Fixed value of solar constant for idealized configurations such as
+radiative-convective equilibrium experiments. This is disabled when
+the value is less than 0
+Default: -1
+</entry>
+
+<entry id="spectralflux" type="logical"  category="radiation"
+       group="radiation_nl" valid_values="" >
+Return fluxes per band in addition to the total fluxes.
+Default: FALSE
+</entry>
+
+<entry id="use_rad_dt_cosz" type="logical"  category="radiation"
+       group="radiation_nl" valid_values="" >
+If true, then use the radiation timestep for all cosz calculations.
+NOTE: This logical flag is *temporary*. It should be REMOVED after we decide
+to make this functionality default
+Default: FALSE
+</entry>
+
+<entry id="raytau0" type="real"  category="physc_test"
+       group="cam_inparm" valid_values="" >
+Approximate value of decay time at model top (days);
+#if 0., no rayleigh friction is applied
+Default: 0.0D0
+</entry>
+
+<entry id="mode_defs" type="char*256(100)"  category="radiation"
+       group="rad_cnst_nl" valid_values="" >
+Definitions for the aerosol modes that may be used in the rad_climate and
+rad_diag_* variables.
+Default: set by build-namelist
+</entry>
+
+<entry id="rad_climate" type="char*256(n_rad_cnst)"  category="radiation"
+       group="rad_cnst_nl" valid_values="" >
+A list of the radiatively active species, i.e., species that affect the
+climate simulation via the radiative heating rate calculation.
+Default: set by build-namelist
+</entry>
+
+<!-- Aerosol and cloud optics -->
+
+<entry id="water_refindex_file" type="char*256" input_pathname="abs" category="radiation"
+       group="modal_aer_opt_nl" valid_values="" >
+Full pathname of dataset for water refractive indices used in modal aerosol optics
+Default: none
+</entry>
+
+
+<entry id="drydep_srf_file" type="char*256" input_pathname="abs" category="cam_chem"
+       group="chem_inparm" valid_values="">
+Dry deposition surface values interpolated to model grid, required for unstructured atmospheric grids
+with modal chemistry.
+Default: none
+</entry>
+
+<entry id="liqcldoptics" type="char*32"  category="radiation"
+       group="rad_cnst_nl" valid_values="slingo,gammadist" >
+filepath and name for ice optics data for rrtmg
+Default: none
+</entry>
+
+<entry id="icecldoptics" type="char*32"  category="radiation"
+       group="rad_cnst_nl" valid_values="ebertcurry,mitchell" >
+filepath and name for ice optics data for rrtmg
+Default: none
+</entry>
+
+<entry id="iceopticsfile" type="char*256" input_pathname="abs"  category="radiation"
+       group="rad_cnst_nl" valid_values="" >
+filepath and name for ice optics data for rrtmg
+Default: none
+</entry>
+
+<entry id="liqopticsfile" type="char*256" input_pathname="abs"  category="radiation"
+       group="rad_cnst_nl" valid_values="" >
+filepath and name for liquid cloud (gamma distributed) optics data for rrtmg
+Default: none
+</entry>
+
+<!-- RRTMGP gaseous absorption coefficients -->
+<entry id="rrtmgp_coefficients_file_lw" type="char*256" input_pathname="abs"
+       category="radiation" group="radiation_nl" valid_values="">
+File path for RRTMGP longwave gaseous absorption coefficients file.
+</entry>
+
+<entry id="rrtmgp_coefficients_file_sw" type="char*256" input_pathname="abs"
+       category="radiation" group="radiation_nl" valid_values="">
+File path for RRTMGP shortwave gaseous absorption coefficients file.
+</entry>
+
+<entry id="rrtmgp_enable_temperature_warnings" type="logical"
+       category="radiation" group="radiation_nl" valid_values="">
+Enables low temperature warnings in RRTMGP.
+Disabling this is useful to avoid filling up logs for aqua planet cases.
+Default: TRUE
+</entry>
+
+<entry id="raytau0" type="real" category="rayleigh_friction"
+       group="cam_inparm" valid_values="">
+Rayleigh friction parameter to determine the approximate value of the decay
+time (days) at model top.  If 0.0 then no Rayleigh friction is applied.
+Default: 0.
+</entry>
+
+
+<!-- Restart (Continuation and Branch) Runs -->
+
+<entry id="cam_branch_file" type="char*256" category="restart"
+       group="cam_inparm" valid_values="">
+Full pathname of master restart file from which to branch. Setting is
+Required for branch run.
+Default: none
+</entry>
+
+
+<!-- Single column mode -->
+
+<entry id="iopfile" type="char*128" input_pathname="abs" category="scam"
+       group="cam_inparm" valid_values="" >
+Full pathname of IOP dataset.
+Default: set by build-namelist.
+</entry>
+
+<entry id="scm_crm_mode" type="logical" category="scam"
+       group="cam_inparm" valid_values="">
+Column radiation mode.
+Default: FALSE
+</entry>
+
+<entry id="scm_diurnal_avg" type="logical" category="scam"
+       group="cam_inparm" valid_values="">
+If using diurnal averaging or not.
+Default: FALSE
+</entry>
+
+<entry id="scm_iop_srf_prop" type="logical" category="scam"
+       group="cam_inparm" valid_values="">
+Use the specified surface properties.
+Default: FALSE
+</entry>
+
+<entry id="dp_crm" type="logical" category="scam"
+       group="cam_inparm" valid_values="">
+Set to TRUE to turn on doubly periodic cloud resolving model mode.
+Default: FALSE
+</entry>
+
+<entry id="iop_dosubsidence" type="logical" category="scam"
+       group="cam_inparm" valid_values="">
+Compute LS vertical transport using omega prescribed from IOP file.
+Default: FALSE
+</entry>
+
+<entry id="iop_nudge_tq" type="logical" category="scam"
+       group="cam_inparm" valid_values="">
+Use relaxation for temperature and moisture.
+Default: FALSE
+</entry>
+
+<entry id="iop_nudge_uv" type="logical" category="scam"
+       group="cam_inparm" valid_values="">
+Use relaxation for u and v winds.
+Default: FALSE
+</entry>
+
+<entry id="iop_nudge_tq_low" type="real" category="scam"
+       group="cam_inparm" valid_values="">
+Lowest layer to apply relaxation for t and q.  Keep to default value to apply relaxation
+at the surface.
+Default: 1050.0 (hPa)
+</entry>
+
+<entry id="iop_nudge_tq_high" type="real" category="scam"
+       group="cam_inparm" valid_values="">
+Highest layer to apply relaxation for t and q.  Keep to default value to apply relaxation
+at the model top.   
+Default: 0.e3 (hPa)
+</entry>
+
+<entry id="iop_nudge_tscale" type="real" category="scam"
+       group="cam_inparm" valid_values="">
+Time scale to nudge to IOP forcing file.
+Default: 10800 (s)
+</entry>
+
+<entry id="iop_perturb_high" type="real" category="scam"
+       group="cam_inparm" valid_values="">
+Highest layer to apply perturbations for doubly periodic CRM mode.
+Default: 0.e3 (hPa)
+</entry>
+
+<entry id="scm_observed_aero" type="logical" category="scam"
+       group="cam_inparm" valid_values="">
+Initialize with observed aerosols from IOP file.
+Default: FALSE
+</entry>
+
+<entry id="precip_off" type="logical" category="scm"
+       group="cam_inparm" valid_values="">
+Turn off microphysics computation.
+Default: FALSE
+</entry>
+
+<!-- Solar Parameters -->
+
+<entry id="solar_const" type="real" category="solar"
+       group="solar_inparm" valid_values="">
+Total solar irradiance (W/m2).
+Default: set by build-namelist
+</entry>
+
+<entry id="solar_data_file" type="char*256" input_pathname="abs" category="solar"
+       group="solar_inparm" valid_values="" >
+Full pathname of dataset for file that contains the solar photon enerspectra or TSI data
+as a time series
+Default: none
+</entry>
+
+<entry id="solar_data_type" type="char*8" category="solar"
+       group="solar_inparm" valid_values="FIXED,SERIAL" >
+Type of time interpolation for data in <varname>solar_data_file</varname>.
+Can be set to "FIXED" or "SERIAL".
+Default: SERIAL
+</entry>
+
+<entry id="solar_data_ymd" type="integer"  category="solar"
+       group="solar_inparm" valid_values="" >
+If <varname>solar_data_type</varname> is "FIXED" then solar_data_ymd
+is the date the solar data is fixed to.  If <varname>solar_data_type</varname>
+is "SERIAL" the solar_data_ymd is the start date of the time series
+of solar data.
+Format: YYYYMMDD
+Default: none
+</entry>
+
+<entry id="solar_data_tod" type="integer"  category="solar"
+       group="solar_inparm" valid_values="" >
+Seconds of the day corresponding to <varname>solar_data_ymd</varname>
+Default: current model time of day
+</entry>
+
+<entry id="solar_htng_spctrl_scl" type="logical"  category="solar"
+       group="solar_inparm" valid_values="" >
+Use spectral scaling in the radiation heating
+Default: false
+</entry>
+
+<!-- Time step -->
+
+<entry id="dtime" type="real"  category="time_mgr"
+       group="cam_inparm" valid_values="">
+The length (in seconds) of the coupling interval between the dynamics and
+physics.  Changing this variable directly impacts the physical
+parameterizations in the model and may impact the climate.  Changing
+resolution usually requires a change in <varname>dtime</varname>.
+Default: is resolution and dycore dependent and is set by build-namelist.
+</entry>
+
+<!-- Topography -->
+
+<entry id="bnd_topo" type="char*256" input_pathname="abs" category="topo"
+       group="cam_inparm" valid_values="" >
+Full pathname of time-invariant boundary dataset for topography fields.
+Default: set by build-namelist.
+</entry>
+
+<!-- Tropopause -->
+
+<entry id="tropopause_climo_file" type="char*256" input_pathname="abs" category="tropo"
+       group="tropopause_nl" valid_values="" >
+Full pathname of boundary dataset for tropopause climatology.
+Default: set by build-namelist.
+</entry>
+
+<!-- CAM-CHEM -->
+
+<!-- Flags for implementing code modifications under polar project -->
+<entry id="sscav_tuning" type="logical"  category="cam_chem"
+       group="aerosol_nl" valid_values="" >
+Flag for wet scavenging tuning
+Default: .false.
+</entry>
+
+<entry id="seasalt_emis_scale" type="real" category="cam_chem"
+       group="aerosol_nl" valid_values="" >
+Seasalt aerosol emission tuning factor
+Default: set by build-namelist.
+</entry>
+
+<entry id="dust_emis_fact" type="real" category="cam_chem"
+       group="dust_nl" valid_values="" >
+Tuning parameter for dust emissions.
+Default: set by build-namelist.
+</entry>
+
+<entry id="prescribed_ozone_file" type="char*256" input_pathname="rel:prescribed_ozone_datapath" category="cam_chem"
+       group="prescribed_ozone_nl" valid_values="" >
+Filename of dataset for prescribed ozone.
+Default: set by build-namelist.
+</entry>
+
+<entry id="prescribed_ozone_filelist" type="char*256" input_pathname="rel:prescribed_ozone_datapath" category="cam_chem"
+       group="prescribed_ozone_nl" valid_values="" >
+Filename of file that contains a sequence of filenames for prescribed
+ozone.  The filenames in this file are relative to the directory specied
+by <varname>prescribed_ozone_datapath</varname>.
+Default: set by build-namelist.
+</entry>
+
+<entry id="prescribed_ozone_name" type="char*16" category="cam_chem"
+       group="prescribed_ozone_nl" valid_values="" >
+Name of variable containing ozone data in the prescribed ozone datasets.
+Default: 'ozone'
+</entry>
+
+<entry id="prescribed_ozone_rmfile" type="logical" category="cam_chem"
+       group="prescribed_ozone_nl" valid_values="" >
+Remove the file containing prescribed ozone concentrations from local disk when no longer needed.
+Default: FALSE
+</entry>
+
+<entry id="prescribed_ozone_type" type="char*32" category="cam_chem"
+       group="prescribed_ozone_nl" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
+Type of time interpolation for data in prescribed_ozone files.
+Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
+Default: 'SERIAL'
+</entry>
+
+<entry id="prescribed_ozone_cycle_yr" type="integer" category="cam_chem"
+       group="prescribed_ozone_nl" valid_values="" >
+The  cycle year of the prescribed ozone data
+if <varname>prescribed_ozone_type</varname>  is 'CYCLICAL'.
+Format: YYYY
+Default: 0
+</entry>
+
+<entry id="prescribed_ozone_fixed_ymd" type="integer" category="cam_chem"
+       group="prescribed_ozone_nl" valid_values="" >
+The date at which the prescribed ozone data is fixed
+if <varname>prescribed_ozone_type</varname> is 'FIXED'.
+Format: YYYYMMDD
+Default: 0
+</entry>
+
+<entry id="prescribed_ozone_fixed_tod" type="integer" category="cam_chem"
+       group="prescribed_ozone_nl" valid_values="" >
+The time of day (seconds) corresponding to <varname>prescribed_ozone_fixed_ymd</varname>
+at which the prescribed ozone data is fixed
+if <varname>prescribed_ozone_type</varname> is 'FIXED'.
+Default: 0 seconds
+</entry>
+
+<entry id="prescribed_volcaero_datapath" type="char*256" input_pathname="abs" category="cam_chem"
+       group="prescribed_volcaero_nl" valid_values="" >
+Full pathname of the directory that contains the files specified in
+<varname>prescribed_volcaero_filelist</varname>.
+Default: set by build-namelist.
+</entry>
+
+<entry id="prescribed_volcaero_file" type="char*256" input_pathname="rel:prescribed_volcaero_datapath" category="cam_chem"
+       group="prescribed_volcaero_nl" valid_values="" >
+Filename of dataset for prescribed volcaero.
+Default: set by build-namelist.
+</entry>
+
+<entry id="prescribed_volcaero_filelist" type="char*256" input_pathname="rel:prescribed_volcaero_datapath" category="cam_chem"
+       group="prescribed_volcaero_nl" valid_values="" >
+Filename of file that contains a sequence of filenames for prescribed
+volcaero.  The filenames in this file are relative to the directory specied
+by <varname>prescribed_volcaero_datapath</varname>.
+Default: set by build-namelist.
+</entry>
+
+<entry id="prescribed_volcaero_name" type="char*16" category="cam_chem"
+       group="prescribed_volcaero_nl" valid_values="" >
+Name of variable containing volcaero data in the prescribed volcaero datasets.
+Default: 'MMRVOLC'
+</entry>
+
+<entry id="prescribed_volcaero_rmfile" type="logical" category="cam_chem"
+       group="prescribed_volcaero_nl" valid_values="" >
+Remove the file containing prescribed volcanic aerosol concentrations from local disk when no longer needed.
+Default: FALSE
+</entry>
+
+<entry id="prescribed_volcaero_filetype" type="char*32" category="cam_chem"
+       group="prescribed_volcaero_nl" valid_values="VOLC_MIXING_RATIO,VOLC_CMIP6" >
+Default: 'VOLC_MIXING_RATIO'
+</entry>
+
+<entry id="prescribed_volcaero_type" type="char*32" category="cam_chem"
+       group="prescribed_volcaero_nl" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
+Type of time interpolation for data in prescribed_volcaero files.
+Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
+Default: 'SERIAL'
+</entry>
+
+<entry id="prescribed_volcaero_cycle_yr" type="integer" category="cam_chem"
+       group="prescribed_volcaero_nl" valid_values="" >
+The  cycle year of the prescribed volcanic aerosol data
+if <varname>prescribed_volcaero_type</varname>  is 'CYCLICAL'.
+Format: YYYY
+Default: 0
+</entry>
+
+<entry id="prescribed_volcaero_fixed_ymd" type="integer" category="cam_chem"
+       group="prescribed_volcaero_nl" valid_values="" >
+The date at which the prescribed volcanic aerosol data  is fixed
+if <varname>prescribed_volcaero_type</varname> is 'FIXED'.
+Format: YYYYMMDD
+Default: 0
+</entry>
+
+<entry id="prescribed_volcaero_fixed_tod" type="integer" category="cam_chem"
+       group="prescribed_volcaero_nl" valid_values="" >
+The time of day (seconds) corresponding to <varname>prescribed_volcaero_fixed_ymd</varname>
+at which the prescribed volcanic aerosol data is fixed
+if <varname>prescribed_volcaero_type</varname> is 'FIXED'.
+Default: 0 seconds
+</entry>
+
+<entry id="chlorine_loading_file" type="char*256" input_pathname="abs" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+Filename of dataset for linoz chlorine loading.
+Default: none.
+</entry>
+<entry id="chlorine_loading_type" type="char*8" category="cam_chem"
+       group="chem_inparm" valid_values="SERIAL,FIXED" >
+Type of time interpolation type for data in  <varname>chlorine_loading_file</varname>
+Default: 'SERIAL'
+</entry>
+<entry id="chlorine_loading_fixed_tod" type="integer" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+The time of day (seconds) corresponding to <varname>chlorine_loading_fixed_ymd</varname>
+at which the chlorine loading data is fixed
+if <varname>chlorine_loading_type</varname> is 'FIXED'.
+Default: 0 seconds
+</entry>
+<entry id="chlorine_loading_fixed_ymd" type="integer" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+The date at which the chlorine loading data is fixed
+if <varname>chlorine_loading_type</varname> is 'FIXED'.
+Format: YYYYMMDD
+Default: 0
+</entry>
+
+
+<entry id="linoz_data_path" type="char*256" input_pathname="abs" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+Full pathname of the directory that contains the files specified in
+<varname>linoz_data_filelist</varname>.
+Default: none.
+</entry>
+
+<entry id="linoz_data_file" type="char*256" input_pathname="rel:linoz_data_path" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+Filename of dataset for LINOZ data.
+Default: none.
+</entry>
+
+<entry id="linoz_data_filelist" type="char*256" input_pathname="rel:linoz_data_datapath" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+Filename of file that contains a sequence of filenames of the linoz data.
+The filenames in this file are relative to the directory specied
+by <varname>linoz_data_datapath</varname>.
+Default: set by build-namelist.
+</entry>
+
+<entry id="linoz_data_type" type="char*24" category="cam_chem"
+       group="chem_inparm" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
+Type of time interpolation for data in linoz_data files.
+Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
+Default: 'SERIAL'
+</entry>
+
+<entry id="linoz_data_rmfile" type="logical" category="cam_chem"
+       group="chem_inparm" valid_values="TRUE,FALSE" >
+Remove the file containing LINOZ data from local disk when no longer needed.
+Default: FALSE
+</entry>
+
+<entry id="linoz_data_cycle_yr" type="integer" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+The  cycle year of the LINOZ data
+if <varname>linoz_data_type</varname> is 'CYCLICAL'.
+Format: YYYY
+Default: 0
+</entry>
+
+<entry id="linoz_data_fixed_ymd" type="integer" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+The date at which the LINOZ data  is fixed
+if <varname>linoz_data_type</varname> is 'FIXED'.
+Format: YYYYMMDD
+Default: 0
+</entry>
+
+<entry id="linoz_data_fixed_tod" type="integer" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+The time of day (seconds) corresponding to <varname>linoz_data_fixed_ymd</varname>
+at which the LINOZ data is fixed
+if <varname>linoz_data_type</varname> is 'FIXED'.
+Default: 0 seconds
+</entry>
+
+<entry id="linoz_psc_T" type="real" category="linoz"
+       group="linoz_nl" valid_values="" >
+Tunable Linoz PSC ozone loss temperature (K) threshold
+Default: 193.0
+</entry>
+
+<!-- SE dycore -->
+
+<entry id="se_limiter_option" type="integer" category="se"
+       group="ctl_nl" valid_values="0,4,8,9" >
+Limiter used for horizontal tracer advection:
+0: None
+4: Sign-preserving limiter.
+8: Monotone limiter.
+9: CAAS monotone limiter.
+Default: 9
+</entry>
+
+<entry id="vert_remap_q_alg" type="integer" category="se"
+    group="ctl_nl" valid_values="0,1,2,10">
+CAM-SE vertical remap algorithm
+0: default value, Zerroukat monotonic splines
+1: PPM vertical remap with mirroring at the boundaries
+   (solid wall bc's, high-order throughout)
+2: PPM vertical remap without mirroring at the boundaries
+   (no bc's enforced, first-order at two cells bordering top and bottom
+   boundaries)
+10: PPM with 2nd order boundary treatment
+Default: 10
+</entry>
+
+<entry id="se_ftype" type="integer" category="se"
+       group="ctl_nl" valid_values="0,1,2,3,4" >
+CAM physics forcing option:
+0: tendencies
+1: adjustments
+2: hybrid
+Default: Set by build-namelist.
+</entry>
+
+<entry id="integration" type="char*80" category="se"
+       group="ctl_nl" valid_values="explicit" >
+Time integration method.
+Default: explicit.
+</entry>
+
+<entry id="se_ne" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+Use internally generated cubed sphere mesh of size 6 x se_ne x se_ne.
+If se_ne=0 (RRM grids), read mesh from Exodus file.
+Default: Set by build-namelist.
+</entry>
+
+<entry id="se_ne_x" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+Number of elements in the x direction, for doubly periodic mode
+Default: Set by build-namelist.
+</entry>
+
+<entry id="se_ne_y" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+Number of elements in the y direction, for doubly periodic mode
+Default: Set by build-namelist.
+</entry>
+
+<entry id="se_lx" type="real" category="se"
+       group="ctl_nl" valid_values="" >
+Length of domain in meters in x direction, for doubly periodic mode
+Default: Set by build-namelist.
+</entry>
+
+<entry id="se_ly" type="real" category="se"
+       group="ctl_nl" valid_values="" >
+Length of domain in meters in y direction, for doubly periodic mode
+Default: Set by build-namelist.
+</entry>
+
+<entry id="mesh_file" type="char*256" input_pathname="abs" category="se"
+       group="ctl_nl" valid_values="" >
+Exodus format grid file used when se_ne=0
+Default: Set by build-namelist.
+</entry>
+
+<entry id="se_partmethod" type="integer" category="se"
+       group="ctl_nl" valid_values="4" >
+Mesh partitioning method.  The only supported value in CAM is 4 (space-filling).
+Default: 4
+</entry>
+
+<entry id="statefreq" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+Frequency with which diagnostic output is written to log (output every
+statefreq dynamics timesteps).
+Default: Set by build-namelist.
+</entry>
+
+<entry id="se_topology" type="char*80" category="se"
+       group="ctl_nl" valid_values="cube,plane" >
+SE's topology.
+Only "cube" is supported in CAM. "plane" allowed for SCREAM in doubly
+periodic mode.
+Default: Set by build-namelist.
+</entry>
+
+<entry id="se_geometry" type="char*80" category="se"
+       group="ctl_nl" valid_values="sphere,plane" >
+SE's geometry.
+Only "sphere" is supported in CAM. "plane" allowed for SCREAM in doubly
+periodic mode.
+Default: Set by build-namelist.
+</entry>
+
+<entry id="vthreads" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+Number of vertical threads.
+Default: 1.
+</entry>
+
+<entry id="theta_hydrostatic_mode" type="logical" category="se"
+       group="ctl_nl" valid_values="" >
+Run theta model in hydrostatic mode.
+Default: true.
+</entry>
+
+<entry id="theta_advect_form" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+Indicates form of eqn. for vtheta in theta model.
+0 is conservation form, 1 is expanded div form.
+Default: 1.
+</entry>
+
+<entry id="pgrad_correction" type="integer" category="se"
+       group="ctl_nl" valid_values="0,1" >
+Turn on use of balanced geopotential state to reduce
+pressure gradient discretization error.
+Default: 0
+</entry>
+<entry id="hv_ref_profiles" type="integer" category="se"
+       group="ctl_nl" valid_values="0,1,2" >
+Modifications to hyperviscosity to minimize dissipation of
+background reference states.
+Default: 0
+</entry>
+<entry id="hv_theta_correction" type="integer" category="se"
+       group="ctl_nl" valid_values="0,1" >
+For potential temperature equation, use Laplacian on pressure surfaces in
+hyperviscosity operator.
+Default: 0
+</entry>
+<entry id="hv_theta_thresh" type="real" category="se"
+       group="ctl_nl" valid_values="" >
+Max threshold for Laplacian on pressure surface d(theta)/dp correction term.
+Default (set by dycore)
+</entry>
+
+<entry id="vtheta_thresh" type="real" category="se"
+       group="ctl_nl" valid_values="" >
+Minimum threshold for virtual potential temperature in the theta dycore.
+Values below this will trigger a warning and be clipped.
+Default: (set by dycore).
+</entry>
+
+<entry id="cubed_sphere_map" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+Defines which map is used for reference element in homme.
+Must be 2 for compsets using TempestRemap mapping files.
+Default: 2
+</entry>
+
+
+<!-- timestep parameters -->
+
+<entry id="se_nsplit" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+Number of dynamics steps per physics timestep.
+dt_remap = dtime/se_nsplit
+dt_tracer = dt_remap / rsplit
+dt_dyn = dt_tracer / qsplit
+dt_dyn_vis = dt_dyn / hypervis_subcycle
+dt_tracer_vis = dt_tracer / hypervis_subcycle_q
+Default: Set by build-namelist.
+</entry>
+
+<entry id="rsplit" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+Number of tracer steps per remap step.
+If rsplit=0, vertically lagrangian code is off.
+Default: Set by build-namelist.
+</entry>
+
+<entry id="qsplit" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+Number of dynamics steps per tracer step.
+Default: Set by build-namelist.
+</entry>
+
+<entry id="se_tstep" type="real" category="se"
+       group="ctl_nl" valid_values="" >
+Dynamics timestep.  Replaces se_nsplit.
+</entry>
+
+<entry id="dt_tracer_factor" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+The tracer advection timestep is dt_tracer_factor*se_tstep, where se_tstep is
+the dynamics timesteps. dt_tracer_factor*se_tstep must divide dtime, and one of
+dt_remap_factor and dt_tracer_factor must divide the other.
+Replaces qsplit, rsplit.
+Default: Set by build-namelist.
+</entry>
+
+<entry id="dt_remap_factor" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+The vertically Lagrangian remap timestep is dt_remap_factor*se_tstep, where
+se_tstep is the dynamics timesteps. dt_remap_factor*se_tstep must divide dtime,
+and one of dt_remap_factor and dt_tracer_factor must divide the other.
+Replaces qsplit, rsplit.
+If dt_remap_factor=0, vertically Lagrangian code is off.
+</entry>
+
+<entry id="tstep_type" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+Time stepping method for SE dycore
+tstep_type=1  RK2 followed by qsplit-1 Leapfrog steps; second-order accurate in time (CESM1.2.0 setting)
+tstep_type=2  RK2-SSP 3 stage (as used by tracers)
+tstep_type=3  classic Runga-Kutta (RK) 3 stage
+tstep_type=5  Kinnmark&Gray Runga-Kutta (RK) 5 stage (3rd order accurate in time)
+tstep_type=9  Kinnmark&Gray Runga-Kutta IMEX
+Default: Set by build-namelist.
+</entry>
+
+
+<!-- viscosity parameters -->
+
+<entry id="hypervis_order" type="integer" category="se"
+       group="ctl_nl" valid_values="2" >
+Hyperviscosity operator is the Laplacian^hypervis_order.
+The only supported value in CAM is "2".
+Default: Set by build-namelist.
+</entry>
+
+<entry id="hypervis_subcycle" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+Number of hyperviscosity subcycles per dynamics timestep.
+Default: Set by build-namelist (probably 2).
+</entry>
+
+<entry id="hypervis_subcycle_tom" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+If non-zero, subcycle TOM diffusion operator separately from hyperviscsoity
+with dt_vis_tom=dt_dyn/hypervis_subcycle_tom.
+Default: 1
+</entry>
+
+<entry id="hypervis_subcycle_q" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+Number of hyperviscosity subcycles done in tracer advection code.
+Default: Set by build-namelist.
+</entry>
+
+
+<entry id="nu" type="real" category="se"
+       group="ctl_nl" valid_values="" >
+Dynamics hyperviscosity [m^4/s].
+Default: Set by build-namelist.
+</entry>
+
+<entry id="nu_div" type="real" category="se"
+       group="ctl_nl" valid_values="" >
+Weighting of divergence component when applying hyperviscosity.
+If < 0, uses nu.
+Default: -1.
+</entry>
+
+<entry id="nu_s" type="real" category="se"
+       group="ctl_nl" valid_values="" >
+Hyperviscosity applied to dynamics scalars [m^4/s].
+If < 0, uses nu.
+Default: -1.
+</entry>
+
+<entry id="nu_p" type="real" category="se"
+       group="ctl_nl" valid_values="" >
+Hyperviscosity applied to dp3d (layer thickness when running
+vertically lagrangian dynamics) [m^4/s].
+If < 0, uses nu.
+Default: -1.
+</entry>
+
+<entry id="nu_q" type="real" category="se"
+       group="ctl_nl" valid_values="" >
+Hyperviscosity applied during tracer advection [m^4/s].
+If < 0, uses nu.
+Default: -1.
+</entry>
+
+<entry id="nu_top" type="real" category="se"
+       group="ctl_nl" valid_values="" >
+Second-order viscosity applied only near the model top [m^2/s].
+Default: Set by build-namelist.
+</entry>
+
+<entry id="tom_sponge_start" type="real" category="se"
+       group="ctl_nl" valid_values="" >
+Bottom of sponge layer in hPa.
+Default: 0 (use default value based on reference pressure at model top).
+</entry>
+
+<entry id="fine_ne" type="integer" category="se"
+       group="ctl_nl" valid_values="" >
+baseline ne for scalar hypervis tuning
+Default: Set by build-namelist.
+</entry>
+
+<entry id="hypervis_scaling" type="real" category="se"
+       group="ctl_nl" valid_values="" >
+Default: Set by build-namelist.
+</entry>
+
+<entry id="hypervis_power" type="real" category="se"
+       group="ctl_nl" valid_values="" >
+Default: Set by build-namelist.
+</entry>
+
+<entry id="max_hypervis_courant" type="real" category="se"
+       group="ctl_nl" valid_values="" >
+Default: Set by build-namelist.
+</entry>
+
+<!-- tracer transport options -->
+
+<entry id="transport_alg" type="integer" category="se"
+       group="ctl_nl" valid_values="0,12" >
+Tracer transport algorithm:
+0: Eulerian flux-form.
+12: COMPOSE semi-Lagrangian.
+Default: 12
+</entry>
+
+<entry id="semi_lagrange_cdr_alg" type="integer" category="se"
+       group="ctl_nl" valid_values="2,3,20,21,30" >
+Constrained density reconstuctor (CDR) for property preservation:
+2: QLT
+3: CAAS
+20: QLT with superlevels of 8 levels.
+21: QLT with superlevels of 8 levels; use local CAAS over sublevels.
+30: CAAS with superlevels of 8 levels.
+Default: (set by dycore)
+</entry>
+
+<entry id="semi_lagrange_cdr_check" type="logical" category="se"
+       group="ctl_nl" valid_values="">
+Correctness check the CDR.
+Default: (set by dycore)
+</entry>
+
+<entry id="semi_lagrange_nearest_point_lev" type="integer" category="se"
+       group="ctl_nl" valid_values="">
+Number of levels, counting from the top, that are allowed to use the
+nearest point in the halo to the departure point, when necessary.
+Default: (set by dycore)
+</entry>
+
+<entry id="semi_lagrange_hv_q" type="integer" category="se"
+       group="ctl_nl" valid_values="">
+Number of tracers, starting from 1, to which to apply hyperviscosity. For
+example, to apply hyperviscosity to moisture, the first tracer, set the value to
+1. Hyperviscosity is applied using nu_q as the coefficient.
+Default: (set by dycore)
+</entry>
+
+<!-- Physics grid -->
+
+<entry id="se_fv_phys_remap_alg" type="integer" category="se"
+       group="ctl_nl" valid_values="0,1">
+Remap algorithm to use to map between FV physics grid and GLL dynamics
+grid. 0, default, provides the original algorithms; 1 provides
+high-order algorithms implemented in gllfvremap_mod.
+Default: (set by dycore).
+</entry>
+
+<!-- CAM I/O  -->
+
+<entry id="pio_stride" type="integer" category="pio"
+       group="pio_default_inparm" valid_values="" >
+Default: 4
+</entry>
+<entry id="pio_numiotasks" type="integer" category="pio"
+       group="pio_default_inparm" valid_values="" >
+Default: -1
+</entry>
+<entry id="pio_typename" type="char*80" category="pio"
+       group="pio_default_inparm" valid_values="netcdf,pnetcdf,netcdf4p,netcdf4c" >
+Default: "netcdf"
+</entry>
+<entry id="pio_root" type="integer" category="pio"
+       group="pio_default_inparm" valid_values="" >
+Default: 1
+<entry id="pio_debug_level" type="integer" category="pio"
+       group="pio_default_inparm" valid_values="" >
+Default: 0
+</entry>
+<entry id="pio_blocksize" type="integer" category="pio"
+       group="pio_default_inparm" valid_values="" >
+Default: -1
+</entry>
+<entry id="pio_buffer_size_limit" type="integer" category="pio"
+       group="pio_default_inparm" valid_values="" >
+Default: 0
+</entry>
+<entry id="pio_async_interface" type="logical" category="pio"
+       group="pio_default_inparm" valid_values="" >
+Default: .false.
+</entry>
+
+<!-- ========================================================================================  -->
+<!-- Rename component log files.  shr_file_mod::shr_file_setIO reads
+     namelist /modelio/.  These variables in group camexp are treated
+     specially in build-namelist, where they are put into the modelio
+     namelist group in files with specific names that are read by each
+     component.  -->
+
+<entry id="atm_logfile" type="char*256" category="driver"
+       group="camexp" valid_values="">
+Name of file that the atmosphere component log messages will be written to.  By
+default all log messages are written to stdout.
+Default: ""
+</entry>
+
+<entry id="atm_logfile_diro" type="char*256" category="driver"
+       group="camexp" valid_values="">
+Absolute pathname of directory that the file specified by <varname>atm_logfile</varname>
+will be written to.
+Default: "."
+</entry>
+
+</namelist_definition>
