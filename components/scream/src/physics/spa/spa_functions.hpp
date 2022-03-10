@@ -61,8 +61,8 @@ struct SPAFunctions
     SPATimeState() = default;
     // Whether the timestate has been initialized.
     bool inited = false;
-    // The current month
-    Int current_month;
+    // The current month, initialize to an impossible month like -1.
+    Int current_month = -1;
     // Julian Date for the beginning of the month, as defined in
     //           /src/share/util/scream_time_stamp.hpp
     // See this file for definition of Julian Date.

@@ -32,10 +32,34 @@ using Spack = SPAFunc::Spack;
 // Helper Functions
 std::pair<Real,Real> compute_max_min(const view_1d<Real>::HostMirror& input, const int start, const int end);
 
+template<typename ScalarT>
+struct ChecksHelpers {
+
+  static bool is_non_negative (const ScalarT& s) {
+    return not ( (s<0 || std::isnan(s)) );
+  }
+  static bool equal (const ScalarT& lhs, const ScalarT& rhs) {
+    return lhs==rhs;
+  }
+  static bool approx_equal (const ScalarT lhs, const ScalarT rhs,
+                            const ScalarT tol) {
+    using std::abs;
+    return not ( abs(lhs-rhs)>=tol );
+  }
+};
+
+// Helper function. Create Mirror View and Deep-Copy (CMVDC)
+template<typename ViewT>
+auto cmvdc (const ViewT& v_d) -> typename ViewT::HostMirror {
+  auto v_h = Kokkos::create_mirror_view(v_d);
+  Kokkos::deep_copy(v_h,v_d);
+  return v_h;
+}
 TEST_CASE("spa_read_data","spa")
 {
   using C = scream::physics::Constants<Real>;
   static constexpr auto P0 = C::P0;
+  static constexpr auto test_tol = C::macheps*1e1;
 
  /* ====================================================================
   *                  Test Setup, create structures, etc.
@@ -57,11 +81,12 @@ TEST_CASE("spa_read_data","spa")
   test_params.print();
 
   std::string spa_data_file = test_params.get<std::string>("SPA Data File");
-  Int ncols    = test_params.get<Int>("ncols");
-  Int nlevs    = test_params.get<Int>("nlevs");
-  Int nswbands = test_params.get<Int>("nswbands");
-  Int nlwbands = test_params.get<Int>("nlwbands");
+  const Int ncols    = test_params.get<Int>("ncols");
+  const Int nlevs    = test_params.get<Int>("nlevs");
+  const Int nswbands = test_params.get<Int>("nswbands");
+  const Int nlwbands = test_params.get<Int>("nlwbands");
 
+  using Check = ChecksHelpers<Real>;
   // Break the test set of columns into local degrees of freedom per mpi rank
   auto comm_size = spa_comm.size();
   auto comm_rank = spa_comm.rank();
@@ -90,48 +115,33 @@ TEST_CASE("spa_read_data","spa")
   // Verify that the interpolated values match the data, since no temporal or vertical interpolation
   // should be done at this point.
   
-  // Create local host views of all relevant data:
-  auto hyam_h         = Kokkos::create_mirror_view(spa_data_beg.hyam);
-  auto hybm_h         = Kokkos::create_mirror_view(spa_data_beg.hybm);
-  // Beg data for time interpolation
-  auto ps_beg         = Kokkos::create_mirror_view(spa_data_beg.PS);
-  auto ccn3_beg       = Kokkos::create_mirror_view(spa_data_beg.CCN3);
-  auto aer_g_sw_beg   = Kokkos::create_mirror_view(spa_data_beg.AER_G_SW);
-  auto aer_ssa_sw_beg = Kokkos::create_mirror_view(spa_data_beg.AER_SSA_SW);
-  auto aer_tau_sw_beg = Kokkos::create_mirror_view(spa_data_beg.AER_TAU_SW);
-  auto aer_tau_lw_beg = Kokkos::create_mirror_view(spa_data_beg.AER_TAU_LW);
-  // End data for time interpolation
-  auto ps_end         = Kokkos::create_mirror_view(spa_data_end.PS);
-  auto ccn3_end       = Kokkos::create_mirror_view(spa_data_end.CCN3);
-  auto aer_g_sw_end   = Kokkos::create_mirror_view(spa_data_end.AER_G_SW);
-  auto aer_ssa_sw_end = Kokkos::create_mirror_view(spa_data_end.AER_SSA_SW);
-  auto aer_tau_sw_end = Kokkos::create_mirror_view(spa_data_end.AER_TAU_SW);
-  auto aer_tau_lw_end = Kokkos::create_mirror_view(spa_data_end.AER_TAU_LW);
-  // Output
-  auto ccn3_h       = Kokkos::create_mirror_view(spa_data_out.CCN3);
-  auto aer_g_sw_h   = Kokkos::create_mirror_view(spa_data_out.AER_G_SW);
-  auto aer_ssa_sw_h = Kokkos::create_mirror_view(spa_data_out.AER_SSA_SW);
-  auto aer_tau_sw_h = Kokkos::create_mirror_view(spa_data_out.AER_TAU_SW);
-  auto aer_tau_lw_h = Kokkos::create_mirror_view(spa_data_out.AER_TAU_LW);
-  
   // First initialize the start and end month data:  Set for January
   util::TimeStamp ts(1900,1,1,0,0,0);
   SPAFunc::update_spa_timestate(spa_data_file,nswbands,nlwbands,ts,spa_horiz_interp,spa_time_state,spa_data_beg,spa_data_end);
 
-  Kokkos::deep_copy(hyam_h        ,spa_data_beg.hyam);
-  Kokkos::deep_copy(hybm_h        ,spa_data_beg.hybm);
-  Kokkos::deep_copy(ps_beg        ,spa_data_beg.PS);
-  Kokkos::deep_copy(ccn3_beg      ,spa_data_beg.CCN3);
-  Kokkos::deep_copy(aer_g_sw_beg  ,spa_data_beg.AER_G_SW);
-  Kokkos::deep_copy(aer_ssa_sw_beg,spa_data_beg.AER_SSA_SW);
-  Kokkos::deep_copy(aer_tau_sw_beg,spa_data_beg.AER_TAU_SW);
-  Kokkos::deep_copy(aer_tau_lw_beg,spa_data_beg.AER_TAU_LW);
-  Kokkos::deep_copy(ps_end        ,spa_data_end.PS);
-  Kokkos::deep_copy(ccn3_end      ,spa_data_end.CCN3);
-  Kokkos::deep_copy(aer_g_sw_end  ,spa_data_end.AER_G_SW);
-  Kokkos::deep_copy(aer_ssa_sw_end,spa_data_end.AER_SSA_SW);
-  Kokkos::deep_copy(aer_tau_sw_end,spa_data_end.AER_TAU_SW);
-  Kokkos::deep_copy(aer_tau_lw_end,spa_data_end.AER_TAU_LW);
+  // Create local host views of all relevant data:
+  auto hyam_h         = cmvdc(spa_data_beg.hyam);
+  auto hybm_h         = cmvdc(spa_data_beg.hybm);
+  // Beg data for time interpolation
+  auto ps_beg         = cmvdc(spa_data_beg.PS);
+  auto ccn3_beg       = cmvdc(spa_data_beg.CCN3);
+  auto aer_g_sw_beg   = cmvdc(spa_data_beg.AER_G_SW);
+  auto aer_ssa_sw_beg = cmvdc(spa_data_beg.AER_SSA_SW);
+  auto aer_tau_sw_beg = cmvdc(spa_data_beg.AER_TAU_SW);
+  auto aer_tau_lw_beg = cmvdc(spa_data_beg.AER_TAU_LW);
+  // End data for time interpolation
+  auto ps_end         = cmvdc(spa_data_end.PS);
+  auto ccn3_end       = cmvdc(spa_data_end.CCN3);
+  auto aer_g_sw_end   = cmvdc(spa_data_end.AER_G_SW);
+  auto aer_ssa_sw_end = cmvdc(spa_data_end.AER_SSA_SW);
+  auto aer_tau_sw_end = cmvdc(spa_data_end.AER_TAU_SW);
+  auto aer_tau_lw_end = cmvdc(spa_data_end.AER_TAU_LW);
+  // Output
+  auto ccn3_h       = cmvdc(spa_data_out.CCN3);
+  auto aer_g_sw_h   = cmvdc(spa_data_out.AER_G_SW);
+  auto aer_ssa_sw_h = cmvdc(spa_data_out.AER_SSA_SW);
+  auto aer_tau_sw_h = cmvdc(spa_data_out.AER_TAU_SW);
+  auto aer_tau_lw_h = cmvdc(spa_data_out.AER_TAU_LW);
 
  /* ====================================================================
   * Test that spa_main is the identity when no time interpolation and
@@ -145,8 +155,7 @@ TEST_CASE("spa_read_data","spa")
   * ====================================================================*/
   // Create the pressure state.  Note, we need to create the pmid values for the actual data.  We will build it based on the PS and hya/bm
   // coordinates in the beginning data.
-  auto dofs_gids_h = Kokkos::create_mirror_view(dofs_gids);
-  Kokkos::deep_copy(dofs_gids_h,dofs_gids);
+  auto dofs_gids_h = cmvdc(dofs_gids);
 
   auto pmid_tgt_h = Kokkos::create_mirror_view(pmid_tgt);
 
@@ -179,14 +188,15 @@ TEST_CASE("spa_read_data","spa")
       int kidx  = kk % Spack::n;
       int kpack_pad = (kk+1) / Spack::n;
       int kidx_pad  = (kk+1) % Spack::n;
-      REQUIRE(ccn3_h(dof_i,kpack)[kidx] == ccn3_beg(dof_i,kpack_pad)[kidx_pad] );
+      REQUIRE(Check::approx_equal(ccn3_h(dof_i,kpack)[kidx] , ccn3_beg(dof_i,kpack_pad)[kidx_pad] ,test_tol) );
+      REQUIRE(Check::approx_equal(ccn3_h(dof_i,kpack)[kidx] , ccn3_beg(dof_i,kpack_pad)[kidx_pad] ,test_tol) );
       for (int n=0;n<nswbands;n++) {
-        REQUIRE(aer_g_sw_h(dof_i,n,kpack)[kidx]   == aer_g_sw_beg(dof_i,n,kpack_pad)[kidx_pad]);
-        REQUIRE(aer_ssa_sw_h(dof_i,n,kpack)[kidx] == aer_ssa_sw_beg(dof_i,n,kpack_pad)[kidx_pad] );
-        REQUIRE(aer_tau_sw_h(dof_i,n,kpack)[kidx] == aer_tau_sw_beg(dof_i,n,kpack_pad)[kidx_pad] );
+        REQUIRE(Check::approx_equal(aer_g_sw_h(dof_i,n,kpack)[kidx]   , aer_g_sw_beg(dof_i,n,kpack_pad)[kidx_pad],test_tol) );
+        REQUIRE(Check::approx_equal(aer_ssa_sw_h(dof_i,n,kpack)[kidx] , aer_ssa_sw_beg(dof_i,n,kpack_pad)[kidx_pad] ,test_tol) );
+        REQUIRE(Check::approx_equal(aer_tau_sw_h(dof_i,n,kpack)[kidx] , aer_tau_sw_beg(dof_i,n,kpack_pad)[kidx_pad] ,test_tol) );
       }
       for (int n=0;n<nlwbands;n++) {
-        REQUIRE(aer_tau_lw_h(dof_i,n,kpack)[kidx] == aer_tau_lw_beg(dof_i,n,kpack_pad)[kidx_pad] );
+        REQUIRE(Check::approx_equal(aer_tau_lw_h(dof_i,n,kpack)[kidx] , aer_tau_lw_beg(dof_i,n,kpack_pad)[kidx_pad] ,test_tol) );
       }
     }
   }
@@ -222,14 +232,14 @@ TEST_CASE("spa_read_data","spa")
       int kidx      = kk % Spack::n;
       int kpack_pad = (kk+1) / Spack::n;
       int kidx_pad  = (kk+1) % Spack::n;
-      REQUIRE(ccn3_h(dof_i,kpack)[kidx] == ccn3_end(dof_i,kpack_pad)[kidx_pad] );
+      REQUIRE(Check::approx_equal(ccn3_h(dof_i,kpack)[kidx] , ccn3_end(dof_i,kpack_pad)[kidx_pad] ,test_tol) );
       for (int n=0;n<nswbands;n++) {
-        REQUIRE(aer_g_sw_h(dof_i,n,kpack)[kidx]   == aer_g_sw_end(dof_i,n,kpack_pad)[kidx_pad]   );
-        REQUIRE(aer_ssa_sw_h(dof_i,n,kpack)[kidx] == aer_ssa_sw_end(dof_i,n,kpack_pad)[kidx_pad] );
-        REQUIRE(aer_tau_sw_h(dof_i,n,kpack)[kidx] == aer_tau_sw_end(dof_i,n,kpack_pad)[kidx_pad] );
+        REQUIRE(Check::approx_equal(aer_g_sw_h(dof_i,n,kpack)[kidx]   , aer_g_sw_end(dof_i,n,kpack_pad)[kidx_pad]   ,test_tol) );
+        REQUIRE(Check::approx_equal(aer_ssa_sw_h(dof_i,n,kpack)[kidx] , aer_ssa_sw_end(dof_i,n,kpack_pad)[kidx_pad] ,test_tol) );
+        REQUIRE(Check::approx_equal(aer_tau_sw_h(dof_i,n,kpack)[kidx] , aer_tau_sw_end(dof_i,n,kpack_pad)[kidx_pad] ,test_tol) );
       }
       for (int n=0;n<nlwbands;n++) {
-        REQUIRE(aer_tau_lw_h(dof_i,n,kpack)[kidx] == aer_tau_lw_end(dof_i,n,kpack_pad)[kidx_pad] );
+        REQUIRE(Check::approx_equal(aer_tau_lw_h(dof_i,n,kpack)[kidx] , aer_tau_lw_end(dof_i,n,kpack_pad)[kidx_pad] ,test_tol) );
       }
     }
   }
