@@ -2258,40 +2258,6 @@ high-order algorithms implemented in gllfvremap_mod.
 Default: (set by dycore).
 </entry>
 
-<!-- CAM I/O  -->
-
-<entry id="pio_stride" type="integer" category="pio"
-       group="pio_default_inparm" valid_values="" >
-Default: 4
-</entry>
-<entry id="pio_numiotasks" type="integer" category="pio"
-       group="pio_default_inparm" valid_values="" >
-Default: -1
-</entry>
-<entry id="pio_typename" type="char*80" category="pio"
-       group="pio_default_inparm" valid_values="netcdf,pnetcdf,netcdf4p,netcdf4c" >
-Default: "netcdf"
-</entry>
-<entry id="pio_root" type="integer" category="pio"
-       group="pio_default_inparm" valid_values="" >
-Default: 1
-<entry id="pio_debug_level" type="integer" category="pio"
-       group="pio_default_inparm" valid_values="" >
-Default: 0
-</entry>
-<entry id="pio_blocksize" type="integer" category="pio"
-       group="pio_default_inparm" valid_values="" >
-Default: -1
-</entry>
-<entry id="pio_buffer_size_limit" type="integer" category="pio"
-       group="pio_default_inparm" valid_values="" >
-Default: 0
-</entry>
-<entry id="pio_async_interface" type="logical" category="pio"
-       group="pio_default_inparm" valid_values="" >
-Default: .false.
-</entry>
-
 <!-- ========================================================================================  -->
 <!-- Rename component log files.  shr_file_mod::shr_file_setIO reads
      namelist /modelio/.  These variables in group camexp are treated
