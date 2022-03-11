@@ -59,7 +59,7 @@ TEST_CASE("spa_read_data","spa")
 {
   using C = scream::physics::Constants<Real>;
   static constexpr auto P0 = C::P0;
-  static constexpr auto test_tol = C::macheps*1e1;
+  static constexpr auto test_tol = C::macheps*1e2;
 
  /* ====================================================================
   *                  Test Setup, create structures, etc.
