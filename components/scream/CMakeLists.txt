@@ -24,32 +24,20 @@ list(APPEND CMAKE_MODULE_PATH
      ${EKAT_CMAKE_PATH}
      ${EKAT_CMAKE_PATH}/pkg_build
 )
-if (SCREAM_CIME_BUILD)
-  list(APPEND CMAKE_MODULE_PATH
-       ${CMAKE_CURRENT_SOURCE_DIR}/cmake/cime)
-endif ()
 
-if (Kokkos_ENABLE_CUDA)
-  if (Kokkos_ENABLE_CUDA_RELOCATABLE_DEVICE_CODE)
-    if (Kokkos_ENABLE_DEBUG_BOUNDS_CHECK)
-      string (CONCAT msg
-          "Kokkos_ENALBE_CUDA_RELOCATABLE_DEVICE_CODE=ON, and Kokkos_ENALBE_DEBUG_BOUNDS_CHECK=ON.\n"
-          "   -> Disabling bounds checks, to prevent internal compiler errors.")
-      message(WARNING "${msg}")
-      set (Kokkos_ENABLE_DEBUG_BOUNDS_CHECK OFF CACHE BOOL "" FORCE)
-    else()
-      string (CONCAT msg
-          "Kokkos_ENALBE_CUDA_RELOCATABLE_DEVICE_CODE=ON.\n"
-          "   -> Disabling bounds checks, to prevent internal compiler errors.")
-      message(STATUS "${msg}")
-      set (Kokkos_ENABLE_DEBUG_BOUNDS_CHECK OFF CACHE BOOL "" FORCE)
-    endif()
-  endif()
+if (Kokkos_ENABLE_CUDA AND Kokkos_ENABLE_CUDA_RELOCATABLE_DEVICE_CODE AND Kokkos_ENABLE_DEBUG_BOUNDS_CHECK)
+  string (CONCAT msg
+      "Kokkos_ENALBE_CUDA_RELOCATABLE_DEVICE_CODE=ON, and Kokkos_ENALBE_DEBUG_BOUNDS_CHECK=ON.\n"
+      "   -> Disabling bounds checks, to prevent internal compiler errors.")
+  message(WARNING "${msg}")
+  set (Kokkos_ENABLE_DEBUG_BOUNDS_CHECK OFF CACHE BOOL "" FORCE)
 endif()
 
 # Homme's composef90 library (built for f90 support) requires Kokkos::Serial
 # to be defined, which in turn requires the CMake var Kokkos_ENABLE_SERIAL
 # to be on. For now, simply ensure Kokkos Serial is enabled
+# TODO: there's a PR in E3SM that allows to NOT build composef90 in Homme.
+#       Once that makes its way into scream, we can remove this.
 option (Kokkos_ENABLE_SERIAL "" ON)
 
 set (CMAKE_CXX_STANDARD 14)
