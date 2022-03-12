@@ -50,3 +50,6 @@ set_target_properties(atm PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR
 
 # Link libraries
 target_link_libraries(atm PRIVATE ${SCREAM_LIBS} mct)
+if (Kokkos_ENABLE_CUDA_RELOCATABLE_DEVICE_CODE)
+  set_target_properties(atm PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+endif()
