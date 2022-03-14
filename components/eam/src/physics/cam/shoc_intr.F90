@@ -287,14 +287,15 @@ end function shoc_implements_cnst
 
     use physics_types,          only: physics_state, physics_ptend
     use ppgrid,                 only: pver, pverp, pcols
+    use ref_pres,               only: pref_mid
     use time_manager,           only: is_first_step
     use hb_diff,                only: init_hb_diff
     use physics_buffer,         only: pbuf_get_index, pbuf_set_field, &
                                       physics_buffer_desc
     use rad_constituents,       only: rad_cnst_get_info, rad_cnst_get_mode_num_idx, &
-                                      rad_cnst_get_mam_mmr_idx	
-    use constituents,           only: cnst_get_ind	
-    use shoc,                   only: shoc_init			      			      
+                                      rad_cnst_get_mam_mmr_idx
+    use constituents,           only: cnst_get_ind
+    use shoc,                   only: shoc_init
     use cam_history,            only: horiz_only, addfld, add_default
     use cam_history_support,    only: add_hist_coord 
     use error_messages,         only: handle_errmsg
