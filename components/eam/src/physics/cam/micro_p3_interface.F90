@@ -1129,7 +1129,7 @@ end subroutine micro_p3_readnl
     call outfld("nc_activated_inP3",       nccn_prescribed,        pcols, lchnk) 
     call outfld("nc_nuceat_tend_inP3",     npccn,                  pcols, lchnk) 
     call outfld("ni_activated_inP3",       ni_activated,           pcols, lchnk) 
-    call outfld("qv_prev_micro_step_inP3", qv_prev,                pcols, lchnk) 
+    call outfld("qv_prev_micro_step_inP3", qv_prev_wet,            pcols, lchnk) 
 
     ! CALL P3
     !==============
@@ -1458,7 +1458,7 @@ end subroutine micro_p3_readnl
     ! write output that can be used to check the p3_stand_alone test output: 
     call outfld("T_mid_outP3",               temp,              pcols, lchnk) 
     call outfld("qc_outP3",                  cldliq,            pcols, lchnk)
-    call outfld("qv_outP3",                  qv,                pcols, lchnk) 
+    call outfld("qv_outP3",                  qv_wet_out,        pcols, lchnk) 
     call outfld("bm_outP3",                  rimvol,            pcols, lchnk) 
     call outfld("nc_outP3",                  numliq,            pcols, lchnk) 
     call outfld("ni_outP3",                  numice,            pcols, lchnk) 
@@ -1467,7 +1467,7 @@ end subroutine micro_p3_readnl
     call outfld("qm_outP3",                  qm,                pcols, lchnk) 
     call outfld("qr_outP3",                  rain,              pcols, lchnk) 
     call outfld("T_prev_micro_step_outP3",   t_prev,            pcols, lchnk)
-    call outfld("qv_prev_micro_step_outP3",  qv_prev,           pcols, lchnk) 
+    call outfld("qv_prev_micro_step_outP3",  qv_prev_wet,       pcols, lchnk) 
     call outfld("eff_radius_qc_outP3",       rel,               pcols, lchnk) 
     call outfld("eff_radius_qi_outP3",       rei,               pcols, lchnk) 
     call outfld("liq_ice_exchange_outP3",    liq_ice_exchange,  pcols, lchnk) 
