@@ -67,6 +67,8 @@ module stepon
   type (quadrature_t)   :: gv,gp           ! quadratures on velocity and pressure grids
 !-----------------------------------------------------------------------
 
+  ! Velocity coordinates need to be a target because add_hist_coord will try to point to it
+  integer, dimension(2), target :: velocity_coords
 
 CONTAINS
 
@@ -86,7 +88,7 @@ subroutine stepon_init(dyn_in, dyn_out )
   use gravity_waves_sources,  only: gws_init
   use phys_control,           only: use_gw_front
   use cam_history_support,    only: max_fieldname_len
-  use cam_history_support, only: add_hist_coord 
+  use cam_history_support, only: add_hist_coord
 
 ! !OUTPUT PARAMETERS
 !
@@ -115,7 +117,8 @@ subroutine stepon_init(dyn_in, dyn_out )
   ! is not initialized at that point if making a restart runs
   !
   ! Fields needed to run a dynamics stand-alone test
-  call add_hist_coord('dim2',  2, 'Velocity coordinates',  'N/A', (/ 1,2 /))
+  velocity_coords(:) = (/1, 2/)
+  call add_hist_coord('dim2',  2, 'Velocity coordinates',  'N/A', velocity_coords)
   call addfld('dp_inHOMME',         (/ 'lev' /),          'I', 'unitless', 'dp',         gridname='GLL')
   call addfld('phi_i_inHOMME',      (/ 'ilev' /),         'I', 'unitless', 'phi_i',      gridname='GLL')
   call addfld('qv_inHOMME',         (/ 'lev' /),          'I', 'unitless', 'qv',         gridname='GLL')
