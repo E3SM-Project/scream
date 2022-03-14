@@ -123,6 +123,9 @@ module shoc_intr
  
   logical :: liqcf_fix = .FALSE.  ! HW for liquid cloud fraction fix
   logical :: relvar_fix = .FALSE. !PMA for relvar fix  
+
+  ! Velocity coordinates need to be a target because add_hist_coord will try to point to it
+  integer, dimension(2), target :: velocity_coords
   
   contains
   
@@ -297,7 +300,7 @@ end function shoc_implements_cnst
     use constituents,           only: cnst_get_ind
     use shoc,                   only: shoc_init
     use cam_history,            only: horiz_only, addfld, add_default
-    use cam_history_support,    only: add_hist_coord 
+    use cam_history_support,    only: add_hist_coord
     use error_messages,         only: handle_errmsg
     use trb_mtn_stress,         only: init_tms   
  
@@ -391,7 +394,8 @@ end function shoc_implements_cnst
     endif
 
     ! Write variables for shoc stand alone test: INPUT 
-    call add_hist_coord('dim2',  2, 'Velocity coordinates',  'N/A', (/ 1,2 /))
+    velocity_coords(:) = (/1, 2/)
+    call add_hist_coord('dim2',  2, 'Velocity coordinates',  'N/A', velocity_coords)
     call addfld( "T_mid_inSHOC",            (/'lev'/),          'I', 'K',        "t"       )
     call addfld( "cldfrac_liq_inSHOC",      (/'lev'/),          'I', 'unitless', "alst"    )
     call addfld( "eddy_diff_mom_inSHOC",    (/'lev'/),          'I', 'm2/s',     "khzm"    )
@@ -408,8 +412,7 @@ end function shoc_implements_cnst
     call addfld( "sgs_buoy_flux_inSHOC",    (/'lev'/),          'I', 'K m/s',    "wthv_sec")
     call addfld( "surf_latent_flux_inSHOC", horiz_only,         'I', 'kg/s^3',   "shf"     )
     call addfld( "surf_sens_flux_inSHOC",   horiz_only,         'I', 'kg/s^3',   "cflx_k0" )
-    call addfld( "surf_u_mom_flux_inSHOC",  horiz_only,         'I', 'kg m/s^2', "wsx"     )
-    call addfld( "surf_v_mom_flux_inSHOC",  horiz_only,         'I', 'kg m/s^2', "wsy"     )
+    call addfld( "surf_mom_flux_inSHOC",    (/'dim2'/),         'I', 'kg m/s^2', "wsx,wsy" )
     call addfld( "tke_inSHOC",              (/'lev'/),          'I', '(m/s)^2',  "tke"     )
     call addfld( "z_int_inSHOC",            (/'ilev'/),         'I', 'm',        "zi"      )
     call addfld( "z_mid_inSHOC",            (/'lev'/),          'I', 'm',        "zm"      )
@@ -633,6 +636,7 @@ end function shoc_implements_cnst
    real(r8) :: wtke_sec_out(pcols,pverp), uw_sec_out(pcols,pverp)
    real(r8) :: vw_sec_out(pcols,pverp), w3_out(pcols,pverp)
    real(r8) :: wqls_out(pcols,pver), brunt_out(pcols,pver)
+   real(r8) :: mom_flux_vect(pcols,2)  ! Combined u and v surface momentum flux
 
    real(r8) :: wthl_output(pcols,pverp)
    real(r8) :: wqw_output(pcols,pverp)
@@ -828,7 +832,13 @@ end function shoc_implements_cnst
      
      enddo
    enddo         
-   
+  
+   ! Combine surface momentum fluxes into vector with x and y components
+   do i = 1,ncol
+     mom_flux_vect(i,1) = cam_in%wsx(i)
+     mom_flux_vect(i,2) = cam_in%wsy(i)
+   end do
+
    ! ------------------------------------------------- !
    ! Prepare inputs for SHOC call                      !
    ! ------------------------------------------------- ! 
@@ -906,8 +916,7 @@ end function shoc_implements_cnst
    call outfld( "sgs_buoy_flux_inSHOC",    wthv,                   pcols, lchnk )
    call outfld( "surf_latent_flux_inSHOC", cam_in%cflx,            pcols, lchnk )
    call outfld( "surf_sens_flux_inSHOC",   cam_in%shf,             pcols, lchnk )
-   call outfld( "surf_u_mom_flux_inSHOC",  cam_in%wsx,             pcols, lchnk )
-   call outfld( "surf_v_mom_flux_inSHOC",  cam_in%wsy,             pcols, lchnk )
+   call outfld( "surf_mom_flux_inSHOC",    mom_flux_vect,          pcols, lchnk )
    call outfld( "tke_inSHOC",              tke_zt,                 pcols, lchnk )
    call outfld( "z_int_inSHOC",            state1%zi,              pcols, lchnk )
    call outfld( "z_mid_inSHOC",            state1%zm,              pcols, lchnk )
