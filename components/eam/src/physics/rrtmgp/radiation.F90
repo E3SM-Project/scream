@@ -589,21 +589,22 @@ contains
         active_gases_index(igas) = igas
         call addfld(trim(active_gases(igas))//"_inRAD",          (/ 'lev' /), 'I', 'kg/kg',  trim(active_gases(igas)))
       end do
-      call add_hist_coord("ngas",size(active_gases),"Number of active gases in radiation", 'N/A', active_gases_index)
-      call addfld("T_mid_inRAD",            (/ 'lev' /),         'I', 'K',        "T_mid")
-      call addfld("cos_zenith_inRAD",    (/ 'lev' /),         'I', 'unitless', "mu0")
-      call addfld("eff_radius_qc_inRAD",    (/ 'lev' /),         'I', 'micron',   "rel")
-      call addfld("eff_radius_qi_inRAD",    (/ 'lev' /),         'I', 'micron',   "rei")
-      call addfld("p_mid_inRAD",            (/ 'lev' /),         'I', 'Pa',       "p_mid")
-      call addfld("p_int_inRAD",            (/ 'ilev' /),        'I', 'Pa',       "p_int")
-      call addfld("pseudo_density_inRAD",   (/ 'lev' /),         'I', 'Pa',       "pseudo density")
-      call addfld("qc_inRAD",               (/ 'lev' /),         'I', 'kg/kg',    "qc, cld water MMR")
-      call addfld("qi_inRAD",               (/ 'lev' /),         'I', 'kg/kg',    "qi, ice water MMR")
-      call addfld('surf_alb_diffuse_inRAD', (/'swband'/),        'I', '1',        "Shortwave direct-beam albedo", &
-                  sampling_seq='rad_lwsw', flag_xyfill=.true.)
-      call addfld('surf_alb_direct_inRAD', (/'swband'/),         'I', '1',        "Shortwave diffuse-beam albedo", &
-                  sampling_seq='rad_lwsw', flag_xyfill=.true.)
-      call addfld("t_int_inRAD",            (/ 'ilev' /),        'I', 'K',        "Interface Temperature")
+      call add_hist_coord('ngas',size(active_gases),'Number of active gases in radiation', 'N/A', active_gases_index)
+      call addfld('T_mid_inRAD'          , (/ 'lev' /) , 'I', 'K',        'T_mid')
+      call addfld('cos_zenith_inRAD'     , (/ 'lev' /) , 'I', 'unitless', 'mu0')
+      call addfld('eff_radius_qc_inRAD'  , (/ 'lev' /) , 'I', 'micron',   'rel')
+      call addfld('eff_radius_qi_inRAD'  , (/ 'lev' /) , 'I', 'micron',   'rei')
+      call addfld('p_mid_inRAD'          , (/ 'lev' /) , 'I', 'Pa',       'p_mid')
+      call addfld('p_int_inRAD'          , (/ 'ilev' /), 'I', 'Pa',       'p_int')
+      call addfld('pseudo_density_inRAD' , (/ 'lev' /) , 'I', 'Pa',       'pseudo density')
+      call addfld('qc_inRAD'             , (/ 'lev' /) , 'I', 'kg/kg',    'qc, cld water MMR')
+      call addfld('qi_inRAD'             , (/ 'lev' /) , 'I', 'kg/kg',    'qi, ice water MMR')
+      call addfld('sfc_alb_dir_vis_inRAD', horiz_only  , 'I', '1',        'Surface albedo for direct visible')
+      call addfld('sfc_alb_dif_vis_inRAD', horiz_only  , 'I', '1',        'Surface albedo for diffuse visible')
+      call addfld('sfc_alb_dir_nir_inRAD', horiz_only  , 'I', '1',        'Surface albedo for direct near-IR')
+      call addfld('sfc_alb_dif_nir_inRAD', horiz_only  , 'I', '1',        'Surface albedo for diffuse near-IR')
+      call addfld('surf_lw_flux_up_inRAD', horiz_only  , 'I', 'W/m2',     'Surface LW flux up from surface models')
+      call addfld('t_int_inRAD'          , (/ 'ilev' /), 'I', 'K',        'Interface Temperature')
 
       ! Shortwave radiation
       call addfld('TOT_CLD_VISTAU', (/ 'lev' /), 'A',   '1', &
@@ -1313,6 +1314,7 @@ contains
          call t_stopf('rrtmgp_check_temperatures')
       end if
       call outfld("t_int_inRAD",            tint,         pcols, state%lchnk)
+      call outfld('surf_lw_flux_up_inRAD', cam_in%lwup(1:ncol), ncol, state%lchnk)
 
       ! Do shortwave stuff...
       if (radiation_do('sw')) then
@@ -1328,8 +1330,10 @@ contains
          ! Send albedos to history buffer (useful for debugging)
          call outfld('SW_ALBEDO_DIR', transpose(albedo_dir(1:nswbands,1:ncol)), ncol, state%lchnk)
          call outfld('SW_ALBEDO_DIF', transpose(albedo_dif(1:nswbands,1:ncol)), ncol, state%lchnk)
-         call outfld('surf_alb_direct_inRAD', transpose(albedo_dir(1:nswbands,1:ncol)), ncol, state%lchnk)
-         call outfld('surf_alb_diffuse_inRAD', transpose(albedo_dif(1:nswbands,1:ncol)), ncol, state%lchnk)
+         call outfld('sfc_alb_dir_vis_inRAD', cam_in%asdir(1:ncol), ncol, state%lchnk)
+         call outfld('sfc_alb_dif_vis_inRAD', cam_in%asdif(1:ncol), ncol, state%lchnk)
+         call outfld('sfc_alb_dir_nir_inRAD', cam_in%aldir(1:ncol), ncol, state%lchnk)
+         call outfld('sfc_alb_dif_nir_inRAD', cam_in%aldif(1:ncol), ncol, state%lchnk)
 
          ! Get cosine solar zenith angle for current time step.
          call set_cosine_solar_zenith_angle(state, dt_avg, coszrs(1:ncol))
