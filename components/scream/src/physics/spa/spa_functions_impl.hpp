@@ -98,10 +98,8 @@ void SPAFunctions<S,D>
   Int nswbands,
   Int nlwbands)
 {
-  // Gather time stamp info
-  auto& t_now = time_state.t_now;
-  auto& t_beg = time_state.t_beg_month;
-  auto& t_len = time_state.days_this_month;
+  // Set time interpolation weight
+  auto t_norm = (time_state.t_now-time_state.t_beg_month)/time_state.days_this_month;
 
   const int nlevs_src = data_beg.nlevs;
 
@@ -121,7 +119,6 @@ void SPAFunctions<S,D>
   using ExeSpace = typename KT::ExeSpace;
   const Int nk_pack = ekat::npack<Spack>(nlevs_tgt);
   const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(ncols_tgt, nk_pack);
-  auto t_norm = (t_now-t_beg)/t_len;
   // SPA Main loop
   // Parallel loop order:
   // 1. Loop over all horizontal columns (i index)
@@ -717,7 +714,7 @@ inline ScalarT linear_interp(
   const ScalarT& x1,
   const ScalarS& t_norm)
 {
-  return (1.0 - t_norm) * x0 + t_norm * x1;
+  return x0 - t_norm*x0 + t_norm*x1;
 }
 /*-----------------------------------------------------------------*/
 

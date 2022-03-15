@@ -32,22 +32,6 @@ using Spack = SPAFunc::Spack;
 // Helper Functions
 std::pair<Real,Real> compute_max_min(const view_1d<Real>::HostMirror& input, const int start, const int end);
 
-template<typename ScalarT>
-struct ChecksHelpers {
-
-  static bool is_non_negative (const ScalarT& s) {
-    return not ( (s<0 || std::isnan(s)) );
-  }
-  static bool equal (const ScalarT& lhs, const ScalarT& rhs) {
-    return lhs==rhs;
-  }
-  static bool approx_equal (const ScalarT lhs, const ScalarT rhs,
-                            const ScalarT tol) {
-    using std::abs;
-    return not ( abs(lhs-rhs)>=tol );
-  }
-};
-
 // Helper function. Create Mirror View and Deep-Copy (CMVDC)
 template<typename ViewT>
 auto cmvdc (const ViewT& v_d) -> typename ViewT::HostMirror {
@@ -59,7 +43,6 @@ TEST_CASE("spa_read_data","spa")
 {
   using C = scream::physics::Constants<Real>;
   static constexpr auto P0 = C::P0;
-  static constexpr auto test_tol = C::macheps*1e2;
 
  /* ====================================================================
   *                  Test Setup, create structures, etc.
@@ -86,7 +69,6 @@ TEST_CASE("spa_read_data","spa")
   const Int nswbands = test_params.get<Int>("nswbands");
   const Int nlwbands = test_params.get<Int>("nlwbands");
 
-  using Check = ChecksHelpers<Real>;
   // Break the test set of columns into local degrees of freedom per mpi rank
   auto comm_size = spa_comm.size();
   auto comm_rank = spa_comm.rank();
@@ -118,6 +100,10 @@ TEST_CASE("spa_read_data","spa")
   // First initialize the start and end month data:  Set for January
   util::TimeStamp ts(1900,1,1,0,0,0);
   SPAFunc::update_spa_timestate(spa_data_file,nswbands,nlwbands,ts,spa_horiz_interp,spa_time_state,spa_data_beg,spa_data_end);
+  REQUIRE(spa_time_state.t_beg_month==0); // That we are starting at the beginning of the year
+  REQUIRE(spa_time_state.current_month==1); // That it is January
+  REQUIRE(spa_time_state.days_this_month==31);  // That Jan. is as long as we would expect
+  REQUIRE(spa_time_state.t_now==0); // That we are in fact at the beginning of the month
 
   // Create local host views of all relevant data:
   auto hyam_h         = cmvdc(spa_data_beg.hyam);
@@ -188,15 +174,14 @@ TEST_CASE("spa_read_data","spa")
       int kidx  = kk % Spack::n;
       int kpack_pad = (kk+1) / Spack::n;
       int kidx_pad  = (kk+1) % Spack::n;
-      REQUIRE(Check::approx_equal(ccn3_h(dof_i,kpack)[kidx] , ccn3_beg(dof_i,kpack_pad)[kidx_pad] ,test_tol) );
-      REQUIRE(Check::approx_equal(ccn3_h(dof_i,kpack)[kidx] , ccn3_beg(dof_i,kpack_pad)[kidx_pad] ,test_tol) );
+      REQUIRE((ccn3_h(dof_i,kpack)[kidx] == ccn3_beg(dof_i,kpack_pad)[kidx_pad]) );
       for (int n=0;n<nswbands;n++) {
-        REQUIRE(Check::approx_equal(aer_g_sw_h(dof_i,n,kpack)[kidx]   , aer_g_sw_beg(dof_i,n,kpack_pad)[kidx_pad],test_tol) );
-        REQUIRE(Check::approx_equal(aer_ssa_sw_h(dof_i,n,kpack)[kidx] , aer_ssa_sw_beg(dof_i,n,kpack_pad)[kidx_pad] ,test_tol) );
-        REQUIRE(Check::approx_equal(aer_tau_sw_h(dof_i,n,kpack)[kidx] , aer_tau_sw_beg(dof_i,n,kpack_pad)[kidx_pad] ,test_tol) );
+        REQUIRE((aer_g_sw_h(dof_i,n,kpack)[kidx]   == aer_g_sw_beg(dof_i,n,kpack_pad)[kidx_pad]) );
+        REQUIRE((aer_ssa_sw_h(dof_i,n,kpack)[kidx] == aer_ssa_sw_beg(dof_i,n,kpack_pad)[kidx_pad]) );
+        REQUIRE((aer_tau_sw_h(dof_i,n,kpack)[kidx] == aer_tau_sw_beg(dof_i,n,kpack_pad)[kidx_pad]) );
       }
       for (int n=0;n<nlwbands;n++) {
-        REQUIRE(Check::approx_equal(aer_tau_lw_h(dof_i,n,kpack)[kidx] , aer_tau_lw_beg(dof_i,n,kpack_pad)[kidx_pad] ,test_tol) );
+        REQUIRE((aer_tau_lw_h(dof_i,n,kpack)[kidx] == aer_tau_lw_beg(dof_i,n,kpack_pad)[kidx_pad]) );
       }
     }
   }
@@ -205,6 +190,11 @@ TEST_CASE("spa_read_data","spa")
   // Add a month and recalculate.  Should now match the end of the month data.
   ts += util::days_in_month(ts.get_year(),ts.get_month())*86400;
   spa_time_state.t_now = ts.frac_of_year_in_days();
+  // Check that nothing in the time state has changed except t_now
+  REQUIRE(spa_time_state.t_beg_month==0); 
+  REQUIRE(spa_time_state.current_month==1);
+  REQUIRE(spa_time_state.days_this_month==31);
+  REQUIRE(spa_time_state.t_now==31); // That we are now at the end of the month
 
   for (size_t dof_i=0;dof_i<dofs_gids_h.size();dof_i++) {
     for (int kk=0;kk<nlevs;kk++) {
@@ -232,14 +222,14 @@ TEST_CASE("spa_read_data","spa")
       int kidx      = kk % Spack::n;
       int kpack_pad = (kk+1) / Spack::n;
       int kidx_pad  = (kk+1) % Spack::n;
-      REQUIRE(Check::approx_equal(ccn3_h(dof_i,kpack)[kidx] , ccn3_end(dof_i,kpack_pad)[kidx_pad] ,test_tol) );
+      REQUIRE((ccn3_h(dof_i,kpack)[kidx] == ccn3_end(dof_i,kpack_pad)[kidx_pad]) );
       for (int n=0;n<nswbands;n++) {
-        REQUIRE(Check::approx_equal(aer_g_sw_h(dof_i,n,kpack)[kidx]   , aer_g_sw_end(dof_i,n,kpack_pad)[kidx_pad]   ,test_tol) );
-        REQUIRE(Check::approx_equal(aer_ssa_sw_h(dof_i,n,kpack)[kidx] , aer_ssa_sw_end(dof_i,n,kpack_pad)[kidx_pad] ,test_tol) );
-        REQUIRE(Check::approx_equal(aer_tau_sw_h(dof_i,n,kpack)[kidx] , aer_tau_sw_end(dof_i,n,kpack_pad)[kidx_pad] ,test_tol) );
+        REQUIRE((aer_g_sw_h(dof_i,n,kpack)[kidx]   == aer_g_sw_end(dof_i,n,kpack_pad)[kidx_pad]  ) );
+        REQUIRE((aer_ssa_sw_h(dof_i,n,kpack)[kidx] == aer_ssa_sw_end(dof_i,n,kpack_pad)[kidx_pad]) );
+        REQUIRE((aer_tau_sw_h(dof_i,n,kpack)[kidx] == aer_tau_sw_end(dof_i,n,kpack_pad)[kidx_pad]) );
       }
       for (int n=0;n<nlwbands;n++) {
-        REQUIRE(Check::approx_equal(aer_tau_lw_h(dof_i,n,kpack)[kidx] , aer_tau_lw_end(dof_i,n,kpack_pad)[kidx_pad] ,test_tol) );
+        REQUIRE((aer_tau_lw_h(dof_i,n,kpack)[kidx] == aer_tau_lw_end(dof_i,n,kpack_pad)[kidx_pad]) );
       }
     }
   }
