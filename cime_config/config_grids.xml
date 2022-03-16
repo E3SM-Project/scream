@@ -1471,7 +1471,7 @@
       <grid name="atm">ne512np4</grid>
       <grid name="lnd">360x720cru</grid>
       <grid name="ocnice">oRRS15to5</grid>
-      <grid name="rof">r05</grid>
+      <grid name="rof">null</grid>
       <grid name="glc">null</grid>
       <grid name="wav">null</grid>
       <mask>oRRS15to5</mask>
@@ -3279,8 +3279,8 @@
       <map name="ATM2LND_SMAPNAME">cpl/gridmaps/ne120np4/map_ne120np4_to_r0125_mono.20200508.nc</map>
       <map name="LND2ATM_FMAPNAME">cpl/gridmaps/ne120np4/map_r0125_to_ne120np4_mono.200508.nc</map>
       <map name="LND2ATM_SMAPNAME">cpl/gridmaps/ne120np4/map_r0125_to_ne120np4_mono.200508.nc</map>
-      <map name="ATM2ROF_FMAPNAME">cpl/gridmaps/ne120np4/map_ne120np4_to_r0125_mono.20200508.nc</map>
-      <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/ne120np4/map_ne120np4_to_r0125_mono.20200508.nc</map>
+      <!--map name="ATM2ROF_FMAPNAME">cpl/gridmaps/ne120np4/map_ne120np4_to_r0125_mono.20200508.nc</map-->
+      <!--map name="ATM2ROF_SMAPNAME">cpl/gridmaps/ne120np4/map_ne120np4_to_r0125_mono.20200508.nc</map-->
     </gridmap>
 
     <gridmap atm_grid="ne120np4.pg2" lnd_grid="r0125">
@@ -3425,6 +3425,11 @@
     <gridmap atm_grid="ne256np4.pg2" rof_grid="r0125">
       <map name="ATM2ROF_FMAPNAME">cpl/gridmaps/ne256pg2/map_ne256pg2_to_r0125_mono.200212.nc</map>
       <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/ne256pg2/map_ne256pg2_to_r0125_bilin.200212.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne512np4" rof_grid="360x720cru">
+      <map name="ATM2ROF_FMAPNAME">cpl/gridmaps/ne512np4/map_ne512np4_to_360x720cru_mono.190409.nc</map>
+      <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/ne512np4/map_ne512np4_to_360x720cru_mono.190409.nc</map>
     </gridmap>
 
     <gridmap atm_grid="ne512np4.pg2" ocn_grid="oRRS18to6v3">
