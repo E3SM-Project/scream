@@ -1625,7 +1625,7 @@ contains
       end if
       ! Call outfield on active gases needed by radiation for stand-alone testing 
       do igas = 1,size(active_gases)
-        call outfld(trim(active_gases(igas))//"_inRAD", gas_vmr(:,:,igas), pcols, state%lchnk) 
+        call outfld(trim(active_gases(igas))//"_inRAD", gas_vmr(igas,:ncol,:pver), ncol, state%lchnk) 
       end do
 
    end subroutine radiation_tend
