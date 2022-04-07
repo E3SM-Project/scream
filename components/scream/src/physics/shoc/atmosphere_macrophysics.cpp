@@ -415,4 +415,15 @@ void SHOCMacrophysics::finalize_impl()
 }
 // =========================================================================================
 
+/*
+  namespace shoc {
+
+template <typename Scalar>
+struct Tunable
+  {
+    static constexpr Scalar length_fac = m_shoc_length_factor;
+  };
+
+  } // namespace shoc
+*/
 } // namespace scream
