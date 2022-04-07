@@ -291,6 +291,10 @@ void SHOCMacrophysics::initialize_impl (const RunType /* run_type */)
   // For now, set z_int(i,nlevs) = z_surf = 0
   const Real z_surf = 0.0;
 
+  // Retrieve the SHOC tunable parameters from the parameter list:
+  EKAT_REQUIRE_MSG(m_params.isParameter("SHOC Length Factor"),"ERROR: SHOC Length Factor is missing from SHOC parameter list.");
+  m_shoc_length_factor = m_params.get<float>("SHOC Length Factor");
+
   shoc_preprocess.set_variables(m_num_cols,m_num_levs,m_num_tracers,z_surf,m_cell_area,
                                 T_mid,p_mid,p_int,pseudo_density,omega,phis,surf_sens_flux,surf_latent_flux,
                                 surf_mom_flux,qv,qc,qc_copy,tke,tke_copy,z_mid,z_int,cell_length,

@@ -19,6 +19,7 @@ Atmosphere Driver:
       Enable Postcondition Checks: 1
       Enable Precondition Checks: 1
       Grid: Physics GLL
+      SHOC Length Factor: 0.5
     Process 2:
       Process Name: CldFraction
       Enable Postcondition Checks: 1

@@ -66,6 +66,8 @@ public:
     return s;
   }
 
+  Real m_shoc_length_factor;
+
   // Set the grid
   void set_grids (const std::shared_ptr<const GridsManager> grids_manager);
 
