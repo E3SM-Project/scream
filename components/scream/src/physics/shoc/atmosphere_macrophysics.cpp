@@ -293,7 +293,6 @@ void SHOCMacrophysics::initialize_impl (const RunType /* run_type */)
 
   // Retrieve the SHOC tunable parameters from the parameter list:
   EKAT_REQUIRE_MSG(m_params.isParameter("SHOC Length Factor"),"ERROR: SHOC Length Factor is missing from SHOC parameter list.");
-//  m_shoc_length_factor = m_params.get<float>("SHOC Length Factor");
   tunable.length_fac = m_params.get<Real>("SHOC Length Factor");
 
   shoc_preprocess.set_variables(m_num_cols,m_num_levs,m_num_tracers,z_surf,m_cell_area,

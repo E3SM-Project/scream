@@ -74,7 +74,7 @@ struct Functions
     SHOCtunable() = default;
     
     // SHOC length scale tuning factor [-]
-    view_1d<const Scalar> length_fac;
+    Scalar length_fac;
   };
 
   // This struct stores input views for shoc_main.
