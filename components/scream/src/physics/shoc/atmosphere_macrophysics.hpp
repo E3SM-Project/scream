@@ -443,6 +443,7 @@ protected:
   SHF::SHOCInputOutput input_output;
   SHF::SHOCOutput output;
   SHF::SHOCHistoryOutput history_output;
+  SHF::SHOCtunable tunable;
 
   // Structures which compute pre/post process
   SHOCPreprocess shoc_preprocess;

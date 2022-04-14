@@ -68,6 +68,14 @@ struct Functions
 
   using WorkspaceMgr = typename ekat::WorkspaceManager<Spack,  Device>;
   using Workspace    = typename WorkspaceMgr::Workspace;
+  
+  // This struct stores SHOC tunable parameters
+  struct SHOCtunable {
+    SHOCtunable() = default;
+    
+    // SHOC length scale tuning factor [-]
+    view_1d<const Scalar> length_fac;
+  };
 
   // This struct stores input views for shoc_main.
   struct SHOCInput {
