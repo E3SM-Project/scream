@@ -99,8 +99,9 @@ tweaking their $case/namelist_scream.xml file.
           <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
           <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
           <Grid>Dynamics</Grid>
-          <Vertical__Coordinate__Filename>${DIN_LOC_ROOT}/atm/scream/init/init_ne4np4.nc</Vertical__Coordinate__Filename>
-          <Vertical__Coordinate__Filename COMPSET=".*SCREAM%AQUA.*">${DIN_LOC_ROOT}/atm/scream/init/scream-aquaplanet_init_ne4np4_L72_20211202.nc</Vertical__Coordinate__Filename>
+          <Vertical__Coordinate__Filename hgrid="ne4np4">${DIN_LOC_ROOT}/atm/scream/init/init_ne4np4.nc</Vertical__Coordinate__Filename>
+          <Vertical__Coordinate__Filename hgrid="ne30np4">${DIN_LOC_ROOT}/atm/scream/init/screami_ne30np4L72_20220329.nc</Vertical__Coordinate__Filename>
+          <Vertical__Coordinate__Filename hgrid="ne4np4" COMPSET=".*SCREAM%AQUA.*">${DIN_LOC_ROOT}/atm/scream/init/scream-aquaplanet_init_ne4np4_L72_20211202.nc</Vertical__Coordinate__Filename>
           <Moisture>moist</Moisture>
         </Process__0>
         <Process__1>
@@ -121,7 +122,8 @@ tweaking their $case/namelist_scream.xml file.
           <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
           <Grid>Physics GLL</Grid>
           <SPA__Remap__File>none</SPA__Remap__File>
-          <SPA__Data__File>${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne4_scream.nc</SPA__Data__File>
+          <SPA__Data__File hgrid="ne4np4">${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne4_scream.nc</SPA__Data__File>
+          <SPA__Data__File hgrid="ne30np4">${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne30_scream.nc</SPA__Data__File>
         </Process__3>
         <Process__4>
           <Process__Name>P3</Process__Name>
@@ -154,8 +156,9 @@ tweaking their $case/namelist_scream.xml file.
       <Initial__Conditions>
         <Restart__Casename>${CASE}</Restart__Casename>
         <Physics__GLL>
-          <Filename>${DIN_LOC_ROOT}/atm/scream/init/init_ne4np4.nc</Filename>
-          <Filename COMPSET=".*SCREAM%AQUA.*">${DIN_LOC_ROOT}/atm/scream/init/scream-aquaplanet_init_ne4np4_L72_20211202.nc</Filename>
+          <Filename hgrid="ne4np4">${DIN_LOC_ROOT}/atm/scream/init/init_ne4np4.nc</Filename>
+          <Filename hgrid="ne30np4">${DIN_LOC_ROOT}/atm/scream/init/screami_ne30np4L72_20220329.nc</Filename>
+          <Filename hgrid="ne4np4" COMPSET=".*SCREAM%AQUA.*">${DIN_LOC_ROOT}/atm/scream/init/scream-aquaplanet_init_ne4np4_L72_20211202.nc</Filename>
           <T_mid_prev>T_mid</T_mid_prev>
           <horiz_winds_prev>horiz_winds</horiz_winds_prev>
           <w_int>0.0</w_int>
@@ -206,7 +209,8 @@ tweaking their $case/namelist_scream.xml file.
       <se_ftype>0</se_ftype>
       <se_geometry>sphere</se_geometry>
       <se_limiter_option>9</se_limiter_option>
-      <se_ne>4</se_ne>
+      <se_ne hgrid="ne4np4">4</se_ne>
+      <se_ne hgrid="ne30np4">30</se_ne>
       <se_nsplit>-1</se_nsplit>
       <se_partmethod>4</se_partmethod>
       <se_topology>cube</se_topology>
