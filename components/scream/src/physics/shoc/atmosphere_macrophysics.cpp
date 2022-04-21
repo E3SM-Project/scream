@@ -400,7 +400,7 @@ void SHOCMacrophysics::run_impl (const int dt)
 
   // Run shoc main
   SHF::shoc_main(m_num_cols, m_num_levs, m_num_levs+1, m_npbl, m_nadv, m_num_tracers, dt,
-                 workspace_mgr,input,input_output,output,history_output);
+                 workspace_mgr,input,tunable,input_output,output,history_output);
 
   // Postprocessing of SHOC outputs
   Kokkos::parallel_for("shoc_postprocess",

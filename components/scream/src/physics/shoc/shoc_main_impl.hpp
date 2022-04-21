@@ -298,6 +298,7 @@ Int Functions<S,D>::shoc_main(
   const Scalar&            dtime,               // SHOC timestep [s]
   const WorkspaceMgr&      workspace_mgr,       // WorkspaceManager for local variables
   const SHOCInput&         shoc_input,          // Input
+  const SHOCtunable&       shoc_tunable,        // Input
   const SHOCInputOutput&   shoc_input_output,   // Input/Output
   const SHOCOutput&        shoc_output,         // Output
   const SHOCHistoryOutput& shoc_history_output) // Output (diagnostic)

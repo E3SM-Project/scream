@@ -2805,6 +2805,8 @@ Int shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Int npbl, 
 
   view_3d
     qtracers_f90_d(temp_3d_d[0]);
+    
+  const auto length_fac_d = 0.5;
 
   // shoc_main treats u/v_wind as 1 array and
   // CXX version of shoc qtracers is the transpose of the fortran version..
@@ -2837,6 +2839,7 @@ Int shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Int npbl, 
                              pres_d,    presi_d,       pdel_d,      thv_d,
                              w_field_d, wthl_sfc_d,    wqw_sfc_d,   uw_sfc_d,
                              vw_sfc_d,  wtracer_sfc_d, inv_exner_d, phis_d};
+  SHF::SHOCtunable shoc_tunable{length_fac_d};
   SHF::SHOCInputOutput shoc_input_output{host_dse_d,   tke_d,      thetal_d,       qw_d,
                                          horiz_wind_d, wthv_sec_d, qtracers_cxx_d,
                                          tk_d,         shoc_cldfrac_d, shoc_ql_d};
@@ -2854,7 +2857,7 @@ Int shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Int npbl, 
 
   const auto elapsed_microsec = SHF::shoc_main(shcol, nlev, nlevi, npbl, nadv, num_qtracers, dtime,
                                                workspace_mgr,
-                                               shoc_input, shoc_input_output, shoc_output, shoc_history_output);
+                                               shoc_input, shoc_tunable, shoc_input_output, shoc_output, shoc_history_output);
 
   // Copy wind back into separate views and
   // Transpose tracers
