@@ -205,7 +205,7 @@ tweaking their $case/namelist_scream.xml file.
     <ctl_nl>
       <cubed_sphere_map>0</cubed_sphere_map>
       <disable_diagnostics>False</disable_diagnostics>
-      <dt_remap_factor>1</dt_remap_factor>
+      <dt_remap_factor>3</dt_remap_factor>
       <dt_tracer_factor>1</dt_tracer_factor>
       <hypervis_order>2</hypervis_order>
       <hypervis_scaling>3.0</hypervis_scaling>
