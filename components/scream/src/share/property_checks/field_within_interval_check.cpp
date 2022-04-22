@@ -113,7 +113,11 @@ bool FieldWithinIntervalCheck::check_impl () const
           "Internal error in FieldWithinIntervalCheck: unsupported field rank.\n"
           "You should not have reached this line. Please, contact developers.\n");
   }
-  return minmax.min_val>=m_lower_bound && minmax.max_val<=m_upper_bound;
+  auto within_bounds =  minmax.min_val>=m_lower_bound && minmax.max_val<=m_upper_bound;
+  if (!within_bounds) {
+    std::cout << "WARNING: " << f.name() << " out of bounds; min = " << minmax.min_val << ", max = " << minmax.max_val << std::endl;
+  }
+  return within_bounds;
 }
 
 bool FieldWithinIntervalCheck::check() const {
