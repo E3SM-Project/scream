@@ -92,7 +92,7 @@ tweaking their $case/namelist_scream.xml file.
   <file name="data/scream_input.yaml" format="yaml">
     <Atmosphere__Driver>
       <Atmosphere__Processes>
-        <Number__of__Entries>6</Number__of__Entries>
+        <Number__of__Entries>3</Number__of__Entries>
         <Schedule__Type>Sequential</Schedule__Type>
         <Process__0>
           <Process__Name>Homme</Process__Name>
@@ -105,33 +105,39 @@ tweaking their $case/namelist_scream.xml file.
           <Moisture>moist</Moisture>
         </Process__0>
         <Process__1>
-          <Process__Name>SHOC</Process__Name>
-          <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
-          <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
-          <Grid>Physics GLL</Grid>
+          <Process__Name>Group</Process__Name>
+          <Number__of__Entries>4</Number__of__Entries>
+          <Schedule__Type>Sequential</Schedule__Type>
+          <Number__of__Subcycles>6</Number__of__Subcycles>
+          <Process__0>
+            <Process__Name>SHOC</Process__Name>
+            <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
+            <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
+            <Grid>Physics GLL</Grid>
+          </Process__0>
+          <Process__1>
+            <Process__Name>CldFraction</Process__Name>
+            <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
+            <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
+            <Grid>Physics GLL</Grid>
+          </Process__1>
+          <Process__2>
+            <Process__Name>SPA</Process__Name>
+            <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
+            <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
+            <Grid>Physics GLL</Grid>
+            <SPA__Remap__File>none</SPA__Remap__File>
+            <SPA__Data__File hgrid="ne4np4">${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne4_scream.nc</SPA__Data__File>
+            <SPA__Data__File hgrid="ne30np4">${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne30_scream.nc</SPA__Data__File>
+          </Process__2>
+          <Process__3>
+            <Process__Name>P3</Process__Name>
+            <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
+            <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
+            <Grid>Physics GLL</Grid>
+          </Process__3>
         </Process__1>
         <Process__2>
-          <Process__Name>CldFraction</Process__Name>
-          <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
-          <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
-          <Grid>Physics GLL</Grid>
-        </Process__2>
-        <Process__3>
-          <Process__Name>SPA</Process__Name>
-          <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
-          <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
-          <Grid>Physics GLL</Grid>
-          <SPA__Remap__File>none</SPA__Remap__File>
-          <SPA__Data__File hgrid="ne4np4">${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne4_scream.nc</SPA__Data__File>
-          <SPA__Data__File hgrid="ne30np4">${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne30_scream.nc</SPA__Data__File>
-        </Process__3>
-        <Process__4>
-          <Process__Name>P3</Process__Name>
-          <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
-          <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
-          <Grid>Physics GLL</Grid>
-        </Process__4>
-        <Process__5>
           <Process__Name>RRTMGP</Process__Name>
           <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
           <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
@@ -144,7 +150,7 @@ tweaking their $case/namelist_scream.xml file.
           <Orbital__Obliquity COMPSET=".*SCREAM%AQUA.*">0</Orbital__Obliquity>
           <Orbital__MVELP>-9999</Orbital__MVELP>
           <Orbital__MVELP COMPSET=".*SCREAM%AQUA.*">0</Orbital__MVELP>
-        </Process__5>
+        </Process__2>
       </Atmosphere__Processes>
       <Grids__Manager>
         <Type>Dynamics Driven</Type>
