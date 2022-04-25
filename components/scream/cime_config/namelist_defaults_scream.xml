@@ -111,6 +111,7 @@ tweaking their $case/namelist_scream.xml file.
           <Number__of__Subcycles>6</Number__of__Subcycles>
           <Process__0>
             <Process__Name>SHOC</Process__Name>
+            <Number__of__Subcycles>1</Number__of__Subcycles>
             <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
             <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
             <Grid>Physics GLL</Grid>
@@ -132,6 +133,7 @@ tweaking their $case/namelist_scream.xml file.
           </Process__2>
           <Process__3>
             <Process__Name>P3</Process__Name>
+            <Number__of__Subcycles>6</Number__of__Subcycles>
             <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
             <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
             <Grid>Physics GLL</Grid>
@@ -176,7 +178,7 @@ tweaking their $case/namelist_scream.xml file.
         <Model__Restart>
           <Casename>${CASE}</Casename>
           <Output__Control>
-            <Frequency>${REST_N}</Frequency>
+            <Frequency>2000</Frequency>
             <Frequency__Units>INVALID</Frequency__Units>
             <Frequency__Units REST_OPTION="nstep*">Steps</Frequency__Units>
           </Output__Control>
@@ -205,28 +207,39 @@ tweaking their $case/namelist_scream.xml file.
     <ctl_nl>
       <cubed_sphere_map>0</cubed_sphere_map>
       <disable_diagnostics>False</disable_diagnostics>
-      <dt_remap_factor>3</dt_remap_factor>
+      <dt_remap_factor>2</dt_remap_factor>
+
       <dt_tracer_factor>1</dt_tracer_factor>
+
       <hypervis_order>2</hypervis_order>
       <hypervis_scaling>3.0</hypervis_scaling>
       <hypervis_subcycle>1</hypervis_subcycle>
+      <hypervis_subcycle_q>1</hypervis_subcycle_q>
       <hypervis_subcycle_tom>1</hypervis_subcycle_tom>
+
       <nu>3.4e-08</nu>
+
       <nu_top>250000.0</nu_top>
       <se_ftype>0</se_ftype>
       <se_geometry>sphere</se_geometry>
       <se_limiter_option>9</se_limiter_option>
-      <se_ne hgrid="ne4np4">4</se_ne>
+
+      <se_ne>4</se_ne>
       <se_ne hgrid="ne30np4">30</se_ne>
+
       <se_nsplit>-1</se_nsplit>
       <se_partmethod>4</se_partmethod>
       <se_topology>cube</se_topology>
-      <se_tstep>300</se_tstep>
+
+      <se_tstep>600</se_tstep>
+      <se_tstep hgrid="ne30np4">300</se_tstep>
+
       <statefreq>9999</statefreq>
       <theta_advect_form>1</theta_advect_form>
       <theta_hydrostatic_mode>True</theta_hydrostatic_mode>
       <tstep_type>5</tstep_type>
       <vert_remap_q_alg>10</vert_remap_q_alg>
+      <transport_alg>0</transport_alg>
     </ctl_nl>
   </file>
 
