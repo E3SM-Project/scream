@@ -209,7 +209,7 @@ void SPA::run_impl (const int  dt )
   /* Gather time and state information for interpolation */
   auto ts = timestamp();
   // We always want to update the current time in the time_state.
-  time_state.t_now = ts.frac_of_year_in_days() + dt/86400.;
+  SPATimeState.t_now = ts.frac_of_year_in_days() + dt/86400.;
   
   
   /* Update time state and if the month has changed, update the data.*/
