@@ -116,6 +116,9 @@ module radiation
    ! Flag to indicate whether to read optics from spa netcdf file
    logical :: do_spa_optics = .false.
 
+   ! Flag to indicate whether or not to do subcolumn (MCICA) sampling
+   logical :: do_rad_subcolumn_sampling = .true.
+
    ! Value for prescribing an invariant solar constant (i.e. total solar
    ! irradiance at TOA). Used for idealized experiments such as RCE.
    ! Disabled when value is less than 0.
@@ -228,6 +231,7 @@ contains
                               iradsw, iradlw, irad_always,     &
                               use_rad_dt_cosz, spectralflux,   &
                               do_aerosol_rad, do_spa_optics,   &
+                              do_rad_subcolumn_sampling,       &
                               fixed_total_solar_irradiance,    &
                               rrtmgp_enable_temperature_warnings
 
@@ -258,6 +262,7 @@ contains
       call mpibcast(spectralflux, 1, mpi_logical, mstrid, mpicom, ierr)
       call mpibcast(do_aerosol_rad, 1, mpi_logical, mstrid, mpicom, ierr)
       call mpibcast(do_spa_optics, 1, mpi_logical, mstrid, mpicom, ierr)
+      call mpibcast(do_rad_subcolumn_sampling, 1, mpi_logical, mstrid, mpicom, ierr)
       call mpibcast(fixed_total_solar_irradiance, 1, mpi_real8, mstrid, mpicom, ierr)
       call mpibcast(rrtmgp_enable_temperature_warnings, 1, mpi_logical, mstrid, mpicom, ierr)
 #endif
@@ -278,7 +283,8 @@ contains
          write(iulog,10) trim(rrtmgp_coefficients_file_lw), trim(rrtmgp_coefficients_file_sw), &
                          iradsw, iradlw, irad_always, &
                          use_rad_dt_cosz, spectralflux, &
-                         do_aerosol_rad, do_spa_optics, fixed_total_solar_irradiance, &
+                         do_aerosol_rad, do_spa_optics, do_rad_subcolumn_sampling, &
+                         fixed_total_solar_irradiance, &
                          rrtmgp_enable_temperature_warnings
       end if
    10 format('  LW coefficents file: ',                                a/, &
@@ -290,6 +296,7 @@ contains
              '  Output spectrally resolved fluxes:                  ',l5/, &
              '  Do aerosol radiative calculations:                  ',l5/, &
              '  Do spa optics calculations:                         ',l5/, &
+             '  Do rad subcolumn sampling:                          ',l5/, &
              '  Fixed solar consant (disabled with -1):             ',f10.4/, &
              '  Enable temperature warnings:                        ',l5/ )
 
@@ -1184,7 +1191,8 @@ contains
       integer :: icall
       logical :: active_calls(0:N_DIAG)
 
-      integer :: icol, ilay
+      ! Loop indices
+      integer :: icol, ilay, igpt
 
       ! Everyone needs a name
       character(*), parameter :: subname = 'radiation_tend'
@@ -1321,12 +1329,24 @@ contains
          ! And now do the MCICA sampling to get cloud optical properties by
          ! gpoint/cloud state
          call get_gpoint_bands_sw(gpoint_bands_sw)
-         call sample_cloud_optics_sw( &
-            ncol, pver, nswgpts, gpoint_bands_sw, &
-            state%pmid, cld, cldfsnow, &
-            cld_tau_bnd_sw, cld_ssa_bnd_sw, cld_asm_bnd_sw, &
-            cld_tau_gpt_sw, cld_ssa_gpt_sw, cld_asm_gpt_sw &
-         )
+         if (do_rad_subcolumn_sampling) then
+            call sample_cloud_optics_sw( &
+               ncol, pver, nswgpts, gpoint_bands_sw, &
+               state%pmid, cld, cldfsnow, &
+               cld_tau_bnd_sw, cld_ssa_bnd_sw, cld_asm_bnd_sw, &
+               cld_tau_gpt_sw, cld_ssa_gpt_sw, cld_asm_gpt_sw &
+            )
+         else
+            do igpt = 1,nswgpts
+               do ilay = 1,pver
+                  do icol = 1,ncol
+                     cld_tau_gpt_sw(icol,ilay,igpt) = cld_tau_bnd_sw(icol,ilay,gpoint_bands_sw(igpt))
+                     cld_ssa_gpt_sw(icol,ilay,igpt) = cld_ssa_bnd_sw(icol,ilay,gpoint_bands_sw(igpt))
+                     cld_asm_gpt_sw(icol,ilay,igpt) = cld_asm_bnd_sw(icol,ilay,gpoint_bands_sw(igpt))
+                  end do
+               end do
+            end do
+         end if
          call t_stopf('rad_cld_optics_sw')
 
          ! Aerosol needs night indices
@@ -1447,11 +1467,21 @@ contains
             cld_tau_bnd_lw, liq_tau_bnd_lw, ice_tau_bnd_lw, snw_tau_bnd_lw &
          )
          call get_gpoint_bands_lw(gpoint_bands_lw)
-         call sample_cloud_optics_lw( &
-            ncol, pver, nlwgpts, gpoint_bands_lw, &
-            state%pmid, cld, cldfsnow, &
-            cld_tau_bnd_lw, cld_tau_gpt_lw &
-         )
+         if (do_rad_subcolumn_sampling) then
+            call sample_cloud_optics_lw( &
+               ncol, pver, nlwgpts, gpoint_bands_lw, &
+               state%pmid, cld, cldfsnow, &
+               cld_tau_bnd_lw, cld_tau_gpt_lw &
+            )
+         else
+            do igpt = 1,nswgpts
+               do ilay = 1,pver
+                  do icol = 1,ncol
+                     cld_tau_gpt_lw(icol,ilay,igpt) = cld_tau_bnd_lw(icol,ilay,gpoint_bands_lw(igpt))
+                  end do
+               end do
+            end do
+         end if
          call output_cloud_optics_lw(state, cld_tau_bnd_lw)
          call t_stopf('rad_cld_optics_lw')
 

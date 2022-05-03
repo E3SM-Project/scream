@@ -1276,6 +1276,7 @@
 <do_aerosol_rad>              .true.   </do_aerosol_rad>
 <fixed_total_solar_irradiance>-1       </fixed_total_solar_irradiance>
 <do_spa_optics> .false.</do_spa_optics>
+<do_rad_subcolumn_sampling>.true.</do_rad_subcolumn_sampling>
 
 <!-- ================================================================== -->
 <!-- Defaults for SE                                                    -->

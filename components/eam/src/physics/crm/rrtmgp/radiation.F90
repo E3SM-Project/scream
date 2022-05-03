@@ -116,6 +116,10 @@ module radiation
    ! zeroes out the aerosol optical properties if False
    logical :: do_aerosol_rad = .true.
 
+   ! Flag to indicate whether or not to do subcoulmn sampling for MCICA
+   ! NOTE: added for consistency with EAM; this is non-functioning for MMF!
+   logical :: do_rad_subcolumn_sampling = .true.
+
    ! Value for prescribing an invariant solar constant (i.e. total solar
    ! irradiance at TOA). Used for idealized experiments such as RCE.
    ! Disabled when value is less than 0.
@@ -226,6 +230,7 @@ contains
                               iradsw, iradlw, irad_always,     &
                               use_rad_dt_cosz, spectralflux,   &
                               do_aerosol_rad,                  &
+                              do_rad_subcolumn_sampling,       &
                               fixed_total_solar_irradiance,    &
                               rrtmgp_enable_temperature_warnings
 
@@ -258,6 +263,11 @@ contains
       call mpibcast(fixed_total_solar_irradiance, 1, mpi_real8, mstrid, mpicom, ierr)
       call mpibcast(rrtmgp_enable_temperature_warnings, 1, mpi_logical, mstrid, mpicom, ierr)
 #endif
+
+      ! Make sure nobody tries to disable subcolumn sampling
+      if (.not. do_rad_subcolumn_sampling) then
+         call endrun(trim(subroutine_name) // ':: disabling subcolumn sampling is not supported with RRTMG')
+      end if
 
       ! Convert iradsw, iradlw and irad_always from hours to timesteps if necessary
       if (present(dtime_in)) then

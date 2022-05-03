@@ -80,6 +80,10 @@ logical :: use_rad_dt_cosz  = .false. ! if true, uses the radiation dt for all c
 ! NOTE: added for consistency with RRTMGP; this is non-functioning for RRTMG!
 logical :: do_spa_optics = .false.
 
+! Flag to indicate whether or not to do subcoulmn sampling for MCICA
+! NOTE: added for consistency with RRTMGP; this is non-functioning for RRTMG!
+logical :: do_rad_subcolumn_sampling = .true.
+
 character(len=4) :: diag(0:N_DIAG) =(/'    ','_d1 ','_d2 ','_d3 ','_d4 ','_d5 ','_d6 ','_d7 ','_d8 ','_d9 ','_d10'/)
 
 logical :: dohirs = .false. ! diagnostic  brightness temperatures at the top of the
@@ -121,7 +125,7 @@ subroutine radiation_readnl(nlfile, dtime_in)
    ! Variables defined in namelist
    namelist /radiation_nl/ iradsw, iradlw, irad_always, &
                            use_rad_dt_cosz, spectralflux, &
-                           do_spa_optics
+                           do_spa_optics, do_rad_subcolumn_sampling
 
    ! Read the namelist, only if called from master process
    ! TODO: better documentation and cleaner logic here?
@@ -147,11 +151,17 @@ subroutine radiation_readnl(nlfile, dtime_in)
    call mpibcast(use_rad_dt_cosz, 1, mpi_logical, mstrid, mpicom, ierr)
    call mpibcast(spectralflux, 1, mpi_logical, mstrid, mpicom, ierr)
    call mpibcast(do_spa_optics, 1, mpi_logical, mstrid, mpicom, ierr)
+   call mpibcast(do_rad_subcolumn_sampling, 1, mpi_logical, mstrid, mpicom, ierr)
 #endif
 
    ! Make sure nobody tries to use SPA optics with RRTMG
    if (do_spa_optics) then
       call endrun(trim(subroutine_name) // ':: SPA optics is not supported with RRTMG')
+   end if
+
+   ! Make sure nobody tries to disable subcolumn sampling
+   if (.not. do_rad_subcolumn_sampling) then
+      call endrun(trim(subroutine_name) // ':: disabling subcolumn sampling is not supported with RRTMG')
    end if
 
    ! Convert iradsw, iradlw and irad_always from hours to timesteps if necessary
