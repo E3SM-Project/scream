@@ -115,7 +115,8 @@ namespace scream {
                 // NOTE: these thresholds (from E3SM) seem arbitrary, but included here for consistency
                 // This limits in-cloud mixing ratio to 0.005 kg/kg. According to note in cloud_diagnostics
                 // in EAM, this is consistent with limits in MG2. Is this true for P3?
-                auto incloud_mixing_ratio = std::min(mixing_ratio(icol,ilay) / std::max(0.0001, cloud_fraction(icol,ilay)), 0.005);
+		// CRT: removed cloud_frac division of mixing_ratio( / std::max(0.0001, cloud_fraction(icol,ilay)) )
+                auto incloud_mixing_ratio = std::min(mixing_ratio(icol,ilay), 0.005);
                 // Compute layer-integrated cloud mass (per unit area)
                 cloud_mass(icol,ilay) = incloud_mixing_ratio * dp(icol,ilay) / physconst::gravit;
             });

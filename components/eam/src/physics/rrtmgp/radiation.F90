@@ -1140,7 +1140,8 @@ contains
       real(r8), pointer, dimension(:,:) :: &
          cld, cldfsnow, &
          iclwp, iciwp, icswp, dei, des, lambdac, mu, &
-         rei, rel
+         rei, rel, &
+         gmlwp, gmiwp, gmswp
 
       ! Clear-sky heating rates are not on the physics buffer, and we have no
       ! reason to put them there, so declare these are regular arrays here
@@ -1302,12 +1303,24 @@ contains
          cld_tau_gpt_sw = 0._r8
          cld_ssa_gpt_sw = 0._r8
          cld_asm_gpt_sw = 0._r8
-         call get_cloud_optics_sw( &
-            ncol, pver, nswbands, do_snow_optics(), cld, cldfsnow, iclwp, iciwp, icswp, &
-            lambdac, mu, dei, des, rel, rei, &
-            cld_tau_bnd_sw, cld_ssa_bnd_sw, cld_asm_bnd_sw, &
-            liq_tau_bnd_sw, ice_tau_bnd_sw, snw_tau_bnd_sw &
-         )
+         if (do_rad_subcolumn_sampling) then
+            call get_cloud_optics_sw( &
+               ncol, pver, nswbands, do_snow_optics(), cld, cldfsnow, iclwp, iciwp, icswp, &
+               lambdac, mu, dei, des, rel, rei, &
+               cld_tau_bnd_sw, cld_ssa_bnd_sw, cld_asm_bnd_sw, &
+               liq_tau_bnd_sw, ice_tau_bnd_sw, snw_tau_bnd_sw &
+            )
+         else
+            gmlwp=iclwp*cld  !CRT: change from incloud lwp valeus to grid mean lwp values
+            gmiwp=iciwp*cld  !CRT: change from incloud iwp values to grid mean iwp values
+            gmswp=icswp*cldfsnow  !CRT: change from incloud swp values to grid mean swp values
+            call get_cloud_optics_sw( &
+               ncol, pver, nswbands, do_snow_optics(), cld, cldfsnow, gmlwp, gmiwp, gmswp, &
+               lambdac, mu, dei, des, rel, rei, &
+               cld_tau_bnd_sw, cld_ssa_bnd_sw, cld_asm_bnd_sw, &
+               liq_tau_bnd_sw, ice_tau_bnd_sw, snw_tau_bnd_sw &
+               )
+         end if 
          ! Output the band-by-band cloud optics BEFORE we reorder bands, because
          ! we hard-coded the indices for diagnostic bands in radconstants.F90 to
          ! correspond to the optical property look-up tables.
@@ -1461,19 +1474,28 @@ contains
 
          call t_startf('rad_cld_optics_lw')
          cld_tau_gpt_lw = 0._r8
-         call get_cloud_optics_lw( &
-            ncol, pver, nlwbands, do_snow_optics(), cld, cldfsnow, iclwp, iciwp, icswp, &
-            lambdac, mu, dei, des, rei, &
-            cld_tau_bnd_lw, liq_tau_bnd_lw, ice_tau_bnd_lw, snw_tau_bnd_lw &
-         )
-         call get_gpoint_bands_lw(gpoint_bands_lw)
          if (do_rad_subcolumn_sampling) then
+            call get_cloud_optics_lw( &
+               ncol, pver, nlwbands, do_snow_optics(), cld, cldfsnow, iclwp, iciwp, icswp, &
+               lambdac, mu, dei, des, rei, &
+               cld_tau_bnd_lw, liq_tau_bnd_lw, ice_tau_bnd_lw, snw_tau_bnd_lw &
+            )
+            call get_gpoint_bands_lw(gpoint_bands_lw)
             call sample_cloud_optics_lw( &
                ncol, pver, nlwgpts, gpoint_bands_lw, &
                state%pmid, cld, cldfsnow, &
                cld_tau_bnd_lw, cld_tau_gpt_lw &
             )
          else
+            gmlwp=iclwp*cld  !CRT: change from incloud lwp valeus to grid mean lwp values
+            gmiwp=iciwp*cld  !CRT: change from incloud iwp values to grid mean iwp values
+            gmswp=icswp*cldfsnow  !CRT: change from incloud swp values to grid mean swp values
+            call get_cloud_optics_lw( &
+               ncol, pver, nlwbands, do_snow_optics(), cld, cldfsnow, gmlwp, gmiwp, gmswp, &
+               lambdac, mu, dei, des, rei, &
+               cld_tau_bnd_lw, liq_tau_bnd_lw, ice_tau_bnd_lw, snw_tau_bnd_lw &
+            )
+            call get_gpoint_bands_lw(gpoint_bands_lw)
             do igpt = 1,nswgpts
                do ilay = 1,pver
                   do icol = 1,ncol
