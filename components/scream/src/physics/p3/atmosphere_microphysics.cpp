@@ -181,7 +181,7 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("qi"),0.0,0.1,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("qr"),0.0,0.1,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("qm"),0.0,0.1,false);
-  add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("nc"),0.0,1.e9,false);
+  add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("nc"),0.0,1.e11,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("nr"),0.0,1.e9,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("ni"),0.0,1.e9,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("bm"),0.0,1.0,false);
