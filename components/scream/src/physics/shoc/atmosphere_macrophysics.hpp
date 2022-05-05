@@ -156,7 +156,8 @@ public:
       // For now, we are considering dy=dx. Here, we
       // will need to compute dx/dy instead of cell_length
       // if we have dy!=dx.
-      cell_length(i) = sqrt(area(i));
+      // CRT: originall sqrt(area(i)) now 100000
+      cell_length(i) = 100000;
 
       const auto& exner_int = PF::exner_function(p_int(i,nlevi_v)[nlevi_p]);
       const auto& inv_exner_int_surf = 1/exner_int;
