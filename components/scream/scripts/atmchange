@@ -62,7 +62,13 @@ def atm_config_chg_impl(xml_root,changes):
 
         if node.text != new_value:
             check_value(node,new_value)
-            node.text = new_value
+            if node.tag=="atm_procs_list":
+                # Modifying the list of atm procs requires to regenerate this xml node
+                atm_procs_defaults = get_child(xml_root,"atmosphere_processes_defaults")
+                node = gen_group_processes (new_value, atm_procs_defaults):
+            else:
+                # A "normal" xml entry. Simply update the value
+                node.text = new_value
             any_change = True
 
     return any_change

@@ -382,6 +382,9 @@ def _create_raw_xml_file_impl(case, xml):
     atm_procs.tag = "atmosphere_processes"
     xml.append(atm_procs);
 
+    # 5. Keep the atm procs defaults, so one can change atm procs via atmchange
+    xml.append(atm_procs_defaults)
+
     return xml
 
 ###############################################################################

@@ -129,7 +129,7 @@ tweaking their $case/namelist_scream.xml file.
       NOTE: *CANNOT* be changed.
     -->
     <!-- <atm_procs_list>(homme,((shoc,cldFraction,spa,p3),rrtmgp))</atm_procs_list> -->
-    <atm_procs_list locked="true">(homme,physics)</atm_procs_list>
+    <atm_procs_list>(homme,physics)</atm_procs_list>
 
     <!-- Basic options for each atm process -->
     <atm_proc_base>
