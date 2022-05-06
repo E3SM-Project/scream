@@ -1243,10 +1243,18 @@ contains
          des => zeros
       end if
 
-      ! Compute combined cloud and snow fraction
+      ! Initialize grid mean lwp, iwp and swp
+      gmlwp(:,:) = 0
+      gmiwp(:,:) = 0
+      gmswp(:,:) = 0
+
+      ! Compute combined cloud and snow fraction and grid mean lwp
       do icol = 1,size(cld,1)
          do ilay = 1,size(cld,2)
             c_cldf(icol,ilay) = max(cld(icol,ilay), cldfsnow(icol,ilay))
+            gmlwp(icol,ilay) = cld(icol,ilay)*iclwp(icol,ilay)
+            gmiwp(icol,ilay) = cld(icol,ilay)*iciwp(icol,ilay)
+            gmswp(icol,ilay) = cldfsnow(icol,ilay)*icswp(icol,ilay)
          end do
       end do
 
@@ -1255,6 +1263,8 @@ contains
       qrsc(:,:) = 0
       qrlc(:,:) = 0
 
+      
+      
       if (radiation_do('sw') .or. radiation_do('lw')) then
          ! Make copies of state variables because we may need to modify in-place, and because we need
          ! to add a level above model top to account for heating
@@ -1311,9 +1321,6 @@ contains
                liq_tau_bnd_sw, ice_tau_bnd_sw, snw_tau_bnd_sw &
             )
          else
-            gmlwp=iclwp*cld  !CRT: change from incloud lwp valeus to grid mean lwp values
-            gmiwp=iciwp*cld  !CRT: change from incloud iwp values to grid mean iwp values
-            gmswp=icswp*cldfsnow  !CRT: change from incloud swp values to grid mean swp values
             call get_cloud_optics_sw( &
                ncol, pver, nswbands, do_snow_optics(), cld, cldfsnow, gmlwp, gmiwp, gmswp, &
                lambdac, mu, dei, des, rel, rei, &
@@ -1487,9 +1494,6 @@ contains
                cld_tau_bnd_lw, cld_tau_gpt_lw &
             )
          else
-            gmlwp=iclwp*cld  !CRT: change from incloud lwp valeus to grid mean lwp values
-            gmiwp=iciwp*cld  !CRT: change from incloud iwp values to grid mean iwp values
-            gmswp=icswp*cldfsnow  !CRT: change from incloud swp values to grid mean swp values
             call get_cloud_optics_lw( &
                ncol, pver, nlwbands, do_snow_optics(), cld, cldfsnow, gmlwp, gmiwp, gmswp, &
                lambdac, mu, dei, des, rei, &
