@@ -296,7 +296,7 @@ public:
         qv(i,k) = qw(i,k) - qc(i,k);
 
         cldfrac_liq(i,k) = ekat::min(cldfrac_liq(i,k), 1);
-        sgs_buoy_flux(i,k) = sgs_buoy_flux(i,k)*rrho(i,k)*cpair;
+        sgs_buoy_flux(i,k) = sgs_buoy_flux(i,k);
 
         inv_qc_relvar(i,k) = 1;
         const auto condition = (qc(i,k) != 0 && qc2(i,k) != 0);
