@@ -1140,8 +1140,7 @@ contains
       real(r8), pointer, dimension(:,:) :: &
          cld, cldfsnow, &
          iclwp, iciwp, icswp, dei, des, lambdac, mu, &
-         rei, rel, &
-         gmlwp, gmiwp, gmswp
+         rei, rel
 
       ! Clear-sky heating rates are not on the physics buffer, and we have no
       ! reason to put them there, so declare these are regular arrays here
@@ -1203,7 +1202,7 @@ contains
 
       ! Zero-array for cloud properties if not diagnosed by microphysics
       real(r8), target, dimension(pcols,pver) :: zeros
-      real(r8), dimension(pcols,pver) :: c_cldf  ! Combined cloud/snow fraction
+      real(r8), dimension(pcols,pver) :: c_cldf, gmlwp, gmiwp, gmswp  ! Combined cloud/snow fraction
 
       ! needed for SPA
       integer :: band_index
@@ -1243,10 +1242,6 @@ contains
          des => zeros
       end if
 
-      ! Initialize grid mean lwp, iwp and swp
-      gmlwp(:,:) = 0
-      gmiwp(:,:) = 0
-      gmswp(:,:) = 0
 
       ! Compute combined cloud and snow fraction and grid mean lwp
       do icol = 1,size(cld,1)
