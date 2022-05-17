@@ -2321,10 +2321,10 @@ contains
       ! was never checked for RRTMG, so albedos will probably be slightly different
       ! than the implementation in RRTMG!
       call handle_error(clip_values( &
-         albedo_dir, 0._r8, 1._r8, trim(subname) // ': albedo_dir', tolerance=0.01_r8) &
+         albedo_dir, 0._r8, 1._r8, trim(subname) // ': albedo_dir', tolerance=1.01_r8) &
       )
       call handle_error(clip_values( &
-         albedo_dif, 0._r8, 1._r8, trim(subname) // ': albedo_dif', tolerance=0.01_r8) &
+         albedo_dif, 0._r8, 1._r8, trim(subname) // ': albedo_dif', tolerance=1.01_r8) &
       )
 
    end subroutine set_albedo
