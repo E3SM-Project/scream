@@ -15,11 +15,11 @@ class PotentialTemperatureDiagnostic : public AtmosphereDiagnostic
 {
 public:
 
-  using pack_t        = ekat::Pack<Real,SCREAM_PACK_SIZE>;
+  using Pack          = ekat::Pack<Real,SCREAM_PACK_SIZE>;
   using PF            = scream::PhysicsFunctions<DefaultDevice>;
   using KT            = KokkosTypes<DefaultDevice>;
-  using view_2d       = typename KT::template view_2d<pack_t>;
-  using view_2d_const = typename KT::template view_2d<const pack_t>;
+  using view_2d       = typename KT::template view_2d<Pack>;
+  using view_2d_const = typename KT::template view_2d<const Pack>;
 
   // Constructors
   PotentialTemperatureDiagnostic (const ekat::Comm& comm, const ekat::ParameterList& params);

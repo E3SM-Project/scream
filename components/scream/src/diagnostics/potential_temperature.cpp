@@ -50,7 +50,7 @@ void PotentialTemperatureDiagnostic::initialize_impl(const RunType /* run_type *
 // =========================================================================================
 void PotentialTemperatureDiagnostic::run_impl(const int /* dt */)
 {
-  const auto npacks = ekat::npack<Spack>(m_num_levs);
+  const auto npacks = ekat::npack<Pack>(m_num_levs);
   const auto theta  = m_diagnostic_output.get_view<Pack**>();
   const auto T_mid          = get_field_in("T_mid").get_view<const Pack**>();
   const auto p_mid          = get_field_in("p_mid").get_view<const Pack**>();
