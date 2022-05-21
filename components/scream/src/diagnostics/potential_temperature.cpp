@@ -55,11 +55,11 @@ void PotentialTemperatureDiagnostic::run_impl(const int /* dt */)
   const auto T_mid          = get_field_in("T_mid").get_view<const Pack**>();
   const auto p_mid          = get_field_in("p_mid").get_view<const Pack**>();
   Kokkos::parallel_for("PotentialTemperatureDiagnostic",
-                       Kokkos::RangePolicy<>(0,m_num_cols*nk_pack),
+                       Kokkos::RangePolicy<>(0,m_num_cols*npacks),
                        KOKKOS_LAMBDA (const int& idx) {
         const int icol  = idx / npacks;
         const int jpack = idx % npacks;
-        theta(icol,jpack) = PF::calculate_theta_from_T(T_mid_ij,p_mid_ij);
+        theta(icol,jpack) = PF::calculate_theta_from_T(T_mid(icol,jpack),p_mid(icol,jpack));
   });
   Kokkos::fence();
 }
