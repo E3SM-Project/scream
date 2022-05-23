@@ -1,5 +1,6 @@
 #include "scream_rrtmgp_interface.hpp"
 #include "rrtmgp_utils.hpp"
+#include "share/util/scream_timing.hpp"
 
 #include "mo_load_coefficients.h"
 #include "mo_load_cloud_coefficients.h"
@@ -208,7 +209,9 @@ namespace scream {
                 const Real tsi_scaling,
                 const std::shared_ptr<spdlog::logger>& logger) {
 
+          start_timer("rrtmgp_main");
 #ifdef SCREAM_RRTMGP_DEBUG
+            start_timer("rrtmgp_main debug");
             // Sanity check inputs, and possibly repair
             check_range(t_lay      ,  k_dist_sw.get_temp_min(),         k_dist_sw.get_temp_max(), "rrtmgp_main::t_lay");
             check_range(t_lev      ,  k_dist_sw.get_temp_min(),         k_dist_sw.get_temp_max(), "rrtmgp_main::t_lev");
@@ -221,6 +224,7 @@ namespace scream {
             check_range(iwp        ,                         0, std::numeric_limits<Real>::max(), "rrtmgp_main::iwp");
             check_range(rel        ,                         0, std::numeric_limits<Real>::max(), "rrtmgp_main::rel");
             check_range(rei        ,                         0, std::numeric_limits<Real>::max(), "rrtmgp_main::rei");
+            stop_timer("rrtmgp_main debug");
 #endif
 
             // Setup pointers to RRTMGP SW fluxes
@@ -301,6 +305,7 @@ namespace scream {
             );
             
             // Calculate heating rates
+          stop_timer("rrtmgp_main");
         }
 
         OpticalProps2str get_cloud_optics_sw(
@@ -368,7 +373,9 @@ namespace scream {
                 const Real tsi_scaling,
                 const std::shared_ptr<spdlog::logger>& logger) {
 
-            // Get problem sizes
+          start_timer("rrtmgp_sw");
+          start_timer("rrtmgp_sw1");
+          // Get problem sizes
             int nbnd = k_dist.get_nband();
             int ngpt = k_dist.get_ngpt();
             int ngas = gas_concs.get_num_gases();
@@ -392,8 +399,9 @@ namespace scream {
                 bnd_flux_dn    (icol,ilev,ibnd) = 0;
                 bnd_flux_dn_dir(icol,ilev,ibnd) = 0;
             });
- 
-            // Get daytime indices
+            stop_timer("rrtmgp_sw1");
+            start_timer("rrtmgp_sw2");
+          // Get daytime indices
             auto dayIndices = int1d("dayIndices", ncol);
             memset(dayIndices, -1);
             // Loop below has to be done on host, so create host copies
@@ -407,20 +415,25 @@ namespace scream {
                     dayIndices_h(nday) = icol;
                 }
             }
+            stop_timer("rrtmgp_sw2");
+            start_timer("rrtmgp_sw3");
             // Copy data back to the device
             dayIndices_h.deep_copy_to(dayIndices);
+            stop_timer("rrtmgp_sw3");
             if (nday == 0) { 
                 if (logger)
                   logger->warn("WARNING: no daytime columns found for this chunk!\n");
+                stop_timer("rrtmgp_sw");
                 return;
             }
-
+            start_timer("rrtmgp_sw4");
             // Subset mu0
             auto mu0_day = real1d("mu0_day", nday);
             parallel_for(Bounds<1>(nday), YAKL_LAMBDA(int iday) {
                 mu0_day(iday) = mu0(dayIndices(iday));
             });
-
+            stop_timer("rrtmgp_sw4");
+            start_timer("rrtmgp_sw5");
             // subset state variables
             auto p_lay_day = real2d("p_lay_day", nday, nlay);
             auto t_lay_day = real2d("t_lay_day", nday, nlay);
@@ -434,7 +447,8 @@ namespace scream {
                 p_lev_day(iday,ilev) = p_lev(dayIndices(iday),ilev);
                 t_lev_day(iday,ilev) = t_lev(dayIndices(iday),ilev);
             });
-
+            stop_timer("rrtmgp_sw5");
+            start_timer("rrtmgp_sw6");
             // Subset gases
             auto gas_names = gas_concs.get_gas_names();
             GasConcs gas_concs_day;
@@ -448,7 +462,8 @@ namespace scream {
                 });
                 gas_concs_day.set_vmr(gas_names(igas), vmr_day);
             }
-
+            stop_timer("rrtmgp_sw6");
+            start_timer("rrtmgp_sw7");
             // Subset aerosol optics
             OpticalProps2str aerosol_day;
             aerosol_day.init(k_dist.get_band_lims_wavenumber());
@@ -458,7 +473,8 @@ namespace scream {
                 aerosol_day.ssa(iday,ilay,ibnd) = aerosol.ssa(dayIndices(iday),ilay,ibnd);
                 aerosol_day.g  (iday,ilay,ibnd) = aerosol.g  (dayIndices(iday),ilay,ibnd);
             });
-
+            stop_timer("rrtmgp_sw7");
+            start_timer("rrtmgp_sw8");
             // Subset cloud optics
             OpticalProps2str clouds_day;
             clouds_day.init(k_dist.get_band_lims_wavenumber());
@@ -468,7 +484,8 @@ namespace scream {
                 clouds_day.ssa(iday,ilay,ibnd) = clouds.ssa(dayIndices(iday),ilay,ibnd);
                 clouds_day.g  (iday,ilay,ibnd) = clouds.g  (dayIndices(iday),ilay,ibnd);
             });
-
+            stop_timer("rrtmgp_sw8");
+            start_timer("rrtmgp_sw9");
             // RRTMGP assumes surface albedos have a screwy dimension ordering
             // for some strange reason, so we need to transpose these; also do
             // daytime subsetting in the same kernel
@@ -487,8 +504,11 @@ namespace scream {
             real2d toa_flux("toa_flux", nday, ngpt);
             auto p_lay_host = p_lay.createHostCopy();
             bool top_at_1 = p_lay_host(1, 1) < p_lay_host(1, nlay);
-
+            stop_timer("rrtmgp_sw9");
+            start_timer("rrtmgp_sw10");
             k_dist.gas_optics(nday, nlay, top_at_1, p_lay_day, p_lev_day, t_lay_day, gas_concs_day, optics, toa_flux);
+            stop_timer("rrtmgp_sw10");
+            start_timer("rrtmgp_sw11");
 
 #ifdef SCREAM_RRTMGP_DEBUG
             // Check gas optics
@@ -501,15 +521,18 @@ namespace scream {
             parallel_for(Bounds<2>(ngpt,nday), YAKL_LAMBDA(int igpt, int iday) {
                 toa_flux(iday,igpt) = tsi_scaling * toa_flux(iday,igpt);
             });
-
+            stop_timer("rrtmgp_sw11");
+            start_timer("rrtmgp_sw12");
             // Combine gas and aerosol optics
             aerosol_day.delta_scale();
             aerosol_day.increment(optics);
-
+            stop_timer("rrtmgp_sw12");
+            start_timer("rrtmgp_sw13");
             // Combine gas and cloud optics
             clouds_day.delta_scale();
             clouds_day.increment(optics);
-
+            stop_timer("rrtmgp_sw13");
+            start_timer("rrtmgp_sw14");
             // Compute fluxes on daytime columns
             auto flux_up_day = real2d("flux_up_day", nday, nlay+1);
             auto flux_dn_day = real2d("flux_dn_day", nday, nlay+1);
@@ -525,7 +548,8 @@ namespace scream {
             fluxes_day.bnd_flux_dn     = bnd_flux_dn_day;
             fluxes_day.bnd_flux_dn_dir = bnd_flux_dn_dir_day;
             rte_sw(optics, top_at_1, mu0_day, toa_flux, sfc_alb_dir_T, sfc_alb_dif_T, fluxes_day);
-
+            stop_timer("rrtmgp_sw14");
+            start_timer("rrtmgp_sw15");
             // Expand daytime fluxes to all columns
             parallel_for(Bounds<2>(nlay+1,nday), YAKL_LAMBDA(int ilev, int iday) {
                 int icol = dayIndices(iday);
@@ -539,6 +563,8 @@ namespace scream {
                 bnd_flux_dn    (icol,ilev,ibnd) = bnd_flux_dn_day    (iday,ilev,ibnd);
                 bnd_flux_dn_dir(icol,ilev,ibnd) = bnd_flux_dn_dir_day(iday,ilev,ibnd);
             });
+            stop_timer("rrtmgp_sw15");
+          stop_timer("rrtmgp_sw");
         }
 
         void rrtmgp_lw(
@@ -550,9 +576,11 @@ namespace scream {
                 OpticalProps1scl &clouds,
                 FluxesByband &fluxes) {
 
+          start_timer("rrtmgp_lw");
             // Problem size
             int nbnd = k_dist.get_nband();
 
+            start_timer("rrtmgp_lw1");
             // Allocate space for optical properties
             OpticalProps1scl optics;
             optics.alloc_1scl(ncol, nlay, k_dist);
@@ -570,9 +598,12 @@ namespace scream {
                 t_sfc(icol) = t_lev(icol, merge(nlay+1, 1, top_at_1));
             });
             memset( emis_sfc , 0.98_wp                                   );
-
+            stop_timer("rrtmgp_lw1");
+            start_timer("rrtmgp_lw2");
             // Do gas optics
             k_dist.gas_optics(ncol, nlay, top_at_1, p_lay, p_lev, t_lay, t_sfc, gas_concs, optics, lw_sources, real2d(), t_lev);
+            stop_timer("rrtmgp_lw2");
+            start_timer("rrtmgp_lw3");
 
 #ifdef SCREAM_RRTMGP_DEBUG
             // Check gas optics
@@ -581,10 +612,12 @@ namespace scream {
 
             // Combine gas and aerosol optics
             aerosol.increment(optics);
-
+            stop_timer("rrtmgp_lw3");
+            start_timer("rrtmgp_lw4");
             // Combine gas and cloud optics
             clouds.increment(optics);
-
+            stop_timer("rrtmgp_lw4");
+            start_timer("rrtmgp_lw5");
             // Get Gaussian quadrature weights
             // TODO: move this crap out of userland!
             // Weights and angle secants for first order (k=1) Gaussian quadrature.
@@ -605,12 +638,16 @@ namespace scream {
 
             real2d gauss_Ds ("gauss_Ds" ,max_gauss_pts,max_gauss_pts);
             real2d gauss_wts("gauss_wts",max_gauss_pts,max_gauss_pts);
+            stop_timer("rrtmgp_lw5");
+            start_timer("rrtmgp_lw6");
             gauss_Ds_host .deep_copy_to(gauss_Ds );
             gauss_wts_host.deep_copy_to(gauss_wts);
-
+            stop_timer("rrtmgp_lw6");
+            start_timer("rrtmgp_lw7");
             // Compute fluxes
             rte_lw(max_gauss_pts, gauss_Ds, gauss_wts, optics, top_at_1, lw_sources, emis_sfc, fluxes);
-
+            stop_timer("rrtmgp_lw7");
+            stop_timer("rrtmgp_lw");
         }
 
 
