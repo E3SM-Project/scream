@@ -7,14 +7,14 @@ namespace scream {
 
 std::string find_filename_in_rpointer (
     const std::string& casename,
-    const bool model_restart,
+    const FileType file_type,
     const ekat::Comm& comm,
     const util::TimeStamp& run_t0)
 {
   std::string filename;
   bool found = false;
   std::string content;
-  std::string suffix = model_restart ? ".r." : ".rhist.";
+  std::string suffix = file_suffix(file_type);
   if (comm.am_i_root()) {
     std::ifstream rpointer_file;
     std::string line;
@@ -37,18 +37,30 @@ std::string find_filename_in_rpointer (
     // Note: keep swallowing line, even after the first match, since we never wipe
     //       rpointer.atm, so it might contain multiple matches, and we want to pick
     //       the last one (which is the last restart file that was written).
+    const auto npos = std::string::npos;
     while (rpointer_file >> line) {
       content += line + "\n";
 
-      if (line.find(casename) != std::string::npos && line.find(suffix) != std::string::npos) {
-        // Extra check: make sure the date in the filename (if present) precedes this->t0.
-        // If there's no time stamp in one of the filenames, we assume this is some sort of
-        // unit test, with no time stamp in the filename, and we accept the filename.
-        auto ts = extract_ts(line);
-        if (not ts.is_valid() || !(ts<=run_t0) ) {
-          found = true;
-          filename = line;
-        }
+      // Filename must contain casename and suffix (if any)
+      if (line.find(casename) == npos || line.find(suffix) == npos) {
+        continue;
+      }
+
+      // If filename contains .npX, ensure X is the comm size
+      // NOTE: this helps in unit tests, when we're running 2+ restart tests,
+      //       both using the same rpointer file.
+      if (line.find(".np")!=npos &&
+          line.find(".np"+std::to_string(comm.size()))==npos) {
+        continue;
+      }
+
+      // Finally, make sure the date in the filename (if present) precedes this->t0.
+      // If there's no time stamp in one of the filenames, we assume this is some sort of
+      // unit test, with no time stamp in the filename, and we accept the filename.
+      auto ts = extract_ts(line);
+      if (not ts.is_valid() || !(ts<=run_t0) ) {
+        found = true;
+        filename = line;
       }
     }
   }
@@ -64,7 +76,7 @@ std::string find_filename_in_rpointer (
   EKAT_REQUIRE_MSG (found,
       "Error! Restart requested, but no restart file found in 'rpointer.atm'.\n"
       "   restart case name: " + casename + "\n"
-      "   restart file type: " + std::string(model_restart ? "model restart" : "history restart") + "\n"
+      "   restart file type: " + std::string(file_type==FileType::Restart ? "model restart" : "history restart") + "\n"
       "   rpointer content:\n" + content);
 
   // Have the root rank communicate the nc filename

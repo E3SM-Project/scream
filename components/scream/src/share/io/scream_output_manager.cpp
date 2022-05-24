@@ -72,6 +72,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
   m_output_file_specs.filename_with_mpiranks    = out_control_pl.get("MPI Ranks in Filename",false);
   m_output_file_specs.filename_with_avg_type    = out_control_pl.get("AVG Type in Filename",true);
   m_output_file_specs.filename_with_frequency   = out_control_pl.get("Frequency in Filename",true);
+  m_output_file_specs.file_type = m_is_model_restart_output ? FileType::Restart : FileType::Output;
 
   // For each grid, create a separate output stream.
   if (field_mgrs.size()==1) {
@@ -108,6 +109,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
       m_checkpoint_file_specs.filename_with_mpiranks    = pl.get("MPI Ranks in Filename",false);
       m_checkpoint_file_specs.filename_with_avg_type    = pl.get("AVG Type in Filename",true);
       m_checkpoint_file_specs.filename_with_frequency   = pl.get("Frequency in Filename",true);
+      m_checkpoint_file_specs.file_type = FileType::Output;
     }
   }
 
@@ -134,7 +136,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
 
       // If the type/freq of output needs restart data, we need to read in an output.
       if (has_restart_data && m_output_control.nsteps_since_last_write>0) {
-        auto output_restart_filename = find_filename_in_rpointer(hist_restart_casename,false,m_io_comm,m_run_t0);
+        auto output_restart_filename = find_filename_in_rpointer(hist_restart_casename,FileType::History,m_io_comm,m_run_t0);
 
         ekat::ParameterList res_params("Input Parameters");
         res_params.set<std::string>("Filename",output_restart_filename);
@@ -179,10 +181,7 @@ void OutputManager::run(const util::TimeStamp& timestamp)
     // Check if we need to open a new file
     if (not filespecs.is_open) {
       // Compute new file name
-      std::string suffix =
-        is_checkpoint_step ? ".rhist"
-                           : (m_is_model_restart_output ? ".r" : "");
-      filename = compute_filename (control,filespecs,suffix,timestamp);
+      filename = compute_filename (control,filespecs,timestamp);
 
       // Register new netCDF file for output. First, check no other output managers
       // are trying to write on the same file
@@ -218,7 +217,7 @@ void OutputManager::run(const util::TimeStamp& timestamp)
     }
 
     // If we are going to write an output checkpoint file, or a model restart file,
-    // we need to append to the filename ".rhist" or ".r" respectively, and add
+    // we need to append to the filename ".hist" or ".r" respectively, and add
     // the filename to the rpointer.atm file.
     if (m_is_model_restart_output || is_checkpoint_step) {
       if (m_io_comm.am_i_root()) {
@@ -282,10 +281,9 @@ long long OutputManager::res_dep_memory_footprint () const {
 std::string OutputManager::
 compute_filename (const IOControl& control,
                   const IOFileSpecs& file_specs,
-                  const std::string suffix,
                   const util::TimeStamp& timestamp) const
 {
-  auto filename = m_casename + suffix;
+  auto filename = m_casename + file_suffix(file_specs.file_type);
   if (file_specs.filename_with_avg_type) {
     filename += "." + e2str(m_avg_type);
   }

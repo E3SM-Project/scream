@@ -46,4 +46,5 @@ Scorpio:
     Output Control:
       Frequency:       1
       Frequency Units: Steps
+      MPI Ranks in Filename: true
 ...

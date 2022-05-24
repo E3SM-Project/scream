@@ -50,5 +50,6 @@ Scorpio:
     Output Control:
       Frequency:       1
       Frequency Units: Steps
+      MPI Ranks in Filename: true
   Output YAML Files: ["model_restart_output.yaml"]
 ...

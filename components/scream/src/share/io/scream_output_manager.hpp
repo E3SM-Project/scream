@@ -111,7 +111,6 @@ protected:
 
   std::string compute_filename (const IOControl& control,
                                 const IOFileSpecs& file_specs,
-                                const std::string suffix,
                                 const util::TimeStamp& timestamp) const;
 
   // Craft the restart parameter list

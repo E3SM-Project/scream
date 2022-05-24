@@ -40,6 +40,21 @@ inline OutputAvgType str2avg (const std::string& s) {
   return OAT::Invalid;
 }
 
+enum class FileType {
+  Output,
+  Restart,
+  History
+};
+
+inline std::string file_suffix (const FileType ft) {
+  switch (ft) {
+    case FileType::Output:  return "";
+    case FileType::Restart: return ".r";
+    case FileType::History: return ".hist";
+    default: return "INVALID";
+  }
+}
+
 // Mini struct to hold IO frequency info
 struct IOControl {
   // A non-positive frequency can be used to signal IO disabled
@@ -71,11 +86,13 @@ struct IOFileSpecs {
   bool filename_with_mpiranks    = false;
   bool filename_with_avg_type    = true;
   bool filename_with_frequency   = true;
+
+  FileType file_type = FileType::Output;
 };
 
 std::string find_filename_in_rpointer (
     const std::string& casename,
-    const bool model_restart,
+    const FileType file_type,
     const ekat::Comm& comm,
     const util::TimeStamp& run_t0);
 
