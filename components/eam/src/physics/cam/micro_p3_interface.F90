@@ -656,9 +656,9 @@ end subroutine micro_p3_readnl
          call add_default('P3_mtend_NUMICE',  1, ' ')
          call add_default('P3_mtend_Q',       1, ' ')
          call add_default('P3_mtend_TH',      1, ' ')
-         call add_default('diag_equiv_reflectivity',  1, '')
-         call add_default('diag_ze_rain',  1, '')
-         call add_default('diag_ze_ice',   1, '')
+         call add_default('diag_equiv_reflectivity',  1, ' ')
+         call add_default('diag_ze_rain',  1, ' ')
+         call add_default('diag_ze_ice',   1, ' ')
       end if
    end if
 
