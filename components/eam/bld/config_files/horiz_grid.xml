@@ -73,6 +73,9 @@
 <horiz_grid dyn="se" hgrid="ne0np4_conus_x4v1_lowcon.pg2"     ncol="39620"  csne="0" csnp="4" npg="2" />
 <horiz_grid dyn="se" hgrid="ne0np4_northamericax4v1"          ncol="130088" csne="0" csnp="4" npg="0" />
 <horiz_grid dyn="se" hgrid="ne0np4_northamericax4v1.pg2"      ncol="57816"  csne="0" csnp="4" npg="2" />
+<horiz_grid dyn="se" hgrid="ne0np4_derecho_ne512.pg2"          ncol="447744" csne="0" csnp="4" npg="2" />
+<horiz_grid dyn="se" hgrid="ne0np4_derecho_ne1024.pg2"          ncol="615456" csne="0" csnp="4" npg="2" />
+<horiz_grid dyn="se" hgrid="ne0np4_derecho_ne2048.pg2"         ncol="1216656" csne="0" csnp="4" npg="2" />
 <horiz_grid dyn="se" hgrid="ne0np4_antarcticax4v1"            ncol="109883" csne="0" csnp="4" npg="0" />
 <horiz_grid dyn="se" hgrid="ne0np4_antarcticax4v1.pg2"        ncol="48836"  csne="0" csnp="4" npg="2" />
 <horiz_grid dyn="se" hgrid="ne0np4_svalbard_x8v1_lowcon"      ncol="71912"  csne="0" csnp="4" npg="0" />

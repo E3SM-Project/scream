@@ -1074,6 +1074,36 @@
       <mask>WC14to60E2r3</mask>
     </model_grid>
 
+    <model_grid alias="derecho_ne512pg2">
+      <grid name="atm">ne0np4_derecho_ne512.pg2</grid>
+      <grid name="lnd">ne0np4_derecho_ne512.pg2</grid>
+      <grid name="ocnice">ne0np4_derecho_ne512.pg2</grid>
+      <grid name="rof">null</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>oRRS18to6v3</mask>
+    </model_grid>
+
+    <model_grid alias="derecho_ne1024pg2">
+      <grid name="atm">ne0np4_derecho_ne1024.pg2</grid>
+      <grid name="lnd">ne0np4_derecho_ne1024.pg2</grid>
+      <grid name="ocnice">ne0np4_derecho_ne1024.pg2</grid>
+      <grid name="rof">null</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>oRRS18to6v3</mask>
+    </model_grid>
+
+    <model_grid alias="derecho_ne2048pg2">
+      <grid name="atm">ne0np4_derecho_ne2048.pg2</grid>
+      <grid name="lnd">ne0np4_derecho_ne2048.pg2</grid>
+      <grid name="ocnice">ne0np4_derecho_ne2048.pg2</grid>
+      <grid name="rof">null</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>oRRS18to6v3</mask>
+    </model_grid>
+
     <model_grid alias="svalbardx8v1_svalbardx8v1" compset="(DOCN|XOCN|SOCN|AQP1)">
       <grid name="atm">ne0np4_svalbard_x8v1_lowcon</grid>
       <grid name="lnd">ne0np4_svalbard_x8v1_lowcon</grid>
@@ -2917,6 +2947,30 @@
       <desc>1-deg with 1/4-deg over North America (version 1) pg2:</desc>
     </domain>
 
+    <domain name="ne0np4_derecho_ne512.pg2">
+      <nx>447744</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.derecho_ne512_oRRS18to6v3.211029.nc</file>
+      <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.derecho_ne512_oRRS18to6v3.211029.nc</file>
+      <desc>ne128 with ne512 over Northeastern US pg2:</desc>
+    </domain>
+
+    <domain name="ne0np4_derecho_ne1024.pg2">
+      <nx>615456</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.derecho_ne1024_oRRS18to6v3.211101.nc</file>
+      <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.derecho_ne1024_oRRS18to6v3.211101.nc</file>
+      <desc>ne128 with ne1024 over Northeastern US pg2:</desc>
+    </domain>
+
+    <domain name="ne0np4_derecho_ne2048.pg2">
+      <nx>1216656</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.derecho_ne2048_oRRS18to6v3.211118.nc</file>
+      <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.derecho_ne2048_oRRS18to6v3.211118.nc</file>
+      <desc>ne128 with ne2048 over Northeastern US pg2:</desc>
+    </domain>
+
     <domain name="ne0np4_antarcticax4v1">
       <nx>109883</nx>
       <ny>1</ny>
@@ -3678,6 +3732,30 @@
     <gridmap atm_grid="ne0np4_antarcticax4v1.pg2" rof_grid="r0125">
       <map name="ATM2ROF_FMAPNAME">cpl/gridmaps/antarcticax4v1np4/map_antarcticax4v1pg2_to_r0125_mono.20200925.nc</map>
       <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/antarcticax4v1np4/map_antarcticax4v1pg2_to_r0125_mono.20200925.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne0np4_derecho_ne512.pg2" ocn_grid="oRRS18to6v3">
+      <map name="ATM2OCN_FMAPNAME">cpl/gridmaps/derechone512pg2/map_derecho_ne512_to_oRRS18to6v3_mono.20211028.nc</map>
+      <map name="ATM2OCN_VMAPNAME">cpl/gridmaps/derechone512pg2/map_derecho_ne512_to_oRRS18to6v3_bilin.nc</map>
+      <map name="ATM2OCN_SMAPNAME">cpl/gridmaps/derechone512pg2/map_derecho_ne512_to_oRRS18to6v3_bilin.nc</map>
+      <map name="OCN2ATM_FMAPNAME">cpl/gridmaps/derechone512pg2/map_oRRS18to6v3_to_derecho_ne512_mono.20211028.nc</map>
+      <map name="OCN2ATM_SMAPNAME">cpl/gridmaps/derechone512pg2/map_oRRS18to6v3_to_derecho_ne512_mono.20211028.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne0np4_derecho_ne1024.pg2" ocn_grid="oRRS18to6v3">
+      <map name="ATM2OCN_FMAPNAME">cpl/gridmaps/derechone1024pg2/map_derecho_ne1024_to_oRRS18to6v3_mono.20211101.nc</map>
+      <map name="ATM2OCN_VMAPNAME">cpl/gridmaps/derechone1024pg2/map_derecho_ne1024_to_oRRS18to6v3_bilin.nc</map>
+      <map name="ATM2OCN_SMAPNAME">cpl/gridmaps/derechone1024pg2/map_derecho_ne1024_to_oRRS18to6v3_bilin.nc</map>
+      <map name="OCN2ATM_FMAPNAME">cpl/gridmaps/derechone1024pg2/map_oRRS18to6v3_to_derecho_ne1024_mono.20211101.nc</map>
+      <map name="OCN2ATM_SMAPNAME">cpl/gridmaps/derechone1024pg2/map_oRRS18to6v3_to_derecho_ne1024_mono.20211101.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne0np4_derecho_ne2048.pg2" ocn_grid="oRRS18to6v3">
+      <map name="ATM2OCN_FMAPNAME">cpl/gridmaps/derechone2048pg2/map_derecho_ne2048_to_oRRS18to6v3_mono.20211118.nc</map>
+      <map name="ATM2OCN_VMAPNAME">cpl/gridmaps/derechone2048pg2/map_derecho_ne2048_to_oRRS18to6v3_mono.20211118.nc</map>
+      <map name="ATM2OCN_SMAPNAME">cpl/gridmaps/derechone2048pg2/map_derecho_ne2048_oRRS18to6v3_mono.20211118.nc</map>
+      <map name="OCN2ATM_FMAPNAME">cpl/gridmaps/derechone2048pg2/map_oRRS18to6v3_to_derecho_ne2048_mono.20211118.nc</map>
+      <map name="OCN2ATM_SMAPNAME">cpl/gridmaps/derechone2048pg2/map_oRRS18to6v3_to_derecho_ne2048_mono.20211118.nc</map>
     </gridmap>
 
     <gridmap atm_grid="T62" ocn_grid="gx3v7">
