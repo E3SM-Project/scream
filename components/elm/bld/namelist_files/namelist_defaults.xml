@@ -397,8 +397,12 @@ lnd/clm2/surfdata_map/surfdata_conusx4v1_simyr2000_c160503.nc</fsurdat>
 lnd/clm2/surfdata_map/surfdata_twpx4v1_simyr2000_c170706.nc</fsurdat>
 <fsurdat hgrid="ne0np4_derecho_ne512.pg2" sim_year="2000" >
 lnd/clm2/surfdata_map/surfdata_derechone512pg2_simyr2000_c211103.nc</fsurdat>
+<fsurdat hgrid="ne0np4_derecho_ne512.pg2" sim_year="2010" >
+lnd/clm2/surfdata_map/surfdata_derechone512pg2_simyr2010_c211101.nc</fsurdat>
 <fsurdat hgrid="ne0np4_derecho_ne1024.pg2" sim_year="2000" >
 lnd/clm2/surfdata_map/surfdata_derechone1024pg2_simyr2000_c211103.nc</fsurdat>
+<fsurdat hgrid="ne0np4_derecho_ne1024.pg2" sim_year="2010" >
+lnd/clm2/surfdata_map/surfdata_derechone1024pg2_simyr2010_c211102.nc</fsurdat>
 <fsurdat hgrid="ne0np4_derecho_ne2048.pg2" sim_year="2000" >
 lnd/clm2/surfdata_map/surfdata_derechone2048pg2_simyr2000_c211119.nc</fsurdat>
 
