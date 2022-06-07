@@ -196,12 +196,12 @@ void AtmosphereProcess::run_precondition_checks () const {
       pc->repair();
     } else if (it.first==CheckFailHandling::Warning) {
       // Still ok, but warn the user
-      log (LogLevel::warn,
-        "WARNING: Pre-condition property check failed.\n"
-        "  - Property check name: " + pc->name() + "\n"
-        "  - Atmosphere process name: " + name() + "\n"
-        "  - Atmosphere process MPI Rank: " + std::to_string(m_comm.rank()) + "\n"
-        "  - Message: " + check_result.msg);
+    //  log (LogLevel::warn,
+    //    "WARNING: Pre-condition property check failed.\n"
+    //    "  - Property check name: " + pc->name() + "\n"
+    //    "  - Atmosphere process name: " + name() + "\n"
+    //    "  - Atmosphere process MPI Rank: " + std::to_string(m_comm.rank()) + "\n"
+    //    "  - Message: " + check_result.msg);
     } else {
       // No hope. Crash.
       EKAT_ERROR_MSG(
@@ -228,18 +228,18 @@ void AtmosphereProcess::run_postcondition_checks () const {
     if (pc->can_repair()) {
       // Ok, just fix it
       pc->repair();
-      std::cout << "WARNING: Post-condition property check failed and repaired.\n"
-        "  - Property check name: " + pc->name() + "\n"
-        "  - Atmosphere process name: " + name() + "\n"
-        "  - Atmosphere process MPI Rank: " + std::to_string(m_comm.rank()) + "\n";
+//      std::cout << "WARNING: Post-condition property check failed and repaired.\n"
+//        "  - Property check name: " + pc->name() + "\n"
+//        "  - Atmosphere process name: " + name() + "\n"
+//        "  - Atmosphere process MPI Rank: " + std::to_string(m_comm.rank()) + "\n";
     } else if (it.first==CheckFailHandling::Warning) {
       // Still ok, but warn the user
-      log (LogLevel::warn,
-        "WARNING: Post-condition property check failed.\n"
-        "  - Property check name: " + pc->name() + "\n"
-        "  - Atmosphere process name: " + name() + "\n"
-        "  - Atmosphere process MPI Rank: " + std::to_string(m_comm.rank()) + "\n"
-        "  - Error message: " + check_result.msg);
+//      log (LogLevel::warn,
+//        "WARNING: Post-condition property check failed.\n"
+//        "  - Property check name: " + pc->name() + "\n"
+//        "  - Atmosphere process name: " + name() + "\n"
+//        "  - Atmosphere process MPI Rank: " + std::to_string(m_comm.rank()) + "\n"
+//        "  - Error message: " + check_result.msg);
     } else {
       // No hope. Crash.
       EKAT_ERROR_MSG(
