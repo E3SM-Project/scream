@@ -1584,6 +1584,8 @@ with se_tstep, dt_remap_factor, dt_tracer_factor set to -1
 <hypervis_subcycle hgrid="ne0np4_enax4v1" dyn_target="preqx">7</hypervis_subcycle>
 <hypervis_subcycle hgrid="ne0np4_twpx4v1" dyn_target="preqx"> 7 </hypervis_subcycle>
 
+<!-- diagnostics variable, performance-related -->
+<disable_diagnostics>.false.</disable_diagnostics>
 
 <!-- ================================================================== -->
 <!-- Defaults for driver namelist seq_infodata_inparm                   -->
