@@ -17,6 +17,10 @@ CreateUnitTest(homme_shoc_cld_spa_p3_rrtmgp "homme_shoc_cld_spa_p3_rrtmgp.cpp" "
 set (ATM_TIME_STEP 1800)
 SetVarDependingOnTestProfile(NUM_STEPS 2 4 48)  # 1h 2h 24h
 
+# Determine num subcycles needed to keep shoc dt<=300s
+set (SHOC_MAX_DT 300)
+math (EXPR MAC_MIC_SUBCYCLES "(${ATM_TIME_STEP} + ${SHOC_MAX_DT} - 1) / ${SHOC_MAX_DT}")
+
 ## Copy (and configure) yaml files needed by tests
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/input.yaml
                ${CMAKE_CURRENT_BINARY_DIR}/input.yaml)
@@ -59,8 +63,8 @@ configure_file(${SCREAM_SRC_DIR}/dynamics/homme/tests/theta.nl
 set (TEST_INPUT_FILES
   init/spa_init_ne2np4.nc
   init/map_ne4np4_to_ne2np4_mono.nc
-  init/spa_file_unified_and_complete_ne4_scream.nc
-  init/homme_shoc_cld_spa_p3_rrtmgp_init_ne2np4.nc
+  init/spa_file_unified_and_complete_ne4_20220428.nc
+  init/screami_ne2np4L72_20220524.nc
 )
 foreach (file IN ITEMS ${TEST_INPUT_FILES})
   GetInputFile(${file})

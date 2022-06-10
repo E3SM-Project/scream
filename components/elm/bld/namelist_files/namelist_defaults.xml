@@ -273,6 +273,8 @@ lnd/clm2/surfdata_map/surfdata_0.125x0.125_simyr2010_c191025.nc</fsurdat>
 lnd/clm2/surfdata_map/surfdata_0.5x0.5_simyr2010_c191025.nc</fsurdat>
 <fsurdat hgrid="ne30np4.pg2"   sim_year="2010" use_crop=".false." >
 lnd/clm2/surfdata_map/surfdata_ne30pg2_simyr2010_c210402.nc</fsurdat>
+<fsurdat hgrid="ne120np4"     sim_year="2010" use_crop=".false." >
+lnd/clm2/surfdata_map/surfdata_ne120np4_simyr2010_c20181023.nc</fsurdat>
 <fsurdat hgrid="ne1024np4.pg2"   sim_year="2010" use_crop=".false." >
 lnd/clm2/surfdata_map/surfdata_ne1024pg2_simyr2010_c211021.nc</fsurdat>
 
@@ -315,6 +317,10 @@ lnd/clm2/surfdata_map/surfdata_ne4pg2_simyr2000_c190620.nc</fsurdat>
 lnd/clm2/surfdata_map/surfdata_ne4pg2_simyr2000_c190620.nc</fsurdat>
 <fsurdat hgrid="ne240np4"      sim_year="2000" use_crop=".false." >
 lnd/clm2/surfdata_map/surfdata_ne240np4_simyr2000_c170821.nc</fsurdat>
+<fsurdat hgrid="ne256np4"      sim_year="2000" use_crop=".false." >
+lnd/clm2/surfdata_map/surfdata_ne256np4_simyr2010_c220518.nc</fsurdat>
+<fsurdat hgrid="ne256np4"      sim_year="2010" use_crop=".false." >
+lnd/clm2/surfdata_map/surfdata_ne256np4_simyr2010_c220518.nc</fsurdat>
 <fsurdat hgrid="r05"         sim_year="2000" >
 lnd/clm2/surfdata_map/surfdata_0.5x0.5_simyr2000_c200624.nc</fsurdat>
 <fsurdat hgrid="r0125"       sim_year="2000" use_crop=".false." >
@@ -1995,6 +2001,7 @@ this mask will have smb calculated over the entire global land surface
 <!-- =========================================  -->
 <fates_spitfire_mode           use_fates=".true.">0</fates_spitfire_mode>
 <use_fates_fixed_biogeog       use_fates=".true.">.false.</use_fates_fixed_biogeog>
+<use_fates_nocomp              use_fates=".true.">.false.</use_fates_nocomp>
 <use_fates_planthydro          use_fates=".true.">.false.</use_fates_planthydro>
 <use_fates_ed_st3              use_fates=".true.">.false.</use_fates_ed_st3>
 <use_fates_ed_prescribed_phys  use_fates=".true.">.false.</use_fates_ed_prescribed_phys>

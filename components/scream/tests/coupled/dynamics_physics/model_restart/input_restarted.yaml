@@ -16,22 +16,33 @@ Initial Conditions:
   Restart Casename: model_restart
 
 atmosphere_processes:
-  atm_procs_list: (homme,shoc,CldFraction,p3,rrtmgp)
+  atm_procs_list: (homme,physics)
   Schedule Type: Sequential
   homme:
     Process Name: Homme
     Enable Precondition Checks: false
-    Vertical Coordinate Filename: ${SCREAM_DATA_DIR}/init/homme_physics_ne2np4.nc
+    Vertical Coordinate Filename: ${SCREAM_DATA_DIR}/init/screami_ne2np4L72_20220524.nc
     Moisture: moist
-  shoc:
-    Grid: Physics GLL
-  CldFraction:
-    Grid: Physics GLL
-  p3:
-    Grid: Physics GLL
-  rrtmgp:
-    Grid: Physics GLL
-    active_gases: ["h2o", "co2", "o3", "n2o", "co" , "ch4", "o2", "n2"]
+  physics:
+    atm_procs_list: (mac_aero_mic,rrtmgp)
+    Type: Group
+    Schedule Type: Sequential
+    mac_aero_mic:
+      atm_procs_list: (shoc,CldFraction,p3)
+      Type: Group
+      Schedule Type: Sequential
+      Number of Subcycles: ${MAC_MIC_SUBCYCLES}
+      shoc:
+        Grid: Physics GLL
+      CldFraction:
+        Grid: Physics GLL
+      p3:
+        Grid: Physics GLL
+        do_prescribed_ccn: false
+    rrtmgp:
+      Grid: Physics GLL
+      active_gases: ["h2o", "co2", "o3", "n2o", "co" , "ch4", "o2", "n2"]
+      do_aerosol_rad: false
 
 Grids Manager:
   Type: Dynamics Driven
@@ -41,9 +52,4 @@ Grids Manager:
 # List all the yaml files with the output parameters
 Scorpio:
   Output YAML Files: ["model_restart_output.yaml"]
-  Model Restart:
-    Casename: model_restart
-    Output Control:
-      Frequency:       1
-      Frequency Units: Steps
 ...

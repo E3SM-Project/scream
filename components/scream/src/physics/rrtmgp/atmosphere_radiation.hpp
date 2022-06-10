@@ -18,6 +18,7 @@ class RRTMGPRadiation : public AtmosphereProcess {
 public:
   using view_1d_real     = typename ekat::KokkosTypes<DefaultDevice>::template view_1d<Real>;
   using view_2d_real     = typename ekat::KokkosTypes<DefaultDevice>::template view_2d<Real>;
+  using view_3d_real     = typename ekat::KokkosTypes<DefaultDevice>::template view_3d<Real>;
   using ci_string        = ekat::CaseInsensitiveString;
 
   using KT               = ekat::KokkosTypes<DefaultDevice>;
@@ -56,6 +57,9 @@ public:
   view_1d_real m_lat;
   view_1d_real m_lon;
 
+  // Whether we use aerosol forcing in radiation
+  bool m_do_aerosol_rad;
+
   // The orbital year, used for zenith angle calculations:
   // If > 0, use constant orbital year for duration of simulation
   // If < 0, use year from timestamp for orbital parameters
@@ -84,6 +88,9 @@ public:
 
   // Rad frequency in number of steps
   int m_rad_freq_in_steps;
+
+  // Whether or not to do subcolumn sampling of cloud state for MCICA
+  bool m_do_subcol_sampling;
 
   // Structure for storing local variables initialized using the ATMBufferManager
   struct Buffer {
@@ -162,6 +169,8 @@ protected:
   // Set local variables using memory provided by
   // the ATMBufferManager
   void init_buffers(const ATMBufferManager &buffer_manager);
+
+  std::shared_ptr<const AbstractGrid>   m_grid;
 
   // Struct which contains local variables
   Buffer m_buffer;

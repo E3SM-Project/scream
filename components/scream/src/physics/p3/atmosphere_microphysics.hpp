@@ -309,7 +309,7 @@ public:
     // 1d view scalar, size (ncol)
     static constexpr int num_1d_scalar = 0; //no 2d vars now, but keeping 1d struct for future expansion
     // 2d view packed, size (ncol, nlev_packs)
-    static constexpr int num_2d_vector = 8;
+    static constexpr int num_2d_vector = 9;
     static constexpr int num_2dp1_vector = 2;
 
     uview_2d inv_exner;
@@ -322,6 +322,7 @@ public:
     uview_2d rho_qi;
     uview_2d precip_liq_flux; //nlev+1
     uview_2d precip_ice_flux; //nlev+1
+    uview_2d unused;
 
     suview_2d col_location;
 
@@ -363,6 +364,7 @@ protected:
   // WSM for internal local variables
   ekat::WorkspaceManager<Spack, KT::Device> workspace_mgr;
 
+  std::shared_ptr<const AbstractGrid>   m_grid;
   // Iteration count is internal to P3 and keeps track of the number of times p3_main has been called.
   // infrastructure.it is passed as an arguement to p3_main and is used for identifying which iteration an error occurs.
 

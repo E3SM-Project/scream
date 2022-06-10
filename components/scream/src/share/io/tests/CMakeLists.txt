@@ -17,6 +17,12 @@ CreateUnitTest(io_test "io.cpp" scream_io LABELS "io"
   MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
 )
 
+# Test output on SE grid
+configure_file(io_test_se_grid.yaml io_test_se_grid.yaml)
+CreateUnitTest(io_test_se_grid "io_se_grid.cpp" scream_io LABELS "io"
+  MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
+)
+
 ## Test output restart
 # NOTE: Each restart test is a "setup" for the restart_check test,
 # and cannot run in parallel with other restart tests,
@@ -30,8 +36,8 @@ CreateUnitTest(output_restart_test "output_restart.cpp" scream_io LABELS "io"
 )
 
 foreach (MPI_RANKS RANGE 1 ${SCREAM_TEST_MAX_RANKS})
-  set (SRC_FILE io_output_restart.AVERAGE.Steps_x10.np${MPI_RANKS}.2000-01-01.000020.nc)
-  set (TGT_FILE io_output_restart_check.AVERAGE.Steps_x10.np${MPI_RANKS}.2000-01-01.000020.nc)
+  set (SRC_FILE io_output_restart.AVERAGE.Steps_x10.np${MPI_RANKS}.2000-01-01-00020.nc)
+  set (TGT_FILE io_output_restart_check.AVERAGE.Steps_x10.np${MPI_RANKS}.2000-01-01-00020.nc)
   add_test (NAME io_test_restart_check_np${MPI_RANKS}
             COMMAND cmake -P ${CMAKE_BINARY_DIR}/bin/CprncTest.cmake ${SRC_FILE} ${TGT_FILE}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
