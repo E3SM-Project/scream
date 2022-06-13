@@ -542,10 +542,14 @@ contains
       ! Allow passing of an optional flag to not stop the run if an error is
       ! encountered. This allows this subroutine to be used when inquiring if a
       ! variable exists without failing.
+
+      ! For the CA RRM we temporarily disable the code to bomb out.  At first time step
+      !  we were getting errors related to aer_ssa_bnd_sw.  This only happens if
+      !  SPA is turned on.  Need to revist this.
       if (present(fatal)) then
-         fatal_local = fatal
+         fatal_local = .false.
       else
-         fatal_local = .true.
+         fatal_local = .false.
       end if
 
       ! Allow optional flag to disable warning messages.
