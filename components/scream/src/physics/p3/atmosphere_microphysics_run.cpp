@@ -11,7 +11,7 @@ void P3Microphysics::run_impl (const int dt)
   const auto& qi_before_p3  = get_field_out("qi_before_p3").get_view<Pack**>();
 
   Kokkos::deep_copy(qv_before_p3,prog_state.qv);
-  Kokkos::deep_copy(qc_before_p3,prog_state.qc;
+  Kokkos::deep_copy(qc_before_p3,prog_state.qc);
   Kokkos::deep_copy(qr_before_p3,prog_state.qr);
   Kokkos::deep_copy(qi_before_p3,prog_state.qi);
   // Assign values to local arrays used by P3, these are now stored in p3_loc.
@@ -49,7 +49,7 @@ void P3Microphysics::run_impl (const int dt)
   const auto& qi_after_p3  = get_field_out("qi_after_p3").get_view<Pack**>();
 
   Kokkos::deep_copy(qv_after_p3,prog_state.qv);
-  Kokkos::deep_copy(qc_after_p3,prog_state.qc;
+  Kokkos::deep_copy(qc_after_p3,prog_state.qc);
   Kokkos::deep_copy(qr_after_p3,prog_state.qr);
   Kokkos::deep_copy(qi_after_p3,prog_state.qi);
 }

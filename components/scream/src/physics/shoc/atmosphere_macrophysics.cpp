@@ -96,10 +96,10 @@ void SHOCMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids
   add_group<Updated>("tracers",grid_name,ps,Bundling::Required);
 
   // AaronDonahue - HACK to write water mass fields after a process
-  add_field<Computed>("qv_before_shoc", scalar3d_layout_mid, Q,    grid_name, ps);
-  add_field<Computed>("qc_before_shoc", scalar3d_layout_mid, Q,    grid_name, ps);
-  add_field<Computed>("qv_after_shoc",  scalar3d_layout_mid, Q,    grid_name, ps);
-  add_field<Computed>("qc_after_shoc",  scalar3d_layout_mid, Q,    grid_name, ps);
+  add_field<Computed>("qv_before_shoc", scalar3d_layout_mid, Qunit,    grid_name, ps);
+  add_field<Computed>("qc_before_shoc", scalar3d_layout_mid, Qunit,    grid_name, ps);
+  add_field<Computed>("qv_after_shoc",  scalar3d_layout_mid, Qunit,    grid_name, ps);
+  add_field<Computed>("qc_after_shoc",  scalar3d_layout_mid, Qunit,    grid_name, ps);
 }
 
 // =========================================================================================
