@@ -94,6 +94,12 @@ void SHOCMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids
 
   // Tracer group
   add_group<Updated>("tracers",grid_name,ps,Bundling::Required);
+
+  // AaronDonahue - HACK to write water mass fields after a process
+  add_field<Computed>("qv_before_shoc", scalar3d_layout_mid, Q,    grid_name, ps);
+  add_field<Computed>("qc_before_shoc", scalar3d_layout_mid, Q,    grid_name, ps);
+  add_field<Computed>("qv_after_shoc",  scalar3d_layout_mid, Q,    grid_name, ps);
+  add_field<Computed>("qc_after_shoc",  scalar3d_layout_mid, Q,    grid_name, ps);
 }
 
 // =========================================================================================
@@ -387,6 +393,13 @@ void SHOCMacrophysics::initialize_impl (const RunType run_type)
 // =========================================================================================
 void SHOCMacrophysics::run_impl (const int dt)
 {
+  const auto& qc            = get_field_out("qc").get_view<Spack**>();
+  const auto& qv            = get_field_out("qv").get_view<Spack**>();
+  const auto& qc_before_shoc = get_field_out("qc_before_shoc").get_view<Spack**>();
+  const auto& qv_before_shoc = get_field_out("qv_before_shoc").get_view<Spack**>();
+  Kokkos::deep_copy(qc_before_shoc,qc);
+  Kokkos::deep_copy(qv_before_shoc,qv);
+
   EKAT_REQUIRE_MSG (dt<=300,
       "Error! SHOC is intended to run with a timestep no longer than 5 minutes.\n"
       "       Please, reduce timestep (perhaps increasing subcycling iteratinos).\n");
@@ -420,6 +433,13 @@ void SHOCMacrophysics::run_impl (const int dt)
                        default_policy,
                        shoc_postprocess);
   Kokkos::fence();
+
+  // Copy current water mass state to after shoc variables so that they can be recorded as output
+  const auto& qc_after_shoc = get_field_out("qc_after_shoc").get_view<Spack**>();
+  const auto& qv_after_shoc = get_field_out("qv_after_shoc").get_view<Spack**>();
+  Kokkos::deep_copy(qc_after_shoc,qc);
+  Kokkos::deep_copy(qv_after_shoc,qv);
+  
 }
 // =========================================================================================
 void SHOCMacrophysics::finalize_impl()

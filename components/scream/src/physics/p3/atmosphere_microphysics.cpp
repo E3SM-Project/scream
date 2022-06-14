@@ -106,6 +106,16 @@ void P3Microphysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
   add_field<Computed>("micro_vap_liq_exchange", scalar3d_layout_mid, Q, grid_name, ps);
   add_field<Computed>("micro_vap_ice_exchange", scalar3d_layout_mid, Q, grid_name, ps);
 
+  // AaronDonahue - HACK to write water mass fields before/after a process
+  add_field<Computed>("qv_before_p3", scalar3d_layout_mid, Q,    grid_name, ps);
+  add_field<Computed>("qc_before_p3", scalar3d_layout_mid, Q,    grid_name, ps);
+  add_field<Computed>("qi_before_p3", scalar3d_layout_mid, Q,    grid_name, ps);
+  add_field<Computed>("qr_before_p3", scalar3d_layout_mid, Q,    grid_name, ps);
+  add_field<Computed>("qv_after_p3",  scalar3d_layout_mid, Q,    grid_name, ps);
+  add_field<Computed>("qc_after_p3",  scalar3d_layout_mid, Q,    grid_name, ps);
+  add_field<Computed>("qi_after_p3",  scalar3d_layout_mid, Q,    grid_name, ps);
+  add_field<Computed>("qr_after_p3",  scalar3d_layout_mid, Q,    grid_name, ps);
+
 }
 
 // =========================================================================================

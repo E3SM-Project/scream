@@ -20,6 +20,10 @@ Fields:
       - sgs_buoy_flux
       - tke
       - pbl_height
+      - qv_before_shoc
+      - qc_before_shoc
+      - qv_after_shoc
+      - qc_after_shoc
       # CLD
       - cldfrac_ice
       - cldfrac_tot
@@ -35,6 +39,14 @@ Fields:
       - eff_radius_qi
       - precip_ice_surf
       - precip_liq_surf
+      - qv_before_p3
+      - qc_before_p3
+      - qi_before_p3
+      - qr_before_p3
+      - qv_after_p3
+      - qc_after_p3
+      - qi_after_p3
+      - qr_after_p3
       # SHOC + P3
       - qc
       - qv
