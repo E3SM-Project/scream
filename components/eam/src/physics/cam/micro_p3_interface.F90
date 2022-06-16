@@ -978,7 +978,7 @@ end subroutine micro_p3_readnl
     !we hack "it" with "is_first_step()" for now. Eventually, we should replace
     !"it" with a logical.
     it = get_nstep()
-    tmp_loc =-999.0_rtype
+    tmp_loc =-998.0_rtype
     call get_rlon_all_p(lchnk,ncol,tmp_loc)
     col_location(:ncol,2) = tmp_loc(:ncol)*180.0_rtype/pi
     call get_rlat_all_p(lchnk,ncol,tmp_loc)
@@ -1036,7 +1036,7 @@ end subroutine micro_p3_readnl
                 cld_frac_i(its:ite,kts:kte),cld_frac_l(its:ite,kts:kte),cld_frac_r(its:ite,kts:kte))
     call t_stopf('micro_p3_tend_init')
 
-    p3_main_inputs(:,:,:) = -999._rtype
+    p3_main_inputs(:,:,:) = -997._rtype
     do k = 1,pver
       p3_main_inputs(1,k,1)  = ast(1,k)
       p3_main_inputs(1,k,2)  = ni_activated(1,k)
@@ -1129,7 +1129,7 @@ end subroutine micro_p3_readnl
          col_location(its:ite,:3)          & ! IN column locations
          )
 
-    p3_main_outputs(:,:,:) = -999._rtype
+    p3_main_outputs(:,:,:) = -996._rtype
     do k = 1,pver
       p3_main_outputs(1,k, 1) = cldliq(1,k)
       p3_main_outputs(1,k, 2) = numliq(1,k)

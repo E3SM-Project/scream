@@ -13,7 +13,8 @@ module shoc_intr
   ! Authors:  P. Bogenschutz                                           ! 
   !                                                                    ! 
   !------------------------------------------------------------------- !
-
+  use module_perturb
+  use time_manager,           only: is_first_step, get_nstep
   use shr_kind_mod,  only: r8=>shr_kind_r8
   use shr_const_mod, only: SHR_CONST_PI
   use ppgrid,        only: pver, pverp
@@ -124,7 +125,40 @@ module shoc_intr
   logical :: liqcf_fix = .FALSE.  ! HW for liquid cloud fraction fix
   logical :: relvar_fix = .FALSE. !PMA for relvar fix  
   
-  contains
+contains
+
+  subroutine calculate_wetmmr_from_drymmr_1gridcell_func(drymmr, qv_dry, wetmmr)
+    !Computes wetmmr from drymmr for a grid cell
+    implicit none
+
+    !intent-ins
+    real(r8), intent(in) :: drymmr !dry mmr of a constituent
+    real(r8), intent(in) :: qv_dry !water vapor dry mass mixing ratio
+
+    !return variable
+    real(r8) :: wetmmr !wet mmr of a constituent
+
+    !Compute wetmmr
+    wetmmr = drymmr!/(1.0_r8 + qv_dry)
+
+  end subroutine calculate_wetmmr_from_drymmr_1gridcell_func
+
+  subroutine calculate_drymmr_from_wetmmr_1gridcell_func(wetmmr,qv_wet,drymmr)
+    !Computes drymmr from wetmmr for a grid cell
+    implicit none
+
+    !intent-ins
+    real(r8), intent(in) :: wetmmr !wet mmr of a constituent
+    real(r8), intent(in) :: qv_wet !water vapor wet mass mixing ratio
+
+    !return variable
+    real(r8) :: drymmr !dry mmr of a constituent
+
+    drymmr = wetmmr/(1.0_r8 - qv_wet)
+
+  end subroutine calculate_drymmr_from_wetmmr_1gridcell_func
+
+  
   
   ! =============================================================================== !
   !                                                                                 !
@@ -288,7 +322,7 @@ end function shoc_implements_cnst
     use physics_types,          only: physics_state, physics_ptend
     use ppgrid,                 only: pver, pverp, pcols
     use ref_pres,               only: pref_mid
-    use time_manager,           only: is_first_step
+    use time_manager,           only: is_first_step, get_nstep
     use hb_diff,                only: init_hb_diff
     use physics_buffer,         only: pbuf_get_index, pbuf_set_field, &
                                       physics_buffer_desc
@@ -653,6 +687,7 @@ end function shoc_implements_cnst
    
    logical :: lqice(pcnst)
    real(r8) :: relvarmax
+   real(r8) :: qv_dry(pcols,pver),qv_wet(pcols,pver)
    
    !------------------------------------------------------------------!
    !------------------------------------------------------------------!
@@ -834,7 +869,8 @@ end function shoc_implements_cnst
       vpwp_sfc(i)   = cam_in%wsy(i)/rrho_i(i,pverp)               ! Surface zonal momentum flux  
       wtracer_sfc(i,:) = 0._r8  ! in E3SM tracer fluxes are done elsewhere
    enddo               
-   
+
+   qv_wet(:,:) = state%q(:,:,1)
    !  Do the same for tracers 
    icnt=0
    do ixind=1,pcnst
@@ -842,7 +878,8 @@ end function shoc_implements_cnst
        icnt=icnt+1
        do k=1,pver
          do i=1,ncol
-           edsclr_in(i,k,icnt) = state1%q(i,k,ixind)
+            !edsclr_in(i,k,icnt) = state1%q(i,k,ixind)
+            call  calculate_drymmr_from_wetmmr_1gridcell_func(state1%q(i,k,ixind), qv_wet(i,k), edsclr_in(i,k,icnt))
          enddo
        enddo
      end if
@@ -872,13 +909,23 @@ end function shoc_implements_cnst
    
    ! Transfer back to pbuf variables
    
+   !obtain water vapor mmr which is a "dry" mmr at this point from the SHOC output
+   qv_dry(:,:) = edsclr_in(:,:,1)
+   if(icolprnt(lchnk) > 0) then
+      do k=1,pver
+         if(get_nstep()<5)write(102,*)'Here', get_nstep(),qv_dry(icolprnt(lchnk),k),k
+      enddo
+   endif
+
    do k=1,pver
      do i=1,ncol 
      
        cloud_frac(i,k) = min(cloud_frac(i,k),1._r8)
        
        do ixind=1,edsclr_dim
-         edsclr_out(i,k,ixind) = edsclr_in(i,k,ixind)
+          !edsclr_out(i,k,ixind) = calculate_wetmmr_from_drymmr_1gridcell(edsclr_in(i,k,ixind),huge(1.0_r8))
+          edsclr_out(i,k,ixind) = edsclr_in(i,k,ixind)/(1.0_r8 + qv_dry(i,k))
+          !call calculate_wetmmr_from_drymmr_1gridcell_func(edsclr_in(i,k,ixind),qv_dry(i,k),edsclr_out(i,k,ixind))
        enddo      
  
      enddo
