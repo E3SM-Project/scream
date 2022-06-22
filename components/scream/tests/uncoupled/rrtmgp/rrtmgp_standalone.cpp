@@ -7,6 +7,7 @@
 #include "share/grid/mesh_free_grids_manager.hpp"
 #include "share/atm_process/atmosphere_process.hpp"
 #include "share/field/field_utils.hpp"
+#include "share/util/standalone_helper_functions.hpp"
 
 #include "ekat/ekat_parse_yaml_file.hpp"
 
@@ -50,9 +51,13 @@ TEST_CASE("rrtmgp-stand-alone", "") {
   // Init and run
   ad.initialize(atm_comm,ad_params,t0);
 
-  // Get a pointer to the field manager so we can query fields
+  // Get a pointer to the field manager so we can query fields,
+  // Initialize water mass calculation
+  const auto& grids_mgr = ad.get_grids_manager();
   const auto& grid = ad.get_grids_manager()->get_grid("Point Grid");
   const auto& field_mgr = *ad.get_field_mgr(grid->name());
+  Real wm_prev = calculate_water_mass(grids_mgr,ad.get_field_mgr(grid->name()));
+  Real wm_after;
 
   // Get field managed variables we need to check
   auto sw_flux_up = field_mgr.get_field("sw_flux_up");
@@ -79,6 +84,12 @@ TEST_CASE("rrtmgp-stand-alone", "") {
     sw_flux_up_old.deep_copy(sw_flux_up);
 
     ad.run(dt);
+    const auto& wm_after = calculate_water_mass(grids_mgr,ad.get_field_mgr(grid->name()));
+    EKAT_REQUIRE_MSG(std::abs(wm_after - wm_prev) < 1.e-12, 
+       "Error in water mass change: " + std::to_string(wm_prev) + " != "
+       + std::to_string(wm_after) + ", diff = " + std::to_string(wm_after-wm_prev));
+    wm_prev = wm_after;
+
     if (atm_comm.am_i_root()) {
       std::cout << "  - Iteration " << std::setfill(' ') << std::setw(3) << i+1 << " completed";
       std::cout << "       [" << std::setfill(' ') << std::setw(3) << 100*(i+1)/nsteps << "%]\n";
