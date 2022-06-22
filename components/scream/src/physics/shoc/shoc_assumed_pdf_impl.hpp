@@ -336,7 +336,7 @@ void Functions<S,D>::shoc_assumed_pdf(
       shoc_cldfrac(k) = ekat::min(1, a*C1 + (1 - a)*C2);
 
       // Compute SGS liquid water mixing ratio
-      shoc_ql(k) = ekat::max(0, a*ql1 + (1 - a)*ql2);
+      shoc_ql(k) = ekat::min(ekat::max(0, a*ql1 + (1 - a)*ql2),qw_first);
 
       // Compute cloud liquid variance (CLUBB formulation, adjusted to SHOC parameters based)
       shoc_ql2(k) = ekat::max(0, a*(s1*ql1 + C1*ekat::square(std_s1))
