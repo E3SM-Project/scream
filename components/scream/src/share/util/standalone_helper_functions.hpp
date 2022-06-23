@@ -7,10 +7,11 @@
 namespace scream {
 
 // Helper function to check the total water mass
-Real calculate_water_mass(const std::shared_ptr<const GridsManager>& grids_mgr,const std::shared_ptr<FieldManager>& field_mgr, const bool use_precip) {
+Real calculate_water_mass(const std::shared_ptr<const GridsManager>& grids_mgr,const std::shared_ptr<FieldManager>& field_mgr, const Real dt, const bool use_precip) {
   
   using PC = scream::physics::Constants<Real>;
   constexpr Real gravit = PC::gravit;
+  constexpr Real rho_h2o = PC::RHO_H2O;
 
   const auto& grid = grids_mgr->get_grid("Point Grid");
 
@@ -78,16 +79,17 @@ Real calculate_water_mass(const std::shared_ptr<const GridsManager>& grids_mgr,c
     auto d_tmp_ice = field_mgr->get_field("precip_ice_surf").get_view<Real*>();
     Real result;
     Kokkos::parallel_reduce("",ncol, KOKKOS_LAMBDA(const int& icol,Real& lsum) {
-      lsum += (d_tmp_liq(icol) + d_tmp_ice(icol) ) * 1000.0;
+      lsum += (d_tmp_liq(icol) + d_tmp_ice(icol) ) * rho_h2o * dt;
     },result);
-    total_mass -= result;
+    total_mass += result;
+    printf("precip this step: %e\n",result);
   }
 
   return total_mass;
 }
 
-Real calculate_water_mass(const std::shared_ptr<const GridsManager>& grids_mgr,const std::shared_ptr<FieldManager>& field_mgr) {
-  return calculate_water_mass(grids_mgr,field_mgr,false);
+Real calculate_water_mass(const std::shared_ptr<const GridsManager>& grids_mgr,const std::shared_ptr<FieldManager>& field_mgr, const Real dt) {
+  return calculate_water_mass(grids_mgr,field_mgr,dt,false);
 }
 
 } //namespace scream

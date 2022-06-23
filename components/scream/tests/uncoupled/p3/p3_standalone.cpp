@@ -52,7 +52,7 @@ TEST_CASE("p3-stand-alone", "") {
   const auto& grids_mgr = ad.get_grids_manager();
   const auto& grid = grids_mgr->get_grid("Point Grid");
   const auto& field_mgr = ad.get_field_mgr(grid->name());
-  Real wm_prev = calculate_water_mass(grids_mgr,field_mgr);
+  Real wm_prev = calculate_water_mass(grids_mgr,field_mgr,dt);
   Real wm_after;
 
   if (atm_comm.am_i_root()) {
@@ -60,10 +60,10 @@ TEST_CASE("p3-stand-alone", "") {
   }
   for (int i=0; i<nsteps; ++i) {
     ad.run(dt);
-    const auto& wm_after = calculate_water_mass(grids_mgr,field_mgr,true);
+    const auto& wm_after = calculate_water_mass(grids_mgr,field_mgr,dt,true);
     EKAT_REQUIRE_MSG(std::abs(wm_after - wm_prev) < 1.e-12, 
-       "Error in water mass change: " + std::to_string(wm_prev) + " != "
-       + std::to_string(wm_after) + ", diff = " + std::to_string(wm_after-wm_prev));
+       "Error in water mass change: " + std::to_string(wm_after) + " != "
+       + std::to_string(wm_prev) + ", diff = " + std::to_string((wm_after-wm_prev)/(std::abs(wm_after)+std::abs(wm_prev))*200.0) + "%");
     wm_prev = wm_after;
 
     if (atm_comm.am_i_root()) {

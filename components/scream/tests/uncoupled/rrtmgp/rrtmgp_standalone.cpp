@@ -56,7 +56,7 @@ TEST_CASE("rrtmgp-stand-alone", "") {
   const auto& grids_mgr = ad.get_grids_manager();
   const auto& grid = ad.get_grids_manager()->get_grid("Point Grid");
   const auto& field_mgr = *ad.get_field_mgr(grid->name());
-  Real wm_prev = calculate_water_mass(grids_mgr,ad.get_field_mgr(grid->name()));
+  Real wm_prev = calculate_water_mass(grids_mgr,ad.get_field_mgr(grid->name()),dt);
   Real wm_after;
 
   // Get field managed variables we need to check
@@ -84,7 +84,7 @@ TEST_CASE("rrtmgp-stand-alone", "") {
     sw_flux_up_old.deep_copy(sw_flux_up);
 
     ad.run(dt);
-    const auto& wm_after = calculate_water_mass(grids_mgr,ad.get_field_mgr(grid->name()));
+    const auto& wm_after = calculate_water_mass(grids_mgr,ad.get_field_mgr(grid->name()),dt);
     EKAT_REQUIRE_MSG(std::abs(wm_after - wm_prev) < 1.e-12, 
        "Error in water mass change: " + std::to_string(wm_prev) + " != "
        + std::to_string(wm_after) + ", diff = " + std::to_string(wm_after-wm_prev));
