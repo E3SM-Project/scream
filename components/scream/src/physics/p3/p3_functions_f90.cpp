@@ -1891,7 +1891,7 @@ void p3_main_part3_f(
   auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, nk_pack);
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
 
-    P3F::p3_main_part3(team, nk_pack, dnu, ice_table_vals,
+    P3F::p3_main_part3(team, nk_pack, nk, dnu, ice_table_vals,
                        inv_exner_d, cld_frac_l_d, cld_frac_r_d, cld_frac_i_d, rho_d, inv_rho_d,
                        rhofaci_d, qv_d, th_atm_d, qc_d, nc_d, qr_d, nr_d,
                        qi_d, ni_d, qm_d, bm_d, latent_heat_vapor_d,

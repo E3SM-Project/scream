@@ -21,6 +21,7 @@ void Functions<S,D>
 ::p3_main_part3(
   const MemberType& team,
   const Int& nk_pack,
+  const Int& nk,
   const view_dnu_table& dnu,
   const view_ice_table& ice_table_vals,
   const uview_1d<const Spack>& inv_exner,
@@ -61,6 +62,7 @@ void Functions<S,D>
   constexpr Scalar inv_cp       = C::INV_CP;
   constexpr Scalar max_total_ni = C::max_total_ni;
   constexpr Scalar nsmall       = C::NSMALL;
+  constexpr Scalar macheps      = C::macheps;
 
   Kokkos::parallel_for(
     Kokkos::TeamThreadRange(team, nk_pack), [&] (Int k) {
@@ -75,6 +77,13 @@ void Functions<S,D>
       table_val_ice_reflectivity   (0),
       table_val_ice_mean_diam   (0),
       table_val_ice_bulk_dens   (0);
+
+    //compute mask to identify padded values in packs, which shouldn't be used in calculations
+    const auto range_pack = ekat::range<IntSmallPack>(k*Spack::n);
+    const auto range_mask = range_pack < nk;
+    // Establish the initial mass for this pack
+    Real wm_now;
+    const auto wm_init = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
 
     // Cloud
     {
@@ -97,6 +106,9 @@ void Functions<S,D>
         nc(k)                .set(qc_small, 0);
       }
     }
+    // Check if water mass has changed
+    wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
+    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part3 - Cloud");
 
     // Rain
     {
@@ -126,6 +138,9 @@ void Functions<S,D>
         nr(k)              .set(qr_small, 0);
       }
     }
+    // Check if water mass has changed
+    wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
+    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part3 - Rain");
 
     // Ice
     {
@@ -189,6 +204,9 @@ void Functions<S,D>
       bm(k).set(qi_small, 0);
       diag_diam_qi(k).set(qi_small, 0);
     }
+    // Check if water mass has changed
+    wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
+    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part3 - Ice");
 
     // sum ze components and convert to dBZ
     diag_equiv_reflectivity(k) = 10 * log10((ze_rain(k) + ze_ice(k))*sp(1.e18));

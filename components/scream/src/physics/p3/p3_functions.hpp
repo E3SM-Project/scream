@@ -750,6 +750,11 @@ struct Functions
     Spack& nc_incld, Spack& nr_incld, Spack& ni_incld, Spack& bm_incld,
     const Smask& context = Smask(true));
 
+  KOKKOS_FUNCTION
+  static Scalar calculate_mass_of_pack(
+    const Spack& qv, const Spack& qc, const Spack& qr, const Spack&qi, const Spack& rho, const Smask& context = Smask(true)
+    );
+
   //
   // main P3 functions
   //
@@ -913,6 +918,7 @@ struct Functions
   static void p3_main_part3(
     const MemberType& team,
     const Int& nk_pack,
+    const Int& nk,
     const view_dnu_table& dnu,
     const view_ice_table& ice_table_vals,
     const uview_1d<const Spack>& inv_exner,

@@ -79,6 +79,7 @@ void Functions<S,D>
   constexpr Scalar T_zerodegc   = C::T_zerodegc;
   constexpr Scalar qsmall       = C::QSMALL;
   constexpr Scalar inv_cp       = C::INV_CP;
+  constexpr Scalar macheps      = C::macheps;
 
   nucleationPossible = false;
   hydrometeorsPresent = false;
@@ -115,6 +116,9 @@ void Functions<S,D>
     if ( (T_atm(k) < T_zerodegc && qv_supersat_i(k) >= -0.05).any() ) {
       nucleationPossible = true;
     }
+    // Establish the initial mass for this pack
+    Real wm_now;
+    const auto wm_init = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
 
     // apply mass clipping if dry and mass is sufficiently small
     // (implying all mass is expected to evaporate/sublimate in one time step)
@@ -140,6 +144,9 @@ void Functions<S,D>
       }
 
     }
+    // Check if water mass has changed
+    wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
+    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part1 - qc drymass clipping");
 
     drymass = qr(k) < qsmall;
     not_drymass = !drymass && range_mask;
@@ -150,6 +157,9 @@ void Functions<S,D>
     if ( not_drymass.any() ) {
       hydrometeorsPresent = true; // updated further down
     }
+    // Check if water mass has changed
+    wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
+    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part1 - qr drymass clipping");
 
     drymass = (qi(k) < qsmall || (qi(k) < 1.e-8 && qv_supersat_i(k) < -0.1));
     not_drymass = !drymass && range_mask;
@@ -162,6 +172,9 @@ void Functions<S,D>
     if ( not_drymass.any() ) {
       hydrometeorsPresent = true; // final update
     }
+    // Check if water mass has changed
+    wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
+    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part1 - qi drymass clipping part1");
 
     drymass = (qi(k) >= qsmall && qi(k) < 1.e-8 && T_atm(k) >= T_zerodegc);
     qr(k).set(drymass, qr(k) + qi(k));
@@ -170,6 +183,12 @@ void Functions<S,D>
     ni(k).set(drymass, 0);
     qm(k).set(drymass, 0);
     bm(k).set(drymass, 0);
+    // Check if water mass has changed
+    wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
+    if (wm_now != wm_init) {
+      printf("Error in water mass for p3_main_part_1 - qi drymass clipping part 1 - pack = %d, diff = %e\n",k,wm_now-wm_init);
+    }
+    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part1 - qi drymass clipping part2");
 
     T_atm(k) = th_atm(k) * exner(k);
 
