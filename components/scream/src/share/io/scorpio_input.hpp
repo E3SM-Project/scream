@@ -159,6 +159,7 @@ protected:
   ekat::ParameterList   m_params;
 
   std::shared_ptr<const fm_type>        m_field_mgr;
+  std::shared_ptr<fm_type>              m_io_field_mgr;
   std::shared_ptr<const AbstractGrid>   m_io_grid;
   std::shared_ptr<remapper_type>        m_remapper;
 
@@ -171,6 +172,7 @@ protected:
 
   bool m_inited_with_fields        = false;
   bool m_inited_with_views         = false;
+  bool m_fields_must_exist_in_file = true;
 }; // Class AtmosphereInput
 
 } //namespace scream

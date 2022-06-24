@@ -18,6 +18,9 @@ AtmosphereInput (const ekat::Comm& comm,
 {
   m_filename = m_params.get<std::string>("Filename");
 
+  // Set list of fields.
+  set_fields_and_grid_names ();
+
   // This ensures that the nc file is open, even if init() doesn't
   // get called. This allows users to read global scalar values from
   // an nc file, by easily creating an AtmosphereInput on the fly.
@@ -52,9 +55,6 @@ void AtmosphereInput::
 init (const std::shared_ptr<const fm_type>& field_mgr,
       const std::shared_ptr<const gm_type>& grids_mgr)
 {
-  // Set list of fields. Use grid name to potentially find correct sublist inside 'Fields' list.
-  set_fields_and_grid_names (field_mgr->get_grid()->name());
-
   // Sets the internal field mgr, and possibly sets up the remapper
   set_field_manager(field_mgr,grids_mgr);
 
@@ -67,8 +67,9 @@ init (const std::shared_ptr<const grid_type>& grid,
       const std::map<std::string,view_1d_host>& host_views_1d,
       const std::map<std::string,FieldLayout>&  layouts)
 {
-  // Set list of fields. Use grid name to potentially find correct sublist inside 'Fields' list.
-  set_fields_and_grid_names (grid->name());
+  // When providing a grid and host views, we do not support I/O on a second grid
+  EKAT_REQUIRE_MSG (m_io_grid_name="",
+      "Error! When providing a grid and host views, you cannot specify an I/O grid name.\n");
 
   // Set the grid associated with the input views
   set_grid(grid);
@@ -83,20 +84,15 @@ init (const std::shared_ptr<const grid_type>& grid,
 /* ---------------------------------------------------------- */
 
 void AtmosphereInput::
-set_fields_and_grid_names (const std::string& grid_name) {
+set_fields_and_grid_names () {
   // The user might just want to read some global attributes (no fields),
   // so get the list of fields names only if present.
   using vos_t = std::vector<std::string>;
   if (m_params.isParameter("Field Names")) {
     m_fields_names = m_params.get<vos_t>("Field Names");
+    // User might want to do IO on a different grid
     if (m_params.isParameter("IO Grid Name")) {
       m_io_grid_name = m_params.get<std::string>("IO Grid Name");
-    }
-  } else if (m_params.isSublist("Fields") && grid_name!="") {
-    const auto& pl = m_params.sublist("Fields").sublist(grid_name);
-    m_fields_names = pl.get<vos_t>("Field Names");
-    if (pl.isParameter("IO Grid Name")) {
-      m_io_grid_name = pl.get<std::string>("IO Grid Name");
     }
   }
 }
@@ -113,49 +109,65 @@ set_field_manager (const std::shared_ptr<const fm_type>& field_mgr,
   EKAT_REQUIRE_MSG (not m_inited_with_fields,
       "Error! Input class was already inited with fields.\n");
 
+  // Store fm and grid
   m_field_mgr = field_mgr;
 
-  std::shared_ptr<const grid_type> fm_grid, io_grid;
-  io_grid = fm_grid = m_field_mgr->get_grid();
+  if (m_io_grid_name=="") {
+    m_io_grid_name = m_field_mgr->get_grid()->name();
+  }
+  set_grid(m_grids_mgr->get_grid(m_io_grid_name));
 
-  if (m_io_grid_name!="" && m_io_grid_name!=fm_grid->name()) {
+
+  // Check if IO happens on different grid
+  if (m_io_grid_name!=m_field_mgr->get_grid()->name()) {
     // We build a remapper, to remap fields from the fm grid to the io grid
-    io_grid = grids_mgr->get_grid(m_io_grid_name);
-    m_remapper = grids_mgr->create_remapper(io_grid,fm_grid);
+    // NOTE: we defer registration of fields in the remapper to later on,
+    //       since we may find that some fields are not in the NC file.
+    m_remapper = grids_mgr->create_remapper(m_io_grid,m_field_mgr->get_grid());
 
-    // Register all input fields in the remapper.
-    m_remapper->registration_begins();
-    for (const auto& fname : m_fields_names) {
-      auto f = m_field_mgr->get_field(fname);
-      const auto& tgt_fid = f.get_header().get_identifier();
-      EKAT_REQUIRE_MSG(tgt_fid.data_type()==DataType::RealType,
-          "Error! I/O supports only Real data, for now.\n");
-      m_remapper->register_field_from_tgt(tgt_fid);
-    }
-    m_remapper->registration_ends();
+/*
+ * Strategy:
+    - create IO fm, use remapper to get src fids from tgt fids (does not require to have fields registered)
+    - add impl of FieldManager::remove_field.
+    - add interface to scorpio that simply checks if var is in file (without creating any f90 metadata)
+    - during scorpio structures init, check the value of m_fields_must_exist_in_file. If true, simply call
+      scorpio::get_variable, otherwise call scorpio:is_variable_in_file first, and
+      - if true, proceed to call scorpio::get_variable
+      - if false, remove field from io FM, remove host view and layout for this field
+ */
 
-    // Now create a new FM on io grid, and create copies of input fields from FM.
-    auto io_fm = std::make_shared<fm_type>(io_grid);
-    io_fm->registration_begins();
-    for (int i=0; i<m_remapper->get_num_fields(); ++i) {
-      const auto& src_fid = m_remapper->get_src_field_id(i);
-      io_fm->register_field(FieldRequest(src_fid));
-    }
-    io_fm->registration_ends();
+    // // Register all input fields in the remapper.
+    // m_remapper->registration_begins();
+    // for (const auto& fname : m_fields_names) {
+    //   auto f = m_field_mgr->get_field(fname);
+    //   const auto& tgt_fid = f.get_header().get_identifier();
+    //   EKAT_REQUIRE_MSG(tgt_fid.data_type()==DataType::RealType,
+    //       "Error! I/O supports only Real data, for now.\n");
+    //   m_remapper->register_field_from_tgt(tgt_fid);
+    // }
+    // m_remapper->registration_ends();
 
-    // Now that fields have been allocated on the io grid, we can bind them in the remapper
-    for (const auto& fname : m_fields_names) {
-      auto src = io_fm->get_field(fname);
-      auto tgt = m_field_mgr->get_field(fname);
-      m_remapper->bind_field(src,tgt);
-    }
+    // Create a new FM on io grid, and create copies of input fields from FM.
+    m_io_field_mgr = std::make_shared<fm_type>(io_grid);
+    // m_io_field_mgr->registration_begins();
+    // for (int i=0; i<m_remapper->get_num_fields(); ++i) {
+    //   const auto& src_fid = m_remapper->get_src_field_id(i);
+    //   m_io_field_mgr->register_field(FieldRequest(src_fid));
+    // }
+    // m_io_field_mgr->registration_ends();
 
-    // This should never fail, but just in case
-    EKAT_REQUIRE_MSG (m_remapper->get_num_fields()==m_remapper->get_num_bound_fields(),
-        "Error! Something went wrong while building the scorpio input remapper.\n");
+    // // Now that fields have been allocated on the io grid, we can bind them in the remapper
+    // for (const auto& fname : m_fields_names) {
+    //   auto src = io_fm->get_field(fname);
+    //   auto tgt = m_field_mgr->get_field(fname);
+    //   m_remapper->bind_field(src,tgt);
+    // }
 
-    // Reset field mgr
-    m_field_mgr = io_fm;
+    // // This should never fail, but just in case
+    // EKAT_REQUIRE_MSG (m_remapper->get_num_fields()==m_remapper->get_num_bound_fields(),
+    //     "Error! Something went wrong while building the scorpio input remapper.\n");
+  } else {
+    m_io_field_mgr = m_field_mgr;
   }
 
   // Store grid and fm
@@ -170,7 +182,7 @@ set_field_manager (const std::shared_ptr<const fm_type>& field_mgr,
 void AtmosphereInput::
 register_fields_specs() {
   for (auto const& name : m_fields_names) {
-    auto f = m_field_mgr->get_field(name);
+    auto f = m_io_field_mgr->get_field(name);
     const auto& fh  = f.get_header();
     const auto& fap = fh.get_alloc_properties();
     const auto& fid = fh.get_identifier();
@@ -239,9 +251,9 @@ void AtmosphereInput::read_variables (const int time_index)
 
     // If we have a field manager, make sure the data is correctly
     // synced to both host and device views of the field.
-    if (m_field_mgr) {
+    if (m_io_field_mgr) {
 
-      auto f = m_field_mgr->get_field(name);
+      auto f = m_io_field_mgr->get_field(name);
       const auto& fh  = f.get_header();
       const auto& fl  = fh.get_identifier().get_layout();
       const auto& fap = fh.get_alloc_properties();
@@ -385,6 +397,7 @@ void AtmosphereInput::finalize()
 {
   scorpio::eam_pio_closefile(m_filename);
 
+  m_io_field_mgr = nullptr;
   m_field_mgr = nullptr;
   m_io_grid   = nullptr;
   m_remapper  = nullptr;

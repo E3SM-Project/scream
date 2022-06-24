@@ -234,6 +234,10 @@ init_fields_time_stamp (const util::TimeStamp& t0)
   }
 }
 
+void FieldManager::remove_field (const std::string& name)
+{
+}
+
 void FieldManager::registration_begins ()
 {
   // Update the state of the repo

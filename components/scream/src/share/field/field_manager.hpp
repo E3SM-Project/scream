@@ -103,6 +103,8 @@ public:
   //       let the different atm procs update ts when needed.
   void init_fields_time_stamp (const util::TimeStamp& t0);
 
+  void remove_field (const std::string& name);
+
 protected:
 
   void pre_process_group_requests ();
