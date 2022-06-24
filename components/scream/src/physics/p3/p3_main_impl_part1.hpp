@@ -185,9 +185,6 @@ void Functions<S,D>
     bm(k).set(drymass, 0);
     // Check if water mass has changed
     wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
-    if (wm_now != wm_init) {
-      printf("Error in water mass for p3_main_part_1 - qi drymass clipping part 1 - pack = %d, diff = %e\n",k,wm_now-wm_init);
-    }
     EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part1 - qi drymass clipping part2");
 
     T_atm(k) = th_atm(k) * exner(k);

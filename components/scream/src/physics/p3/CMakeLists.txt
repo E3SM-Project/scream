@@ -54,6 +54,7 @@ if (NOT CUDA_BUILD OR Kokkos_ENABLE_CUDA_RELOCATABLE_DEVICE_CODE)
     p3_ni_conservation.cpp
     p3_prevent_liq_supersaturation.cpp
     p3_calculate_mass_of_pack.cpp
+    p3_calculate_mass_of_column.cpp
   ) # P3 ETI SRCS
 endif()
 

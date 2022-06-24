@@ -755,6 +755,10 @@ struct Functions
     const Spack& qv, const Spack& qc, const Spack& qr, const Spack&qi, const Spack& rho, const Smask& context = Smask(true)
     );
 
+  KOKKOS_FUNCTION
+  static void calculate_mass_of_column(
+    const MemberType& team, const Int& nlev, const uview_1d<const Spack>& qv, const uview_1d<const Spack>& qc, const uview_1d<const Spack>& qr, const uview_1d<const Spack>&qi, const uview_1d<const Spack>& rho, Scalar& w_mass
+    );
   //
   // main P3 functions
   //

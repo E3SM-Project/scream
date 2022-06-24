@@ -1,5 +1,5 @@
-#ifndef P3_CALCULATE_MASS_IN_PACK_HPP
-#define P3_CALCULATE_MASS_IN_PACK_HPP
+#ifndef P3_CALCULATE_MASS_OF_PACK_HPP
+#define P3_CALCULATE_MASS_OF_PACK_HPP
 
 #include "p3_functions.hpp" // for ETI only but harmless for GPU
 
@@ -21,5 +21,5 @@ S Functions<S,D>
 } // namespace p3
 } // namespace scream
 
-#endif // P3_CALCULATE_MASS_IN_PACK_HPP
+#endif // P3_CALCULATE_MASS_OF_PACK_HPP
 

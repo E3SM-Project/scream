@@ -97,6 +97,7 @@ Int Functions<S,D>
   const     Int    ktop         = kdir == -1 ? 0    : nk-1;
   const     Int    kbot         = kdir == -1 ? nk-1 : 0;
   constexpr bool   debug_ABORT  = false;
+  constexpr Scalar macheps      = 1e-15; // TODO: actually set to machine epsilon
 
   // per-column bools
   view_2d<bool> bools("bools", nj, 2);
@@ -231,6 +232,10 @@ Int Functions<S,D>
       obm, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld, nr_incld,
       ni_incld, bm_incld, nucleationPossible, hydrometeorsPresent);
 
+    // Initialize the water mass for this column
+    Scalar wm_now, wm_init;
+    calculate_mass_of_column(team,nk,oqv,oqc,oqr,oqi,rho,wm_init);
+
     // There might not be any work to do for this team
     if (!(nucleationPossible || hydrometeorsPresent)) {
       return; // this is how you do a "continue" in a kokkos lambda
@@ -250,6 +255,12 @@ Int Functions<S,D>
       mu_r, lamr, logn0r, oqv2qi_depos_tend, precip_total_tend, nevapr, qr_evap_tend,
       ovap_liq_exchange, ovap_ice_exchange, oliq_ice_exchange,
       pratot, prctot, hydrometeorsPresent, nk);
+    // Check is water mass has been conserved
+    calculate_mass_of_column(team,nk,oqv,oqc,oqr,oqi,rho,wm_now);
+    if (std::abs(wm_now-wm_init)>macheps) {
+      printf("Water mass conservation violated after p3_main_part2 at column (%d) with diff %e\n",i,wm_now-wm_init);
+    }
+    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in column water mass conservation for P3: p3_main_part2");
 
     //NOTE: At this point, it is possible to have negative (but small) nc, nr, ni.  This is not
     //      a problem; those values get clipped to zero in the sedimentation section (if necessary).
@@ -271,6 +282,12 @@ Int Functions<S,D>
       nk, ktop, kbot, kdir, infrastructure.dt, inv_dt, infrastructure.predictNc,
       oqc, onc, nc_incld, mu_c, lamc, qtend_ignore, ntend_ignore,
       diagnostic_outputs.precip_liq_surf(i));
+    // Check is water mass has been conserved
+    calculate_mass_of_column(team,nk,oqv,oqc,oqr,oqi,rho,wm_now);
+    if (std::abs(wm_now-wm_init)>macheps) {
+      printf("Water mass conservation violated after cloud_sedimentation at column (%d) with diff %e\n",i,wm_now-wm_init);
+    }
+    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in column water mass conservation for P3: cloud_sedimentation");
 
     // Rain sedimentation:  (adaptive substepping)
     rain_sedimentation(
@@ -278,6 +295,12 @@ Int Functions<S,D>
       lookup_tables.vn_table_vals, lookup_tables.vm_table_vals, nk, ktop, kbot, kdir, infrastructure.dt, inv_dt, oqr,
       onr, nr_incld, mu_r, lamr, oprecip_liq_flux, qtend_ignore, ntend_ignore,
       diagnostic_outputs.precip_liq_surf(i));
+    // Check is water mass has been conserved
+    calculate_mass_of_column(team,nk,oqv,oqc,oqr,oqi,rho,wm_now);
+    if (std::abs(wm_now-wm_init)>macheps) {
+      printf("Water mass conservation violated after rain_sedimentation at column (%d) with diff %e\n",i,wm_now-wm_init);
+    }
+    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in column water mass conservation for P3: rain_sedimentation");
 
     // Ice sedimentation:  (adaptive substepping)
     ice_sedimentation(
@@ -285,11 +308,23 @@ Int Functions<S,D>
       kdir, infrastructure.dt, inv_dt, oqi, qi_incld, oni, ni_incld,
       oqm, qm_incld, obm, bm_incld, qtend_ignore, ntend_ignore,
       lookup_tables.ice_table_vals, diagnostic_outputs.precip_ice_surf(i));
+    // Check is water mass has been conserved
+    calculate_mass_of_column(team,nk,oqv,oqc,oqr,oqi,rho,wm_now);
+    if (std::abs(wm_now-wm_init)>macheps) {
+      printf("Water mass conservation violated after ice_sedimentation at column (%d) with diff %e\n",i,wm_now-wm_init);
+    }
+    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in column water mass conservation for P3: ice_sedimentation");
 
     // homogeneous freezing of cloud and rain
     homogeneous_freezing(
       T_atm, oinv_exner, olatent_heat_fusion, team, nk, ktop, kbot, kdir, oqc, onc, oqr, onr, oqi,
       oni, oqm, obm, oth);
+    // Check is water mass has been conserved
+    calculate_mass_of_column(team,nk,oqv,oqc,oqr,oqi,rho,wm_now);
+    if (std::abs(wm_now-wm_init)>macheps) {
+      printf("Water mass conservation violated after homogeneous_freezing at column (%d) with diff %e\n",i,wm_now-wm_init);
+    }
+    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in column water mass conservation for P3: homoegeneous_freezing");
 
     //
     // final checks to ensure consistency of mass/number
@@ -301,6 +336,12 @@ Int Functions<S,D>
       oqm, obm, olatent_heat_vapor, olatent_heat_sublim, mu_c, nu, lamc, mu_r, lamr,
       ovap_liq_exchange, ze_rain, ze_ice, diag_vm_qi, odiag_eff_radius_qi, diag_diam_qi,
       orho_qi, diag_equiv_reflectivity, odiag_eff_radius_qc);
+    // Check is water mass has been conserved
+    calculate_mass_of_column(team,nk,oqv,oqc,oqr,oqi,rho,wm_now);
+    if (std::abs(wm_now-wm_init)>macheps) {
+      printf("Water mass conservation violated after p3_main_part3 at column (%d) with diff %e\n",i,wm_now-wm_init);
+    }
+    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in column water mass conservation for P3: p3_main_part3");
 
     //
     // merge ice categories with similar properties

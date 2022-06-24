@@ -115,6 +115,10 @@ void Functions<S,D>
     //compute mask to identify padded values in packs, which shouldn't be used in calculations
     const auto range_pack = ekat::range<IntSmallPack>(k*Spack::n);
     const auto range_mask = range_pack < nk;
+
+    // Establish the initial mass for this pack
+    Real wm_now;
+    const auto wm_init = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
       
     // if relatively dry and no hydrometeors at this level, skip to end of k-loop (i.e. skip this level)
     const auto skip_all = ( !range_mask ||
@@ -205,10 +209,6 @@ void Functions<S,D>
     // skip micro process calculations except nucleation/acvtivation if there no hydrometeors are present
     const auto skip_micro = skip_all || !(qc_incld(k) >= qsmall || qr_incld(k) >= qsmall || qi_incld(k) >= qsmall);
     const auto not_skip_micro = !skip_micro;
-
-    // Establish the initial mass for this pack
-    Real wm_now;
-    const auto wm_init = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
 
     if (not_skip_micro.any()) {
       // time/space varying physical variables
@@ -501,7 +501,6 @@ void Functions<S,D>
     wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
     EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part2 - qi_small clipping");
 
-
     if (qi_not_small.any()) {
       hydrometeorsPresent = true;
     }
@@ -520,6 +519,10 @@ void Functions<S,D>
     calculate_incloud_mixingratios(
       qc(k), qr(k), qi(k), qm(k), nc(k), nr(k), ni(k), bm(k), inv_cld_frac_l(k), inv_cld_frac_i(k), inv_cld_frac_r(k),
       qc_incld(k), qr_incld(k), qi_incld(k), qm_incld(k), nc_incld(k), nr_incld(k), ni_incld(k), bm_incld(k), not_skip_all);
+    // Check if water mass has changed
+    wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
+    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part2 - incloud mixing ratio");
+
   });
   team.team_barrier();
 }
