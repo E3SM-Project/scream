@@ -61,6 +61,11 @@
     <lname>2010_EAM%CMIP6_ELM%SPBC_MPASSI%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
+  <compset>
+    <alias>FRCP8</alias>
+    <lname>FRCP8_EAM%CMIP6_ELM%SPBC_MPASSI%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+
   <!-- *********************************** -->
   <!-- Single column model -->
   <!-- *********************************** -->
@@ -138,7 +143,12 @@
   <compset>
     <alias>F2010-SCREAM-HR</alias>
     <lname>2010_EAM%SCREAM-HR_ELM45%SPBC_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
-  </compset> 
+  </compset>
+
+  <compset>
+    <alias>FRCP8-SCREAM-HR</alias>
+    <lname>RCP8_EAM%SCREAM-HR_ELM45%SPBC_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
 
   <compset>
     <alias>F2010-SCREAM-LR-DYAMOND1</alias>
