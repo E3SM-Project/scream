@@ -102,6 +102,7 @@ void P3Microphysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
   add_field<Computed>("eff_radius_qi",      scalar3d_layout_mid, micron, grid_name, ps);
 
   // History Only: (all fields are just outputs and are really only meant for I/O purposes)
+  // TODO: question - should these be averaged over subcycle as well?
   add_field<Computed>("micro_liq_ice_exchange", scalar3d_layout_mid, Q, grid_name, ps);
   add_field<Computed>("micro_vap_liq_exchange", scalar3d_layout_mid, Q, grid_name, ps);
   add_field<Computed>("micro_vap_ice_exchange", scalar3d_layout_mid, Q, grid_name, ps);
@@ -137,6 +138,12 @@ void P3Microphysics::init_buffers(const ATMBufferManager &buffer_manager)
   EKAT_REQUIRE_MSG(buffer_manager.allocated_bytes() >= requested_buffer_size_in_bytes(), "Error! Buffers size not sufficient.\n");
 
   Real* mem = reinterpret_cast<Real*>(buffer_manager.get_memory());
+
+  // 1d scalar views
+  m_buffer.precip_liq_surf = decltype(m_buffer.precip_liq_surf)(mem, m_num_cols);
+  mem += m_buffer.precip_liq_surf.size();
+  m_buffer.precip_ice_surf = decltype(m_buffer.precip_ice_surf)(mem, m_num_cols);
+  mem += m_buffer.precip_ice_surf.size();
 
   // 2d scalar views
   m_buffer.col_location = decltype(m_buffer.col_location)(mem, m_num_cols, 3);
@@ -225,6 +232,8 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   const  auto& ni             = get_field_out("ni").get_view<Pack**>();
   const  auto& bm             = get_field_out("bm").get_view<Pack**>();
   auto qv_prev                = get_field_out("qv_prev_micro_step").get_view<Pack**>();
+  const auto& precip_liq_surf = get_field_out("precip_liq_surf").get_view<Real*>();
+  const auto& precip_ice_surf = get_field_out("precip_ice_surf").get_view<Real*>();
 
   // Alias local variables from temporary buffer
   auto inv_exner  = m_buffer.inv_exner;
@@ -272,8 +281,8 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   diag_outputs.diag_eff_radius_qc = get_field_out("eff_radius_qc").get_view<Pack**>();
   diag_outputs.diag_eff_radius_qi = get_field_out("eff_radius_qi").get_view<Pack**>();
 
-  diag_outputs.precip_liq_surf  = get_field_out("precip_liq_surf").get_view<Real*>();
-  diag_outputs.precip_ice_surf  = get_field_out("precip_ice_surf").get_view<Real*>();
+  diag_outputs.precip_liq_surf  = m_buffer.precip_liq_surf;
+  diag_outputs.precip_ice_surf  = m_buffer.precip_ice_surf;
   diag_outputs.qv2qi_depos_tend = m_buffer.qv2qi_depos_tend;
   diag_outputs.rho_qi           = m_buffer.rho_qi;
   diag_outputs.precip_liq_flux  = m_buffer.precip_liq_flux;
@@ -288,7 +297,8 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   p3_postproc.set_variables(m_num_cols,nk_pack,prog_state.th,pmid,T_atm,t_prev,
       prog_state.qv, prog_state.qc, prog_state.nc, prog_state.qr,prog_state.nr,
       prog_state.qi, prog_state.qm, prog_state.ni,prog_state.bm,qv_prev,
-      diag_outputs.diag_eff_radius_qc,diag_outputs.diag_eff_radius_qi);
+      diag_outputs.diag_eff_radius_qc,diag_outputs.diag_eff_radius_qi,
+      diag_outputs.precip_liq_surf,diag_outputs.precip_ice_surf,precip_liq_surf,precip_ice_surf);
 
   // Load tables
   P3F::init_kokkos_ice_lookup_tables(lookup_tables.ice_table_vals, lookup_tables.collect_table_vals);

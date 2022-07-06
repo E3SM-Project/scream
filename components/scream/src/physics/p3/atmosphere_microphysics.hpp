@@ -246,6 +246,8 @@ public:
         diag_eff_radius_qc(icol,ipack) *= 1e6;
         diag_eff_radius_qi(icol,ipack) *= 1e6;
       } // for ipack
+      precip_liq_surf(icol) += precip_liq_surf_local(icol);
+      precip_ice_surf(icol) += precip_ice_surf_local(icol);
     } // operator
     // Local variables
     int m_ncol, m_npack;
@@ -265,13 +267,19 @@ public:
     view_2d       qv_prev;
     view_2d       diag_eff_radius_qc;
     view_2d       diag_eff_radius_qi;
+    view_1d       precip_liq_surf_local;
+    view_1d       precip_ice_surf_local;
+    view_1d       precip_liq_surf;
+    view_1d       precip_ice_surf;
     // Assigning local values
     void set_variables(const int ncol, const int npack,
                     const view_2d& th_atm_, const view_2d_const& pmid_, const view_2d& T_atm_, const view_2d& T_prev_,
                     const view_2d& qv_, const view_2d& qc_, const view_2d& nc_, const view_2d& qr_, const view_2d& nr_,
                     const view_2d& qi_, const view_2d& qm_, const view_2d& ni_, const view_2d& bm_,
                     const view_2d& qv_prev_, const view_2d& diag_eff_radius_qc_,
-                    const view_2d& diag_eff_radius_qi_)
+                    const view_2d& diag_eff_radius_qi_, 
+                    const view_1d& precip_liq_surf_local_, const view_1d& precip_ice_surf_local_,
+                    const view_1d& precip_liq_surf_, const view_1d& precip_ice_surf_)
     {
       m_ncol  = ncol;
       m_npack = npack;
@@ -287,12 +295,16 @@ public:
       qm          = qm_;
       ni          = ni_;
       bm          = bm_;
+      precip_liq_surf_local = precip_liq_surf_local_;
+      precip_ice_surf_local = precip_ice_surf_local_;
       // OUT
       T_atm              = T_atm_;
       T_prev             = T_prev_;
       qv_prev            = qv_prev_;
       diag_eff_radius_qc = diag_eff_radius_qc_;
       diag_eff_radius_qi = diag_eff_radius_qi_;
+      precip_liq_surf    = precip_liq_surf_;
+      precip_ice_surf    = precip_ice_surf_;
       // TODO: This is a list of variables not yet defined for post-processing, but are
       // defined in the F90 p3 interface code.  So this list will need to be checked as
       // new processes come online to make sure their requirements from p3 are being met.
@@ -307,11 +319,13 @@ public:
   // Structure for storing local variables initialized using the ATMBufferManager
   struct Buffer {
     // 1d view scalar, size (ncol)
-    static constexpr int num_1d_scalar = 0; //no 2d vars now, but keeping 1d struct for future expansion
+    static constexpr int num_1d_scalar = 2; //no 2d vars now, but keeping 1d struct for future expansion
     // 2d view packed, size (ncol, nlev_packs)
     static constexpr int num_2d_vector = 9;
     static constexpr int num_2dp1_vector = 2;
 
+    uview_1d precip_liq_surf;
+    uview_1d precip_ice_surf;
     uview_2d inv_exner;
     uview_2d th_atm;
     uview_2d cld_frac_l;
@@ -347,6 +361,9 @@ protected:
   Int m_num_cols;
   Int m_num_levs;
   Int m_nk_pack;
+
+  // TODO: Get rid of this when the PR goes in that lets us query the timestamp to see if we need to zero the flux.
+  Int m_subcycle_step = 0;
 
   // Struct which contains local variables
   Buffer m_buffer;
