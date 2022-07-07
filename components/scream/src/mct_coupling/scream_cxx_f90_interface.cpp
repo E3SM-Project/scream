@@ -149,7 +149,7 @@ void scream_setup_surface_coupling (
 
     // After registration we need to export all fields (except those that require scream computations)
     // as other models will need these values.
-    sc->do_export(true);
+    sc->do_export(0.0,true);
   });
 }
 

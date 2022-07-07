@@ -26,6 +26,7 @@ namespace scream
   using Smask        = typename P3F::Smask;
   using Pack         = ekat::Pack<Real,Spack::n>;
   using PF           = scream::PhysicsFunctions<DefaultDevice>;
+  using PC           = physics::Constants<Real>;
   using KT           = ekat::KokkosTypes<DefaultDevice>;
   using WSM          = ekat::WorkspaceManager<Spack, KT::Device>;
 
@@ -246,11 +247,11 @@ public:
         diag_eff_radius_qc(icol,ipack) *= 1e6;
         diag_eff_radius_qi(icol,ipack) *= 1e6;
       } // for ipack
-      precip_liq_surf(icol) += precip_liq_surf_local(icol);
-      precip_ice_surf(icol) += precip_ice_surf_local(icol);
+      precip_liq_surf(icol) += precip_liq_surf_local(icol) * PC::RHO_H2O * m_dt;
+      precip_ice_surf(icol) += precip_ice_surf_local(icol) * PC::RHO_H2O * m_dt;
     } // operator
     // Local variables
-    int m_ncol, m_npack;
+    int m_ncol, m_npack, m_dt;
     view_2d       T_atm;
     view_2d_const pmid;
     view_2d       th_atm;
@@ -272,6 +273,11 @@ public:
     view_1d       precip_liq_surf;
     view_1d       precip_ice_surf;
     // Assigning local values
+    void set_dt(const int dt)
+    {
+      // Allow dt to be set every run_impl, in case variable timestepping is ever used.
+      m_dt = dt;
+    }
     void set_variables(const int ncol, const int npack,
                     const view_2d& th_atm_, const view_2d_const& pmid_, const view_2d& T_atm_, const view_2d& T_prev_,
                     const view_2d& qv_, const view_2d& qc_, const view_2d& nc_, const view_2d& qr_, const view_2d& nr_,
@@ -361,9 +367,6 @@ protected:
   Int m_num_cols;
   Int m_num_levs;
   Int m_nk_pack;
-
-  // TODO: Get rid of this when the PR goes in that lets us query the timestamp to see if we need to zero the flux.
-  Int m_subcycle_step = 0;
 
   // Struct which contains local variables
   Buffer m_buffer;
