@@ -248,8 +248,8 @@ public:
         diag_eff_radius_qc(icol,ipack) *= 1e6;
         diag_eff_radius_qi(icol,ipack) *= 1e6;
       } // for ipack
-      precip_liq_surf(icol) += precip_liq_surf_local(icol) * PC::RHO_H2O * m_dt;
-      precip_ice_surf(icol) += precip_ice_surf_local(icol) * PC::RHO_H2O * m_dt;
+      precip_liq_surf_mass(icol) += precip_liq_surf_flux(icol) * PC::RHO_H2O * m_dt;
+      precip_ice_surf_mass(icol) += precip_ice_surf_flux(icol) * PC::RHO_H2O * m_dt;
     } // operator
     // Local variables
     int m_ncol, m_npack, m_dt;
@@ -269,10 +269,10 @@ public:
     view_2d       qv_prev;
     view_2d       diag_eff_radius_qc;
     view_2d       diag_eff_radius_qi;
-    view_1d_const precip_liq_surf_local;
-    view_1d_const precip_ice_surf_local;
-    view_1d       precip_liq_surf;
-    view_1d       precip_ice_surf;
+    view_1d_const precip_liq_surf_flux;
+    view_1d_const precip_ice_surf_flux;
+    view_1d       precip_liq_surf_mass;
+    view_1d       precip_ice_surf_mass;
     // Assigning local values
     void set_dt(const int dt)
     {
@@ -285,33 +285,33 @@ public:
                     const view_2d& qi_, const view_2d& qm_, const view_2d& ni_, const view_2d& bm_,
                     const view_2d& qv_prev_, const view_2d& diag_eff_radius_qc_,
                     const view_2d& diag_eff_radius_qi_, 
-                    const view_1d_const& precip_liq_surf_local_, const view_1d_const& precip_ice_surf_local_,
-                    const view_1d& precip_liq_surf_, const view_1d& precip_ice_surf_)
+                    const view_1d_const& precip_liq_surf_flux_, const view_1d_const& precip_ice_surf_flux_,
+                    const view_1d& precip_liq_surf_mass_, const view_1d& precip_ice_surf_mass_)
     {
       m_ncol  = ncol;
       m_npack = npack;
       // IN
-      th_atm      = th_atm_;
-      pmid        = pmid_;
-      qv          = qv_;
-      qc          = qc_;
-      nc          = nc_;
-      qr          = qr_;
-      nr          = nr_;
-      qi          = qi_;
-      qm          = qm_;
-      ni          = ni_;
-      bm          = bm_;
-      precip_liq_surf_local = precip_liq_surf_local_;
-      precip_ice_surf_local = precip_ice_surf_local_;
+      th_atm               = th_atm_;
+      pmid                 = pmid_;
+      qv                   = qv_;
+      qc                   = qc_;
+      nc                   = nc_;
+      qr                   = qr_;
+      nr                   = nr_;
+      qi                   = qi_;
+      qm                   = qm_;
+      ni                   = ni_;
+      bm                   = bm_;
+      precip_liq_surf_flux = precip_liq_surf_flux_;
+      precip_ice_surf_flux = precip_ice_surf_flux_;
       // OUT
-      T_atm              = T_atm_;
-      T_prev             = T_prev_;
-      qv_prev            = qv_prev_;
-      diag_eff_radius_qc = diag_eff_radius_qc_;
-      diag_eff_radius_qi = diag_eff_radius_qi_;
-      precip_liq_surf    = precip_liq_surf_;
-      precip_ice_surf    = precip_ice_surf_;
+      T_atm                = T_atm_;
+      T_prev               = T_prev_;
+      qv_prev              = qv_prev_;
+      diag_eff_radius_qc   = diag_eff_radius_qc_;
+      diag_eff_radius_qi   = diag_eff_radius_qi_;
+      precip_liq_surf_mass = precip_liq_surf_mass_;
+      precip_ice_surf_mass = precip_ice_surf_mass_;
       // TODO: This is a list of variables not yet defined for post-processing, but are
       // defined in the F90 p3 interface code.  So this list will need to be checked as
       // new processes come online to make sure their requirements from p3 are being met.
@@ -331,8 +331,8 @@ public:
     static constexpr int num_2d_vector = 9;
     static constexpr int num_2dp1_vector = 2;
 
-    uview_1d precip_liq_surf;
-    uview_1d precip_ice_surf;
+    uview_1d precip_liq_surf_flux;
+    uview_1d precip_ice_surf_flux;
     uview_2d inv_exner;
     uview_2d th_atm;
     uview_2d cld_frac_l;
