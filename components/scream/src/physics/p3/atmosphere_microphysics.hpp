@@ -31,6 +31,7 @@ namespace scream
   using WSM          = ekat::WorkspaceManager<Spack, KT::Device>;
 
   using view_1d  = typename P3F::view_1d<Real>;
+  using view_1d_const  = typename P3F::view_1d<const Real>;
   using view_2d  = typename P3F::view_2d<Spack>;
   using view_2d_const  = typename P3F::view_2d<const Spack>;
   using sview_2d = typename KokkosTypes<DefaultDevice>::template view_2d<Real>;
@@ -268,8 +269,8 @@ public:
     view_2d       qv_prev;
     view_2d       diag_eff_radius_qc;
     view_2d       diag_eff_radius_qi;
-    view_1d       precip_liq_surf_local;
-    view_1d       precip_ice_surf_local;
+    view_1d_const precip_liq_surf_local;
+    view_1d_const precip_ice_surf_local;
     view_1d       precip_liq_surf;
     view_1d       precip_ice_surf;
     // Assigning local values
@@ -284,7 +285,7 @@ public:
                     const view_2d& qi_, const view_2d& qm_, const view_2d& ni_, const view_2d& bm_,
                     const view_2d& qv_prev_, const view_2d& diag_eff_radius_qc_,
                     const view_2d& diag_eff_radius_qi_, 
-                    const view_1d& precip_liq_surf_local_, const view_1d& precip_ice_surf_local_,
+                    const view_1d_const& precip_liq_surf_local_, const view_1d_const& precip_ice_surf_local_,
                     const view_1d& precip_liq_surf_, const view_1d& precip_ice_surf_)
     {
       m_ncol  = ncol;

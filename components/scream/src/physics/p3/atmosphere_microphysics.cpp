@@ -1,5 +1,6 @@
 #include "physics/p3/atmosphere_microphysics.hpp"
 #include "share/property_checks/field_within_interval_check.hpp"
+#include "share/property_checks/field_lower_bound_check.hpp"
 // Needed for p3_init, the only F90 code still used.
 #include "physics/p3/p3_functions.hpp"
 #include "physics/p3/p3_f90.hpp"
@@ -205,8 +206,8 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("nr"),m_grid,0.0,1.e9,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("ni"),m_grid,0.0,1.e9,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("bm"),m_grid,0.0,1.0,false);
-  add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("precip_liq_surf"),m_grid,0.0,100.0,false);
-  add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("precip_ice_surf"),m_grid,0.0,100.0,false);
+  add_postcondition_check<FieldLowerBoundCheck>(get_field_out("precip_liq_surf"),m_grid,0.0,false);
+  add_postcondition_check<FieldLowerBoundCheck>(get_field_out("precip_ice_surf"),m_grid,0.0,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("eff_radius_qc"),m_grid,0.0,1.0e2,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("eff_radius_qi"),m_grid,0.0,5.0e3,false);
 
