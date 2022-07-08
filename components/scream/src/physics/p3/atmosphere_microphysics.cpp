@@ -97,10 +97,10 @@ void P3Microphysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
   add_field<Updated> ("T_prev_micro_step",  scalar3d_layout_mid, K,        grid_name, ps);
 
   // Diagnostic Outputs: (all fields are just outputs w.r.t. P3)
-  add_field<Computed>("precip_liq_surf",    scalar2d_layout,     kg,     grid_name);
-  add_field<Computed>("precip_ice_surf",    scalar2d_layout,     kg,     grid_name);
-  add_field<Computed>("eff_radius_qc",      scalar3d_layout_mid, micron, grid_name, ps);
-  add_field<Computed>("eff_radius_qi",      scalar3d_layout_mid, micron, grid_name, ps);
+  add_field<Updated>("precip_liq_surf_mass", scalar2d_layout,     kg,     grid_name);
+  add_field<Updated>("precip_ice_surf_mass", scalar2d_layout,     kg,     grid_name);
+  add_field<Computed>("eff_radius_qc",       scalar3d_layout_mid, micron, grid_name, ps);
+  add_field<Computed>("eff_radius_qi",       scalar3d_layout_mid, micron, grid_name, ps);
 
   // History Only: (all fields are just outputs and are really only meant for I/O purposes)
   // TODO: These should be averaged over subcycle as well.  But there is no simple mechanism
@@ -208,8 +208,8 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("nr"),m_grid,0.0,1.e9,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("ni"),m_grid,0.0,1.e9,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("bm"),m_grid,0.0,1.0,false);
-  add_postcondition_check<FieldLowerBoundCheck>(get_field_out("precip_liq_surf"),m_grid,0.0,false);
-  add_postcondition_check<FieldLowerBoundCheck>(get_field_out("precip_ice_surf"),m_grid,0.0,false);
+  add_postcondition_check<FieldLowerBoundCheck>(get_field_out("precip_liq_surf_mass"),m_grid,0.0,false);
+  add_postcondition_check<FieldLowerBoundCheck>(get_field_out("precip_ice_surf_mass"),m_grid,0.0,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("eff_radius_qc"),m_grid,0.0,1.0e2,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("eff_radius_qi"),m_grid,0.0,5.0e3,false);
 
@@ -235,8 +235,8 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   const  auto& ni             = get_field_out("ni").get_view<Pack**>();
   const  auto& bm             = get_field_out("bm").get_view<Pack**>();
   auto qv_prev                = get_field_out("qv_prev_micro_step").get_view<Pack**>();
-  const auto& precip_liq_surf_mass = get_field_out("precip_liq_surf").get_view<Real*>();
-  const auto& precip_ice_surf_mass = get_field_out("precip_ice_surf").get_view<Real*>();
+  const auto& precip_liq_surf_mass = get_field_out("precip_liq_surf_mass").get_view<Real*>();
+  const auto& precip_ice_surf_mass = get_field_out("precip_ice_surf_mass").get_view<Real*>();
 
   // Alias local variables from temporary buffer
   auto inv_exner  = m_buffer.inv_exner;

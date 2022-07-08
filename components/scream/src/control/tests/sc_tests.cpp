@@ -284,8 +284,8 @@ TEST_CASE ("recreate_mct_coupling")
   FID horiz_winds_id     ("horiz_winds",     vector3d_layout, m/s,    grid_name);
   FID pseudo_density_id  ("pseudo_density",  scalar3d_layout, Pa,     grid_name);
   FID qv_id              ("qv",              scalar3d_layout, nondim, grid_name);
-  FID precip_liq_surf_id ("precip_liq_surf", scalar2d_layout, m/s,    grid_name);
-  FID precip_ice_surf_id ("precip_ice_surf", scalar2d_layout, m/s,    grid_name);
+  FID precip_liq_surf_id ("precip_liq_surf_mass", scalar2d_layout, kg,    grid_name);
+  FID precip_ice_surf_id ("precip_ice_surf_mass", scalar2d_layout, kg,    grid_name);
   FID sfc_flux_dir_nir_id("sfc_flux_dir_nir", scalar2d_layout, W/(m*m), grid_name);
   FID sfc_flux_dir_vis_id("sfc_flux_dir_vis", scalar2d_layout, W/(m*m), grid_name);
   FID sfc_flux_dif_nir_id("sfc_flux_dif_nir", scalar2d_layout, W/(m*m), grid_name);
