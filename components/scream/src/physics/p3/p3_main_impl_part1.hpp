@@ -146,7 +146,7 @@ void Functions<S,D>
     }
     // Check if water mass has changed
     wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
-    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part1 - qc drymass clipping");
+//ASD    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part1 - qc drymass clipping");
 
     drymass = qr(k) < qsmall;
     not_drymass = !drymass && range_mask;
@@ -159,7 +159,7 @@ void Functions<S,D>
     }
     // Check if water mass has changed
     wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
-    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part1 - qr drymass clipping");
+//ASD    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part1 - qr drymass clipping");
 
     drymass = (qi(k) < qsmall || (qi(k) < 1.e-8 && qv_supersat_i(k) < -0.1));
     not_drymass = !drymass && range_mask;
@@ -174,7 +174,7 @@ void Functions<S,D>
     }
     // Check if water mass has changed
     wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
-    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part1 - qi drymass clipping part1");
+//ASD    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part1 - qi drymass clipping part1");
 
     drymass = (qi(k) >= qsmall && qi(k) < 1.e-8 && T_atm(k) >= T_zerodegc);
     qr(k).set(drymass, qr(k) + qi(k));
@@ -185,7 +185,7 @@ void Functions<S,D>
     bm(k).set(drymass, 0);
     // Check if water mass has changed
     wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
-    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part1 - qi drymass clipping part2");
+//ASD    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part1 - qi drymass clipping part2");
 
     T_atm(k) = th_atm(k) * exner(k);
 

@@ -160,6 +160,10 @@ void P3Microphysics::init_buffers(const ATMBufferManager &buffer_manager)
   s_mem += m_buffer.cld_frac_r.size();
   m_buffer.dz = decltype(m_buffer.dz)(s_mem, m_num_cols, nk_pack);
   s_mem += m_buffer.dz.size();
+  m_buffer.pdel_dry = decltype(m_buffer.pdel_dry)(s_mem, m_num_cols, nk_pack);
+  s_mem += m_buffer.pdel_dry.size();
+  m_buffer.pmid_dry = decltype(m_buffer.pmid_dry)(s_mem, m_num_cols, nk_pack);
+  s_mem += m_buffer.pmid_dry.size();
   m_buffer.qv2qi_depos_tend = decltype(m_buffer.qv2qi_depos_tend)(s_mem, m_num_cols, nk_pack);
   s_mem += m_buffer.qv2qi_depos_tend.size();
   m_buffer.rho_qi = decltype(m_buffer.rho_qi)(s_mem, m_num_cols, nk_pack);
@@ -233,11 +237,13 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   auto cld_frac_i = m_buffer.cld_frac_i;
   auto cld_frac_r = m_buffer.cld_frac_r;
   auto dz         = m_buffer.dz;
+  auto pdel_dry   = m_buffer.pdel_dry;
+  auto pmid_dry   = m_buffer.pmid_dry;
 
   // -- Set values for the pre-amble structure
   p3_preproc.set_variables(m_num_cols,nk_pack,pmid,pseudo_density,T_atm,cld_frac_t,
                         qv, qc, nc, qr, nr, qi, qm, ni, bm, qv_prev,
-                        inv_exner, th_atm, cld_frac_l, cld_frac_i, cld_frac_r, dz);
+                        inv_exner, th_atm, cld_frac_l, cld_frac_i, cld_frac_r, dz, pdel_dry, pmid_dry);
   // --Prognostic State Variables:
   prog_state.qc     = p3_preproc.qc;
   prog_state.nc     = p3_preproc.nc;
@@ -258,8 +264,8 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   }
   diag_inputs.ni_activated    = get_field_in("ni_activated").get_view<const Pack**>();
   diag_inputs.inv_qc_relvar   = get_field_in("inv_qc_relvar").get_view<const Pack**>();
-  diag_inputs.pres            = get_field_in("p_mid").get_view<const Pack**>();
-  diag_inputs.dpres           = p3_preproc.pseudo_density;
+  diag_inputs.pres            = p3_preproc.pmid_dry; //get_field_in("p_mid").get_view<const Pack**>();
+  diag_inputs.dpres           = p3_preproc.pdel_dry; //p3_preproc.pseudo_density;
   diag_inputs.qv_prev         = p3_preproc.qv_prev;
   auto t_prev                 = get_field_out("T_prev_micro_step").get_view<Pack**>();
   diag_inputs.t_prev          = t_prev;

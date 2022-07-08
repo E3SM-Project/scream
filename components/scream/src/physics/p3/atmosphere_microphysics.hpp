@@ -77,13 +77,16 @@ public:
         const Spack& pmid_pack(pmid(icol,ipack));
         const Spack& T_atm_pack(T_atm(icol,ipack));
         const Spack& cld_frac_t_pack(cld_frac_t(icol,ipack));
+        // Ensure that the pseudo_density and pmid used by P3 is dry
+        pdel_dry(icol,ipack) = PF::calculate_drymmr_from_wetmmr(pseudo_density(icol,ipack),qv(icol,ipack));
+        pmid_dry(icol,ipack) = PF::calculate_drymmr_from_wetmmr(pmid_pack,qv(icol,ipack));
         // Exner
-        const auto& exner = PF::exner_function(pmid_pack);
+        const auto& exner = PF::exner_function(pmid_dry(icol,ipack));
         inv_exner(icol,ipack) = 1.0/exner;
         // Potential temperature
-        th_atm(icol,ipack) = PF::calculate_theta_from_T(T_atm_pack,pmid_pack);
+        th_atm(icol,ipack) = PF::calculate_theta_from_T(T_atm_pack,pmid_dry(icol,ipack));
         // DZ
-        dz(icol,ipack) = PF::calculate_dz(pseudo_density(icol,ipack), pmid_pack, T_atm_pack, qv(icol,ipack));
+        dz(icol,ipack) = PF::calculate_dz(pdel_dry(icol,ipack), pmid_dry(icol,ipack), T_atm_pack, qv(icol,ipack));
         // Cloud fraction
         // Set minimum cloud fraction - avoids division by zero
         cld_frac_l(icol,ipack) = ekat::max(cld_frac_t_pack,mincld);
@@ -120,6 +123,7 @@ public:
         // ^^ Ensure that qv is "wet mmr" till this point ^^
         //NOTE: Convert "qv" to dry mmr in the end after converting all other constituents to dry mmr
         qv(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(qv(icol,ipack),qv(icol,ipack));
+
 
         // update rain cloud fraction given neighboring levels using max-overlap approach.
         for (int ivec=0;ivec<Spack::n;ivec++)
@@ -162,6 +166,8 @@ public:
     view_2d       cld_frac_i;
     view_2d       cld_frac_r;
     view_2d       dz;
+    view_2d       pdel_dry;
+    view_2d       pmid_dry;
     // Assigning local variables
     void set_variables(const int ncol, const int npack,
            const view_2d_const& pmid_, const view_2d_const& pseudo_density_, const view_2d& T_atm_,
@@ -169,7 +175,7 @@ public:
            const view_2d& nc_, const view_2d& qr_, const view_2d& nr_, const view_2d& qi_,
            const view_2d& qm_, const view_2d& ni_, const view_2d& bm_, const view_2d& qv_prev_,
            const view_2d& inv_exner_, const view_2d& th_atm_, const view_2d& cld_frac_l_,
-           const view_2d& cld_frac_i_, const view_2d& cld_frac_r_, const view_2d& dz_
+           const view_2d& cld_frac_i_, const view_2d& cld_frac_r_, const view_2d& dz_, const view_2d& pdel_dry_, const view_2d& pmid_dry_
            )
     {
       m_ncol = ncol;
@@ -196,6 +202,8 @@ public:
       cld_frac_i = cld_frac_i_;
       cld_frac_r = cld_frac_r_;
       dz = dz_;
+      pdel_dry = pdel_dry_;
+      pmid_dry = pmid_dry_;
     } // set_variables
   }; // p3_preamble
   /* --------------------------------------------------------------------------------------------*/
@@ -309,7 +317,7 @@ public:
     // 1d view scalar, size (ncol)
     static constexpr int num_1d_scalar = 0; //no 2d vars now, but keeping 1d struct for future expansion
     // 2d view packed, size (ncol, nlev_packs)
-    static constexpr int num_2d_vector = 9;
+    static constexpr int num_2d_vector = 11;
     static constexpr int num_2dp1_vector = 2;
 
     uview_2d inv_exner;
@@ -318,6 +326,8 @@ public:
     uview_2d cld_frac_i;
     uview_2d cld_frac_r;
     uview_2d dz;
+    uview_2d pdel_dry;
+    uview_2d pmid_dry;
     uview_2d qv2qi_depos_tend;
     uview_2d rho_qi;
     uview_2d precip_liq_flux; //nlev+1

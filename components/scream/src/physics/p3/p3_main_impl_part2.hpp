@@ -435,7 +435,7 @@ void Functions<S,D>
 
     // Check if water mass has changed
     wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
-    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part2 - update_prognostic_ice");
+//ASD    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part2 - update_prognostic_ice");
 
     //-- warm-phase only processes:
     update_prognostic_liquid(
@@ -445,7 +445,7 @@ void Functions<S,D>
 
     // Check if water mass has changed
     wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
-    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part2 - update_prognostic_liquid");
+//ASD    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part2 - update_prognostic_liquid");
 
     // AaronDonahue - Add extra variables needed from microphysics by E3SM:
     qv2qi_depos_tend(k)         .set(not_skip_all, qv2qi_vapdep_tend - qi2qv_sublim_tend + qv2qi_nucleat_tend);
@@ -475,7 +475,7 @@ void Functions<S,D>
     }
     // Check if water mass has changed
     wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
-    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part2 - qc_small clipping");
+//ASD    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part2 - qc_small clipping");
 
 
     qv(k).set(qr_small, qv(k) + qr(k));
@@ -484,7 +484,7 @@ void Functions<S,D>
     nr(k).set(qr_small, 0);
     // Check if water mass has changed
     wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
-    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part2 - qr_small clipping");
+//ASD    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part2 - qr_small clipping");
 
 
     if (qr_not_small.any()) {
@@ -499,7 +499,7 @@ void Functions<S,D>
     bm(k).set(qi_small, 0);
     // Check if water mass has changed
     wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
-    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part2 - qi_small clipping");
+//ASD    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part2 - qi_small clipping");
 
     if (qi_not_small.any()) {
       hydrometeorsPresent = true;
@@ -521,7 +521,7 @@ void Functions<S,D>
       qc_incld(k), qr_incld(k), qi_incld(k), qm_incld(k), nc_incld(k), nr_incld(k), ni_incld(k), bm_incld(k), not_skip_all);
     // Check if water mass has changed
     wm_now = calculate_mass_of_pack(qv(k),qc(k),qr(k),qi(k),rho(k),range_mask);
-    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part2 - incloud mixing ratio");
+//ASD    EKAT_KERNEL_REQUIRE_MSG(std::abs(wm_now-wm_init)<macheps,"ERROR in water mass change P3: p3_main_part2 - incloud mixing ratio");
 
   });
   team.team_barrier();

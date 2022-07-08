@@ -63,7 +63,8 @@ TEST_CASE("p3-stand-alone", "") {
     const auto& wm_after = calculate_water_mass(grids_mgr,field_mgr,dt,true);
     EKAT_REQUIRE_MSG(std::abs(wm_after - wm_prev) < 1.e-12, 
        "Error in water mass change: " + std::to_string(wm_after) + " != "
-       + std::to_string(wm_prev) + ", diff = " + std::to_string((wm_after-wm_prev)/(std::abs(wm_after)+std::abs(wm_prev))*200.0) + "%");
+       + std::to_string(wm_prev) + ", diff = " + std::to_string((wm_after-wm_prev)/(std::abs(wm_after)+std::abs(wm_prev))*200.0) + "%"
+       + " or " + std::to_string(wm_after-wm_prev));
     wm_prev = wm_after;
 
     if (atm_comm.am_i_root()) {
