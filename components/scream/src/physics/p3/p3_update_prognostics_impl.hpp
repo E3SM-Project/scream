@@ -29,7 +29,7 @@ void Functions<S,D>
     nc.set(context, nc + (-nc_collect_tend-nc2ni_immers_freeze_tend)*dt);
   }
 
-  qr.set(context, qr + (-qr2qi_collect_tend+qi2qr_melt_tend-qr2qi_immers_freeze_tend+qc2qr_ice_shed_tend)*dt);
+  qr.set(context, qr + (-qr2qi_collect_tend-qr2qi_immers_freeze_tend+qc2qr_ice_shed_tend)*dt);
 
   //apply factor to source for rain number from melting of ice, (ad-hoc
   // but accounts for rapid evaporation of small melting ice particles)
@@ -41,6 +41,8 @@ void Functions<S,D>
     bm.set(qi_not_small, bm - ((qi2qv_sublim_tend + qi2qr_melt_tend) / qi) * dt * bm);
     qm.set(qi_not_small, qm - ((qi2qv_sublim_tend + qi2qr_melt_tend) * qm / qi) * dt);
     qi.set(qi_not_small, qi - (qi2qv_sublim_tend + qi2qr_melt_tend) * dt);
+    qr.set(qi_not_small, qr + (qi2qr_melt_tend)*dt);
+    qv.set(qi_not_small, qv + (qi2qv_sublim_tend)*dt);
   }
 
   const auto dum = (qr2qi_collect_tend + qc2qi_collect_tend + qr2qi_immers_freeze_tend + qc2qi_hetero_freeze_tend) * dt;
@@ -73,12 +75,16 @@ void Functions<S,D>
   //   Alternatively, it can be simplified by tending qm -- qi
   //   and bm such that rho_rim (qm/bm) --> rho_liq during melting.
   // ==
-  qv.set(context, qv + (-qv2qi_vapdep_tend+qi2qv_sublim_tend-qv2qi_nucleat_tend)*dt);
+  qv.set(context, qv + (-qv2qi_vapdep_tend-qv2qi_nucleat_tend)*dt);
 
   constexpr Scalar INV_CP = C::INV_CP;
-  th_atm.set(context, th_atm + inv_exner * ((qv2qi_vapdep_tend - qi2qv_sublim_tend + qv2qi_nucleat_tend) * latent_heat_sublim * INV_CP +
-                                (qr2qi_collect_tend + qc2qi_collect_tend + qc2qi_hetero_freeze_tend + qr2qi_immers_freeze_tend - 
-                                qi2qr_melt_tend + qc2qi_berg_tend) * latent_heat_fusion * INV_CP) * dt);
+  th_atm.set(context, th_atm + inv_exner * ((qv2qi_vapdep_tend + qv2qi_nucleat_tend) * latent_heat_sublim * INV_CP +
+                                (qr2qi_collect_tend + qc2qi_collect_tend + qc2qi_hetero_freeze_tend + qr2qi_immers_freeze_tend + 
+                                qc2qi_berg_tend) * latent_heat_fusion * INV_CP) * dt);
+  if ( qi_not_small.any() ) {
+    th_atm.set(qi_not_small, th_atm + inv_exner * ((-qi2qv_sublim_tend) * latent_heat_sublim * INV_CP +
+                                  (-qi2qr_melt_tend) * latent_heat_fusion * INV_CP) * dt);
+  }
 }
 
 template<typename S, typename D>
