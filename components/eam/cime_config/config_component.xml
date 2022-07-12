@@ -124,6 +124,7 @@
       <value compset="ARM97_EAM%DPSCREAM"                >dpscream_arm97</value>
       <value compset="2010_EAM%SCREAM-LR-DYAMOND2"      >2010_scream_lr_dyamond2</value>
       <value compset="2010_EAM%SCREAM-HR-DYAMOND2"      >2010_scream_hr_dyamond2</value>
+      <value compset="RCP8_EAM%SCREAM-HR"               >2006-2100_scream_hr_rcp85</value>
       <value compset="_EAM%SCREAM-LR-AQUA"              >aquaplanet_SCREAM-LR</value>
       <value compset="_EAM%SCREAM-HR-AQUA"              >aquaplanet_SCREAM-HR</value>
       <!-- MMF / Super-Parameterization -->
