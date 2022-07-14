@@ -215,7 +215,6 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   add_postcondition_check<FieldLowerBoundCheck>(get_field_out("precip_ice_surf_mass"),m_grid,0.0,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("eff_radius_qc"),m_grid,0.0,1.0e2,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("eff_radius_qi"),m_grid,0.0,5.0e3,false);
-
   // Initialize p3
   p3_init();
 
@@ -229,15 +228,6 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   const  auto& T_atm          = get_field_out("T_mid").get_view<Pack**>();
   const  auto& cld_frac_t     = get_field_in("cldfrac_tot").get_view<const Pack**>();
   const  auto& qv             = get_field_out("qv").get_view<Pack**>();
-  const  auto& qc             = get_field_out("qc").get_view<Pack**>();
-  const  auto& nc             = get_field_out("nc").get_view<Pack**>();
-  const  auto& qr             = get_field_out("qr").get_view<Pack**>();
-  const  auto& nr             = get_field_out("nr").get_view<Pack**>();
-  const  auto& qi             = get_field_out("qi").get_view<Pack**>();
-  const  auto& qm             = get_field_out("qm").get_view<Pack**>();
-  const  auto& ni             = get_field_out("ni").get_view<Pack**>();
-  const  auto& bm             = get_field_out("bm").get_view<Pack**>();
-  auto qv_prev                = get_field_out("qv_prev_micro_step").get_view<Pack**>();
   const auto& precip_liq_surf_mass = get_field_out("precip_liq_surf_mass").get_view<Real*>();
   const auto& precip_ice_surf_mass = get_field_out("precip_ice_surf_mass").get_view<Real*>();
 
@@ -249,19 +239,18 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   auto cld_frac_r = m_buffer.cld_frac_r;
   auto dz         = m_buffer.dz;
 
-  // -- Set values for the pre-amble structure
-  p3_preproc.set_variables(m_num_cols,nk_pack,pmid,pseudo_density,T_atm,cld_frac_t,
-                        qv, qc, nc, qr, nr, qi, qm, ni, bm, qv_prev,
+  // -- Set values for the post-amble structure
+  p3_preproc.set_variables(m_num_cols,nk_pack,pmid,pseudo_density,T_atm,cld_frac_t,qv,
                         inv_exner, th_atm, cld_frac_l, cld_frac_i, cld_frac_r, dz);
   // --Prognostic State Variables:
-  prog_state.qc     = p3_preproc.qc;
-  prog_state.nc     = p3_preproc.nc;
-  prog_state.qr     = p3_preproc.qr;
-  prog_state.nr     = p3_preproc.nr;
-  prog_state.qi     = p3_preproc.qi;
-  prog_state.qm     = p3_preproc.qm;
-  prog_state.ni     = p3_preproc.ni;
-  prog_state.bm     = p3_preproc.bm;
+  prog_state.qc     = get_field_out("qc").get_view<Pack**>();
+  prog_state.nc     = get_field_out("nc").get_view<Pack**>();
+  prog_state.qr     = get_field_out("qr").get_view<Pack**>();
+  prog_state.nr     = get_field_out("nr").get_view<Pack**>();
+  prog_state.qi     = get_field_out("qi").get_view<Pack**>();
+  prog_state.qm     = get_field_out("qm").get_view<Pack**>();
+  prog_state.ni     = get_field_out("ni").get_view<Pack**>();
+  prog_state.bm     = get_field_out("bm").get_view<Pack**>();
   prog_state.th     = p3_preproc.th_atm;
   prog_state.qv     = p3_preproc.qv;
   // --Diagnostic Input Variables:
@@ -275,7 +264,8 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   diag_inputs.inv_qc_relvar   = get_field_in("inv_qc_relvar").get_view<const Pack**>();
   diag_inputs.pres            = get_field_in("p_mid").get_view<const Pack**>();
   diag_inputs.dpres           = p3_preproc.pseudo_density;
-  diag_inputs.qv_prev         = p3_preproc.qv_prev;
+  auto qv_prev                = get_field_out("qv_prev_micro_step").get_view<Pack**>();
+  diag_inputs.qv_prev         = qv_prev;
   auto t_prev                 = get_field_out("T_prev_micro_step").get_view<Pack**>();
   diag_inputs.t_prev          = t_prev;
   diag_inputs.cld_frac_l      = p3_preproc.cld_frac_l;
@@ -300,12 +290,10 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   history_only.vap_liq_exchange = get_field_out("micro_vap_liq_exchange").get_view<Pack**>();
   history_only.vap_ice_exchange = get_field_out("micro_vap_ice_exchange").get_view<Pack**>();
   // -- Set values for the post-amble structure
-  p3_postproc.set_variables(m_num_cols,nk_pack,prog_state.th,pmid,T_atm,t_prev,
-      prog_state.qv, prog_state.qc, prog_state.nc, prog_state.qr,prog_state.nr,
-      prog_state.qi, prog_state.qm, prog_state.ni,prog_state.bm,qv_prev,
-      diag_outputs.diag_eff_radius_qc,diag_outputs.diag_eff_radius_qi,
-      diag_outputs.precip_liq_surf,diag_outputs.precip_ice_surf,
-      precip_liq_surf_mass,precip_ice_surf_mass);
+  p3_postproc.set_variables(m_num_cols,nk_pack,prog_state.th,pmid,T_atm,t_prev,prog_state.qv,qv_prev,
+     diag_outputs.diag_eff_radius_qc,diag_outputs.diag_eff_radius_qi,
+     diag_outputs.precip_liq_surf,diag_outputs.precip_ice_surf,
+     precip_liq_surf_mass,precip_ice_surf_mass);			    
 
   // Load tables
   P3F::init_kokkos_ice_lookup_tables(lookup_tables.ice_table_vals, lookup_tables.collect_table_vals);
