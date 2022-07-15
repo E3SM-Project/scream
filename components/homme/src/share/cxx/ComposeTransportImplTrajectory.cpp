@@ -4,6 +4,8 @@
  * See the file 'COPYRIGHT' in the HOMMEXX/src/share/cxx directory
  *******************************************************************************/
 
+#ifdef HOMME_ENABLE_COMPOSE
+
 #include "ComposeTransportImpl.hpp"
 #include "PhysicalConstants.hpp"
 
@@ -310,7 +312,8 @@ KOKKOS_FUNCTION static void calc_vertically_lagrangian_levels (
 #endif
     };
     cti::loop_ijk<cti::num_lev_pack>(kv, f_v);
-    if (cti::num_lev_pack == cti::max_num_lev_pack) {
+    if (static_cast<int>(cti::num_lev_pack) ==
+        static_cast<int>(cti::max_num_lev_pack)) {
       // Re-zero eta_dot_dpdn at bottom.
       RNlevp edds(cti::pack2real(edd));
       const auto f = [&] (const int idx) {
@@ -684,3 +687,6 @@ test_trajectory (Real t0, Real t1, const bool independent_time_steps) {
 }
 
 } // namespace Homme
+
+//ifdef compose
+#endif

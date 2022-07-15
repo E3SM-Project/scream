@@ -20,11 +20,22 @@ namespace Homme
 
 // Some in-house names for Kokkos exec spaces, which are
 // always defined, possibly as alias of void
+
+#if defined(KOKKOS_ENABLE_CUDA) || defined(HIP_BUILD)
+
 #ifdef KOKKOS_ENABLE_CUDA
 using Hommexx_Cuda = Kokkos::Cuda;
+#endif
+
+#ifdef HIP_BUILD
+using Hommexx_Cuda = Kokkos::Experimental::HIP;
+#endif
+
 #else
 using Hommexx_Cuda = void;
 #endif
+
+
 
 #ifdef KOKKOS_ENABLE_OPENMP
 using Hommexx_OpenMP = Kokkos::OpenMP;
@@ -44,7 +55,7 @@ using Hommexx_Serial = Kokkos::Serial;
 using Hommexx_Serial = void;
 #endif
 
-#ifdef KOKKOS_ENABLE_CUDA
+#if defined(KOKKOS_ENABLE_CUDA) || defined(HIP_BUILD)
 # define HOMMEXX_STATIC
 #else
 # define HOMMEXX_STATIC static
@@ -52,7 +63,7 @@ using Hommexx_Serial = void;
 
 // Selecting the execution space. If no specific request, use Kokkos default
 // exec space
-#if defined(HOMMEXX_CUDA_SPACE)
+#if defined(HOMMEXX_CUDA_SPACE) || defined(HOMMEXX_HIP_SPACE)
 using ExecSpace = Hommexx_Cuda;
 #elif defined(HOMMEXX_OPENMP_SPACE)
 using ExecSpace = Hommexx_OpenMP;
@@ -306,10 +317,10 @@ VECTOR_SIMD_LOOP
   }
 };
 
-#if defined KOKKOS_ENABLE_CUDA
+#if defined(KOKKOS_ENABLE_CUDA) || defined(HIP_BUILD)
 template <>
-struct Dispatch<Kokkos::Cuda> {
-  using ExeSpace = Kokkos::Cuda;
+struct Dispatch<Hommexx_Cuda> {
+  using ExeSpace = Hommexx_Cuda;
 
   template<typename LoopBdyType, class Lambda, typename ValueType>
   KOKKOS_FORCEINLINE_FUNCTION
@@ -351,7 +362,8 @@ struct Dispatch<Kokkos::Cuda> {
   template<class Lambda>
   static KOKKOS_FORCEINLINE_FUNCTION
   void parallel_for_NP2 (
-    const Kokkos::TeamPolicy<Kokkos::Cuda>::member_type& team,
+    //const Kokkos::TeamPolicy<Kokkos::Cuda>::member_type& team,
+    const Kokkos::TeamPolicy<Hommexx_Cuda>::member_type& team,
     const Lambda& lambda)
   {
     Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, NP*NP), lambda);
@@ -360,7 +372,8 @@ struct Dispatch<Kokkos::Cuda> {
   template<class Lambda, typename ValueType>
   static KOKKOS_FORCEINLINE_FUNCTION
   void parallel_reduce_NP2 (
-    const Kokkos::TeamPolicy<Kokkos::Cuda>::member_type& team,
+    const Kokkos::TeamPolicy<Hommexx_Cuda>::member_type& team,
+    //const Kokkos::TeamPolicy<Kokkos::Cuda>::member_type& team,
     const Lambda& lambda, ValueType& result)
   {
     parallel_reduce(team, Kokkos::ThreadVectorRange(team, NP*NP),

@@ -21,7 +21,7 @@
 # endif
 #endif
 
-#if ! defined HOMMEXX_CUDA_SPACE && ! defined HOMMEXX_OPENMP_SPACE && ! defined HOMMEXX_THREADS_SPACE && ! defined HOMMEXX_SERIAL_SPACE
+#if ! defined HOMMEXX_CUDA_SPACE && ! defined HOMMEXX_OPENMP_SPACE && ! defined HOMMEXX_THREADS_SPACE && ! defined HOMMEXX_SERIAL_SPACE && ! defined HOMMEXX_HIP_SPACE
 # define HOMMEXX_DEFAULT_SPACE
 #endif
 
@@ -31,7 +31,7 @@
 
 #include <Kokkos_Core.hpp>
 
-#ifdef KOKKOS_ENABLE_CUDA
+#if defined(KOKKOS_ENABLE_CUDA) || defined(HIP_BUILD)
 # ifndef HOMMEXX_CUDA_MIN_WARP_PER_TEAM
 #  define HOMMEXX_CUDA_MIN_WARP_PER_TEAM 8
 # endif

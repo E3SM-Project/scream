@@ -28,8 +28,8 @@ private:
       return 0;
     }
 
-#ifdef KOKKOS_ENABLE_CUDA
-#ifdef __CUDA_ARCH__
+#if defined(KOKKOS_ENABLE_CUDA) || defined(HIP_BUILD)
+//#ifdef __CUDA_ARCH__
     template <typename ExecSpaceType>
     static KOKKOS_INLINE_FUNCTION typename std::enable_if<
         OnGpu<ExecSpaceType>::value, int>::type
@@ -44,8 +44,7 @@ private:
       assert(false); // should never happen
       return -1;
     }
-#endif // __CUDA_ARCH__
-#endif // KOKKOS_ENABLE_CUDA
+#endif // KOKKOS_ENABLE_CUDA or HIP
 
 #ifdef KOKKOS_ENABLE_OPENMP
     template<typename ExecSpaceType>

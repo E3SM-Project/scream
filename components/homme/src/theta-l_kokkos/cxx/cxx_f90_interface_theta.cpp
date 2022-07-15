@@ -65,7 +65,7 @@ void init_simulation_params_c (const int& remap_alg, const int& limiter_option, 
 #ifndef SCREAM
   Errors::check_option("init_simulation_params_c","nsplit",nsplit,1,Errors::ComparisonOp::GE);
 #else
-  if (nsplit<1) {
+  if (nsplit<1 && Context::singleton().get<Comm>().root()) {
     printf ("Note: nsplit=%d, while nsplit must be >=1. We know SCREAM does not know nsplit until runtime, so this is fine.\n"
             "      Make sure nsplit is set to a valid value before calling prim_advance_subcycle!\n",nsplit);
   }
@@ -342,7 +342,9 @@ void init_functors_c (const bool& allocate_buffer)
   // use the create_if_not_there() function.
   auto& caar = c.create_if_not_there<CaarFunctor>(elems,tracers,ref_FE,hvcoord,sph_op,params);
   if (params.transport_alg == 0) c.create_if_not_there<EulerStepFunctor>();
+#ifdef HOMME_ENABLE_COMPOSE
   else                           c.create_if_not_there<ComposeTransport>();
+#endif
   auto& hvf  = c.create_if_not_there<HyperviscosityFunctor>();
   auto& ff   = c.create_if_not_there<ForcingFunctor>();
   auto& diag = c.create_if_not_there<Diagnostics> (elems.num_elems(),params.theta_hydrostatic_mode);
@@ -360,8 +362,10 @@ void init_functors_c (const bool& allocate_buffer)
     auto& esf = c.get<EulerStepFunctor>();
     if (esf.setup_needed()) esf.setup();
   } else {
+#ifdef HOMME_ENABLE_COMPOSE	  
     auto& ct = c.get<ComposeTransport>();
     if (ct.setup_needed()) ct.setup();
+#endif    
   }
   if (hvf.setup_needed()) {
     hvf.setup(geometry, state, derived);
@@ -389,8 +393,10 @@ void init_functors_c (const bool& allocate_buffer)
     fbm.request_size(caar.requested_buffer_size());
     if (params.transport_alg == 0)
       fbm.request_size(c.get<EulerStepFunctor>().requested_buffer_size());
-    else
+#ifdef HOMME_ENABLE_COMPOSE
+    else	    
       fbm.request_size(c.get<ComposeTransport>().requested_buffer_size());
+#endif
     fbm.request_size(hvf.requested_buffer_size());
     fbm.request_size(diag.requested_buffer_size());
     fbm.request_size(ff.requested_buffer_size());
@@ -407,8 +413,10 @@ void init_functors_c (const bool& allocate_buffer)
   caar.init_buffers(fbm);
   if (params.transport_alg == 0)
     Context::singleton().get<EulerStepFunctor>().init_buffers(fbm);
+#ifdef HOMME_ENABLE_COMPOSE
   else
     Context::singleton().get<ComposeTransport>().init_buffers(fbm);
+#endif
   hvf.init_buffers(fbm);
   diag.init_buffers(fbm);
   ff.init_buffers(fbm);
@@ -478,8 +486,10 @@ void init_elements_states_c (CF90Ptr& elem_state_v_ptr,       CF90Ptr& elem_stat
   const auto  qdp = tracers.qdp;
   const auto  q = tracers.Q;
   const auto  dp = state.m_dp3d;
-  const auto& tl = c.get<TimeLevel>();
+  auto& tl = c.get<TimeLevel>();
   const auto n0 = tl.n0;
+  const SimulationParams& params = c.get<SimulationParams>();
+  tl.update_tracers_levels(params.qsplit);
   const auto n0_qdp = tl.n0_qdp;
   const auto qsize = tracers.num_tracers();
   const auto size = tracers.num_elems()*tracers.num_tracers()*NP*NP*NUM_LEV;
@@ -552,9 +562,11 @@ void init_boundary_exchanges_c ()
     esf.reset(params);
     esf.init_boundary_exchanges();
   } else {
+#ifdef HOMME_ENABLE_COMPOSE	  
     auto& ct = c.get<ComposeTransport>();
     ct.reset(params);
     ct.init_boundary_exchanges();
+#endif    
   }
 
   // RK stages BE's
