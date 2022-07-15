@@ -1,27 +1,70 @@
 #ifndef SCREAM_INTERPOLATORS_IMPL_HPP
 #define SCREAM_INTERPOLATORS_IMPL_HPP
 
+#include <set>
+#include <vector>
+
 // This file contains the implementation of LatLonLinInterpolator. Include it
 // after any type-specific specializations for LatLonLinInterpolatorTraits.
-
 
 namespace scream {
 
 template <typename Data>
 LatLonLinInterpolator<Data>::init_from_file_(const std::string& data_file,
-                                             const HCoordView& latitudes,
-                                             const HCoordView& longitudes) {
+                                             const SEGrid&      grid,
+                                             const HCoordView&  latitudes,
+                                             const HCoordView&  longitudes) {
   scorpio::register_file(data_file, scorpio::READ);
 
   // For now, we assume this is a cubed sphere dataset.
+
+  // Map the given (lat, lon) columns to elements in the given grid.
+  h_weights_ = compute_latlonlin_column_weights(data_file, latitudes,
+                                                longitudes);
+
+  // Fetch all source columns associated with our target points.
+  std::vector<int> local_columns;
+  {
+    std::set<int> unique_local_cols;
+    for (auto iter = h_weights_.begin(); iter != h_weights_.end(); ++iter) {
+      const auto& col_weights = iter->second;
+      unique_local_cols.insert(col_weights.columns[0]);
+      unique_local_cols.insert(col_weights.columns[1]);
+      unique_local_cols.insert(col_weights.columns[2]);
+      unique_local_cols.insert(col_weights.columns[3]);
+    }
+    local_columns.resize(unique_local_cols.size());
+    std::copy(unique_local_cols.begin(), unique_local_cols.end(),
+              local_columns.begin());
+  }
+
+  // What's the "time" dimension?
+  int n_times = scorpio::get_dimlen_c2f(data_file.c_str(), "time");
+  times_.resize(n_times);
+  data_.resize(n_times);
+
+  // Read in all relevant data from source datasets.
+  for (int i = 0; i < n_times; ++i) {
+    scorpio::grid_read_data_array(data_file, "time", i, &times_[i]);
+    Traits::read_from_file(data_file, i, local_columns, data_[i]);
+  }
+
+  // Reindex the horizontal weights using local source column indices so we can
+  // apply the weights properly to the locally stored source data.
+  std::unordered_map<int, int> g2l_columns;
+  for (size_t i = 0; i < local_columns.size(); ++i) {
+    g2l_columns[local_columns[i]] = i;
+  }
+  for (auto iter = h_weights_.begin(); iter != h_weights_.end(); ++iter) {
+    for (int i = 0; i < 4; ++i) {
+      iter->second.columns[i] = g2l_columns[iter->second.columns[i]];
+    }
+  }
 }
 
 template <typename Data>
 void LatLonLinInterpolator<Data>::
-do_time_interpolation_(const std::vector<Real>& times_,
-                       const std::vector<Data>& src_data,
-                       Real time,
-                       Data& data) {
+do_time_interpolation_(Real time, Data& data) {
   // Find the bounding times.
   auto time_iter = std::lower_bound(times_.begin(), times_.end(), time);
   size_t t1, t2;
@@ -58,7 +101,7 @@ void LatLonLinInterpolator<Data>::interpolate_(Real time,
                                                Data& data) {
   // Perform time interpolation.
   Data data_t = Traits::allocate(data_[0]);
-  do_time_interpolation(times_, data_, time, data_t);
+  do_time_interpolation(time, data_t);
 
   // Perform vertical interpolation.
   // NOTE: this assumes that the number of vertical levels is the same in the

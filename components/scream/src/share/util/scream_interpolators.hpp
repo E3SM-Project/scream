@@ -16,26 +16,14 @@ template <typename Data>
 class LatLonLinInterpolator {
 public:
   using Traits = LatLonLinInterpolatorTraits<Data>;
-  using KokkosTypes = typename Traits::KokkosTypes;
-  using Pack = typename Traits::Pack;
-
-  // A 1D view storing structured horizontal coordinate data
-  using HCoordView = KokkosTypes::view_1d<Real>;
-
-  // A 2D view storing vertical (packed) coordinate data. The first index is
-  // the column index, and the second is the vertical pack index.
-  using VCoordView = KokkosTypes::view_2d<Pack>;
 
   // Constructs a linear lat-lon interpolator from data in the given file for
-  // the purpose of interpolating field data to the points defined by the given
+  // the purpose of interpolating field data from the to the points defined by the given
   // set of latitudes and longitudes. The data file should be a NetCDF4 file
   // containing field data defined on a cubed-sphere grid (neXnpY).
-  // NOTE: in principle, we could also support source data on a uniform lat/lon
-  // NOTE: grid, but there's currently no way we can query the file to see
-  // NOTE: whether it's one or the other.
   LatLonLinInterpolator(const std::string& data_file,
-                        const HCoordView& latitudes,
-                        const HCoordView& longitudes) {
+                        const HCoordView&  latitudes,
+                        const HCoordView&  longitudes) {
     init_from_file_(data_file, latitudes, longitudes);
   }
 
@@ -78,8 +66,16 @@ private:
 
   // Horizontal interpolation weights (fixed in time), encoded in a sparse map
   // representing a linear operator.
-  SparseMap h_weights_;
+  LatLonLinColumnWeightMap h_weights_;
 };
+
+// This function reads data from the given data file and produces an unordered
+// map whose keys are indices into the lat/lon arrays and whose values are
+// LatLonLinColumnWeights (see scream_interpolator_traits.hpp for details).
+LatLonLinColumnWeightMap
+compute_latlonlin_column_weights(const std::string& data_file,
+                                 const HCoordView& latitudes,
+                                 const HCoordView& longitudes);
 
 } // namespace scream
 

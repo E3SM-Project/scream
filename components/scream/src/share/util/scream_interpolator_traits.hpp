@@ -24,22 +24,45 @@
 #include <ekat/kokkos/ekat_kokkos_types.hpp>
 
 namespace scream {
+namespace interpolators {
+
+using KokkosTypes = ekat::KokkosTypes;
+using KokkosHostTypes = ekat::KokkosTypes<ekat::HostDevice>;
+using Pack = ekat::Pack<Real, SCREAM_SMALL_PACK_SIZE>;
+
+// A 1D view storing structured horizontal coordinate data (on device)
+using HCoordView = KokkosTypes::view_1d<Real>;
+
+// A 1D view storing structured horizontal coordinate data (on host)
+using HostHCoordView = KokkosHostTypes::view_1d<Real>;
+
+// A 2D view storing vertical (packed) coordinate data (on device). The first
+// index is the column index, and the second is the vertical pack index.
+using VCoordView = KokkosTypes::view_2d<Pack>;
+
+// A 2D view storing vertical (packed) coordinate data (on host). The first
+// index is the column index, and the second is the vertical pack index.
+using HostVCoordView = KokkosHostTypes::view_2d<Pack>;
 
 //------------------------------------------------------------------------
 //                        Lat-Lon-Linear Interpolation
 //------------------------------------------------------------------------
 
-// This type represents a set of 4 indices associated with another index in a
-// mapping.
+// This type represents a set of 4 source column indices and weights associated
+// with a target column index.
 struct LatLonLinColumnWeights {
   int columns[4];
   Real weights[4];
 };
 
-// This type represents a mapping from a target column index to 4 source column
-// indices, and is used to store horizontal interpolation weights.
+// This type represents an on-device mapping from a target column index to 4
+// source column indices, and is used to store horizontal interpolation weights.
 using LatLonLinColumnWeightMap =
   Kokkos::UnorderedMap<int, LatLonLinColumnWeights>;
+
+// This is the host version of LatLonLinColumnWeightMap.
+using HostLatLonLinColumnWeightMap =
+  Kokkos::UnorderedMap<int, LatLonLinColumnWeights, HostDevice>;
 
 // LatLonLinInterpolatorTraits -- traits to support linear interpolation from
 // a set of source columns at fixed latitudes and longitudes to target data
@@ -47,26 +70,20 @@ using LatLonLinColumnWeightMap =
 // implement the methods used in this generic implementation.
 template <typename Data>
 struct LatLonLinInterpolatorTraits {
-  using KokkosTypes = ekat::KokkosTypes;
-  using Pack = ekat::Pack<Real, SCREAM_SMALL_PACK_SIZE>;
-
-  // A 1D view storing structured horizontal coordinate data
-  using HCoordView = KokkosTypes::view_1d<Real>;
-
-  // A 2D view storing vertical (packed) coordinate data. The first index is
-  // the column index, and the second is the vertical pack index.
-  using VCoordView = KokkosTypes::view_2d<Pack>;
 
   // Returns a new Data with storage identical to the given Data.
   static Data allocate(const Data& prototype) {
     return prototype.allocate();
   }
 
-  // Reads data from the given file at the given time index, storing the
-  // result in data.
+  // Reads data from the given file at the given time index for the given
+  // columns, storing the result in data.
+  // NOTE: the columns vector defines a local-to-global mapping of required
+  // NOTE: source column data, allowing you to store only locally-relevant data.
+  // NOTE: (i.e. columns[local_index] == global_index)
   static void read_from_file(const std::string& data_file, int time_index,
-                             Data& data) {
-    data.read_from_file(data_file, time_index);
+                             const std::vector<int>& columns, Data& data) {
+    data.read_from_file(data_file, time_index, columns);
   }
 
   // Forms the linear combination y = a*x1 + b*x2 where a and b are scalar
@@ -102,12 +119,16 @@ struct LatLonLinInterpolatorTraits {
   // Applies the given set of (horizontal) column weights to column data in x,
   // generating a weighted linear combination of x's data to compute y.
   // This method is used for horizontal interpolation.
+  // NOTE: the column indices in W are local source column indices associated
+  // NOTE: with their global counterparts by the columns vector used
+  // NOTE: to read in source data in the read_from_file method above.
   static void apply_column_weights(const LatLonColumnWeightMap& W,
                                    const Data& x, Data& y) {
     y.apply_column_weights(W, x);
   }
 };
 
+} // namespace interpolators
 } // namespace scream
 
 #endif // SCREAM_INTERPOLATOR_TRAITS_HPP
