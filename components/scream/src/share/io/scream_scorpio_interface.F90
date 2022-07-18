@@ -622,7 +622,7 @@ contains
   ! Ensures a pio system is in place, by either creating a new one
   ! or getting the one created by CIME (for CIME builds)
   subroutine eam_init_pio_subsystem(mpicom,atm_id)
-#ifdef SCREAM_CIME_BUILD
+#ifdef SCREAM_CONFIG_IS_CMAKE
     use shr_pio_mod,  only: shr_pio_getrearranger, shr_pio_getiosys, &
                             shr_pio_getiotype, shr_pio_getioformat
 #else
@@ -639,7 +639,7 @@ contains
 
     atm_mpicom = mpicom
 
-#ifdef SCREAM_CIME_BUILD
+#ifdef SCREAM_CONFIG_IS_CMAKE
     pio_subsystem  => shr_pio_getiosys(atm_id)
     pio_iotype     = shr_pio_getiotype(atm_id)
     pio_rearranger = shr_pio_getrearranger(atm_id)
@@ -877,7 +877,7 @@ contains
     use piolib_mod, only: PIO_finalize, pio_freedecomp
     ! May not be needed, possibly handled by PIO directly.
 
-#if !defined(SCREAM_CIME_BUILD)
+#ifndef(SCREAM_CONFIG_IS_CMAKE)
     integer :: ierr
 #endif
     type(pio_file_list_t), pointer :: curr_file_ptr, prev_file_ptr
@@ -900,7 +900,7 @@ contains
       iodesc_ptr => iodesc_ptr%next
     end do
 
-#if !defined(SCREAM_CIME_BUILD)
+#ifndef(SCREAM_CONFIG_IS_CMAKE)
     call PIO_finalize(pio_subsystem, ierr)
     nullify(pio_subsystem)
 #endif
