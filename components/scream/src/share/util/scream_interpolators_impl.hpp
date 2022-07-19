@@ -11,10 +11,12 @@ namespace scream {
 
 template <typename Data>
 LatLonLinInterpolator<Data>::init_from_file_(const std::string& data_file,
-                                             const SEGrid&      grid,
                                              const HCoordView&  latitudes,
                                              const HCoordView&  longitudes) {
-  scorpio::register_file(data_file, scorpio::READ);
+
+  // Read data from the given file and copy it into vectors.
+  std::vector<Real> src_lats, src_lons;
+  read_latlonlin_src_data(comm_, data_file, times_, src_lats, src_lons);
 
   // For now, we assume this is a cubed sphere dataset.
 
@@ -38,14 +40,9 @@ LatLonLinInterpolator<Data>::init_from_file_(const std::string& data_file,
               local_columns.begin());
   }
 
-  // What's the "time" dimension?
-  int n_times = scorpio::get_dimlen_c2f(data_file.c_str(), "time");
-  times_.resize(n_times);
-  data_.resize(n_times);
-
   // Read in all relevant data from source datasets.
+  data_.resize(n_times);
   for (int i = 0; i < n_times; ++i) {
-    scorpio::grid_read_data_array(data_file, "time", i, &times_[i]);
     Traits::read_from_file(data_file, i, local_columns, data_[i]);
   }
 

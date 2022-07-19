@@ -1,8 +1,9 @@
 #ifndef SCREAM_INTERPOLATORS_HPP
 #define SCREAM_INTERPOLATORS_HPP
 
-#include <share/io/scream_scorpio_interface.hpp>
 #include <share/util/scream_interpolator_traits.hpp>
+
+#include <ekat/mpi/ekat_comm.hpp>
 
 namespace scream {
 
@@ -21,10 +22,11 @@ public:
   // the purpose of interpolating field data from the to the points defined by the given
   // set of latitudes and longitudes. The data file should be a NetCDF4 file
   // containing field data defined on a cubed-sphere grid (neXnpY).
-  LatLonLinInterpolator(const std::string& data_file,
+  LatLonLinInterpolator(const ekat::Comm& comm,
+                        const std::string& data_file,
                         const HCoordView&  latitudes,
-                        const HCoordView&  longitudes) {
-    init_from_file_(data_file, latitudes, longitudes);
+                        const HCoordView&  longitudes): comm_(comm) {
+    init_from_file_(comm, data_file, latitudes, longitudes);
   }
 
   LatLonLinInterpolator(const LatLonLinInterpolator&) = default;
@@ -60,6 +62,9 @@ private:
   // Interpolates source data at the given time, storing the result in data.
   void interpolate_(Real time, const VCoordView& vcoords, Data& data);
 
+  // MPI communicator
+  ekat::Comm comm_;
+
   // Data stored at times in a periodic sequence
   std::vector<Real> times_;
   std::vector<Data> data_;
@@ -69,11 +74,20 @@ private:
   LatLonLinColumnWeightMap h_weights_;
 };
 
-// This function reads data from the given data file and produces an unordered
-// map whose keys are indices into the lat/lon arrays and whose values are
-// LatLonLinColumnWeights (see scream_interpolator_traits.hpp for details).
+// This function reads data from the given data file, populating the given
+// vectors on all ranks.
+void read_latlonlin_src_data(const ekat::Comm& comm,
+                             const std::string& data_file,
+                             std::vector<Real>& src_times,
+                             std::vector<Real>& src_lats,
+                             std::vector<Real>& src_lons);
+
+// This function produces an unordered map whose keys are indices into the
+// lat/lon arrays and whose values are LatLonLinColumnWeights
+// (see scream_interpolator_traits.hpp for details).
 LatLonLinColumnWeightMap
-compute_latlonlin_column_weights(const std::string& data_file,
+compute_latlonlin_column_weights(const std::vector<Real>& src_lats,
+                                 const std::vector<Real>& src_lons,
                                  const HCoordView& latitudes,
                                  const HCoordView& longitudes);
 
