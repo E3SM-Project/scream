@@ -45,34 +45,34 @@ using VCoordView = KokkosTypes::view_2d<Pack>;
 using HostVCoordView = KokkosHostTypes::view_2d<Pack>;
 
 //------------------------------------------------------------------------
-//                        Lat-Lon-Linear Interpolation
+//                        Tetralinear Interpolation
 //------------------------------------------------------------------------
 
 // This type represents a set of 4 source column indices and weights associated
 // with a target column index.
-struct LatLonLinColumnWeights {
+struct TetralinearColumnWeights {
   int columns[4];
   Real weights[4];
 };
 
 // This type represents an on-device mapping from a target column index to 4
 // source column indices, and is used to store horizontal interpolation weights.
-using LatLonLinColumnWeightMap =
-  Kokkos::UnorderedMap<int, LatLonLinColumnWeights>;
+using TetralinearColumnWeightMap =
+  Kokkos::UnorderedMap<int, TetralinearColumnWeights>;
 
 // This is the host version of LatLonLinColumnWeightMap.
-using HostLatLonLinColumnWeightMap =
-  Kokkos::UnorderedMap<int, LatLonLinColumnWeights, HostDevice>;
+using HostTetralinearColumnWeightMap =
+  Kokkos::UnorderedMap<int, TetralinearColumnWeights, HostDevice>;
 
-// LatLonLinInterpolatorTraits -- traits to support linear interpolation from
-// a set of source columns at fixed latitudes and longitudes to target data
+// TetralinearInterpolatorTraits -- traits to support tetralinear interpolation
+// from a set of source columns at fixed latitudes and longitudes to target data
 // on another set of columns. Specialize this type for your data class, or
 // implement the methods used in this generic implementation.
 template <typename Data>
-struct LatLonLinInterpolatorTraits {
+struct TetralinearInterpolatorTraits {
 
-  // Returns a new Data with storage identical to the given Data.
-  static Data allocate(const Data& prototype) {
+  // Returns a new Data with storage identical to the given prototype.
+  static Data allocate_data(const Data& prototype) {
     return prototype.allocate();
   }
 
@@ -81,7 +81,7 @@ struct LatLonLinInterpolatorTraits {
   // NOTE: the columns vector defines a local-to-global mapping of required
   // NOTE: source column data, allowing you to store only locally-relevant data.
   // NOTE: (i.e. columns[local_index] == global_index)
-  static void read_from_file(const std::string& data_file, int time_index,
+  static void read_from_file(const InterpolatorDataFile& file, int time_index,
                              const std::vector<int>& columns, Data& data) {
     data.read_from_file(data_file, time_index, columns);
   }
@@ -98,8 +98,7 @@ struct LatLonLinInterpolatorTraits {
   }
 
   // Computes vertical coordinates for the given Data, populating vcoords.
-  static void compute_vertical_coords(const Data& data,
-                                      VCoordView& vcoords) {
+  static void compute_vertical_coords(const Data& data, VCoordView& vcoords) {
     // This generic implementation just calls the compute_vertical_coords method
     // on the Data type.
     data.compute_vertical_coords(policy, vcoords);
@@ -122,7 +121,7 @@ struct LatLonLinInterpolatorTraits {
   // NOTE: the column indices in W are local source column indices associated
   // NOTE: with their global counterparts by the columns vector used
   // NOTE: to read in source data in the read_from_file method above.
-  static void apply_column_weights(const LatLonColumnWeightMap& W,
+  static void apply_column_weights(const TetralinearColumnWeightMap& W,
                                    const Data& x, Data& y) {
     y.apply_column_weights(W, x);
   }

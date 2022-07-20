@@ -1,28 +1,35 @@
 #ifndef SCREAM_INTERPOLATORS_IMPL_HPP
 #define SCREAM_INTERPOLATORS_IMPL_HPP
 
+#include <pio.h> // Scorpio (rename your files, guys!)
+
 #include <set>
 #include <vector>
 
-// This file contains the implementation of LatLonLinInterpolator. Include it
-// after any type-specific specializations for LatLonLinInterpolatorTraits.
+// This file contains the implementation of TetralinearInterpolator. Include it
+// after any type-specific specializations for TetralinearInterpolatorTraits.
 
 namespace scream {
+namespace interpolators {
 
 template <typename Data>
-LatLonLinInterpolator<Data>::init_from_file_(const std::string& data_file,
-                                             const HCoordView&  latitudes,
-                                             const HCoordView&  longitudes) {
+TetralinearInterpolator<Data>::init_from_file_(const std::string& data_file,
+                                               const HCoordView&  latitudes,
+                                               const HCoordView&  longitudes) {
+  // Initialize a Scorpio I/O system in which rank 0 reads data and broadcasts
+  // it to all other ranks.
+  SourceDataFile file(comm_, data_file);
 
-  // Read data from the given file and copy it into vectors.
+  // Read horizontal coordinate data from the given file and copy it into
+  // vectors.
   std::vector<Real> src_lats, src_lons;
-  read_latlonlin_src_data(comm_, data_file, times_, src_lats, src_lons);
+  read_source_coordinates(comm_, file, bbox, times_, src_lats, src_lons);
 
   // For now, we assume this is a cubed sphere dataset.
 
   // Map the given (lat, lon) columns to elements in the given grid.
-  h_weights_ = compute_latlonlin_column_weights(data_file, latitudes,
-                                                longitudes);
+  h_weights_ = compute_tetralinear_column_weights(src_lats, src_lons,
+                                                  latitudes, longitudes);
 
   // Fetch all source columns associated with our target points.
   std::vector<int> local_columns;
@@ -57,10 +64,11 @@ LatLonLinInterpolator<Data>::init_from_file_(const std::string& data_file,
       iter->second.columns[i] = g2l_columns[iter->second.columns[i]];
     }
   }
+
 }
 
 template <typename Data>
-void LatLonLinInterpolator<Data>::
+void TetralinearInterpolator<Data>::
 do_time_interpolation_(Real time, Data& data) {
   // Find the bounding times.
   auto time_iter = std::lower_bound(times_.begin(), times_.end(), time);
@@ -83,7 +91,7 @@ do_time_interpolation_(Real time, Data& data) {
 }
 
 template <typename Data>
-void LatLonLinInterpolator<Data>::
+void TetralinearInterpolator<Data>::
 do_vertical_interpolation_(const Data& src_data,
                            const VCoordView& tgt_vcoords,
                            Data& data) {
@@ -93,9 +101,9 @@ do_vertical_interpolation_(const Data& src_data,
 }
 
 template <typename Data>
-void LatLonLinInterpolator<Data>::interpolate_(Real time,
-                                               const VCoordView& vcoords,
-                                               Data& data) {
+void TetralinearInterpolator<Data>::interpolate_(Real time,
+                                                 const VCoordView& vcoords,
+                                                 Data& data) {
   // Perform time interpolation.
   Data data_t = Traits::allocate(data_[0]);
   do_time_interpolation(time, data_t);
@@ -111,6 +119,7 @@ void LatLonLinInterpolator<Data>::interpolate_(Real time,
   Traits::apply_column_weights(h_weights_, data_tv, data);
 }
 
+} // namespace interpolators
 } // namespace scream
 
 #endif // SCREAM_INTERPOLATORS_IMPL_HPP
