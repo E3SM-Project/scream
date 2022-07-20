@@ -12,6 +12,7 @@ set(DIAGNOSTIC_SRCS
   ice_water_path.cpp
   vapor_water_path.cpp
   rain_water_path.cpp
+  shorwave_cloud_forcing.cpp
 )
 
 add_library(diagnostics ${DIAGNOSTIC_SRCS})
