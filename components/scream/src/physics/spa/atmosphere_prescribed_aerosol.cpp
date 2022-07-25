@@ -70,6 +70,7 @@ void SPA::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   m_num_src_levs = scorpio::get_dimlen_c2f(m_spa_data_file.c_str(),"lev");
   scorpio::eam_pio_closefile(m_spa_data_file);
   SPAHorizInterp.m_comm = m_comm;
+  SPAHorizInterp.chunksize = m_params.get<Int>("Data File Chunksize",1e6);
 
 }
 // =========================================================================================

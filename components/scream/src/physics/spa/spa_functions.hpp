@@ -158,6 +158,8 @@ struct SPAFunctions
     }
     // Comm group used for SPA
     ekat::Comm m_comm;
+    // Chunksize for reading remap data from file
+    Int chunksize;
     // Number of weights in remap data
     Int length;
     // Number of columns and levels on source grid
