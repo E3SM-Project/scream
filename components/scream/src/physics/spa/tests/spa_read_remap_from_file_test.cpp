@@ -33,7 +33,8 @@ TEST_CASE("spa_read_remap_data","spa")
   using SPAFunc  = spa::SPAFunctions<Real, DefaultDevice>;
   using gid_type = SPAFunc::gid_type;
   SPAFunc::SPAHorizInterp spa_horiz_interp;
-  spa_horiz_interp.m_comm = spa_comm;
+  spa_horiz_interp.m_comm    = spa_comm;
+  spa_horiz_interp.chunksize = 1000;
 
   const std::string remap_file_name = SCREAM_DATA_DIR "/init/spa_data_for_testing.nc";
 
