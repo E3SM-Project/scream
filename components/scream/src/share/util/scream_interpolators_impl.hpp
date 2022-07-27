@@ -14,33 +14,31 @@ namespace interpolators {
 
 template <typename Data>
 TetralinearInterpolator<Data>::init_from_file_(const std::string& data_file,
-                                               const HCoordView&  latitudes,
-                                               const HCoordView&  longitudes) {
-  // Initialize a Scorpio I/O system in which rank 0 reads data and broadcasts
-  // it to all other ranks.
-  SourceDataFile file(comm_, data_file);
-
-  // Read horizontal coordinate data from the given file and copy it into
-  // vectors.
-  std::vector<Real> src_lats, src_lons;
-  read_source_coordinates(comm_, file, bbox, times_, src_lats, src_lons);
-
-  // For now, we assume this is a cubed sphere dataset.
+                                               const HCoordView&  tgt_lats,
+                                               const HCoordView&  lgt_lons) {
+  // Retrieve grid data from the file.
+  auto grid = read_coarse_grid(data_file);
 
   // Map the given (lat, lon) columns to elements in the given grid.
-  h_weights_ = compute_tetralinear_column_weights(src_lats, src_lons,
-                                                  latitudes, longitudes);
+  h_weights_ = compute_tetralinear_interp_weights(*coarse_grid, tgt_lats,
+                                                    tgt_lons);
+  } else {
+    // Must be a lat/lon grid.
+    PointGrid* pt_grid = dynamic_cast<PointGrid*>(grid);
+    h_weights_ = compute_tetralinear_inweights(*pt_grid, tgt_lats,
+                                                    tgt_lons);
+  }
 
-  // Fetch all source columns associated with our target points.
+  // Fetch all source grid dofs associated with our target points.
   std::vector<int> local_columns;
   {
     std::set<int> unique_local_cols;
     for (auto iter = h_weights_.begin(); iter != h_weights_.end(); ++iter) {
       const auto& col_weights = iter->second;
-      unique_local_cols.insert(col_weights.columns[0]);
-      unique_local_cols.insert(col_weights.columns[1]);
-      unique_local_cols.insert(col_weights.columns[2]);
-      unique_local_cols.insert(col_weights.columns[3]);
+      unique_local_cols.insert(col_weights.grid_dofs[0]);
+      unique_local_cols.insert(col_weights.grid_dofs[1]);
+      unique_local_cols.insert(col_weights.grid_dofs[2]);
+      unique_local_cols.insert(col_weights.grid_dofs[3]);
     }
     local_columns.resize(unique_local_cols.size());
     std::copy(unique_local_cols.begin(), unique_local_cols.end(),
@@ -64,7 +62,6 @@ TetralinearInterpolator<Data>::init_from_file_(const std::string& data_file,
       iter->second.columns[i] = g2l_columns[iter->second.columns[i]];
     }
   }
-
 }
 
 template <typename Data>

@@ -48,21 +48,21 @@ using HostVCoordView = KokkosHostTypes::view_2d<Pack>;
 //                        Tetralinear Interpolation
 //------------------------------------------------------------------------
 
-// This type represents a set of 4 source column indices and weights associated
-// with a target column index.
-struct TetralinearColumnWeights {
-  int columns[4];
+// This type represents a set of indices and weights associated with a the
+// support for a target latitude/longitude pair.
+struct TetralinearInterpWeights {
+  int  indices[4];
   Real weights[4];
 };
 
 // This type represents an on-device mapping from a target column index to 4
 // source column indices, and is used to store horizontal interpolation weights.
-using TetralinearColumnWeightMap =
-  Kokkos::UnorderedMap<int, TetralinearColumnWeights>;
+using TetralinearInterpWeightMap =
+  Kokkos::UnorderedMap<int, TetralinearInterpWeights>;
 
-// This is the host version of LatLonLinColumnWeightMap.
-using HostTetralinearColumnWeightMap =
-  Kokkos::UnorderedMap<int, TetralinearColumnWeights, HostDevice>;
+// This is the host version of LatLonLinInterpWeightMap.
+using HostTetralinearInterpWeightMap =
+  Kokkos::UnorderedMap<int, TetralinearInterpWeights, HostDevice>;
 
 // TetralinearInterpolatorTraits -- traits to support tetralinear interpolation
 // from a set of source columns at fixed latitudes and longitudes to target data
@@ -81,9 +81,9 @@ struct TetralinearInterpolatorTraits {
   // NOTE: the columns vector defines a local-to-global mapping of required
   // NOTE: source column data, allowing you to store only locally-relevant data.
   // NOTE: (i.e. columns[local_index] == global_index)
-  static void read_from_file(const InterpolatorDataFile& file, int time_index,
+  static void read_from_file(const std::string& filename, int time_index,
                              const std::vector<int>& columns, Data& data) {
-    data.read_from_file(data_file, time_index, columns);
+    data.read_from_file(filename, time_index, columns);
   }
 
   // Forms the linear combination y = a*x1 + b*x2 where a and b are scalar
@@ -121,9 +121,9 @@ struct TetralinearInterpolatorTraits {
   // NOTE: the column indices in W are local source column indices associated
   // NOTE: with their global counterparts by the columns vector used
   // NOTE: to read in source data in the read_from_file method above.
-  static void apply_column_weights(const TetralinearColumnWeightMap& W,
+  static void apply_interp_weights(const TetralinearInterpWeightMap& W,
                                    const Data& x, Data& y) {
-    y.apply_column_weights(W, x);
+    y.apply_interp_weights(W, x);
   }
 };
 

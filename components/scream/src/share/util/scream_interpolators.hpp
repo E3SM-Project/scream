@@ -1,6 +1,8 @@
 #ifndef SCREAM_INTERPOLATORS_HPP
 #define SCREAM_INTERPOLATORS_HPP
 
+#include <share/grid/point_grid.hpp>
+#include <share/grid/se_grid.hpp>
 #include <share/util/scream_interpolator_traits.hpp>
 
 #include <ekat/mpi/ekat_comm.hpp>
@@ -8,31 +10,16 @@
 namespace scream {
 namespace interpolators {
 
-// This type represents a source data file used by interpolators, accessed using
-// the Scorpio/NetCDF interface. It provides only basic functionality needed
-// by interpolators.
-class SourceDataFile final {
-  int pio_id_;   // Scorpio I/O system ID
-  int file_id_;  // Scorpio file ID
- public:
+// Problems encountered with interpolators produce exceptions of this type.
+class InterpolationException: public std::exception {
+public:
+  /// Constructs an exception containing the given descriptive message.
+  InterpolationException(const std::string& message) : _message(message) {}
 
-  // Opens the file with the given name on rank 0 of the given communicator.
-  SourceDataFile(const ekat::Comm& comm, const std::string& filename);
+  const char* what() const throw() { return _message.c_str(); }
 
-  // Closes the file.
-  ~SourceDataFile();
-
-  // Fetches times from the source file into the given array.
-  void get_times(std::vector<Real>& times) const;
-
-  // Fetches n values from the 1d array variable with the given name, placing
-  // them into the given array.
-  void get_array(const std::string& name, std::vector<Real>& values) const;
-
-  // Disallowed stuff
-  SourceDataFile() = delete;
-  SourceDataFile(const SourceDataFile&) = delete;
-  SourceDataFile& operator=(const SourceDataFile&) = delete;
+private:
+  std::string _message;
 };
 
 // This class implements 4D space-time interpolation from one set of columns at
@@ -48,14 +35,14 @@ public:
   using HCoordView = Traits::HCoordView;
   using VCoordView = Traits::VCoordView;
 
-  // Constructs a linear lat-lon interpolator from data in the given file for
-  // the purpose of interpolating field data from the to the points defined by the given
-  // set of latitudes and longitudes. The data file should be a NetCDF4 file
-  // containing field data defined on a cubed-sphere grid (neXnpY).
-  TetralinearInterpolator(const ekat::Comm& comm,
-                          const std::string& data_file,
+  // Constructs a tetralinear (4D) lat-lon interpolator from data in the given
+  // file for the purpose of interpolating field data from the to the points
+  // defined by the given set of latitudes and longitudes. The data file should
+  // be a NetCDF4 file containing field data defined on a cubed-sphere grid
+  // (neXnpY). This constructor throws an exception if any error is encountered.
+  TetralinearInterpolator(const std::string& data_file,
                           const HCoordView&  latitudes,
-                          const HCoordView&  longitudes): comm_(comm) {
+                          const HCoordView&  longitudes) {
     init_from_file_(comm, data_file, latitudes, longitudes);
   }
 
@@ -92,42 +79,29 @@ private:
   // Interpolates source data at the given time, storing the result in data.
   void interpolate_(Real time, const VCoordView& vcoords, Data& data);
 
-  // MPI communicator
-  ekat::Comm comm_;
-
   // Data stored at times in a periodic sequence
   std::vector<Real> times_;
   std::vector<Data> data_;
 
   // Horizontal interpolation weights (fixed in time), encoded in a sparse map
   // representing a linear operator.
-  TetralinearColumnWeightMap h_weights_;
+  TetralinearInterpWeightMap h_weights_;
 };
 
-// This type defines a bounding box in (latitude, longitude) coordinates.
-struct BoundingBox {
-  Real min_latitude, max_latitude;
-  Real min_longitude, max_longitude;
-};
+// This type represents a coarse grid from which data is interpolated.
+struct CoarseGrid;
 
-// This function reads interpolation data from the data file with the given
-// name, populating the given vectors on each MPI process according to the
-// given bounding box.
-void read_source_coordinates(const ekat::Comm& comm,
-                             const SourceDataFile& data_file,
-                             const BoundingBox& bbox,
-                             std::vector<Real>& src_times,
-                             std::vector<Real>& src_lats,
-                             std::vector<Real>& src_lons);
+// This function reads coarse grid data from the file with the given name.
+std::unique_ptr<CoarseGrid> read_coarse_grid(const std::string& filename);
 
-// This function produces an unordered map whose keys are indices into the
-// lat/lon arrays and whose values are TetralinearColumnWeights
+// This function maps each target lat/lon pair to its corresponding support in
+// the given spectral element grid. The support for a lat/lon pair is defined by
+// the set of 4 vertices for the quadrilateral cell/subcell bounding that pair
 // (see scream_interpolator_traits.hpp for details).
-TetralinearColumnWeightMap
-compute_tetralinear_column_weights(const std::vector<Real>& src_lats,
-                                   const std::vector<Real>& src_lons,
-                                   const HCoordView& latitudes,
-                                   const HCoordView& longitudes);
+TetralinearInterpWeightMap
+compute_tetralinear_interp_weights(const CoarseGrid& coarse_grid,
+                                   const HostHCoordView& tgt_lats,
+                                   const HostHCoordView& tgt_lons);
 
 } // namespace interpolators
 
