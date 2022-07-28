@@ -1,33 +1,30 @@
-#ifndef SCREAM_INTERPOLATORS_IMPL_HPP
-#define SCREAM_INTERPOLATORS_IMPL_HPP
+#ifndef TETRALINEAR_INTERP_IMPL_HPP
+#define TETRALINEAR_INTERP_IMPL_HPP
 
-#include <pio.h> // Scorpio (rename your files, guys!)
+#include <share/io/scream_scorpio_interface.hpp>
 
 #include <set>
 #include <vector>
 
-// This file contains the implementation of TetralinearInterpolator. Include it
-// after any type-specific specializations for TetralinearInterpolatorTraits.
+// This file contains the implementation of TetralinearInterp. Include it
+// after any type-specific specializations for TetralinearInterpTraits.
 
 namespace scream {
 namespace interpolators {
 
 template <typename Data>
-TetralinearInterpolator<Data>::init_from_file_(const std::string& data_file,
-                                               const HCoordView&  tgt_lats,
-                                               const HCoordView&  lgt_lons) {
-  // Retrieve grid data from the file.
-  auto grid = read_coarse_grid(data_file);
+TetralinearInterp<Data>::init_from_file_(const std::string& data_file,
+                                         const HCoordView&  tgt_lats,
+                                         const HCoordView&  lgt_lons) {
+  // Read ne, np from the file.
+  int ne, np;
+
+  // Create a coarse SE grid.
+  auto coarse_grid = CoarseSEGrid(ne, np);
 
   // Map the given (lat, lon) columns to elements in the given grid.
-  h_weights_ = compute_tetralinear_interp_weights(*coarse_grid, tgt_lats,
-                                                    tgt_lons);
-  } else {
-    // Must be a lat/lon grid.
-    PointGrid* pt_grid = dynamic_cast<PointGrid*>(grid);
-    h_weights_ = compute_tetralinear_inweights(*pt_grid, tgt_lats,
-                                                    tgt_lons);
-  }
+  h_weights_ = compute_tetralinear_interp_weights(coarse_grid, tgt_lats,
+                                                  tgt_lons);
 
   // Fetch all source grid dofs associated with our target points.
   std::vector<int> local_columns;
@@ -65,7 +62,7 @@ TetralinearInterpolator<Data>::init_from_file_(const std::string& data_file,
 }
 
 template <typename Data>
-void TetralinearInterpolator<Data>::
+void TetralinearInterp<Data>::
 do_time_interpolation_(Real time, Data& data) {
   // Find the bounding times.
   auto time_iter = std::lower_bound(times_.begin(), times_.end(), time);
@@ -88,7 +85,7 @@ do_time_interpolation_(Real time, Data& data) {
 }
 
 template <typename Data>
-void TetralinearInterpolator<Data>::
+void TetralinearInterp<Data>::
 do_vertical_interpolation_(const Data& src_data,
                            const VCoordView& tgt_vcoords,
                            Data& data) {
@@ -98,9 +95,9 @@ do_vertical_interpolation_(const Data& src_data,
 }
 
 template <typename Data>
-void TetralinearInterpolator<Data>::interpolate_(Real time,
-                                                 const VCoordView& vcoords,
-                                                 Data& data) {
+void TetralinearInterp<Data>::interpolate_(Real time,
+                                           const VCoordView& vcoords,
+                                           Data& data) {
   // Perform time interpolation.
   Data data_t = Traits::allocate(data_[0]);
   do_time_interpolation(time, data_t);
@@ -119,4 +116,4 @@ void TetralinearInterpolator<Data>::interpolate_(Real time,
 } // namespace interpolators
 } // namespace scream
 
-#endif // SCREAM_INTERPOLATORS_IMPL_HPP
+#endif // TETRALINEAR_INTERP_IMPL_HPP

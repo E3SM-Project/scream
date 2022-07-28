@@ -21,6 +21,8 @@ set(SHARE_SRC
   grid/point_grid.cpp
   grid/user_provided_grids_manager.cpp
   grid/remap/abstract_remapper.cpp
+  interp/coarse_se_grid.cpp
+  interp/tetralinear_interp.cpp
   property_checks/property_check.cpp
   property_checks/field_nan_check.cpp
   property_checks/field_within_interval_check.cpp

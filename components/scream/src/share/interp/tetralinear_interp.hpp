@@ -1,20 +1,17 @@
-#ifndef SCREAM_INTERPOLATORS_HPP
-#define SCREAM_INTERPOLATORS_HPP
+#ifndef TETRALINEAR_INTERP_HPP
+#define TETRALINEAR_INTERP_HPP
 
-#include <share/grid/point_grid.hpp>
-#include <share/grid/se_grid.hpp>
-#include <share/util/scream_interpolator_traits.hpp>
-
-#include <ekat/mpi/ekat_comm.hpp>
+#include <share/util/coarse_se_grid.hpp>
+#include <share/util/tetralinear_interp_traits.hpp>
 
 namespace scream {
 namespace interpolators {
 
 // Problems encountered with interpolators produce exceptions of this type.
-class InterpolationException: public std::exception {
+class InterpException: public std::exception {
 public:
   /// Constructs an exception containing the given descriptive message.
-  InterpolationException(const std::string& message) : _message(message) {}
+  InterpException(const std::string& message) : _message(message) {}
 
   const char* what() const throw() { return _message.c_str(); }
 
@@ -24,30 +21,31 @@ private:
 
 // This class implements 4D space-time interpolation from one set of columns at
 // fixed latitudes/longitudes to another set. The details of the interpolation
-// process are implemented by the traits class
-// TetralinearInterpolatorTraits<Data>, which can either be a generic
-// implementation relying on methods defined on types, or a specialization for
-// a type without those methods.
+// process are implemented by the traits class TetralinearInterpTraits<Data>,
+// which can either be a generic implementation relying on methods defined on
+// types, or a specialization for a type without those methods.
 template <typename Data>
-class TetralinearInterpolator {
+class TetralinearInterp {
 public:
-  using Traits     = TetralinearInterpolatorTraits<Data>;
+  using Traits     = TetralinearInterpTraits<Data>;
   using HCoordView = Traits::HCoordView;
   using VCoordView = Traits::VCoordView;
 
-  // Constructs a tetralinear (4D) lat-lon interpolator from data in the given
-  // file for the purpose of interpolating field data from the to the points
-  // defined by the given set of latitudes and longitudes. The data file should
-  // be a NetCDF4 file containing field data defined on a cubed-sphere grid
-  // (neXnpY). This constructor throws an exception if any error is encountered.
-  TetralinearInterpolator(const std::string& data_file,
-                          const HCoordView&  latitudes,
-                          const HCoordView&  longitudes) {
-    init_from_file_(comm, data_file, latitudes, longitudes);
+  // Constructs a tetralinear (4D) lat-lon-vert-time interpolator from data in
+  // the given file for the purpose of interpolating field data from a coarse
+  // cubed-sphere grid to a set of target points defined by the given latitudes
+  // and longitudes. The data file is a NetCDF4 file containing field data
+  // defined on a cubed-sphere grid with 2 gauss-legendre-lobatto points per
+  // element per horizontal dimension (neXnp2). This constructor throws an
+  // exception if any error is encountered.
+  TetralinearInterp(const std::string& data_file,
+                    const HCoordView&  latitudes,
+                    const HCoordView&  longitudes) {
+    init_from_file_(data_file, latitudes, longitudes);
   }
 
-  TetralinearInterpolator(const TetralinearInterpolator&) = default;
-  ~TetralinearInterpolator() = default;
+  TetralinearInterp(const TetralinearInterp&) = default;
+  ~TetralinearInterp() = default;
 
   // Call operator: interpolates field source data from the data file to
   // the given data at the given time and vertical coordinates.
@@ -56,8 +54,8 @@ public:
   }
 
   // Unsupported operations
-  TetralinearInterpolator() = delete;
-  TetralinearInterpolator& operator=(const TetralinearInterpolator&) = delete;
+  TetralinearInterp() = delete;
+  TetralinearInterp& operator=(const TetralinearInterp&) = delete;
 
 private:
 
@@ -88,18 +86,12 @@ private:
   TetralinearInterpWeightMap h_weights_;
 };
 
-// This type represents a coarse grid from which data is interpolated.
-struct CoarseGrid;
-
-// This function reads coarse grid data from the file with the given name.
-std::unique_ptr<CoarseGrid> read_coarse_grid(const std::string& filename);
-
 // This function maps each target lat/lon pair to its corresponding support in
 // the given spectral element grid. The support for a lat/lon pair is defined by
 // the set of 4 vertices for the quadrilateral cell/subcell bounding that pair
-// (see scream_interpolator_traits.hpp for details).
+// (see tetralinear_interp_traits.hpp for details).
 TetralinearInterpWeightMap
-compute_tetralinear_interp_weights(const CoarseGrid& coarse_grid,
+compute_tetralinear_interp_weights(const CoarseSEGrid& coarse_grid,
                                    const HostHCoordView& tgt_lats,
                                    const HostHCoordView& tgt_lons);
 
@@ -107,6 +99,6 @@ compute_tetralinear_interp_weights(const CoarseGrid& coarse_grid,
 
 } // namespace scream
 
-#endif // SCREAM_INTERPOLATORS_HPP
+#endif // TETRALINEAR_INTERP_HPP
 
-#include <share/util/scream_interpolators_impl.hpp>
+#include <share/util/tetralinear_interp_impl.hpp>

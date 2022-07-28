@@ -1,23 +1,22 @@
-#ifndef SCREAM_INTERPOLATOR_TRAITS_HPP
-#define SCREAM_INTERPOLATOR_TRAITS_HPP
+#ifndef TETRALINEAR_INTERP_TRAITS_HPP
+#define TETRALINEAR_INTERP_TRAITS_HPP
 
-// This file defines some types needed to support the linear interpolator
-// (LatLonLinInterpolator) in scream_interpolators.hpp. In particular, it
-// defines LatLonLinInterpolatorTraits, which associates a set of functions
-// with a type so that type can be interpolated linearly from one set of
-// columns at fixed latitude/longitude to another.
+// This file defines some types needed to support the TetralinearInterp type.
+// In particular, it defines TetralinearInterpTraits, which associates a set of
+// functions with a type so that type can be interpolated linearly from a coarse
+// cubed-sphere grid to a set of latitude/longitude target points.
 //
 // If you want to interpolate your own data type, you can add support for it
 // in either of two ways:
 //
-// 1. You can use the generic definition of LatLonLinInterpolatorTraits below
+// 1. You can use the generic definition of TetralinearInterpTraits below
 //    and define the methods it calls on your type.
 // 2. If you'd rather not modify your type to support linear interpolation, you
-//    can include this file and define a specialization of LatLonLinInterpolator
-//    for your type. Make sure you define this specialization (or at least
-//    declare it) before you include scream_interpolators.hpp, where the traits
-//    class is used in the implementation of the interpolator. Why?
-//    "Because C++."
+//    can include this file and define a specialization of
+//    TetralinearInterpTraits for your type. Make sure you define this
+//    specialization (or at least declare it) before you include
+//    tetralinear_interp.hpp, where the traits class is used in the
+//    implementation of the interpolator. Why? "Because C++."
 
 #include <share/scream_types.hpp>
 
@@ -64,12 +63,12 @@ using TetralinearInterpWeightMap =
 using HostTetralinearInterpWeightMap =
   Kokkos::UnorderedMap<int, TetralinearInterpWeights, HostDevice>;
 
-// TetralinearInterpolatorTraits -- traits to support tetralinear interpolation
+// TetralinearInterpoTraits -- traits to support tetralinear interpolation
 // from a set of source columns at fixed latitudes and longitudes to target data
 // on another set of columns. Specialize this type for your data class, or
 // implement the methods used in this generic implementation.
 template <typename Data>
-struct TetralinearInterpolatorTraits {
+struct TetralinearInterpTraits {
 
   // Returns a new Data with storage identical to the given prototype.
   static Data allocate_data(const Data& prototype) {
@@ -130,4 +129,4 @@ struct TetralinearInterpolatorTraits {
 } // namespace interpolators
 } // namespace scream
 
-#endif // SCREAM_INTERPOLATOR_TRAITS_HPP
+#endif // TETRALINEAR_INTERP_TRAITS_HPP
