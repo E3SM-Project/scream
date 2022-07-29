@@ -209,6 +209,22 @@ struct SPAFunctions
     const view_1d<gid_type>& dofs_gids,
           SPAHorizInterp&    spa_horiz_interp);
 
+  static void get_remap_indices(
+    const ekat::Comm&        mpi_comm,
+    const std::string&       remap_file_name,
+    const view_1d<gid_type>& dofs_gids,
+          std::vector<int>&  seg_dof,
+          std::vector<int>&  seg_start,
+          std::vector<int>&  seg_length);
+
+  static void consolidate_remap_indices(
+    const ekat::Comm&      mpi_comm,
+    const std::string&     remap_file_name,
+    const view_1d<gid_type>& dofs_gids,
+          std::vector<int> seg_dof,
+          std::vector<int> seg_start,
+          std::vector<int> seg_length);
+
   static void set_remap_weights_one_to_one(
     const Int                ncols_scream,
     gid_type                 min_dof,

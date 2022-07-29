@@ -744,6 +744,170 @@ linear_interp(const ScalarX& x0, const ScalarX& x1, const ScalarT& t)
   return (1 - t)*x0 + t*x1;
 }
 /*-----------------------------------------------------------------*/
+/* 
+ * This function will break the remap file data into a set of segments.
+ * Each segment will represent a single degree-of-freedom on the source
+ * mesh, which will start at location n in the contiguous 1-D array
+ * of mapping data and have a certain length.
+ * This approach follows the example used by the MCT coupler to handle
+ * large inter-component maps.
+ * ASSUMPTIONS:
+ * The remap data is cast as a 1-D array of source-to-target indices.
+ * The remap variable "col" represents the degree-of-freedom index for
+ * the source data.
+ * The remap variable "row" represents the degree-of-freedom index for
+ * the target data, i.e. the dof on the simulation grid.
+ * The remap variable "S" represents the weight associated with this
+ * map from source to target.
+ * All three of these variables have length "n_s", defined in the file.
+ * Not required, but it is assumed that the source indices are organized
+ * in such a way that the remapping wieghts for a specific source dof is
+ * contiguous in the 1-D array.
+ * GOAL:
+ * The goal of this function is to have each MPI rank process a chunk 
+ * of the remap data and organize it.
+ * Only the "row" variable is read, as we are focused on which segments
+ * of the remap data correspond to which degrees-of-freedom on the target
+ * grid.
+ * The three outputs are vectors of integers which define a specific
+ * segment.
+ *   seg_dof:    The source degree-of-freedom this segment maps to.
+ *   seg_start:  The starting element in the 1-D array of remap data for 
+ *               this segment.
+ *   seg_length: The number of remapping weights in this segment.
+ * -------------------------------
+ * A.S. Donahue (LLNL) July 29, 2022
+ */
+template<typename S, typename D>
+void SPAFunctions<S,D>::
+get_remap_indices(
+    const ekat::Comm&        comm,
+    const std::string&       remap_file_name,
+    const view_1d<gid_type>& dofs_gids,
+          std::vector<int>&  seg_dof,
+          std::vector<int>&  seg_start,
+          std::vector<int>&  seg_length)
+{
+  // At this point the input vectors should all be empty.  We enforce
+  // this by clearing them
+  seg_dof.clear();
+  seg_start.clear();
+  seg_length.clear();
+  // what is my rank
+  int my_rank = comm.rank();
+  // First step is to determine the chunk of remap data each rank will process
+  scorpio::register_file(remap_file_name,scorpio::Read);
+  const int total_length = scorpio::get_dimlen_c2f(remap_file_name.c_str(),"n_s");
+  const int num_of_ranks = comm.size();
+  // first pass and assigning size
+  int my_chunk_size = total_length/num_of_ranks;
+  // now fix case where total_length isn't evenly divisible by the comm size.
+  if (total_length != my_chunk_size*num_of_ranks) {
+    int remainder = total_length - (my_chunk_size*num_of_ranks);
+    //assign remainder of ranks an extra data point
+    if (comm.rank()<remainder) {
+      my_chunk_size+=1;
+    }
+  }
+  // now determine where my chunk of data starts in the data array
+  int* chunk_sizes_global = new int[num_of_ranks];
+  comm.all_gather(&my_chunk_size,chunk_sizes_global,1);
+  int my_start = 0;
+  for (int ii=0;ii<my_rank;ii++) {
+    my_start += chunk_sizes_global[ii];
+  }
+  { // Sanity check, sum all chunks and make sure it matches total_length
+    int check = 0;
+    for (int ii=0;ii<num_of_ranks;ii++) {
+      check += chunk_sizes_global[ii];
+    }
+    EKAT_REQUIRE_MSG(check==total_length,"ERROR: get_remap_indices - Something went wrong distributing remap data among the MPI ranks");
+  }
+  // Read in my chunk of data using EAMxx input interface
+  view_1d<Int>  row("row",my_chunk_size); 
+  auto row_h = Kokkos::create_mirror_view(row);
+  std::vector<std::string> vec_of_dims = {"n_s"};
+  std::string i_decomp = "Int-n_s";
+  scorpio::get_variable(remap_file_name, "row", "row", vec_of_dims.size(), vec_of_dims, PIO_INT, i_decomp);
+  std::vector<int> var_dof(my_chunk_size);
+  std::iota(var_dof.begin(),var_dof.end(),my_start);
+  scorpio::set_dof(remap_file_name,"row",var_dof.size(),var_dof.data());
+  scorpio::set_decomp(remap_file_name);
+  scorpio::grid_read_data_array(remap_file_name,"row",0,row_h.data()); 
+  scorpio::eam_pio_closefile(remap_file_name);
+  // Now that I have my data, start constructing segments:
+  seg_dof.push_back(row_h(0));
+  seg_start.push_back(my_start);
+  seg_length.push_back(1);
+  for (int ii=1;ii<my_chunk_size;ii++) {
+    if (row_h(ii)==seg_dof.back()) {
+      // Then we expand the segment by 1
+      seg_length.back() ++;
+    } else {
+      // Otherwise it is time to start a new segment
+      seg_dof.push_back(row_h(ii));
+      seg_start.push_back(my_start+ii);
+      seg_length.push_back(1);
+    }
+  }
+  // Special case, if number of ranks = 1 then we don't need to do anything else:
+  if (num_of_ranks==1) {
+    return;
+  }
+  // Now every rank passes this information to all other ranks
+  // Get counts from all ranks
+  int  num_of_segs          = seg_dof.size(); // count for passing
+  int* num_of_segs_per_rank = new int[num_of_ranks]; // counts for root to recieve
+  int* seg_disp             = new int[num_of_ranks]; // displacements
+  int  total_num_segs       = 0;
+  comm.all_gather(&num_of_segs,num_of_segs_per_rank,1);
+  seg_disp[0] = 0;
+  total_num_segs = num_of_segs_per_rank[0];
+  for (int ii=1;ii<num_of_ranks;ii++) {
+    seg_disp[ii]    = seg_disp[ii-1] + num_of_segs_per_rank[ii-1];
+    total_num_segs += num_of_segs_per_rank[ii];
+  }
+  int* buff_dof = (int*)calloc(total_num_segs, sizeof(int));
+  int* buff_srt = (int*)calloc(total_num_segs, sizeof(int));
+  int* buff_len = (int*)calloc(total_num_segs, sizeof(int));
+  MPI_Allgatherv(seg_dof.data(),total_num_segs,MPI_INT,buff_dof,num_of_segs_per_rank,seg_disp,MPI_INT,comm.mpi_comm());
+  MPI_Allgatherv(seg_start.data(),total_num_segs,MPI_INT,buff_srt,num_of_segs_per_rank,seg_disp,MPI_INT,comm.mpi_comm());
+  MPI_Allgatherv(seg_length.data(),total_num_segs,MPI_INT,buff_len,num_of_segs_per_rank,seg_disp,MPI_INT,comm.mpi_comm());
+  // Now that all ranks have all segments, take only the segments this rank cares about.
+  // First we clear the output again and repopulate the them with the correct segments.
+  seg_dof.clear();
+  seg_start.clear();
+  seg_length.clear();
+  for (int ii=0;ii<total_num_segs;ii++) {
+    // Search dof's to see if this segment is related to this rank
+    // TODO, could probably do this search with a Kokkos parallel_reduce.
+    for (int jj=0; jj<dofs_gids.extent(0);jj++) {
+      if (dofs_gids[jj] == buff_dof[ii]) {
+        seg_dof.push_back   (buff_dof[ii]);
+        seg_start.push_back (buff_srt[ii]);
+        seg_length.push_back(buff_len[ii]);
+        break;
+      }
+    }
+  }
+  
+
+}
+/*-----------------------------------------------------------------*/
+template<typename S, typename D>
+void SPAFunctions<S,D>::
+consolidate_remap_indices(
+    const ekat::Comm&      mpi_comm,
+    const std::string&     remap_file_name,
+    const view_1d<gid_type>& dofs_gids,
+          std::vector<int> seg_dof,
+          std::vector<int> seg_start,
+          std::vector<int> seg_length)
+{
+  // Do Nothing
+}
+
+/*-----------------------------------------------------------------*/
 
 } // namespace spa
 } // namespace scream
