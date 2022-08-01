@@ -201,6 +201,16 @@ struct SPAFunctions
     const SPAInput&   data_end,
     const SPAInput&   data_tmp,         // Temporary
     const SPAOutput&  data_out);
+  static void get_remap_weights_from_file(
+    const std::string&       remap_file_name,
+    const Int                ncols_scream,
+    gid_type                 min_dof,
+    const view_1d<gid_type>& dofs_gids,
+          SPAHorizInterp&    spa_horiz_interp,
+          std::vector<int>&  seg_dof,
+          std::vector<int>&  seg_start,
+          std::vector<int>&  seg_length);
+
 
   static void get_remap_weights_from_file(
     const std::string&       remap_file_name,

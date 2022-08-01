@@ -331,13 +331,90 @@ void SPAFunctions<S,D>
     const Int                ncols_scream,
     gid_type                 min_dof,
     const view_1d<gid_type>& dofs_gids,
+          SPAHorizInterp&    spa_horiz_interp,
+          std::vector<int>&  seg_dof,
+          std::vector<int>&  seg_start,
+          std::vector<int>&  seg_length
+  )
+{
+  // Make sure the segment vector all match
+  const int num_of_segs = seg_dof.size();
+  REQUIRE(seg_start.size() == num_of_segs);
+  REQUIRE(seg_length.size() == num_of_segs);
+  // Using seg_start and seg_length, build the degree's of freedom to read
+  // data from the remap file.
+  std::vector<int> var_dof;
+  for (int seg=0;seg<num_of_segs;seg++) {
+    for (int ii=0;ii<seg_length[seg];ii++) {
+      var_dof.push_back(seg_start[seg]+ii);
+    }
+  }
+  spa_horiz_interp.length          = var_dof.size();
+  spa_horiz_interp.weights         = view_1d<Real>("", spa_horiz_interp.length);
+  spa_horiz_interp.source_grid_loc = view_1d<Int>("",  spa_horiz_interp.length);
+  spa_horiz_interp.target_grid_loc = view_1d<Int>("",  spa_horiz_interp.length);
+ 
+  // Setup input variables 
+  // Open input file: 
+  scorpio::register_file(remap_file_name,scorpio::Read);
+  spa_horiz_interp.source_grid_ncols = scorpio::get_dimlen_c2f(remap_file_name.c_str(),"n_a");
+  // Construct local arrays to read data into
+  view_1d<Real> S_global("weights",spa_horiz_interp.length);
+  view_1d<Int>  row_global("row",spa_horiz_interp.length); 
+  view_1d<Int>  col_global("col",spa_horiz_interp.length); 
+  auto S_global_h   = Kokkos::create_mirror_view(S_global);
+  auto col_global_h = Kokkos::create_mirror_view(col_global); // Note, in remap files col -> row (src -> tgt)
+  auto row_global_h = Kokkos::create_mirror_view(row_global);
+  // Setup the scorpio structures needed for input
+  // Register variables for input
+  std::vector<std::string> vec_of_dims = {"n_s"};
+  std::string r_decomp = "Real-n_s";
+  std::string i_decomp = "Int-n_s";
+  scorpio::get_variable(remap_file_name, "S", "S", vec_of_dims.size(), vec_of_dims, PIO_REAL, r_decomp);
+  scorpio::get_variable(remap_file_name, "row", "row", vec_of_dims.size(), vec_of_dims, PIO_INT, i_decomp);
+  scorpio::get_variable(remap_file_name, "col", "col", vec_of_dims.size(), vec_of_dims, PIO_INT, i_decomp);
+  // Set the dof's to read in variables, since we will have all mpi ranks read in the full set of data the dof's are the whole array
+  scorpio::set_dof(remap_file_name,"S",var_dof.size(),var_dof.data());
+  scorpio::set_dof(remap_file_name,"row",var_dof.size(),var_dof.data());
+  scorpio::set_dof(remap_file_name,"col",var_dof.size(),var_dof.data());
+  scorpio::set_decomp(remap_file_name);
+  // Now read all of the input
+  scorpio::grid_read_data_array(remap_file_name,"S",0,  S_global_h.data()  ); 
+  scorpio::grid_read_data_array(remap_file_name,"row",0,row_global_h.data()); 
+  scorpio::grid_read_data_array(remap_file_name,"col",0,col_global_h.data()); 
+  // Finished, close the file
+  scorpio::eam_pio_closefile(remap_file_name);
+  // Shift all index values by 1 to convert to C++ 0-based format
+  Kokkos::parallel_for("", var_dof.size(), [&] (const int&ii) {
+    col_global_h(ii) -= 1;
+    row_global_h(ii) -= 1;
+  });
+  // Copy data over to the spa steructure.
+  Kokkos::deep_copy(spa_horiz_interp.weights        , S_global_h  );
+  Kokkos::deep_copy(spa_horiz_interp.source_grid_loc, col_global_h);
+  Kokkos::deep_copy(spa_horiz_interp.target_grid_loc, row_global_h);
+  // Determine the set of unique columns in this remapping
+  spa_horiz_interp.set_unique_cols();
+
+
+} // end function get_remap_weights_from_file
+/*-----------------------------------------------------------------*/
+// Function to read the weights for conducting horizontal remapping
+// from a file.
+template <typename S, typename D>
+void SPAFunctions<S,D>
+::get_remap_weights_from_file(
+    const std::string&       remap_file_name,
+    const Int                ncols_scream,
+    gid_type                 min_dof,
+    const view_1d<gid_type>& dofs_gids,
           SPAHorizInterp&    spa_horiz_interp
   )
 {
   // Note, the remap file doesn't follow a conventional grid setup so
   // here we manually go through all of the input steps rather than
   // use the scorpio_input class.
-
+  
   // Open input file: 
   scorpio::register_file(remap_file_name,scorpio::Read);
 
@@ -836,16 +913,16 @@ get_remap_indices(
   scorpio::grid_read_data_array(remap_file_name,"row",0,row_h.data()); 
   scorpio::eam_pio_closefile(remap_file_name);
   // Now that I have my data, start constructing segments:
-  seg_dof.push_back(row_h(0));
+  seg_dof.push_back(row_h(0)-1);
   seg_start.push_back(my_start);
   seg_length.push_back(1);
   for (int ii=1;ii<my_chunk_size;ii++) {
-    if (row_h(ii)==seg_dof.back()) {
+    if (row_h(ii)-1==seg_dof.back()) {
       // Then we expand the segment by 1
       seg_length.back() ++;
     } else {
       // Otherwise it is time to start a new segment
-      seg_dof.push_back(row_h(ii));
+      seg_dof.push_back(row_h(ii)-1);  // Convert the segment dof to 0-based to match C++ convention
       seg_start.push_back(my_start+ii);
       seg_length.push_back(1);
     }
@@ -870,27 +947,37 @@ get_remap_indices(
   int* buff_dof = (int*)calloc(total_num_segs, sizeof(int));
   int* buff_srt = (int*)calloc(total_num_segs, sizeof(int));
   int* buff_len = (int*)calloc(total_num_segs, sizeof(int));
-  MPI_Allgatherv(seg_dof.data(),total_num_segs,MPI_INT,buff_dof,num_of_segs_per_rank,seg_disp,MPI_INT,comm.mpi_comm());
-  MPI_Allgatherv(seg_start.data(),total_num_segs,MPI_INT,buff_srt,num_of_segs_per_rank,seg_disp,MPI_INT,comm.mpi_comm());
-  MPI_Allgatherv(seg_length.data(),total_num_segs,MPI_INT,buff_len,num_of_segs_per_rank,seg_disp,MPI_INT,comm.mpi_comm());
+  MPI_Allgatherv(seg_dof.data(),   num_of_segs, MPI_INT, buff_dof, num_of_segs_per_rank, seg_disp, MPI_INT,comm.mpi_comm());
+  MPI_Allgatherv(seg_start.data(), num_of_segs, MPI_INT, buff_srt, num_of_segs_per_rank, seg_disp, MPI_INT,comm.mpi_comm());
+  MPI_Allgatherv(seg_length.data(),num_of_segs, MPI_INT, buff_len, num_of_segs_per_rank, seg_disp, MPI_INT,comm.mpi_comm());
+  MPI_Barrier(comm.mpi_comm());
   // Now that all ranks have all segments, take only the segments this rank cares about.
   // First we clear the output again and repopulate the them with the correct segments.
   seg_dof.clear();
   seg_start.clear();
   seg_length.clear();
+  int total_length_per_rank = 0;
   for (int ii=0;ii<total_num_segs;ii++) {
     // Search dof's to see if this segment is related to this rank
     // TODO, could probably do this search with a Kokkos parallel_reduce.
     for (int jj=0; jj<dofs_gids.extent(0);jj++) {
-      if (dofs_gids[jj] == buff_dof[ii]) {
+      if (dofs_gids(jj) == buff_dof[ii]) {
         seg_dof.push_back   (buff_dof[ii]);
         seg_start.push_back (buff_srt[ii]);
         seg_length.push_back(buff_len[ii]);
+        total_length_per_rank += buff_len[ii];
         break;
       }
     }
   }
-  
+  // Sanity check that the sum of of the total length of data on each rank matches the
+  // total overall length.
+  {
+    int total_length_all_ranks;
+    comm.all_reduce(&total_length_per_rank,&total_length_all_ranks,1,MPI_SUM);
+    EKAT_REQUIRE_MSG(total_length_all_ranks == total_length, "ERROR: Something went wrong reading indices from the remap file " + remap_file_name + ".\n"
+                              + "        Combined ranks have " + std::to_string(total_length_all_ranks) + " vs. " + std::to_string(total_length) + " on file.");
+  }
 
 }
 /*-----------------------------------------------------------------*/

@@ -53,15 +53,34 @@ TEST_CASE("spa_read_remap_data","spa")
   spa_comm.all_reduce(&tgt_grid_ncols,&test_total_ncols,1,MPI_SUM);
   REQUIRE(test_total_ncols == tgt_grid_ncols_total);
 
-  // Test get_remap_indices
+  //=======================  Test get_remap_indices =======================//
   std::vector<int> seg_dof, seg_start, seg_length;
   SPAFunc::get_remap_indices(spa_comm,remap_file_name,dofs_gids,seg_dof,seg_start,seg_length);
+  // Check that all segments on this rank match the DOF's on this rank:
+  for (int ii=0;ii<seg_dof.size();ii++) {
+    bool match = false;
+    int tgt_col = seg_dof[ii];
+    for (int jj=0;jj<tgt_grid_ncols;jj++) {
+      if (dofs_gids(jj)==tgt_col) {
+        match = true; 
+        break;
+      }
+    }
+    REQUIRE(match);
+  }
+//ASD  SPAFunc::get_remap_weights_from_file(remap_file_name,tgt_grid_ncols_total,0,dofs_gids,spa_horiz_interp,seg_dof,seg_start,seg_length);
+//ASD  {
+//ASD    // Check that the total size of data matches the amount that is in the file
+//ASD    int total_length;
+//ASD    spa_comm.all_reduce(&spa_horiz_interp.length,&total_length,1,MPI_SUM);
+//ASD    scorpio::register_file(remap_file_name,scorpio::Read);
+//ASD    int true_length = scorpio::get_dimlen_c2f(remap_file_name.c_str(),"n_s");
+//ASD    scorpio::eam_pio_closefile(remap_file_name);
+//ASD    REQUIRE(total_length==true_length);
+//ASD  }
 
   SPAFunc::get_remap_weights_from_file(remap_file_name,tgt_grid_ncols_total,0,dofs_gids,spa_horiz_interp);
-  // Make sure one_to_one remap has the correct unique columns
-  REQUIRE(spa_horiz_interp.num_unique_cols==src_grid_ncols);
 
-  REQUIRE(spa_horiz_interp.length==tgt_grid_ncols*src_grid_ncols);
   REQUIRE(spa_horiz_interp.source_grid_ncols==src_grid_ncols);
 
   // We have a few metrics to ensure that the data read from file matches the data in the file.
@@ -73,6 +92,7 @@ TEST_CASE("spa_read_remap_data","spa")
   Kokkos::deep_copy(weights_h,spa_horiz_interp.weights);
   auto target_h = Kokkos::create_mirror_view(spa_horiz_interp.target_grid_loc);
   Kokkos::deep_copy(target_h,spa_horiz_interp.target_grid_loc);
+
   for (int i=0; i<spa_horiz_interp.length; i++) {
     wgts(target_h[i]) += weights_h[i];
   }
