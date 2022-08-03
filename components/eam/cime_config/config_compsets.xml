@@ -151,6 +151,11 @@
   </compset>
 
   <compset>
+    <alias>FSSP585-SCREAM-HR</alias>
+    <lname>SSP585_EAM%SCREAM-HR_ELM45%SPBC_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
     <alias>F2010-SCREAM-LR-DYAMOND1</alias>
     <lname>2010_EAM%SCREAM-LR-DYAMOND1_ELM45%SPBC_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
@@ -257,6 +262,7 @@
         <value  compset="7905_EAM">1979-01-01</value>
         <value  compset="5505_EAM">1955-01-01</value>
         <value  compset="RCP[2468]_EAM\d+">2005-01-01</value>
+        <value  compset="SSP585_EAM\d+">2005-01-01</value>
         <value  compset="C2R[68]_EAM">1950-01-01</value>
         <value  compset="C2R4_EAM">2004-01-01</value>
         <value  compset="ARM95_EAM">1995-07-18</value>

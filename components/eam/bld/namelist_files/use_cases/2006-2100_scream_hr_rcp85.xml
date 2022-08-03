@@ -121,7 +121,7 @@
 <linoz_data_type            >CYCLICAL</linoz_data_type>
 
 <!-- sim_year used for CLM datasets and SST forcings -->
-<sim_year>2010</sim_year>
+<sim_year>1850-2010</sim_year>
 
 <!-- Land datasets set in components/clm/bld/namelist_files/use_cases/1850_CMIP6_control.xml -->
 
