@@ -92,8 +92,8 @@ private:
 // (see tetralinear_interp_traits.hpp for details).
 TetralinearInterpWeightMap
 compute_tetralinear_interp_weights(const CoarseSEGrid& coarse_grid,
-                                   const HostHCoordView& tgt_lats,
-                                   const HostHCoordView& tgt_lons);
+                                   const HostHCoordView& tgt_lons,
+                                   const HostHCoordView& tgt_lats);
 
 } // namespace interpolators
 
