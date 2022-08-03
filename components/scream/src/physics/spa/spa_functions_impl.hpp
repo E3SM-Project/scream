@@ -310,14 +310,8 @@ void SPAFunctions<S,D>
   spa_horiz_interp.source_grid_loc   = view_1d<gid_type> ("",spa_horiz_interp.length);
   spa_horiz_interp.target_grid_loc   = view_1d<gid_type> ("",spa_horiz_interp.length);
   Kokkos::deep_copy(spa_horiz_interp.weights,1.0);
-  Kokkos::parallel_for("", num_local_cols, KOKKOS_LAMBDA(const int& ii) {
-    spa_horiz_interp.target_grid_loc(ii) = ii;
-    // Note we are interested in the vector index, not the actual global-id 
-    // Here we want the index in a the source data vector corresponding to this column
-    // which needs to be offset by the minimum degree of freedom in the whole grid.
-    // That way the first global-id will map to the 0th entry in the source grid data.
-    spa_horiz_interp.source_grid_loc(ii) = dofs_gids(ii) - min_dof;
-  });
+  Kokkos::deep_copy(spa_horiz_interp.target_grid_loc,dofs_gids);
+  Kokkos::deep_copy(spa_horiz_interp.source_grid_loc,dofs_gids);
   // Determine the set of unique columns in this remapping
   spa_horiz_interp.set_unique_cols();
 } // END set_remap_weights_one_to_one
@@ -328,9 +322,6 @@ template <typename S, typename D>
 void SPAFunctions<S,D>
 ::get_remap_weights_from_file(
     const std::string&       remap_file_name,
-    const Int                ncols_scream,
-    gid_type                 min_dof,
-    const view_1d<gid_type>& dofs_gids,
           SPAHorizInterp&    spa_horiz_interp,
           std::vector<int>&  seg_dof,
           std::vector<int>&  seg_start,
@@ -389,7 +380,7 @@ void SPAFunctions<S,D>
     col_global_h(ii) -= 1;
     row_global_h(ii) -= 1;
   });
-  // Copy data over to the spa steructure.
+  // Copy data over to the spa structure.
   Kokkos::deep_copy(spa_horiz_interp.weights        , S_global_h  );
   Kokkos::deep_copy(spa_horiz_interp.source_grid_loc, col_global_h);
   Kokkos::deep_copy(spa_horiz_interp.target_grid_loc, row_global_h);
@@ -689,8 +680,9 @@ void SPAFunctions<S,D>
     auto src_wgt = weights_h(idx);
     int  src_col = spa_horiz_interp.source_local_col_map[source_grid_loc_h(idx)];
     int  tgt_col = target_grid_loc_h(idx);
+    int  tgt_col_idx = spa_horiz_interp.dofs_index[tgt_col]; 
     // PS is defined only over columns
-    ps_h(tgt_col) += PS_v_h(src_col)*src_wgt;
+    ps_h(tgt_col_idx) += PS_v_h(src_col)*src_wgt;
     // CCN3 and all AER variables have levels
     for (int kk=0; kk<source_data_nlevs; kk++) {
       // Note, all variables we map to are packed, while all the data we just loaded as
@@ -702,27 +694,27 @@ void SPAFunctions<S,D>
       //   Y[N+2] = y[N-1], N = source_data_nlevs
       int pack = (kk+1) / Spack::n; 
       int kidx = (kk+1) % Spack::n;
-      ccn3_h(tgt_col,pack)[kidx] += CCN3_v_h(src_col,kk)*src_wgt;
+      ccn3_h(tgt_col_idx,pack)[kidx] += CCN3_v_h(src_col,kk)*src_wgt;
       for (int n=0; n<nswbands; n++) {
-        aer_g_sw_h(tgt_col,n,pack)[kidx]   += AER_G_SW_v_h(src_col,n,kk)*src_wgt;
-        aer_ssa_sw_h(tgt_col,n,pack)[kidx] += AER_SSA_SW_v_h(src_col,n,kk)*src_wgt;
-        aer_tau_sw_h(tgt_col,n,pack)[kidx] += AER_TAU_SW_v_h(src_col,n,kk)*src_wgt;
+        aer_g_sw_h(tgt_col_idx,n,pack)[kidx]   += AER_G_SW_v_h(src_col,n,kk)*src_wgt;
+        aer_ssa_sw_h(tgt_col_idx,n,pack)[kidx] += AER_SSA_SW_v_h(src_col,n,kk)*src_wgt;
+        aer_tau_sw_h(tgt_col_idx,n,pack)[kidx] += AER_TAU_SW_v_h(src_col,n,kk)*src_wgt;
       }
       for (int n=0; n<nlwbands; n++) {
-        aer_tau_lw_h(tgt_col,n,pack)[kidx] += AER_TAU_LW_v_h(src_col,n,kk)*src_wgt;
+        aer_tau_lw_h(tgt_col_idx,n,pack)[kidx] += AER_TAU_LW_v_h(src_col,n,kk)*src_wgt;
       }
     }
     int kk = source_data_nlevs-1;
     int pack = (kk+2) / Spack::n; 
     int kidx = (kk+2) % Spack::n;
-    ccn3_h(tgt_col,pack)[kidx] += CCN3_v_h(src_col,kk)*src_wgt;
+    ccn3_h(tgt_col_idx,pack)[kidx] += CCN3_v_h(src_col,kk)*src_wgt;
     for (int n=0; n<nswbands; n++) {
-      aer_g_sw_h(tgt_col,n,pack)[kidx]   += AER_G_SW_v_h(src_col,n,kk)*src_wgt;
-      aer_ssa_sw_h(tgt_col,n,pack)[kidx] += AER_SSA_SW_v_h(src_col,n,kk)*src_wgt;
-      aer_tau_sw_h(tgt_col,n,pack)[kidx] += AER_TAU_SW_v_h(src_col,n,kk)*src_wgt;
+      aer_g_sw_h(tgt_col_idx,n,pack)[kidx]   += AER_G_SW_v_h(src_col,n,kk)*src_wgt;
+      aer_ssa_sw_h(tgt_col_idx,n,pack)[kidx] += AER_SSA_SW_v_h(src_col,n,kk)*src_wgt;
+      aer_tau_sw_h(tgt_col_idx,n,pack)[kidx] += AER_TAU_SW_v_h(src_col,n,kk)*src_wgt;
     }
     for (int n=0; n<nlwbands; n++) {
-      aer_tau_lw_h(tgt_col,n,pack)[kidx] += AER_TAU_LW_v_h(src_col,n,kk)*src_wgt;
+      aer_tau_lw_h(tgt_col_idx,n,pack)[kidx] += AER_TAU_LW_v_h(src_col,n,kk)*src_wgt;
     }
   }
   // We also need to pad the hyam and hybm views with
@@ -956,6 +948,7 @@ get_remap_indices(
   seg_dof.clear();
   seg_start.clear();
   seg_length.clear();
+  num_of_segs = 0;
   int total_length_per_rank = 0;
   for (int ii=0;ii<total_num_segs;ii++) {
     // Search dof's to see if this segment is related to this rank
@@ -966,6 +959,7 @@ get_remap_indices(
         seg_start.push_back (buff_srt[ii]);
         seg_length.push_back(buff_len[ii]);
         total_length_per_rank += buff_len[ii];
+        num_of_segs ++;
         break;
       }
     }
@@ -980,20 +974,6 @@ get_remap_indices(
   }
 
 }
-/*-----------------------------------------------------------------*/
-template<typename S, typename D>
-void SPAFunctions<S,D>::
-consolidate_remap_indices(
-    const ekat::Comm&      mpi_comm,
-    const std::string&     remap_file_name,
-    const view_1d<gid_type>& dofs_gids,
-          std::vector<int> seg_dof,
-          std::vector<int> seg_start,
-          std::vector<int> seg_length)
-{
-  // Do Nothing
-}
-
 /*-----------------------------------------------------------------*/
 
 } // namespace spa

@@ -49,7 +49,7 @@ TEST_CASE("spa_read_data","spa")
 
   int my_ncols = ncols/comm_size + (comm_rank < ncols%comm_size ? 1 : 0);
   view_1d<gid_type> dofs_gids("",my_ncols);
-  gid_type min_dof = 1; // Start global-ids from 1
+  gid_type min_dof = 0; 
   Kokkos::parallel_for("", my_ncols, KOKKOS_LAMBDA(const int& ii) {
     dofs_gids(ii) = min_dof + static_cast<gid_type>(comm_rank + ii*comm_size);
   });
@@ -61,7 +61,10 @@ TEST_CASE("spa_read_data","spa")
   // Set up the set of SPA structures needed to run the test
   SPAFunc::SPAHorizInterp spa_horiz_interp;
   spa_horiz_interp.m_comm = spa_comm;
-  SPAFunc::get_remap_weights_from_file(spa_remap_file,ncols,min_dof,dofs_gids,spa_horiz_interp);
+  spa_horiz_interp.set_dof_map(dofs_gids);
+  std::vector<int> seg_dof, seg_start, seg_length;
+  SPAFunc::get_remap_indices(spa_comm,spa_remap_file,dofs_gids,seg_dof,seg_start,seg_length);
+  SPAFunc::get_remap_weights_from_file(spa_remap_file,spa_horiz_interp,seg_dof,seg_start,seg_length);
   // Recall, SPA data is padded, so we initialize with 2 more levels than the source data file.
   SPAFunc::SPAInput spa_data(dofs_gids.size(), nlevs+2, nswbands, nlwbands);
 
@@ -115,11 +118,17 @@ TEST_CASE("spa_read_data","spa")
 } // run_property
 
 // Some helper functions for the require statements:
+
+Real wgt_func(const Int i)
+{
+  return 1.0 / std::pow(2.0,i);
+}
+
 Real ps_func(const Int t, const Int ncols)
 {
   Real ps = 0.0;
   for (int i=1;i<=ncols;i++) {
-    Real wgt = 1.0 / std::pow(2.0,i);
+    Real wgt = wgt_func(i);
     if (i == ncols) { wgt *= 2.0; }
     ps += (t+1) * i*100.0 * wgt;
   }
@@ -130,7 +139,7 @@ Real ccn3_func(const Int t, const Int klev, const Int ncols)
 {
   Real ccn3 = 0.0;
   for (int i=1;i<=ncols;i++) {
-    Real wgt = 1.0 / std::pow(2.0,i);
+    Real wgt = wgt_func(i);
     if (i == ncols) {wgt *= 2.0;}
     ccn3 += wgt * (klev*1.0 + t*10.0 + i*100.0);
   }
@@ -141,7 +150,7 @@ Real aer_func(const Int t, const Int bnd, const Int klev, const Int ncols, const
 {
   Real aer_out = 0.0;
   for (int i=1;i<=ncols;i++) {
-    Real wgt = 1.0 / std::pow(2.0,i);
+    Real wgt = wgt_func(i);
     if (i == ncols) {wgt *= 2.0;}
     if (mode==0) {  // G
       aer_out += wgt * t;

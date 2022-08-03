@@ -170,9 +170,18 @@ struct SPAFunctions
     view_1d<Int> source_grid_loc;
     // 1D index of target grid column.
     view_1d<Int> target_grid_loc;
+    // map of global column dof to of local column index.
+    std::map<gid_type,int> dofs_index;
     // Organize unique source grid columns
     Int               num_unique_cols;
     std::map<Int,Int> source_local_col_map;
+
+    // Helper function to organize map of GIDs to local index
+    void set_dof_map(const view_1d<gid_type>& dofs_gids) {
+      for (int dof_i=0; dof_i<dofs_gids.extent(0);dof_i++) {
+        dofs_index.emplace(dofs_gids(dof_i),dof_i);
+      }
+    }
 
     //  Helper function to organize the set of unique source data columns
     void set_unique_cols()
@@ -203,9 +212,6 @@ struct SPAFunctions
     const SPAOutput&  data_out);
   static void get_remap_weights_from_file(
     const std::string&       remap_file_name,
-    const Int                ncols_scream,
-    gid_type                 min_dof,
-    const view_1d<gid_type>& dofs_gids,
           SPAHorizInterp&    spa_horiz_interp,
           std::vector<int>&  seg_dof,
           std::vector<int>&  seg_start,
@@ -226,14 +232,6 @@ struct SPAFunctions
           std::vector<int>&  seg_dof,
           std::vector<int>&  seg_start,
           std::vector<int>&  seg_length);
-
-  static void consolidate_remap_indices(
-    const ekat::Comm&      mpi_comm,
-    const std::string&     remap_file_name,
-    const view_1d<gid_type>& dofs_gids,
-          std::vector<int> seg_dof,
-          std::vector<int> seg_start,
-          std::vector<int> seg_length);
 
   static void set_remap_weights_one_to_one(
     const Int                ncols_scream,

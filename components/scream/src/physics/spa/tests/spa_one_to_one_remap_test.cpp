@@ -35,7 +35,7 @@ TEST_CASE("spa_one_to_one_remap","spa")
   MPI_Fint fcomm = MPI_Comm_c2f(spa_comm.mpi_comm());  // MPI communicator group used for I/O.  In our simple test we use MPI_COMM_WORLD, however a subset could be used.
   scorpio::eam_init_pio_subsystem(fcomm);   // Gather the initial PIO subsystem data creater by component coupler
 
-  std::string spa_data_file = SCREAM_DATA_DIR "/init/spa_data_for_testing.nc";
+  std::string spa_data_file = SCREAM_DATA_DIR "/init/spa_data_for_testing_20220801.nc";
 
   Int max_time = 3;
   Int ncols    = 20;
@@ -63,6 +63,7 @@ TEST_CASE("spa_one_to_one_remap","spa")
   // Set up the set of SPA structures needed to run the test
   SPAFunc::SPAHorizInterp spa_horiz_interp;
   spa_horiz_interp.m_comm = spa_comm;
+  spa_horiz_interp.set_dof_map(dofs_gids);
   SPAFunc::set_remap_weights_one_to_one(ncols,min_dof,dofs_gids,spa_horiz_interp);
   // Make sure one_to_one remap has the correct unique columns
   REQUIRE(spa_horiz_interp.num_unique_cols==my_ncols);
@@ -72,8 +73,8 @@ TEST_CASE("spa_one_to_one_remap","spa")
   // Check that the horizontal interpolation data is in fact a 1-1 mapping
   Kokkos::parallel_for("", spa_horiz_interp.length, KOKKOS_LAMBDA(const int& ii) {
     EKAT_KERNEL_ASSERT(spa_horiz_interp.weights(ii)==1.0);
-    EKAT_KERNEL_ASSERT(spa_horiz_interp.source_grid_loc(ii)==dofs_gids(ii)-min_dof);
-    EKAT_KERNEL_ASSERT(spa_horiz_interp.target_grid_loc(ii)==ii);
+    EKAT_KERNEL_ASSERT(spa_horiz_interp.source_grid_loc(ii)==dofs_gids(ii));
+    EKAT_KERNEL_ASSERT(spa_horiz_interp.target_grid_loc(ii)==dofs_gids(ii));
   });
 
   // Verify that the interpolated values match the algorithm for the data and the weights.
