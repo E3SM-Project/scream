@@ -635,7 +635,7 @@
         <command name="rm">zlib</command>
         <command name="rm">craype-hugepages2M</command>
         <command name="rm">darshan</command>
-        
+
         <!-- first load basic defaults, then remove/swap/load as necessary -->
         <command name="load">craype</command>
         <command name="load">PrgEnv-intel</command>
@@ -782,7 +782,7 @@
         <command name="rm">zlib</command>
         <command name="rm">craype-hugepages2M</command>
         <command name="rm">darshan</command>
-        
+
         <!-- first load basic defaults, then remove/swap/load as necessary -->
         <command name="load">craype</command>
         <command name="load">PrgEnv-intel</command>
@@ -1910,7 +1910,7 @@
       <executable>srun</executable>
       <arguments>
         <arg name="num_tasks">--mpi=pmi2 -l -n {{ total_tasks }} -N {{ num_nodes }} --kill-on-bad-exit </arg>
-        <arg name="binding"> $SHELL{if [ 64 -ge `./xmlquery --value MAX_MPITASKS_PER_NODE` ]; then echo "--cpu_bind=cores"; else echo "--cpu_bind=threads";fi;} </arg>	
+        <arg name="binding"> $SHELL{if [ 64 -ge `./xmlquery --value MAX_MPITASKS_PER_NODE` ]; then echo "--cpu_bind=cores"; else echo "--cpu_bind=threads";fi;} </arg>
         <arg name="thread_count">-c $SHELL{echo 128/ {{ tasks_per_node }} |bc}</arg>
         <arg name="placement">-m plane={{ tasks_per_node }}</arg>
       </arguments>
@@ -2843,7 +2843,7 @@
     <BASELINE_ROOT>/compyfs/e3sm_baselines/$COMPILER</BASELINE_ROOT>
     <CCSM_CPRNC>/compyfs/e3sm_baselines/cprnc/cprnc</CCSM_CPRNC>
     <GMAKE_J>8</GMAKE_J>
-    <TESTS>e3sm_integration</TESTS>	  
+    <TESTS>e3sm_integration</TESTS>
     <NTEST_PARALLEL_JOBS>4</NTEST_PARALLEL_JOBS>
     <BATCH_SYSTEM>slurm</BATCH_SYSTEM>
     <SUPPORTED_BY>bibi.mathew -at- pnnl.gov</SUPPORTED_BY>
@@ -2901,7 +2901,7 @@
       </modules>
       <modules mpilib="impi" compiler="pgi">
 	<command name="load">intelmpi/2019u3</command>
-      </modules>      
+      </modules>
       <modules>
         <command name="load">netcdf/4.6.3</command>
         <command name="load">pnetcdf/1.9.0</command>
@@ -3388,7 +3388,7 @@
       <arguments>
         <arg name="num_tasks">-np {{ total_tasks }}</arg>
       </arguments>
-      
+
     </mpirun>
     <module_system type="module">
       <init_path lang="sh">/etc/profile.d/modules.sh</init_path>
@@ -3762,6 +3762,7 @@
         <arg name="latency_priority">--latency_priority $ENV{LTC_PRT}</arg>
         <arg name="stdio_mode">--stdio_mode prepended</arg>
         <arg name="thread_vars">$ENV{JSRUN_THREAD_VARS}</arg>
+        <arg name="smpiargs">--smpiargs="-gpu"</arg>
       </arguments>
     </mpirun>
     <module_system type="module" allow_error="true">
@@ -3791,10 +3792,8 @@
         <command name="load">xl/16.1.1-10</command>
       </modules>
       <modules compiler="gnugpu">
-        <command name="load">cuda/11.0.3</command>
-      </modules>
-      <modules compiler="gnu.*">
-        <command name="load">gcc/9.1.0</command>
+        <command name="load">gcc/7.5.0</command>
+        <command name="load">cuda/10.1.168</command>
       </modules>
       <modules>
         <command name="load">spectrum-mpi/10.4.0.3-20210112</command>
@@ -3840,7 +3839,7 @@
     </environment_variables>
     <environment_variables compiler="pgigpu">
       <env name="RS_PER_NODE">6</env>
-      <env name="CPU_PER_RS">3</env>
+      <env name="CPU_PER_RS">7</env>
       <env name="GPU_PER_RS">1</env>
       <env name="LTC_PRT">gpu-cpu</env>
       <env name="NUM_RS">$SHELL{echo "6*((`./xmlquery --value TOTAL_TASKS` + `./xmlquery --value TASKS_PER_NODE` - 1)/`./xmlquery --value TASKS_PER_NODE`)"|bc}</env>
@@ -3898,7 +3897,7 @@
               <command name="load">libxml2/2.9.2</command>
               <command name="load">maui/3.3.1</command>
               <command name="load">python/2.7.15</command>
-              <command name="load">python/3.6.2</command> 
+              <command name="load">python/3.6.2</command>
           </modules>
           <modules compiler="gnu">
               <command name="load">gcc/5.4.0</command>
@@ -4124,9 +4123,9 @@
         <command name="find">--loaded</command>
       </modules>
     </module_system>
-    <RUNDIR>$CIME_OUTPUT_ROOT/$CASE/run</RUNDIR> 
+    <RUNDIR>$CIME_OUTPUT_ROOT/$CASE/run</RUNDIR>
     <EXEROOT>$CIME_OUTPUT_ROOT/$CASE/bld</EXEROOT>
-    <TEST_TPUT_TOLERANCE>0.1</TEST_TPUT_TOLERANCE> 
+    <TEST_TPUT_TOLERANCE>0.1</TEST_TPUT_TOLERANCE>
     <MAX_GB_OLD_TEST_DATA>1000</MAX_GB_OLD_TEST_DATA>
     <environment_variables>
       <env name="PERL5LIB">/data/hp210190/soft/perl5/lib/perl5:/home/hp210190/u02380/perl5/lib/perl5</env>
