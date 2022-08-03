@@ -24,6 +24,8 @@ Real ps_func(const Int t, const Int ncols);
 Real ccn3_func(const Int t, const Int klev, const Int ncols);
 Real aer_func(const Int t, const Int bnd, const Int klev, const Int ncols, const Int mode);
 
+using C = scream::physics::Constants<Real>;
+constexpr auto test_tol = C::macheps*10000;
 TEST_CASE("spa_read_data","spa")
 {
   // Set up the mpi communicator and init the pio subsystem
@@ -36,10 +38,11 @@ TEST_CASE("spa_read_data","spa")
   using Spack = SPAFunc::Spack;
   using gid_type = SPAFunc::gid_type;
 
-  std::string spa_data_file  = SCREAM_DATA_DIR "/init/spa_data_for_testing.nc";
-  std::string spa_remap_file = SCREAM_DATA_DIR "/init/spa_data_for_testing.nc";
+  std::string spa_data_file  = SCREAM_DATA_DIR "/init/spa_data_for_testing_20220801.nc";
+  std::string spa_remap_file = SCREAM_DATA_DIR "/init/spa_data_for_testing_20220801.nc";
   Int max_time = 3;
   Int ncols    = 48;
+  Int src_cols = 20;
   Int nlevs    = 4;
   Int nswbands = 2;
   Int nlwbands = 3;
@@ -95,19 +98,20 @@ TEST_CASE("spa_read_data","spa")
     Kokkos::deep_copy(aer_tau_sw_h,spa_data.data.AER_TAU_SW);
     Kokkos::deep_copy(aer_tau_lw_h,spa_data.data.AER_TAU_LW);
     for (size_t dof_i=0;dof_i<dofs_gids_h.size();dof_i++) {
-      REQUIRE(ps_h(dof_i) == ps_func(time_index,spa_horiz_interp.source_grid_ncols));
+      const int src_max = std::min(dofs_gids_h(dof_i)+1,src_cols);
+      REQUIRE(std::abs(ps_h(dof_i) - ps_func(time_index,src_max))<test_tol);
       for (int kk=0;kk<nlevs;kk++) {
         // Recall, SPA data read from file is padded, so we need to offset the kk index for the data by 1.
         int kpack = (kk+1) / Spack::n;
         int kidx  = (kk+1) % Spack::n;
-        REQUIRE(ccn3_h(dof_i,kpack)[kidx] == ccn3_func(time_index, kk, spa_horiz_interp.source_grid_ncols));
+        REQUIRE(std::abs(ccn3_h(dof_i,kpack)[kidx] - ccn3_func(time_index, kk, src_max))<test_tol);
         for (int n=0;n<nswbands;n++) {
-          REQUIRE(aer_g_sw_h(dof_i,n,kpack)[kidx]   == aer_func(time_index,n,kk,spa_horiz_interp.source_grid_ncols,0));
-          REQUIRE(aer_ssa_sw_h(dof_i,n,kpack)[kidx] == aer_func(time_index,n,kk,spa_horiz_interp.source_grid_ncols,1));
-          REQUIRE(aer_tau_sw_h(dof_i,n,kpack)[kidx] == aer_func(time_index,n,kk,spa_horiz_interp.source_grid_ncols,2));
+          REQUIRE(std::abs(aer_g_sw_h(dof_i,n,kpack)[kidx]   - aer_func(time_index,n,kk,src_max,0))<test_tol);
+          REQUIRE(std::abs(aer_ssa_sw_h(dof_i,n,kpack)[kidx] - aer_func(time_index,n,kk,src_max,1))<test_tol);
+          REQUIRE(std::abs(aer_tau_sw_h(dof_i,n,kpack)[kidx] - aer_func(time_index,n,kk,src_max,2))<test_tol);
         }
         for (int n=0;n<nlwbands;n++) {
-          REQUIRE(aer_tau_lw_h(dof_i,n,kpack)[kidx] ==  aer_func(time_index,n,kk,spa_horiz_interp.source_grid_ncols,3));
+          REQUIRE(std::abs(aer_tau_lw_h(dof_i,n,kpack)[kidx] -  aer_func(time_index,n,kk,src_max,3))<test_tol);
         }
       }
     }
@@ -119,17 +123,17 @@ TEST_CASE("spa_read_data","spa")
 
 // Some helper functions for the require statements:
 
-Real wgt_func(const Int i)
+Real wgt_func(const Int i, const Int src_max)
 {
-  return 1.0 / std::pow(2.0,i);
+  Real denom = src_max*(src_max+1.0)/2.0;
+  return i / denom; 
 }
 
 Real ps_func(const Int t, const Int ncols)
 {
   Real ps = 0.0;
   for (int i=1;i<=ncols;i++) {
-    Real wgt = wgt_func(i);
-    if (i == ncols) { wgt *= 2.0; }
+    Real wgt = wgt_func(i,ncols);
     ps += (t+1) * i*100.0 * wgt;
   }
   return ps;
@@ -139,8 +143,7 @@ Real ccn3_func(const Int t, const Int klev, const Int ncols)
 {
   Real ccn3 = 0.0;
   for (int i=1;i<=ncols;i++) {
-    Real wgt = wgt_func(i);
-    if (i == ncols) {wgt *= 2.0;}
+    Real wgt = wgt_func(i,ncols);
     ccn3 += wgt * (klev*1.0 + t*10.0 + i*100.0);
   }
   return ccn3;
@@ -150,8 +153,7 @@ Real aer_func(const Int t, const Int bnd, const Int klev, const Int ncols, const
 {
   Real aer_out = 0.0;
   for (int i=1;i<=ncols;i++) {
-    Real wgt = wgt_func(i);
-    if (i == ncols) {wgt *= 2.0;}
+    Real wgt = wgt_func(i,ncols);
     if (mode==0) {  // G
       aer_out += wgt * t;
     } else if (mode==1) { // SSA
