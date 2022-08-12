@@ -302,11 +302,33 @@ void HommeDynamics::fv_phys_rrtmgp_active_gases_remap () {
                v_dgll.extent_int(1)*v_dgll.extent_int(2) == ngll);
         const auto in_dgll = Homme::GllFvRemap::CPhys3T(
           v_dgll.data(), nelem, 1, ngll, v_dgll.extent_int(3));
+        const auto in_dgll_h = Kokkos::create_mirror_view(in_dgll);
+        Kokkos::deep_copy(in_dgll_h, in_dgll);
+        for (int i = 0; i < nelem; ++i)
+          for (int j = 0; j < 1; ++j)
+            for (int k = 0; k < ngll; ++k)
+              for (int l = 0; l < v_dgll.extent_int(3); ++l) {
+                const auto val = in_dgll_h(i,j,k,l);
+                if (std::isnan(val) || std::isinf(val))
+                  fprintf(stderr,"amb> fv_phys_rrtmgp_active_gases_remap: in_dgll %s %d %d %d %d nan %d isinf %d\n",
+                          e.c_str(),i,j,k,l,int(std::isnan(val)),int(std::isinf(val)));
+              }
         assert(nelem*npg == v_phys.extent_int(0));
         const auto out_phys = Homme::GllFvRemap::Phys3T(
           v_phys.data(), nelem, npg, 1, v_phys.extent_int(1));
         gfr.remap_tracer_dyn_to_fv_phys(time_idx, 1, in_dgll, out_phys);
         Kokkos::fence();
+        const auto out_phys_h = Kokkos::create_mirror_view(out_phys);
+        Kokkos::deep_copy(out_phys_h, out_phys);
+        for (int i = 0; i < nelem; ++i)
+          for (int j = 0; j < npg; ++j)
+            for (int k = 0; k < 1; ++k)
+              for (int l = 0; l < v_phys.extent_int(1); ++l) {
+                const auto val = out_phys_h(i,j,k,l);
+                if (std::isnan(val) || std::isinf(val))
+                  fprintf(stderr,"amb> fv_phys_rrtmgp_active_gases_remap: out_phys %s %d %d %d %d nan %d isinf %d\n",
+                          e.c_str(),i,j,k,l,int(std::isnan(val)),int(std::isinf(val)));
+              }
       }
     }
   }

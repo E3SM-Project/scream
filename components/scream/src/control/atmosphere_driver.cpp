@@ -175,6 +175,7 @@ void AtmosphereDriver::create_atm_processes()
 
 void AtmosphereDriver::create_grids()
 {
+  fprintf(stderr,"amb> AD::create_grids\n");
   m_atm_logger->info("[EAMxx] create_grids ...");
   start_timer("EAMxx::init");
   start_timer("EAMxx::create_grids");
@@ -414,9 +415,11 @@ void AtmosphereDriver::create_fields()
   stop_timer("EAMxx::create_fields");
   stop_timer("EAMxx::init");
   m_atm_logger->info("[EAMxx] create_fields ... done!");
+  fprintf(stderr,"amb> AD::create_grids done\n");
 }
 
 void AtmosphereDriver::initialize_output_managers () {
+  fprintf(stderr,"amb> AD::initialize_output_managers\n");
   m_atm_logger->info("[EAMxx] initialize_output_managers ...");
   start_timer("EAMxx::init");
   start_timer("EAMxx::initialize_output_managers");
@@ -472,11 +475,13 @@ void AtmosphereDriver::initialize_output_managers () {
   stop_timer("EAMxx::initialize_output_managers");
   stop_timer("EAMxx::init");
   m_atm_logger->info("[EAMxx] initialize_output_managers ... done!");
+  fprintf(stderr,"amb> AD::initialize_output_managers done\n");
 }
 
 void AtmosphereDriver::
 initialize_fields (const util::TimeStamp& run_t0, const util::TimeStamp& case_t0)
 {
+  fprintf(stderr,"amb> AD::initialize_fields\n");
   m_atm_logger->info("[EAMxx] initialize_fields ...");
   start_timer("EAMxx::init");
   start_timer("EAMxx::initialize_fields");
@@ -582,6 +587,7 @@ initialize_fields (const util::TimeStamp& run_t0, const util::TimeStamp& case_t0
   stop_timer("EAMxx::init");
   m_ad_status |= s_fields_inited;
   m_atm_logger->info("[EAMxx] initialize_fields ... done!");
+  fprintf(stderr,"amb> AD::initialize_fields done\n");
 }
 
 void AtmosphereDriver::restart_model ()
@@ -684,6 +690,7 @@ void AtmosphereDriver::create_logger () {
 
 void AtmosphereDriver::set_initial_conditions ()
 {
+  fprintf(stderr,"amb> AD::set_initial_conditions\n");
   m_atm_logger->info("  [EAMxx] set_initial_conditions ...");
 
   auto& ic_pl = m_atm_params.sublist("Initial Conditions");
@@ -864,6 +871,7 @@ void AtmosphereDriver::set_initial_conditions ()
   m_atm_logger->debug("    [EAMxx] Processing subfields ... done!");
 
   m_atm_logger->info("  [EAMxx] set_initial_conditions ... done!");
+  fprintf(stderr,"amb> AD::set_initial_conditions done\n");
 }
 
 void AtmosphereDriver::
@@ -872,6 +880,7 @@ read_fields_from_file (const std::vector<std::string>& field_names,
                        const std::string& file_name,
                        const util::TimeStamp& t0)
 {
+  fprintf(stderr,"amb> AD::read_fields_from_file\n");
   if (field_names.size()==0) {
     return;
   }
@@ -896,6 +905,7 @@ read_fields_from_file (const std::vector<std::string>& field_names,
     auto f = m_field_mgrs.at(grid_name)->get_field(fname);
     f.get_header().get_tracking().update_time_stamp(t0);
   }
+  fprintf(stderr,"amb> AD::read_fields_from_file done\n");
 }
 
 void AtmosphereDriver::
@@ -1012,6 +1022,7 @@ initialize (const ekat::Comm& atm_comm,
 }
 
 void AtmosphereDriver::run (const int dt) {
+  fprintf(stderr,"amb> AD::run\n");
   start_timer("EAMxx::run");
 
   // Make sure the end of the time step is after the current start_time
@@ -1023,6 +1034,7 @@ void AtmosphereDriver::run (const int dt) {
     "  model time = " + m_current_ts.get_date_string() + " " + m_current_ts.get_time_string() + "\n");
 
   if (m_surface_coupling) {
+    fprintf(stderr,"amb> AD::run::sc::import\n");
     // Import fluxes from the component coupler (if any)
     m_surface_coupling->do_import();
   }
@@ -1040,6 +1052,7 @@ void AtmosphereDriver::run (const int dt) {
   }
 
   if (m_surface_coupling) {
+    fprintf(stderr,"amb> AD::run::sc::export\n");
     // Export fluxes from the component coupler (if any)
     m_surface_coupling->do_export(dt);
   }
@@ -1058,6 +1071,7 @@ void AtmosphereDriver::run (const int dt) {
   m_atm_logger->flush();
 
   stop_timer("EAMxx::run");
+  fprintf(stderr,"amb> AD::run done\n");
 }
 
 void AtmosphereDriver::finalize ( /* inputs? */ ) {
