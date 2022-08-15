@@ -271,6 +271,15 @@ tweaking their $case/namelist_scream.xml file.
     <surf_sens_flux    >0.0</surf_sens_flux>
     <surf_lw_flux_up   >0.0</surf_lw_flux_up>
     <surf_mom_flux     >0.0,0.0</surf_mom_flux>
+    <nc                >0.0</nc>
+    <ni                >0.0</ni>
+    <n2o               >4.9085838569357171E-007</n2o>
+    <ch4               >9.9860581371262859E-007</ch4>
+    <co2               >5.7570945246150651E-004</co2>
+    <o2                >0.23143000000000000</o2>
+    <o3                >7.7217376146543605E-008</o3>
+    <n2                >0.76449409294048576</n2>
+    <co                >9.6686572574748879E-008</co>
   </Initial__Conditions>
 
   <!-- List of yaml files containing I/O output specs -->
