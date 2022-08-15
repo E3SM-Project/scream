@@ -1,8 +1,8 @@
 #ifndef TETRALINEAR_INTERP_HPP
 #define TETRALINEAR_INTERP_HPP
 
-#include <share/util/coarse_se_grid.hpp>
-#include <share/util/tetralinear_interp_traits.hpp>
+#include <share/interp/coarse_grid.hpp>
+#include <share/interp/tetralinear_interp_traits.hpp>
 
 namespace scream {
 namespace interpolators {
@@ -28,8 +28,8 @@ template <typename Data>
 class TetralinearInterp {
 public:
   using Traits     = TetralinearInterpTraits<Data>;
-  using HCoordView = Traits::HCoordView;
-  using VCoordView = Traits::VCoordView;
+  using HCoordView = typename Traits::HCoordView;
+  using VCoordView = typename Traits::VCoordView;
 
   // Constructs a tetralinear (4D) lat-lon-vert-time interpolator from data in
   // the given file for the purpose of interpolating field data from a coarse
@@ -64,9 +64,7 @@ private:
                        const HCoordView& lats, const HCoordView& lons);
 
   // Interpolate the source data at the given time, placing the result in data.
-  void do_time_interpolation_(const std::vector<Real>& times_,
-                              const std::vector<Data>& src_data,
-                              Real time, Data& data);
+  void do_time_interpolation_(Real time, Data& data);
 
   // Interpolate the source data from its own vertical coordinates to the given
   // target vertical coordinates, placing the result in data.
@@ -89,11 +87,15 @@ private:
 // This function maps each target lat/lon pair to its corresponding support in
 // the given spectral element grid. The support for a lat/lon pair is defined by
 // the set of 4 vertices for the quadrilateral cell/subcell bounding that pair
-// (see tetralinear_interp_traits.hpp for details).
-TetralinearInterpWeightMap
-compute_tetralinear_interp_weights(const CoarseSEGrid& coarse_grid,
+// (see tetralinear_interp_traits.hpp for details). The mapping is stored in
+// weights, and the list of relevant global vertex indices for the grid is
+// stored in global_vertex_indices.
+void
+compute_tetralinear_interp_weights(const CoarseGrid& coarse_grid,
                                    const HostHCoordView& tgt_lons,
-                                   const HostHCoordView& tgt_lats);
+                                   const HostHCoordView& tgt_lats,
+                                   TetralinearInterpWeightMap& weights,
+                                   std::vector<int>& global_vertex_indices);
 
 } // namespace interpolators
 
@@ -101,4 +103,4 @@ compute_tetralinear_interp_weights(const CoarseSEGrid& coarse_grid,
 
 #endif // TETRALINEAR_INTERP_HPP
 
-#include <share/util/tetralinear_interp_impl.hpp>
+#include <share/interp/tetralinear_interp_impl.hpp>

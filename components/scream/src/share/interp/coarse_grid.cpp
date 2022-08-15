@@ -1,4 +1,4 @@
-#include <share/interp/coarse_se_grid.hpp>
+#include <share/interp/coarse_grid.hpp>
 
 namespace scream {
 namespace interpolators {

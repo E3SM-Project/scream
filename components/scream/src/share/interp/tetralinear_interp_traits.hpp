@@ -20,12 +20,14 @@
 
 #include <share/scream_types.hpp>
 
+#include <ekat/ekat_pack.hpp>
 #include <ekat/kokkos/ekat_kokkos_types.hpp>
+#include <Kokkos_UnorderedMap.hpp>
 
 namespace scream {
 namespace interpolators {
 
-using KokkosTypes = ekat::KokkosTypes;
+using KokkosTypes = ekat::KokkosTypes<ekat::DefaultDevice>;
 using KokkosHostTypes = ekat::KokkosTypes<ekat::HostDevice>;
 using Pack = ekat::Pack<Real, SCREAM_SMALL_PACK_SIZE>;
 
@@ -50,8 +52,8 @@ using HostVCoordView = KokkosHostTypes::view_2d<Pack>;
 // This type represents a set of indices and weights associated with a the
 // support for a target latitude/longitude pair.
 struct TetralinearInterpWeights {
-  int  indices[4];
-  Real weights[4];
+  int  indices[4]; // global grid element vertex indices
+  Real weights[4]; // interpolation weights for each vertex
 };
 
 // This type represents an on-device mapping from a target column index to 4
@@ -61,7 +63,7 @@ using TetralinearInterpWeightMap =
 
 // This is the host version of LatLonLinInterpWeightMap.
 using HostTetralinearInterpWeightMap =
-  Kokkos::UnorderedMap<int, TetralinearInterpWeights, HostDevice>;
+  Kokkos::UnorderedMap<int, TetralinearInterpWeights, ekat::HostDevice>;
 
 // TetralinearInterpoTraits -- traits to support tetralinear interpolation
 // from a set of source columns at fixed latitudes and longitudes to target data
@@ -100,7 +102,7 @@ struct TetralinearInterpTraits {
   static void compute_vertical_coords(const Data& data, VCoordView& vcoords) {
     // This generic implementation just calls the compute_vertical_coords method
     // on the Data type.
-    data.compute_vertical_coords(policy, vcoords);
+    data.compute_vertical_coords(vcoords);
   }
 
   // Performs vertical interpolation from a source set of vertical coordinates

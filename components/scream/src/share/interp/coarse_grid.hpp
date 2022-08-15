@@ -1,6 +1,8 @@
 #ifndef SCREAM_INTERP_COARSE_GRID_HPP
 #define SCREAM_INTERP_COARSE_GRID_HPP
 
+#include <share/scream_types.hpp>
+
 #include <vector>
 
 namespace scream {
