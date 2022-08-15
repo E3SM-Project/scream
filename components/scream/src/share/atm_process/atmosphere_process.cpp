@@ -47,7 +47,6 @@ void AtmosphereProcess::initialize (const TimeStamp& t0, const RunType run_type)
 }
 
 void AtmosphereProcess::run (const int dt) {
-  fprintf(stderr,"amb> AP::run %s\n",name().c_str());
   start_timer (m_timer_prefix + this->name() + "::run");
   if (m_params.get("Enable Precondition Checks", true)) {
     // Run 'pre-condition' property checks stored in this AP
@@ -77,7 +76,6 @@ void AtmosphereProcess::run (const int dt) {
     update_time_stamps ();
   }
   stop_timer (m_timer_prefix + this->name() + "::run");
-  fprintf(stderr,"amb> AP::run %s done\n",name().c_str());
 }
 
 void AtmosphereProcess::finalize (/* what inputs? */) {
