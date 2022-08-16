@@ -3493,6 +3493,8 @@ qr2qv_evap_tend,nr_evap_tend)
 
          qr2qv_evap_tend = instant_evap_tend*tscale_weight &
               + equilib_evap_tend*(1._rtype-tscale_weight)
+         
+         qr2qv_evap_tend = 0.30_rtype*qr2qv_evap_tend  !CRT: evap modification
 
       end if
 
