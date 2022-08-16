@@ -20,6 +20,7 @@
 <dtime dyn="se"    hgrid="ne0np4_arm_x8v3_lowcon"  >600</dtime>
 <dtime dyn="se"    hgrid="ne0np4_conus_x4v1_lowcon"  >900</dtime>
 <dtime dyn="se"    hgrid="ne0np4_conus_ne32x4"  >900</dtime>
+<dtime dyn="se"    hgrid="ne0np4_conus_ne32x32"  >100</dtime>
 <dtime dyn="se"    hgrid="ne0np4_northamericax4v1"  >900</dtime>
 <dtime dyn="se"    hgrid="ne0np4_antarcticax4v1"  >900</dtime>
 <dtime dyn="se"    hgrid="ne0np4_arcticx4v1"      >900</dtime>
@@ -164,6 +165,7 @@
 <bnd_topo hgrid="ne0np4_conus_x4v1_lowcon"        >atm/cam/topo/USGS_conusx4v1-tensor12x_consistentSGH_c150924.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4_conus_x4v1_lowcon" npg="2">atm/cam/topo/USGS_conusx4v1pg2_12x_consistentSGH_20200609.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4_conus_ne32x4" npg="2">atm/cam/topo/USGS-gtopo30_CONUS_ne32x4_12xdel2.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4_conus_ne32x32" npg="2">atm/cam/topo/USGS-gtopo30_CONUS_ne32x32np4pg2_x6t.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4_northamericax4v1"  >atm/cam/topo/USGS_northamericax4v1_12xdel2_consistentSGH_191023.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4_northamericax4v1" npg="2">atm/cam/topo/USGS_northamericax4v1pg2_12xdel2_consistentSGH_20020209.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4_antarcticax4v1"  >atm/cam/topo/USGS-gtopo30_antarcticax4v1_12xdel2_consistentSGH_191120.nc</bnd_topo>
@@ -728,6 +730,7 @@
 <drydep_srf_file hgrid="ne0np4_conus_x4v1_lowcon" >atm/cam/chem/trop_mam/atmsrf_conusx4v1.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4_conus_x4v1_lowcon" npg="2" >atm/cam/chem/trop_mam/atmsrf_conusx4v1pg2_20020609.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4_conus_ne32x4" npg="2" >atm/cam/chem/trop_mam/atmsrf_CONUS_ne32x4_20220630.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4_conus_ne32x32" npg="2" >atm/cam/chem/trop_mam/atmsrf_CONUS_ne32x32_20220809.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4_northamericax4v1">atm/cam/chem/trop_mam/atmsrf_northamericax4v1np4_20191023.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4_northamericax4v1" npg="2">atm/cam/chem/trop_mam/atmsrf_northamericax4v1pg2_20020209.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4_antarcticax4v1">atm/cam/chem/trop_mam/atmsrf_antarcticax4v1np4_20191127.nc</drydep_srf_file>
@@ -1345,6 +1348,7 @@
 <se_ne hgrid="ne0np4_arm_x8v3_lowcon"  > 0 </se_ne>
 <se_ne hgrid="ne0np4_conus_x4v1_lowcon"  > 0 </se_ne>
 <se_ne hgrid="ne0np4_conus_ne32x4"  > 0 </se_ne>
+<se_ne hgrid="ne0np4_conus_ne32x32"  > 0 </se_ne>
 <se_ne hgrid="ne0np4_northamericax4v1"  > 0 </se_ne>
 <se_ne hgrid="ne0np4_svalbard_x8v1_lowcon"  > 0 </se_ne>
 <se_ne hgrid="ne0np4_sooberingoa_x4x8v1_lowcon"  > 0 </se_ne>
@@ -1355,6 +1359,7 @@
 <mesh_file hgrid="ne0np4_arm_x8v3_lowcon"  >atm/cam/inic/homme/arm_x8v3_lowcon.g</mesh_file>
 <mesh_file hgrid="ne0np4_conus_x4v1_lowcon"  >atm/cam/inic/homme/conusx4v1.g</mesh_file>
 <mesh_file hgrid="ne0np4_conus_ne32x4"  >atm/cam/inic/homme/CONUS_ne32x4_lon100W_lat40N.g</mesh_file>
+<mesh_file hgrid="ne0np4_conus_ne32x32"  >atm/cam/inic/homme/CONUS_ne32x32_lon100W_lat40N.g</mesh_file>
 <mesh_file hgrid="ne0np4_northamericax4v1"  >atm/cam/inic/homme/northamericax4v1.g</mesh_file>
 <mesh_file hgrid="ne0np4_antarcticax4v1"  >atm/cam/inic/homme/antarcticax4v1.g</mesh_file>
 <mesh_file hgrid="ne0np4_arcticx4v1"      >atm/cam/inic/homme/arcticx4v1.g</mesh_file>
