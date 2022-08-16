@@ -6,6 +6,7 @@ include(ScreamUtils)
 set(YAKL_CXX_FLAGS "")
 if (CUDA_BUILD)
   set(YAKL_ARCH "CUDA")
+  #list(APPEND YAKL_CXX_FLAGS -g -DYAKL_DEBUG -DYAKL_ARCH_CUDA --expt-extended-lambda --expt-relaxed-constexpr)
   list(APPEND YAKL_CXX_FLAGS -DYAKL_ARCH_CUDA --expt-extended-lambda --expt-relaxed-constexpr)
 endif()
 
