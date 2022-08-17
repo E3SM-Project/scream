@@ -50,8 +50,15 @@ compute_tetralinear_interp_weights(const CoarseGrid& coarse_grid,
 
   // Loop over the elements of the coarse grid and find the target points that
   // fall within each one.
+  std::set<int> unique_vertices;
   for (int e = 0; e < coarse_grid.num_elems(); ++e) {
-    const CoarseGrid::ElemData& elem = coarse_grid.elem_data[e];
+    const CoarseGrid::Element& elem = coarse_grid.elements[e];
+
+    // Add the element's vertices to our unique list of global vertices.
+    for (int v = 0; v < 4; ++v) {
+      unique_vertices.insert(elem.vertices[v]);
+    }
+
     // Create a bounding box that captures all points within the element.
     Real lon_lo = min(coarse_grid.longitudes[elem.vertices[0]],
                       coarse_grid.longitudes[elem.vertices[1]],
@@ -83,7 +90,7 @@ compute_tetralinear_interp_weights(const CoarseGrid& coarse_grid,
       // subelement. The reference coordinates are in [0, 1] within the
       // subelement defined by the GLL points bounding the (lat, lon) point.
       auto coords = coarse_grid.ll_to_ref(e, lat, lon);
-      Real a = coords[0], b = coords[1];
+      Real a = coords.first, b = coords.second;
 
       // Compute the interpolation weights.
       host_mapping.insert(pt_index, TetralinearInterpWeights{
@@ -103,7 +110,23 @@ compute_tetralinear_interp_weights(const CoarseGrid& coarse_grid,
     }
   }
 
-  // FIXME: Figure out local vertex indices and re-index the mapping thus.
+  // Now reindex the vertices within the weights to reflect the fact that we
+  // only load data on the relevant elements.
+  global_vertex_indices.resize(unique_vertices.size());
+  std::copy(unique_vertices.begin(), unique_vertices.end(),
+            global_vertex_indices.begin());
+  std::unordered_map<int, int> g2l;
+  for (size_t i = 0; i < global_vertex_indices.size(); ++i) {
+    g2l[global_vertex_indices[i]] = i;
+  }
+  for (uint64_t i = 0; i < host_mapping.capacity(); ++i) {
+    if (host_mapping.valid_at(i)) {
+      for (int v = 0; v < 4; ++v) {
+        auto& mapping = host_mapping.value_at(i);
+        mapping.indices[v] = g2l[mapping.indices[v]];
+      }
+    }
+  }
 
   // Copy the mapping from host to device.
   Kokkos::deep_copy(weights, host_mapping);

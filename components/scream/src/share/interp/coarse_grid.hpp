@@ -32,12 +32,12 @@ struct CoarseGrid {
   //   |       |
   // 0 +-------+ 1
   //
-  struct ElemData {
+  struct Element {
     int vertices[4];
   };
 
   // vector of elements mapping element global IDs to vertices
-  std::vector<ElemData> elem_data;
+  std::vector<Element> elements;
 
   // number of elements on a side of a cubed-sphere panel
   int ne;
@@ -51,10 +51,11 @@ struct CoarseGrid {
   // total number of elements in the grid
   int num_elems() const { return 6*ne*ne; }
 
-  // Given (latitude, longitude) coordinates for a point that falls within an
+  // Given (longitude, latitude) coordinates for a point that falls within an
   // element e, return that point's reference coordinates (a, b) within the
   // element.
-  std::array<Real, 2> ll_to_ref(int e, Real lat, Real lon) const;
+  std::pair<Real, Real> ll_to_ref(int e, Real lon, Real lat,
+                                  Real tol = 1e-12, int max_iter = 10) const;
 
   // disallowed stuff
   CoarseGrid() = delete;
