@@ -587,7 +587,7 @@ contains
       call cnst_get_ind('CLDICE',ixcldice)
       do igas = 1,size(active_gases)
         active_gases_index(igas) = igas
-        call addfld(trim(active_gases(igas))//"_inRAD",          (/ 'lev' /), 'I', 'kg/kg',  trim(active_gases(igas)))
+        call addfld(trim(active_gases(igas))//"_inRAD",          (/ 'lev' /), 'I', 'mol/mol',  trim(active_gases(igas)))
       end do
       call add_hist_coord('ngas',size(active_gases),'Number of active gases in radiation', 'N/A', active_gases_index)
       call addfld('T_mid_inRAD'          , (/ 'lev' /) , 'I', 'K',        'T_mid')
