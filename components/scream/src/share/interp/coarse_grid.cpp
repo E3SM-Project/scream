@@ -89,7 +89,7 @@ ll_to_ref(int e, Real lon, Real lat, Real tol, int max_iter) const {
     };
     if ((r[0]*r[0] + r[1]*r[1] + r[2]*r[2]) <= tol2) break;
 
-    // solve s_ab x = r using QR factorization
+    // solve s_ab x = r for x = -(da, db) using QR factorization
 
     // Q
     fac[0] = std::sqrt(s_ab[0][0]*s_ab[0][0] +

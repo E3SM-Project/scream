@@ -82,7 +82,7 @@ void TetralinearInterp<Data>::interpolate_(Real time,
 
   // Perform horizontal interpolation by applying weights to data_tv to obtain
   // data.
-  Traits::apply_column_weights(h_weights_, data_tv, data);
+  Traits::apply_interp_weights(h_weights_, data_tv, data);
 }
 
 } // namespace interpolators

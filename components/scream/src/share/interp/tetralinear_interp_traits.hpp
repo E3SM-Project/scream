@@ -72,19 +72,19 @@ using HostTetralinearInterpWeightMap =
 template <typename Data>
 struct TetralinearInterpTraits {
 
-  // Returns a new Data with storage identical to the given prototype.
-  static Data allocate_data(const Data& prototype) {
-    return prototype.allocate();
-  }
-
   // Reads data from the given file at the given time index for the given
   // columns, storing the result in data.
   // NOTE: the columns vector defines a local-to-global mapping of required
   // NOTE: source column data, allowing you to store only locally-relevant data.
-  // NOTE: (i.e. columns[local_index] == global_index)
+  // NOTE: (i.e. columns[local_column_index] == global_column_index)
   static void read_from_file(const std::string& filename, int time_index,
                              const std::vector<int>& columns, Data& data) {
     data.read_from_file(filename, time_index, columns);
+  }
+
+  // Returns a new Data with storage identical to the given prototype.
+  static Data allocate(const Data& prototype) {
+    return prototype.allocate();
   }
 
   // Forms the linear combination y = a*x1 + b*x2 where a and b are scalar
