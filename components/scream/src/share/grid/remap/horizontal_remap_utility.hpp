@@ -52,7 +52,7 @@ public:
     },wgt);
     // The sum of the weights should be = 1.0, note due to round-off error we accept to within a tolerance.
     Real tol = std::numeric_limits<Real>::epsilon() * 10.0;
-    EKAT_REQUIRE(std::abs(wgt-1.0)<tol);
+    EKAT_REQUIRE_MSG(std::abs(wgt-1.0)<tol,"ERROR: checking remap segment for DOF = " + std::to_string(m_dof) + ", total weight = " + std::to_string(wgt) + ".");
   }
 
   // Function to apply segment to data

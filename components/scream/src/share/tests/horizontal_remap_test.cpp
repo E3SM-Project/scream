@@ -29,10 +29,119 @@ ekat::ParameterList setup_output_manager_params();
 
 GSMap get_test_map(const ekat::Comm& comm, const view_1d<gid_type>& dofs_gids, const gid_type min_dof);
 
-void run(std::mt19937_64& engine, const ekat::Comm& comm)
+void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min_dof)
 {
-  // Step 1: Generate a set of random remapping (source col, target col, weight).
-  //         Store these in local 1D views and create a remap file.
+  using IPDF = std::uniform_int_distribution<Int>;
+  using RPDF = std::uniform_real_distribution<Real>;
+// Test configuration
+  int num_src_cols = 86;//6;  // Number of columns from source data
+  int num_tgt_cols = 21;//8;  // Number of columns on target grid
+  int num_levels   = 2;    // Dummy variable needed for initialization of a grid.
+
+  // Construct a target grid for remapped data
+  auto gm_tgt           = get_test_gm(comm, num_tgt_cols, num_levels);
+  auto grid_tgt         = gm_tgt->get_grid("Point Grid");
+  auto num_loc_tgt_cols = grid_tgt->get_num_local_dofs();
+  auto tgt_min_dof      = grid_tgt->get_global_min_dof_gid();
+  auto dofs_gids        = grid_tgt->get_dofs_gids();
+
+// Step 1: Generate a random remapping (source col, target col, weight) and random source data.
+//         Store these in local 1D views and create a remap file.
+// Note, randomization is done entirely on ROOT so that we only have one version of the remap
+// data.
+
+  // When we create random source data we again only do this on root so that we
+  // only have one set of data.
+  std::vector<Real> vec_src_data(num_src_cols);
+  if (comm.am_i_root()) {
+    RPDF pdf_src_data(-1,1);               // Randomizer for generating source data to be mapped from.
+    for (int ii=0; ii<num_src_cols; ii++) {
+      vec_src_data[ii] = pdf_src_data(engine);
+    }
+  } // if am_i_root
+  comm.barrier();
+  comm.broadcast(vec_src_data.data(),vec_src_data.size(),comm.root_rank());
+  comm.barrier();
+  view_1d_host<Real>     source_remap_data_h(vec_src_data.data(),num_src_cols);
+  auto source_remap_data = Kokkos::create_mirror_view(source_remap_data_h);
+  Kokkos::deep_copy(source_remap_data, source_remap_data_h);
+
+  // Because we are building the remap  on the fly, use vectors to set up the remap data
+  // We can also construct a baseline set of remapped data for testing.
+  std::vector<Int>        vec_src_col, vec_tgt_col;
+  std::vector<Real>       vec_wgt;
+  std::map<gid_type,Real> y_baseline;
+  std::map<gid_type,Int>  num_src_to_tgt_cols;  // A record of how many source columns map to a specific target.  Will be used later for testing segments.
+  IPDF pdf_map_src_num(2,num_src_cols); // Randomizer for number of source columns mapping to a target column
+  IPDF pdf_map_src(0,num_src_cols-1);   // Ranfomizer for which source columns map to a target column
+  RPDF pdf_map_wgt(0,1);                // Rancomizer for mapping weights
+  // Cycle through all tgt_cols and set up a remap
+  for (int tcol=0; tcol<num_loc_tgt_cols; tcol++) {
+    Int nmap = pdf_map_src_num(engine); // Number of source columns that will map to this target column
+    num_src_to_tgt_cols.emplace(dofs_gids(tcol),nmap);
+    // We need to treat random weights specially, to ensure sum(wgt) = 1;
+    std::vector<Real> temp_wgt;
+    std::vector<Int>  temp_src;  
+    Real wgt_sum = 0.0;
+    Real y_sum   = 0.0;
+    for (int ii=0; ii<nmap; ii++) {
+      Int src_idx = pdf_map_src(engine);
+      vec_src_col.push_back(src_idx+src_min_dof);
+      vec_tgt_col.push_back(dofs_gids(tcol)-tgt_min_dof+src_min_dof);
+      Real wgt = pdf_map_wgt(engine);
+      wgt_sum += wgt;
+      temp_wgt.push_back(wgt);
+      y_sum += source_remap_data_h(src_idx) * wgt;
+    }
+    y_sum /= wgt_sum;  // account for the normalization of the weights
+    y_baseline.emplace(dofs_gids(tcol),y_sum);
+    // Normalize weights
+    for (int ii=0; ii<nmap; ii++) {
+      temp_wgt[ii] /= wgt_sum;
+    }
+    // Append normalized weights to vector of overall weights
+    vec_wgt.insert(vec_wgt.end(), temp_wgt.begin(), temp_wgt.end());
+  }
+  // Now copy these vectors to views 
+  view_1d_host<Int>  map_src_cols_h(vec_src_col.data(),vec_wgt.size());
+  view_1d_host<Int>  map_tgt_cols_h(vec_tgt_col.data(),vec_wgt.size());
+  view_1d_host<Real> map_wgts_h(vec_wgt.data(),vec_wgt.size());
+  auto map_src_cols = Kokkos::create_mirror_view(map_src_cols_h);
+  auto map_tgt_cols = Kokkos::create_mirror_view(map_tgt_cols_h);
+  auto map_wgts     = Kokkos::create_mirror_view(map_wgts_h    );
+  Kokkos::deep_copy(map_src_cols, map_src_cols_h);
+  Kokkos::deep_copy(map_tgt_cols, map_tgt_cols_h);
+  Kokkos::deep_copy(map_wgts    , map_wgts_h    );
+
+  // Step 2: Use GSMap with remap values and source data, and compare against baseline.
+  std::map<gid_type,Real> y_from_views;
+  GSMap remap_from_views;
+  for (int iseg=0; iseg<num_loc_tgt_cols; iseg++) {
+    gid_type seg_dof = dofs_gids(iseg);
+    RemapSegment seg(seg_dof,num_src_to_tgt_cols.at(seg_dof));
+    seg.m_dof = seg_dof;
+    auto source_dofs_h = Kokkos::create_mirror_view(seg.source_dofs);
+    auto weights_h     = Kokkos::create_mirror_view(seg.weights);
+    int idx = 0;
+    for (int ii=0; ii<map_src_cols_h.extent(0); ii++) {
+      if (map_tgt_cols_h(ii)-src_min_dof==seg.m_dof-tgt_min_dof) {
+        source_dofs_h(idx) = map_src_cols_h(ii);
+        weights_h(idx)     = map_wgts_h(ii);
+        idx ++;
+      }
+    }
+    remap_from_views.add_segment(seg);
+  }
+  remap_from_views.check();
+  remap_from_views.set_unique_source_dofs();
+  // We need to extract just that source data that is related to this ranks need.
+  auto unique_dofs_from_views = remap_from_views.get_unique_dofs();
+  view_1d<Real> x_data_from_views("",unique_dofs_from_views.size());
+  auto x_data_from_views_h = Kokkos::create_mirror_view(x_data_from_views);
+  for (int ii=0; ii<unique_dofs_from_views.size(); ii++) {
+    x_data_from_views_h(ii) = source_remap_data_h(unique_dofs_from_views[ii]-src_min_dof);
+  }
+
 } // end function run
 
 //===============================================================================
@@ -41,20 +150,23 @@ TEST_CASE("horizontal_remap_test", "[horizontal_remap_test]"){
   using scream::Real;
   using Device = scream::DefaultDevice;
 
-  constexpr int num_runs = 5;
-
   ekat::Comm comm (MPI_COMM_WORLD);
   auto engine = scream::setup_random_test();
 
 // Run tests of vertically dimensioned-functions for both Real and Pack,
 // and for (potentially) different pack sizes
   if (comm.am_i_root()) {
-    printf(" -> Number of randomized runs: %d\n\n", num_runs);
-    printf(" -> Testing horizontal remapping...");
+    printf(" -> Testing horizontal remapping for minimum source dof = 0...");
   }
-  for (int irun=0; irun<num_runs; ++irun) {
-    run(enginei, comm);
+  run(engine, comm, 0);
+  if (comm.am_i_root()) {
+    printf("ok!\n");
   }
+
+  if (comm.am_i_root()) {
+    printf(" -> Testing horizontal remapping for minimum source dof = 1...");
+  }
+  run(engine, comm, 1);
   if (comm.am_i_root()) {
     printf("ok!\n");
   }
