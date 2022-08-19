@@ -119,6 +119,14 @@ build_grids ()
 
   this->alias_grid(pg_name,"Physics");
 
+  // If pg_type is not GLL or physics uses rebalance, we need to change
+  // the name of 'ncol' dim in Physics GLL, since it would clash with
+  // the ncol dim of the physics grid.
+  if (pg_type!="GLL" || pg_rebalance!="None") {
+    auto phys_gll = get_grid_nonconst("Physics GLL");
+    phys_gll->reset_partitioned_dim_name("ncol_d");
+  }
+
   // Clean up temporaries used during grid initialization
   cleanup_grid_init_data_f90 ();
 }
