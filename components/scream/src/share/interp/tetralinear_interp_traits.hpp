@@ -22,7 +22,11 @@
 
 #include <ekat/ekat_pack.hpp>
 #include <ekat/kokkos/ekat_kokkos_types.hpp>
+#include <ekat/kokkos/ekat_subview_utils.hpp>
+#include <ekat/util/ekat_lin_interp.hpp>
 #include <Kokkos_UnorderedMap.hpp>
+
+#include <type_traits>
 
 namespace scream {
 namespace interpolators {
@@ -44,6 +48,20 @@ using VCoordView = KokkosTypes::view_2d<Pack>;
 // A 2D view storing vertical (packed) coordinate data (on host). The first
 // index is the column index, and the second is the vertical pack index.
 using HostVCoordView = KokkosHostTypes::view_2d<Pack>;
+
+
+/* -- C++17 stuff!
+// A 1D view storing a single column of vertical coordinate data, equivalent
+// to the return type of ekat::subview applied to VCoordView.
+using VCoordColumnView = std::invoke_result_t<ekat::subview, VCoordView, int>;
+ */
+
+/* Replace this with the above C++17 stuff when we switch over. */
+using VCoordColumnView = KokkosTypes::view_1d<Pack>;
+
+// Policy and thread team type for doing parallel dispatch on interpolated data.
+using ThreadTeamPolicy = typename KokkosTypes::TeamPolicy;
+using ThreadTeam = typename KokkosTypes::MemberType;
 
 //------------------------------------------------------------------------
 //                        Tetralinear Interpolation
@@ -73,7 +91,7 @@ template <typename Data>
 struct TetralinearInterpTraits {
 
   // Reads data from the given file at the given time index for the given
-  // columns, storing the result in data.
+  // columns, storing the result in data. Call on HOST only.
   // NOTE: the columns vector defines a local-to-global mapping of required
   // NOTE: source column data, allowing you to store only locally-relevant data.
   // NOTE: (i.e. columns[local_column_index] == global_column_index)
@@ -82,49 +100,66 @@ struct TetralinearInterpTraits {
     data.read_from_file(filename, time_index, columns);
   }
 
-  // Returns a new Data with storage identical to the given prototype.
-  static Data allocate(const Data& prototype) {
-    return prototype.allocate();
+  // Returns a new Data with storage ample for the given number of columns and
+  // vertical levels. Call on HOST only.
+  static Data allocate(int num_columns, int num_vertical_levels) {
+    return Data::allocate(num_columns, num_vertical_levels);
   }
 
-  // Forms the linear combination y = a*x1 + b*x2 where a and b are scalar
-  // weights and x1, x2, and y are Data. This method is used for time
-  // interpolation.
-  static void linear_combination(Real a, Real b,
-                                 const Data& x1, const Data& x2,
-                                 Data& y) {
-    // This generic implementation just calls the linear_combination method to
-    // form y = a*x1 + b*x2 + c*x3 + d*x4 in place.
-    y.linear_combination(a, b, x1, x2);
+  // Returns the number of horizontal columns represented in the data.
+  static int num_columns(const Data& data) {
+    return data.num_columns();
   }
 
-  // Computes vertical coordinates for the given Data, populating vcoords.
-  static void compute_vertical_coords(const Data& data, VCoordView& vcoords) {
-    // This generic implementation just calls the compute_vertical_coords method
-    // on the Data type.
-    data.compute_vertical_coords(vcoords);
+  // Returns the number of vertical levels represented in the data.
+  static int num_vertical_levels(const Data& data) {
+    return data.num_vertical_levels();
   }
 
-  // Performs vertical interpolation from a source set of vertical coordinates
-  // to a target set.
-  static void interpolate_vertically(const VCoordView& src_vcoords,
-                                     const Data& src_data,
-                                     const VCoordView& tgt_vcoords,
-                                     Data& tgt_data) {
+  // Forms the linear combination y = a*x1 + b*x2 on a single column, where a
+  // and b are scalar weights and x1, x2, and y are Data. This method forms the
+  // linear combination in parallel across all vertical levels of Data using the
+  // given thread team, and is used for time interpolation.
+  // Column:                    team.league_rank()
+  // Number of vertical levels: team.team_size()
+  static KOKKOS_INLINE_FUNCTION
+  void linear_combination(const ThreadTeam& team,
+                          Real a, Real b, const Data& x1, const Data& x2,
+                          Data& y) {
+    y.linear_combination(team, a, b, x1, x2);
+  }
+
+  // Performs horizontal interpolation by applying weights to source data
+  // at a specific target column, across a range of vertical levels in that
+  // column indicated by the given thread team.
+  // Number of vertical levels: team.team_size()
+  static KOKKOS_INLINE_FUNCTION
+  void interpolate_horizontally(const ThreadTeam& team,
+                                const TetralinearInterpWeights& src_weights,
+                                const Data& src_data,
+                                int tgt_column, Data& tgt_data) {
+    tgt_data.interpolate_horizontally(team, src_weights, src_data, tgt_column);
+  }
+
+  // Performs linear vertical interpolation from data for a variable with the
+  // given index on a given column from a set of source vertical coordinates to
+  // a target set. Interpolation is performed in parallel over vertical levels
+  // using a thread range defined by the given thread team, using the given
+  // vertical interpolator.
+  static KOKKOS_INLINE_FUNCTION
+  void interpolate_vertically(const ThreadTeam& team,
+                              const ekat::LinInterp<Real, Pack::n>& vert_interp,
+                              int column_index, int variable_index,
+                              const VCoordColumnView& src_col_vcoords,
+                              const Data& src_data,
+                              const VCoordColumnView& tgt_col_vcoords,
+                              Data& tgt_data) {
     // This generic implementation just calls the interpolate_vertically method
     // on the Data type.
-    tgt_data.interpolate_vertically(src_vcoords, src_data, tgt_vcoords);
-  }
-
-  // Applies the given set of (horizontal) column weights to column data in x,
-  // generating a weighted linear combination of x's data to compute y.
-  // This method is used for horizontal interpolation.
-  // NOTE: the column indices in W are local source column indices associated
-  // NOTE: with their global counterparts by the columns vector used
-  // NOTE: to read in source data in the read_from_file method above.
-  static void apply_interp_weights(const TetralinearInterpWeightMap& W,
-                                   const Data& x, Data& y) {
-    y.apply_interp_weights(W, x);
+    tgt_data.interpolate_vertically(team, vert_interp,
+                                    variable_index, column_index,
+                                    src_col_vcoords, src_data,
+                                    tgt_col_vcoords);
   }
 };
 

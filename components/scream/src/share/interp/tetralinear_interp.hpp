@@ -48,9 +48,13 @@ public:
   ~TetralinearInterp() = default;
 
   // Call operator: interpolates field source data from the data file to
-  // the given data at the given time and vertical coordinates.
-  void operator()(Real time, const VCoordView& vcoords, Data& data) {
-    interpolate_(time, vcoords, data);
+  // the given data at the given time, with source and target vertical
+  // coordinates provided by an atmospheric state.
+  void operator()(Real time,
+                  const VCoordView& src_vcoords,
+                  const VCoordView& tgt_vcoords,
+                  Data& tgt_data) const {
+    interpolate_(time, src_vcoords, tgt_vcoords, tgt_data);
   }
 
   // Unsupported operations
@@ -64,16 +68,25 @@ private:
                        const HCoordView& lats, const HCoordView& lons);
 
   // Interpolate the source data at the given time, placing the result in data.
-  void do_time_interpolation_(Real time, Data& data);
+  void do_time_interpolation_(Real time, Data& data) const;
 
-  // Interpolate the source data from its own vertical coordinates to the given
-  // target vertical coordinates, placing the result in data.
-  void do_vertical_interpolation_(const Data& src_data,
+  // Interpolate source data horizontally by applying precomputed interpolation
+  // weights to src_data, placing the result in tgt_data.
+  void do_horizontal_interpolation_(const Data& src_data, Data& tgt_data) const;
+
+  // Interpolate the source data from the source vertical coordinates to the
+  // given target vertical coordinates, placing the result in data.
+  void do_vertical_interpolation_(const VCoordView& src_vcoords,
+                                  const Data& src_data,
                                   const VCoordView& tgt_vcoords,
-                                  Data& data);
+                                  Data& tgt_data) const;
 
-  // Interpolates source data at the given time, storing the result in data.
-  void interpolate_(Real time, const VCoordView& vcoords, Data& data);
+  // Interpolates source data at the given time from the given source vertical
+  // coordinate profile to the target profile, storing the result in data.
+  void interpolate_(Real time,
+                    const VCoordView& src_vcoords,
+                    const VCoordView& tgt_vcoords,
+                    Data& data) const;
 
   // Data stored at times in a periodic sequence
   std::vector<Real> times_;
@@ -81,7 +94,7 @@ private:
 
   // Horizontal interpolation weights (fixed in time), encoded in a sparse map
   // representing a linear operator.
-  TetralinearInterpWeightMap h_weights_;
+  TetralinearInterpWeightMap weights_;
 };
 
 // This function maps each target lat/lon pair to its corresponding support in

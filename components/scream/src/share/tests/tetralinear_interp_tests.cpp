@@ -4,6 +4,7 @@
 
 namespace {
 
+using scream::Real;
 using namespace scream::interpolators;
 
 TEST_CASE("coarse_grid", "") {
@@ -60,122 +61,64 @@ struct CoordField {
 
   // member functions used by traits (see TetralinearInterpTraits for details)
 
-  CoordField allocate() const {
+  static CoordField allocate(int num_cols, int num_levels) const {
     return CoordField{
-      KokkosTypes::view_2d<Real>("coords", data.extent(0), data.extent(1))
+      KokkosTypes::view_2d<Real>("coords", num_cols, num_levels)
     };
   }
 
-  void linear_combination(Real a, Real b,
+  KOKKOS_INLINE_FUNCTION
+  void linear_combination(const ThreadTeam& team,
+                          Real a, Real b,
                           const CoordField& x1, const CoordField& x2) {
-    int num_cols = data.extent(0), num_levels = data.extent(1);
-    auto team_policy = TeamPolicy(num_cols, num_levels);
-    Kokkos::parallel_for(team_policy, KOKKOS_LAMBDA(const TeamType& team) {
-      int i = team.league_rank();
-      Kokkos::parallel_for(Kokkos::TeamThreadRange(team, num_levels),
-        KOKKOS_LAMBDA(int j) {
-          data(i, j) = a * x1.data(i, j) + b * x2.data(i, j);
-        });
+    int i = team.league_rank();
+    int num_levels = team.team_size();
+    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, num_levels),
+      KOKKOS_LAMBDA(int j) {
+        data(i, j) = a * x1.data(i, j) + b * x2.data(i, j);
     });
   }
 
-  void compute_vertical_coords(VCoordView& vcoords) {
-    int num_cols = data.extent(0), num_levels = data.extent(1);
-    auto team_policy = TeamPolicy(num_cols, num_levels);
-    Kokkos::parallel_for(team_policy, KOKKOS_LAMBDA(const TeamType& team) {
-      int i = team.league_rank();
-      Kokkos::parallel_for(Kokkos::TeamThreadRange(team, num_levels),
-        KOKKOS_LAMBDA(int j) {
-          vcoords(i, j) = data(i, j);
-        });
+  KOKKOS_INLINE_FUNCTION
+  void interpolate_horizontally(const ThreadTeam& team,
+                                const TetralinearInterpWeights& weights,
+                                const CoordField& src_data, int tgt_column) {
+    int i = tgt_column;
+    int i1 = weights.indices[0], i2 = weights.indices[1],
+        i3 = weights.indices[2], i4 = weights.indices[3];
+
+    Real W1 = weights.weights[0], W2 = weights.weights[1],
+         W3 = weights.weights[2], W4 = weights.weights[3];
+
+    // apply the interpolation weights at each level.
+    int num_levels = team.team_size();
+    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, num_levels),
+      KOKKOS_LAMBDA(int j) {
+        data(i, j) = W1 * src_data.data(i1, j) + W2 * src_data.data(i2, j) +
+                     W3 * src_data.data(i3, j) + W4 * src_data.data(i4, j);
     });
   }
 
-  void interpolate_vertically(const VCoordView& src_vcoords,
-                              const Data& src_data,
-                              const VCoordView& tgt_vcoords) {
-    // FIXME: Seems like this could be better decomposed.
-    EKAT_REQUIRE(src_vcoords.extent(0)==tgt_vcoords.extent(0));
-    EKAT_REQUIRE(src_vcoords.extent(1)==tgt_vcoords.extent(1));
-  int num_cols = tgt_vcoords.extent(0), num_levels = tgt_vcoords.extent(1);
-
-  using LIV = ekat::LinInterp<Real,Spack::n>;
-
-  const int nlevs_src = input.nlevs;
-  const int nlevs_tgt = output.nlevs;
-
-  LIV vert_interp(ncols,nlevs_src,nlevs_tgt);
-
-  // We can ||ize over columns as well as over variables and bands
-  const int num_vars = 1+input.nswbands*3+input.nlwbands;
-  const int num_vert_packs = ekat::PackInfo<Spack::n>::num_packs(nlevs_tgt);
-  const auto policy_setup = ESU::get_default_team_policy(ncols, num_vert_packs);
-
-  // Setup the linear interpolation object
-  Kokkos::parallel_for("spa_vert_interp_setup_loop", policy_setup,
-    KOKKOS_LAMBDA(typename LIV::MemberType const& team) {
-
-    const int icol = team.league_rank();
-
-    // Setup
-    vert_interp.setup(team, ekat::subview(p_src,icol),
-                            ekat::subview(p_tgt,icol));
-  });
-  Kokkos::fence();
-
-  // Now use the interpolation object in || over all variables.
-  const int outer_iters = ncols*num_vars;
-  const auto policy_interp = ESU::get_default_team_policy(outer_iters, num_vert_packs);
-  Kokkos::parallel_for("spa_vert_interp_loop", policy_interp,
-    KOKKOS_LAMBDA(typename LIV::MemberType const& team) {
-
-    const int icol = team.league_rank() / num_vars;
-    const int ivar = team.league_rank() % num_vars;
-
-    const auto x1 = ekat::subview(p_src,icol);
-    const auto x2 = ekat::subview(p_tgt,icol);
-
-    const auto y1 = get_var_column(input, icol,ivar);
-    const auto y2 = get_var_column(output,icol,ivar);
-
-    vert_interp.lin_interp(team, x1, x2, y1, y2, icol);
-  });
-  Kokkos::fence();
-  }
-
-  void apply_interp_weights(const TetralinearInterpWeightMap& W,
-                            const Data& x) {
-    int num_levels = data.extent(1);
-    auto team_policy = TeamPolicy(W.capacity(), num_levels);
-    Kokkos::parallel_for(team_policy, KOKKOS_LAMBDA(const TeamType& team) {
-      int k = team.league_rank();
-      if( W.valid_at(k) ) {
-        // fetch mapped weights for this column.
-        auto i   = W.key_at(k);
-        auto wts = W.value_at(k);
-
-        int i1 = wts.indices[0],
-            i2 = wts.indices[1],
-            i3 = wts.indices[2],
-            i4 = wts.indices[3];
-
-        Real W1 = wts.weights[0],
-             W2 = wts.weights[1],
-             W3 = wts.weights[2],
-             W4 = wts.weights[3];
-
-        // apply the interpolation weights at each level.
-        Kokkos::parallel_for(Kokkos::TeamThreadRange(team, num_levels),
-          KOKKOS_LAMBDA(int j) {
-            data(i, j) = W1 * x.data(i1, j) + W2 * x.data(i2, j) +
-                         W3 * x.data(i3, j) + W4 * x.data(i4, j);
-          });
-      }
-    });
+  KOKKOS_INLINE_FUNCTION
+  void interpolate_vertically(const ThreadTeam& team,
+                              const ekat::LinInterp<Real, Pack::n>& vert_interp,
+                              int variable_index, int column_index,
+                              const VCoordColumnView& src_col_vcoords,
+                              const CoordField& src_data,
+                              const VCoordColumnView& tgt_col_vcoords) {
+    VCoordColumnView src_col_var = ekat::subview(src_data.data,
+                                                 column_index,
+                                                 variable_index);
+    VCoordColumnView tgt_col_var = ekat::subview(data,
+                                                 column_index,
+                                                 variable_index);
+    vert_interp.lin_interp(team, src_col_vcoords, tgt_col_vcoords,
+                           src_col_var, tgt_col_var, column_index);
   }
 };
 
 TEST_CASE("tetralinear_interp", "") {
+  /*
   ekat::Comm comm(MPI_COMM_WORLD);
 
   const int num_local_elems = 10;
@@ -204,6 +147,7 @@ TEST_CASE("tetralinear_interp", "") {
   const auto max_gid = se_grid->get_global_max_dof_gid();
   const auto min_gid = se_grid->get_global_min_dof_gid();
   REQUIRE( (max_gid-min_gid+1)==se_grid->get_num_global_dofs() );
+  */
 }
 
 } // anonymous namespace
