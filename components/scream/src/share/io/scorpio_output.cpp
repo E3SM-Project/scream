@@ -388,21 +388,26 @@ void AtmosphereOutput::register_dimensions(const std::string& name)
     // check tag against m_dims map.  If not in there, then add it.
     const auto& tags = layout.tags();
     const auto& dims = layout.dims();
-    const auto tag_name = get_nc_tag_name(tags[i],dims[i]);
-    auto tag_loc = m_dims.find(tag_name);
-    auto is_partitioned = m_io_grid->get_partitioned_dim_tag()==tags[i];
-    if (tag_loc == m_dims.end()) {
-      int tag_len = 0;
-      if(tags[i] == m_io_grid->get_partitioned_dim_tag()) {
-        // This is the dimension that is partitioned across ranks.
-        tag_len = m_io_grid->get_partitioned_dim_global_size();
-      } else {
-        tag_len = layout.dim(i);
-      }
-      m_dims.emplace(std::make_pair(get_nc_tag_name(tags[i],dims[i]),tag_len));
-    } else {  
-      EKAT_REQUIRE_MSG(m_dims.at(tag_name)==dims[i] or is_partitioned,
-        "Error! Dimension " + tag_name + " on field " + name + " has conflicting lengths");
+    const auto is_partitioned = m_io_grid->get_partitioned_dim_tag()==tags[i];
+
+    // Check if grid has a special name for partitioned tag, otherwise use general utility to get the name
+    const auto tag_name = get_io_tag_name(m_io_grid,tags[i],dims[i]);
+
+    // Tag dimension depends on whether it is partitioned or not
+    auto tag_len = is_partitioned ? m_io_grid->get_partitioned_dim_global_size() : layout.dim(i);
+
+    // Create new entry, and *try* to insert
+    auto tag_pair = std::make_pair(tag_name, tag_len);
+    auto insertion = m_dims.insert(tag_pair);
+
+    // If insertion did not happen, the stored value *must* match tag_len
+    if (not insertion.second) {
+      EKAT_REQUIRE_MSG(insertion.first->second==tag_len,
+        "Error! Dimension was already registered with a different extent."
+        "  - field: " + name + "\n"
+        "  - tag name: " + tag_name + "\n"
+        "  - old dim: " + std::to_string(insertion.first->second) + "\n"
+        "  - new dim: " + std::to_string(tag_len) + "\n");
     }
   }
 } // register_dimensions
@@ -494,7 +499,7 @@ register_variables(const std::string& filename,
     const auto& layout = fid.get_layout();
     std::string units = to_string(fid.get_units());
     for (int i=0; i<fid.get_layout().rank(); ++i) {
-      const auto tag_name = get_nc_tag_name(layout.tag(i), layout.dim(i));
+      const auto tag_name = get_io_tag_name(m_io_grid,layout.tag(i), layout.dim(i));
       // Concatenate the dimension string to the io-decomp string
       io_decomp_tag += "-" + tag_name;
       // If tag==CMP, we already attached the length to the tag name

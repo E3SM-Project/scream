@@ -97,6 +97,15 @@ public:
   // When running with multiple ranks, fields are partitioned across ranks along this FieldTag
   virtual FieldTag get_partitioned_dim_tag () const = 0;
 
+  // The suffix to be appended to partitioned dim. Useful to distringuish ncols from
+  // a PG2 grid from ncols from a Physics GLL grid. The grids manager can set this to
+  // a non-trivial suffix in case multiple physics grids are present.
+  std::string get_partitioned_dim_name () const { return m_partitioned_dim_name; }
+  bool has_partitioned_dim_name () const { return m_partitioned_dim_name!=""; }
+  void reset_partitioned_dim_name (const std::string& name) {
+    m_partitioned_dim_name = name;
+  }
+
   // The extent of the partitioned dimension, locally and globally
   virtual int get_partitioned_dim_local_size () const = 0;
   virtual int get_partitioned_dim_global_size () const = 0;
@@ -201,6 +210,11 @@ private:
 
   // The MPI comm containing the ranks across which the global mesh is partitioned
   ekat::Comm            m_comm;
+
+  // The suffix to be appended to partitioned dim. Useful to distringuish ncols from
+  // a PG2 grid from ncols from a Physics GLL grid. The grids manager can set this to
+  // a non-trivial suffix in case multiple physics grids are present.
+  std::string           m_partitioned_dim_name = "";
 };
 
 } // namespace scream

@@ -1,7 +1,9 @@
 #include "share/io/scorpio_input.hpp"
 
-#include "ekat/ekat_parameter_list.hpp"
+#include "share/io/scream_io_utils.hpp"
 #include "share/io/scream_scorpio_interface.hpp"
+
+#include "ekat/ekat_parameter_list.hpp"
 
 #include <memory>
 #include <numeric>
@@ -449,7 +451,10 @@ AtmosphereInput::get_vec_of_dims(const FieldLayout& layout)
   // for those dimensions to be used with IO
   std::vector<std::string> dims_names(layout.rank());
   for (int i=0; i<layout.rank(); ++i) {
-    dims_names[i] = scorpio::get_nc_tag_name(layout.tag(i),layout.dim(i));
+    const auto tag = layout.tag(i);
+    const auto dim = layout.dim(i);
+
+    dims_names[i] = get_io_tag_name(m_io_grid,tag,dim);
   }
 
   return dims_names;

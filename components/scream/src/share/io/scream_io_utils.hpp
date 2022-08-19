@@ -1,6 +1,7 @@
 #ifndef SCREAM_IO_UTILS_HPP
 #define SCREAM_IO_UTILS_HPP
 
+#include "share/grid/abstract_grid.hpp"
 #include "share/util/scream_time_stamp.hpp"
 #include "ekat/util/ekat_string_utils.hpp"
 #include "ekat/mpi/ekat_comm.hpp"
@@ -40,6 +41,14 @@ inline OutputAvgType str2avg (const std::string& s) {
 
   return OAT::Invalid;
 }
+
+// Given a field dimension tag/extent, returns a uniqe name that scorpio can use.
+// On one hand, the stirngs returned by e2str(const FieldTag&) are different from
+// what existing nc files are already using. On the other hand, in case of PG2
+// physics grid, we need to differentiate the COL tag in pg2 fields vs the COL
+// tag in phys GLL field.
+std::string get_io_tag_name (const std::shared_ptr<const AbstractGrid>& io_grid,
+                             const FieldTag tag, const int extent);
 
 // Mini struct to hold IO frequency info
 struct IOControl {

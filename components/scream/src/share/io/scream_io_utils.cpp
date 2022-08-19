@@ -75,4 +75,57 @@ std::string find_filename_in_rpointer (
   return filename;
 }
 
+std::string get_nc_tag_name (const FieldTag& t, const int extent) {
+  using namespace ShortFieldTagsNames;
+
+  std::string name = "";
+  switch(t) {
+    case EL:
+      name = "elem";
+      break;
+    case LEV:
+      name = "lev";
+      break;
+    case ILEV:
+      name = "ilev";
+      break;
+    case TL:
+      name = "tl";
+      break;
+    case COL:
+      name = "ncol";
+      break;
+    case GP:
+      name = "gp";
+      break;
+    case CMP:
+      name = "dim" + std::to_string(extent);
+      break;
+    // Added for rrtmgp - TODO revisit this paradigm, see comment in field_tag.hpp
+    case NGAS:
+      name = "ngas";
+      break;
+    case SWBND:
+      name = "swband";
+      break;
+    case LWBND:
+      name = "lwband";
+      break;
+    default:
+      EKAT_ERROR_MSG("Error! Field tag not supported in netcdf files.");
+  }
+
+  return name;
+}
+
+std::string get_io_tag_name (const std::shared_ptr<const AbstractGrid>& io_grid,
+                             const FieldTag tag, const int extent) {
+  // Check if this is a partitioned dim AND io_grid has a special name
+  // for it, otherwise use general utility to get the name
+  const auto is_partitioned = io_grid->get_partitioned_dim_tag()==tag;
+  return is_partitioned && io_grid->has_partitioned_dim_name()
+        ? io_grid->get_partitioned_dim_name()
+        : get_nc_tag_name(tag,extent);
+}
+
 } // namespace scream
