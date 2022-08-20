@@ -87,7 +87,7 @@ using HostTetralinearInterpWeightMap =
 // from a set of source columns at fixed latitudes and longitudes to target data
 // on another set of columns. Specialize this type for your data class, or
 // implement the methods used in this generic implementation.
-template <typename Data>
+template <typename DataSet>
 struct TetralinearInterpTraits {
 
   // Reads data from the given file at the given time index for the given
@@ -96,36 +96,42 @@ struct TetralinearInterpTraits {
   // NOTE: source column data, allowing you to store only locally-relevant data.
   // NOTE: (i.e. columns[local_column_index] == global_column_index)
   static void read_from_file(const std::string& filename, int time_index,
-                             const std::vector<int>& columns, Data& data) {
+                             const std::vector<int>& columns, DataSet& data) {
     data.read_from_file(filename, time_index, columns);
   }
 
-  // Returns a new Data with storage ample for the given number of columns and
-  // vertical levels. Call on HOST only.
-  static Data allocate(int num_columns, int num_vertical_levels) {
-    return Data::allocate(num_columns, num_vertical_levels);
+  // Returns a new DataSet with storage ample for the given number of columns
+  // and vertical levels. Call on HOST only.
+  static DataSet allocate(int num_columns, int num_vertical_levels) {
+    return DataSet::allocate(num_columns, num_vertical_levels);
   }
 
-  // Returns the number of horizontal columns represented in the data.
-  static int num_columns(const Data& data) {
+  // Returns the number of horizontal columns represented in the dataset.
+  static int num_columns(const DataSet& data) {
     return data.num_columns();
   }
 
-  // Returns the number of vertical levels represented in the data.
-  static int num_vertical_levels(const Data& data) {
+  // Returns the number of vertical levels represented in the dataset.
+  static int num_vertical_levels(const DataSet& data) {
     return data.num_vertical_levels();
   }
 
+  // Returns the number of variables in the dataset to be interpolated.
+  static int num_variables(const DataSet& data) {
+    return data.num_variables();
+  }
+
+
   // Forms the linear combination y = a*x1 + b*x2 on a single column, where a
-  // and b are scalar weights and x1, x2, and y are Data. This method forms the
-  // linear combination in parallel across all vertical levels of Data using the
-  // given thread team, and is used for time interpolation.
+  // and b are scalar weights and x1, x2, and y are DataSets. This method forms
+  // the linear combination in parallel across all vertical levels of data using
+  // the given thread team, and is used for time interpolation.
   // Column:                    team.league_rank()
   // Number of vertical levels: team.team_size()
   static KOKKOS_INLINE_FUNCTION
   void linear_combination(const ThreadTeam& team,
-                          Real a, Real b, const Data& x1, const Data& x2,
-                          Data& y) {
+                          Real a, Real b,
+                          const DataSet& x1, const DataSet& x2, DataSet& y) {
     y.linear_combination(team, a, b, x1, x2);
   }
 
@@ -136,8 +142,8 @@ struct TetralinearInterpTraits {
   static KOKKOS_INLINE_FUNCTION
   void interpolate_horizontally(const ThreadTeam& team,
                                 const TetralinearInterpWeights& src_weights,
-                                const Data& src_data,
-                                int tgt_column, Data& tgt_data) {
+                                const DataSet& src_data,
+                                int tgt_column, DataSet& tgt_data) {
     tgt_data.interpolate_horizontally(team, src_weights, src_data, tgt_column);
   }
 
@@ -151,11 +157,11 @@ struct TetralinearInterpTraits {
                               const ekat::LinInterp<Real, Pack::n>& vert_interp,
                               int column_index, int variable_index,
                               const VCoordColumnView& src_col_vcoords,
-                              const Data& src_data,
+                              const DataSet& src_data,
                               const VCoordColumnView& tgt_col_vcoords,
-                              Data& tgt_data) {
+                              DataSet& tgt_data) {
     // This generic implementation just calls the interpolate_vertically method
-    // on the Data type.
+    // on the DataSet type.
     tgt_data.interpolate_vertically(team, vert_interp,
                                     variable_index, column_index,
                                     src_col_vcoords, src_data,

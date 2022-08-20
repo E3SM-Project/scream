@@ -21,13 +21,13 @@ private:
 
 // This class implements 4D space-time interpolation from one set of columns at
 // fixed latitudes/longitudes to another set. The details of the interpolation
-// process are implemented by the traits class TetralinearInterpTraits<Data>,
+// process are implemented by the traits class TetralinearInterpTraits<DataSet>,
 // which can either be a generic implementation relying on methods defined on
 // types, or a specialization for a type without those methods.
-template <typename Data>
+template <typename DataSet>
 class TetralinearInterp {
 public:
-  using Traits     = TetralinearInterpTraits<Data>;
+  using Traits     = TetralinearInterpTraits<DataSet>;
   using HCoordView = typename Traits::HCoordView;
   using VCoordView = typename Traits::VCoordView;
 
@@ -53,7 +53,7 @@ public:
   void operator()(Real time,
                   const VCoordView& src_vcoords,
                   const VCoordView& tgt_vcoords,
-                  Data& tgt_data) const {
+                  DataSet& tgt_data) const {
     interpolate_(time, src_vcoords, tgt_vcoords, tgt_data);
   }
 
@@ -68,29 +68,30 @@ private:
                        const HCoordView& lats, const HCoordView& lons);
 
   // Interpolate the source data at the given time, placing the result in data.
-  void do_time_interpolation_(Real time, Data& data) const;
+  void do_time_interpolation_(Real time, DataSet& data) const;
 
   // Interpolate source data horizontally by applying precomputed interpolation
   // weights to src_data, placing the result in tgt_data.
-  void do_horizontal_interpolation_(const Data& src_data, Data& tgt_data) const;
+  void do_horizontal_interpolation_(const DataSet& src_data,
+                                    DataSet& tgt_data) const;
 
   // Interpolate the source data from the source vertical coordinates to the
   // given target vertical coordinates, placing the result in data.
   void do_vertical_interpolation_(const VCoordView& src_vcoords,
-                                  const Data& src_data,
+                                  const DataSet& src_data,
                                   const VCoordView& tgt_vcoords,
-                                  Data& tgt_data) const;
+                                  DataSet& tgt_data) const;
 
   // Interpolates source data at the given time from the given source vertical
   // coordinate profile to the target profile, storing the result in data.
   void interpolate_(Real time,
                     const VCoordView& src_vcoords,
                     const VCoordView& tgt_vcoords,
-                    Data& data) const;
+                    DataSet& data) const;
 
   // Data stored at times in a periodic sequence
-  std::vector<Real> times_;
-  std::vector<Data> data_;
+  std::vector<Real>    times_;
+  std::vector<DataSet> data_;
 
   // Horizontal interpolation weights (fixed in time), encoded in a sparse map
   // representing a linear operator.

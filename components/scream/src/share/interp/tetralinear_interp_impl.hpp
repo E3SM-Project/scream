@@ -12,10 +12,10 @@
 namespace scream {
 namespace interpolators {
 
-template <typename Data>
-void TetralinearInterp<Data>::init_from_file_(const std::string& data_file,
-                                              const HCoordView&  tgt_lats,
-                                              const HCoordView&  tgt_lons) {
+template <typename DataSet>
+void TetralinearInterp<DataSet>::init_from_file_(const std::string& data_file,
+                                                 const HCoordView&  tgt_lats,
+                                                 const HCoordView&  tgt_lons) {
   // Create a coarse SE grid.
   auto coarse_grid = CoarseGrid(data_file);
 
@@ -34,8 +34,9 @@ void TetralinearInterp<Data>::init_from_file_(const std::string& data_file,
 
 }
 
-template <typename Data>
-void TetralinearInterp<Data>::do_time_interpolation_(Real time, Data& data) const {
+template <typename DataSet>
+void TetralinearInterp<DataSet>::do_time_interpolation_(Real time,
+                                                        DataSet& data) const {
   // Find the bounding times.
   auto time_iter = std::lower_bound(times_.begin(), times_.end(), time);
   size_t t1, t2;
@@ -62,9 +63,9 @@ void TetralinearInterp<Data>::do_time_interpolation_(Real time, Data& data) cons
     });
 }
 
-template <typename Data>
-void TetralinearInterp<Data>::
-do_horizontal_interpolation_(const Data& src_data, Data& tgt_data) const {
+template <typename DataSet>
+void TetralinearInterp<DataSet>::
+do_horizontal_interpolation_(const DataSet& src_data, DataSet& tgt_data) const {
   EKAT_ASSERT(Traits::num_vertical_levels(src_data) ==
               Traits::num_vertical_levels(tgt_data));
   int num_levels = Traits::num_vertical_levels(src_data);
@@ -79,12 +80,12 @@ do_horizontal_interpolation_(const Data& src_data, Data& tgt_data) const {
   });
 }
 
-template <typename Data>
-void TetralinearInterp<Data>::
+template <typename DataSet>
+void TetralinearInterp<DataSet>::
 do_vertical_interpolation_(const VCoordView& src_vcoords,
-                           const Data& src_data,
+                           const DataSet& src_data,
                            const VCoordView& tgt_vcoords,
-                           Data& tgt_data) const {
+                           DataSet& tgt_data) const {
   int num_cols = tgt_vcoords.extent(0),
       num_src_levels = src_vcoords.extent(1),
       num_tgt_levels = tgt_vcoords.extent(1);
@@ -114,20 +115,21 @@ do_vertical_interpolation_(const VCoordView& src_vcoords,
   });
 }
 
-template <typename Data>
-void TetralinearInterp<Data>::interpolate_(Real time,
-                                           const VCoordView& src_vcoords,
-                                           const VCoordView& tgt_vcoords,
-                                           Data& tgt_data) const {
+template <typename DataSet>
+void TetralinearInterp<DataSet>::
+interpolate_(Real time,
+             const VCoordView& src_vcoords,
+             const VCoordView& tgt_vcoords,
+             DataSet& tgt_data) const {
   // Perform time interpolation on the source data.
   int num_src_cols = Traits::num_columns(data_[0]);
   int num_src_levels = Traits::num_vertical_levels(data_[0]);
-  Data data_t = Traits::allocate(num_src_cols, num_src_levels);
+  DataSet data_t = Traits::allocate(num_src_cols, num_src_levels);
   do_time_interpolation_(time, data_t);
 
   // Perform horizontal interpolation on the time-interpolated data.
   int num_tgt_cols = Traits::num_columns(data_[0]);
-  Data data_th = Traits::allocate(num_tgt_cols, num_src_levels);
+  DataSet data_th = Traits::allocate(num_tgt_cols, num_src_levels);
   do_horizontal_interpolation(data_t, data_th);
 
   // Perform vertical interpolation.
