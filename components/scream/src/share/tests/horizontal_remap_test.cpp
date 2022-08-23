@@ -33,10 +33,11 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
 {
   using IPDF = std::uniform_int_distribution<Int>;
   using RPDF = std::uniform_real_distribution<Real>;
+  constexpr Real tol  = std::numeric_limits<Real>::epsilon()*10;
 // Test configuration
-  int num_src_cols = 86;//6;  // Number of columns from source data
-  int num_tgt_cols = 21;//8;  // Number of columns on target grid
-  int num_levels   = 2;    // Dummy variable needed for initialization of a grid.
+  int num_src_cols = 86;  // Number of columns from source data
+  int num_tgt_cols = 21;  // Number of columns on target grid
+  int num_levels   = 2;   // Dummy variable needed for initialization of a grid.
 
   // Construct a target grid for remapped data
   auto gm_tgt           = get_test_gm(comm, num_tgt_cols, num_levels);
@@ -68,16 +69,18 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
 
   // Because we are building the remap  on the fly, use vectors to set up the remap data
   // We can also construct a baseline set of remapped data for testing.
+  Int                     n_s_local=0;      // Total number of remapping src->tgt pairs.
   std::vector<Int>        vec_src_col, vec_tgt_col;
   std::vector<Real>       vec_wgt;
   std::map<gid_type,Real> y_baseline;
   std::map<gid_type,Int>  num_src_to_tgt_cols;  // A record of how many source columns map to a specific target.  Will be used later for testing segments.
   IPDF pdf_map_src_num(2,num_src_cols); // Randomizer for number of source columns mapping to a target column
-  IPDF pdf_map_src(0,num_src_cols-1);   // Ranfomizer for which source columns map to a target column
-  RPDF pdf_map_wgt(0,1);                // Rancomizer for mapping weights
+  IPDF pdf_map_src(0,num_src_cols-1);   // Randomizer for which source columns map to a target column
+  RPDF pdf_map_wgt(0,1);                // Randomizer for mapping weights
   // Cycle through all tgt_cols and set up a remap
   for (int tcol=0; tcol<num_loc_tgt_cols; tcol++) {
     Int nmap = pdf_map_src_num(engine); // Number of source columns that will map to this target column
+    n_s_local += nmap;
     num_src_to_tgt_cols.emplace(dofs_gids(tcol),nmap);
     // We need to treat random weights specially, to ensure sum(wgt) = 1;
     std::vector<Real> temp_wgt;
@@ -102,6 +105,15 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
     // Append normalized weights to vector of overall weights
     vec_wgt.insert(vec_wgt.end(), temp_wgt.begin(), temp_wgt.end());
   }
+  // Gather data from all ranks
+  Int n_s;
+  Int* n_s_all_ranks = new Int[comm.size()]; 
+  comm.all_gather(&n_s_local,n_s_all_ranks,1);
+  comm.all_reduce(&n_s_local,&n_s,1,MPI_SUM);
+  Int n_s_offset = 0; // The offset for this rank, used for writing the remap to output
+  for (int ii=0; ii<comm.rank(); ii++) {
+    n_s_offset += n_s_all_ranks[ii];
+  }
   // Now copy these vectors to views 
   view_1d_host<Int>  map_src_cols_h(vec_src_col.data(),vec_wgt.size());
   view_1d_host<Int>  map_tgt_cols_h(vec_tgt_col.data(),vec_wgt.size());
@@ -116,6 +128,8 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   // Step 2: Use GSMap with remap values and source data, and compare against baseline.
   std::map<gid_type,Real> y_from_views;
   GSMap remap_from_views;
+  remap_from_views.source_min_dof = src_min_dof;
+  remap_from_views.m_min_dof      = tgt_min_dof;
   for (int iseg=0; iseg<num_loc_tgt_cols; iseg++) {
     gid_type seg_dof = dofs_gids(iseg);
     RemapSegment seg(seg_dof,num_src_to_tgt_cols.at(seg_dof));
@@ -141,7 +155,96 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   for (int ii=0; ii<unique_dofs_from_views.size(); ii++) {
     x_data_from_views_h(ii) = source_remap_data_h(unique_dofs_from_views[ii]-src_min_dof);
   }
+  Kokkos::deep_copy(x_data_from_views,x_data_from_views_h);
+  // Apply the remap
+  view_1d<Real> y_data_from_views("",num_loc_tgt_cols);
+  remap_from_views.apply_remap(x_data_from_views,y_data_from_views);
+  // The remapped values should match the y_baseline
+  auto y_data_from_views_h = Kokkos::create_mirror_view(y_data_from_views);
+  Kokkos::deep_copy(y_data_from_views_h,y_data_from_views);
+  for (int ii=0; ii<num_loc_tgt_cols; ii++) {
+    gid_type dof = dofs_gids(ii);
+    auto y_base = y_baseline[dof];
+    REQUIRE(std::abs(y_data_from_views_h(ii)-y_base)<tol);
+  } 
+  // Step 3: Write source data and remap data to a file.
+  std::string filename = "horizontal_remap_test_data_" + std::to_string(comm.size()) + "_ranks_" + std::to_string(src_min_dof) + "_case.nc";
+  // Initialize the pio_subsystem for this test:
+  MPI_Fint fcomm = MPI_Comm_c2f(comm.mpi_comm()); 
+  scorpio::eam_init_pio_subsystem(fcomm);   // Gather the initial PIO subsystem data creater by component coupler
+  // Register the output file
+  scorpio::register_file(filename,scorpio::Write);
+  //   - Dimensions
+  scorpio::register_dimension(filename,"n_s","n_s",n_s);
+  scorpio::register_dimension(filename,"n_a","n_a",num_src_cols);
+  scorpio::register_dimension(filename,"n_b","n_b",num_tgt_cols);
+  scorpio::register_dimension(filename,"ncol","ncol",num_src_cols);
+  //   - Variables
+  std::string remap_decomp_tag_r = "n_s_real";
+  std::string data_decomp_tag_r  = "data_real";
+  std::string remap_decomp_tag_i = "n_s_int";
+  std::vector<std::string> vec_of_remap_dims = {"n_s"};
+  std::vector<std::string> vec_of_data_dims  = {"ncol"};
+  scorpio::register_variable(filename,"col","col","unitless",1,vec_of_remap_dims,PIO_INT,remap_decomp_tag_i);
+  scorpio::register_variable(filename,"row","row","unitless",1,vec_of_remap_dims,PIO_INT,remap_decomp_tag_i);
+  scorpio::register_variable(filename,"S","S",    "unitless",1,vec_of_remap_dims,PIO_REAL,remap_decomp_tag_r);
+  scorpio::register_variable(filename,"src_data","src_data", "m",1,vec_of_data_dims,PIO_REAL,data_decomp_tag_r);
+  //   - DOFs
+  std::vector<Int> var_dof(n_s_local);
+  std::iota(var_dof.begin(),var_dof.end(),n_s_offset);
+  scorpio::set_dof(filename,"col",var_dof.size(),var_dof.data());
+  scorpio::set_dof(filename,"row",var_dof.size(),var_dof.data());
+  scorpio::set_dof(filename,"S",var_dof.size(),var_dof.data());
+  var_dof.resize(unique_dofs_from_views.size());
+  for (int ii=0; ii<var_dof.size(); ii++) {
+    var_dof[ii] = unique_dofs_from_views[ii]-src_min_dof;
+  }
+  scorpio::set_dof(filename,"src_data",var_dof.size(),var_dof.data());
+  scorpio::eam_pio_enddef(filename);
+  // Write data
+  scorpio::grid_write_data_array(filename,"col",map_src_cols_h.data());
+  scorpio::grid_write_data_array(filename,"row",map_tgt_cols_h.data());
+  scorpio::grid_write_data_array(filename,"S",map_wgts_h.data());
+  scorpio::grid_write_data_array(filename,"src_data",x_data_from_views_h.data());
+  // All done writing 
+  scorpio::eam_pio_closefile(filename);
 
+  // Step 4: Load remap information and source data from the file created in step 3
+  //         and use this data to test remapping from file.  Compare remapped data
+  //         against the baseline. 
+  GSMap remap_from_file;
+  remap_from_file.set_dofs_gids(dofs_gids);
+  remap_from_file.set_segments_from_file(filename,comm,dofs_gids,tgt_min_dof);
+  remap_from_file.check();
+  remap_from_file.set_unique_source_dofs();
+  // Read source data at unique points
+  scorpio::register_file(filename,scorpio::Read);
+  scorpio::get_variable(filename,"src_data","src_data",1,vec_of_data_dims,PIO_REAL,data_decomp_tag_r);
+  var_dof.resize(unique_dofs_from_views.size());
+  for (int ii=0; ii<var_dof.size(); ii++) {
+    var_dof[ii] = unique_dofs_from_views[ii]-src_min_dof;
+  }
+  scorpio::set_dof(filename,"src_data",var_dof.size(),var_dof.data());
+  scorpio::set_decomp(filename);
+  view_1d<Real> x_data_from_file("",unique_dofs_from_views.size());
+  auto x_data_from_file_h = Kokkos::create_mirror_view(x_data_from_file);
+  scorpio::grid_read_data_array(filename,"src_data",0,x_data_from_file.data()); 
+  scorpio::eam_pio_closefile(filename);
+  // Apply remap using the data
+  view_1d<Real> y_data_from_file("",num_loc_tgt_cols);
+  remap_from_file.apply_remap(x_data_from_file,y_data_from_file);
+  // The remapped values should match the y_baseline
+  auto y_data_from_file_h = Kokkos::create_mirror_view(y_data_from_file);
+  Kokkos::deep_copy(y_data_from_file_h,y_data_from_file);
+  for (int ii=0; ii<num_loc_tgt_cols; ii++) {
+    gid_type dof = dofs_gids(ii);
+    auto y_base = y_baseline[dof];
+    REQUIRE(std::abs(y_data_from_file_h(ii)-y_base)<tol);
+  } 
+
+  // All Done with testing
+  scorpio::eam_pio_finalize();
+  
 } // end function run
 
 //===============================================================================
@@ -173,71 +276,6 @@ TEST_CASE("horizontal_remap_test", "[horizontal_remap_test]"){
 
 } // TEST_CASE
 //===============================================================================
-TEST_CASE("horizontal_remap_from_file","") {
-
-{
-
-  ekat::Comm comm(MPI_COMM_WORLD);  // MPI communicator group used for I/O set as ekat object.
-  Int num_gcols = 218;
-  Int num_levs  = 72;
-  Int num_dcols = 866;
-  Int num_dlevs = 72;
-  MPI_Fint fcomm = MPI_Comm_c2f(comm.mpi_comm());  // MPI communicator group used for I/O.  In our simple test we use MPI_COMM_WORLD, however a subset could be used.
-  scorpio::eam_init_pio_subsystem(fcomm);   // Gather the initial PIO subsystem data creater by component coupler
-
-  // Construct a timestamp
-  util::TimeStamp t0 ({2000,1,1},{0,0,0});
-
-  // First set up a field manager and grids manager to interact with the inputs
-  auto gm_d            = get_test_gm(comm,num_dcols,num_dlevs);
-  auto grid_d          = gm_d->get_grid("Point Grid");
-  auto field_manager_d = get_test_fm(grid_d);
-  field_manager_d->init_fields_time_stamp(t0);
-  // Get input parameters and setup input
-  auto data_input = setup_data_input(field_manager_d);
-  // Get view of PS for data
-  auto ps_d_f   = field_manager_d->get_field("PS");
-  auto ps_d_v   = ps_d_f.get_view<Real*>();
-  auto ps_d_v_h = ps_d_f.get_view<Real*,Host>();
-
-  // Now set up a field_manager and grids manager for the test
-  auto gm_t            = get_test_gm(comm,num_gcols,num_levs);
-  auto grid_t          = gm_t->get_grid("Point Grid");
-  auto field_manager_t = get_test_fm(grid_t);
-  field_manager_t->init_fields_time_stamp(t0);
-  // Get view of PS for remapping
-  auto ps_t_f   = field_manager_t->get_field("PS");
-  auto ps_t_v   = ps_t_f.get_view<Real*>();
-  auto ps_t_v_h = ps_t_f.get_view<Real*,Host>();
-
-  // Setup an output manager for this data
-  auto om_params = setup_output_manager_params();
-  OutputManager om;
-  om.setup(comm,om_params,field_manager_t,gm_t,t0,t0,false);
-  comm.barrier();
-  return;
-
-  // Set up GSMap
-  auto dofs_gids = grid_t->get_dofs_gids();
-  auto min_dof   = grid_t->get_global_min_dof_gid();
-  auto test_map  = get_test_map(comm,dofs_gids,min_dof);
-  // Time loop
-  util::TimeStamp time = t0;
-  for (int ii=0;ii<12;ii++) {
-    data_input.read_variables(ii+1);
-    ps_d_f.sync_to_host();
-    test_map.apply_remap(ps_d_v,ps_t_v);
-    ps_t_f.sync_to_host();
-    time += 1;
-    om.run(time);
-  }
-  om.finalize();
-
-  // The rest of the test is in a CPRNC comparison which is called after this test has finished.
-
-}
-
-} // end TEST_CASE horizontal_remap_from_file
 
 TEST_CASE("horizontal_remap_units", "") {
 
@@ -255,6 +293,7 @@ TEST_CASE("horizontal_remap_units", "") {
     test_segment.m_length = len-1;
     test_segment.source_dofs = view_1d<gid_type>("",len);
     test_segment.weights     = view_1d<Real>("",len);
+    test_segment.source_idx  = view_1d<Int>("",len);
     ekat::genRandArray(test_segment.weights,engine,pdf_seg_wgt);
     Real wgt_normalize = 0;
     auto weights_h = Kokkos::create_mirror_view(test_segment.weights);
@@ -286,6 +325,8 @@ TEST_CASE("horizontal_remap_units", "") {
   {
     // Create a GSMap to test
     GSMap test_map;
+    test_map.m_min_dof = 1;
+    test_map.source_min_dof = 1;
     // Create a remap segment
     RemapSegment test_seg;
     IPDF pdf_seg_len(2,100);
@@ -295,6 +336,7 @@ TEST_CASE("horizontal_remap_units", "") {
     test_seg.m_dof    = 1;
     test_seg.weights     = view_1d<Real>("",len);
     test_seg.source_dofs = view_1d<gid_type>("",len);
+    test_seg.source_idx  = view_1d<Int>("",len);
     ekat::genRandArray(test_seg.weights,engine,pdf_seg_wgt);
     Real wgt_normalize = 0;
     auto weights_h = Kokkos::create_mirror_view(test_seg.weights);
@@ -325,6 +367,7 @@ TEST_CASE("horizontal_remap_units", "") {
     new_seg.m_dof    = 1;
     new_seg.weights     = view_1d<Real>("",1);
     new_seg.source_dofs = view_1d<gid_type>("",1);
+    new_seg.source_idx  = view_1d<Int>("",1);
     weights_h = Kokkos::create_mirror_view(new_seg.weights);
     weights_h(0)  = new_wgt;
     Kokkos::deep_copy(new_seg.weights,weights_h);
@@ -484,7 +527,6 @@ GSMap get_test_map(const ekat::Comm& comm, const view_1d<gid_type>& dofs_gids, c
   REQUIRE_NOTHROW ( parse_yaml_file(fname,params) );
   auto& remap_file = params.get<std::string>("Remap File");
   test_map.set_segments_from_file(remap_file,comm,dofs_gids,min_dof);
-  printf("ASD - (%d) - %d, %d\n",comm.rank(),test_map.get_num_of_segs(),test_map.get_num_of_dofs());
 //  test_map.check();
 //  test_map.set_unique_source_dofs();
   return test_map;

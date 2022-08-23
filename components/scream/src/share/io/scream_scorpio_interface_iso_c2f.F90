@@ -281,7 +281,7 @@ contains
 
   end subroutine convert_c_string
 !=====================================================================!
-  subroutine grid_write_data_array_c2f_real(filename_in,varname_in,var_data_ptr) bind(c)
+  subroutine grid_write_data_array_c2f(filename_in,varname_in,var_data_ptr) bind(c)
     use scream_scorpio_interface, only: grid_write_data_array
 
     type(c_ptr), intent(in) :: filename_in
@@ -295,7 +295,7 @@ contains
     call convert_c_string(varname_in,varname)
     call grid_write_data_array(filename,varname,var_data_ptr)
 
-  end subroutine grid_write_data_array_c2f_real
+  end subroutine grid_write_data_array_c2f
 !=====================================================================!
   subroutine grid_read_data_array_c2f(filename_in,varname_in,time_index,var_data_ptr) bind(c)
     use scream_scorpio_interface, only: grid_read_data_array

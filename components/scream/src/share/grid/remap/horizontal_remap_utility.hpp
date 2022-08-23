@@ -46,6 +46,7 @@ public:
   void check() {
     EKAT_REQUIRE(source_dofs.extent(0)==m_length);
     EKAT_REQUIRE(weights.extent(0)==m_length);
+    EKAT_REQUIRE(source_idx.extent(0)==m_length);
     Real wgt = 0.0;
     Kokkos::parallel_reduce("", m_length, KOKKOS_LAMBDA (const int& ii, Real& lsum) {
       lsum += weights(ii);
@@ -61,8 +62,8 @@ public:
   {
     Real ret = 0;
     auto source_data_h = Kokkos::create_mirror_view(source_data);
-    auto source_idx_h = Kokkos::create_mirror_view(source_idx);
-    auto weights_h    = Kokkos::create_mirror_view(weights);
+    auto source_idx_h  = Kokkos::create_mirror_view(source_idx);
+    auto weights_h     = Kokkos::create_mirror_view(weights);
     Kokkos::deep_copy(source_data_h,source_data);
     Kokkos::deep_copy(source_idx_h,source_idx);
     Kokkos::deep_copy(weights_h   ,weights);
@@ -119,6 +120,8 @@ public:
       }
     }
     REQUIRE(std::find(found.begin(),found.end(),false) == found.end());
+    EKAT_REQUIRE_MSG(m_min_dof != -999, "Error in GSMap: m_min_dof has not been set.");
+    EKAT_REQUIRE_MSG(source_min_dof != -999, "Error in GSMap: source_min_dof has not been set.");
   };
 /*---------------------------------------------*/
   // Useful if needing to grab source data from somewhere, like a data file.
@@ -144,6 +147,7 @@ public:
       auto  src_idx_h  = Kokkos::create_mirror_view(src_idx);
       for (int ii=0; ii<seg.m_length; ii++) {
         auto idx = std::find(unique_dofs.begin(), unique_dofs.end(), src_dofs_h(ii));
+        int idx_ii = idx - unique_dofs.begin();
         src_idx_h(ii) = idx - unique_dofs.begin();
       }
       Kokkos::deep_copy(src_idx,src_idx_h);
@@ -245,9 +249,9 @@ public:
     int* buff_dof = (int*)calloc(total_num_chunks, sizeof(int));
     int* buff_sta = (int*)calloc(total_num_chunks, sizeof(int));
     int* buff_len = (int*)calloc(total_num_chunks, sizeof(int));
-    MPI_Allgatherv(chunk_dof.data(),  total_num_chunks,MPI_INT,buff_dof,num_chunks_per_rank,chunk_displacement,MPI_INT,comm.mpi_comm());
-    MPI_Allgatherv(chunk_start.data(),total_num_chunks,MPI_INT,buff_sta,num_chunks_per_rank,chunk_displacement,MPI_INT,comm.mpi_comm());
-    MPI_Allgatherv(chunk_len.data(),  total_num_chunks,MPI_INT,buff_len,num_chunks_per_rank,chunk_displacement,MPI_INT,comm.mpi_comm());
+    MPI_Allgatherv(chunk_dof.data(),  chunk_dof.size(),MPI_INT,buff_dof,num_chunks_per_rank,chunk_displacement,MPI_INT,comm.mpi_comm());
+    MPI_Allgatherv(chunk_start.data(),chunk_dof.size(),MPI_INT,buff_sta,num_chunks_per_rank,chunk_displacement,MPI_INT,comm.mpi_comm());
+    MPI_Allgatherv(chunk_len.data(),  chunk_dof.size(),MPI_INT,buff_len,num_chunks_per_rank,chunk_displacement,MPI_INT,comm.mpi_comm());
     // Now construct and add segments for just the DOF's this rank cares about.
     std::vector<int> seg_dof, seg_start, seg_length;
     var_dof.clear();
@@ -259,11 +263,11 @@ public:
         if (buff_dof[ii]-global_remap_min_dof == dofs_gids_h(jj)-min_dof) {
           std::vector<int> var_tmp(buff_len[ii]);
           std::iota(var_tmp.begin(),var_tmp.end(),buff_sta[ii]);
-          var_dof.insert(var_dof.end(),var_tmp.begin(),var_tmp.end());
           seg_dof.push_back(buff_dof[ii]);
-          seg_start.push_back(buff_sta[ii]);
+          seg_start.push_back(var_dof.size()); 
           seg_length.push_back(buff_len[ii]);
-        }
+          var_dof.insert(var_dof.end(),var_tmp.begin(),var_tmp.end());
+        } 
       }
     }
     // Now that we know which parts of the remap file this rank cares about we can construct segments
@@ -319,11 +323,8 @@ public:
 
     if (seg_found) {
       // Adjust the found segment to include this new segment information.
-      RemapSegment new_seg;
-      new_seg.m_dof    = seg_match.m_dof;
-      new_seg.m_length = seg_match.m_length + segment.m_length;
-      new_seg.source_dofs = view_1d<gid_type>("",new_seg.m_length); 
-      new_seg.weights     = view_1d<Real>("",new_seg.m_length);
+      Int new_length = seg_match.m_length + segment.m_length;
+      RemapSegment new_seg(seg_match.m_dof, new_length);
       auto source_dofs_h = Kokkos::create_mirror_view(new_seg.source_dofs);
       auto weights_h     = Kokkos::create_mirror_view(new_seg.weights);
       Int nsize = seg_match.m_length; 
@@ -352,13 +353,13 @@ public:
     for (int iseg=0; iseg<get_num_of_segs(); iseg++) {
       auto seg = map_segments[iseg];
       Real remap_val = seg.apply_segment(source_data);
-      remap_data_h(seg.m_dof-source_min_dof) = remap_val;
+      remap_data_h(iseg) = remap_val;
     }
     Kokkos::deep_copy(remapped_data,remap_data_h);
   }; // end apply_remap
 /*---------------------------------------------*/
-  gid_type                  m_min_dof;   // The global minimum dof value - needed to offset for array index of data.
-  gid_type                  source_min_dof; // Similar to m_min_dof, but the value used in the source dofs.
+  gid_type                  m_min_dof = -999;      // The global minimum dof value - needed to offset for array index of data.
+  gid_type                  source_min_dof = -999; // Similar to m_min_dof, but the value used in the source dofs.
 
 protected:
 
