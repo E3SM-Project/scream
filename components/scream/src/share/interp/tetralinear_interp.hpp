@@ -75,6 +75,9 @@ private:
   void do_horizontal_interpolation_(const DataSet& src_data,
                                     DataSet& tgt_data) const;
 
+  // Computes vertical coordinates for the given dataset across all columns.
+  void compute_vertical_coords_(const DataSet& data, VCoordView& vcoords) const;
+
   // Interpolate the source data from the source vertical coordinates to the
   // given target vertical coordinates, placing the result in data.
   void do_vertical_interpolation_(const VCoordView& src_vcoords,
@@ -85,7 +88,6 @@ private:
   // Interpolates source data at the given time from the given source vertical
   // coordinate profile to the target profile, storing the result in data.
   void interpolate_(Real time,
-                    const VCoordView& src_vcoords,
                     const VCoordView& tgt_vcoords,
                     DataSet& data) const;
 

@@ -147,6 +147,17 @@ struct TetralinearInterpTraits {
     tgt_data.interpolate_horizontally(team, src_weights, src_data, tgt_column);
   }
 
+  // Computes vertical coordinates for a dataset on the column with the given
+  // index. The given team provides threads that can be dispatched to the
+  // vertical levels in the column.
+  KOKKOS_INLINE_FUNCTION
+  void compute_vertical_coords(const ThreadTeam& team,
+                               int column_index,
+                               const DataSet& data,
+                               VCoordColumnView& column_vcoords) {
+    data.compute_vertical_coords(team, column_index, column_vcoords);
+  }
+
   // Performs linear vertical interpolation from data for a variable with the
   // given index on a given column from a set of source vertical coordinates to
   // a target set. Interpolation is performed in parallel over vertical levels
@@ -156,16 +167,16 @@ struct TetralinearInterpTraits {
   void interpolate_vertically(const ThreadTeam& team,
                               const ekat::LinInterp<Real, Pack::n>& vert_interp,
                               int column_index, int variable_index,
-                              const VCoordColumnView& src_col_vcoords,
+                              const VCoordColumnView& src_column_vcoords,
                               const DataSet& src_data,
-                              const VCoordColumnView& tgt_col_vcoords,
+                              const VCoordColumnView& tgt_column_vcoords,
                               DataSet& tgt_data) {
     // This generic implementation just calls the interpolate_vertically method
     // on the DataSet type.
     tgt_data.interpolate_vertically(team, vert_interp,
                                     variable_index, column_index,
-                                    src_col_vcoords, src_data,
-                                    tgt_col_vcoords);
+                                    src_column_vcoords, src_data,
+                                    tgt_column_vcoords);
   }
 };
 

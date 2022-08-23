@@ -117,8 +117,21 @@ do_vertical_interpolation_(const VCoordView& src_vcoords,
 
 template <typename DataSet>
 void TetralinearInterp<DataSet>::
+compute_vertical_coords_(const DataSet& data,
+                         VCoordView& vcoords) const {
+  EKAT_ASSERT(Traits::num_columns(data) == vcoords.extent(0));
+  EKAT_ASSERT(Traits::num_vertical_levels(data) == vcoords.extent(1));
+  auto team_policy = ThreadTeamPolicy(vcoords.extent(0), vcoords.extent(1));
+  Kokkos::parallel_for(team_policy, KOKKOS_LAMBDA(const ThreadTeam& team) {
+    int i = team.league_rank();
+    Traits::compute_vertical_coords(team, i, data,
+                                    ekat::subview(vcoords, i));
+  });
+}
+
+template <typename DataSet>
+void TetralinearInterp<DataSet>::
 interpolate_(Real time,
-             const VCoordView& src_vcoords,
              const VCoordView& tgt_vcoords,
              DataSet& tgt_data) const {
   // Perform time interpolation on the source data.
@@ -130,12 +143,17 @@ interpolate_(Real time,
   // Perform horizontal interpolation on the time-interpolated data.
   int num_tgt_cols = Traits::num_columns(data_[0]);
   DataSet data_th = Traits::allocate(num_tgt_cols, num_src_levels);
-  do_horizontal_interpolation(data_t, data_th);
+  do_horizontal_interpolation_(data_t, data_th);
+
+  // Compute vertical coordinates on all columns for the temporally (t) and
+  // horizontally (h) interpolated dataset.
+  VCoordView src_vcoords("src_vcoords", num_tgt_cols, num_src_levels);
+  compute_vertical_coords_(data_th, src_vcoords);
 
   // Perform vertical interpolation.
   // NOTE: this assumes that the number of vertical levels is the same in the
   // NOTE: source and target data.
-  do_vertical_interpolation(src_vcoords, data_th, tgt_vcoords, tgt_data);
+  do_vertical_interpolation_(src_vcoords, data_th, tgt_vcoords, tgt_data);
 }
 
 } // namespace interpolators

@@ -100,6 +100,12 @@ struct CoordField {
   }
 
   KOKKOS_INLINE_FUNCTION
+  void compute_vertical_coords(const ThreadTeam& team,
+                               int column_index,
+                               VCoordColumnView& col_vcoords) const {
+  }
+
+  KOKKOS_INLINE_FUNCTION
   void interpolate_vertically(const ThreadTeam& team,
                               const ekat::LinInterp<Real, Pack::n>& vert_interp,
                               int variable_index, int column_index,
