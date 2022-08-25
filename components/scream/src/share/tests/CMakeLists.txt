@@ -35,6 +35,7 @@ if (NOT ${SCREAM_BASELINES_ONLY})
   # Test horizontal remapping utility
   CreateUnitTest(horizontal_remap "horizontal_remap_test.cpp" "scream_share;scream_io"
     LABELS "horiz_remap"
+    MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
   )
  
 

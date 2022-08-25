@@ -190,7 +190,7 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   scorpio::register_variable(filename,"S","S",    "unitless",1,vec_of_remap_dims,PIO_REAL,remap_decomp_tag_r);
   scorpio::register_variable(filename,"src_data","src_data", "m",1,vec_of_data_dims,PIO_REAL,data_decomp_tag_r);
   //   - DOFs
-  std::vector<Int> var_dof(n_s_local);
+  std::vector<int64_t> var_dof(n_s_local);
   std::iota(var_dof.begin(),var_dof.end(),n_s_offset);
   scorpio::set_dof(filename,"col",var_dof.size(),var_dof.data());
   scorpio::set_dof(filename,"row",var_dof.size(),var_dof.data());
@@ -478,10 +478,10 @@ std::shared_ptr<FieldManager> get_test_fm(std::shared_ptr<const AbstractGrid> gr
 std::shared_ptr<GridsManager> get_test_gm(const ekat::Comm& comm, const Int num_gcols, const Int num_levs)
 {
   ekat::ParameterList gm_params;
-  gm_params.set("Number of Global Columns",num_gcols);
-  gm_params.set("Number of Vertical Levels",num_levs);
+  gm_params.set("number_of_global_columns",num_gcols);
+  gm_params.set("number_of_vertical_levels",num_levs);
   auto gm = create_mesh_free_grids_manager(comm,gm_params);
-  gm->build_grids(std::set<std::string>{"Point Grid"});
+  gm->build_grids();
   return gm;
 } // end get_test_gm
 /*==========================================================================================================*/

@@ -207,7 +207,7 @@ public:
     std::vector<std::string> vec_of_dims = {"n_s"};
     std::string i_decomp = "Int-n_s";
     scorpio::get_variable(remap_file, "row", "row", vec_of_dims.size(), vec_of_dims, PIO_INT, i_decomp);
-    std::vector<int> var_dof(my_chunk);
+    std::vector<int64_t> var_dof(my_chunk);
     std::iota(var_dof.begin(),var_dof.end(),my_start);
     scorpio::set_dof(remap_file,"row",var_dof.size(),var_dof.data());
     scorpio::set_decomp(remap_file);
