@@ -65,7 +65,7 @@ namespace scorpio {
                              const int time_index, void* hbuf);
   /* Write data for a specific variable to a specific file. */
   void grid_write_data_array(const std::string &filename, const std::string &varname,
-                             void* hbuf);
+                             const void* hbuf);
 
 extern "C" {
   /* Query whether the pio subsystem is inited or not */

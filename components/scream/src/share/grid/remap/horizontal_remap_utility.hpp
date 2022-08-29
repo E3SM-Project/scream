@@ -7,13 +7,13 @@
 #include "share/scream_types.hpp"
 #include "ekat/ekat_workspace.hpp"
 
+#include <numeric>
+
 namespace scream {
 
 using gid_type = AbstractGrid::gid_type;
 
 using KT = KokkosTypes<DefaultDevice>;
-template <typename S>
-using view_1d = typename KT::template view_1d<S>;
 
 template <typename S>
 using view_1d_host = typename KT::template view_1d<S>::HostMirror;
@@ -23,6 +23,9 @@ using view_1d_host = typename KT::template view_1d<S>::HostMirror;
 /* A simple structure to store remap information for a single target column
  * --------------------------------------------------------------------------------------------- */
 struct RemapSegment {
+
+template <typename S>
+using view_1d = typename KT::template view_1d<S>;
 
 public:
   virtual ~RemapSegment() = default;
@@ -81,6 +84,9 @@ public:
  * --------------------------------------------------------------------------------------------- */
 struct GSMap { // TODO: Following the name in component coupler, could be a different name
 
+template <typename S>
+using view_1d = typename KT::template view_1d<S>;
+
 public:
   virtual ~GSMap() = default;
   GSMap() {};
@@ -94,7 +100,7 @@ public:
   }
 /*---------------------------------------------*/
   void set_dofs_gids(const view_1d<gid_type>& dofs_gids) {
-    REQUIRE(dofs_gids.size()>0);
+    EKAT_REQUIRE(dofs_gids.size()>0);
     m_dofs_gids = view_1d<gid_type>(dofs_gids);
     Kokkos::deep_copy(m_dofs_gids,dofs_gids);
   }
@@ -106,6 +112,8 @@ public:
   }; 
 /*---------------------------------------------*/
   void check() {
+    EKAT_REQUIRE_MSG(m_min_dof != -999, "Error in GSMap: m_min_dof has not been set.");
+    EKAT_REQUIRE_MSG(source_min_dof != -999, "Error in GSMap: source_min_dof has not been set.");
     std::vector<bool> found(m_dofs_gids.size(),false);
     auto dofs_gids_h = Kokkos::create_mirror_view(m_dofs_gids);
     Kokkos::deep_copy(dofs_gids_h,m_dofs_gids);
@@ -119,9 +127,7 @@ public:
         }
       }
     }
-    REQUIRE(std::find(found.begin(),found.end(),false) == found.end());
-    EKAT_REQUIRE_MSG(m_min_dof != -999, "Error in GSMap: m_min_dof has not been set.");
-    EKAT_REQUIRE_MSG(source_min_dof != -999, "Error in GSMap: source_min_dof has not been set.");
+    EKAT_REQUIRE(std::find(found.begin(),found.end(),false) == found.end());
   };
 /*---------------------------------------------*/
   // Useful if needing to grab source data from somewhere, like a data file.
@@ -174,6 +180,8 @@ public:
     const view_1d<gid_type>& dofs_gids,
     const Int                min_dof)
   {
+    // We have the dofs_gids, so set them for this map
+    set_dofs_gids(dofs_gids);
     // Open remap file and determine the amount of data to be read
     scorpio::register_file(remap_file,scorpio::Read);
     const auto remap_size = scorpio::get_dimlen_c2f(remap_file.c_str(),"n_s"); // Note, here we assume a standard format of col, row, S

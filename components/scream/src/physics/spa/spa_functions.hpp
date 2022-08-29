@@ -4,6 +4,7 @@
 #include "share/grid/abstract_grid.hpp"
 #include "share/scream_types.hpp"
 #include "share/util/scream_time_stamp.hpp"
+#include "share/grid/remap/horizontal_remap_utility.hpp"
 
 #include "ekat/ekat_pack_kokkos.hpp"
 #include "ekat/ekat_pack_utils.hpp"
@@ -156,6 +157,8 @@ struct SPAFunctions
       source_grid_loc = view_1d<Int>("",length_);
       target_grid_loc = view_1d<Int>("",length_);
     }
+    // Using the GSMap utility
+    GSMap spa_gsmap;
     // Comm group used for SPA
     ekat::Comm m_comm;
     // Number of weights in remap data

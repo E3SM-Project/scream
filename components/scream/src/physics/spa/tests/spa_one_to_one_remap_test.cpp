@@ -65,6 +65,7 @@ TEST_CASE("spa_one_to_one_remap","spa")
   spa_horiz_interp.m_comm = spa_comm;
   SPAFunc::set_remap_weights_one_to_one(ncols,min_dof,dofs_gids,spa_horiz_interp);
   // Make sure one_to_one remap has the correct unique columns
+  auto uniq = spa_horiz_interp.spa_gsmap.get_unique_dofs();
   REQUIRE(spa_horiz_interp.num_unique_cols==my_ncols);
   // Recall, SPA data is padded, so we initialize with 2 more levels than the source data file.
   SPAFunc::SPAInput spa_data(dofs_gids.size(), nlevs+2, nswbands, nlwbands);

@@ -19,6 +19,9 @@ namespace {
 
 using namespace scream;
 
+template <typename S>
+using view_1d = typename KokkosTypes<DefaultDevice>::template view_1d<S>;
+
 std::shared_ptr<GridsManager> get_test_gm(const ekat::Comm& comm, const Int num_gcols, const Int num_levs);
 
 std::shared_ptr<FieldManager> get_test_fm(std::shared_ptr<const AbstractGrid> grid);
@@ -31,25 +34,53 @@ GSMap get_test_map(const ekat::Comm& comm, const view_1d<gid_type>& dofs_gids, c
 
 void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min_dof)
 {
+/* Testing for the GSMap structure and using it to apply a remap to data.
+ * This test has three main parts:
+ *   1. Construction of the remapping data, construction of the source data to be
+ *      remapped, and the establishment of a baseline of remapped data.
+ *   2. The construction of a GSMap where the remap data is gathered directly from
+ *      the views derived in part 1.  Apply the remap and compare against baseline.
+ *   3. After writing the remapping data and source data to file, we construct a
+ *      GSMap reampper with data gathered from the file.  We then apply the remap
+ *      and compare against the baseline.
+ *
+ * By breaking the test into these parts we are able to make sure that each test
+ * generate random data, i.e. we are not getting lucky with static numbers.  We are
+ * also able to test the two main implementations of the horizontal remap structure;
+ * the generation of weights using a map constructed online, and the use of remapping
+ * weights constructed offline and save to file.
+ *
+ * INPUT ARGS
+ *  - engine: This is just the random seed provided by the EAMxx testing setup
+ *  - src_min_dof: This is the degree-of-freedom index for the first column.  This
+ *                 simulates that some remapping algorithms may treat the first column
+ *                 with index=0 and others with index=1.  Making this an input allows
+ *                 the test to check both cases.
+ */
+
   using IPDF = std::uniform_int_distribution<Int>;
   using RPDF = std::uniform_real_distribution<Real>;
   constexpr Real tol  = std::numeric_limits<Real>::epsilon()*10;
-// Test configuration
+
+//---------------------- Test configuration
   int num_src_cols = 86;  // Number of columns from source data
   int num_tgt_cols = 21;  // Number of columns on target grid
   int num_levels   = 2;   // Dummy variable needed for initialization of a grid.
 
   // Construct a target grid for remapped data
   auto gm_tgt           = get_test_gm(comm, num_tgt_cols, num_levels);
-  auto grid_tgt         = gm_tgt->get_grid("Point Grid");
-  auto num_loc_tgt_cols = grid_tgt->get_num_local_dofs();
-  auto tgt_min_dof      = grid_tgt->get_global_min_dof_gid();
-  auto dofs_gids        = grid_tgt->get_dofs_gids();
+  auto grid_tgt         = gm_tgt->get_grid("Point Grid");     // Retrieve the actual grid from the grids manager.
+  auto num_loc_tgt_cols = grid_tgt->get_num_local_dofs();     // Number of columns (dofs) on this rank.
+  auto tgt_min_dof      = grid_tgt->get_global_min_dof_gid(); // The starting index of the EAMxx grid.
+  auto dofs_gids        = grid_tgt->get_dofs_gids();          // A view of the dofs on this rank with their global id.
 
+//----------------------
 // Step 1: Generate a random remapping (source col, target col, weight) and random source data.
 //         Store these in local 1D views and create a remap file.
 // Note, randomization is done entirely on ROOT so that we only have one version of the remap
 // data.
+//
+// OUT - y_baseline, num_src_to_tgt_cols, n_s, map_src_cols, map_tgt_cols, map_wgts
 
   // When we create random source data we again only do this on root so that we
   // only have one set of data.
@@ -125,15 +156,17 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   Kokkos::deep_copy(map_tgt_cols, map_tgt_cols_h);
   Kokkos::deep_copy(map_wgts    , map_wgts_h    );
 
+//----------------------
   // Step 2: Use GSMap with remap values and source data, and compare against baseline.
   std::map<gid_type,Real> y_from_views;
   GSMap remap_from_views;
   remap_from_views.source_min_dof = src_min_dof;
   remap_from_views.m_min_dof      = tgt_min_dof;
+  auto dofs_gids_h = Kokkos::create_mirror_view(dofs_gids);
+  Kokkos::deep_copy(dofs_gids_h,dofs_gids);
   for (int iseg=0; iseg<num_loc_tgt_cols; iseg++) {
-    gid_type seg_dof = dofs_gids(iseg);
+    gid_type seg_dof = dofs_gids_h(iseg);
     RemapSegment seg(seg_dof,num_src_to_tgt_cols.at(seg_dof));
-    seg.m_dof = seg_dof;
     auto source_dofs_h = Kokkos::create_mirror_view(seg.source_dofs);
     auto weights_h     = Kokkos::create_mirror_view(seg.weights);
     int idx = 0;
@@ -163,10 +196,12 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   auto y_data_from_views_h = Kokkos::create_mirror_view(y_data_from_views);
   Kokkos::deep_copy(y_data_from_views_h,y_data_from_views);
   for (int ii=0; ii<num_loc_tgt_cols; ii++) {
-    gid_type dof = dofs_gids(ii);
+    gid_type dof = dofs_gids_h(ii);
     auto y_base = y_baseline[dof];
     REQUIRE(std::abs(y_data_from_views_h(ii)-y_base)<tol);
-  } 
+  }
+ 
+//----------------------
   // Step 3: Write source data and remap data to a file.
   std::string filename = "horizontal_remap_test_data_" + std::to_string(comm.size()) + "_ranks_" + std::to_string(src_min_dof) + "_case.nc";
   // Initialize the pio_subsystem for this test:
@@ -209,11 +244,11 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   // All done writing 
   scorpio::eam_pio_closefile(filename);
 
+//----------------------
   // Step 4: Load remap information and source data from the file created in step 3
   //         and use this data to test remapping from file.  Compare remapped data
   //         against the baseline. 
   GSMap remap_from_file;
-  remap_from_file.set_dofs_gids(dofs_gids);
   remap_from_file.set_segments_from_file(filename,comm,dofs_gids,tgt_min_dof);
   remap_from_file.check();
   remap_from_file.set_unique_source_dofs();
@@ -477,6 +512,7 @@ std::shared_ptr<FieldManager> get_test_fm(std::shared_ptr<const AbstractGrid> gr
 /*==========================================================================================================*/
 std::shared_ptr<GridsManager> get_test_gm(const ekat::Comm& comm, const Int num_gcols, const Int num_levs)
 {
+/* Simple routine to construct and return a grids manager given number of columns and levels */
   ekat::ParameterList gm_params;
   gm_params.set("number_of_global_columns",num_gcols);
   gm_params.set("number_of_vertical_levels",num_levs);
