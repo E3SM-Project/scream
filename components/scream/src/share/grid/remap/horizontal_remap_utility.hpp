@@ -11,6 +11,12 @@
 
 namespace scream {
 
+
+/* --------------------------------------------------------------------------------------------- */
+/* A simple structure to store remap information for a single target column
+ * --------------------------------------------------------------------------------------------- */
+struct RemapSegment {
+
 using gid_type = AbstractGrid::gid_type;
 using Pack = ekat::Pack<Real,SCREAM_PACK_SIZE>;
 
@@ -30,15 +36,6 @@ using view_1d_host = typename KT::template view_1d<S>::HostMirror;
 
 template <typename S>
 using view_2d_host = typename KT::template view_2d<S>::HostMirror;
-
-
-/* --------------------------------------------------------------------------------------------- */
-/* A simple structure to store remap information for a single target column
- * --------------------------------------------------------------------------------------------- */
-struct RemapSegment {
-
-template <typename S>
-using view_1d = typename KT::template view_1d<S>;
 
 public:
   virtual ~RemapSegment() = default;
@@ -69,7 +66,7 @@ public:
       lsum += weights(ii);
     },wgt);
     // The sum of the weights should be = 1.0, note due to round-off error we accept to within a tolerance.
-    Real tol = std::numeric_limits<Real>::epsilon() * 10.0;
+    Real tol = std::numeric_limits<Real>::epsilon() * 100.0;
     EKAT_REQUIRE_MSG(std::abs(wgt-1.0)<tol,"ERROR: checking remap segment for DOF = " + std::to_string(m_dof) + ", total weight = " + std::to_string(wgt) + ".");
   }
 
@@ -146,8 +143,25 @@ public:
  * --------------------------------------------------------------------------------------------- */
 struct GSMap { // TODO: Following the name in component coupler, could be a different name
 
+using gid_type = AbstractGrid::gid_type;
+using Pack = ekat::Pack<Real,SCREAM_PACK_SIZE>;
+
+using KT = KokkosTypes<DefaultDevice>;
+
 template <typename S>
 using view_1d = typename KT::template view_1d<S>;
+
+template <typename S>
+using view_2d = typename KT::template view_2d<S>;
+
+template <typename S>
+using view_3d = typename KT::template view_3d<S>;
+
+template <typename S>
+using view_1d_host = typename KT::template view_1d<S>::HostMirror;
+
+template <typename S>
+using view_2d_host = typename KT::template view_2d<S>::HostMirror;
 
 public:
   virtual ~GSMap() = default;

@@ -271,11 +271,16 @@ struct SPAFunctions
   KOKKOS_INLINE_FUNCTION
   static ScalarX linear_interp(const ScalarX& x0, const ScalarX& x1, const ScalarT& t);
 
-  // Pad views for vertical interpolation
+  // Helper memory usage checker
   KOKKOS_INLINE_FUNCTION
-  static void add_padding(const Int length, const Real pad0, const Real padN, const view_1d<Spack>& in, view_1d<Spack>& out ); 
-  KOKKOS_INLINE_FUNCTION
-  static void add_padding(const Int length, const Real pad0, const Real padN, const view_1d<Real>& in, view_1d<Real>& out ); 
+  static void update_mem_usage(const ekat::Comm& comm, long long& current_max) {
+  #ifdef SCREAM_HAS_MEMORY_USAGE
+    long long my_mem_usage = get_mem_usage(MB);
+    long long max_mem_usage;
+    comm.all_reduce(&my_mem_usage,&max_mem_usage,1,MPI_MAX);
+    current_max = std::max(max_mem_usage,current_max);
+  #endif
+  }
 
 }; // struct Functions
 

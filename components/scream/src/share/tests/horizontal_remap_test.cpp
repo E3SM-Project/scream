@@ -19,8 +19,19 @@ namespace {
 
 using namespace scream;
 
+using gid_type = AbstractGrid::gid_type;
+using Pack = ekat::Pack<Real,SCREAM_PACK_SIZE>;
+
+using KT = KokkosTypes<DefaultDevice>;
+
 template <typename S>
-using view_1d = typename KokkosTypes<DefaultDevice>::template view_1d<S>;
+using view_1d = typename KT::template view_1d<S>;
+
+template <typename S>
+using view_2d = typename KT::template view_2d<S>;
+
+template <typename S>
+using view_1d_host = typename KT::template view_1d<S>::HostMirror;
 
 std::shared_ptr<GridsManager> get_test_gm(const ekat::Comm& comm, const Int num_gcols, const Int num_levs);
 
@@ -282,7 +293,6 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   scorpio::eam_pio_finalize();
 
   // Dummy test to check that a 2D view of Packs works
-  using Pack = ekat::Pack<Real,SCREAM_PACK_SIZE>;
   Int num_packs =  ekat::npack<Pack>(num_levels);
   view_2d<Pack> x_pack_data("",unique_dofs_from_file.size(),num_packs);
   view_2d<Pack> y_pack_data("",num_loc_tgt_cols,num_packs);

@@ -151,6 +151,14 @@ void SPA::init_buffers(const ATMBufferManager &buffer_manager)
 // =========================================================================================
 void SPA::initialize_impl (const RunType /* run_type */)
 {
+#ifdef SCREAM_HAS_MEMORY_USAGE
+  {
+    long long my_mem_usage = get_mem_usage(MB);
+    long long max_mem_usage;
+    m_comm.all_reduce(&my_mem_usage,&max_mem_usage,1,MPI_MAX);
+    m_atm_logger->debug("[SPA::init::START] memory usage: " + std::to_string(max_mem_usage) + "MB");
+  }
+#endif
   // Initialize SPA pressure state stucture and set pointers for the SPA output data to
   // field managed variables.
   SPAData_out.CCN3               = get_field_out("nccn").get_view<Pack**>();
@@ -197,11 +205,27 @@ void SPA::initialize_impl (const RunType /* run_type */)
   add_postcondition_check<Interval>(get_field_out("aero_ssa_sw"),m_grid,0.0,1.0,true);
   add_postcondition_check<Interval>(get_field_out("aero_tau_sw"),m_grid,0.0,1.0,true);
   add_postcondition_check<Interval>(get_field_out("aero_tau_lw"),m_grid,0.0,1.0,true);
+#ifdef SCREAM_HAS_MEMORY_USAGE
+  {
+    long long my_mem_usage = get_mem_usage(MB);
+    long long max_mem_usage;
+    m_comm.all_reduce(&my_mem_usage,&max_mem_usage,1,MPI_MAX);
+    m_atm_logger->debug("[SPA::init::END] memory usage: " + std::to_string(max_mem_usage) + "MB");
+  }
+#endif
 }
 
 // =========================================================================================
 void SPA::run_impl (const int dt)
 {
+#ifdef SCREAM_HAS_MEMORY_USAGE
+  {
+    long long my_mem_usage = get_mem_usage(MB);
+    long long max_mem_usage;
+    m_comm.all_reduce(&my_mem_usage,&max_mem_usage,1,MPI_MAX);
+    m_atm_logger->debug("[SPA::run::START] memory usage: " + std::to_string(max_mem_usage) + "MB");
+  }
+#endif
   /* Gather time and state information for interpolation */
   auto ts = timestamp()+dt;
   /* Update the SPATimeState to reflect the current time, note the addition of dt */
@@ -213,6 +237,14 @@ void SPA::run_impl (const int dt)
   const auto& pmid_tgt = get_field_in("p_mid").get_view<const Pack**>();
   SPAFunc::spa_main(SPATimeState, pmid_tgt, m_buffer.p_mid_src,
                     SPAData_start,SPAData_end,m_buffer.spa_temp,SPAData_out);
+#ifdef SCREAM_HAS_MEMORY_USAGE
+  {
+    long long my_mem_usage = get_mem_usage(MB);
+    long long max_mem_usage;
+    m_comm.all_reduce(&my_mem_usage,&max_mem_usage,1,MPI_MAX);
+    m_atm_logger->debug("[SPA::run::END] memory usage: " + std::to_string(max_mem_usage) + "MB");
+  }
+#endif
 }
 
 // =========================================================================================
