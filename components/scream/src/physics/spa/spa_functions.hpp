@@ -271,6 +271,12 @@ struct SPAFunctions
   KOKKOS_INLINE_FUNCTION
   static ScalarX linear_interp(const ScalarX& x0, const ScalarX& x1, const ScalarT& t);
 
+  // Pad views for vertical interpolation
+  KOKKOS_INLINE_FUNCTION
+  static void add_padding(const Int length, const Real pad0, const Real padN, const view_1d<Spack>& in, view_1d<Spack>& out ); 
+  KOKKOS_INLINE_FUNCTION
+  static void add_padding(const Int length, const Real pad0, const Real padN, const view_1d<Real>& in, view_1d<Real>& out ); 
+
 }; // struct Functions
 
 } // namespace spa

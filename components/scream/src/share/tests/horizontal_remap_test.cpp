@@ -65,7 +65,7 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
 //---------------------- Test configuration
   int num_src_cols = 86;  // Number of columns from source data
   int num_tgt_cols = 21;  // Number of columns on target grid
-  int num_levels   = 2;   // Dummy variable needed for initialization of a grid.
+  int num_levels   = 2*SCREAM_PACK_SIZE+1;   // Dummy variable needed for initialization of a grid.
 
   // Construct a target grid for remapped data
   auto gm_tgt           = get_test_gm(comm, num_tgt_cols, num_levels);
@@ -191,7 +191,7 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   Kokkos::deep_copy(x_data_from_views,x_data_from_views_h);
   // Apply the remap
   view_1d<Real> y_data_from_views("",num_loc_tgt_cols);
-  remap_from_views.apply_remap(x_data_from_views,y_data_from_views);
+  remap_from_views.apply_remap<Real>(x_data_from_views,y_data_from_views);
   // The remapped values should match the y_baseline
   auto y_data_from_views_h = Kokkos::create_mirror_view(y_data_from_views);
   Kokkos::deep_copy(y_data_from_views_h,y_data_from_views);
@@ -252,22 +252,23 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   remap_from_file.set_segments_from_file(filename,comm,dofs_gids,tgt_min_dof);
   remap_from_file.check();
   remap_from_file.set_unique_source_dofs();
+  auto unique_dofs_from_file = remap_from_file.get_unique_dofs();
   // Read source data at unique points
   scorpio::register_file(filename,scorpio::Read);
   scorpio::get_variable(filename,"src_data","src_data",1,vec_of_data_dims,PIO_REAL,data_decomp_tag_r);
-  var_dof.resize(unique_dofs_from_views.size());
+  var_dof.resize(unique_dofs_from_file.size());
   for (int ii=0; ii<var_dof.size(); ii++) {
-    var_dof[ii] = unique_dofs_from_views[ii]-src_min_dof;
+    var_dof[ii] = unique_dofs_from_file[ii]-src_min_dof;
   }
   scorpio::set_dof(filename,"src_data",var_dof.size(),var_dof.data());
   scorpio::set_decomp(filename);
-  view_1d<Real> x_data_from_file("",unique_dofs_from_views.size());
+  view_1d<Real> x_data_from_file("",unique_dofs_from_file.size());
   auto x_data_from_file_h = Kokkos::create_mirror_view(x_data_from_file);
   scorpio::grid_read_data_array(filename,"src_data",0,x_data_from_file.data()); 
   scorpio::eam_pio_closefile(filename);
   // Apply remap using the data
   view_1d<Real> y_data_from_file("",num_loc_tgt_cols);
-  remap_from_file.apply_remap(x_data_from_file,y_data_from_file);
+  remap_from_file.apply_remap<Real>(x_data_from_file,y_data_from_file);
   // The remapped values should match the y_baseline
   auto y_data_from_file_h = Kokkos::create_mirror_view(y_data_from_file);
   Kokkos::deep_copy(y_data_from_file_h,y_data_from_file);
@@ -279,6 +280,33 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
 
   // All Done with testing
   scorpio::eam_pio_finalize();
+
+  // Dummy test to check that a 2D view of Packs works
+  using Pack = ekat::Pack<Real,SCREAM_PACK_SIZE>;
+  Int num_packs =  ekat::npack<Pack>(num_levels);
+  view_2d<Pack> x_pack_data("",unique_dofs_from_file.size(),num_packs);
+  view_2d<Pack> y_pack_data("",num_loc_tgt_cols,num_packs);
+  auto x_pack_data_h = Kokkos::create_mirror_view(x_pack_data);
+  for (int ii=0;ii<unique_dofs_from_file.size();ii++) {
+    for (int kk=0; kk<num_levels; kk++) {
+      int kpack = kk / SCREAM_PACK_SIZE;
+      int kidx  = kk % SCREAM_PACK_SIZE;
+      x_pack_data_h(ii,kpack)[kidx] = x_data_from_file_h(ii)*(kk+1);
+    }
+  }
+  remap_from_file.apply_remap(x_pack_data,y_pack_data);
+  auto y_pack_data_h = Kokkos::create_mirror_view(y_pack_data);
+  Kokkos::deep_copy(y_pack_data_h,y_pack_data);
+  for (int ii=0; ii<num_loc_tgt_cols; ii++) {
+    gid_type dof = dofs_gids(ii);
+    auto y_base = y_baseline[dof];
+    for (int kk=0; kk<num_levels; kk++) {
+      int kpack = kk / SCREAM_PACK_SIZE;
+      int kidx  = kk % SCREAM_PACK_SIZE;
+      REQUIRE(std::abs(y_pack_data_h(ii,kpack)[kidx]-(kk+1)*y_base)<tol*10);
+    }
+  } 
+  
   
 } // end function run
 
@@ -291,8 +319,6 @@ TEST_CASE("horizontal_remap_test", "[horizontal_remap_test]"){
   ekat::Comm comm (MPI_COMM_WORLD);
   auto engine = scream::setup_random_test();
 
-// Run tests of vertically dimensioned-functions for both Real and Pack,
-// and for (potentially) different pack sizes
   if (comm.am_i_root()) {
     printf(" -> Testing horizontal remapping for minimum source dof = 0...");
   }
@@ -492,7 +518,6 @@ std::shared_ptr<FieldManager> get_test_fm(std::shared_ptr<const AbstractGrid> gr
   FieldIdentifier fid_ps("PS",FL{tag_h,dims_h},Pa,gn);
 
   // Register fields with fm
-  // Make sure packsize isn't bigger than the packsize for this machine, but not so big that we end up with only 1 pack.
   fm->registration_begins();
   fm->register_field(FR{fid_ps});
   fm->registration_ends();

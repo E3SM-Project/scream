@@ -12,11 +12,24 @@
 namespace scream {
 
 using gid_type = AbstractGrid::gid_type;
+using Pack = ekat::Pack<Real,SCREAM_PACK_SIZE>;
 
 using KT = KokkosTypes<DefaultDevice>;
 
 template <typename S>
+using view_1d = typename KT::template view_1d<S>;
+
+template <typename S>
+using view_2d = typename KT::template view_2d<S>;
+
+template <typename S>
+using view_3d = typename KT::template view_3d<S>;
+
+template <typename S>
 using view_1d_host = typename KT::template view_1d<S>::HostMirror;
+
+template <typename S>
+using view_2d_host = typename KT::template view_2d<S>::HostMirror;
 
 
 /* --------------------------------------------------------------------------------------------- */
@@ -45,6 +58,7 @@ public:
   view_1d<Real>     weights;     // A view of the associated weights in the mapping.
   Int               m_length;    // The size of this segment.
 
+/*---------------------------------------------*/
   // Helper function to check a segment is valid.
   void check() {
     EKAT_REQUIRE(source_dofs.extent(0)==m_length);
@@ -59,11 +73,13 @@ public:
     EKAT_REQUIRE_MSG(std::abs(wgt-1.0)<tol,"ERROR: checking remap segment for DOF = " + std::to_string(m_dof) + ", total weight = " + std::to_string(wgt) + ".");
   }
 
-  // Function to apply segment to data
-  Real apply_segment(
-    const view_1d<Real>& source_data)
+/*---------------------------------------------*/
+  template <typename ScalarT>
+  view_2d<ScalarT> apply_segment(
+      const view_3d<ScalarT>& source_data)
   {
-    Real ret = 0;
+    view_2d_host<ScalarT> ret("",source_data.extent(1),source_data.extent(2));
+    Kokkos::deep_copy(ret,0.0);
     auto source_data_h = Kokkos::create_mirror_view(source_data);
     auto source_idx_h  = Kokkos::create_mirror_view(source_idx);
     auto weights_h     = Kokkos::create_mirror_view(weights);
@@ -72,10 +88,56 @@ public:
     Kokkos::deep_copy(weights_h   ,weights);
     for (int ii=0; ii< m_length; ii++) {
       int idx = source_idx_h(ii);
-      ret += source_data_h(idx)*weights_h(ii);
+      for (int nn=0; nn<source_data.extent(1); nn++) {
+        auto src_data_sub = ekat::subview(source_data_h,idx,nn);
+        for (int kk=0; kk<src_data_sub.extent(0); kk++) {
+          ret(nn,kk) = ret(nn,kk) + src_data_sub(kk)*weights_h(ii);
+        }
+      }
     }
     return ret;
   }
+/*---------------------------------------------*/
+  template <typename ScalarT>
+  view_1d<ScalarT> apply_segment(
+      const view_2d<ScalarT>& source_data)
+  {
+    view_1d_host<ScalarT> ret("",source_data.extent(1));
+    Kokkos::deep_copy(ret,0.0);
+    auto source_data_h = Kokkos::create_mirror_view(source_data);
+    auto source_idx_h  = Kokkos::create_mirror_view(source_idx);
+    auto weights_h     = Kokkos::create_mirror_view(weights);
+    Kokkos::deep_copy(source_data_h,source_data);
+    Kokkos::deep_copy(source_idx_h,source_idx);
+    Kokkos::deep_copy(weights_h   ,weights);
+    for (int ii=0; ii< m_length; ii++) {
+      int idx = source_idx_h(ii);
+      auto src_data_sub = ekat::subview(source_data_h,idx);
+      for (int kk=0; kk<src_data_sub.extent(0); kk++) {
+        ret(kk) = ret(kk) + src_data_sub(kk)*weights_h(ii);
+      }
+    }
+    return ret;
+  }
+/*---------------------------------------------*/
+  template <typename ScalarT>
+  ScalarT apply_segment(
+      const view_1d<ScalarT>& source_data)
+  {
+    ScalarT ret = 0.0;
+    auto source_data_h = Kokkos::create_mirror_view(source_data);
+    auto source_idx_h  = Kokkos::create_mirror_view(source_idx);
+    auto weights_h     = Kokkos::create_mirror_view(weights);
+    Kokkos::deep_copy(source_data_h,source_data);
+    Kokkos::deep_copy(source_idx_h,source_idx);
+    Kokkos::deep_copy(weights_h   ,weights);
+    for (int ii=0; ii< m_length; ii++) {
+      int idx = source_idx_h(ii);
+      ret = ret + source_data_h(idx)*weights_h(ii);
+    }
+    return ret;
+  }
+/*---------------------------------------------*/
 
 }; // end struct RemapSegment
 
@@ -353,18 +415,59 @@ public:
     }
   }; // end add_segment_impl
 /*---------------------------------------------*/
-  void apply_remap(
-    const view_1d<Real>& source_data,
-          view_1d<Real>& remapped_data)
-  {
+// This chunk of code should not be needed.  But
+// running into some weird issue with SPA, TODO:
+// Fix this and remove the code below.
+void apply_remap(
+  const view_1d<Real>& source_data,
+        view_1d<Real>& remapped_data)
+{
+  apply_remap<Real>(source_data,remapped_data); 
+}
+/*---------------------------------------------*/
+template <typename ScalarT>
+void apply_remap(
+  const view_3d<ScalarT>& source_data,
+        view_3d<ScalarT>& remapped_data)
+{
     auto remap_data_h  = Kokkos::create_mirror_view(remapped_data);
     for (int iseg=0; iseg<get_num_of_segs(); iseg++) {
       auto seg = map_segments[iseg];
-      Real remap_val = seg.apply_segment(source_data);
+      auto remap_sub = ekat::subview(remap_data_h,iseg);
+      auto remap_out = seg.apply_segment<ScalarT>(source_data);
+      Kokkos::deep_copy(remap_sub,remap_out);
+    }
+    Kokkos::deep_copy(remapped_data,remap_data_h);
+}
+/*---------------------------------------------*/
+template <typename ScalarT>
+void apply_remap(
+  const view_2d<ScalarT>& source_data,
+        view_2d<ScalarT>& remapped_data)
+{
+    auto remap_data_h  = Kokkos::create_mirror_view(remapped_data);
+    for (int iseg=0; iseg<get_num_of_segs(); iseg++) {
+      auto seg = map_segments[iseg];
+      auto remap_sub = ekat::subview(remap_data_h,iseg);
+      auto remap_out = seg.apply_segment<ScalarT>(source_data);
+      Kokkos::deep_copy(remap_sub,remap_out);
+    }
+    Kokkos::deep_copy(remapped_data,remap_data_h);
+}
+/*---------------------------------------------*/
+template <typename ScalarT>
+void apply_remap(
+  const view_1d<ScalarT>& source_data,
+        view_1d<ScalarT>& remapped_data)
+{
+    auto remap_data_h  = Kokkos::create_mirror_view(remapped_data);
+    for (int iseg=0; iseg<get_num_of_segs(); iseg++) {
+      auto seg = map_segments[iseg];
+      ScalarT remap_val = seg.apply_segment<ScalarT>(source_data);
       remap_data_h(iseg) = remap_val;
     }
     Kokkos::deep_copy(remapped_data,remap_data_h);
-  }; // end apply_remap
+}
 /*---------------------------------------------*/
   gid_type                  m_min_dof = -999;      // The global minimum dof value - needed to offset for array index of data.
   gid_type                  source_min_dof = -999; // Similar to m_min_dof, but the value used in the source dofs.
