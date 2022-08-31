@@ -52,25 +52,65 @@ TEST_CASE("coarse_grid", "") {
   }
 }
 
-// Here's a data type that stores a 3D coordinate field on a unit sphere,
-// defined on vertices of quadrilateral prism elements. We use it to test the
-// tetralinear interpolator.
-struct CoordField {
-  // 3D (2D horizontal + 1D vertical) coordinate data
-  KokkosTypes::view_2d<Real> data;
+// This data type stores a scalar field--specifically, the "cosine bell"
+// initial condition for the linear advection equation problem proposed in
+//
+// D. L. Williamson, J. B. Drake, J. J. Hack, R. Jakob, and P. N. Swarztrauber.
+// A standard test set for numerical approximations to the shallow water
+// equations in spherical geometry. Journal of Computational Physics,
+// 102:211–224, 1992.
+struct CosineBell {
+  // Solution data (col, level)
+  KokkosTypes::view_2d<Pack> data;
 
   // member functions used by traits (see TetralinearInterpTraits for details)
 
-  static CoordField allocate(int num_cols, int num_levels) const {
-    return CoordField{
-      KokkosTypes::view_2d<Real>("coords", num_cols, num_levels)
+  static CosineBell allocate(int num_cols, int num_levels) {
+    return CosineBell{
+      KokkosTypes::view_2d<Pack>("solution", num_cols, num_levels)
     };
+  }
+
+  void read_from_file(const std::string& filename,
+                      int time_index,
+                      const std::vector<int>& columns) {
+    // Instead of reading data from a file, we just populate the ne4 grid
+    // "manually" with the cosine bell solution
+    //
+    //               {(h0/2)(1 + cos(pi*r/R)), r <  R
+    // h(lon, lat) = {
+    //               {          0            , r >= R
+    //
+    // where h0 = 1000m and r is the great circle distance between (lon, lat)
+    // and the "center point" (lon_c, lat_c) = (3*pi/2, 0):
+    //
+    // r = arccos[sin(lat_c)*sin(lat) + cos(lat_c)*cos(lat)*cos(lon-lon_c)]
+
+    // Read coordinate data from the file.
+    int num_cols, num_levels;
+    HostHCoordView h_lon, h_lat;
+
+    // Construct the solution on the coordinates.
+    KokkosTypes::view_2d<Pack> h_data("h", num_cols, num_levels);
+    Real h0 = 1000.0, R = 1.0/3.0, lon_c = 1.5*M_PI, lat_c = 0.0;
+    for (int i = 0; i < num_cols; ++i) {
+      Real lon = h_lon(i), lat = h_lat(i);
+      Real r = acos(sin(lat_c)*sin(lat) + cos(lat_c)*cos(lat)*cos(lon-lon_c));
+      for (int k = 0; k < num_levels; ++k) {
+        if (r < R) {
+          h_data(i, k) = 0.5 * h0 * (1.0 + cos(M_PI*r/R));
+        } else {
+          h_data(i, k) = 0.0;
+        }
+      }
+    }
+    Kokkos::deep_copy(data, h_data);
   }
 
   KOKKOS_INLINE_FUNCTION
   void linear_combination(const ThreadTeam& team,
                           Real a, Real b,
-                          const CoordField& x1, const CoordField& x2) {
+                          const CosineBell& x1, const CosineBell& x2) {
     int i = team.league_rank();
     int num_levels = team.team_size();
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, num_levels),
@@ -82,7 +122,7 @@ struct CoordField {
   KOKKOS_INLINE_FUNCTION
   void interpolate_horizontally(const ThreadTeam& team,
                                 const TetralinearInterpWeights& weights,
-                                const CoordField& src_data, int tgt_column) {
+                                const CosineBell& src_data, int tgt_column) {
     int i = tgt_column;
     int i1 = weights.indices[0], i2 = weights.indices[1],
         i3 = weights.indices[2], i4 = weights.indices[3];
@@ -110,14 +150,11 @@ struct CoordField {
                               const ekat::LinInterp<Real, Pack::n>& vert_interp,
                               int variable_index, int column_index,
                               const VCoordColumnView& src_col_vcoords,
-                              const CoordField& src_data,
+                              const CosineBell& src_data,
                               const VCoordColumnView& tgt_col_vcoords) {
-    VCoordColumnView src_col_var = ekat::subview(src_data.data,
-                                                 column_index,
-                                                 variable_index);
-    VCoordColumnView tgt_col_var = ekat::subview(data,
-                                                 column_index,
-                                                 variable_index);
+    EKAT_ASSERT(variable_index == 0);
+    VCoordColumnView src_col_var = ekat::subview(src_data.data, column_index);
+    VCoordColumnView tgt_col_var = ekat::subview(data, column_index);
     vert_interp.lin_interp(team, src_col_vcoords, tgt_col_vcoords,
                            src_col_var, tgt_col_var, column_index);
   }

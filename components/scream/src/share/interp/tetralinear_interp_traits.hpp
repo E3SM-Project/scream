@@ -90,6 +90,12 @@ using HostTetralinearInterpWeightMap =
 template <typename DataSet>
 struct TetralinearInterpTraits {
 
+  // Returns a new DataSet with storage ample for the given number of columns
+  // and vertical levels. Call on HOST only.
+  static DataSet allocate(int num_columns, int num_vertical_levels) {
+    return DataSet::allocate(num_columns, num_vertical_levels);
+  }
+
   // Reads data from the given file at the given time index for the given
   // columns, storing the result in data. Call on HOST only.
   // NOTE: the columns vector defines a local-to-global mapping of required
@@ -98,12 +104,6 @@ struct TetralinearInterpTraits {
   static void read_from_file(const std::string& filename, int time_index,
                              const std::vector<int>& columns, DataSet& data) {
     data.read_from_file(filename, time_index, columns);
-  }
-
-  // Returns a new DataSet with storage ample for the given number of columns
-  // and vertical levels. Call on HOST only.
-  static DataSet allocate(int num_columns, int num_vertical_levels) {
-    return DataSet::allocate(num_columns, num_vertical_levels);
   }
 
   // Returns the number of horizontal columns represented in the dataset.
