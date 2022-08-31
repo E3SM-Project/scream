@@ -9,19 +9,77 @@ namespace interpolators {
 
 namespace {
 
-// a teensy tinsy kd-tree
-struct KDTree {
-  // Construct a kd-tree containing a set of points defined by
-  // (longitude, latitude) pairs.
-  KDTree(const HostHCoordView& lons, const HostHCoordView& lats) {
+// a teensy tinsy 2D kd-tree
+class KdTree {
+ public:
+  // Constructs a kd-tree containing a set of points defined by
+  // (longitude, latitude) pairs stored in the given (host) views.
+  KdTree(const HostHCoordView& lons, const HostHCoordView& lats)
+    : root_(nullptr), num_points_(0) {
+    EKAT_ASSERT(lons.size() == lats.size());
+    for (size_t i = 0; i < lons.size(); ++i) {
+      insert_(lons(i), lats(i));
+    }
   }
 
-  // returns a set of points bounded by the given rectangle whose corners are
-  // defined by low and high longitude and latitude coordinates.
-  std::vector<int> find_in_rect(Real lon_lo, Real lat_lo,
-                                Real lon_hi, Real lat_hi) const {
-    std::vector<int> pts;
-    return pts;
+  // Finds a set of points bounded by the given rectangle whose corners are
+  // defined by low and high longitude and latitude coordinates, storing their
+  // indices in the given result vector.
+  void find_in_rect(Real lon_lo, Real lat_lo, Real lon_hi, Real lat_hi,
+                    std::vector<int>& result) const {
+    result.clear();
+    Real low[2] = {lon_lo, lat_lo}, high[2] = {lon_hi, lat_hi};
+    find_in_rect_(low, high, root_, 0, result);
+  }
+
+ private:
+
+  struct Node {
+    int   index;
+    Real  coords[2]; // (lon, lat)
+    Node *left;
+    Node *right;
+
+    Node(int index_, Real coords_[2]):
+      index(index_), left(nullptr), right(nullptr) {
+      coords[0] = coords_[0];
+      coords[1] = coords_[1];
+    }
+  };
+
+  Node *root_;
+  int num_points_;
+
+  void insert_(Real lon, Real lat) {
+    Real coords[2] = {lon, lat};
+    insert_(coords, root_, 0);
+  }
+
+  void insert_(Real coords[2], Node*& node, int dim) {
+    if (node == nullptr) {
+      node = new Node(num_points_++, coords);
+    } else if(coords[dim] < node->coords[dim]) {
+      insert_(coords, node->left, 1-dim);
+    } else {
+      insert_(coords, node->right, 1-dim);
+    }
+  }
+
+  void find_in_rect_(Real low[2], Real high[2], Node* n, int dim,
+                     std::vector<int>& result) const {
+    if(n != nullptr) {
+      if(low[0] <= n->coords[0] && high[0] >= n->coords[0] &&
+         low[1] <= n->coords[1] && high[1] >= n->coords[1]) { // inside bounds
+        result.push_back(n->index);
+      }
+
+      if(low[dim] <= n->coords[dim]) {
+        find_in_rect_(low, high, n->left, 1-dim, result);
+      }
+      if(high[dim] >= n->coords[dim]) {
+        find_in_rect_(low, high, n->right, 1-dim, result);
+      }
+    }
   }
 };
 
@@ -43,8 +101,8 @@ compute_tetralinear_interp_weights(const CoarseGrid& coarse_grid,
                                    std::vector<int>& global_vertex_indices) {
   EKAT_ASSERT(tgt_lats.extent(0) == tgt_lons.extent(0));
 
-  // Construct a kd-tree containing the target (lat, lon) points.
-  KDTree tree(tgt_lats, tgt_lons);
+  // Construct a kd-tree containing the target (lon, lat) points.
+  KdTree tree(tgt_lons, tgt_lats);
 
   HostTetralinearInterpWeightMap host_mapping;
 
@@ -78,7 +136,8 @@ compute_tetralinear_interp_weights(const CoarseGrid& coarse_grid,
                       coarse_grid.latitudes[elem.vertices[3]]);
 
     // Find the target points in this bounding box.
-    auto pts_in_elem = tree.find_in_rect(lon_lo, lat_lo, lon_hi, lat_hi);
+    std::vector<int> pts_in_elem;
+    tree.find_in_rect(lon_lo, lat_lo, lon_hi, lat_hi, pts_in_elem);
 
     // Compute horizontal interp weights for all points actually within the
     // element.
