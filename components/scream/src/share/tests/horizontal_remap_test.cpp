@@ -35,14 +35,6 @@ using view_1d_host = typename KT::template view_1d<S>::HostMirror;
 
 std::shared_ptr<GridsManager> get_test_gm(const ekat::Comm& comm, const Int num_gcols, const Int num_levs);
 
-std::shared_ptr<FieldManager> get_test_fm(std::shared_ptr<const AbstractGrid> grid);
-
-AtmosphereInput setup_data_input(std::shared_ptr<const FieldManager> field_manager);
-
-ekat::ParameterList setup_output_manager_params();
-
-GSMap get_test_map(const ekat::Comm& comm, const view_1d<gid_type>& dofs_gids, const gid_type min_dof);
-
 void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min_dof)
 {
 /* Testing for the GSMap structure and using it to apply a remap to data.
@@ -84,6 +76,8 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   auto num_loc_tgt_cols = grid_tgt->get_num_local_dofs();     // Number of columns (dofs) on this rank.
   auto tgt_min_dof      = grid_tgt->get_global_min_dof_gid(); // The starting index of the EAMxx grid.
   auto dofs_gids        = grid_tgt->get_dofs_gids();          // A view of the dofs on this rank with their global id.
+  auto dofs_gids_h      = Kokkos::create_mirror_view(dofs_gids);
+  Kokkos::deep_copy(dofs_gids_h,dofs_gids);
 
 //----------------------
 // Step 1: Generate a random remapping (source col, target col, weight) and random source data.
@@ -123,7 +117,7 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   for (int tcol=0; tcol<num_loc_tgt_cols; tcol++) {
     Int nmap = pdf_map_src_num(engine); // Number of source columns that will map to this target column
     n_s_local += nmap;
-    num_src_to_tgt_cols.emplace(dofs_gids(tcol),nmap);
+    num_src_to_tgt_cols.emplace(dofs_gids_h(tcol),nmap);
     // We need to treat random weights specially, to ensure sum(wgt) = 1;
     std::vector<Real> temp_wgt;
     std::vector<Int>  temp_src;  
@@ -132,14 +126,14 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
     for (int ii=0; ii<nmap; ii++) {
       Int src_idx = pdf_map_src(engine);
       vec_src_col.push_back(src_idx+src_min_dof);
-      vec_tgt_col.push_back(dofs_gids(tcol)-tgt_min_dof+src_min_dof);
+      vec_tgt_col.push_back(dofs_gids_h(tcol)-tgt_min_dof+src_min_dof);
       Real wgt = pdf_map_wgt(engine);
       wgt_sum += wgt;
       temp_wgt.push_back(wgt);
       y_sum += source_remap_data_h(src_idx) * wgt;
     }
     y_sum /= wgt_sum;  // account for the normalization of the weights
-    y_baseline.emplace(dofs_gids(tcol),y_sum);
+    y_baseline.emplace(dofs_gids_h(tcol),y_sum);
     // Normalize weights
     for (int ii=0; ii<nmap; ii++) {
       temp_wgt[ii] /= wgt_sum;
@@ -171,13 +165,13 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   // Step 2: Use GSMap with remap values and source data, and compare against baseline.
   std::map<gid_type,Real> y_from_views;
   GSMap remap_from_views;
+  remap_from_views.set_name("From Views");
   remap_from_views.source_min_dof = src_min_dof;
   remap_from_views.m_min_dof      = tgt_min_dof;
-  auto dofs_gids_h = Kokkos::create_mirror_view(dofs_gids);
-  Kokkos::deep_copy(dofs_gids_h,dofs_gids);
+  remap_from_views.set_dofs_gids(dofs_gids);
   for (int iseg=0; iseg<num_loc_tgt_cols; iseg++) {
-    gid_type seg_dof = dofs_gids_h(iseg);
-    RemapSegment seg(seg_dof,num_src_to_tgt_cols.at(seg_dof));
+    gid_type seg_dof = dofs_gids_h(iseg)+src_min_dof;
+    RemapSegment seg(seg_dof,num_src_to_tgt_cols.at(seg_dof-src_min_dof));
     auto source_dofs_h = Kokkos::create_mirror_view(seg.source_dofs);
     auto weights_h     = Kokkos::create_mirror_view(seg.weights);
     int idx = 0;
@@ -188,6 +182,8 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
         idx ++;
       }
     }
+    Kokkos::deep_copy(seg.source_dofs,source_dofs_h);
+    Kokkos::deep_copy(seg.weights,weights_h);
     remap_from_views.add_segment(seg);
   }
   remap_from_views.check();
@@ -211,7 +207,6 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
     auto y_base = y_baseline[dof];
     REQUIRE(std::abs(y_data_from_views_h(ii)-y_base)<tol);
   }
- 
 //----------------------
   // Step 3: Write source data and remap data to a file.
   std::string filename = "horizontal_remap_test_data_" + std::to_string(comm.size()) + "_ranks_" + std::to_string(src_min_dof) + "_case.nc";
@@ -260,6 +255,7 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   //         and use this data to test remapping from file.  Compare remapped data
   //         against the baseline. 
   GSMap remap_from_file;
+  remap_from_file.set_name("From File");
   remap_from_file.set_segments_from_file(filename,comm,dofs_gids,tgt_min_dof);
   remap_from_file.check();
   remap_from_file.set_unique_source_dofs();
@@ -277,6 +273,7 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   auto x_data_from_file_h = Kokkos::create_mirror_view(x_data_from_file);
   scorpio::grid_read_data_array(filename,"src_data",0,x_data_from_file.data()); 
   scorpio::eam_pio_closefile(filename);
+  Kokkos::deep_copy(x_data_from_file_h,x_data_from_file);
   // Apply remap using the data
   view_1d<Real> y_data_from_file("",num_loc_tgt_cols);
   remap_from_file.apply_remap<Real>(x_data_from_file,y_data_from_file);
@@ -284,7 +281,7 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   auto y_data_from_file_h = Kokkos::create_mirror_view(y_data_from_file);
   Kokkos::deep_copy(y_data_from_file_h,y_data_from_file);
   for (int ii=0; ii<num_loc_tgt_cols; ii++) {
-    gid_type dof = dofs_gids(ii);
+    gid_type dof = dofs_gids_h(ii);
     auto y_base = y_baseline[dof];
     REQUIRE(std::abs(y_data_from_file_h(ii)-y_base)<tol);
   } 
@@ -304,11 +301,12 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
       x_pack_data_h(ii,kpack)[kidx] = x_data_from_file_h(ii)*(kk+1);
     }
   }
+  Kokkos::deep_copy(x_pack_data,x_pack_data_h);
   remap_from_file.apply_remap(x_pack_data,y_pack_data);
   auto y_pack_data_h = Kokkos::create_mirror_view(y_pack_data);
   Kokkos::deep_copy(y_pack_data_h,y_pack_data);
   for (int ii=0; ii<num_loc_tgt_cols; ii++) {
-    gid_type dof = dofs_gids(ii);
+    gid_type dof = dofs_gids_h(ii);
     auto y_base = y_baseline[dof];
     for (int kk=0; kk<num_levels; kk++) {
       int kpack = kk / SCREAM_PACK_SIZE;
@@ -381,14 +379,14 @@ TEST_CASE("horizontal_remap_units", "") {
     REQUIRE_THROWS(test_segment.check());
     // Now switch to passing by bumping up the length
     test_segment.m_length = len;
-    test_segment.check();
+    REQUIRE(test_segment.check());
     // Make it fail again by adjusting one of the weights so that they no longer add to 1.0
     weights_h(0) += 0.1;
     Kokkos::deep_copy(test_segment.weights,weights_h);
-    REQUIRE_THROWS(test_segment.check());
+    REQUIRE(!test_segment.check());
     weights_h(0) -= 0.2;
     Kokkos::deep_copy(test_segment.weights,weights_h);
-    REQUIRE_THROWS(test_segment.check());
+    REQUIRE(!test_segment.check());
   }
 
 
@@ -396,6 +394,7 @@ TEST_CASE("horizontal_remap_units", "") {
   {
     // Create a GSMap to test
     GSMap test_map;
+    test_map.set_name("Test Map");
     test_map.m_min_dof = 1;
     test_map.source_min_dof = 1;
     // Create a remap segment
@@ -501,50 +500,6 @@ TEST_CASE("horizontal_remap_units", "") {
   }
 } // TEST_CASE horizontal remap
 /*===================================================================================================*/
-std::shared_ptr<FieldManager> get_test_fm(std::shared_ptr<const AbstractGrid> grid)
-{
-  using namespace ekat::units;
-  using namespace ShortFieldTagsNames;
-  using FL = FieldLayout;
-  using FR = FieldRequest;
-
-  // Create a fm
-  auto fm = std::make_shared<FieldManager>(grid);
-
-  const int num_lcols = grid->get_num_local_dofs();
-  const int num_levs = grid->get_num_vertical_levels();
-
-  // Create some fields for this fm
-  std::vector<FieldTag> tag_h  = {COL};
-  std::vector<FieldTag> tag_v  = {LEV};
-  std::vector<FieldTag> tag_2d = {COL,LEV};
-
-  std::vector<Int>     dims_h  = {num_lcols};
-  std::vector<Int>     dims_v  = {num_levs};
-  std::vector<Int>     dims_2d = {num_lcols,num_levs};
-
-  const std::string& gn = grid->name();
-
-  FieldIdentifier fid_ps("PS",FL{tag_h,dims_h},Pa,gn);
-
-  // Register fields with fm
-  fm->registration_begins();
-  fm->register_field(FR{fid_ps});
-  fm->registration_ends();
-
-  // Initialize these fields
-  auto f1 = fm->get_field(fid_ps);
-  auto f1_host = f1.get_view<Real*,Host>(); 
-
-  // Update timestamp
-  util::TimeStamp time ({2000,1,1},{0,0,0});
-  fm->init_fields_time_stamp(time);
-  // Sync back to device
-  f1.sync_to_dev();
-
-  return fm;
-} // end get_test_fm
-/*==========================================================================================================*/
 std::shared_ptr<GridsManager> get_test_gm(const ekat::Comm& comm, const Int num_gcols, const Int num_levs)
 {
 /* Simple routine to construct and return a grids manager given number of columns and levels */
@@ -555,54 +510,6 @@ std::shared_ptr<GridsManager> get_test_gm(const ekat::Comm& comm, const Int num_
   gm->build_grids();
   return gm;
 } // end get_test_gm
-/*==========================================================================================================*/
-AtmosphereInput setup_data_input(std::shared_ptr<const FieldManager> field_manager)
-{
-  std::string fname = "horiz_remap_from_file_control.yaml";
-  ekat::ParameterList params("horiz_remap_test");
-  REQUIRE_NOTHROW ( parse_yaml_file(fname,params) );
-  auto& data_file = params.get<std::string>("Data File");
-  using vos_type = std::vector<std::string>;
-  ekat::ParameterList in_params("Input Parameters");
-  in_params.set<std::string>("Filename",data_file);
-  in_params.set<vos_type>("Field Names",{"PS"});
-  AtmosphereInput data_input(in_params,field_manager);
-  return data_input;
-}
-/*==========================================================================================================*/
-ekat::ParameterList setup_output_manager_params()
-{
-  using vos_type = std::vector<std::string>;
-  ekat::ParameterList om_params;
-  om_params.set<std::string>("Casename","horizontal_remap_output");
-  om_params.set<std::string>("Averaging Type","Instant");
-  om_params.set<Int>("Max Snapshots Per File",12);
-  om_params.set<vos_type>("Field Names",{"PS"});
-  auto& om_control = om_params.sublist("Output Control");
-  om_control.set<Int>("Frequency",1);
-  om_control.set<std::string>("Frequency Units","Steps");
-  om_control.set<bool>("Timestamp in Filename", false);
-  om_control.set<bool>("MPI Ranks in Filename", false);
-  om_control.set<bool>("AVG Type in Filename", false);
-  om_control.set<bool>("Frequency in Filename", false);
-  return om_params;
-}
-/*==========================================================================================================*/
-GSMap get_test_map(const ekat::Comm& comm, const view_1d<gid_type>& dofs_gids, const gid_type min_dof)
-{
-
-  GSMap test_map;
-  test_map.set_dofs_gids(dofs_gids);
-  std::string fname = "horiz_remap_from_file_control.yaml";
-  ekat::ParameterList params("horiz_remap_test");
-  REQUIRE_NOTHROW ( parse_yaml_file(fname,params) );
-  auto& remap_file = params.get<std::string>("Remap File");
-  test_map.set_segments_from_file(remap_file,comm,dofs_gids,min_dof);
-//  test_map.check();
-//  test_map.set_unique_source_dofs();
-  return test_map;
-
-}
 /*==========================================================================================================*/
 
 } // end namespace

@@ -57,7 +57,7 @@ public:
 
 /*---------------------------------------------*/
   // Helper function to check a segment is valid.
-  void check() {
+  bool check() {
     EKAT_REQUIRE(source_dofs.extent(0)==m_length);
     EKAT_REQUIRE(weights.extent(0)==m_length);
     EKAT_REQUIRE(source_idx.extent(0)==m_length);
@@ -67,7 +67,10 @@ public:
     },wgt);
     // The sum of the weights should be = 1.0, note due to round-off error we accept to within a tolerance.
     Real tol = std::numeric_limits<Real>::epsilon() * 100.0;
-    EKAT_REQUIRE_MSG(std::abs(wgt-1.0)<tol,"ERROR: checking remap segment for DOF = " + std::to_string(m_dof) + ", total weight = " + std::to_string(wgt) + ".");
+    if (std::abs(wgt-1.0)>=tol) {
+      printf("ERROR: GSMAP: checking remap segment for DOF = %d, total weight = %e.\n",m_dof,wgt);
+    }
+    return std::abs(wgt-1.0)<tol;
   }
 
 /*---------------------------------------------*/
@@ -99,8 +102,9 @@ public:
   view_1d<ScalarT> apply_segment(
       const view_2d<ScalarT>& source_data)
   {
-    view_1d_host<ScalarT> ret("",source_data.extent(1));
-    Kokkos::deep_copy(ret,0.0);
+    view_1d<ScalarT> ret("",source_data.extent(1));
+    auto ret_h = Kokkos::create_mirror_view(ret);
+    Kokkos::deep_copy(ret_h,0.0);
     auto source_data_h = Kokkos::create_mirror_view(source_data);
     auto source_idx_h  = Kokkos::create_mirror_view(source_idx);
     auto weights_h     = Kokkos::create_mirror_view(weights);
@@ -111,9 +115,10 @@ public:
       int idx = source_idx_h(ii);
       auto src_data_sub = ekat::subview(source_data_h,idx);
       for (int kk=0; kk<src_data_sub.extent(0); kk++) {
-        ret(kk) = ret(kk) + src_data_sub(kk)*weights_h(ii);
+        ret_h(kk) = ret_h(kk) + src_data_sub(kk)*weights_h(ii);
       }
     }
+    Kokkos::deep_copy(ret,ret_h);
     return ret;
   }
 /*---------------------------------------------*/
@@ -133,6 +138,26 @@ public:
       ret = ret + source_data_h(idx)*weights_h(ii);
     }
     return ret;
+  }
+/*---------------------------------------------*/
+  // Useful for debugging, print to screen segment
+  // information
+  void print_seg()
+  {
+    auto source_dofs_h = Kokkos::create_mirror_view(source_dofs);
+    auto source_idx_h  = Kokkos::create_mirror_view(source_idx);
+    auto weights_h     = Kokkos::create_mirror_view(weights);
+    Kokkos::deep_copy(source_dofs_h,source_dofs);
+    Kokkos::deep_copy(source_idx_h ,source_idx );
+    Kokkos::deep_copy(weights_h    ,weights    );
+    printf("\n--------------------\n");
+    printf("Printing information for segment with DOF = %d\n",m_dof);
+    printf("  length = %d\n",m_length);
+    printf("%10s: %10s, %10s, %s\n","ii","source dof","source idx","weight");
+    for (int ii=0; ii<m_length; ii++) {
+      printf("%10d: %10d, %10d, %e\n",ii, source_dofs_h(ii), source_idx_h(ii), weights_h(ii));
+    }
+    printf("\n--------------------\n");
   }
 /*---------------------------------------------*/
 
@@ -168,6 +193,8 @@ public:
   GSMap() {};
 
 /*---------------------------------------------*/
+  void set_name(const std::string& name) { map_name = name; }
+/*---------------------------------------------*/
   Int get_num_of_segs() {return map_segments.size();}
   Int get_num_of_dofs() {return m_dofs_gids.size();}
 /*---------------------------------------------*/
@@ -179,6 +206,7 @@ public:
     EKAT_REQUIRE(dofs_gids.size()>0);
     m_dofs_gids = view_1d<gid_type>(dofs_gids);
     Kokkos::deep_copy(m_dofs_gids,dofs_gids);
+    m_num_dofs = m_dofs_gids.extent(0);
   }
 /*---------------------------------------------*/
   std::vector<gid_type> get_unique_dofs() { return unique_dofs; };
@@ -187,15 +215,38 @@ public:
     add_segment_impl(segment);
   }; 
 /*---------------------------------------------*/
+  // Useful for debugging, print all the GSMap info.
+  void print_GSMap() {
+    printf("\n=============================================\n");
+    printf("Printing GSMap information:\n");
+    printf("  min_dof = %d,  source_min_dof = %d\n",m_min_dof, source_min_dof);
+    for (int ii=0; ii<map_segments.size(); ii++) {
+      auto& seg = map_segments[ii];
+      seg.print_seg();
+    } 
+    printf(" Unique dofs info\n");
+    for (int ii=0; ii<unique_dofs.size(); ii++) {
+      printf("%10d: %10d\n",ii, unique_dofs[ii]);
+    }
+    printf(" dofs_gids\n");
+    auto dofs_gids_h = Kokkos::create_mirror_view(m_dofs_gids);
+    Kokkos::deep_copy(dofs_gids_h,m_dofs_gids);
+    for (int ii=0; ii<dofs_gids_h.extent(0); ii++) {
+      printf("%10d: %10d\n",ii,dofs_gids_h(ii));
+    } 
+    printf("\n=============================================\n");
+  }
+/*---------------------------------------------*/
   void check() {
-    EKAT_REQUIRE_MSG(m_min_dof != -999, "Error in GSMap: m_min_dof has not been set.");
-    EKAT_REQUIRE_MSG(source_min_dof != -999, "Error in GSMap: source_min_dof has not been set.");
+    EKAT_REQUIRE_MSG(m_min_dof != -999, "Error in GSMap " + map_name +": m_min_dof has not been set.");
+    EKAT_REQUIRE_MSG(source_min_dof != -999, "Error in GSMap " + map_name +": source_min_dof has not been set.");
     std::vector<bool> found(m_dofs_gids.size(),false);
     auto dofs_gids_h = Kokkos::create_mirror_view(m_dofs_gids);
     Kokkos::deep_copy(dofs_gids_h,m_dofs_gids);
     for (int ii=0; ii<map_segments.size(); ii++) {
       auto& seg = map_segments[ii];
-      seg.check();
+      auto seg_check = seg.check();
+      EKAT_REQUIRE_MSG(seg_check,"Error in GSMap " + map_name + " - problem with a remapping segment for dof = " + std::to_string(seg.m_dof) + ".");
       for (int jj=0; jj<dofs_gids_h.size(); jj++) {
         if (dofs_gids_h(jj) - m_min_dof == seg.m_dof - source_min_dof) {
           found[jj] = true;
@@ -203,7 +254,16 @@ public:
         }
       }
     }
-    EKAT_REQUIRE(std::find(found.begin(),found.end(),false) == found.end());
+    bool pass = std::find(found.begin(),found.end(),false) == found.end();
+    if (!pass) {
+      printf("Error: GSMap.check() for map %s - Target column(s) are missing a remap segment - %d, %d\n",map_name.c_str(),m_min_dof,source_min_dof);
+      for (int ii=0;ii<m_dofs_gids.size();ii++) {
+        if (!found[ii]) {
+          printf("No segment found for DOF = %d\n",dofs_gids_h(ii));
+        }
+      }
+    }
+    EKAT_REQUIRE(pass);
   };
 /*---------------------------------------------*/
   // Useful if needing to grab source data from somewhere, like a data file.
@@ -225,6 +285,7 @@ public:
       const auto& seg = map_segments[iseg];
       const auto& src_dofs = seg.source_dofs;
       const auto& src_dofs_h = Kokkos::create_mirror_view(src_dofs);
+      Kokkos::deep_copy(src_dofs_h,src_dofs);
       auto& src_idx  = seg.source_idx;
       auto  src_idx_h  = Kokkos::create_mirror_view(src_idx);
       for (int ii=0; ii<seg.m_length; ii++) {
@@ -246,7 +307,7 @@ public:
         break;
       }
     }
-    EKAT_REQUIRE_MSG(found,"Error: GSMap - get_segment, segment for  dof " + std::to_string(dof) + " not found.");
+    EKAT_REQUIRE_MSG(found,"Error: GSMap " + map_name +" - get_segment, segment for  dof " + std::to_string(dof) + " not found.");
     return ret;
   };
 /*---------------------------------------------*/
@@ -283,7 +344,7 @@ public:
       for (int ii=0; ii<num_ranks; ii++) {
         chunk_check += chunks_glob[ii];
       }
-      EKAT_REQUIRE_MSG(chunk_check==remap_size,"ERROR: get_remap_indices - Something went wrong distributing remap data among the MPI ranks");
+      EKAT_REQUIRE_MSG(chunk_check==remap_size,"ERROR: GSMap " + map_name +" get_remap_indices - Something went wrong distributing remap data among the MPI ranks");
     }
     // Using scream input routines, read remap data from file by chunk
     view_1d<Int>  tgt_col("row",my_chunk); 
@@ -444,6 +505,7 @@ void apply_remap(
   const view_3d<ScalarT>& source_data,
         view_3d<ScalarT>& remapped_data)
 {
+    if (m_num_dofs==0) { return; } // Nothing to do for this rank
     auto remap_data_h  = Kokkos::create_mirror_view(remapped_data);
     for (int iseg=0; iseg<get_num_of_segs(); iseg++) {
       auto seg = map_segments[iseg];
@@ -459,6 +521,7 @@ void apply_remap(
   const view_2d<ScalarT>& source_data,
         view_2d<ScalarT>& remapped_data)
 {
+    if (m_num_dofs==0) { return; } // Nothing to do for this rank
     auto remap_data_h  = Kokkos::create_mirror_view(remapped_data);
     for (int iseg=0; iseg<get_num_of_segs(); iseg++) {
       auto seg = map_segments[iseg];
@@ -474,6 +537,7 @@ void apply_remap(
   const view_1d<ScalarT>& source_data,
         view_1d<ScalarT>& remapped_data)
 {
+    if (m_num_dofs==0) { return; } // Nothing to do for this rank
     auto remap_data_h  = Kokkos::create_mirror_view(remapped_data);
     for (int iseg=0; iseg<get_num_of_segs(); iseg++) {
       auto seg = map_segments[iseg];
@@ -492,6 +556,8 @@ protected:
   std::vector<RemapSegment> map_segments;
   std::vector<gid_type>     unique_dofs;
   view_1d<gid_type>         m_dofs_gids;
+  Int                       m_num_dofs = 0;
+  std::string               map_name = "";  // Optional setting to name the map, helpful for debugging and error messages.
 
 }; // end struct GSMap
 
