@@ -202,11 +202,13 @@ public:
     return get_segment_impl(dof);
   }
 /*---------------------------------------------*/
-  void set_dofs_gids(const view_1d<gid_type>& dofs_gids) {
+  void set_dofs_gids(const view_1d<gid_type>& dofs_gids, const gid_type min_dof) {
     EKAT_REQUIRE(dofs_gids.size()>0);
     m_dofs_gids = view_1d<gid_type>(dofs_gids);
-    Kokkos::deep_copy(m_dofs_gids,dofs_gids);
     m_num_dofs = m_dofs_gids.extent(0);
+    Kokkos::parallel_for("", m_num_dofs, KOKKOS_LAMBDA (const int& ii) {
+      m_dofs_gids(ii) = dofs_gids(ii)-min_dof;
+    });
   }
 /*---------------------------------------------*/
   std::vector<gid_type> get_unique_dofs() { return unique_dofs; };
@@ -219,7 +221,6 @@ public:
   void print_GSMap() {
     printf("\n=============================================\n");
     printf("Printing GSMap information:\n");
-    printf("  min_dof = %d,  source_min_dof = %d\n",m_min_dof, source_min_dof);
     for (int ii=0; ii<map_segments.size(); ii++) {
       auto& seg = map_segments[ii];
       seg.print_seg();
@@ -238,8 +239,6 @@ public:
   }
 /*---------------------------------------------*/
   void check() {
-    EKAT_REQUIRE_MSG(m_min_dof != -999, "Error in GSMap " + map_name +": m_min_dof has not been set.");
-    EKAT_REQUIRE_MSG(source_min_dof != -999, "Error in GSMap " + map_name +": source_min_dof has not been set.");
     std::vector<bool> found(m_dofs_gids.size(),false);
     auto dofs_gids_h = Kokkos::create_mirror_view(m_dofs_gids);
     Kokkos::deep_copy(dofs_gids_h,m_dofs_gids);
@@ -248,7 +247,7 @@ public:
       auto seg_check = seg.check();
       EKAT_REQUIRE_MSG(seg_check,"Error in GSMap " + map_name + " - problem with a remapping segment for dof = " + std::to_string(seg.m_dof) + ".");
       for (int jj=0; jj<dofs_gids_h.size(); jj++) {
-        if (dofs_gids_h(jj) - m_min_dof == seg.m_dof - source_min_dof) {
+        if (dofs_gids_h(jj) == seg.m_dof) {
           found[jj] = true;
           break;
         }
@@ -256,7 +255,7 @@ public:
     }
     bool pass = std::find(found.begin(),found.end(),false) == found.end();
     if (!pass) {
-      printf("Error: GSMap.check() for map %s - Target column(s) are missing a remap segment - %d, %d\n",map_name.c_str(),m_min_dof,source_min_dof);
+      printf("Error: GSMap.check() for map %s - Target column(s) are missing a remap segment:\n",map_name.c_str());
       for (int ii=0;ii<m_dofs_gids.size();ii++) {
         if (!found[ii]) {
           printf("No segment found for DOF = %d\n",dofs_gids_h(ii));
@@ -268,6 +267,9 @@ public:
 /*---------------------------------------------*/
   // Useful if needing to grab source data from somewhere, like a data file.
   void set_unique_source_dofs() {
+    // Make sure the unique_dofs vector is clear before appending it
+    unique_dofs.clear();
+    // Check all segments and add unique dofs.
     for (int iseg=0; iseg<get_num_of_segs(); iseg++) {
       const auto& seg = map_segments[iseg];
       const auto& src_dofs = seg.source_dofs;
@@ -318,7 +320,7 @@ public:
     const Int                min_dof)
   {
     // We have the dofs_gids, so set them for this map
-    set_dofs_gids(dofs_gids);
+    set_dofs_gids(dofs_gids,min_dof);
     // Open remap file and determine the amount of data to be read
     scorpio::register_file(remap_file,scorpio::Read);
     const auto remap_size = scorpio::get_dimlen_c2f(remap_file.c_str(),"n_s"); // Note, here we assume a standard format of col, row, S
@@ -400,12 +402,12 @@ public:
     // Now construct and add segments for just the DOF's this rank cares about.
     std::vector<int> seg_dof, seg_start, seg_length;
     var_dof.clear();
-    auto dofs_gids_h = Kokkos::create_mirror_view(dofs_gids);
-    Kokkos::deep_copy(dofs_gids_h,dofs_gids);
+    auto dofs_gids_h = Kokkos::create_mirror_view(m_dofs_gids);
+    Kokkos::deep_copy(dofs_gids_h,m_dofs_gids);
     for (int ii=0; ii<total_num_chunks; ii++) {
       // Search dofs to see if this chunk matches dofs on this rank
       for (int jj=0; jj<dofs_gids_h.extent(0); jj++) {
-        if (buff_dof[ii]-global_remap_min_dof == dofs_gids_h(jj)-min_dof) {
+        if (buff_dof[ii]-global_remap_min_dof == dofs_gids_h(jj)) {
           std::vector<int> var_tmp(buff_len[ii]);
           std::iota(var_tmp.begin(),var_tmp.end(),buff_sta[ii]);
           seg_dof.push_back(buff_dof[ii]);
@@ -436,18 +438,16 @@ public:
     Kokkos::deep_copy(S,S_h);
     // Construct segments based on data just read from file
     for (int ii=0; ii<seg_dof.size(); ii++) {
-      RemapSegment seg(seg_dof[ii],seg_length[ii]);
+      RemapSegment seg(seg_dof[ii]-global_remap_min_dof,seg_length[ii]);
       int seglength = seg_length[ii];
       int segstart  = seg_start[ii];
       Kokkos::parallel_for("", seglength, KOKKOS_LAMBDA (const int& jj) {
         int idx = segstart + jj;
-        seg.source_dofs(jj) = col(idx);
+        seg.source_dofs(jj) = col(idx)-global_remap_min_dof;  // Offset to zero based dofs
         seg.weights(jj)     = S(idx);
       });
       add_segment(seg);
     }
-    m_min_dof = min_dof;
-    source_min_dof = global_remap_min_dof;
   } // end set_segments_from_file
 /*---------------------------------------------*/
   void add_segment_impl(RemapSegment& segment) {
@@ -505,15 +505,15 @@ void apply_remap(
   const view_3d<ScalarT>& source_data,
         view_3d<ScalarT>& remapped_data)
 {
-    if (m_num_dofs==0) { return; } // Nothing to do for this rank
-    auto remap_data_h  = Kokkos::create_mirror_view(remapped_data);
-    for (int iseg=0; iseg<get_num_of_segs(); iseg++) {
-      auto seg = map_segments[iseg];
-      auto remap_sub = ekat::subview(remap_data_h,iseg);
-      auto remap_out = seg.apply_segment<ScalarT>(source_data);
-      Kokkos::deep_copy(remap_sub,remap_out);
-    }
-    Kokkos::deep_copy(remapped_data,remap_data_h);
+  if (m_num_dofs==0) { return; } // Nothing to do for this rank
+  auto remap_data_h  = Kokkos::create_mirror_view(remapped_data);
+  for (int iseg=0; iseg<get_num_of_segs(); iseg++) {
+    auto seg = map_segments[iseg];
+    auto remap_sub = ekat::subview(remap_data_h,iseg);
+    auto remap_out = seg.apply_segment<ScalarT>(source_data);
+    Kokkos::deep_copy(remap_sub,remap_out);
+  }
+  Kokkos::deep_copy(remapped_data,remap_data_h);
 }
 /*---------------------------------------------*/
 template <typename ScalarT>
@@ -521,15 +521,15 @@ void apply_remap(
   const view_2d<ScalarT>& source_data,
         view_2d<ScalarT>& remapped_data)
 {
-    if (m_num_dofs==0) { return; } // Nothing to do for this rank
-    auto remap_data_h  = Kokkos::create_mirror_view(remapped_data);
-    for (int iseg=0; iseg<get_num_of_segs(); iseg++) {
-      auto seg = map_segments[iseg];
-      auto remap_sub = ekat::subview(remap_data_h,iseg);
-      auto remap_out = seg.apply_segment<ScalarT>(source_data);
-      Kokkos::deep_copy(remap_sub,remap_out);
-    }
-    Kokkos::deep_copy(remapped_data,remap_data_h);
+  if (m_num_dofs==0) { return; } // Nothing to do for this rank
+  auto remap_data_h  = Kokkos::create_mirror_view(remapped_data);
+  for (int iseg=0; iseg<get_num_of_segs(); iseg++) {
+    auto seg = map_segments[iseg];
+    auto remap_sub = ekat::subview(remap_data_h,iseg);
+    auto remap_out = seg.apply_segment<ScalarT>(source_data);
+    Kokkos::deep_copy(remap_sub,remap_out);
+  }
+  Kokkos::deep_copy(remapped_data,remap_data_h);
 }
 /*---------------------------------------------*/
 template <typename ScalarT>
@@ -537,18 +537,17 @@ void apply_remap(
   const view_1d<ScalarT>& source_data,
         view_1d<ScalarT>& remapped_data)
 {
-    if (m_num_dofs==0) { return; } // Nothing to do for this rank
-    auto remap_data_h  = Kokkos::create_mirror_view(remapped_data);
-    for (int iseg=0; iseg<get_num_of_segs(); iseg++) {
-      auto seg = map_segments[iseg];
-      ScalarT remap_val = seg.apply_segment<ScalarT>(source_data);
-      remap_data_h(iseg) = remap_val;
-    }
-    Kokkos::deep_copy(remapped_data,remap_data_h);
+  return;
+  if (m_num_dofs==0) { return; } // Nothing to do for this rank
+  auto remap_data_h  = Kokkos::create_mirror_view(remapped_data);
+  for (int iseg=0; iseg<get_num_of_segs(); iseg++) {
+    auto seg = map_segments[iseg];
+    ScalarT remap_val = seg.apply_segment<ScalarT>(source_data);
+    remap_data_h(iseg) = remap_val;
+  }
+  Kokkos::deep_copy(remapped_data,remap_data_h);
 }
 /*---------------------------------------------*/
-  gid_type                  m_min_dof = -999;      // The global minimum dof value - needed to offset for array index of data.
-  gid_type                  source_min_dof = -999; // Similar to m_min_dof, but the value used in the source dofs.
 
 protected:
 

@@ -125,6 +125,8 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
     Real y_sum   = 0.0;
     for (int ii=0; ii<nmap; ii++) {
       Int src_idx = pdf_map_src(engine);
+      // In order to mimic a typical remap file which may not be 0 based we offset the raw
+      // column dof indices by tgt_min_dof and src_min_dof.
       vec_src_col.push_back(src_idx+src_min_dof);
       vec_tgt_col.push_back(dofs_gids_h(tcol)-tgt_min_dof+src_min_dof);
       Real wgt = pdf_map_wgt(engine);
@@ -150,7 +152,7 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   for (int ii=0; ii<comm.rank(); ii++) {
     n_s_offset += n_s_all_ranks[ii];
   }
-  // Now copy these vectors to views 
+  // Now copy these vectors to views
   view_1d_host<Int>  map_src_cols_h(vec_src_col.data(),vec_wgt.size());
   view_1d_host<Int>  map_tgt_cols_h(vec_tgt_col.data(),vec_wgt.size());
   view_1d_host<Real> map_wgts_h(vec_wgt.data(),vec_wgt.size());
@@ -166,18 +168,16 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   std::map<gid_type,Real> y_from_views;
   GSMap remap_from_views;
   remap_from_views.set_name("From Views");
-  remap_from_views.source_min_dof = src_min_dof;
-  remap_from_views.m_min_dof      = tgt_min_dof;
-  remap_from_views.set_dofs_gids(dofs_gids);
+  remap_from_views.set_dofs_gids(dofs_gids,tgt_min_dof);
   for (int iseg=0; iseg<num_loc_tgt_cols; iseg++) {
-    gid_type seg_dof = dofs_gids_h(iseg)+src_min_dof;
-    RemapSegment seg(seg_dof,num_src_to_tgt_cols.at(seg_dof-src_min_dof));
+    gid_type seg_dof = dofs_gids_h(iseg);
+    RemapSegment seg(seg_dof,num_src_to_tgt_cols.at(seg_dof+tgt_min_dof)); // Need to offset dof index because this is a look up.
     auto source_dofs_h = Kokkos::create_mirror_view(seg.source_dofs);
     auto weights_h     = Kokkos::create_mirror_view(seg.weights);
     int idx = 0;
     for (int ii=0; ii<map_src_cols_h.extent(0); ii++) {
-      if (map_tgt_cols_h(ii)-src_min_dof==seg.m_dof-tgt_min_dof) {
-        source_dofs_h(idx) = map_src_cols_h(ii);
+      if (map_tgt_cols_h(ii)-src_min_dof==seg.m_dof) {
+        source_dofs_h(idx) = map_src_cols_h(ii)-src_min_dof;  // Make 0-based dof indexing
         weights_h(idx)     = map_wgts_h(ii);
         idx ++;
       }
@@ -193,7 +193,7 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   view_1d<Real> x_data_from_views("",unique_dofs_from_views.size());
   auto x_data_from_views_h = Kokkos::create_mirror_view(x_data_from_views);
   for (int ii=0; ii<unique_dofs_from_views.size(); ii++) {
-    x_data_from_views_h(ii) = source_remap_data_h(unique_dofs_from_views[ii]-src_min_dof);
+    x_data_from_views_h(ii) = source_remap_data_h(unique_dofs_from_views[ii]);
   }
   Kokkos::deep_copy(x_data_from_views,x_data_from_views_h);
   // Apply the remap
@@ -203,7 +203,7 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   auto y_data_from_views_h = Kokkos::create_mirror_view(y_data_from_views);
   Kokkos::deep_copy(y_data_from_views_h,y_data_from_views);
   for (int ii=0; ii<num_loc_tgt_cols; ii++) {
-    gid_type dof = dofs_gids_h(ii);
+    gid_type dof = dofs_gids_h(ii);  // Offset to 0-based
     auto y_base = y_baseline[dof];
     REQUIRE(std::abs(y_data_from_views_h(ii)-y_base)<tol);
   }
@@ -238,7 +238,7 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   scorpio::set_dof(filename,"S",var_dof.size(),var_dof.data());
   var_dof.resize(unique_dofs_from_views.size());
   for (int ii=0; ii<var_dof.size(); ii++) {
-    var_dof[ii] = unique_dofs_from_views[ii]-src_min_dof;
+    var_dof[ii] = unique_dofs_from_views[ii];
   }
   scorpio::set_dof(filename,"src_data",var_dof.size(),var_dof.data());
   scorpio::eam_pio_enddef(filename);
@@ -265,7 +265,7 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   scorpio::get_variable(filename,"src_data","src_data",1,vec_of_data_dims,PIO_REAL,data_decomp_tag_r);
   var_dof.resize(unique_dofs_from_file.size());
   for (int ii=0; ii<var_dof.size(); ii++) {
-    var_dof[ii] = unique_dofs_from_file[ii]-src_min_dof;
+    var_dof[ii] = unique_dofs_from_file[ii];
   }
   scorpio::set_dof(filename,"src_data",var_dof.size(),var_dof.data());
   scorpio::set_decomp(filename);
@@ -395,8 +395,6 @@ TEST_CASE("horizontal_remap_units", "") {
     // Create a GSMap to test
     GSMap test_map;
     test_map.set_name("Test Map");
-    test_map.m_min_dof = 1;
-    test_map.source_min_dof = 1;
     // Create a remap segment
     RemapSegment test_seg;
     IPDF pdf_seg_len(2,100);
@@ -434,7 +432,7 @@ TEST_CASE("horizontal_remap_units", "") {
     // Create a new segment that has the same DOF as the first segment
     RemapSegment new_seg;
     new_seg.m_length = 1;
-    new_seg.m_dof    = 1;
+    new_seg.m_dof    = 1; 
     new_seg.weights     = view_1d<Real>("",1);
     new_seg.source_dofs = view_1d<gid_type>("",1);
     new_seg.source_idx  = view_1d<Int>("",1);

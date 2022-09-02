@@ -310,13 +310,11 @@ void SPAFunctions<S,D>
   // and thus no remapping is required.  This simple routine establishes a 1-1 horizontal
   // mapping.
   auto& spa_gsmap = spa_horiz_interp.spa_gsmap;
-  spa_gsmap.set_dofs_gids(dofs_gids);
-  spa_gsmap.m_min_dof      = min_dof;
-  spa_gsmap.source_min_dof = min_dof;
+  spa_gsmap.set_dofs_gids(dofs_gids, min_dof);
   auto dofs_gids_h = Kokkos::create_mirror_view(dofs_gids);
   Kokkos::deep_copy(dofs_gids_h,dofs_gids);
   for (int iseg=0; iseg<dofs_gids.extent(0); iseg++) {
-    auto seg_dof = dofs_gids_h(iseg);
+    auto seg_dof = dofs_gids_h(iseg)-min_dof;
     RemapSegment seg(seg_dof,1);
     Kokkos::deep_copy(seg.source_dofs,seg_dof);
     Kokkos::deep_copy(seg.weights,1.0);
@@ -362,8 +360,6 @@ void SPAFunctions<S,D>
   // here we manually go through all of the input steps rather than
   // use the scorpio_input class.
   auto& spa_gsmap = spa_horiz_interp.spa_gsmap;
-  spa_gsmap.set_dofs_gids(dofs_gids);
-  update_mem_usage(comm,total_max_mem_usage);
   spa_gsmap.set_segments_from_file(remap_file_name,spa_horiz_interp.m_comm,dofs_gids,min_dof);
   update_mem_usage(comm,total_max_mem_usage);
   spa_gsmap.check();
@@ -489,7 +485,7 @@ void SPAFunctions<S,D>
   PointGrid::dofs_list_type dof_gids("",num_local_cols);
   auto dof_gids_h = Kokkos::create_mirror_view(dof_gids);
   for (int ii=0; ii<num_local_cols; ii++) {
-    dof_gids(ii) = unique_dofs[ii];
+    dof_gids_h(ii) = unique_dofs[ii];
   }
   Kokkos::deep_copy(dof_gids,dof_gids_h);
   grid->set_dofs(dof_gids);
@@ -623,7 +619,7 @@ void SPAFunctions<S,D>
   update_mem_usage(comm,total_max_mem_usage);
   
 //ASD  spa_gsmap.apply_remap(PS_v,                spa_data.PS);
-  spa_gsmap.apply_remap(CCN3_packed_v,       spa_data.data.CCN3);
+//ASD  spa_gsmap.apply_remap(CCN3_packed_v,       spa_data.data.CCN3);
 //ASD  spa_gsmap.apply_remap(AER_G_SW_packed_v,   spa_data.data.AER_G_SW);
 //ASD  spa_gsmap.apply_remap(AER_SSA_SW_packed_v, spa_data.data.AER_SSA_SW);
 //ASD  spa_gsmap.apply_remap(AER_TAU_SW_packed_v, spa_data.data.AER_TAU_SW);
