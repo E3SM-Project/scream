@@ -169,13 +169,11 @@ struct SPAFunctions
 
   static void get_remap_weights_from_file(
     const std::string&       remap_file_name,
-    const Int                ncols_scream,
     gid_type                 min_dof,
     const view_1d<gid_type>& dofs_gids,
           SPAHorizInterp&    spa_horiz_interp);
 
   static void set_remap_weights_one_to_one(
-    const Int                ncols_scream,
     gid_type                 min_dof,
     const view_1d<gid_type>& dofs_gids,
           SPAHorizInterp&    spa_horiz_interp);

@@ -300,7 +300,6 @@ perform_vertical_interpolation(
 template <typename S, typename D>
 void SPAFunctions<S,D>
 ::set_remap_weights_one_to_one(
-    const Int                ncols_scream,
     gid_type                 min_dof,
     const view_1d<gid_type>& dofs_gids,
           SPAHorizInterp&    spa_horiz_interp
@@ -330,7 +329,6 @@ template <typename S, typename D>
 void SPAFunctions<S,D>
 ::get_remap_weights_from_file(
     const std::string&       remap_file_name,
-    const Int                ncols_scream,
     gid_type                 min_dof,
     const view_1d<gid_type>& dofs_gids,
           SPAHorizInterp&    spa_horiz_interp
@@ -618,12 +616,12 @@ void SPAFunctions<S,D>
   Kokkos::deep_copy(AER_TAU_LW_packed_v, AER_TAU_LW_packed_v_h);
   update_mem_usage(comm,total_max_mem_usage);
   
-//ASD  spa_gsmap.apply_remap(PS_v,                spa_data.PS);
-//ASD  spa_gsmap.apply_remap(CCN3_packed_v,       spa_data.data.CCN3);
-//ASD  spa_gsmap.apply_remap(AER_G_SW_packed_v,   spa_data.data.AER_G_SW);
-//ASD  spa_gsmap.apply_remap(AER_SSA_SW_packed_v, spa_data.data.AER_SSA_SW);
-//ASD  spa_gsmap.apply_remap(AER_TAU_SW_packed_v, spa_data.data.AER_TAU_SW);
-//ASD  spa_gsmap.apply_remap(AER_TAU_LW_packed_v, spa_data.data.AER_TAU_LW);
+  spa_gsmap.apply_remap(PS_v,                spa_data.PS);
+  spa_gsmap.apply_remap(CCN3_packed_v,       spa_data.data.CCN3);
+  spa_gsmap.apply_remap(AER_G_SW_packed_v,   spa_data.data.AER_G_SW);
+  spa_gsmap.apply_remap(AER_SSA_SW_packed_v, spa_data.data.AER_SSA_SW);
+  spa_gsmap.apply_remap(AER_TAU_SW_packed_v, spa_data.data.AER_TAU_SW);
+  spa_gsmap.apply_remap(AER_TAU_LW_packed_v, spa_data.data.AER_TAU_LW);
   
   Kokkos::deep_copy(spa_data.hyam,hyam_h);
   Kokkos::deep_copy(spa_data.hybm,hybm_h);
