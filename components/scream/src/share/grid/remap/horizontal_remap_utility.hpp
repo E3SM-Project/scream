@@ -537,7 +537,6 @@ void apply_remap(
   const view_1d<ScalarT>& source_data,
         view_1d<ScalarT>& remapped_data)
 {
-  return;
   if (m_num_dofs==0) { return; } // Nothing to do for this rank
   auto remap_data_h  = Kokkos::create_mirror_view(remapped_data);
   for (int iseg=0; iseg<get_num_of_segs(); iseg++) {
