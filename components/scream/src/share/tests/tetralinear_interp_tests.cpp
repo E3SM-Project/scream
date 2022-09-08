@@ -1,5 +1,6 @@
 #include <catch2/catch.hpp>
 
+#include <share/interp/coarse_grid.hpp>
 #include <share/interp/tetralinear_interp.hpp>
 
 namespace {
@@ -13,11 +14,11 @@ TEST_CASE("coarse_grid", "") {
   CoarseGrid grid("ne4.g");
   REQUIRE(grid.ne == 4);
   int num_elems = 6*4*4;
-  REQUIRE(grid.num_elems() == num_elems);
-  REQUIRE(grid.elements.size() == num_elems);
+  REQUIRE(grid.num_elems() == int(num_elems));
+  REQUIRE(grid.elements.size() == size_t(num_elems));
   int num_vertices = num_elems*num_elems + 2;
-  REQUIRE(grid.latitudes.size() == num_vertices);
-  REQUIRE(grid.longitudes.size() == num_vertices);
+  REQUIRE(grid.latitudes.size() == size_t(num_vertices));
+  REQUIRE(grid.longitudes.size() == size_t(num_vertices));
 
   // Test the global-to-local coordinate mapping in each element.
   for (int e = 0; e < num_elems; ++e) {
@@ -81,24 +82,38 @@ struct CosineBell {
     // h(lon, lat) = {
     //               {          0            , r >= R
     //
-    // where h0 = 1000m and r is the great circle distance between (lon, lat)
+    // where h0(z) = z and r is the great circle distance between (lon, lat)
     // and the "center point" (lon_c, lat_c) = (3*pi/2, 0):
     //
     // r = arccos[sin(lat_c)*sin(lat) + cos(lat_c)*cos(lat)*cos(lon-lon_c)]
+    //
+    // The z coordinate is expressed in meters and runs from 0 to 1000, meaning
+    // that 0 < h0(z) < 1000.
 
-    // Read coordinate data from the file.
-    int num_cols, num_levels;
-    HostHCoordView h_lon, h_lat;
+    // Read horizontal coordinate data from the file.
+    CoarseGrid grid(filename);
+    int num_cols = int(grid.latitudes.size());
 
-    // Construct the solution on the coordinates.
+    // We select 128 equally-spaced vertical levels.
+    int num_levels = 128;
+    Real dz = 1000.0 / num_levels;
+
+    // The center position of the cosine bell moves along the equator, making
+    // a complete revolution over 12 months.
+    Real omega = 2*M_PI / 12; // longitudinal velocity
+    Real lon_c = 1.5*M_PI + time_index * omega, lat_c = 0.0;
+
+    // Construct the solution on the coordinates at its proper location at
+    // the given time.
     KokkosTypes::view_2d<Pack> h_data("h", num_cols, num_levels);
-    Real h0 = 1000.0, R = 1.0/3.0, lon_c = 1.5*M_PI, lat_c = 0.0;
+    Real R = 1.0/3.0;
     for (int i = 0; i < num_cols; ++i) {
-      Real lon = h_lon(i), lat = h_lat(i);
+      Real lon = grid.longitudes[i], lat = grid.latitudes[i];
       Real r = acos(sin(lat_c)*sin(lat) + cos(lat_c)*cos(lat)*cos(lon-lon_c));
       for (int k = 0; k < num_levels; ++k) {
+        Real z = (k + 0.5) * dz;
         if (r < R) {
-          h_data(i, k) = 0.5 * h0 * (1.0 + cos(M_PI*r/R));
+          h_data(i, k) = 0.5 * z * (1.0 + cos(M_PI*r/R));
         } else {
           h_data(i, k) = 0.0;
         }
@@ -130,12 +145,12 @@ struct CosineBell {
     Real W1 = weights.weights[0], W2 = weights.weights[1],
          W3 = weights.weights[2], W4 = weights.weights[3];
 
-    // apply the interpolation weights at each level.
+    // Apply the interpolation weights at each level.
     int num_levels = team.team_size();
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, num_levels),
-      KOKKOS_LAMBDA(int j) {
-        data(i, j) = W1 * src_data.data(i1, j) + W2 * src_data.data(i2, j) +
-                     W3 * src_data.data(i3, j) + W4 * src_data.data(i4, j);
+      KOKKOS_LAMBDA(int k) {
+        data(i, k) = W1 * src_data.data(i1, k) + W2 * src_data.data(i2, k) +
+                     W3 * src_data.data(i3, k) + W4 * src_data.data(i4, k);
     });
   }
 
@@ -143,6 +158,11 @@ struct CosineBell {
   void compute_vertical_coords(const ThreadTeam& team,
                                int column_index,
                                VCoordColumnView& col_vcoords) const {
+    // All columns have the same vertical coordinates.
+    int num_levels = team.team_size();
+    Real dz = 1000.0 / num_levels;
+    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, num_levels),
+      KOKKOS_LAMBDA(int k) { col_vcoords(k) = (k + 0.5) * dz; });
   }
 
   KOKKOS_INLINE_FUNCTION
@@ -160,37 +180,18 @@ struct CosineBell {
   }
 };
 
-TEST_CASE("tetralinear_interp", "") {
-  /*
-  ekat::Comm comm(MPI_COMM_WORLD);
+TEST_CASE("tetralinear_interp_cosine_bell", "") {
 
-  const int num_local_elems = 10;
-  const int num_gp = 4;
-  const int num_levels = 72;
+  // Construct an interpolator that interpolates our cosine bell profile to a
+  // selected set of (lon, lat) points.
+  HostHCoordView lons;
+  HostHCoordView lats;
+  TetralinearInterp<CosineBell> interp("ne4.g", lons, lats);
 
-  auto gm = create_mesh_free_grids_manager(comm,num_local_elems,num_gp,num_levels,0);
-  gm->build_grids(std::set<std::string>{"SE Grid"});
-
-  // SE grid
-  auto se_grid = gm->get_grid("SE Grid");
-
-  REQUIRE(se_grid->type() == GridType::SE);
-  REQUIRE(se_grid->name() == "SE Grid");
-  REQUIRE(se_grid->get_num_vertical_levels() == num_levels);
-  REQUIRE(se_grid->get_num_local_dofs() == num_local_elems*num_gp*num_gp);
-
-  auto layout = se_grid->get_2d_scalar_layout();
-  REQUIRE(layout.tags().size() == 3);
-  REQUIRE(layout.tag(0) == EL);
-  REQUIRE(layout.tag(1) == GP);
-  REQUIRE(layout.tag(2) == GP);
-
-  REQUIRE (se_grid->is_unique());
-
-  const auto max_gid = se_grid->get_global_max_dof_gid();
-  const auto min_gid = se_grid->get_global_min_dof_gid();
-  REQUIRE( (max_gid-min_gid+1)==se_grid->get_num_global_dofs() );
-  */
+  // Interpolate weekly over the course of a year.
+//  for (size_t i = 0; i < 52; ++i) {
+//  }
+//  interp(t, src_vcoords, tgt_vcoords, tgt_data);
 }
 
 } // anonymous namespace

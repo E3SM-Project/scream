@@ -28,8 +28,6 @@ template <typename DataSet>
 class TetralinearInterp {
 public:
   using Traits     = TetralinearInterpTraits<DataSet>;
-  using HCoordView = typename Traits::HCoordView;
-  using VCoordView = typename Traits::VCoordView;
 
   // Constructs a tetralinear (4D) lat-lon-vert-time interpolator from data in
   // the given file for the purpose of interpolating field data from a coarse
@@ -39,9 +37,9 @@ public:
   // element per horizontal dimension (neXnp2). This constructor throws an
   // exception if any error is encountered.
   TetralinearInterp(const std::string& data_file,
-                    const HCoordView&  latitudes,
-                    const HCoordView&  longitudes) {
-    init_from_file_(data_file, latitudes, longitudes);
+                    const HCoordView&  longitudes,
+                    const HCoordView&  latitudes) {
+    init_from_file_(data_file, longitudes, latitudes);
   }
 
   TetralinearInterp(const TetralinearInterp&) = default;
@@ -65,7 +63,7 @@ private:
 
   // Reads data from the file with the given name, populating data fields below
   void init_from_file_(const std::string& data_file,
-                       const HCoordView& lats, const HCoordView& lons);
+                       const HCoordView& lons, const HCoordView& lats);
 
   // Interpolate the source data at the given time, placing the result in data.
   void do_time_interpolation_(Real time, DataSet& data) const;

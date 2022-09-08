@@ -10,17 +10,17 @@ namespace interpolators {
 
 // This type represents a coarse quadrilateral grid from which data is
 // interpolated. This grid consists of a set of quad elements and their
-// vertices, along with latitude and longitude coordinates for those vertices.
+// vertices, along with (longitude, latitude) coordinates for those vertices.
 // It is loaded into memory on all ranks of the atm MPI communicator so a
 // correspondence can be established between the elements of the coarse grid and
 // target points to which data is interpolated.
 //
 // NOTE: this class only works on the host, NOT the device.
 struct CoarseGrid {
-  // Latitudes and longitudes of element vertices.
-  std::vector<Real> latitudes, longitudes;
+  // Longitudes and latitudes of element vertices.
+  std::vector<Real> longitudes, latitudes;
 
-  // This type contains the global indices of latitude and longitude
+  // This type contains the global indices of longitude and latitude
   // coordinates for each of the element's vertices (corners).
   //
   // In general, element corner coordinate indices are (moving clockwise

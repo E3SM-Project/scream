@@ -14,15 +14,15 @@ namespace interpolators {
 
 template <typename DataSet>
 void TetralinearInterp<DataSet>::init_from_file_(const std::string& data_file,
-                                                 const HCoordView&  tgt_lats,
-                                                 const HCoordView&  tgt_lons) {
+                                                 const HCoordView&  tgt_lons,
+                                                 const HCoordView&  tgt_lats) {
   // Create a coarse SE grid.
-  auto coarse_grid = CoarseGrid(data_file);
+  CoarseGrid coarse_grid(data_file);
 
-  // Map the given (lat, lon) columns to interpolation weights for the given
+  // Map the given (lon, lat) columns to interpolation weights for the given
   // grid.
   std::vector<int> global_columns;
-  compute_tetralinear_interp_weights(coarse_grid, tgt_lats, tgt_lons,
+  compute_tetralinear_interp_weights(coarse_grid, tgt_lons, tgt_lats,
                                      weights_, global_columns);
 
   // Read in all relevant data from source datasets.

@@ -4,7 +4,7 @@
 // This file defines some types needed to support the TetralinearInterp type.
 // In particular, it defines TetralinearInterpTraits, which associates a set of
 // functions with a type so that type can be interpolated linearly from a coarse
-// cubed-sphere grid to a set of latitude/longitude target points.
+// cubed-sphere grid to a set of (longitude, latitude) target points.
 //
 // If you want to interpolate your own data type, you can add support for it
 // in either of two ways:
@@ -68,7 +68,7 @@ using ThreadTeam = typename KokkosTypes::MemberType;
 //------------------------------------------------------------------------
 
 // This type represents a set of indices and weights associated with a the
-// support for a target latitude/longitude pair.
+// support for a target (lon, lat) pair.
 struct TetralinearInterpWeights {
   int  indices[4]; // global grid element vertex indices
   Real weights[4]; // interpolation weights for each vertex
@@ -79,12 +79,12 @@ struct TetralinearInterpWeights {
 using TetralinearInterpWeightMap =
   Kokkos::UnorderedMap<int, TetralinearInterpWeights>;
 
-// This is the host version of LatLonLinInterpWeightMap.
+// This is the host version of TetralinearInterpWeightMap.
 using HostTetralinearInterpWeightMap =
   Kokkos::UnorderedMap<int, TetralinearInterpWeights, ekat::HostDevice>;
 
 // TetralinearInterpoTraits -- traits to support tetralinear interpolation
-// from a set of source columns at fixed latitudes and longitudes to target data
+// from a set of source columns at fixed longitudes and latitudes to target data
 // on another set of columns. Specialize this type for your data class, or
 // implement the methods used in this generic implementation.
 template <typename DataSet>
