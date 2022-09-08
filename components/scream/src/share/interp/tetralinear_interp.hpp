@@ -27,15 +27,19 @@ private:
 template <typename DataSet>
 class TetralinearInterp {
 public:
-  using Traits     = TetralinearInterpTraits<DataSet>;
+  using Traits = TetralinearInterpTraits<DataSet>;
 
-  // Constructs a tetralinear (4D) lat-lon-vert-time interpolator from data in
-  // the given file for the purpose of interpolating field data from a coarse
-  // cubed-sphere grid to a set of target points defined by the given latitudes
-  // and longitudes. The data file is a NetCDF4 file containing field data
-  // defined on a cubed-sphere grid with 2 gauss-legendre-lobatto points per
-  // element per horizontal dimension (neXnp2). This constructor throws an
-  // exception if any error is encountered.
+  // Constructs a tetralinear (4D) longitude-latitude-vertical-time interpolator
+  // from data in the given file for the purpose of interpolating field data
+  // from a coarse cubed-sphere grid to a set of target points defined by the
+  // given latitudes and longitudes. The data file is a NetCDF file containing
+  // field data defined on a cubed-sphere grid with degrees of freedom on the
+  // corners of quadrilateral elements, equivalent to using 2 gauss-legendre-
+  // lobatto (GLL) points (i.e. neXnp2). This constructor throws an exception if
+  // any error is encountered. If the data file contains datasets at multiple
+  // times, the timespan covered by the file is assumed to be periodic so it can
+  // be interpolated at times before and after this span. Time units used for
+  // interpolation are the same as those specified in the data file.
   TetralinearInterp(const std::string& data_file,
                     const HCoordView&  longitudes,
                     const HCoordView&  latitudes) {
@@ -47,12 +51,12 @@ public:
 
   // Call operator: interpolates field source data from the data file to
   // the given data at the given time, with source and target vertical
-  // coordinates provided by an atmospheric state.
+  // coordinates provided by an atmospheric state. Time units are the same as
+  // those in the data file used to construct the interpolator.
   void operator()(Real time,
-                  const VCoordView& src_vcoords,
                   const VCoordView& tgt_vcoords,
                   DataSet& tgt_data) const {
-    interpolate_(time, src_vcoords, tgt_vcoords, tgt_data);
+    interpolate_(time, tgt_vcoords, tgt_data);
   }
 
   // Unsupported operations
@@ -66,6 +70,8 @@ private:
                        const HCoordView& lons, const HCoordView& lats);
 
   // Interpolate the source data at the given time, placing the result in data.
+  // Time units are the same as specified in the data file used to construct
+  // the interpolator.
   void do_time_interpolation_(Real time, DataSet& data) const;
 
   // Interpolate source data horizontally by applying precomputed interpolation
@@ -83,8 +89,9 @@ private:
                                   const VCoordView& tgt_vcoords,
                                   DataSet& tgt_data) const;
 
-  // Interpolates source data at the given time from the given source vertical
-  // coordinate profile to the target profile, storing the result in data.
+  // Interpolates source data at the given time to the target dataset, using
+  // the given target vertical coordinate profile. Time units are the same as
+  // specified in the data file used to construct the interpolator.
   void interpolate_(Real time,
                     const VCoordView& tgt_vcoords,
                     DataSet& data) const;

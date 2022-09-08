@@ -96,27 +96,45 @@ struct TetralinearInterpTraits {
     return DataSet::allocate(num_columns, num_vertical_levels);
   }
 
+  // Fetches and returns a vector containing the times at which datasets are
+  // defined in the given file. The units in which these times are expressed
+  // are the same as the units used by the interpolator. To support the time
+  // interpolation of periodic data, the endpoints in this vector are
+  // identified, so the number of datasets in the file is one fewer than the
+  // number of elements in the vector. This vector must contain at least 2
+  // elements. Call on HOST only.
+  //
+  // For example, a data file containing 12 monthly datasets over the span of
+  // a year would return a vector having 13 elements, with the first element
+  // being 0 and the last element equal to a year (in whatever units are used).
+  static std::vector<Real> dataset_times(const std::string& filename) {
+    return DataSet::dataset_times(filename);
+  }
+
   // Reads data from the given file at the given time index for the given
   // columns, storing the result in data. Call on HOST only.
   // NOTE: the columns vector defines a local-to-global mapping of required
   // NOTE: source column data, allowing you to store only locally-relevant data.
   // NOTE: (i.e. columns[local_column_index] == global_column_index)
-  static void read_from_file(const std::string& filename, int time_index,
-                             const std::vector<int>& columns, DataSet& data) {
-    data.read_from_file(filename, time_index, columns);
+  static void read_dataset(const std::string& filename, int time_index,
+                           const std::vector<int>& columns, DataSet& data) {
+    data.read_dataset(filename, time_index, columns);
   }
 
   // Returns the number of horizontal columns represented in the dataset.
+  // Call on HOST only.
   static int num_columns(const DataSet& data) {
     return data.num_columns();
   }
 
   // Returns the number of vertical levels represented in the dataset.
+  // Call on HOST only.
   static int num_vertical_levels(const DataSet& data) {
     return data.num_vertical_levels();
   }
 
   // Returns the number of variables in the dataset to be interpolated.
+  // Call on HOST only.
   static int num_variables(const DataSet& data) {
     return data.num_variables();
   }

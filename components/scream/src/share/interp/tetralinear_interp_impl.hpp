@@ -26,27 +26,38 @@ void TetralinearInterp<DataSet>::init_from_file_(const std::string& data_file,
                                      weights_, global_columns);
 
   // Read in all relevant data from source datasets.
-  int n_times = 12; // FIXME
-  data_.resize(n_times);
-  for (int i = 0; i < n_times; ++i) {
-    Traits::read_from_file(data_file, i, global_columns, data_[i]);
+  times_ = Traits::dataset_times(data_file);
+  EKAT_ASSERT(times_.size() >= 2); // there must be at least 1 dataset!
+  EKAT_ASSERT(times_[0] == 0.0);   // the first dataset must have a zero time
+  data_.resize(times_.size()-1);   // number of datasets
+  for (size_t i = 0; i < times_.size(); ++i) {
+    Traits::read_dataset(data_file, int(i), global_columns, data_[i]);
   }
-
 }
 
 template <typename DataSet>
 void TetralinearInterp<DataSet>::do_time_interpolation_(Real time,
                                                         DataSet& data) const {
+  // If the time falls outside of the set of times covered by the datasets,
+  // map it back into that range assuming periodicity.
+  Real period = times_.back();
+  if (time < 0.0) {        // less than zero!
+    time += period;
+  } else if (time > period) {  // greater than the period!
+    time -= period;
+  }
+
   // Find the bounding times.
   auto time_iter = std::lower_bound(times_.begin(), times_.end(), time);
-  size_t t1, t2;
-  if ((time_iter == times_.end()) || (time_iter == times_.begin())) {
-    // The times t1 and t2 are the last and first time, respectively, because
-    // we assume time is periodic.
-    t1 = times_.size() - 1;
+  EKAT_ASSERT(time_iter != times_.end());
+  size_t t1, t2 = std::distance(times_.begin(), time_iter);
+  EKAT_ASSERT(t2 > 0); // because the first dataset is defined at t == 0
+  if (t2 == times_.size()) {
+    // The time indices t1 and t2 refer to the last and first datasets,
+    // respectively, because we assume time is periodic.
     t2 = 0;
+    t1 = times_.size() - 1;
   } else {
-    t2 = std::distance(times_.begin(), time_iter);
     t1 = t2 - 1;
   }
 

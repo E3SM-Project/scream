@@ -64,7 +64,35 @@ struct CosineBell {
   // Solution data (col, level)
   KokkosTypes::view_2d<Pack> data;
 
+  // Instead of reading data from a file, we just populate the ne4 grid
+  // "manually" with the cosine bell solution
+  //
+  //               {(h0/2)(1 + cos(pi*r/R)), r <  R
+  // h(lon, lat) = {
+  //               {          0            , r >= R
+  //
+  // where h0(z) = z and r is the great circle distance between (lon, lat)
+  // and the "center point" (lon_c, lat_c) = (3*pi/2, 0):
+  //
+  // r = arccos[sin(lat_c)*sin(lat) + cos(lat_c)*cos(lat)*cos(lon-lon_c)]
+  //
+  // The z coordinate is expressed in meters and runs from 0 to 1000, meaning
+  // that 0 < h0(z) < 1000. The time is expressed in days.
+  static Real solution(Real time, Real lon, Real lat, Real z) {
+    Real omega = 2*M_PI / 365; // longitudinal velocity (degrees / day)
+    Real lon_c = 1.5*M_PI + time*omega, lat_c = 0.0;
+    Real R = 1.0/3.0;
+    Real r = acos(sin(lat_c)*sin(lat) + cos(lat_c)*cos(lat)*cos(lon-lon_c));
+    if (r < R) {
+      return 0.5 * z * (1.0 + cos(M_PI*r/R));
+    } else {
+      return 0.0;
+    }
+  }
+
+  //===========================================================================
   // member functions used by traits (see TetralinearInterpTraits for details)
+  //===========================================================================
 
   static CosineBell allocate(int num_cols, int num_levels) {
     return CosineBell{
@@ -72,24 +100,28 @@ struct CosineBell {
     };
   }
 
-  void read_from_file(const std::string& filename,
-                      int time_index,
-                      const std::vector<int>& columns) {
-    // Instead of reading data from a file, we just populate the ne4 grid
-    // "manually" with the cosine bell solution
-    //
-    //               {(h0/2)(1 + cos(pi*r/R)), r <  R
-    // h(lon, lat) = {
-    //               {          0            , r >= R
-    //
-    // where h0(z) = z and r is the great circle distance between (lon, lat)
-    // and the "center point" (lon_c, lat_c) = (3*pi/2, 0):
-    //
-    // r = arccos[sin(lat_c)*sin(lat) + cos(lat_c)*cos(lat)*cos(lon-lon_c)]
-    //
-    // The z coordinate is expressed in meters and runs from 0 to 1000, meaning
-    // that 0 < h0(z) < 1000.
+  static std::vector<Real> dataset_times(const std::string& filename) {
+    // phony monthly data expressed in days
+    return std::vector<Real>({
+      0,   // Jan
+      31,  // Feb
+      59,  // Mar
+      90,  // Apr
+      120, // May
+      151, // Jun
+      181, // Jul
+      212, // Aug
+      243, // Sep
+      273, // Oct
+      304, // Nov
+      334, // Dec
+      365, // wraparound
+    });
+  }
 
+  void read_dataset(const std::string& filename,
+                    int time_index,
+                    const std::vector<int>& columns) {
     // Read horizontal coordinate data from the file.
     CoarseGrid grid(filename);
     int num_cols = int(grid.latitudes.size());
@@ -100,26 +132,32 @@ struct CosineBell {
 
     // The center position of the cosine bell moves along the equator, making
     // a complete revolution over 12 months.
-    Real omega = 2*M_PI / 12; // longitudinal velocity
-    Real lon_c = 1.5*M_PI + time_index * omega, lat_c = 0.0;
+    std::vector<Real> times = dataset_times(filename);
+    Real time = times[time_index];
 
     // Construct the solution on the coordinates at its proper location at
     // the given time.
     KokkosTypes::view_2d<Pack> h_data("h", num_cols, num_levels);
-    Real R = 1.0/3.0;
     for (int i = 0; i < num_cols; ++i) {
       Real lon = grid.longitudes[i], lat = grid.latitudes[i];
-      Real r = acos(sin(lat_c)*sin(lat) + cos(lat_c)*cos(lat)*cos(lon-lon_c));
       for (int k = 0; k < num_levels; ++k) {
         Real z = (k + 0.5) * dz;
-        if (r < R) {
-          h_data(i, k) = 0.5 * z * (1.0 + cos(M_PI*r/R));
-        } else {
-          h_data(i, k) = 0.0;
-        }
+        h_data(i, k) = solution(time, lon, lat, z);
       }
     }
     Kokkos::deep_copy(data, h_data);
+  }
+
+  int num_columns() const {
+    return data.extent(0);
+  }
+
+  int num_vertical_levels() const {
+    return data.extent(1);
+  }
+
+  int num_variables() const {
+    return 1;
   }
 
   KOKKOS_INLINE_FUNCTION
@@ -188,10 +226,16 @@ TEST_CASE("tetralinear_interp_cosine_bell", "") {
   HostHCoordView lats;
   TetralinearInterp<CosineBell> interp("ne4.g", lons, lats);
 
-  // Interpolate weekly over the course of a year.
-//  for (size_t i = 0; i < 52; ++i) {
-//  }
-//  interp(t, src_vcoords, tgt_vcoords, tgt_data);
+  // Interpolate weekly over the course of a year (time expressed in days).
+  CosineBell tgt_data = CosineBell::allocate(interp, num_cols, num_levels);
+
+  // Interpolate to layer centers.
+  for (size_t week = 0; week < 52; ++week) {
+    Real t = 7.0 * week;
+    interp(t, tgt_vcoords, tgt_data);
+
+    // Compare with our "analytic solution".
+  }
 }
 
 } // anonymous namespace
