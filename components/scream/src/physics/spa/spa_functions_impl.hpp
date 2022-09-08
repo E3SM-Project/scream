@@ -310,6 +310,7 @@ void SPAFunctions<S,D>
   // mapping.
   auto& spa_gsmap = spa_horiz_interp.spa_gsmap;
   spa_gsmap.set_dofs_gids(dofs_gids, min_dof);
+  spa_gsmap.set_comm(spa_horiz_interp.m_comm);
   auto dofs_gids_h = Kokkos::create_mirror_view(dofs_gids);
   Kokkos::deep_copy(dofs_gids_h,dofs_gids);
   for (int iseg=0; iseg<dofs_gids.extent(0); iseg++) {
@@ -319,7 +320,7 @@ void SPAFunctions<S,D>
     Kokkos::deep_copy(seg.weights,1.0);
     spa_gsmap.add_segment(seg);
   }
-  spa_gsmap.check();
+//ASD  spa_gsmap.check();
   spa_gsmap.set_unique_source_dofs(); 
 } // END set_remap_weights_one_to_one
 /*-----------------------------------------------------------------*/

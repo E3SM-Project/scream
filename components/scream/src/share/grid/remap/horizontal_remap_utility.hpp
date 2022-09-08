@@ -196,6 +196,7 @@ public:
 
 /*---------------------------------------------*/
   void set_name(const std::string& name) { map_name = name; }
+  void set_comm(const ekat::Comm& comm)  { m_comm = comm; }
 /*---------------------------------------------*/
   Int get_num_of_segs() {return map_segments.size();}
   Int get_num_of_dofs() {return m_dofs_gids.size();}
@@ -244,6 +245,7 @@ public:
     std::vector<bool> found(m_dofs_gids.size(),false);
     auto dofs_gids_h = Kokkos::create_mirror_view(m_dofs_gids);
     Kokkos::deep_copy(dofs_gids_h,m_dofs_gids);
+    int num_found = 0;
     for (int ii=0; ii<map_segments.size(); ii++) {
       auto& seg = map_segments[ii];
       auto seg_check = seg.check();
@@ -251,16 +253,17 @@ public:
       for (int jj=0; jj<dofs_gids_h.size(); jj++) {
         if (dofs_gids_h(jj) == seg.m_dof) {
           found[jj] = true;
+          num_found += 1;
           break;
         }
       }
     }
     bool pass = std::find(found.begin(),found.end(),false) == found.end();
     if (!pass) {
-      printf("Error: GSMap.check() for map %s - Target column(s) are missing a remap segment:\n",map_name.c_str());
+      printf("Error: GSMap.check() for map %s on rank %d- Only found %d/%d columns - Target column(s) are missing a remap segment:\n",map_name.c_str(),m_comm.rank(),num_found,m_dofs_gids.size());
       for (int ii=0;ii<m_dofs_gids.size();ii++) {
         if (!found[ii]) {
-          printf("No segment found for DOF = %d\n",dofs_gids_h(ii));
+          printf("No segment found for DOF = %d on rank %d\n",dofs_gids_h(ii),m_comm.rank());
         }
       }
     }
@@ -329,6 +332,7 @@ public:
     // Distribute responsibility for reading remap data over all ranks
     const int my_rank   = comm.rank();
     const int num_ranks = comm.size();
+    set_comm(comm);
     // my_chunk will represent the chunk of data this rank will read from file.
     int my_chunk        = remap_size/num_ranks;
     int remainder       = remap_size - (my_chunk*num_ranks);
@@ -553,6 +557,7 @@ void apply_remap(
 protected:
 
 /*---------------------------------------------*/
+  ekat::Comm                m_comm;
   std::vector<RemapSegment> map_segments;
   std::vector<gid_type>     unique_dofs;
   view_1d<gid_type>         m_dofs_gids;
