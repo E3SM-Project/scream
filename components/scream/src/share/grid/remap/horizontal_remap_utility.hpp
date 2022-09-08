@@ -78,8 +78,9 @@ public:
   view_2d<ScalarT> apply_segment(
       const view_3d<ScalarT>& source_data)
   {
-    view_2d_host<ScalarT> ret("",source_data.extent(1),source_data.extent(2));
-    Kokkos::deep_copy(ret,0.0);
+    view_2d<ScalarT> ret("",source_data.extent(1),source_data.extent(2));
+    auto ret_h = Kokkos::create_mirror_view(ret);
+    Kokkos::deep_copy(ret_h,0.0);
     auto source_data_h = Kokkos::create_mirror_view(source_data);
     auto source_idx_h  = Kokkos::create_mirror_view(source_idx);
     auto weights_h     = Kokkos::create_mirror_view(weights);
@@ -91,10 +92,11 @@ public:
       for (int nn=0; nn<source_data.extent(1); nn++) {
         auto src_data_sub = ekat::subview(source_data_h,idx,nn);
         for (int kk=0; kk<src_data_sub.extent(0); kk++) {
-          ret(nn,kk) = ret(nn,kk) + src_data_sub(kk)*weights_h(ii);
+          ret_h(nn,kk) = ret_h(nn,kk) + src_data_sub(kk)*weights_h(ii);
         }
       }
     }
+    Kokkos::deep_copy(ret,ret_h);
     return ret;
   }
 /*---------------------------------------------*/

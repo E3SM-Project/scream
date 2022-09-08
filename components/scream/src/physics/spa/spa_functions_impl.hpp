@@ -463,20 +463,20 @@ void SPAFunctions<S,D>
   //   and so on for the other variables.
   typename view_1d<Real>::HostMirror hyam_v_h("hyam",source_data_nlevs);
   typename view_1d<Real>::HostMirror hybm_v_h("hybm",source_data_nlevs);
-  typename view_1d<Real>::HostMirror PS_v_h("PS",num_local_cols);
-  typename view_2d<Real>::HostMirror CCN3_v_h("CCN3",num_local_cols,source_data_nlevs);
-  typename view_3d<Real>::HostMirror AER_G_SW_v_h("AER_G_SW",num_local_cols,nswbands,source_data_nlevs);
-  typename view_3d<Real>::HostMirror AER_SSA_SW_v_h("AER_SSA_SW",num_local_cols,nswbands,source_data_nlevs);
-  typename view_3d<Real>::HostMirror AER_TAU_SW_v_h("AER_TAU_SW",num_local_cols,nswbands,source_data_nlevs);
-  typename view_3d<Real>::HostMirror AER_TAU_LW_v_h("AER_TAU_LW",num_local_cols,nlwbands,source_data_nlevs);
-  auto hyam_v       = Kokkos::create_mirror_view(hyam_v_h      );
-  auto hybm_v       = Kokkos::create_mirror_view(hybm_v_h      );
-  auto PS_v         = Kokkos::create_mirror_view(PS_v_h        );
-  auto CCN3_v       = Kokkos::create_mirror_view(CCN3_v_h      );
-  auto AER_G_SW_v   = Kokkos::create_mirror_view(AER_G_SW_v_h  ); 
-  auto AER_SSA_SW_v = Kokkos::create_mirror_view(AER_SSA_SW_v_h);
-  auto AER_TAU_SW_v = Kokkos::create_mirror_view(AER_TAU_SW_v_h);
-  auto AER_TAU_LW_v = Kokkos::create_mirror_view(AER_TAU_LW_v_h);
+  view_1d<Real> PS_v("PS",num_local_cols);
+  view_2d<Real> CCN3_v("CCN3",num_local_cols,source_data_nlevs);
+  view_3d<Real> AER_G_SW_v("AER_G_SW",num_local_cols,nswbands,source_data_nlevs);
+  view_3d<Real> AER_SSA_SW_v("AER_SSA_SW",num_local_cols,nswbands,source_data_nlevs);
+  view_3d<Real> AER_TAU_SW_v("AER_TAU_SW",num_local_cols,nswbands,source_data_nlevs);
+  view_3d<Real> AER_TAU_LW_v("AER_TAU_LW",num_local_cols,nlwbands,source_data_nlevs);
+  auto hyam_v         = Kokkos::create_mirror_view(hyam_v_h    );
+  auto hybm_v         = Kokkos::create_mirror_view(hybm_v_h    );
+  auto PS_v_h         = Kokkos::create_mirror_view(PS_v        );
+  auto CCN3_v_h       = Kokkos::create_mirror_view(CCN3_v      );
+  auto AER_G_SW_v_h   = Kokkos::create_mirror_view(AER_G_SW_v  ); 
+  auto AER_SSA_SW_v_h = Kokkos::create_mirror_view(AER_SSA_SW_v);
+  auto AER_TAU_SW_v_h = Kokkos::create_mirror_view(AER_TAU_SW_v);
+  auto AER_TAU_LW_v_h = Kokkos::create_mirror_view(AER_TAU_LW_v);
 
   // Construct the grid needed for input:
   auto grid = std::make_shared<PointGrid>("grid",num_local_cols,source_data_nlevs,comm);
@@ -616,6 +616,7 @@ void SPAFunctions<S,D>
   Kokkos::deep_copy(AER_TAU_LW_packed_v, AER_TAU_LW_packed_v_h);
   update_mem_usage(comm,total_max_mem_usage);
   
+
   spa_gsmap.apply_remap(PS_v,                spa_data.PS);
   spa_gsmap.apply_remap(CCN3_packed_v,       spa_data.data.CCN3);
   spa_gsmap.apply_remap(AER_G_SW_packed_v,   spa_data.data.AER_G_SW);
