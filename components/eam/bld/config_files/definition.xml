@@ -29,7 +29,7 @@ Component interfaces: mct or esmf.  Default: mct.
 <entry id="dyn" valid_values="eul,sld,fv,homme,se" value="">
 Dynamics package: eul, sld, fv, or se.
 </entry>
-<entry id="dyn_target" valid_values="preqx,theta-l,preqx_acc,preqx_kokkos" value="">          
+<entry id="dyn_target" valid_values="preqx,theta-l,preqx_acc,preqx_kokkos,theta-l_kokkos" value="">          
 SE dynamical core option.
 </entry>        
 <entry id="waccm_phys" valid_values="0,1" value="0">
@@ -74,7 +74,7 @@ PBL package: uw (University of Washington), hb (Holtslag and Boville), hbr
  For the MMF a "none" is set by default, but a separate version of 
  the HB scheme is used for stability.
 </entry>
-<entry id="rad" valid_values="rrtmg,rrtmgp" value="">
+<entry id="rad" valid_values="rrtmg,rrtmgp,none" value="">
 Radiative transfer calculation: 
 rrtmg (RRTMG; http://rtweb.aer.com/rrtm_frame.html), rrtmgp (RRTMGP; https://github.com/earth-system-radiation/rte-rrtmgp).
 </entry>

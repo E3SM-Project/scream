@@ -10,9 +10,6 @@
 // If defined, enable floating point exceptions.
 #cmakedefine SCREAM_FPE
 
-// If defined, scream::pack objects check indices against bounds.
-#cmakedefine SCREAM_PACK_CHECK_BOUNDS
-
 // The number of scalars in a scream::pack::Pack and Mask.
 #define SCREAM_PACK_SIZE ${SCREAM_PACK_SIZE}
 
@@ -25,23 +22,8 @@
 // How many levels to use for the vertical grid
 #define SCREAM_NUM_VERTICAL_LEV ${SCREAM_NUM_VERTICAL_LEV}
 
-// Whether MPI errors should abort
-#cmakedefine SCREAM_MPI_ERRORS_ARE_FATAL
-
-// Whether we allow use of CONSTEXPR_ASSERT macro
-#cmakedefine SCREAM_CONSTEXPR_ASSERT
-
-// Mimic GPU to correctness-test inter-column parallelism on non-GPU platform
-#cmakedefine SCREAM_MIMIC_GPU
-
 // Whether this is a CUDA build
 #cmakedefine CUDA_BUILD
-
-// Whether fp model is strict
-#cmakedefine SCREAM_STRICT_FP
-
-// Whether SCREAM should perform sanity checks
-#cmakedefine SCREAM_DEBUG
 
 // Whether SCREAM has Homme enabled as dynamics dycore
 #cmakedefine SCREAM_HAS_HOMME
@@ -49,7 +31,23 @@
 // Whether scream uses leap years or not
 #cmakedefine SCREAM_HAS_LEAP_YEAR
 
-// Whether experimental code should be enabled
-#cmakedefine SCREAM_ENABLE_EXPERIMENTAL
+// What level of testing we are doing. 0=autotesting, 1=nightly, 2=experimental
+#define SCREAM_TEST_LEVEL ${SCREAM_TEST_LEVEL}
+
+// Whether getrusage can be used to get memory usage
+#cmakedefine SCREAM_ENABLE_GETRUSAGE
+// Whether /proc/self/statm can be used to get memory usage
+#cmakedefine SCREAM_ENABLE_STATM
+
+#if defined(SCREAM_ENABLE_STATM) || defined(SCREAM_ENABLE_GETRUSAGE)
+#define SCREAM_HAS_MEMORY_USAGE
+#endif
+
+
+// Data directory for the scream project
+#define SCREAM_DATA_DIR "${SCREAM_DATA_DIR}"
+
+// Whether or not to run RRTMGP debug checks
+#cmakedefine SCREAM_RRTMGP_DEBUG
 
 #endif

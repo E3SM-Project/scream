@@ -2,7 +2,7 @@
 
 #include "TimeLevel.hpp"
 
-#include "dynamics/homme/dynamics_driven_grids_manager.hpp"
+#include "dynamics/homme/homme_grids_manager.hpp"
 #include "dynamics/homme/homme_dimensions.hpp"
 #include "dynamics/homme/interface/scream_homme_interface.hpp"
 
@@ -64,10 +64,9 @@ TEST_CASE("dyn_grid_io")
 
   // Create the grids
   ekat::ParameterList params;
-  params.set<std::string>("Reference Grid","Physics GLL");
-  auto gm = std::make_shared<DynamicsDrivenGridsManager>(comm,params);
-  std::set<std::string> grids_names = {"Physics GLL","Dynamics"};
-  gm->build_grids(grids_names);
+  params.set<std::string>("physics_grid_type","GLL");
+  auto gm = std::make_shared<HommeGridsManager>(comm,params);
+  gm->build_grids();
 
   auto dyn_grid  = gm->get_grid("Dynamics");
   auto phys_grid = gm->get_grid("Physics GLL");
@@ -96,9 +95,9 @@ TEST_CASE("dyn_grid_io")
   FieldIdentifier fid_phys_2 ("field_2",layout_phys_2,nondim,phys_grid->name());
   FieldIdentifier fid_phys_3 ("field_3",layout_phys_3,nondim,phys_grid->name());
 
-  auto fm_dyn = std::make_shared<FieldManager<Real>> (dyn_grid);
-  auto fm_phys= std::make_shared<FieldManager<Real>> (phys_grid);
-  auto fm_ctrl= std::make_shared<FieldManager<Real>> (phys_grid);
+  auto fm_dyn = std::make_shared<FieldManager> (dyn_grid);
+  auto fm_phys= std::make_shared<FieldManager> (phys_grid);
+  auto fm_ctrl= std::make_shared<FieldManager> (phys_grid);
 
   fm_dyn->registration_begins();
   fm_phys->registration_begins();
@@ -128,7 +127,7 @@ TEST_CASE("dyn_grid_io")
 
   std::vector<std::string> fnames = {"field_1", "field_2", "field_3"};
 
-  // Ranodmize control fields, then remap to dyn fields
+  // Randomize control fields, then remap to dyn fields
   std::uniform_real_distribution<Real> pdf(0.01,100.0);
   auto engine = setup_random_test(&comm);
   auto dyn2phys = gm->create_remapper(dyn_grid,phys_grid);
@@ -156,13 +155,14 @@ TEST_CASE("dyn_grid_io")
   io_params.set<std::string>("Averaging Type","Instant");
   io_params.set<std::vector<std::string>>("Grids",{"Dynamics"});
   io_params.set<std::string>("Casename","dyn_grid_io_np" + std::to_string(comm.size()));
-  io_params.sublist("Fields").set<std::vector<std::string>>("Dynamics",fnames);
-  io_params.sublist("Output Control").set<int>("Frequency",1);
-  io_params.sublist("Output Control").set<std::string>("Frequency Units","Steps");
+  io_params.sublist("Fields").sublist("Dynamics").set<std::vector<std::string>>("Field Names",fnames);
+  io_params.sublist("Fields").sublist("Dynamics").set<std::string>("IO Grid Name","Physics GLL");
+  io_params.sublist("output_control").set<int>("Frequency",1);
+  io_params.sublist("output_control").set<std::string>("frequency_units","nsteps");
 
   OutputManager output;
   // AtmosphereOutput output(comm,io_params,fm_dyn,gm);
-  output.setup (comm, io_params, fm_dyn, gm, t0, false, false);
+  output.setup (comm, io_params, fm_dyn, gm, t0, t0, false);
   output.run(t0);
   output.finalize();
 
@@ -175,14 +175,14 @@ TEST_CASE("dyn_grid_io")
 
   // Next, let's load all fields from file directly into the dyn grid fm
   std::string filename = "dyn_grid_io_np" + std::to_string(comm.size())
-                       + ".INSTANT.Steps_x1." + t0.get_date_string()
-                       + "." + t0.get_time_string() + ".nc";
+                       + ".INSTANT.nsteps_x1." + t0.to_string() + ".nc";
   filename.erase(std::remove(filename.begin(),filename.end(),':'),filename.end());
 
   io_params.set<std::string>("Filename",filename);
   io_params.set<std::string>("Grid",dyn_grid->name());
-  AtmosphereInput input (comm,io_params,fm_dyn, gm);
+  AtmosphereInput input (io_params,fm_dyn, gm);
   input.read_variables();
+  input.finalize();
 
   // Remap dyn->phys, and compare against ctrl
   dyn2phys->remap(true);

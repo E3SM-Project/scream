@@ -84,6 +84,7 @@ module element_state
 
     real (kind=real_kind) :: turb_diff_heat(np,np,nlev)
     real (kind=real_kind) :: turb_diff_mom(np,np,nlev)
+
   end type derived_state_t
   
 

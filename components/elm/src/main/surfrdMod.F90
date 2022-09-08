@@ -33,6 +33,7 @@ module surfrdMod
   public :: surfrd_get_data      ! Read surface dataset and determine subgrid weights
   public :: surfrd_get_grid_conn ! Reads grid connectivity information from domain file
   public :: surfrd_topounit_data ! Read topounit physical properties
+  public :: surfrd_get_topo_for_solar_rad    ! Read topography dataset for TOP solar radiation parameterization
   !
   ! !PRIVATE MEMBER FUNCTIONS:
   private :: surfrd_special             ! Read the special landunits
@@ -668,20 +669,7 @@ contains
     ! Obtain special landunit info
 
     call surfrd_special(begg, endg, ncid, ldomain%ns,ldomain%num_tunits_per_grd)
-    ! Obtain firrig and surface/grnd irrigation fraction
-    if (firrig_data) then
-     call ncd_io(ncid=ncid, varname='FIRRIG', flag='read', data=ldomain%firrig, &
-          dim1name=grlnd, readvar=readvar)
-     if (.not. readvar) call endrun( trim(subname)//' ERROR: FIRRIG NOT on surfdata file' )!
-
-     call ncd_io(ncid=ncid, varname='FSURF', flag='read', data=ldomain%f_surf, &
-          dim1name=grlnd, readvar=readvar)
-     if (.not. readvar) call endrun( trim(subname)//' ERROR: FSURF NOT on surfdata file' )!
-
-     call ncd_io(ncid=ncid, varname='FGRD', flag='read', data=ldomain%f_grd, &
-          dim1name=grlnd, readvar=readvar)
-     if (.not. readvar) call endrun( trim(subname)//' ERROR: FGRD NOT on surfdata file' )
-    end if
+    
     ! Obtain vegetated landunit info
 
     call surfrd_veg_all(begg, endg, ncid, ldomain%ns,ldomain%num_tunits_per_grd)
@@ -708,7 +696,7 @@ contains
     ! !USES:
     use elm_varpar      , only : maxpatch_glcmec, nlevurb
     use landunit_varcon , only : isturb_MIN, isturb_MAX, istdlak, istwet, istice, istice_mec
-    use elm_varsur      , only : wt_lunit, urban_valid, wt_glc_mec, topo_glc_mec
+    use elm_varsur      , only : wt_lunit, urban_valid, wt_glc_mec, topo_glc_mec, firrig, f_surf, f_grd
     use UrbanParamsType , only : CheckUrban
     use topounit_varcon , only : max_topounits, has_topounit
     !
@@ -726,7 +714,7 @@ contains
     integer  :: nindx                      ! temporary for error check
     integer  :: ier                        ! error status
     logical  :: readvar
-    
+  
     real(r8),pointer :: pctgla_old(:)      ! percent of grid cell is glacier
     real(r8),pointer :: pctlak_old(:)      ! percent of grid cell is lake
     real(r8),pointer :: pctwet_old(:)      ! percent of grid cell is wetland
@@ -885,7 +873,27 @@ contains
          end do
       
     end do
+    
+    ! Obtain firrig and surface/grnd irrigation fraction
+    if (firrig_data) then
+     call ncd_io(ncid=ncid, varname='FIRRIG', flag='read', data=firrig, &
+          dim1name=grlnd, readvar=readvar)
+     if (.not. readvar) call endrun( trim(subname)//' ERROR: FIRRIG NOT on surfdata file' )!
 
+     call ncd_io(ncid=ncid, varname='FSURF', flag='read', data=f_surf, &
+          dim1name=grlnd, readvar=readvar)
+     if (.not. readvar) call endrun( trim(subname)//' ERROR: FSURF NOT on surfdata file' )!
+
+     call ncd_io(ncid=ncid, varname='FGRD', flag='read', data=f_grd, &
+          dim1name=grlnd, readvar=readvar)
+     if (.not. readvar) call endrun( trim(subname)//' ERROR: FGRD NOT on surfdata file' )
+    
+    else
+      firrig(:,:) = 0.7_r8
+      f_surf(:,:) = 1.0_r8
+      f_grd(:,:) = 0.0_r8
+    end if
+    
     call CheckUrban(begg, endg, pcturb(begg:endg,:,:), subname,ntpu)
 
     deallocate(pctgla,pctlak,pctwet,pcturb,pcturb_tot,urban_region_id,pctglc_mec_tot,pctspec)
@@ -1462,5 +1470,107 @@ contains
     call ncd_pio_closefile(ncid)
     
   end subroutine surfrd_topounit_data
+
+
+!-----------------------------------------------------------------------
+  subroutine surfrd_get_topo_for_solar_rad(domain,filename)
+! !DESCRIPTION:
+! Read the topography parameters for TOP solar radiation parameterization:
+! Assume domain has already been initialized and read
+
+! !USES:
+    use domainMod , only : domain_type
+    use fileutils , only : getfil
+
+! !ARGUMENTS:
+    implicit none
+    type(domain_type),intent(inout) :: domain   ! domain to init
+    character(len=*) ,intent(in)    :: filename ! grid filename
+!
+! !CALLED FROM:
+! subroutine initialize
+!
+! !REVISION HISTORY:
+! Created by Dalei Hao
+!
+! !LOCAL VARIABLES:
+!EOP
+    type(file_desc_t)   :: ncid             ! netcdf file id
+    integer             :: n                ! indices
+    integer             :: ni,nj,ns         ! size of grid on file
+    integer             :: dimid,varid      ! netCDF id's
+    integer             :: ier              ! error status
+    real(r8)            :: eps = 1.0e-12_r8 ! lat/lon error tolerance
+    integer             :: beg,end          ! local beg,end indices
+    logical             :: isgrid2d         ! true => file is 2d lat/lon
+    real(r8),pointer    :: lonc(:),latc(:)  ! local lat/lon
+    character(len=256)  :: locfn            ! local file name
+    logical             :: readvar          ! is variable on file
+    character(len=32)   :: subname = 'surfrd_get_topo_for_solar_rad'     ! subroutine name
+!-----------------------------------------------------------------------
+
+    if (masterproc) then
+       if (filename == ' ') then
+          write(iulog,*) trim(subname),' ERROR: filename must be specified '
+          call endrun()
+       else
+          write(iulog,*) 'Attempting to read topography parameters from fsurdat ',trim(filename)
+       endif
+    end if
+
+    call getfil( filename, locfn, 0 )
+    call ncd_pio_openfile (ncid, trim(locfn), 0)
+    call ncd_inqfdims(ncid, isgrid2d, ni, nj, ns)
+
+    if (domain%ns /= ns) then
+       write(iulog,*) trim(subname),' ERROR: fsurdat file mismatch ns',&
+            domain%ns,ns
+       call endrun()
+    endif
+    
+    beg = domain%nbeg
+    end = domain%nend
+
+    allocate(latc(beg:end),lonc(beg:end))
+
+    call ncd_io(ncid=ncid, varname='LONGXY', flag='read', data=lonc, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: LONGXY  NOT on fsurdat file' )
+
+    call ncd_io(ncid=ncid, varname='LATIXY', flag='read', data=latc, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: LATIXY  NOT on fsurdat file' )
+
+    do n = beg,end
+       if (abs(latc(n)-domain%latc(n)) > eps .or. &
+           abs(lonc(n)-domain%lonc(n)) > eps) then
+          write(iulog,*) trim(subname),' ERROR: fsurdat file mismatch lat,lon',latc(n),&
+               domain%latc(n),lonc(n),domain%lonc(n),eps
+          call endrun()
+       endif
+    enddo
+
+    call ncd_io(ncid=ncid, varname='STDEV_ELEV', flag='read', data=domain%stdev_elev, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: STDEV_ELEV  NOT on fsurdat file' )
+    call ncd_io(ncid=ncid, varname='SKY_VIEW', flag='read', data=domain%sky_view, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: SKY_VIEW  NOT on fsurdat file' )
+    call ncd_io(ncid=ncid, varname='TERRAIN_CONFIG', flag='read', data=domain%terrain_config, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: TERRAIN_CONFIG  NOT on fsurdat file' )
+    call ncd_io(ncid=ncid, varname='SINSL_COSAS', flag='read', data=domain%sinsl_cosas, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: SINSL_COSAS  NOT on fsurdat file' )
+    call ncd_io(ncid=ncid, varname='SINSL_SINAS', flag='read', data=domain%sinsl_sinas, &
+         dim1name=grlnd, readvar=readvar)
+    If (.not. readvar) call endrun( trim(subname)//' ERROR: SINSL_SINAS  NOT on fsurdat file' )
+
+    deallocate(latc,lonc)
+
+    call ncd_pio_closefile(ncid)
+
+  end subroutine surfrd_get_topo_for_solar_rad
+
 
 end module surfrdMod

@@ -27,25 +27,15 @@ AbstractGrid (const std::string& name,
   m_comm.all_reduce(&m_num_local_dofs,&m_num_global_dofs,1,MPI_SUM);
 }
 
-AbstractGrid::
-AbstractGrid (const std::string& name,
-              const GridType type,
-              const int num_local_dofs,
-              const int num_vertical_lev,
-              const std::shared_ptr<const AbstractGrid>& unique_grid,
-              const ekat::Comm& comm)
- : AbstractGrid(name,type,num_local_dofs,num_vertical_lev,comm)
+void AbstractGrid::add_alias (const std::string& alias)
 {
-  set_unique_grid(unique_grid);
+  if (not ekat::contains(m_aliases,alias) and alias!=m_name) {
+    m_aliases.push_back(alias);
+  }
 }
 
 bool AbstractGrid::is_unique () const {
-  // If a unique grid was passed, then assume we're not unique
-  if (m_unique_grid) {
-    return false;
-  }
-
-  EKAT_REQUIRE_MSG (m_dofs_gids.size()>0,
+  EKAT_REQUIRE_MSG (m_dofs_set,
       "Error! We cannot establish if this grid is unique before the dofs GIDs are set.\n");
 
   // Get a copy of gids on host. CAREFUL: do not use create_mirror_view,
@@ -119,11 +109,32 @@ set_dofs (const dofs_list_type& dofs)
       "       Input gids list size   : " + std::to_string(dofs.size()) + "\n");
 
   m_dofs_gids  = dofs;
-
-  m_comm.barrier();
-
   m_dofs_set = true;
+
+#ifndef NDEBUG
+  EKAT_REQUIRE_MSG(this->valid_dofs_list(dofs), "Error! Invalid list of dofs gids.\n");
+#endif
+
+  m_dofs_gids_host = Kokkos::create_mirror_view(m_dofs_gids);
+  Kokkos::deep_copy(m_dofs_gids_host,m_dofs_gids);
 }
+
+const AbstractGrid::dofs_list_type&
+AbstractGrid::get_dofs_gids () const {
+  // Sanity check
+  EKAT_REQUIRE_MSG (m_dofs_gids.size()>0, "Error! You must call 'set_dofs' first.\n");
+
+  return m_dofs_gids;
+}
+
+const AbstractGrid::dofs_list_h_type&
+AbstractGrid::get_dofs_gids_host () const {
+  // Sanity check
+  EKAT_REQUIRE_MSG (m_dofs_gids_host.size()>0, "Error! You must call 'set_dofs' first.\n");
+
+  return m_dofs_gids_host;
+}
+
 
 void AbstractGrid::
 set_lid_to_idx_map (const lid_to_idx_map_type& lid_to_idx)
@@ -137,20 +148,41 @@ set_lid_to_idx_map (const lid_to_idx_map_type& lid_to_idx)
       "       Expected sizes: (" + std::to_string(m_num_local_dofs) + "," + std::to_string(get_2d_scalar_layout().rank()) + ")\n"
       "       Input map sizes: (" + std::to_string(lid_to_idx.extent(0)) + "," + std::to_string(lid_to_idx.extent(1)) + ")\n");
 
-  // TODO: We should check that the gids of the unique grid (if present) are a subset of m_dofs_gids.
-  // TODO: Should the aforementioned check be global or local (w.r.t. m_comm)?
+#ifndef NDEBUG
+  EKAT_REQUIRE_MSG(this->valid_lid_to_idx_map(lid_to_idx), "Error! Invalid lid->idx map.\n");
+#endif
 
   m_lid_to_idx = lid_to_idx;
-
-  m_comm.barrier();
-
   m_lid_to_idx_set = true;
 }
 
-std::shared_ptr<const AbstractGrid>
-AbstractGrid::get_unique_grid () const {
-  // If this grid is unique, return it, otherwise return the stored unique grid.
-  return is_unique() ? shared_from_this() : m_unique_grid;
+const AbstractGrid::lid_to_idx_map_type&
+AbstractGrid::get_lid_to_idx_map () const {
+  // Sanity check
+  EKAT_REQUIRE_MSG (m_dofs_gids.size()>0, "Error! You must call 'set_dofs' first.\n");
+
+  return m_lid_to_idx;
+}
+
+void AbstractGrid::
+set_geometry_data (const std::string& name, const geo_view_type& data) {
+  m_geo_views[name] = data;
+  m_geo_views_host[name] = Kokkos::create_mirror_view(data);
+  Kokkos::deep_copy(m_geo_views_host[name],data);
+}
+
+const AbstractGrid::geo_view_type&
+AbstractGrid::get_geometry_data (const std::string& name) const {
+  EKAT_REQUIRE_MSG (m_geo_views.find(name)!=m_geo_views.end(),
+                    "Error! Grid '" + m_name + "' does not store geometric data '" + name + "'.\n");
+  return m_geo_views.at(name);
+}
+
+const AbstractGrid::geo_view_h_type&
+AbstractGrid::get_geometry_data_host (const std::string& name) const {
+  EKAT_REQUIRE_MSG (m_geo_views_host.find(name)!=m_geo_views_host.end(),
+                    "Error! Grid '" + m_name + "' does not store geometric data '" + name + "'.\n");
+  return m_geo_views_host.at(name);
 }
 
 AbstractGrid::gid_type
@@ -174,6 +206,7 @@ AbstractGrid::get_global_min_dof_gid () const
 
   return global_min;
 }
+
 AbstractGrid::gid_type
 AbstractGrid::get_global_max_dof_gid () const
 {
@@ -196,15 +229,14 @@ AbstractGrid::get_global_max_dof_gid () const
   return global_max;
 }
 
-void AbstractGrid::
-set_unique_grid (const std::shared_ptr<const AbstractGrid>& unique_grid) {
-  // Sanity check
-  EKAT_REQUIRE_MSG (unique_grid, "Error! Unique grid pointer is invalid.\n");
-  EKAT_REQUIRE_MSG (unique_grid->is_unique(), "Error! Unique grid is not, in fact, unique.\n");
-  EKAT_REQUIRE_MSG (unique_grid->get_num_global_dofs()<=m_num_global_dofs,
-      "Error! The unique grid has more global dofs than this grid.\n");
-
-  m_unique_grid = unique_grid;
+std::list<std::string>
+AbstractGrid::get_geometry_data_names () const
+{
+  std::list<std::string> names;
+  for (const auto& it : m_geo_views) {
+    names.push_back(it.first);
+  }
+  return names;
 }
 
 } // namespace scream

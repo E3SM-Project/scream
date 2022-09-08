@@ -29,7 +29,9 @@ ComposeTransportImpl::ComposeTransportImpl ()
 ComposeTransportImpl::ComposeTransportImpl (const int num_elems)
   : m_tp_ne(1,1,1), m_tp_ne_qsize(1,1,1), m_tp_ne_hv_q(1,1,1), // throwaway settings
     m_tu_ne(m_tp_ne), m_tu_ne_qsize(m_tp_ne_qsize), m_tu_ne_hv_q(m_tp_ne_hv_q)
-{}
+{
+  nslot = calc_nslot(m_geometry.num_elems());
+}
 
 void ComposeTransportImpl::setup () {
   m_hvcoord = Context::singleton().get<HybridVCoord>();
@@ -66,10 +68,11 @@ void ComposeTransportImpl::reset (const SimulationParams& params) {
                                 d.m_divdp.data() :
                                 s.m_dp3d.data()),
         nel, (independent_time_steps ? 1 : NUM_TIME_LEVELS), np, np, nlev),
-      homme::compose::SetView<Real******>(reinterpret_cast<Real*>(t.qdp.data()),
-                                          nel, Q_NUM_TIME_LEVELS, QSIZE_D, np, np, nlev),
+      homme::compose::SetView<Real******>(
+        reinterpret_cast<Real*>(t.qdp.data()),
+        nel, t.qdp.extent_int(1), t.qdp.extent_int(2), np, np, nlev),
       homme::compose::SetView<Real*****> (reinterpret_cast<Real*>(t.Q.data()),
-                                          nel, QSIZE_D, np, np, nlev),
+                                          nel, t.Q.extent_int(1), np, np, nlev),
       m_data.dep_pts);
   }
   m_data.independent_time_steps = independent_time_steps;

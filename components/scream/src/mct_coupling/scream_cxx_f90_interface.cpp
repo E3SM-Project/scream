@@ -2,18 +2,19 @@
 
 #include "share/atm_process/atmosphere_process.hpp"
 #include "control/atmosphere_driver.hpp"
-#include "control/surface_coupling.hpp"
+#include "control/surface_coupling_utils.hpp"
 
 #include "dynamics/register_dynamics.hpp"
 #include "physics/register_physics.hpp"
+#include "control/register_surface_coupling.hpp"
 
 #include "mct_coupling/ScreamContext.hpp"
-#include "share/grid/user_provided_grids_manager.hpp"
 #include "share/grid/point_grid.hpp"
 #include "share/scream_session.hpp"
 #include "share/scream_types.hpp"
 
 #include "ekat/ekat_parse_yaml_file.hpp"
+#include "ekat/logging/ekat_logger.hpp"
 #include "ekat/mpi/ekat_comm.hpp"
 #include "ekat/ekat_pack.hpp"
 #include "ekat/ekat_assert.hpp"
@@ -44,7 +45,7 @@ void fpe_guard_wrapper (const Lambda& f) {
   // Store the mask, so we can restore before returning.
   int fpe_mask = ekat::get_enabled_fpes();
   ekat::disable_all_fpes ();
-  ekat::enable_default_fpes();
+  ekat::enable_fpes(get_default_fpes());
 
   // Execute wrapped function
   f();
@@ -71,9 +72,9 @@ extern "C"
 
 /*===============================================================================================*/
 // WARNING: make sure input_yaml_file is a null-terminated string!
-void scream_create_atm_instance (const MPI_Fint& f_comm,
-                                 const char* input_yaml_file) {
-                  // const int& compid) {
+void scream_create_atm_instance (const MPI_Fint f_comm, const int atm_id,
+                                 const char* input_yaml_file,
+                                 const char* atm_log_file) {
   using namespace scream;
   using namespace scream::control;
 
@@ -90,79 +91,76 @@ void scream_create_atm_instance (const MPI_Fint& f_comm,
     scream::initialize_scream_session(atm_comm.am_i_root());
 
     // Create a parameter list for inputs
-    if (atm_comm.am_i_root()) {
-      printf("[scream] reading parameterr from yaml file: %s\n",input_yaml_file);
-    }
     ekat::ParameterList scream_params("Scream Parameters");
     parse_yaml_file (input_yaml_file, scream_params);
 
-    if (atm_comm.am_i_root()) {
-      scream_params.print();
-    }
-
-    ekat::error::runtime_check(scream_params.isSublist("Atmosphere Driver"),
-         "Error! Sublist 'Atmosphere Driver' not found inside '" +
-         std::string(input_yaml_file) + "'.\n");
-
-    auto& ad_params = scream_params.sublist("Atmosphere Driver");
+    scream_params.sublist("Debug").set<std::string>("Atm Log File",atm_log_file);
+    scream_params.sublist("Debug").set<bool>("Standalone",false);
 
     // Need to register products in the factories *before* we attempt to create any.
     // In particular, register all atm processes, and all grids managers.
     register_dynamics();
     register_physics();
+    register_surface_coupling();
 
     // Create the bare ad, then start the initialization sequence
     auto& ad = c.create<AtmosphereDriver>();
 
     ad.set_comm(atm_comm);
-    ad.set_params(ad_params);
+    ad.set_params(scream_params);
+    ad.init_scorpio(atm_id);
     ad.create_atm_processes ();
     ad.create_grids ();
     ad.create_fields ();
-    ad.set_surface_coupling (std::make_shared<SurfaceCoupling>(ad.get_ref_grid_field_mgr()));
   });
 }
 
-void scream_setup_surface_coupling (
-    const char*& x2a_names, const int*& x2a_indices, double*& cpl_x2a_ptr, const int*& vec_comp_x2a,
-    const int& num_cpl_imports, const int& num_scream_imports,
-    const char*& a2x_names, const int*& a2x_indices, double*& cpl_a2x_ptr, const int*& vec_comp_a2x,
-    const bool*& can_be_exported_during_init, const int& num_cpl_exports)
+void scream_setup_surface_coupling (const char*& import_field_names, int*& import_cpl_indices,
+                                    double*& x2a_ptr, int*& import_vector_components,
+                                    double*& import_constant_multiple, bool*& do_import_during_init,
+                                    const int& num_cpl_imports, const int& num_scream_imports, const int& import_field_size,
+                                    char*& export_field_names, int*& export_cpl_indices,
+                                    double*& a2x_ptr, int*& export_vector_components,
+                                    double*& export_constant_multiple, bool*& do_export_during_init,
+                                    const int& num_cpl_exports, const int& num_scream_exports, const int& export_field_size)
 {
+  using namespace scream;
+
   fpe_guard_wrapper([&](){
     // Fortran gives a 1d array of 32char strings. So let's memcpy the input char
     // strings into 2d char arrays. Each string is null-terminated (atm_mct_mod
     // makes sure of that).
     using name_t = char[32];
-    name_t* names_in = new name_t[num_cpl_imports];
-    name_t* names_out = new name_t[num_cpl_exports];
-    std::memcpy(names_in,x2a_names,num_cpl_imports*32*sizeof(char));
-    std::memcpy(names_out,a2x_names,num_cpl_exports*32*sizeof(char));
+    name_t* names_in  = new name_t[num_scream_imports];
+    name_t* names_out = new name_t[num_scream_exports];
+    std::memcpy(names_in,  import_field_names, num_scream_imports*32*sizeof(char));
+    std::memcpy(names_out, export_field_names, num_scream_exports*32*sizeof(char));
 
-    // Get the SurfaceCoupling from the AD, then register the fields
-    const auto& ad = get_ad();
-    const auto& sc = ad.get_surface_coupling();
+    // Convert F90 -> C++ indexing
+    using view_t = typename KokkosTypes<HostDevice>::template view_1d<int>;
+    view_t import_cpl_indices_view(import_cpl_indices, num_scream_imports);
+    view_t export_cpl_indices_view(export_cpl_indices, num_scream_exports);
+    for (int f=0; f<num_scream_imports; ++f) import_cpl_indices_view(f) -= 1;
+    for (int f=0; f<num_scream_exports; ++f) export_cpl_indices_view(f) -= 1;
 
-    // Register import/export fields. The indices from Fortran
-    // are 1-based, we convert to 0-based
-    sc->set_num_fields(num_cpl_imports,num_scream_imports,num_cpl_exports);
-    for (int i=0; i<num_cpl_imports; ++i) {
-      sc->register_import(names_in[i],x2a_indices[i]-1,vec_comp_x2a[i]);
-    }
-    for (int i=0; i<num_cpl_exports; ++i) {
-      sc->register_export(names_out[i],a2x_indices[i]-1,vec_comp_a2x[i],can_be_exported_during_init[i]);
-    }
+    // Call the AD to setup surface coupling
+    auto& ad = get_ad_nonconst();
 
-    sc->registration_ends(cpl_x2a_ptr, cpl_a2x_ptr);
-
-    // After registration we need to export all fields (except those that require scream computations)
-    // as other models will need these values.
-    sc->do_export(true);
+    ad.setup_surface_coupling_data_manager(scream::SurfaceCouplingTransferType::Import,
+                                           num_cpl_imports, num_scream_imports, import_field_size, x2a_ptr,
+                                           names_in[0], import_cpl_indices, import_vector_components,
+                                           import_constant_multiple, do_import_during_init);
+    ad.setup_surface_coupling_data_manager(scream::SurfaceCouplingTransferType::Export,
+                                           num_cpl_exports, num_scream_exports, export_field_size, a2x_ptr,
+                                           names_out[0], export_cpl_indices, export_vector_components,
+                                           export_constant_multiple, do_export_during_init);
   });
 }
 
-void scream_init_atm (const int& start_ymd,
-                      const int& start_tod)
+void scream_init_atm (const int run_start_ymd,
+                      const int run_start_tod,
+                      const int case_start_ymd,
+                      const int case_start_tod)
 {
   using namespace scream;
   using namespace scream::control;
@@ -171,32 +169,34 @@ void scream_init_atm (const int& start_ymd,
     // Get the ad, then complete initialization
     auto& ad = get_ad_nonconst();
 
-    // Get the ekat comm
-    auto& atm_comm = ad.get_comm();
-
     // Recall that e3sm uses the int YYYYMMDD to store a date
-    if (atm_comm.am_i_root()) {
-      std::cout << "start_ymd: " << start_ymd << "\n";
-      std::cout << "start_tod: " << start_tod << "\n";
-    }
-    const int yy  = start_ymd / 10000;
-    const int mm  = (start_ymd / 100) % 100;
-    const int dd  = start_ymd % 100;
-    const int hr  =  start_tod / 3600;
-    const int min = (start_tod % 3600) / 60;
-    const int sec = (start_tod % 3600) % 60;
-    util::TimeStamp t0 (yy,mm,dd,hr,min,sec);
+    int yy,mm,dd,hr,min,sec;
+    yy  = (run_start_ymd / 100) / 100;
+    mm  = (run_start_ymd / 100) % 100;
+    dd  =  run_start_ymd % 100;
+    hr  = (run_start_tod / 60) / 60;
+    min = (run_start_tod / 60) % 60;
+    sec =  run_start_tod % 60;
+    util::TimeStamp run_t0 (yy,mm,dd,hr,min,sec);
+
+    yy  = (case_start_ymd / 100) / 100;
+    mm  = (case_start_ymd / 100) % 100;
+    dd  =  case_start_ymd % 100;
+    hr  = (case_start_tod / 60) / 60;
+    min = (case_start_tod / 60) % 60;
+    sec =  case_start_tod % 60;
+    util::TimeStamp case_t0 (yy,mm,dd,hr,min,sec);
 
     // Init and run (to finalize, wait till checks are completed,
     // or you'll clear the field managers!)
-    ad.initialize_fields (t0);
+    ad.initialize_fields (run_t0,case_t0);
     ad.initialize_output_managers ();
     ad.initialize_atm_procs ();
   });
 }
 
 /*===============================================================================================*/
-void scream_run (const scream::Real& dt) {
+void scream_run (const int dt) {
   // TODO: uncomment once you have valid inputs. I fear AD may crash with no inputs.
   fpe_guard_wrapper([&](){
     // Get the AD, and run it
@@ -213,6 +213,9 @@ void scream_finalize (/* args ? */) {
 
     // Clean up the context
     scream::ScreamContext::singleton().clean_up();
+
+    // Finalize scream session
+    scream::finalize_scream_session();
   });
 }
 
@@ -222,9 +225,9 @@ int scream_get_num_local_cols () {
   fpe_guard_wrapper([&]() {
     const auto& ad = get_ad();
     const auto& gm = ad.get_grids_manager();
-    const auto& ref_grid = gm->get_reference_grid();
+    const auto& phys_grid = gm->get_grid("Physics");
 
-    ncols = ref_grid->get_num_local_dofs();
+    ncols = phys_grid->get_num_local_dofs();
   });
 
   return ncols;
@@ -236,9 +239,9 @@ int scream_get_num_global_cols () {
   fpe_guard_wrapper([&]() {
     const auto& ad = get_ad();
     const auto& gm = ad.get_grids_manager();
-    const auto& ref_grid = gm->get_reference_grid();
+    const auto& phys_grid = gm->get_grid("Physics");
 
-    ncols = ref_grid->get_num_global_dofs();
+    ncols = phys_grid->get_num_global_dofs();
   });
 
   return ncols;
@@ -249,10 +252,10 @@ void scream_get_local_cols_gids (void* const ptr) {
   fpe_guard_wrapper([&]() {
     auto gids_f = reinterpret_cast<int* const>(ptr);
     const auto& ad = get_ad();
-    const auto& grid = ad.get_grids_manager()->get_reference_grid();
+    const auto& phys_grid = ad.get_grids_manager()->get_grid("Physics");
 
-    auto gids_h = Kokkos::create_mirror_view(grid->get_dofs_gids());
-    Kokkos::deep_copy(gids_h,grid->get_dofs_gids());
+    auto gids_h = Kokkos::create_mirror_view(phys_grid->get_dofs_gids());
+    Kokkos::deep_copy(gids_h,phys_grid->get_dofs_gids());
 
     for (int i=0; i<gids_h.extent_int(0); ++i) {
       gids_f[i] = gids_h(i);
@@ -264,11 +267,11 @@ void scream_get_local_cols_gids (void* const ptr) {
 void scream_get_cols_latlon (double* const& lat_ptr, double* const& lon_ptr) {
   fpe_guard_wrapper([&]() {
     const auto& ad = get_ad();
-    const auto& grid = ad.get_grids_manager()->get_reference_grid();
-    const auto ncols = grid->get_num_local_dofs();
+    const auto& phys_grid = ad.get_grids_manager()->get_grid("Physics");
+    const auto ncols = phys_grid->get_num_local_dofs();
 
-    auto lat_cxx = grid->get_geometry_data("lat");
-    auto lon_cxx = grid->get_geometry_data("lon");
+    auto lat_cxx = phys_grid->get_geometry_data("lat");
+    auto lon_cxx = phys_grid->get_geometry_data("lon");
 
     using geo_view_f90 = ekat::Unmanaged<decltype(lat_cxx)::HostMirror>;
     geo_view_f90 lat_f90(lat_ptr, ncols);
@@ -282,10 +285,10 @@ void scream_get_cols_latlon (double* const& lat_ptr, double* const& lon_ptr) {
 void scream_get_cols_area (double* const& area_ptr) {
   fpe_guard_wrapper([&]() {
     const auto& ad = get_ad();
-    const auto& grid = ad.get_grids_manager()->get_reference_grid();
-    const auto ncols = grid->get_num_local_dofs();
+    const auto& phys_grid = ad.get_grids_manager()->get_grid("Physics");
+    const auto ncols = phys_grid->get_num_local_dofs();
 
-    auto area_cxx = grid->get_geometry_data("area");
+    auto area_cxx = phys_grid->get_geometry_data("area");
 
     using geo_view_f90 = ekat::Unmanaged<decltype(area_cxx)::HostMirror>;
     geo_view_f90  area_f90 (area_ptr, ncols);

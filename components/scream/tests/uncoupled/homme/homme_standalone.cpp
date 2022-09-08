@@ -4,12 +4,11 @@
 #include "share/atm_process/atmosphere_process_group.hpp"
 #include "dynamics/register_dynamics.hpp"
 #include "dynamics/homme/atmosphere_dynamics.hpp"
-#include "dynamics/homme/dynamics_driven_grids_manager.hpp"
 #include "dynamics/homme/interface/scream_homme_interface.hpp"
+#include "dynamics/homme/homme_dimensions.hpp"
 
 #include "ekat/ekat_assert.hpp"
 #include "ekat/ekat_parse_yaml_file.hpp"
-#include "ekat/util/ekat_feutils.hpp"
 #include "ekat/ekat_assert.hpp"
 
 // Hommexx includes
@@ -17,25 +16,12 @@
 #include "FunctorsBuffersManager.hpp"
 #include "ElementsGeometry.hpp"
 #include "TimeLevel.hpp"
-#include "dynamics/homme/homme_dimensions.hpp"
 
 #include <iomanip>
-
-static int get_default_fpes () {
-#ifdef SCREAM_FPE
-  return (FE_DIVBYZERO |
-          FE_INVALID   |
-          FE_OVERFLOW);
-#else
-  return 0;
-#endif
-}
 
 TEST_CASE("scream_homme_standalone", "scream_homme_standalone") {
   using namespace scream;
   using namespace scream::control;
-
-  ekat::enable_fpes(get_default_fpes());
 
   // Create a comm
   ekat::Comm atm_comm (MPI_COMM_WORLD);
@@ -58,14 +44,7 @@ TEST_CASE("scream_homme_standalone", "scream_homme_standalone") {
   EKAT_ASSERT_MSG (t0.is_valid(), "Error! Invalid start date.\n");
 
   // Need to register products in the factory *before* we create any AtmosphereProcessGroup,
-  // which rely on factory for process creation. The initialize method of the AD does that.
-  // While we're at it, check that the case insensitive key of the factory works.
-  auto& proc_factory = AtmosphereProcessFactory::instance();
-  proc_factory.register_product("dynamics",&create_atmosphere_process<HommeDynamics>);
-
-  // Need to register grids managers before we create the driver
-  auto& gm_factory = GridsManagerFactory::instance();
-  gm_factory.register_product("Dynamics Driven",create_dynamics_driven_grids_manager);
+  register_dynamics();
 
   // Create the driver
   AtmosphereDriver ad;
@@ -83,10 +62,9 @@ TEST_CASE("scream_homme_standalone", "scream_homme_standalone") {
     auto homme_process = std::dynamic_pointer_cast<const HommeDynamics>(process);
     EKAT_REQUIRE_MSG (process, "Error! Cast to HommeDynamics failed.\n");
 
-    const auto phinh_i = homme_process->get_internal_field("phinh_i","Dynamics").get_view<Real*****>();
+    const auto phinh_i = homme_process->get_internal_field("phi_int_dyn","Dynamics").get_view<Real****>();
 
     int nelem = Homme::Context::singleton().get<Homme::ElementsGeometry>().num_elems();
-    int n0 = Homme::Context::singleton().get<Homme::TimeLevel>().n0;
     constexpr int NVL = HOMMEXX_NUM_PHYSICAL_LEV;
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,nelem*NP*NP),
@@ -94,19 +72,9 @@ TEST_CASE("scream_homme_standalone", "scream_homme_standalone") {
       const int ie = idx/(NP*NP);
       const int ip = (idx/NP)%NP;
       const int jp = idx%NP;
-      EKAT_KERNEL_ASSERT(phinh_i(ie,n0,ip,jp,NVL) == phis(ie,ip,jp));
+      EKAT_KERNEL_ASSERT(phinh_i(ie,ip,jp,NVL) == phis(ie,ip,jp));
     });
   }
-
-  // Add checks to verify AD memory buffer and Homme FunctorsBuffersManager
-  // are the same size and reference the same memory.
-  auto& fbm  = Homme::Context::singleton().get<Homme::FunctorsBuffersManager>();
-  auto& memory_buffer = ad.get_memory_buffer();
-  REQUIRE (memory_buffer);
-  EKAT_ASSERT_MSG(fbm.allocated_size()*sizeof(Real) == (long unsigned int)memory_buffer->allocated_bytes(),
-                  "Error! AD memory buffer and Homme FunctorsBuffersManager have mismatched sizes.");
-  EKAT_ASSERT_MSG(fbm.get_memory() == memory_buffer->get_memory(),
-                  "Error! AD memory buffer and Homme FunctorsBuffersManager reference different memory.");
 
   if (atm_comm.am_i_root()) {
     printf("Start time stepping loop...       [  0%%]\n");

@@ -3,11 +3,13 @@
 
 #include "cpp/rrtmgp/mo_gas_optics_rrtmgp.h"
 #include "cpp/extensions/cloud_optics/mo_cloud_optics.h"
-#include "cpp/rte/mo_fluxes.h"
-#include "cpp/const.h"
+#include "cpp/extensions/fluxes_byband/mo_fluxes_byband.h"
+#include "cpp/rrtmgp_const.h"
+
 #include "physics/share/physics_constants.hpp"
 
 #include "ekat/mpi/ekat_comm.hpp"
+#include "ekat/logging/ekat_logger.hpp"
 
 namespace scream {
     namespace rrtmgp {
@@ -32,7 +34,8 @@ namespace scream {
         /*
          * Initialize data for RRTMGP driver
          */
-        extern void rrtmgp_initialize(GasConcs &gas_concs);
+        extern void rrtmgp_initialize(GasConcs &gas_concs,
+                                      const std::shared_ptr<spdlog::logger>& logger);
         /*
          * Compute band-by-band surface albedos from broadband albedos.
          */
@@ -42,10 +45,17 @@ namespace scream {
                 real1d &sfc_alb_dif_vis, real1d &sfc_alb_dif_nir,
                 real2d &sfc_alb_dir,     real2d &sfc_alb_dif);
         /*
-         * Main driver code to run RRTMGP. Optional input
-         * i_am_root is defaulted to true, and is used to
-         * determine whether or not info should be printed
-         * to the screen.
+         * Compute broadband visible/UV and near-infrared surface fluxes.
+         */
+        extern void compute_broadband_surface_fluxes(
+                const int ncol, const int ktop, const int nswbands,
+                real3d &sw_bnd_flux_dir , real3d &sw_bnd_flux_dif ,
+                real1d &sfc_flux_dir_vis, real1d &sfc_flux_dir_nir,
+                real1d &sfc_flux_dif_vis, real1d &sfc_flux_dif_nir);
+        /*
+         * Main driver code to run RRTMGP.
+         * The input logger is in charge of outputing info to
+         * screen and/or to file (or neither), depending on how it was set up.
          */
         extern void rrtmgp_main(
                 const int ncol, const int nlay,
@@ -53,9 +63,16 @@ namespace scream {
                 GasConcs &gas_concs,
                 real2d &sfc_alb_dir, real2d &sfc_alb_dif, real1d &mu0,
                 real2d &lwp, real2d &iwp, real2d &rel, real2d &rei,
+                real3d &aer_tau_sw, real3d &aer_ssa_sw, real3d &aer_asm_sw,
+                real3d &aer_tau_lw,
                 real2d &sw_flux_up, real2d &sw_flux_dn, real2d &sw_flux_dn_dir,
                 real2d &lw_flux_up, real2d &lw_flux_dn,
-                const bool i_am_root = true);
+                real2d &sw_clrsky_flux_up, real2d &sw_clrsky_flux_dn, real2d &sw_clrsky_flux_dn_dir,
+                real2d &lw_clrsky_flux_up, real2d &lw_clrsky_flux_dn,
+                real3d &sw_bnd_flux_up, real3d &sw_bnd_flux_dn, real3d &sw_bnd_flux_dn_dir,
+                real3d &lw_bnd_flux_up, real3d &lw_bnd_flux_dn,
+                const Real tsi_scaling,
+                const std::shared_ptr<spdlog::logger>& logger);
         /*
          * Perform any clean-up tasks
          */
@@ -67,8 +84,10 @@ namespace scream {
                 GasOpticsRRTMGP &k_dist,
                 real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev,
                 GasConcs &gas_concs,
-                real2d &sfc_alb_dir, real2d &sfc_alb_dif, real1d &mu0, OpticalProps2str &clouds,
-                FluxesBroadband &fluxes, const bool i_am_root);
+                real2d &sfc_alb_dir, real2d &sfc_alb_dif, real1d &mu0,
+                OpticalProps2str &aerosol, OpticalProps2str &clouds,
+                FluxesByband &fluxes, FluxesByband &clrsky_fluxes, const Real tsi_scaling,
+                const std::shared_ptr<spdlog::logger>& logger);
         /*
          * Longwave driver (called by rrtmgp_main)
          */
@@ -77,8 +96,8 @@ namespace scream {
                 GasOpticsRRTMGP &k_dist,
                 real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev,
                 GasConcs &gas_concs,
-                OpticalProps1scl &clouds,
-                FluxesBroadband &fluxes);
+                OpticalProps1scl &aerosol, OpticalProps1scl &clouds,
+                FluxesByband &fluxes, FluxesByband &clrsky_fluxes);
         /* 
          * Provide a function to convert cloud (water and ice) mixing ratios to layer mass per unit area
          * (what E3SM refers to as "in-cloud water paths", a terminology we shun here to avoid confusion
@@ -98,9 +117,13 @@ namespace scream {
                 // NOTE: these thresholds (from E3SM) seem arbitrary, but included here for consistency
                 // This limits in-cloud mixing ratio to 0.005 kg/kg. According to note in cloud_diagnostics
                 // in EAM, this is consistent with limits in MG2. Is this true for P3?
-                auto incloud_mixing_ratio = std::min(mixing_ratio(icol,ilay) / std::max(0.0001, cloud_fraction(icol,ilay)), 0.005);
-                // Compute layer-integrated cloud mass (per unit area)
-                cloud_mass(icol,ilay) = incloud_mixing_ratio * dp(icol,ilay) / physconst::gravit;
+                if (cloud_fraction(icol,ilay) > 0) {
+                    // Compute layer-integrated cloud mass (per unit area)
+                    auto incloud_mixing_ratio = std::min(mixing_ratio(icol,ilay) / std::max(0.0001, cloud_fraction(icol,ilay)), 0.005);
+                    cloud_mass(icol,ilay) = incloud_mixing_ratio * dp(icol,ilay) / physconst::gravit;
+                } else {
+                    cloud_mass(icol,ilay) = 0;
+                }
             });
         }
 

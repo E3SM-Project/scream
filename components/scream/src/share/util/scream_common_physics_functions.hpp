@@ -25,6 +25,20 @@ struct PhysicsFunctions
   // ---------------------------------------------------------------- //
 
   //-----------------------------------------------------------------------------------------------//
+  // Determine the length of a square column cell at a specifc latitude given the area in radians
+  //   grid_dx = mpdeglat * area
+  // where,
+  //   mpdeglat is the distance between two points on an ellipsoid
+  //   area     is the area of the column cell in radians. 
+  //   lat      is the latitude of the grid column in radians.
+  // NOTE - Here we assume that the column area is a SQUARE so dx=dy.  We will need a different
+  //        routine for a rectangular (or other shape) area.
+  //-----------------------------------------------------------------------------------------------//
+  template<typename ScalarT>
+  KOKKOS_INLINE_FUNCTION
+  static ScalarT calculate_dx_from_area(const ScalarT& area, const ScalarT& lat);
+
+  //-----------------------------------------------------------------------------------------------//
   // Determines the density given the definition of pseudo_density passed by the dycore
   //   rho = pseudo_density/dz/g
   // where,
@@ -137,28 +151,34 @@ struct PhysicsFunctions
   static ScalarT calculate_temperature_from_dse(const ScalarT& dse, const ScalarT& z, const Real surf_geopotential);
 
   //-----------------------------------------------------------------------------------------------//
-  // Calculate the dry mass mixing ratio given the wet mass mixing ratio:
-  //   drymmr = wetmmr / (1 - qv)
+  // Computes drymmr (mass of a constituent divided by mass of dry air; commonly known as mixing ratio)
+  // for any wetmmr constituent (mass of a constituent divided by mass of dry air plus water
+  // vapor) using qv_wet (mass of water vapor divided by mass of dry air plus
+  // water vapor; see specific humidity):
+  //   drymmr = wetmmr / (1 - qv_wet)
   // where
   //   drymmr         is the dry mass mixing ratio of a species
   //   wetmmr         is the wet mass mixing ratio of a species
-  //   qv             is specific humidity of water vapor
+  //   qv_wet         is water vapor wet mass mixing ratio
   //-----------------------------------------------------------------------------------------------//
   template<typename ScalarT>
   KOKKOS_INLINE_FUNCTION
-  static ScalarT calculate_drymmr_from_wetmmr(const ScalarT& wetmmr, const ScalarT& qv);
+  static ScalarT calculate_drymmr_from_wetmmr(const ScalarT& wetmmr, const ScalarT& qv_wet);
 
   //-----------------------------------------------------------------------------------------------//
-  // Calculate the wet mass mixing ratio given the dry mass mixing ratio:
-  //   wetmmr = drymmr * (1 - qv)
+  // Computes wetmmr (mass of a constituent divided by mass of dry air plus water vapor)
+  // for any drymmr constituent (mass of a constituent divided by mass of dry air;
+  // commonly known as mixing ratio) using qv_dry (mass of water vapor divided by mass
+  // of dry air):
+  //   wetmmr = drymmr / (1 + qv_dry)
   // where
   //   wetmmr         is the wet mass mixing ratio of a species
   //   drymmr         is the dry mass mixing ratio of a species
-  //   qv             is specific humidity of water vapor
+  //   qv_dry         is specific humidity of water vapor
   //-----------------------------------------------------------------------------------------------//
   template<typename ScalarT>
   KOKKOS_INLINE_FUNCTION
-  static ScalarT calculate_wetmmr_from_drymmr(const ScalarT& drymmr, const ScalarT& qv);
+  static ScalarT calculate_wetmmr_from_drymmr(const ScalarT& drymmr, const ScalarT& qv_dry);
 
   //-----------------------------------------------------------------------------------------------//
   // Determines the vertical layer thickness using the equation of state:
@@ -210,6 +230,66 @@ struct PhysicsFunctions
   KOKKOS_INLINE_FUNCTION
   static ScalarT calculate_mmr_from_vmr(const Real& gas_mol_weight, const ScalarT& qv, const ScalarT& vmr);
 
+  //-----------------------------------------------------------------------------------------------
+  // Calculate T at the bottom of the grid cell closest to the surface for use in PSL computation.
+  // This is done assuming a 6.5 K/km lapse rate, which is a horrible assumption but avoids problems that
+  // computing lapse rate via extrapolation might produce strange answers. It is also what CESM has done
+  // for the last 20 yrs so seems to be sufficient. Don't assume this method is appropriate for any other use.
+  // INPUTS:
+  // T_mid_bot
+  // z_mid_bot
+  // RETURNS:
+  // T at the bottom of the cell nearest the surface (K)
+  //-----------------------------------------------------------------------------------------------
+  KOKKOS_INLINE_FUNCTION
+  static Real calculate_surface_air_T(const Real& T_mid_bot, const Real& z_mid_bot);
+
+  //-----------------------------------------------------------------------------------------------//
+  // Calculate sea level pressure assuming dry air between ground and sea level and using a lapse
+  // rate of 6.5K/km except in very warm conditions. See docs/tech_doc/physics/psl/psl_doc.tex for details
+  // INPUTS:
+  // T_ground is the air temperature at the bottom of the cell closest to the surface (aka T_int[nlev+1]; K)
+  // p_ground is the pressure at the bottom of the cell closest to the surface (Pa)
+  // phi_ground is the geopotential at surface (aka surf_geopotential; m2/s2)
+  // OUTPUTS:
+  // psl is the sea level pressure (Pa)
+  //-----------------------------------------------------------------------------------------------//
+  KOKKOS_INLINE_FUNCTION
+  static void lapse_T_for_psl(const Real& T_ground, const Real& p_ground, const Real& phi_ground,
+				 Real& lapse, Real& T_ground_tmp );
+
+  //-----------------------------------------------------------------------------------------------//
+  // Compute the lapse rate and effective ground temperature for use in calculating psl. This function should only
+  // be used by calculate_psl.
+  // INPUTS:
+  // T_ground is the air temperature at the bottom of the cell closest to the surface (aka T_int[nlev+1]; K)
+  // p_ground is the pressure at the bottom of the cell closest to the surface (Pa)
+  // phi_ground is the geopotential at surface (aka surf_geopotential; m2/s2)
+  // OUTPUTS:
+  // lapse (K/m) is the lapse rate
+  // T_ground_tmp is the effective ground temperature (K)
+  //-----------------------------------------------------------------------------------------------//
+  KOKKOS_INLINE_FUNCTION
+  static Real calculate_psl(const Real& T_ground, const Real& p_ground, const Real& phi_ground);
+  
+  //-----------------------------------------------------------------------------------------------//
+  // Apply rayleigh friction. Given the decay rate profile, we compute the tendencies in u
+  // and v components of the horizontal wind using an Euler backward scheme, and then apply
+  // the negative of the kinetic energy tendency to the dry static energy.
+  // Note: We don't actually calculate dse since this is simply a tendancy of cp*T_mid.
+  // INPUTS:
+  // dt is the physics timestep
+  // otau is the decay rate
+  // INPUT/OUTPUTS:
+  // u_wind is u component of the horizontal wind (m/s)
+  // v_wind is v component of the horizontal wind (m/s)
+  // T_mid is the atmospheric temperature at the midpoints [K]
+  //-----------------------------------------------------------------------------------------------//
+  template<typename ScalarT>
+  KOKKOS_INLINE_FUNCTION
+  static void apply_rayleigh_friction(const Real dt, const ScalarT& otau,
+                                      ScalarT& u_wind, ScalarT& v_wind, ScalarT& T_mid);
+  
   // ---------------------------------------------------------------- //
   //                     Whole column Functions                       //
   // ---------------------------------------------------------------- //
@@ -232,9 +312,9 @@ struct PhysicsFunctions
   // type.                                                            //
   //                                                                  //
   // Most of these routines simply call the homonymous routine that   //
-  // act on a single scalar, except for calculate_z_int, which only   //
-  // makes sense for a whole column (i.e., there is not single-scalar //
-  // version of compute_z_int).                                       //
+  // act on a single scalar, except for calculate_z_int/mid, which    //
+  // only makes sense for a whole column (i.e., there is not          //
+  // single-scalar version of compute_z_int/mid).                     //
   // ---------------------------------------------------------------- //
 
   using Device = DeviceT;
@@ -313,7 +393,7 @@ struct PhysicsFunctions
   KOKKOS_INLINE_FUNCTION
   static void calculate_drymmr_from_wetmmr (const MemberType& team,
                              const InputProviderX& wetmmr,
-                             const InputProviderQ& qv,
+                             const InputProviderQ& qv_wet,
                              const view_1d<ScalarT>& drymmr);
 
   template<typename ScalarT,
@@ -343,6 +423,15 @@ struct PhysicsFunctions
                                      const InputProviderQ& qv,
                                      const InputProviderX& vmr,
                                      const view_1d<ScalarT>& mmr);
+
+  template<typename ScalarT, typename InputProviderOtau, typename MT = Kokkos::MemoryManaged>
+  KOKKOS_INLINE_FUNCTION
+  static void apply_rayleigh_friction (const MemberType& team,
+                                       const Real dt,
+                                       const InputProviderOtau& otau,
+                                       const view_1d<ScalarT, MT>& u_wind,
+                                       const view_1d<ScalarT, MT>& v_wind,
+                                       const view_1d<ScalarT, MT>& T_mid);
 
   //-----------------------------------------------------------------------------------------------//
   // Determines the vertical layer interface height from the vertical layer thicknesses:

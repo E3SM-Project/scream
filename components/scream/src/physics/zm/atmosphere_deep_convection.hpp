@@ -32,18 +32,11 @@ public:
   // The name of the subcomponent
   std::string name () const { return "DeepConvection"; }
 
-  // Get the required grid for subcomponent
-  std::set<std::string> get_required_grids () const {
-    static std::set<std::string> s;
-    s.insert("Physics");
-    return s;
-  }
-
   // Set the grid
   void set_grids (const std::shared_ptr<const GridsManager> grids_manager);
 
   // The three main interfaces for the subcomponent
-  void initialize_impl ();
+  void initialize_impl (const RunType run_type);
   void run_impl        (const int dt);
   void finalize_impl   ();
 

@@ -64,6 +64,117 @@ auto cmvdc (const ViewT& v_d) -> typename ViewT::HostMirror {
   return v_h;
 }
 
+template<typename DeviceT>
+void run_scalar_valued_fns(std::mt19937_64& engine)
+{
+  /*
+  Most of the common physics functions are templated to operate on scalars or on packs of vertical indices. 
+  The functions tested here don't include any vertical dimension (e.g. they handle variables only defined 
+  at the surface), so are only defined for scalar reals. This is fundamentally different than the other 
+  functions, so these functions get their own run test.
+  */	
+
+  using RealType   = scream::Real;
+  using PF         = scream::PhysicsFunctions<DeviceT>;
+  using PC         = scream::physics::Constants<RealType>;
+  using Check = ChecksHelpers<RealType,1>; //1 is for number of levels.
+
+  static constexpr auto pi       = PC::Pi;
+  static constexpr auto Rd       = PC::RD;
+  static constexpr auto g        = PC::gravit;
+  static constexpr auto test_tol = PC::macheps*1e3;
+  static constexpr auto coeff_1  = PC::earth_ellipsoid1;
+  static constexpr auto coeff_2  = PC::earth_ellipsoid2;
+  static constexpr auto coeff_3  = PC::earth_ellipsoid3;
+
+  // Construct random input data
+  using RPDF = std::uniform_real_distribution<RealType>;
+  RPDF pdf_lat(-pi/2.0,pi/2.0),
+       pdf_area(1e-8,pi*pi);
+
+  //calculate_surface_air_T property tests:
+  // If z_mid_bot==0, output should equal T_mid_bot
+  // If z_mid_bot>0, output should be warmer that T_mid_bot
+  // If z_mid_bot<0, output should be colder than T_mid_bot
+  // if z_mid_bot is 1 km, output should be exactly 6.5 K warmer
+  REQUIRE( Check::approx_equal(PF::calculate_surface_air_T(300,0),300,test_tol) );
+  REQUIRE( Check::approx_equal(PF::calculate_surface_air_T(300,1000),306.5,test_tol) );
+  REQUIRE( Check::approx_equal(PF::calculate_surface_air_T(250.3,-10.2),250.2337,test_tol) );
+  
+  // lapse_T_for_psl property tests:
+  // If T_ground = 0, T_ground_tmp should be 255/2 and lapse should be 0.0065 Really cold case.
+  // If T_ground = 300 K with phi_ground>0 m2/s2, lapse = 0 and T_ground_tmp=0.5*(290.5+T_ground). Really hot case.
+  // If T_ground = 290 K and phi_ground=10000 m2/s2, T_ground_tmp=T_ground and lapse
+  //    is such that T_sl=T_ground+lapse*phi_ground/gravit is within roundoff of 290.5 K. Marginally hot case.
+  // If T_ground = 280 K and phi_ground=100 m2/s2, T_ground_tmp=T_ground and lapse=6.5 K/km (typical conditions)
+  RealType lapse;
+  RealType T_ground_tmp;
+  RealType T_ground=0;
+  RealType phi_ground=100;
+  RealType p_ground=100000; //can't use p0 because that is a ScalarT which could be a pack
+  PF::lapse_T_for_psl(T_ground, p_ground,  phi_ground, lapse, T_ground_tmp );
+  REQUIRE( Check::approx_equal(T_ground_tmp,0.5*255.,test_tol) );
+  REQUIRE( Check::equal(lapse,0.0065) );
+  T_ground=300;
+  PF::lapse_T_for_psl(T_ground, p_ground,  phi_ground, lapse, T_ground_tmp );
+  REQUIRE( Check::approx_equal(T_ground_tmp,0.5*(290.5+T_ground),test_tol) );
+  REQUIRE( Check::equal(lapse,0) );
+  T_ground=290;
+  phi_ground=10000;
+  PF::lapse_T_for_psl(T_ground, p_ground,  phi_ground, lapse, T_ground_tmp );
+  REQUIRE( Check::equal(T_ground_tmp, T_ground) );
+  REQUIRE( Check::approx_equal( T_ground_tmp+lapse*phi_ground/g, 290.5 , test_tol) );
+  T_ground=280;
+  phi_ground=100;
+  PF::lapse_T_for_psl(T_ground, p_ground,  phi_ground, lapse, T_ground_tmp );
+  REQUIRE( Check::equal(T_ground_tmp, T_ground) );
+  REQUIRE( Check::equal(lapse,0.0065) );
+  
+  // PSL property tests:
+  // PSL==surface pressure if surface height = 0 m
+  // computed value close to exact solution when lapse rate is zero (i.e. very warm conditions)
+  // computed value close to exact solution when lapse rate is 6.5 K/km (typical conditions)
+  // PSL lower than surface pressure whenever surface height > 0 m
+  // PSL greater than surface pressure whenever surface height < 0 m
+  REQUIRE( Check::equal(PF::calculate_psl(310 , p_ground, 0 ), p_ground) );
+  REQUIRE( Check::equal(PF::calculate_psl( 2 , 2, 0 ), 2) );
+  
+  T_ground=300;
+  T_ground_tmp=0.5*(290.5+T_ground);
+  RealType psl_exact = p_ground*std::exp(phi_ground/(Rd*T_ground_tmp));
+  RealType psl=PF::calculate_psl( T_ground , p_ground, phi_ground );
+  REQUIRE( Check::approx_equal( psl_exact, psl, test_tol) );
+  REQUIRE( psl>p_ground);
+  
+  T_ground=280;
+  phi_ground=-100;
+  lapse=0.0065;
+  psl_exact = p_ground*std::pow( 1. + lapse/g*phi_ground/T_ground, g/(Rd*lapse));
+  psl=PF::calculate_psl( T_ground , p_ground, phi_ground );
+  REQUIRE( Check::approx_equal( psl_exact, psl, test_tol) );
+  REQUIRE( psl<p_ground );
+
+  // Get dx from grid cell area property tests:
+  RealType area, lat;
+  area = 0.0; lat = 1.0;
+  REQUIRE( Check::equal(PF::calculate_dx_from_area(area,lat),0.0) );
+  area = (pi/180.0)*(pi/180.0);
+  // Note, it is assumed that lat is in degrees
+  lat = 0.0;
+  REQUIRE( Check::equal(PF::calculate_dx_from_area(area,lat), coeff_1-coeff_2+coeff_3) );
+  lat = 90.0;
+  REQUIRE( Check::equal(PF::calculate_dx_from_area(area,lat), coeff_1+coeff_2+coeff_3) );
+  lat = 45.0;
+  REQUIRE( Check::approx_equal(PF::calculate_dx_from_area(area,lat), coeff_1 - coeff_3, test_tol) );
+  lat = 22.5;
+  REQUIRE( Check::approx_equal(PF::calculate_dx_from_area(area,lat), coeff_1-std::sqrt(2.0)/2.0*coeff_2, test_tol) );
+  lat     = pdf_lat(engine);
+  area    = pdf_area(engine);
+  REQUIRE( Check::equal(PF::calculate_dx_from_area(area,lat),PF::calculate_dx_from_area(area,-lat)) );
+
+}
+
+
 //-----------------------------------------------------------------------------------------------//
 template<typename ScalarT, typename DeviceT>
 void run(std::mt19937_64& engine)
@@ -100,6 +211,8 @@ void run(std::mt19937_64& engine)
   view_1d temperature("temperature",num_mid_packs),
           height("height",num_mid_packs),
           qv("qv",num_mid_packs),
+          qv_dry("qv_dry",num_mid_packs),
+          qv_wet("qv_wet",num_mid_packs),
           pressure("pressure",num_mid_packs),
           pseudo_density("pseudo_density",num_mid_packs),
           dz_for_testing("dz_for_testing",num_mid_packs),
@@ -147,6 +260,8 @@ void run(std::mt19937_64& engine)
   ekat::genRandArray(dview_as_real(temperature),     engine,pdf_temp);
   ekat::genRandArray(dview_as_real(height),          engine,pdf_height);
   ekat::genRandArray(dview_as_real(qv),              engine,pdf_qv);
+  ekat::genRandArray(dview_as_real(qv_wet),          engine,pdf_qv);
+  ekat::genRandArray(dview_as_real(qv_dry),          engine,pdf_qv);
   ekat::genRandArray(dview_as_real(pressure),        engine,pdf_pres);
   ekat::genRandArray(dview_as_real(pseudo_density),  engine,pdf_dp);
   ekat::genRandArray(dview_as_real(mmr_for_testing), engine,pdf_mmr);
@@ -166,7 +281,8 @@ void run(std::mt19937_64& engine)
   const ScalarT zero = 0.0;
   const ScalarT one  = 1.0;
 
-  ScalarT p, T0, theta0, tmp, qv0, dp0, mmr0, vmr0, wetmmr0, dz0, Tv0, rho0, rand_int0, z0, dse0;
+  ScalarT p, T0, theta0, tmp, qv0, dp0, mmr0, vmr0, dz0, Tv0, rho0, z0, dse0;
+  ScalarT wetmmr0, drymmr0, qv_dry0, qv_wet0;
   RealType surf_height;
 
   // calculate density property tests:
@@ -180,7 +296,6 @@ void run(std::mt19937_64& engine)
   Tv0  = PF::calculate_virtual_temperature(T0,qv0);
   dz0  = PF::calculate_dz(dp0,p,T0,qv0);
   rho0 = p / Tv0 / Rd;  // Ideal gas law
-  rand_int0 = pdf_rand_int(engine);//random integers
 
   REQUIRE( Check::equal(PF::calculate_density(zero,dz0),zero) );
   REQUIRE( Check::approx_equal(PF::calculate_density(dp0,dz0),rho0,test_tol) );
@@ -253,37 +368,27 @@ void run(std::mt19937_64& engine)
   REQUIRE( Check::approx_equal(PF::calculate_temperature_from_dse(PF::calculate_dse(T0,z0,surf_height),
                                z0,surf_height),T0,test_tol) );
 
-
   // WETMMR to DRYMMR (and vice versa) property tests
-  wetmmr0 = pdf_mmr(engine);// get initial inputs for wetmmr_from_drymmr and drymmr_from_wetmmr functions
-  qv0  = pdf_qv(engine);  // This is an input for mmr_tests, so it won't be modified by mmr tests
+  wetmmr0 = pdf_mmr(engine);// get initial wet mmr
+  drymmr0 = pdf_mmr(engine);// get initial dry mmr
+  qv_wet0 = pdf_qv(engine); // get initial qv in wet mmr
+  qv_dry0 = pdf_qv(engine); // get initial qv in dry mmr
   // mmr_test1: For zero drymmr, wetmmr should be zero
   // mmr_test2: For zero wetmmr, drymmr should be zero
   // mmr_test3: Compute drymmr from wetmmr0 and then use the result to compute wetmmr, which should be approximately
-  //            equal to wetmmr0
+  //            equal to wetmmr0. NOTE: calculate_wetmmr_from_drymmr takes qv in dry mmr as an argument and
+  //            calculate_drymmr_from_wetmmr takes qv in wet mmr as an argument. Therefore, we need to convert
+  //            qv from wet mmr to dry mmr as well as part of these conversions
 
-  // mmr_test4: [to test mathematical properties of the function]
-  //            Compute drymmr from wetmmr0 and then use the result to
-  //            compute wetmmr. "qv" should be in the form of 2^k+1 (1 is added as we have [1-qv] in the numerator or
-  //            denominator of this function), so that the results of wet->dry->wet are exactly
-  //            the same as the initial input mmr(wetmmr0). This is a mathematical property test, so unphysical invalid qv
-  //            values are also acceptable
-  //
-  //            *WARNING* This test might fail if a check is added to this function to accept only valid values for qv0
-
-  REQUIRE( Check::equal(PF::calculate_wetmmr_from_drymmr(zero,qv0),zero) ); //mmr_test1
-  REQUIRE( Check::equal(PF::calculate_drymmr_from_wetmmr(zero,qv0),zero) ); //mmr_test2
+  REQUIRE( Check::equal(PF::calculate_wetmmr_from_drymmr(zero,qv_dry0),zero) ); //mmr_test1
+  REQUIRE( Check::equal(PF::calculate_drymmr_from_wetmmr(zero,qv_wet0),zero) ); //mmr_test2
 
   //mmr_test3
-  tmp = PF::calculate_drymmr_from_wetmmr(wetmmr0,qv0);//get drymmr from wetmmr0
-  tmp = PF::calculate_wetmmr_from_drymmr(tmp, qv0);//convert it back to wetmmr0
+  drymmr0 = PF::calculate_drymmr_from_wetmmr(wetmmr0,qv_wet0);//get drymmr from wetmmr0 using qv_wet0
+  // Now convert qv wet mmr to qv dry mmr as qv dry mmr is an input for the "calculate_wetmmr_from_drymmr" function
+  qv_dry0 = PF::calculate_drymmr_from_wetmmr(qv_wet0, qv_wet0);
+  tmp     = PF::calculate_wetmmr_from_drymmr(drymmr0, qv_dry0);//convert it back to wetmmr0
   REQUIRE( Check::approx_equal(tmp,wetmmr0,test_tol) );// wetmmr0 should be equal to tmp
-
-  //mmr_test4
-  ScalarT qv0_2k_m1 = pow(2,rand_int0)+1; // 2^rand_int+1
-  tmp = PF::calculate_drymmr_from_wetmmr(wetmmr0,qv0_2k_m1);//get drymmr from wetmmr0
-  tmp = PF::calculate_wetmmr_from_drymmr(tmp, qv0_2k_m1);//convert it back to wetmmr0
-  REQUIRE( Check::equal(tmp,wetmmr0) );// wetmmr0 should be exactly equal to tmp
 
   // DZ property tests:
   //  - calculate_dz(pseudo_density=0) = 0
@@ -319,7 +424,7 @@ void run(std::mt19937_64& engine)
   tmp = PF::calculate_mmr_from_vmr(h2o_mol,qv0,vmr0);
   REQUIRE( Check::approx_equal(PF::calculate_vmr_from_mmr(h2o_mol,qv0,tmp),vmr0,test_tol) );
   REQUIRE( !Check::approx_equal(PF::calculate_vmr_from_mmr(o2_mol,qv0,tmp),vmr0,test_tol) );
-
+  
   // --------- Run tests on full columns of data ----------- //
   TeamPolicy policy(ekat::ExeSpaceUtils<ExecSpace>::get_default_team_policy(1, 1));
   Kokkos::parallel_for("test_universal_physics", policy, KOKKOS_LAMBDA(const MemberType& team) {
@@ -355,10 +460,13 @@ void run(std::mt19937_64& engine)
     PF::calculate_mmr_from_vmr(team,h2o_mol,qv,vmr,mmr);
 
     // Compute drymmr from wetmmr
-    PF::calculate_drymmr_from_wetmmr(team,wetmmr_for_testing,qv,drymmr);
+    PF::calculate_drymmr_from_wetmmr(team,wetmmr_for_testing,qv_wet,drymmr);
+    
+    //convert qv_wet to qv_dry
+    PF::calculate_drymmr_from_wetmmr(team,qv_wet,qv_wet,qv_dry);
 
     // Convert drymmr computed above to wetmmr
-    PF::calculate_wetmmr_from_drymmr(team,drymmr,qv,wetmmr);
+    PF::calculate_wetmmr_from_drymmr(team,drymmr,qv_dry,wetmmr);
 
   }); // Kokkos parallel_for "test_universal_physics"
   Kokkos::fence();
@@ -417,8 +525,9 @@ void run(std::mt19937_64& engine)
   }
 } // run()
 
+//===============================================================================
 TEST_CASE("common_physics_functions_test", "[common_physics_functions_test]"){
-  // Run tests for both Real and Pack, and for (potentially) different pack sizes
+
   using scream::Real;
   using Device = scream::DefaultDevice;
 
@@ -426,11 +535,15 @@ TEST_CASE("common_physics_functions_test", "[common_physics_functions_test]"){
 
   auto engine = scream::setup_random_test();
 
-  std::cout << " -> Number of randomized runs: " << num_runs << "\n\n";
+// Run tests of vertically dimensioned-functions for both Real and Pack,
+// and for (potentially) different pack sizes
+
+  printf(" -> Number of randomized runs: %d\n\n", num_runs);
 
   printf(" -> Testing Real scalar type...");
   for (int irun=0; irun<num_runs; ++irun) {
     run<Real,Device>(engine);
+    run_scalar_valued_fns<Device>(engine);
   }
   printf("ok!\n");
 

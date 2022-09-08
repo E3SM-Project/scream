@@ -4,6 +4,7 @@
 #include "share/grid/abstract_grid.hpp"
 
 #include "Hommexx_Session.hpp"
+#include "Types.hpp"
 #include "Context.hpp"
 #include "mpi/Comm.hpp"
 
@@ -43,9 +44,14 @@ void finalize_geometry_f90 ();
 
 // Prim init/run/finalize
 void prim_init_data_structures_f90 ();
-void prim_set_test_initial_conditions_f90 ();
+void prim_complete_init1_phase_f90 ();
+void prim_set_hvcoords_f90 (const double& ps0,
+                            Homme::CF90Ptr& hyai_ptr,
+                            Homme::CF90Ptr& hybi_ptr,
+                            Homme::CF90Ptr& hyam_ptr,
+                            Homme::CF90Ptr& hybm_ptr);
 void prim_init_model_f90 ();
-void prim_run_f90 ();
+void prim_run_f90 (const int nsplit_iteration);
 void prim_finalize_f90 ();
 
 // Grids specs
@@ -55,7 +61,8 @@ int get_num_local_columns_f90 (const int pgN);
 int get_num_global_columns_f90 (const int pgN);
 int get_num_local_elems_f90 ();
 int get_num_global_elems_f90 ();
-void get_dyn_grid_data_f90 (AbstractGrid::gid_type* const& gids,
+void get_dyn_grid_data_f90 (AbstractGrid::gid_type* const& dg_gids,
+                            AbstractGrid::gid_type* const& cg_gids,
                             int* const& elgp,
                             double* const& lat, double* const& lon);
 void get_phys_grid_data_f90 (const int& pg_type,

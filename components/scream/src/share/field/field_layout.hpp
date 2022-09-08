@@ -1,7 +1,9 @@
 #ifndef SCREAM_FIELD_LAYOUT_HPP
 #define SCREAM_FIELD_LAYOUT_HPP
 
-#include "field_tag.hpp"
+#include "share/field/field_tag.hpp"
+#include "share/scream_types.hpp"
+
 #include <ekat/std_meta/ekat_std_utils.hpp>
 #include <ekat/ekat_assert.hpp>
 
@@ -41,10 +43,14 @@ inline std::string e2str (const LayoutType lt) {
 /*
  *  A small class to hold basic info about a field layout
  *
+ *  Note: the content of extents() is the same as the content of dims().
+ *        The difference is that the former returns a device view, while
+ *        the latter returns a std::vector.
  */
 
 class FieldLayout {
 public:
+  using extents_type = typename KokkosTypes<DefaultDevice>::view_1d<int>;
 
   // Constructor(s)
   FieldLayout () = delete;
@@ -73,8 +79,9 @@ public:
   int dim (const FieldTag tag) const;
   int dim (const int idim) const;
   const std::vector<int>& dims () const { return m_dims; }
+  const extents_type& extents () const { return m_extents; }
 
-  int      size ()               const;
+  long long  size () const;
 
   bool is_dimension_set  (const int idim) const;
   bool are_dimensions_set () const;
@@ -97,6 +104,7 @@ protected:
   int                   m_rank;
   std::vector<FieldTag> m_tags;
   std::vector<int>      m_dims;
+  extents_type          m_extents;
 };
 
 bool operator== (const FieldLayout& fl1, const FieldLayout& fl2);
@@ -124,9 +132,9 @@ inline int FieldLayout::dim (const int idim) const {
   return m_dims[idim];
 }
 
-inline int FieldLayout::size () const {
+inline long long FieldLayout::size () const {
   ekat::error::runtime_check(are_dimensions_set(), "Error! Field dimensions not yet set.\n",-1);
-  int prod = m_rank>0 ? 1 : 0;
+  long long prod = m_rank>0 ? 1 : 0;
   for (int idim=0; idim<m_rank; ++idim) {
     prod *= m_dims[idim];
   }

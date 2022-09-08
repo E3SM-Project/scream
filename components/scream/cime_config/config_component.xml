@@ -27,12 +27,23 @@
     <valid_values></valid_values>
     <default_value></default_value>
     <values modifier='additive'>
-      <value compset="_SCREAM">SCREAM_NP 4 SCREAM_NUM_VERTICAL_LEV 72 SCREAM_NUM_TRACERS 35</value>
+      <value compset="_SCREAM">SCREAM_NP 4 SCREAM_NUM_VERTICAL_LEV 72 SCREAM_NUM_TRACERS 10</value>
     </values>
     <group>build_component_scream</group>
     <file>env_build.xml</file>
     <desc>
       SCREAM configure options.
+    </desc>
+  </entry>
+
+  <entry id="SCREAM_ATMCHANGE_BUFFER">
+    <type>char</type>
+    <valid_values></valid_values>
+    <default_value></default_value>
+    <group>build_component_scream</group>
+    <file>env_run.xml</file>
+    <desc>
+      A place to buffer atmchange items for test mods.
     </desc>
   </entry>
 

@@ -501,7 +501,6 @@ end function shoc_implements_cnst
     use wv_saturation,  only: qsat
     use micro_mg_cam,   only: micro_mg_version  
     use cldfrc2m,                  only: aist_vector 
-    use hb_diff,                   only: pblintd
     use trb_mtn_stress,            only: compute_tms
     use shoc,           only: shoc_main
     use cam_history,    only: outfld
@@ -609,7 +608,7 @@ end function shoc_implements_cnst
    real(r8) :: minqn, rrho(pcols,pver), rrho_i(pcols,pverp)    ! minimum total cloud liquid + ice threshold    [kg/kg]
    real(r8) :: cldthresh, frac_limit
    real(r8) :: ic_limit, dum1
-   real(r8) :: inv_exner_surf
+   real(r8) :: inv_exner_surf, pot_temp
  
    real(r8) :: wpthlp_sfc(pcols), wprtp_sfc(pcols), upwp_sfc(pcols), vpwp_sfc(pcols)
    real(r8) :: wtracer_sfc(pcols,edsclr_dim)
@@ -777,7 +776,8 @@ end function shoc_implements_cnst
        um(i,k) = state1%u(i,k)
        vm(i,k) = state1%v(i,k)
        
-       thlm(i,k) = state1%t(i,k)*inv_exner(i,k)-(latvap/cpair)*state1%q(i,k,ixcldliq)
+       pot_temp = state1%t(i,k)*inv_exner(i,k)
+       thlm(i,k) = pot_temp-(pot_temp/state1%t(i,k))*(latvap/cpair)*state1%q(i,k,ixcldliq)
        thv(i,k) = state1%t(i,k)*inv_exner(i,k)*(1.0_r8+zvir*state1%q(i,k,ixq)-state1%q(i,k,ixcldliq)) 
  
        tke_zt(i,k) = max(tke_tol,state1%q(i,k,ixtke))
@@ -1183,7 +1183,7 @@ end function shoc_implements_cnst
   real(r8), parameter :: earth_ellipsoid2 = 559.82_r8 ! second expansion coefficient for WGS84 ellipsoid
   real(r8), parameter :: earth_ellipsoid3 = 1.175_r8 ! third expansion coefficient for WGS84 ellipsoid
 
-  real(r8) :: mpdeglat, column_area, degree
+  real(r8) :: mpdeglat, column_area, degree, lat_in_rad
   integer  :: i
 
   do i=1,state%ncol
@@ -1191,11 +1191,14 @@ end function shoc_implements_cnst
       column_area = get_area_p(state%lchnk,i)
       ! convert to degrees
       degree = sqrt(column_area)*(180._r8/shr_const_pi)
-       
+
+      ! convert latitude to radians
+      lat_in_rad = state%lat(i)*(shr_const_pi/180._r8)
+
       ! Now find meters per degree latitude
       ! Below equation finds distance between two points on an ellipsoid, derived from expansion
       !  taking into account ellipsoid using World Geodetic System (WGS84) reference 
-      mpdeglat = earth_ellipsoid1 - earth_ellipsoid2 * cos(2._r8*state%lat(i)) + earth_ellipsoid3 * cos(4._r8*state%lat(i))
+      mpdeglat = earth_ellipsoid1 - earth_ellipsoid2 * cos(2._r8*lat_in_rad) + earth_ellipsoid3 * cos(4._r8*lat_in_rad)
       grid_dx(i) = mpdeglat * degree
       grid_dy(i) = grid_dx(i) ! Assume these are the same
   enddo   

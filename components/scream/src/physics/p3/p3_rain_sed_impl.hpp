@@ -154,17 +154,12 @@ void Functions<S,D>
     Kokkos::single(
       Kokkos::PerTeam(team), [&] () {
         precip_liq_surf += prt_accum * C::INV_RHO_H2O * inv_dt;
-        // The code below is to force a result difference. This is used by the
-        // scream/scripts internal testing to verify that various types of DIFFs
-        // are detected.
-#if defined(SCREAM_FORCE_RUN_DIFF) || defined(SCREAM_FORCE_RUN_DIFF_BFB_UNIT)
-        precip_liq_surf *= 2;
-#endif
       });
   }
 
+  const Int nk_pack = ekat::npack<Spack>(nk);
   Kokkos::parallel_for(
-   Kokkos::TeamThreadRange(team, qr_tend.extent(0)), [&] (int pk) {
+   Kokkos::TeamThreadRange(team, nk_pack), [&] (int pk) {
     qr_tend(pk) = (qr(pk) - qr_tend(pk)) * inv_dt; // Rain sedimentation tendency, measure
     nr_tend(pk) = (nr(pk) - nr_tend(pk)) * inv_dt; // Rain # sedimentation tendency, measure
   });

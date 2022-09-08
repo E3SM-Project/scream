@@ -4,8 +4,8 @@ SET(SRC_THETA_DIR    ${HOMME_SOURCE_DIR}/src/theta-l_kokkos)
 SET(SHARE_UT_DIR     ${CMAKE_CURRENT_SOURCE_DIR}/../share_kokkos_ut)
 SET(THETA_UT_DIR     ${CMAKE_CURRENT_SOURCE_DIR})
 SET(UTILS_SHARE_DIR  ${HOMME_SOURCE_DIR}/utils/csm_share)
-SET(UTILS_TIMING_SRC_DIR ${HOMME_SOURCE_DIR}/utils/cime/src/share/timing)
-SET(UTILS_TIMING_BIN_DIR ${HOMME_BINARY_DIR}/utils/cime/src/share/timing)
+SET(UTILS_TIMING_SRC_DIR ${HOMME_SOURCE_DIR}/utils/cime/CIME/non_py/src/timing)
+SET(UTILS_TIMING_BIN_DIR ${HOMME_BINARY_DIR}/utils/cime/CIME/non_py/src/timing)
 
 ### Build a 'theta-l_kokkos' library ###
 # We do this once, and link against it for all unit tests. This reduces compilation times
@@ -27,6 +27,9 @@ TARGET_INCLUDE_DIRECTORIES(thetal_kokkos_ut_lib PUBLIC ${CMAKE_CURRENT_BINARY_DI
 TARGET_COMPILE_DEFINITIONS(thetal_kokkos_ut_lib PUBLIC "HAVE_CONFIG_H")
 TARGET_LINK_LIBRARIES(thetal_kokkos_ut_lib kokkos)
 TARGET_LINK_LIBRARIES(thetal_kokkos_ut_lib timing ${COMPOSE_LIBRARY_CPP} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+IF (HOMME_USE_MKL)
+  TARGET_LINK_LIBRARIES (thetal_kokkos_ut_lib -mkl)
+ENDIF()
 IF(BUILD_HOMME_WITHOUT_PIOLIBRARY)
   TARGET_COMPILE_DEFINITIONS(thetal_kokkos_ut_lib PUBLIC HOMME_WITHOUT_PIOLIBRARY)
 ELSE ()

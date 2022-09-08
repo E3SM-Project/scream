@@ -35,7 +35,7 @@ TEST_CASE("spa_one_to_one_remap","spa")
   MPI_Fint fcomm = MPI_Comm_c2f(spa_comm.mpi_comm());  // MPI communicator group used for I/O.  In our simple test we use MPI_COMM_WORLD, however a subset could be used.
   scorpio::eam_init_pio_subsystem(fcomm);   // Gather the initial PIO subsystem data creater by component coupler
 
-  std::string spa_data_file = "spa_data_for_testing.nc";
+  std::string spa_data_file = SCREAM_DATA_DIR "/init/spa_data_for_testing.nc";
 
   Int max_time = 3;
   Int ncols    = 20;
@@ -53,6 +53,8 @@ TEST_CASE("spa_one_to_one_remap","spa")
   Kokkos::parallel_for("", my_ncols, KOKKOS_LAMBDA(const int& ii) {
     dofs_gids(ii) = min_dof + static_cast<gid_type>(comm_rank + ii*comm_size);
   });
+  auto dofs_gids_h = Kokkos::create_mirror_view(dofs_gids);
+  Kokkos::deep_copy(dofs_gids_h,dofs_gids);
   // Make sure that the total set of columns has been completely broken up.
   Int test_total_ncols = 0;
   spa_comm.all_reduce(&my_ncols,&test_total_ncols,1,MPI_SUM);
@@ -62,7 +64,10 @@ TEST_CASE("spa_one_to_one_remap","spa")
   SPAFunc::SPAHorizInterp spa_horiz_interp;
   spa_horiz_interp.m_comm = spa_comm;
   SPAFunc::set_remap_weights_one_to_one(ncols,min_dof,dofs_gids,spa_horiz_interp);
-  SPAFunc::SPAData spa_data(dofs_gids.size(), nlevs, nswbands, nlwbands);
+  // Make sure one_to_one remap has the correct unique columns
+  REQUIRE(spa_horiz_interp.num_unique_cols==my_ncols);
+  // Recall, SPA data is padded, so we initialize with 2 more levels than the source data file.
+  SPAFunc::SPAInput spa_data(dofs_gids.size(), nlevs+2, nswbands, nlwbands);
 
   // Check that the horizontal interpolation data is in fact a 1-1 mapping
   Kokkos::parallel_for("", spa_horiz_interp.length, KOKKOS_LAMBDA(const int& ii) {
@@ -72,7 +77,7 @@ TEST_CASE("spa_one_to_one_remap","spa")
   });
 
   // Verify that the interpolated values match the algorithm for the data and the weights.
-  //       weights(i) = 1.0 
+  //       weights(i) = 1.0
   //       FOR t=1,2,3; i=0,1,2; b=1,2 or 1,2,3 and k=0,1,2,3
   //       p(t,i) = (t+1) * (i+1)*100
   //       ccn3(t,i,k) = (i+1)*100 + t*10 + k
@@ -81,28 +86,27 @@ TEST_CASE("spa_one_to_one_remap","spa")
   //       aer_tau_sw(t,i,b,k) = b
   //       aer_tau_lw(t,i,b,k) = k
   auto ps_h         = Kokkos::create_mirror_view(spa_data.PS);
-  auto ccn3_h       = Kokkos::create_mirror_view(spa_data.CCN3);
-  auto aer_g_sw_h   = Kokkos::create_mirror_view(spa_data.AER_G_SW);
-  auto aer_ssa_sw_h = Kokkos::create_mirror_view(spa_data.AER_SSA_SW);
-  auto aer_tau_sw_h = Kokkos::create_mirror_view(spa_data.AER_TAU_SW);
-  auto aer_tau_lw_h = Kokkos::create_mirror_view(spa_data.AER_TAU_LW);
-  auto dofs_gids_h = Kokkos::create_mirror_view(dofs_gids);
-  Kokkos::deep_copy(dofs_gids_h,dofs_gids);
+  auto ccn3_h       = Kokkos::create_mirror_view(spa_data.data.CCN3);
+  auto aer_g_sw_h   = Kokkos::create_mirror_view(spa_data.data.AER_G_SW);
+  auto aer_ssa_sw_h = Kokkos::create_mirror_view(spa_data.data.AER_SSA_SW);
+  auto aer_tau_sw_h = Kokkos::create_mirror_view(spa_data.data.AER_TAU_SW);
+  auto aer_tau_lw_h = Kokkos::create_mirror_view(spa_data.data.AER_TAU_LW);
   for (int time_index = 0;time_index<max_time; time_index++) {
-    SPAFunc::update_spa_data_from_file(spa_data_file, time_index+1, nswbands, nlwbands,
+    SPAFunc::update_spa_data_from_file(spa_data_file, time_index, nswbands, nlwbands,
                                        spa_horiz_interp, spa_data);
     Kokkos::deep_copy(ps_h,spa_data.PS);
-    Kokkos::deep_copy(ccn3_h,spa_data.CCN3);
-    Kokkos::deep_copy(aer_g_sw_h,spa_data.AER_G_SW);
-    Kokkos::deep_copy(aer_ssa_sw_h,spa_data.AER_SSA_SW);
-    Kokkos::deep_copy(aer_tau_sw_h,spa_data.AER_TAU_SW);
-    Kokkos::deep_copy(aer_tau_lw_h,spa_data.AER_TAU_LW);
-    for (int dof_i=0;dof_i<dofs_gids_h.size();dof_i++) {
+    Kokkos::deep_copy(ccn3_h,spa_data.data.CCN3);
+    Kokkos::deep_copy(aer_g_sw_h,spa_data.data.AER_G_SW);
+    Kokkos::deep_copy(aer_ssa_sw_h,spa_data.data.AER_SSA_SW);
+    Kokkos::deep_copy(aer_tau_sw_h,spa_data.data.AER_TAU_SW);
+    Kokkos::deep_copy(aer_tau_lw_h,spa_data.data.AER_TAU_LW);
+    for (size_t dof_i=0;dof_i<dofs_gids_h.size();dof_i++) {
       gid_type glob_i = dofs_gids_h(dof_i);
       REQUIRE(ps_h(dof_i) == ps_func(time_index,glob_i));
       for (int kk=0;kk<nlevs;kk++) {
-        int kpack = kk / Spack::n;
-        int kidx  = kk % Spack::n;
+        // Recall, SPA data read from file is padded, so we need to offset the kk index for the data by 1.
+        int kpack = (kk+1) / Spack::n;
+        int kidx  = (kk+1) % Spack::n;
         REQUIRE(ccn3_h(dof_i,kpack)[kidx] == ccn3_func(time_index, glob_i, kk));
         for (int n=0;n<nswbands;n++) {
           REQUIRE(aer_g_sw_h(dof_i,n,kpack)[kidx]   == aer_func(time_index,glob_i,n,kk,0));
@@ -115,8 +119,8 @@ TEST_CASE("spa_one_to_one_remap","spa")
       }
     }
   }
-  
-  // All Done 
+
+  // All Done
   scorpio::eam_pio_finalize();
 } // run_property
 

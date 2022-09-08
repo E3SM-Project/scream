@@ -8,7 +8,6 @@ my @groups = qw(run_modes
                 hmix_del2
                 hmix_del4
                 hmix_leith
-                mesoscale_eddy_parameterizations
                 redi_isopycnal_mixing
                 gm_eddy_parameterization
                 rayleigh_damping
@@ -17,6 +16,7 @@ my @groups = qw(run_modes
                 forcing
                 coupling
                 shortwaveradiation
+                self_attraction_loading
                 tidal_potential_forcing
                 frazil_ice
                 land_ice_fluxes
@@ -40,6 +40,8 @@ my @groups = qw(run_modes
                 tracer_forcing_ecosystracers
                 tracer_forcing_dmstracers
                 tracer_forcing_macromoleculestracers
+                tracer_forcing_idealagetracers
+                tracer_forcing_cfctracers
                 am_globalstats
                 am_surfaceareaweightedaverages
                 am_watermasscensus
@@ -74,4 +76,5 @@ my @groups = qw(run_modes
                 am_sedimentfluxindex
                 am_sedimenttransport
                 am_harmonicanalysis
+                am_conservationcheck
                 );

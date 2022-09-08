@@ -1,8 +1,11 @@
 #include "ekat/ekat_assert.hpp"
 #include "physics/shoc/atmosphere_macrophysics.hpp"
 
-#include "share/field/field_property_checks/field_positivity_check.hpp"
-#include "share/field/field_property_checks/field_within_interval_check.hpp"
+#include "share/property_checks/field_lower_bound_check.hpp"
+#include "share/property_checks/field_within_interval_check.hpp"
+
+#include "scream_config.h" // for SCREAM_CIME_BUILD
+
 namespace scream
 {
 
@@ -26,21 +29,17 @@ void SHOCMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids
   Qunit.set_string("kg/kg");
   Units nondim(0,0,0,0,0,0,0);
 
-  const auto& grid_name = m_params.get<std::string>("Grid");
-  auto grid = grids_manager->get_grid(grid_name);
+  m_grid = grids_manager->get_grid("Physics");
+  const auto& grid_name = m_grid->name();
 
-  m_num_cols = grid->get_num_local_dofs(); // Number of columns on this rank
-  m_num_levs = grid->get_num_vertical_levels();  // Number of levels per column
+  m_num_cols = m_grid->get_num_local_dofs(); // Number of columns on this rank
+  m_num_levs = m_grid->get_num_vertical_levels();  // Number of levels per column
 
-  // TODO: In preprocessing, we assume area is in meters. This may not
-  //       always be the case.
-  m_cell_area = grid->get_geometry_data("area"); // area of each cell
+  m_cell_area = m_grid->get_geometry_data("area"); // area of each cell
+  m_cell_lat  = m_grid->get_geometry_data("lat"); // area of each cell
 
   // Define the different field layouts that will be used for this process
   using namespace ShortFieldTagsNames;
-
-  // Layout for pref_mid_field
-  FieldLayout pref_mid_layout{ {LEV}, {m_num_levs} };
 
   // Layout for 2D (1d horiz X 1d vertical) variable
   FieldLayout scalar2d_layout_col{ {COL}, {m_num_cols} };
@@ -61,44 +60,43 @@ void SHOCMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids
 
   constexpr int ps = Spack::n;
 
+  const auto m2 = m*m;
+  const auto s2 = s*s;
+
   // These variables are needed by the interface, but not actually passed to shoc_main.
-  // TODO: Replace pref_mid in the FM with pref_mid read in from the grid data.
-  add_field<Required>("pref_mid",         pref_mid_layout,      Pa,      grid_name, ps);
   add_field<Required>("omega",            scalar3d_layout_mid,  Pa/s,    grid_name, ps);
-  add_field<Required>("surf_sens_flux",   scalar2d_layout_col,  W/(m*m), grid_name);
-  add_field<Required>("surf_latent_flux", scalar2d_layout_col,  W/(m*m), grid_name);
-  add_field<Required>("surf_mom_flux",    surf_mom_flux_layout, N/(m*m), grid_name);
+  add_field<Required>("surf_sens_flux",   scalar2d_layout_col,  W/m2,    grid_name);
+  add_field<Required>("surf_evap",        scalar2d_layout_col,  kg/m2/s, grid_name);
+  add_field<Required>("surf_mom_flux",    surf_mom_flux_layout, N/m2,    grid_name);
 
   add_field<Updated> ("T_mid",            scalar3d_layout_mid, K,       grid_name, ps);
   add_field<Updated> ("qv",               scalar3d_layout_mid, Qunit,   grid_name, "tracers", ps);
 
   // Input variables
-  add_field<Required>("host_dx",        scalar2d_layout_col, m,  grid_name);
-  add_field<Required>("host_dy",        scalar2d_layout_col, m,  grid_name);
-  add_field<Required>("p_mid",          scalar3d_layout_mid, Pa, grid_name, ps);
-  add_field<Required>("p_int",          scalar3d_layout_int, Pa, grid_name, ps);
-  add_field<Required>("pseudo_density", scalar3d_layout_mid, Pa, grid_name, ps);
-  add_field<Required>("phis",           scalar2d_layout_col, m,  grid_name, ps);
+  add_field<Required>("p_mid",          scalar3d_layout_mid, Pa,    grid_name, ps);
+  add_field<Required>("p_int",          scalar3d_layout_int, Pa,    grid_name, ps);
+  add_field<Required>("pseudo_density", scalar3d_layout_mid, Pa,    grid_name, ps);
+  add_field<Required>("phis",           scalar2d_layout_col, m2/s2, grid_name, ps);
 
   // Input/Output variables
-  add_field<Updated>("tke",           scalar3d_layout_mid, (m*m)/(s*s), grid_name, "tracers", ps);
-  add_field<Updated>("horiz_winds",   horiz_wind_layout,   m/s,         grid_name, ps);
-  add_field<Updated>("sgs_buoy_flux", scalar3d_layout_mid, K*(m/s),     grid_name, ps);
-  add_field<Updated>("eddy_diff_mom", scalar3d_layout_mid, (m*m)/s,     grid_name, ps);
-  add_field<Updated>("qc",            scalar3d_layout_mid, Qunit,       grid_name, "tracers", ps);
-  add_field<Updated>("cldfrac_liq",   scalar3d_layout_mid, nondim,      grid_name, ps);
+  add_field<Updated>("tke",           scalar3d_layout_mid, m2/s2,   grid_name, "tracers", ps);
+  add_field<Updated>("horiz_winds",   horiz_wind_layout,   m/s,     grid_name, ps);
+  add_field<Updated>("sgs_buoy_flux", scalar3d_layout_mid, K*(m/s), grid_name, ps);
+  add_field<Updated>("eddy_diff_mom", scalar3d_layout_mid, m2/s,    grid_name, ps);
+  add_field<Updated>("qc",            scalar3d_layout_mid, Qunit,   grid_name, "tracers", ps);
+  add_field<Updated>("cldfrac_liq",   scalar3d_layout_mid, nondim,  grid_name, ps);
 
   // Output variables
   add_field<Computed>("pbl_height",    scalar2d_layout_col, m,           grid_name);
   add_field<Computed>("inv_qc_relvar", scalar3d_layout_mid, Qunit*Qunit, grid_name, ps);
 
   // Tracer group
-  add_group<Updated>("tracers",grid->name(),ps,Bundling::Required);
+  add_group<Updated>("tracers",grid_name,ps,Bundling::Required);
 }
 
 // =========================================================================================
 void SHOCMacrophysics::
-set_computed_group_impl (const FieldGroup<Real>& group)
+set_computed_group_impl (const FieldGroup& group)
 {
   EKAT_REQUIRE_MSG(group.m_info->size() >= 3,
                    "Error! Shoc requires at least 3 tracers (tke, qv, qc) as inputs.");
@@ -116,23 +114,24 @@ set_computed_group_impl (const FieldGroup<Real>& group)
 }
 
 // =========================================================================================
-int SHOCMacrophysics::requested_buffer_size_in_bytes() const
+size_t SHOCMacrophysics::requested_buffer_size_in_bytes() const
 {
   const int nlev_packs       = ekat::npack<Spack>(m_num_levs);
   const int nlevi_packs      = ekat::npack<Spack>(m_num_levs+1);
   const int num_tracer_packs = ekat::npack<Spack>(m_num_tracers);
 
   // Number of Reals needed by local views in the interface
-  const int interface_request = Buffer::num_1d_scalar*m_num_cols*sizeof(Real) +
-                                Buffer::num_2d_vector_mid*m_num_cols*nlev_packs*sizeof(Spack) +
-                                Buffer::num_2d_vector_int*m_num_cols*nlevi_packs*sizeof(Spack) +
-                                Buffer::num_2d_vector_tr*m_num_cols*num_tracer_packs*sizeof(Spack);
+  const size_t interface_request = Buffer::num_1d_scalar_ncol*m_num_cols*sizeof(Real) +
+                                   Buffer::num_1d_scalar_nlev*nlev_packs*sizeof(Spack) +
+                                   Buffer::num_2d_vector_mid*m_num_cols*nlev_packs*sizeof(Spack) +
+                                   Buffer::num_2d_vector_int*m_num_cols*nlevi_packs*sizeof(Spack) +
+                                   Buffer::num_2d_vector_tr*m_num_cols*num_tracer_packs*sizeof(Spack);
 
   // Number of Reals needed by the WorkspaceManager passed to shoc_main
   const auto policy       = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nlev_packs);
   const int n_wind_slots  = ekat::npack<Spack>(2)*Spack::n;
   const int n_trac_slots  = ekat::npack<Spack>(m_num_tracers+3)*Spack::n;
-  const int wsm_request   = WSM::get_total_bytes_needed(nlevi_packs, 13+(n_wind_slots+n_trac_slots), policy);
+  const size_t wsm_request   = WSM::get_total_bytes_needed(nlevi_packs, 13+(n_wind_slots+n_trac_slots), policy);
 
   return interface_request + wsm_request;
 }
@@ -162,6 +161,9 @@ void SHOCMacrophysics::init_buffers(const ATMBufferManager &buffer_manager)
   const int nlev_packs       = ekat::npack<Spack>(m_num_levs);
   const int nlevi_packs      = ekat::npack<Spack>(m_num_levs+1);
   const int num_tracer_packs = ekat::npack<Spack>(m_num_tracers);
+
+  m_buffer.pref_mid = decltype(m_buffer.pref_mid)(s_mem, nlev_packs);
+  s_mem += m_buffer.pref_mid.size();
 
   m_buffer.z_mid = decltype(m_buffer.z_mid)(s_mem, m_num_cols, nlev_packs);
   s_mem += m_buffer.z_mid.size();
@@ -193,6 +195,8 @@ void SHOCMacrophysics::init_buffers(const ATMBufferManager &buffer_manager)
   s_mem += m_buffer.dse.size();
   m_buffer.tke_copy = decltype(m_buffer.tke_copy)(s_mem, m_num_cols, nlev_packs);
   s_mem += m_buffer.tke_copy.size();
+  m_buffer.qc_copy = decltype(m_buffer.qc_copy)(s_mem, m_num_cols, nlev_packs);
+  s_mem += m_buffer.qc_copy.size();
   m_buffer.shoc_ql2 = decltype(m_buffer.shoc_ql2)(s_mem, m_num_cols, nlev_packs);
   s_mem += m_buffer.shoc_ql2.size();
   m_buffer.shoc_mix = decltype(m_buffer.shoc_mix)(s_mem, m_num_cols, nlev_packs);
@@ -235,12 +239,12 @@ void SHOCMacrophysics::init_buffers(const ATMBufferManager &buffer_manager)
   const int wsm_size     = WSM::get_total_bytes_needed(nlevi_packs, 13+(n_wind_slots+n_trac_slots), policy)/sizeof(Spack);
   s_mem += wsm_size;
 
-  int used_mem = (reinterpret_cast<Real*>(s_mem) - buffer_manager.get_memory())*sizeof(Real);
+  size_t used_mem = (reinterpret_cast<Real*>(s_mem) - buffer_manager.get_memory())*sizeof(Real);
   EKAT_REQUIRE_MSG(used_mem==requested_buffer_size_in_bytes(), "Error! Used memory != requested memory for SHOCMacrophysics.");
 }
 
 // =========================================================================================
-void SHOCMacrophysics::initialize_impl ()
+void SHOCMacrophysics::initialize_impl (const RunType run_type)
 {
   // Initialize all of the structures that are passed to shoc_main in run_impl.
   // Note: Some variables in the structures are not stored in the field manager.  For these
@@ -251,13 +255,14 @@ void SHOCMacrophysics::initialize_impl ()
   const auto& pseudo_density   = get_field_in("pseudo_density").get_view<const Spack**>();
   const auto& omega            = get_field_in("omega").get_view<const Spack**>();
   const auto& surf_sens_flux   = get_field_in("surf_sens_flux").get_view<const Real*>();
-  const auto& surf_latent_flux = get_field_in("surf_latent_flux").get_view<const Real*>();
+  const auto& surf_evap        = get_field_in("surf_evap").get_view<const Real*>();
   const auto& surf_mom_flux    = get_field_in("surf_mom_flux").get_view<const Real**>();
   const auto& qc               = get_field_out("qc").get_view<Spack**>();
   const auto& qv               = get_field_out("qv").get_view<Spack**>();
   const auto& tke              = get_field_out("tke").get_view<Spack**>();
   const auto& cldfrac_liq      = get_field_out("cldfrac_liq").get_view<Spack**>();
   const auto& sgs_buoy_flux    = get_field_out("sgs_buoy_flux").get_view<Spack**>();
+  const auto& tk               = get_field_out("eddy_diff_mom").get_view<Spack**>();
   const auto& inv_qc_relvar    = get_field_out("inv_qc_relvar").get_view<Spack**>();
   const auto& phis             = get_field_in("phis").get_view<const Real*>();
 
@@ -282,14 +287,24 @@ void SHOCMacrophysics::initialize_impl ()
   auto qw          = m_buffer.qw;
   auto dse         = m_buffer.dse;
   auto tke_copy    = m_buffer.tke_copy;
+  auto qc_copy     = m_buffer.qc_copy;
   auto shoc_ql2    = m_buffer.shoc_ql2;
 
   // For now, set z_int(i,nlevs) = z_surf = 0
   const Real z_surf = 0.0;
 
-  shoc_preprocess.set_variables(m_num_cols,m_num_levs,m_num_tracers,z_surf,m_cell_area,
-                                T_mid,p_mid,p_int,pseudo_density,omega,phis,surf_sens_flux,surf_latent_flux,
-                                surf_mom_flux,qv,qc,tke,tke_copy,z_mid,z_int,cell_length,
+  // Some SHOC variables should be initialized uniformly if an Initial run
+  if (run_type==RunType::Initial){
+    Kokkos::deep_copy(sgs_buoy_flux,0.0);
+    Kokkos::deep_copy(tk,0.0);
+    Kokkos::deep_copy(tke,0.0004);
+    Kokkos::deep_copy(tke_copy,0.0004);
+    Kokkos::deep_copy(cldfrac_liq,0.0);
+  }
+
+  shoc_preprocess.set_variables(m_num_cols,m_num_levs,m_num_tracers,z_surf,m_cell_area,m_cell_lat,
+                                T_mid,p_mid,p_int,pseudo_density,omega,phis,surf_sens_flux,surf_evap,
+                                surf_mom_flux,qv,qc,qc_copy,tke,tke_copy,z_mid,z_int,cell_length,
                                 dse,rrho,rrho_i,thv,dz,zt_grid,zi_grid,wpthlp_sfc,wprtp_sfc,upwp_sfc,vpwp_sfc,
                                 wtracer_sfc,wm_zt,inv_exner,thlm,qw);
 
@@ -319,9 +334,9 @@ void SHOCMacrophysics::initialize_impl ()
   input_output.horiz_wind   = get_field_out("horiz_winds").get_view<Spack***>();
   input_output.wthv_sec     = sgs_buoy_flux;
   input_output.qtracers     = get_group_out("tracers").m_bundle->get_view<Spack***>();
-  input_output.tk           = get_field_out("eddy_diff_mom").get_view<Spack**>();
+  input_output.tk           = tk;
   input_output.shoc_cldfrac = cldfrac_liq;
-  input_output.shoc_ql      = qc;
+  input_output.shoc_ql      = qc_copy;
 
   // Output Variables
   output.pblh     = get_field_out("pbl_height").get_view<Real*>();
@@ -344,23 +359,58 @@ void SHOCMacrophysics::initialize_impl ()
   history_output.brunt     = m_buffer.brunt;
 
   shoc_postprocess.set_variables(m_num_cols,m_num_levs,
-                                 rrho,qv,qw,qc,tke,tke_copy,shoc_ql2,
-                                 cldfrac_liq,sgs_buoy_flux,inv_qc_relvar,
+                                 rrho,qv,qw,qc,qc_copy,tke,tke_copy,shoc_ql2,
+                                 cldfrac_liq,inv_qc_relvar,
                                  T_mid, dse, z_mid, phis);
 
   // Set field property checks for the fields in this process
-  auto T_interval_check = std::make_shared<FieldWithinIntervalCheck<Real> >(150, 500);
-  auto positivity_check = std::make_shared<FieldPositivityCheck<Real> >();
-  get_field_out("T_mid").add_property_check(T_interval_check);
-  get_field_out("tke").add_property_check(positivity_check);
+  auto eps = std::numeric_limits<Real>::epsilon();
+  using Interval = FieldWithinIntervalCheck;
+  using LowerBound = FieldLowerBoundCheck;
+  add_postcondition_check<Interval>(get_field_out("T_mid"),m_grid,140.0,500.0,false);
+  add_postcondition_check<Interval>(get_field_out("qc"),m_grid,0.0,0.1,false);
+  add_postcondition_check<Interval>(get_field_out("horiz_winds"),m_grid,-400.0,400.0,false);
+  add_postcondition_check<LowerBound>(get_field_out("pbl_height"),m_grid,0);
+  add_postcondition_check<Interval>(get_field_out("cldfrac_liq"),m_grid,0.0,1.0,false);
+  add_postcondition_check<LowerBound>(get_field_out("tke"),m_grid,0);
+  // For qv, ensure it doesn't get negative, by allowing repair of any neg value.
+  // TODO: use a repairable lb that clips only "small" negative values
+  add_postcondition_check<Interval>(get_field_out("qv"),m_grid,0,0.2,true);
+
+  // Setup WSM for internal local variables
+  const auto nlev_packs  = ekat::npack<Spack>(m_num_levs);
+  const auto nlevi_packs = ekat::npack<Spack>(m_num_levs+1);
+  const int n_wind_slots = ekat::npack<Spack>(2)*Spack::n;
+  const int n_trac_slots = ekat::npack<Spack>(m_num_tracers+3)*Spack::n;
+  const auto default_policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nlev_packs);
+  workspace_mgr.setup(m_buffer.wsm_data, nlevi_packs, 13+(n_wind_slots+n_trac_slots), default_policy);
+
+  // Calculate pref_mid, and use that to calculate
+  // maximum number of levels in pbl from surface
+  const auto pref_mid = m_buffer.pref_mid;
+  const auto s_pref_mid = ekat::scalarize(pref_mid);
+  const auto hyam = m_grid->get_geometry_data("hyam");
+  const auto hybm = m_grid->get_geometry_data("hybm");
+  const auto ps0 = C::P0;
+  const auto psref = ps0;
+  Kokkos::parallel_for(Kokkos::RangePolicy<>(0, m_num_levs), KOKKOS_LAMBDA (const int lev) {
+    s_pref_mid(lev) = ps0*hyam(lev) + psref*hybm(lev);
+  });
+  Kokkos::fence();
+
+  const int ntop_shoc = 0;
+  const int nbot_shoc = m_num_levs;
+  m_npbl = SHF::shoc_init(nbot_shoc, ntop_shoc, pref_mid);
 }
 
 // =========================================================================================
 void SHOCMacrophysics::run_impl (const int dt)
 {
-  const auto nlev_packs  = ekat::npack<Spack>(m_num_levs);
-  const auto nlevi_packs = ekat::npack<Spack>(m_num_levs+1);
+  EKAT_REQUIRE_MSG (dt<=300,
+      "Error! SHOC is intended to run with a timestep no longer than 5 minutes.\n"
+      "       Please, reduce timestep (perhaps increasing subcycling iteratinos).\n");
 
+  const auto nlev_packs  = ekat::npack<Spack>(m_num_levs);
   const auto scan_policy    = ekat::ExeSpaceUtils<KT::ExeSpace>::get_thread_range_parallel_scan_team_policy(m_num_cols, nlev_packs);
   const auto default_policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nlev_packs);
 
@@ -371,23 +421,14 @@ void SHOCMacrophysics::run_impl (const int dt)
                        shoc_preprocess);
   Kokkos::fence();
 
-
-  // Calculate maximum number of levels in pbl from surface
-  const auto pref_mid = get_field_in("pref_mid").get_view<const Spack*>();
-  const int ntop_shoc = 0;
-  const int nbot_shoc = m_num_levs;
-  m_npbl = SHF::shoc_init(nbot_shoc,ntop_shoc,pref_mid);
-
   // For now set the host timestep to the shoc timestep. This forces
   // number of SHOC timesteps (nadv) to be 1.
   // TODO: input parameter?
   hdtime = dt;
   m_nadv = std::max(hdtime/dt,1);
 
-  // WorkspaceManager for internal local variables
-  const int n_wind_slots = ekat::npack<Spack>(2)*Spack::n;
-  const int n_trac_slots = ekat::npack<Spack>(m_num_tracers+3)*Spack::n;
-  ekat::WorkspaceManager<Spack, KT::Device> workspace_mgr(m_buffer.wsm_data, nlevi_packs, 13+(n_wind_slots+n_trac_slots), default_policy);
+  // Reset internal WSM variables.
+  workspace_mgr.reset_internals();
 
   // Run shoc main
   SHF::shoc_main(m_num_cols, m_num_levs, m_num_levs+1, m_npbl, m_nadv, m_num_tracers, dt,

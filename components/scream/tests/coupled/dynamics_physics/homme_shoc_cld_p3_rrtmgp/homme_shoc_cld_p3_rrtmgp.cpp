@@ -3,31 +3,20 @@
 // The AD
 #include "control/atmosphere_driver.hpp"
 
-// Dynamics includes
-#include "dynamics/register_dynamics.hpp"
-#include "dynamics/homme/interface/scream_homme_interface.hpp"
-
 // Physics includes
 #include "physics/p3/atmosphere_microphysics.hpp"
 #include "physics/shoc/atmosphere_macrophysics.hpp"
 #include "physics/cld_fraction/atmosphere_cld_fraction.hpp"
 #include "physics/rrtmgp/atmosphere_radiation.hpp"
 
+// Dynamics includes
+#include "dynamics/register_dynamics.hpp"
+#include "dynamics/homme/interface/scream_homme_interface.hpp"
+
 // EKAT headers
 #include "ekat/ekat_assert.hpp"
 #include "ekat/ekat_parse_yaml_file.hpp"
-#include "ekat/util/ekat_feutils.hpp"
 #include "ekat/ekat_assert.hpp"
-
-static int get_default_fpes () {
-#ifdef SCREAM_FPE
-  return (FE_DIVBYZERO |
-          FE_INVALID   |
-          FE_OVERFLOW);
-#else
-  return 0;
-#endif
-}
 
 TEST_CASE("scream_homme_physics", "scream_homme_physics") {
   using namespace scream;
@@ -35,8 +24,6 @@ TEST_CASE("scream_homme_physics", "scream_homme_physics") {
 
   // Create a comm
   ekat::Comm atm_comm (MPI_COMM_WORLD);
-
-  ekat::enable_fpes(get_default_fpes());
 
   // Load ad parameter list
   std::string fname = "input.yaml";

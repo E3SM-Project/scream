@@ -6,16 +6,10 @@
 #include "share/field/field_header.hpp"
 #include "share/field/field.hpp"
 #include "share/field/field_manager.hpp"
-#include "share/field/field_property_checks/field_positivity_check.hpp"
-#include "share/field/field_property_checks/field_within_interval_check.hpp"
-#include "share/field/field_property_checks/field_lower_bound_check.hpp"
-#include "share/field/field_property_checks/field_upper_bound_check.hpp"
-#include "share/field/field_property_checks/field_nan_check.hpp"
 #include "share/field/field_utils.hpp"
 #include "share/util/scream_setup_random_test.hpp"
 
 #include "share/grid/point_grid.hpp"
-#include "share/grid/user_provided_grids_manager.hpp"
 
 #include "ekat/ekat_pack.hpp"
 #include "ekat/ekat_pack_utils.hpp"
@@ -85,7 +79,6 @@ TEST_CASE("field", "") {
   using namespace scream;
   using namespace ShortFieldTagsNames;
   using namespace ekat::units;
-  using kt = KokkosTypes<DefaultDevice>;
 
   using P4 = ekat::Pack<Real,4>;
   using P8 = ekat::Pack<Real,8>;
@@ -102,7 +95,7 @@ TEST_CASE("field", "") {
 
   // Check if we can extract a reshaped view
   SECTION ("reshape") {
-    Field<Real> f1 (fid);
+    Field f1 (fid);
 
     // Should not be able to reshape before allocating
     REQUIRE_THROWS(f1.get_view<Real*>());
@@ -142,32 +135,10 @@ TEST_CASE("field", "") {
     REQUIRE_THROWS (f1.get_view<P16***>());
   }
 
-  SECTION ("compare") {
-
-    Field<Real> f1(fid), f2(fid);
-    f2.get_header().get_alloc_properties().request_allocation<P16>();
+  SECTION ("equivalent") {
+    Field f1 (fid), f2(fid);
     f1.allocate_view();
     f2.allocate_view();
-
-    auto v1 = f1.get_view<Real**>();
-    auto v2 = f2.get_view<P8**>();
-    auto dim0 = fid.get_layout().dim(0);
-    auto dim1 = fid.get_layout().dim(1);
-    Kokkos::parallel_for(kt::RangePolicy(0,dim0*dim1),
-                         KOKKOS_LAMBDA(int idx) {
-      int i = idx / dim1;
-      int j = idx % dim1;
-      v1(i,j) = i*dim1+j;
-
-      int jpack = j / P8::n;
-      int jvec = j % P8::n;
-      v2(i,jpack)[jvec] = i*dim1+j;
-    });
-    Kokkos::fence();
-
-    // The views were filled the same way, so they should test equal
-    // NOTE: this cmp function only test the "actual" field, discarding padding.
-    REQUIRE(views_are_equal(f1,f2));
 
     // Check self equivalence
     // get_const returns a copy of self, so equivalent (if already allocated)
@@ -179,16 +150,38 @@ TEST_CASE("field", "") {
 
   // Check copy constructor
   SECTION ("copy ctor") {
-    Field<Real> f1 (fid);
+    Field f1 (fid);
 
     f1.allocate_view();
     f1.deep_copy(3.0);
 
-    Field<const Real> f2 = f1;
+    Field f2 = f1;
     REQUIRE(f2.get_header_ptr()==f1.get_header_ptr());
-    REQUIRE(f2.get_internal_view_data()==f1.get_internal_view_data());
+    REQUIRE(f2.get_internal_view_data<Real>()==f1.get_internal_view_data<Real>());
     REQUIRE(f2.is_allocated());
     REQUIRE(views_are_equal(f1,f2));
+  }
+
+  SECTION ("clone") {
+    Field f1 (fid);
+    auto& fap1 = f1.get_header().get_alloc_properties();
+
+    fap1.request_allocation(16);
+    f1.allocate_view();
+    f1.deep_copy(3.0);
+
+    Field f2 = f1.clone();
+    auto& fap2 = f2.get_header().get_alloc_properties();
+    REQUIRE(f2.is_allocated());
+    REQUIRE(fap2.get_alloc_size()==fap1.get_alloc_size());
+    REQUIRE(views_are_equal(f1,f2));
+
+    // Changing f2 should leave f1 unchanged
+    f2.deep_copy<Real>(0.0);
+    REQUIRE (field_max<Real>(f2)==0.0);
+    REQUIRE (field_min<Real>(f2)==0.0);
+    REQUIRE (field_max<Real>(f1)==3.0);
+    REQUIRE (field_min<Real>(f1)==3.0);
   }
 
   SECTION ("deep_copy") {
@@ -197,11 +190,11 @@ TEST_CASE("field", "") {
 
     FieldIdentifier fid1("vec_3d",{t1,d1},m/s,"some_grid");
 
-    Field<Real> f1(fid1);
+    Field f1(fid1);
     f1.allocate_view();
     f1.deep_copy(1.0);
     f1.sync_to_host();
-    auto v = f1.get_internal_view_data<Host>();
+    auto v = reinterpret_cast<Real*>(f1.get_internal_view_data<Real,Host>());
     for (int i=0; i<fid1.get_layout().size(); ++i) {
       REQUIRE (v[i]==1.0);
     }
@@ -214,7 +207,7 @@ TEST_CASE("field", "") {
 
     FieldIdentifier fid1("4d",{t1,d1},m/s,"some_grid");
 
-    Field<Real> f1(fid1);
+    Field f1(fid1);
     f1.allocate_view();
     randomize(f1,engine,pdf);
 
@@ -243,7 +236,7 @@ TEST_CASE("field", "") {
 
     FieldIdentifier fid1("4d",{t1,d1},m/s,"some_grid");
 
-    Field<Real> f1(fid1);
+    Field f1(fid1);
     f1.allocate_view();
     randomize(f1,engine,pdf);
 
@@ -284,7 +277,7 @@ TEST_CASE("field", "") {
 
     FieldIdentifier fid_2("vec_3d",{tags_2,dims_2},m/s,"some_grid");
 
-    Field<Real> f_vec(fid_2);
+    Field f_vec(fid_2);
     f_vec.allocate_view();
 
     auto f0 = f_vec.get_component(0);
@@ -310,13 +303,12 @@ TEST_CASE("field", "") {
     }
   }
 
-
   SECTION ("host_view") {
-    Field<Real> f(fid);
+    Field f(fid);
 
     // Views not yet allocated
-    REQUIRE_THROWS(f.get_internal_view_data());
-    REQUIRE_THROWS(f.get_internal_view_data<Host>());
+    REQUIRE_THROWS(f.get_internal_view_data<Real>());
+    REQUIRE_THROWS(f.get_internal_view_data<Real,Host>());
     REQUIRE_THROWS(f.sync_to_host());
     REQUIRE_THROWS(f.sync_to_dev());
 
@@ -337,6 +329,53 @@ TEST_CASE("field", "") {
         REQUIRE (v2dh(i,j) == v2d_hm(i,j) );
       }
     }
+  }
+}
+
+TEST_CASE("field_group") {
+  using namespace scream;
+  using namespace ekat::units;
+  using namespace ShortFieldTagsNames;
+  using FID = FieldIdentifier;
+  using FL  = FieldLayout;
+
+  constexpr int ncols = 10;
+  constexpr int ndims = 4;
+  constexpr int nlevs = 8;
+
+  FID fid ("V",FL({COL,CMP,LEV},{ncols,ndims,nlevs}),Units::nondimensional(),"the_grid");
+  Field f (fid);
+  f.allocate_view();
+
+  FieldGroupInfo info("G");
+  info.m_bundled = true;
+  std::vector<Field> f_i;
+  for (int i=0; i<ndims; ++i) {
+    f_i.push_back(f.get_component(i));
+    info.m_fields_names.push_back(f_i[i].name());
+    info.m_subview_dim = 1;
+    info.m_subview_idx[f_i[i].name()] = i;
+  }
+
+  // Create group and set subfields
+  FieldGroup g(info);
+  g.m_bundle = std::make_shared<Field>(f);
+  for (int i=0; i<ndims; ++i) {
+    g.m_fields["G_"+std::to_string(i)] = std::make_shared<Field>(f_i[i]);
+  }
+
+  // Check const cloning
+  auto cg= g.get_const();
+  REQUIRE (cg.m_bundle->is_read_only());
+  REQUIRE (cg.m_fields.size()==g.m_fields.size());
+  REQUIRE (*cg.m_info==*g.m_info);
+  REQUIRE (cg.m_bundle->get_internal_view_data<const Real>()==
+            g.m_bundle->get_internal_view_data<const Real>());
+  for (int i=0; i<ndims; ++i) {
+    const auto&  f =  *g.m_fields.at("G_"+std::to_string(i));
+    const auto& cf = *cg.m_fields.at("G_"+std::to_string(i));
+    REQUIRE ( f.get_internal_view_data<const Real>()==
+             cf.get_internal_view_data<const Real>());
   }
 }
 
@@ -369,7 +408,6 @@ TEST_CASE("field_mgr", "") {
   FID fid2("field_2", {tags1, dims1},  m/s, "phys");
   FID fid3("field_3", {tags1, dims1},  m/s, "phys");
   FID fid4("field_4", {tags3, dims4},  m/s, "phys");
-  FID fid5("field_5", {tags1, dims1},  m/s, "phys");
 
   FID bad1("field_1", {tags2, dims2},  m/s, "dyn");  // Bad grid
   FID bad2("field_2", {tags1, dims1}, km/s, "phys"); // Bad units
@@ -377,7 +415,7 @@ TEST_CASE("field_mgr", "") {
 
   ekat::Comm comm(MPI_COMM_WORLD);
   auto pg = create_point_grid("phys",ncols*comm.size(),nlevs,comm);
-  FieldManager<Real> field_mgr(pg);
+  FieldManager field_mgr(pg);
 
   // Should not be able to register fields yet
   REQUIRE_THROWS(field_mgr.register_field(FR(fid1)));
@@ -391,13 +429,14 @@ TEST_CASE("field_mgr", "") {
   field_mgr.register_field(FR{fid3,SL{"group_1","group_2","group_3"}});
   field_mgr.register_field(FR{fid2,"group_4"});
   field_mgr.register_field(FR{fid4});
-  field_mgr.register_field(FR{fid5,FR{fid4},subview_dim,subview_slice,true}); // Register a dynamic subfield
 
   // === Invalid registration calls === //
   REQUIRE_THROWS(field_mgr.register_field(FR{bad1}));
   REQUIRE_THROWS(field_mgr.register_field(FR{bad2}));
   REQUIRE_THROWS(field_mgr.register_field(FR{bad2}));
-  REQUIRE_THROWS(field_mgr.register_field(FR{fid5,FR{fid4},1,0,false})); // Cannot register inconsistent subfields
+
+  // Cannot add external fields while registration is happening
+  REQUIRE_THROWS(field_mgr.add_field(Field()));
 
   field_mgr.registration_ends();
 
@@ -406,14 +445,13 @@ TEST_CASE("field_mgr", "") {
 
   // Check registration is indeed closed
   REQUIRE (field_mgr.repository_state()==RepoState::Closed);
-  REQUIRE (field_mgr.size()==5);
+  REQUIRE (field_mgr.size()==4);
 
   // Get all fields
   auto f1 = field_mgr.get_field(fid1.name());
   auto f2 = field_mgr.get_field(fid2.name());
   auto f3 = field_mgr.get_field(fid3.name());
   auto f4 = field_mgr.get_field(fid4.name());
-  auto f5 = field_mgr.get_field(fid5.name());
   REQUIRE_THROWS(field_mgr.get_field("bad")); // Not in the field_mgr
   REQUIRE(f1.get_header().get_identifier()==fid1);
 
@@ -462,19 +500,26 @@ TEST_CASE("field_mgr", "") {
   REQUIRE (f1_padding==ekat::PackInfo<Pack::n>::padding(nlevs));
   REQUIRE (f2_padding==ekat::PackInfo<16>::padding(nlevs));
 
-  // Verify f5 is a subfield of f4
-  auto f5_ap = f5.get_header().get_alloc_properties();
-  REQUIRE (f5_ap.is_subfield());
-  REQUIRE (f5_ap.is_dynamic_subfield());
-  REQUIRE (f5_ap.get_subview_info().dim_idx==subview_dim);
-  REQUIRE (f5_ap.get_subview_info().slice_idx==subview_slice);
+  // Try to subview a field and set the subfield back in the FM
+  field_mgr.add_field(f4.subfield("field_4_sf",subview_dim,subview_slice,true));
+  auto f4_sf = field_mgr.get_field("field_4_sf");
+  REQUIRE (field_mgr.size()==5);
+  REQUIRE_THROWS (field_mgr.add_field(Field())); // Not allocated
+  REQUIRE_THROWS (field_mgr.add_field(f4_sf)); // Cannot have duplicates
 
-  // Fill f4 with random numbers, and verify corresponding subview of f5 gets same values.
+  // Verify f5 is a subfield of f4
+  auto f4_sf_ap = f4_sf.get_header().get_alloc_properties();
+  REQUIRE (f4_sf_ap.is_subfield());
+  REQUIRE (f4_sf_ap.is_dynamic_subfield());
+  REQUIRE (f4_sf_ap.get_subview_info().dim_idx==subview_dim);
+  REQUIRE (f4_sf_ap.get_subview_info().slice_idx==subview_slice);
+
+  // Fill f4_sf with random numbers, and verify corresponding subview of f4 gets same values.
   auto engine = setup_random_test(&comm);
   using RPDF = std::uniform_real_distribution<Real>;
   RPDF pdf(0.0,1.0);
-  randomize(f5,engine,pdf);
-  REQUIRE (views_are_equal(f5,f4.get_component(subview_slice)));
+  randomize(f4_sf,engine,pdf);
+  REQUIRE (views_are_equal(f4_sf,f4.get_component(subview_slice)));
 }
 
 TEST_CASE("tracers_bundle", "") {
@@ -499,7 +544,7 @@ TEST_CASE("tracers_bundle", "") {
   ekat::Comm comm(MPI_COMM_WORLD);
   auto pg = create_point_grid(grid_name,ncols*comm.size(),nlevs,comm);
 
-  FieldManager<Real> field_mgr(pg);
+  FieldManager field_mgr(pg);
   field_mgr.registration_begins();
   field_mgr.register_field(FR{qv_id,"tracers"});
   field_mgr.register_field(FR{qc_id,"tracers"});
@@ -628,7 +673,7 @@ TEST_CASE("multiple_bundles") {
   // where [f1,..,fn] means that the order of those two fields can be anything.
   // The 'block'-reverse of that list is also possible: {[b,f],[a,d],[c,e]}
 
-  FieldManager<Real> field_mgr(pg);
+  FieldManager field_mgr(pg);
   field_mgr.registration_begins();
 
   // Register single fields
@@ -677,181 +722,6 @@ TEST_CASE("multiple_bundles") {
     REQUIRE ( ((f1=="c" && f2=="e") || (f1=="e" && f2=="c")) );
     REQUIRE ( ((f3=="a" && f4=="d") || (f3=="d" && f4=="a")) );
     REQUIRE ( ((f5=="b" && f6=="f") || (f5=="f" && f6=="b")) );
-  }
-}
-
-TEST_CASE("field_property_check", "") {
-
-  using namespace scream;
-  using namespace ekat::units;
-  using namespace ShortFieldTagsNames;
-
-  std::vector<FieldTag> tags = {EL, GP, LEV};
-  std::vector<int> dims = {2, 3, 12};
-
-  FieldIdentifier fid ("field_1",{tags,dims}, m/s,"some_grid");
-
-  auto engine = setup_random_test();
-  using RPDF = std::uniform_real_distribution<Real>;
-  RPDF pos_pdf(0.01,0.99);
-  RPDF neg_pdf(-0.99, -0.01);
-
-  // Check positivity.
-  SECTION ("field_positivity_check") {
-    Field<Real> f1(fid);
-    auto positivity_check = std::make_shared<FieldPositivityCheck<Real> >();
-    REQUIRE(not positivity_check->can_repair());
-    // Note: Here we will test the ability to add a check to a field and then
-    //       access it using get_property_checks.  Subsequent tests will use
-    //       the checker directly on the field.
-    f1.add_property_check(positivity_check);
-    f1.allocate_view();
-    const int num_reals = f1.get_header().get_alloc_properties().get_num_scalars();
-
-    // Assign positive values to the field and make sure it passes our test for
-    // positivity.
-    auto f1_data = f1.get_internal_view_data<Host>();
-    ekat::genRandArray(f1_data,num_reals,engine,pos_pdf);
-    f1.sync_to_dev();
-    for (const auto& p : f1.get_property_checks()) {
-      REQUIRE(p.check(f1));
-    }
-
-    // Assign non-positive values to the field and make sure it fails the check.
-    ekat::genRandArray(f1_data,num_reals,engine,neg_pdf);
-    f1.sync_to_dev();
-    for (const auto& p : f1.get_property_checks()) {
-      REQUIRE(not p.check(f1));
-    }
-  }
-
-  // Check positivity with repairs.
-  SECTION ("field_positivity_check_with_repairs") {
-    Field<Real> f1(fid);
-    auto positivity_check = std::make_shared<FieldPositivityCheck<Real> >(1);
-    REQUIRE(positivity_check->can_repair());
-    f1.allocate_view();
-    const int num_reals = f1.get_header().get_alloc_properties().get_num_scalars();
-
-    // Assign non-positive values to the field, make sure it fails the check,
-    // and then repair the field so it passes.
-    auto f1_data = f1.get_internal_view_data<Host>();
-    ekat::genRandArray(f1_data,num_reals,engine,neg_pdf);
-    f1.sync_to_dev();
-    REQUIRE(not positivity_check->check(f1));
-    positivity_check->repair(f1);
-    REQUIRE(positivity_check->check(f1));
-  }
-
-  // Check that values are not NaN
-  SECTION("field_not_nan_check") {
-    Field<Real> f1(fid);
-    auto nan_check = std::make_shared<FieldNaNCheck<Real>>();
-    f1.allocate_view();
-    const int num_reals = f1.get_header().get_alloc_properties().get_num_scalars();
-
-    // Assign  values to the field and make sure it passes our test for NaNs.
-    auto f1_data = f1.get_internal_view_data<Host>();
-    ekat::genRandArray(f1_data,num_reals,engine,neg_pdf);
-    f1.sync_to_dev();
-    REQUIRE(nan_check->check(f1));
-
-    // Assign a NaN value to the field, make sure it fails the check,
-    Int midpt = num_reals / 2;
-    f1_data[midpt] = std::numeric_limits<Real>::quiet_NaN();
-    f1.sync_to_dev();
-    REQUIRE(not nan_check->check(f1));
-  }
-
-  // Check that the values of a field lie within an interval.
-  SECTION ("field_within_interval_check") {
-    Field<Real> f1(fid);
-    auto interval_check = std::make_shared<FieldWithinIntervalCheck<Real> >(0, 1);
-    REQUIRE(interval_check->can_repair());
-    f1.allocate_view();
-    const int num_reals = f1.get_header().get_alloc_properties().get_num_scalars();
-
-    // Assign in-bound values to the field and make sure it passes the within-interval check
-    auto f1_data = f1.get_internal_view_data<Host>();
-    ekat::genRandArray(f1_data,num_reals,engine,pos_pdf);
-    f1.sync_to_dev();
-    REQUIRE(interval_check->check(f1));
-
-    // Assign out-of-bounds values to the field, make sure it fails the check,
-    // and then repair the field so it passes.
-    for (int i = 0; i<num_reals; ++i) {
-      f1_data[i] *= -1;
-    }
-    f1.sync_to_dev();
-    REQUIRE(not interval_check->check(f1));
-    interval_check->repair(f1);
-    REQUIRE(interval_check->check(f1));
-  }
-
-  // Check that the values of a field are above a lower bound
-  SECTION ("field_lower_bound_check") {
-    Field<Real> f1(fid);
-    auto lower_bound_check = std::make_shared<FieldLowerBoundCheck<Real> >(-1.0);
-    REQUIRE(lower_bound_check->can_repair());
-    f1.allocate_view();
-    const int num_reals = f1.get_header().get_alloc_properties().get_num_scalars();
-
-    // Assign in-bound values to the field and make sure it passes the lower_bound check
-    auto f1_data = f1.get_internal_view_data<Host>();
-    for (int i = 0; i<num_reals; ++i) {
-      f1_data[i] = std::numeric_limits<Real>::max() - i*1.0; 
-    }
-    f1.sync_to_dev();
-    REQUIRE(lower_bound_check->check(f1));
-
-    // Assign out-of-bounds values to the field, make sure it fails the check,
-    // and then repair the field so it passes.
-    for (int i = 0; i<num_reals; ++i) {
-      f1_data[i] = -2.0*(i+1);
-    }
-    f1.sync_to_dev();
-    REQUIRE(not lower_bound_check->check(f1));
-    lower_bound_check->repair(f1);
-    REQUIRE(lower_bound_check->check(f1));
-    // Should have repaired to the lower bound:
-    f1.sync_to_host();
-    for (int i=0; i<num_reals; ++i)
-    {
-      REQUIRE(f1_data[i] == -1.0);
-    }
-  }
-
-  // Check that the values of a field are above below an upper bound
-  SECTION ("field_upper_bound_check") {
-    Field<Real> f1(fid);
-    auto upper_bound_check = std::make_shared<FieldUpperBoundCheck<Real> >(1.0);
-    REQUIRE(upper_bound_check->can_repair());
-    f1.allocate_view();
-    const int num_reals = f1.get_header().get_alloc_properties().get_num_scalars();
-
-    // Assign in-bound values to the field and make sure it passes the upper_bound check
-    auto f1_data = f1.get_internal_view_data<Host>();
-    for (int i = 0; i<num_reals; ++i) {
-      f1_data[i] = -std::numeric_limits<Real>::max() + i*1.0; 
-    }
-    f1.sync_to_dev();
-    REQUIRE(upper_bound_check->check(f1));
-
-    // Assign out-of-bounds values to the field, make sure it fails the check,
-    // and then repair the field so it passes.
-    for (int i = 0; i<num_reals; ++i) {
-      f1_data[i] = 2.0*(i+1);
-    }
-    f1.sync_to_dev();
-    REQUIRE(not upper_bound_check->check(f1));
-    upper_bound_check->repair(f1);
-    REQUIRE(upper_bound_check->check(f1));
-    // Should have repaired to the upper bound:
-    f1.sync_to_host();
-    for (int i=0; i<num_reals; ++i)
-    {
-      REQUIRE(f1_data[i] == 1.0);
-    }
   }
 }
 

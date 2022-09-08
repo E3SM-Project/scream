@@ -5,19 +5,21 @@ Averaging Type: Instant
 Max Snapshots Per File: 1
 Fields:
   Physics GLL:
-    - T_mid
-    - qv
-    - ps
-    - p_int
-    - p_mid
-    - pseudo_density
-    - horiz_winds
-    - w_int
-    - phi_int
+    Field Names:
+      - T_mid
+      - qv
+      - ps
+      - p_int
+      - p_mid
+      - pseudo_density
+      - horiz_winds
+      - pseudo_density_dry
+      - p_dry_int
+      - p_dry_mid
  
-Output Control:
+output_control:
   Frequency: ${NUM_STEPS}
-  Frequency Units: Steps
+  frequency_units: nsteps
   Timestamp in Filename: false
   MPI Ranks in Filename: true
 ...

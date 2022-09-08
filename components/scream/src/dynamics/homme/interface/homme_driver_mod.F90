@@ -1,17 +1,19 @@
+! Include Homme's config settings
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
 module homme_driver_mod
-  use iso_c_binding, only: c_ptr, c_f_pointer, c_int, c_double, c_bool, C_NULL_CHAR
+  use iso_c_binding, only: c_ptr, c_int, c_double, c_bool, C_NULL_CHAR
 
   use parallel_mod,  only: abortmp
-  use perf_mod,      only: t_initf, t_finalizef, t_prf, t_startf, t_stopf
 
   implicit none
   private 
 
   public :: prim_init_data_structures_f90
+  public :: prim_complete_init1_phase_f90
+  public :: prim_set_hvcoords_f90
   public :: prim_init_model_f90
   public :: prim_run_f90
   public :: prim_finalize_f90
@@ -19,21 +21,13 @@ module homme_driver_mod
 contains
 
   subroutine prim_init_data_structures_f90 () bind(c)
-    use prim_driver_mod,      only: prim_create_c_data_structures, prim_init_kokkos_functors
-    use prim_driver_base,     only: prim_init1_geometry, prim_init1_elem_arrays, &
-                                    prim_init1_cleanup, prim_init1_buffers
+    use prim_driver_mod,      only: prim_create_c_data_structures
+    use prim_driver_base,     only: prim_init1_elem_arrays
     use prim_cxx_driver_base, only: setup_element_pointers
     use derivative_mod_base,  only: derivinit
     use time_mod,             only: TimeLevel_init
-    use hybvcoord_mod,        only: hvcoord_init
-    use hybrid_mod,           only: hybrid_create
-    use control_mod,          only: vfile_mid, vfile_int
     use homme_context_mod,    only: is_geometry_inited, is_data_structures_inited, &
-                                    par, elem, tl, deriv, hybrid, hvcoord, init_parallel_f90
-    !
-    ! Local(s)
-    !
-    integer :: ierr
+                                    par, elem, tl, deriv, hvcoord
 
     if (is_data_structures_inited) then
       call abortmp ("Error! prim_init_data_structures_f90 was already called.\n")
@@ -49,11 +43,6 @@ contains
     call derivinit(deriv)
 
     ! ==================================
-    ! Initialize the buffers for exchanges
-    ! ==================================
-    call prim_init1_buffers(elem,par)
-
-    ! ==================================
     ! Initialize element pointers
     ! ==================================
     call setup_element_pointers(elem)
@@ -66,14 +55,65 @@ contains
     ! Initialize the time levels
     call TimeLevel_init(tl)
 
-    ! Init hvcoord
-    hvcoord = hvcoord_init(vfile_mid, vfile_int, .true., hybrid%masterthread, ierr)
-
     ! Initialize Kokkos data structures
     call prim_create_c_data_structures (tl, hvcoord, elem(1)%mp)
 
     is_data_structures_inited = .true.
   end subroutine prim_init_data_structures_f90
+
+  subroutine prim_complete_init1_phase_f90 () bind(c)
+    use prim_driver_base,  only: prim_init1_buffers, prim_init1_compose, prim_init1_cleanup
+    use homme_context_mod, only: par, elem
+    use compose_mod,       only: compose_control_kokkos_init_and_fin
+    use prim_driver_mod,   only: prim_init_grid_views
+    
+    ! Compose is not in charge of init/finalize kokkos
+    call compose_control_kokkos_init_and_fin(.false.)
+
+    ! Init compose
+    call prim_init1_compose(par,elem)
+
+    ! ==================================
+    ! Initialize the buffers for exchanges
+    ! ==================================
+    call prim_init1_buffers(elem,par)
+
+    ! Cleanup the tmp stuff used in prim_init1_geometry
+    call prim_init1_cleanup()
+
+    call prim_init_grid_views (elem)
+
+  end subroutine prim_complete_init1_phase_f90
+
+
+  subroutine prim_set_hvcoords_f90 (ps0, hyai_ptr, hybi_ptr, hyam_ptr, hybm_ptr) bind(c)
+    use iso_c_binding,     only: c_f_pointer
+    use homme_context_mod, only: hvcoord, masterproc
+    use dimensions_mod,    only: nlev, nlevp
+    use hybvcoord_mod,     only: set_layer_locations
+    !
+    ! Inputs
+    !
+    type (c_ptr), intent(in) :: hyai_ptr, hybi_ptr, hyam_ptr, hybm_ptr
+    real(kind=c_double), intent(in) :: ps0
+    !
+    ! Locals
+    !
+    real(kind=c_double), pointer :: hyai(:), hybi(:), hyam(:), hybm(:)
+
+    call c_f_pointer (hyai_ptr, hyai, [nlevp])
+    call c_f_pointer (hybi_ptr, hybi, [nlevp])
+    call c_f_pointer (hyam_ptr, hyam, [nlev])
+    call c_f_pointer (hybm_ptr, hybm, [nlev])
+
+    hvcoord%ps0 = ps0
+    hvcoord%hyai = hyai
+    hvcoord%hybi = hybi
+    hvcoord%hyam = hyam
+    hvcoord%hybm = hybm
+
+    call set_layer_locations(hvcoord,.true.,masterproc)
+  end subroutine prim_set_hvcoords_f90
 
   subroutine prim_copy_cxx_to_f90 (copy_phis)
     use iso_c_binding,       only: c_ptr, c_loc
@@ -86,6 +126,7 @@ contains
                                    elem_state_phinh_i, elem_state_dp3d, elem_state_ps_v, &
                                    elem_state_Qdp, elem_state_Q, elem_derived_omega_p,   &
                                    elem_state_phis
+    
     !
     ! Inputs
     !
@@ -135,11 +176,12 @@ contains
   end subroutine prim_copy_cxx_to_f90
 
   subroutine prim_init_model_f90 () bind(c)
-    use prim_driver_mod,   only: prim_init_grid_views, prim_init_ref_states_views, &
+    use prim_driver_mod,   only: prim_init_ref_states_views, &
                                  prim_init_diags_views, prim_init_kokkos_functors, &
                                  prim_init_state_views
     use prim_state_mod,    only: prim_printstate
     use model_init_mod,    only: model_init2
+    use control_mod,       only: disable_diagnostics
     use dimensions_mod,    only: nelemd
     use homme_context_mod, only: is_model_inited, is_data_structures_inited, &
                                  elem, hybrid, hvcoord, deriv, tl
@@ -165,25 +207,27 @@ contains
     ! single buffer.
     call prim_init_kokkos_functors (allocate_buffer)
 
-    ! Init grid views, ref_states views, and diags views
-    call prim_init_grid_views (elem)
+    ! Init ref_states views, and diags views
     call prim_init_ref_states_views (elem)
     call prim_init_diags_views (elem)
 
     ! In order to print up to date stuff in F90
     call prim_copy_cxx_to_f90 (.true.)
-    call prim_printstate(elem, tl, hybrid,hvcoord,1, nelemd)
+    if (.not. disable_diagnostics) then
+      call prim_printstate(elem, tl, hybrid,hvcoord,1, nelemd)
+    endif
 
     is_model_inited = .true.
 
   end subroutine prim_init_model_f90 
 
-  subroutine prim_run_f90 () bind(c)
+  subroutine prim_run_f90 (nsplit_iteration) bind(c)
     use dimensions_mod,    only: nelemd
     use prim_driver_mod,   only: prim_run_subcycle
-
     use time_mod,          only: tstep
     use homme_context_mod, only: is_model_inited, elem, hybrid, tl, hvcoord
+
+    integer(kind=c_int), value, intent(in) :: nsplit_iteration
 
     if (.not. is_model_inited) then
       call abortmp ("Error! prim_init_model_f90 was not called yet (or prim_finalize_f90 was already called).\n")
@@ -193,11 +237,11 @@ contains
       call abortmp ("Error! No time step was set in Homme yet.\n")
     endif
 
-    call prim_run_subcycle(elem,hybrid,1,nelemd,tstep,.false.,tl,hvcoord,1)
+    call prim_run_subcycle(elem,hybrid,1,nelemd,tstep,.false.,tl,hvcoord,nsplit_iteration)
   end subroutine prim_run_f90
 
   subroutine prim_finalize_f90 () bind(c)
-    use homme_context_mod,    only: is_model_inited, elem, dom_mt, par
+    use homme_context_mod,    only: is_model_inited, elem, dom_mt
     use prim_cxx_driver_base, only: prim_finalize
 
     if (.not. is_model_inited) then
@@ -210,15 +254,6 @@ contains
     ! Deallocate the pointers
     deallocate (elem)
     deallocate (dom_mt)
-
-    call t_stopf('Total')
-
-    ! Finalize and write the timings
-    if(par%masterproc) print *,"writing timing data"
-    call t_prf('HommeTime', par%comm)
-
-    if(par%masterproc) print *,"calling t_finalizef"
-    call t_finalizef()
 
     is_model_inited = .false.
 

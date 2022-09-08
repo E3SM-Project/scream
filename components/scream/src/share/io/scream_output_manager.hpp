@@ -47,6 +47,7 @@ namespace scream
  * locally create a parameter list.
  *
  * Adding output streams mid-simulation:
+ * TODO - This doesn't actually exist
  * It is possible to add an output stream after init has been called by calling
  * the internal function 'add_output_stream' which takes an EKAT parameter list as input.
  * See comments in add_output_stream below for more details.
@@ -58,8 +59,10 @@ namespace scream
 class OutputManager
 {
 public:
-  using fm_type = FieldManager<Real>;
+  using fm_type = FieldManager;
   using gm_type = GridsManager;
+  using str_any_pair_t = std::pair<std::string,ekat::any>;
+  using globals_map_t = std::map<std::string,str_any_pair_t>;
 
   // Constructor(s) & Destructor
   OutputManager () = default;
@@ -67,26 +70,53 @@ public:
 
   // Set up the manager, creating all output streams. Inputs:
   //  - params: the parameter list with file/fields info, as well as method of output options
-  //  - model_restart_output: whether this output stream is to write a model restart file
+  //  - field_mgr/field_mgrs: field manager(s) storing fields to be outputed
+  //  - grids_mgr: grid manager to create remapping from field managers grids onto the IO grid.
+  //               This is needed, e.g., when outputing SEGrid fields without duplicating dofs.
+  //  - run_t0: the timestamp of the start of the current simulation
+  //  - case_t0: the timestamp of the start of the overall simulation (precedes run_r0 for
+  //             a restarted simulation. Restart logic is triggered *only* if case_t0<run_t0.
+  //  - is_model_restart_output: whether this output stream is to write a model restart file
   void setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
               const std::shared_ptr<fm_type>& field_mgr,
               const std::shared_ptr<const gm_type>& grids_mgr,
-              const util::TimeStamp& t0,
-              const bool is_model_restart_output,
-              const bool is_restarted_run);
+              const util::TimeStamp& run_t0,
+              const util::TimeStamp& case_t0,
+              const bool is_model_restart_output);
+  void setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
+              const std::shared_ptr<fm_type>& field_mgr,
+              const std::shared_ptr<const gm_type>& grids_mgr,
+              const util::TimeStamp& run_t0,
+              const bool is_model_restart_output) {
+    setup (io_comm,params,field_mgr,grids_mgr,run_t0,run_t0,is_model_restart_output);
+  }
 
   void setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
               const std::map<std::string,std::shared_ptr<fm_type>>& field_mgrs,
               const std::shared_ptr<const gm_type>& grids_mgr,
-              const util::TimeStamp& t0,
-              const bool is_model_restart_output,
-              const bool is_restarted_run);
-  void run(util::TimeStamp& current_ts);
+              const util::TimeStamp& run_t0,
+              const util::TimeStamp& case_t0,
+              const bool is_model_restart_output);
+
+  void setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
+              const std::map<std::string,std::shared_ptr<fm_type>>& field_mgrs,
+              const std::shared_ptr<const gm_type>& grids_mgr,
+              const util::TimeStamp& run_t0,
+              const bool is_model_restart_output) {
+    setup (io_comm,params,field_mgrs,grids_mgr,run_t0,run_t0,is_model_restart_output);
+  }
+
+  void setup_globals_map (const globals_map_t& globals);
+  void run (const util::TimeStamp& current_ts);
   void finalize();
 
+  long long res_dep_memory_footprint () const;
 protected:
 
-  std::string compute_filename_root (const IOControl& control, const IOFileSpecs& file_specs) const;
+  std::string compute_filename (const IOControl& control,
+                                const IOFileSpecs& file_specs,
+                                const std::string suffix,
+                                const util::TimeStamp& timestamp) const;
 
   // Craft the restart parameter list
   void set_params (const ekat::ParameterList& params,
@@ -96,6 +126,8 @@ protected:
   using output_ptr_type = std::shared_ptr<output_type>;
 
   std::vector<output_ptr_type>   m_output_streams;
+  globals_map_t                  m_globals;
+
   ekat::Comm                     m_io_comm;
   ekat::ParameterList            m_params;
 
@@ -103,7 +135,7 @@ protected:
   std::string       m_casename;
 
   // How to combine multiple snapshots in the output: Instant, Max, Min, Average
-  std::string       m_avg_type;
+  OutputAvgType     m_avg_type;
 
   // Whether this OutputManager handles a model restart file, or normal model output.
   bool m_is_model_restart_output;
@@ -122,9 +154,11 @@ protected:
   // we might have to load an output checkpoint file (depending on avg type)
   bool m_is_restarted_run;
 
-  // The simulation start date/time. We use this to produce a 'time'
-  // var in the output file, corresponding to seconds_since_start_of_simulation.
-  util::TimeStamp   m_t0;
+  // The initial time stamp of the simulation and run. For initial runs, they coincide,
+  // but for restarted runs, run_t0>case_t0, with the former being the time at which the
+  // restart happens, and the latter being the start time of the *original* run.
+  util::TimeStamp   m_case_t0;
+  util::TimeStamp   m_run_t0;
 };
 
 } // namespace scream

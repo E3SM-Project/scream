@@ -3,16 +3,15 @@
 Casename: spa_standalone_output
 Averaging Type: Instant
 Max Snapshots Per File: 1
-Fields:
+Field Names:
   - aero_g_sw
   - aero_ssa_sw
   - aero_tau_lw
   - aero_tau_sw
-  - nc_activated
-  - p_mid
-Output Control:
+  - nccn
+output_control:
   Frequency: ${NUM_STEPS}
-  Frequency Units: Steps
+  frequency_units: nsteps
   Timestamp in Filename: false
   MPI Ranks in Filename: true
 ...

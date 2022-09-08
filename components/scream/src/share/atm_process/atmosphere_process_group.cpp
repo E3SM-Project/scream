@@ -4,24 +4,30 @@
 #include "ekat/std_meta/ekat_std_utils.hpp"
 #include "ekat/util/ekat_string_utils.hpp"
 
+#include <memory>
+
 namespace scream {
 
 AtmosphereProcessGroup::
 AtmosphereProcessGroup (const ekat::Comm& comm, const ekat::ParameterList& params)
   : AtmosphereProcess(comm, params)
 {
-  // Get number of processes in the group and the scheduling type (Sequential vs Parallel)
-  m_group_size = params.get<int>("Number of Entries");
+
+  // Get the string representation of the group
+  auto group_list_str = m_params.get<std::string>("atm_procs_list");
+  auto group_plist = ekat::parse_nested_list(group_list_str);
+
+  m_group_size = group_plist.get<int>("Num Entries");
   EKAT_REQUIRE_MSG (m_group_size>0, "Error! Invalid group size.\n");
 
   if (m_group_size>1) {
-    if (m_params.get<std::string>("Schedule Type") == "Sequential") {
+    if (m_params.get<std::string>("schedule_type") == "Sequential") {
       m_group_schedule_type = ScheduleType::Sequential;
-    } else if (m_params.get<std::string>("Schedule Type") == "Parallel") {
+    } else if (m_params.get<std::string>("schedule_type") == "Parallel") {
       m_group_schedule_type = ScheduleType::Parallel;
       ekat::error::runtime_abort("Error! Parallel schedule not yet implemented.\n");
     } else {
-      ekat::error::runtime_abort("Error! Invalid 'Schedule Type'. Available choices are 'Parallel' and 'Sequential'.\n");
+      ekat::error::runtime_abort("Error! Invalid 'schedule_type'. Available choices are 'Parallel' and 'Sequential'.\n");
     }
   } else {
     // Pointless to handle this group as parallel, if only one process is in it
@@ -29,21 +35,25 @@ AtmosphereProcessGroup (const ekat::Comm& comm, const ekat::ParameterList& param
   }
 
   // Create the individual atmosphere processes
-  m_group_name = "Group [";
-  m_group_name += m_group_schedule_type==ScheduleType::Sequential
-                ? "Sequential]:" : "Parallel]:";
+  m_group_name = params.name();
+
+  auto& apf = AtmosphereProcessFactory::instance();
+  // Ensure the "Group" atm proc is registered in the factory,
+  // so we can recursively create groups. Groups are an impl detail,
+  // so we don't expect users to register the APG in the factory.
+  apf.register_product("group",&create_atmosphere_process<AtmosphereProcessGroup>);
   for (int i=0; i<m_group_size; ++i) {
     // The comm to be passed to the processes construction is
-    //  - the same as the input comm if num_entries=1 or sched_type=Sequential
-    //  - a sub-comm of the input comm otherwise
+    //  - the same as the comm of this APG, if num_entries=1 or sched_type=Sequential
+    //  - a sub-comm of this APG's comm otherwise
     ekat::Comm proc_comm = m_comm;
     if (m_group_schedule_type==ScheduleType::Parallel) {
-      // This is what's going to happen:
+      // This is what's going to happen when we implment this:
       //  - the processes in the group are going to be run in parallel
       //  - each rank is assigned ONE atm process
-      //  - all the atm processes not assigned to this rank are filled with
-      //    an instance of RemoteProcessStub (to be implemented), which is a do-nothing class,
-      //    only responsible to keep track of dependencies
+      //  - all the atm processes not assigned to this rank will be filled with
+      //    an instance of "RemoteProcessStub" (to be implemented),
+      //    which is a do-nothing class, only responsible to keep track of dependencies
       //  - the input parameter list should specify for each atm process the number
       //    of mpi ranks dedicated to it. Obviously, these numbers should add up
       //    to the size of the input communicator.
@@ -53,9 +63,51 @@ AtmosphereProcessGroup (const ekat::Comm& comm, const ekat::ParameterList& param
       ekat::error::runtime_abort("Error! Parallel schedule type not yet implemented.\n");
     }
 
-    const auto& params_i = m_params.sublist(ekat::strint("Process",i));
-    const std::string& process_name = params_i.get<std::string>("Process Name");
-    m_atm_processes.emplace_back(AtmosphereProcessFactory::instance().create(process_name,proc_comm,params_i));
+    // Check if the i-th entry is a "named" atm proc or a group defined on the fly.
+    // In the first case, the i-th entry of the string list is just a string,
+    // like "my_atm_proc", while in the latter it is of the form "(a, b, ...)"
+    const auto& type_i = group_plist.get<std::string>(ekat::strint("Type",i));
+    std::string ap_name, ap_type;
+    if (type_i=="Value") {
+      // This is a "named" atm proc.
+      ap_name = group_plist.get<std::string>(ekat::strint("Entry",i));
+    } else {
+      // This is a group defined "on the fly". Get its string representation
+      ap_name = group_plist.sublist(ekat::strint("Entry",i)).get<std::string>("String");
+      // Due to XML limitations, in CIME runs we need to create a name for atm proc groups
+      // that are defined via nested list string, and we do it by replacing ',' with '_',
+      // '(' with 'group.', and ')' with '.'
+      auto pos = ap_name.find(",");
+      while (pos!=std::string::npos) {
+        ap_name[pos] = '_';
+        pos = ap_name.find(",");
+      }
+      pos = ap_name.find("(");
+      while (pos!=std::string::npos) {
+        ap_name[pos] = '.';
+        ap_name.insert(pos,"group");
+        pos = ap_name.find("(");
+      }
+      pos = ap_name.find(")");
+      while (pos!=std::string::npos) {
+        ap_name[pos] = '.';
+        pos = ap_name.find(")");
+      }
+      ap_type = "Group";
+    }
+
+    // Get the params of this atm proc
+    auto& params_i = m_params.sublist(ap_name);
+
+    // Get type (defaults to name)
+    ap_type = type_i=="List" ? "Group"
+                             : params_i.get<std::string>("Type",ap_name);
+
+    // Set logger in this ap params
+    params_i.set("Logger",this->m_atm_logger);
+
+    // Create the atm proc
+    m_atm_processes.emplace_back(apf.create(ap_type,proc_comm,params_i));
 
     // NOTE: the shared_ptr of the new atmosphere process *MUST* have been created correctly.
     //       Namely, the creation process must have set up enable_shared_from_this's status correctly.
@@ -71,13 +123,19 @@ AtmosphereProcessGroup (const ekat::Comm& comm, const ekat::ParameterList& param
         "       If so, don't. Instead, use the instantiation of create_atmosphere_process<T>,\n"
         "       with T = YourAtmProcessClassName.\n");
 
-    // Update the grid types of the group, given the needs of the newly created process
-    for (const auto& name : m_atm_processes.back()->get_required_grids()) {
-      m_required_grids.insert(name);
+    // Store a copy of all the restart extra data of the atm proc.
+    // NOTE: any uses std::shared_ptr internally, so if the atm proc updates
+    //       the extra data, it will be updated in this class too.
+    for (const auto& it : m_atm_processes.back()->get_restart_extra_data()) {
+      // We don't want to risk having two processes overwriting restart data, in case
+      // of a "common name" var (e.g., "num_steps"). Each process should try its best
+      // to provide names that are likely to be unique. Even if two procs *actyally need*
+      // the same var, we can write it twice to file.
+      EKAT_REQUIRE_MSG (m_restart_extra_data.find(it.first)==m_restart_extra_data.end(),
+          "Error! Cannot add restart extra data, since it was already added by another process.\n"
+          "  - extra data name: " + it.first + "\n");
+      m_restart_extra_data.emplace(it);
     }
-
-    m_group_name += " ";
-    m_group_name += m_atm_processes.back()->name();
   }
 }
 
@@ -108,9 +166,39 @@ void AtmosphereProcessGroup::set_grids (const std::shared_ptr<const GridsManager
   }
 }
 
-void AtmosphereProcessGroup::initialize_impl () {
+void AtmosphereProcessGroup::
+gather_internal_fields  () {
+  // For debug purposes
+  std::map<std::string,std::string> f2proc;
   for (auto& atm_proc : m_atm_processes) {
-    atm_proc->initialize(timestamp());
+    auto apg = std::dynamic_pointer_cast<AtmosphereProcessGroup>(atm_proc);
+    if (apg) {
+      // Have this apg build its list of internal fields first
+      apg->gather_internal_fields();
+    }
+    const auto& ifs = atm_proc->get_internal_fields();
+    for (const auto& f : ifs) {
+      const auto& name = f.get_header().get_identifier().name();
+      EKAT_REQUIRE_MSG (f2proc.find(name)==f2proc.end(),
+          "Error! Two atm procs created the same internal field.\n"
+          "  - field name: " + name + "\n"
+          "  - first atm proc: " + f2proc.at(name) + "\n"
+          "  - second atm proc: " + atm_proc->name() + "\n");
+      add_internal_field(f);
+      f2proc[name] = atm_proc->name();
+    }
+  }
+}
+
+void AtmosphereProcessGroup::initialize_impl (const RunType run_type) {
+  for (auto& atm_proc : m_atm_processes) {
+    atm_proc->initialize(timestamp(),run_type);
+#ifdef SCREAM_HAS_MEMORY_USAGE
+    long long my_mem_usage = get_mem_usage(MB);
+    long long max_mem_usage;
+    m_comm.all_reduce(&my_mem_usage,&max_mem_usage,1,MPI_MAX);
+    m_atm_logger->debug("[EAMxx::initialize::"+atm_proc->name()+"] memory usage: " + std::to_string(max_mem_usage) + "MB");
+#endif
   }
 }
 
@@ -127,9 +215,21 @@ void AtmosphereProcessGroup::run_sequential (const Real dt) {
   auto ts = timestamp();
   ts += dt;
 
+  // The stored atm procs should update the timestamp if both
+  //  - this is the last subcycle iteration
+  //  - nobody from outside told this APG to not update timestamps
+  const bool do_update = do_update_time_stamp() &&
+                      (get_subcycle_iter()==get_num_subcycles()-1);
   for (auto atm_proc : m_atm_processes) {
+    atm_proc->set_update_time_stamps(do_update);
     // Run the process
     atm_proc->run(dt);
+#ifdef SCREAM_HAS_MEMORY_USAGE
+    long long my_mem_usage = get_mem_usage(MB);
+    long long max_mem_usage;
+    m_comm.all_reduce(&my_mem_usage,&max_mem_usage,1,MPI_MAX);
+    m_atm_logger->debug("[EAMxx::run_sequential::"+atm_proc->name()+"] memory usage: " + std::to_string(max_mem_usage) + "MB");
+#endif
   }
 }
 
@@ -140,11 +240,17 @@ void AtmosphereProcessGroup::run_parallel (const Real /* dt */) {
 void AtmosphereProcessGroup::finalize_impl (/* what inputs? */) {
   for (auto atm_proc : m_atm_processes) {
     atm_proc->finalize(/* what inputs? */);
+#ifdef SCREAM_HAS_MEMORY_USAGE
+    long long my_mem_usage = get_mem_usage(MB);
+    long long max_mem_usage;
+    m_comm.all_reduce(&my_mem_usage,&max_mem_usage,1,MPI_MAX);
+    m_atm_logger->debug("[EAMxx::finalize::"+atm_proc->name()+"] memory usage: " + std::to_string(max_mem_usage) + "MB");
+#endif
   }
 }
 
 void AtmosphereProcessGroup::
-set_required_field (const Field<const Real>& f) {
+set_required_field (const Field& f) {
   if (m_group_schedule_type==ScheduleType::Parallel) {
     // In parallel splitting, all required fields are *actual* inputs,
     // and the base class impl is fine.
@@ -155,7 +261,7 @@ set_required_field (const Field<const Real>& f) {
   const auto& fid = f.get_header().get_identifier();
   int first_proc_that_needs_f = -1;
   for (int iproc=0; iproc<m_group_size; ++iproc) {
-    if (m_atm_processes[iproc]->requires_field(fid)) {
+    if (m_atm_processes[iproc]->has_required_field(fid)) {
       first_proc_that_needs_f = iproc;
       break;
     }
@@ -176,7 +282,7 @@ set_required_field (const Field<const Real>& f) {
   //       in case they contain some of the fields in this group.
   bool computed = false;
   for (int iproc=0; iproc<first_proc_that_needs_f; ++iproc) {
-    if (m_atm_processes[iproc]->computes_field(fid)) {
+    if (m_atm_processes[iproc]->has_computed_field(fid)) {
       computed = true;
       goto endloop;
     }
@@ -212,7 +318,7 @@ endloop:
 }
 
 void AtmosphereProcessGroup::
-set_required_group (const FieldGroup<const Real>& group) {
+set_required_group (const FieldGroup& group) {
   if (m_group_schedule_type==ScheduleType::Parallel) {
     // In parallel splitting, all required group are *actual* inputs,
     // and the base class impl is fine.
@@ -222,7 +328,7 @@ set_required_group (const FieldGroup<const Real>& group) {
   // Find the first process that requires this group
   int first_proc_that_needs_group = -1;
   for (int iproc=0; iproc<m_group_size; ++iproc) {
-    if (m_atm_processes[iproc]->requires_group(group.m_info->m_group_name,group.grid_name())) {
+    if (m_atm_processes[iproc]->has_required_group(group.m_info->m_group_name,group.grid_name())) {
       first_proc_that_needs_group = iproc;
       break;
     }
@@ -247,7 +353,7 @@ set_required_group (const FieldGroup<const Real>& group) {
     const auto& fn = it.first;
     const auto& fid = it.second->get_header().get_identifier();
     for (int iproc=0; iproc<first_proc_that_needs_group; ++iproc) {
-      if (m_atm_processes[iproc]->computes_field(fid)) {
+      if (m_atm_processes[iproc]->has_computed_field(fid)) {
         computed.insert(fid.name());
         goto endloop;
       }
@@ -290,52 +396,52 @@ endloop:
 }
 
 void AtmosphereProcessGroup::
-set_required_group_impl (const FieldGroup<const Real>& group)
+set_required_group_impl (const FieldGroup& group)
 {
   for (auto atm_proc : m_atm_processes) {
-    if (atm_proc->requires_group(group.m_info->m_group_name,group.grid_name())) {
+    if (atm_proc->has_required_group(group.m_info->m_group_name,group.grid_name())) {
       atm_proc->set_required_group(group);
     }
   }
 }
 
 void AtmosphereProcessGroup::
-set_computed_group_impl (const FieldGroup<Real>& group)
+set_computed_group_impl (const FieldGroup& group)
 {
   for (auto atm_proc : m_atm_processes) {
-    if (atm_proc->computes_group(group.m_info->m_group_name,group.grid_name())) {
+    if (atm_proc->has_computed_group(group.m_info->m_group_name,group.grid_name())) {
       atm_proc->set_computed_group(group);
     }
     // In sequential scheduling, some groups may be computed by
     // a process and used by the next one. In this case, the group
     // may not figure as 'input' for the group, but we still
     // need to set it in the processes that need it.
-    if (atm_proc->requires_group(group.m_info->m_group_name,group.grid_name())) {
+    if (atm_proc->has_required_group(group.m_info->m_group_name,group.grid_name())) {
       atm_proc->set_required_group(group.get_const());
     }
   }
 }
 
-void AtmosphereProcessGroup::set_required_field_impl (const Field<const Real>& f) {
+void AtmosphereProcessGroup::set_required_field_impl (const Field& f) {
   const auto& fid = f.get_header().get_identifier();
   for (auto atm_proc : m_atm_processes) {
-    if (atm_proc->requires_field(fid)) {
+    if (atm_proc->has_required_field(fid)) {
       atm_proc->set_required_field(f);
     }
   }
 }
 
-void AtmosphereProcessGroup::set_computed_field_impl (const Field<Real>& f) {
+void AtmosphereProcessGroup::set_computed_field_impl (const Field& f) {
   const auto& fid = f.get_header().get_identifier();
   for (auto atm_proc : m_atm_processes) {
-    if (atm_proc->computes_field(fid)) {
+    if (atm_proc->has_computed_field(fid)) {
       atm_proc->set_computed_field(f);
     }
     // In sequential scheduling, some fields may be computed by
     // a process and used by the next one. In this case, the field
     // does not figure as 'input' for the group, but we still
     // need to set it in the processes that need it.
-    if (atm_proc->requires_field(fid)) {
+    if (atm_proc->has_required_field(fid)) {
       atm_proc->set_required_field(f.get_const());
     }
   }
@@ -344,7 +450,7 @@ void AtmosphereProcessGroup::set_computed_field_impl (const Field<Real>& f) {
 void AtmosphereProcessGroup::
 process_required_group (const GroupRequest& req) {
   if (m_group_schedule_type==ScheduleType::Sequential) {
-    if (computes_group(req.name,req.grid)) {
+    if (has_computed_group(req.name,req.grid)) {
       // Some previous atm proc computes this group, so it's not an 'input'
       // of the atm group as a whole. However, we might need a different
       // pack size. So, instead of adding to the required groups,
@@ -367,7 +473,7 @@ process_required_group (const GroupRequest& req) {
 void AtmosphereProcessGroup::
 process_required_field (const FieldRequest& req) {
   if (m_group_schedule_type==ScheduleType::Sequential) {
-    if (computes_field(req.fid)) {
+    if (has_computed_field(req.fid)) {
       // Some previous atm proc computes this field, so it's not an 'input'
       // of the group as a whole. However, we might need a different pack size,
       // or want to add it to a different group. So, instead of adding to
@@ -384,13 +490,20 @@ process_required_field (const FieldRequest& req) {
   }
 }
 
-void AtmosphereProcessGroup::initialize_atm_memory_buffer(ATMBufferManager &memory_buffer) {
-  for (auto& atm_proc : m_atm_processes) {
-    memory_buffer.request_bytes(atm_proc->requested_buffer_size_in_bytes());
+size_t AtmosphereProcessGroup::requested_buffer_size_in_bytes () const
+{
+  size_t buf_size = 0;
+  for (const auto& proc : m_atm_processes) {
+    buf_size = std::max(buf_size,proc->requested_buffer_size_in_bytes());
   }
-  memory_buffer.allocate();
+
+  return buf_size;
+}
+
+void AtmosphereProcessGroup::
+init_buffers(const ATMBufferManager& buffer_manager) {
   for (auto& atm_proc : m_atm_processes) {
-    atm_proc->init_buffers(memory_buffer);
+    atm_proc->init_buffers(buffer_manager);
   }
 }
 

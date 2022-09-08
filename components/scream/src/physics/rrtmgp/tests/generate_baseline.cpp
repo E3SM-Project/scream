@@ -8,20 +8,29 @@
 
 #include "YAKL.h"
 
+#include <ekat/logging/ekat_logger.hpp>
+
 #include <iostream>
 #include <cmath>
 
 using namespace scream;
 
 int main (int argc, char** argv) {
+    MPI_Init(&argc,&argv);
+
+    using namespace ekat::logger;
+    using logger_t = Logger<LogNoFile,LogRootRank>;
+
+    ekat::Comm comm(MPI_COMM_WORLD);
+    auto logger = std::make_shared<logger_t>("",LogLevel::info,comm);
 
     // Get filenames from command line
     if (argc != 3) {
-        std::cout <<
-            argv[0] << " [options] inputfile baseline\n"
-            "Options:\n"
-            "  (there are no options)\n";
-        return 1;
+      std::string msg = "Missing required inputs. Usage:\n";
+      msg += argv[0];
+      msg += " inputfile baseline\n";
+      logger->error(msg);
+      return 1;
     }
     std::string inputfile(argv[argc-2]);
     std::string baseline(argv[argc-1]);
@@ -35,7 +44,7 @@ int main (int argc, char** argv) {
     real2d sw_flux_dn_dir_ref;
     real2d lw_flux_up_ref;
     real2d lw_flux_dn_ref;
-    std::cout << "read_fluxes..." << std::endl;
+    logger->info("read_fluxes...");
     rrtmgpTest::read_fluxes(inputfile, sw_flux_up_ref, sw_flux_dn_ref, sw_flux_dn_dir_ref, lw_flux_up_ref, lw_flux_dn_ref );
 
     // Get dimension sizes
@@ -59,8 +68,8 @@ int main (int argc, char** argv) {
 
     // Initialize the RRTMGP interface; this will read in the k-distribution
     // data that contains information about absorption coefficients for gases
-    std::cout << "rrtmgp_initialize..." << std::endl;
-    rrtmgp::rrtmgp_initialize(gas_concs);
+    logger->info("rrtmgp_initialize...");
+    rrtmgp::rrtmgp_initialize(gas_concs,logger);
 
     // Setup dummy all-sky problem
     real1d sfc_alb_dir_vis ("sfc_alb_dir_vis", ncol);
@@ -85,14 +94,25 @@ int main (int argc, char** argv) {
     // input/outputs into the driver (persisting between calls), and
     // we would just have to setup the pointers to them in the
     // FluxesBroadband object
-    real2d sw_flux_up ("sw_flux_up" ,ncol,nlay+1);
-    real2d sw_flux_dn ("sw_flux_dn" ,ncol,nlay+1);
-    real2d sw_flux_dn_dir("sw_flux_dn_dir",ncol,nlay+1);
-    real2d lw_flux_up ("lw_flux_up" ,ncol,nlay+1);
-    real2d lw_flux_dn ("lw_flux_dn" ,ncol,nlay+1);
+    const auto nswbands = scream::rrtmgp::k_dist_sw.get_nband();
+    const auto nlwbands = scream::rrtmgp::k_dist_lw.get_nband();
+    real2d sw_flux_up ("sw_flux_up" , ncol, nlay+1);
+    real2d sw_flux_dn ("sw_flux_dn" , ncol, nlay+1);
+    real2d sw_flux_dn_dir("sw_flux_dn_dir", ncol, nlay+1);
+    real2d lw_flux_up ("lw_flux_up" , ncol, nlay+1);
+    real2d lw_flux_dn ("lw_flux_dn" , ncol, nlay+1);
+    real2d sw_clrsky_flux_up ("sw_clrsky_flux_up" , ncol, nlay+1);
+    real2d sw_clrsky_flux_dn ("sw_clrsky_flux_dn" , ncol, nlay+1);
+    real2d sw_clrsky_flux_dn_dir("sw_clrsky_flux_dn_dir", ncol, nlay+1);
+    real2d lw_clrsky_flux_up ("lw_clrsky_flux_up" , ncol, nlay+1);
+    real2d lw_clrsky_flux_dn ("lw_clrsky_flux_dn" , ncol, nlay+1);
+    real3d sw_bnd_flux_up ("sw_bnd_flux_up" , ncol, nlay+1, nswbands);
+    real3d sw_bnd_flux_dn ("sw_bnd_flux_dn" , ncol, nlay+1, nswbands);
+    real3d sw_bnd_flux_dir("sw_bnd_flux_dir", ncol, nlay+1, nswbands);
+    real3d lw_bnd_flux_up ("lw_bnd_flux_up" ,ncol, nlay+1, nlwbands);
+    real3d lw_bnd_flux_dn ("lw_bnd_flux_dn" ,ncol, nlay+1, nlwbands);
 
     // Compute band-by-band surface_albedos.
-    const auto nswbands = 14;
     real2d sfc_alb_dir("sfc_alb_dir", ncol, nswbands);
     real2d sfc_alb_dif("sfc_alb_dif", ncol, nswbands);
     rrtmgp::compute_band_by_band_surface_albedos(
@@ -101,27 +121,50 @@ int main (int argc, char** argv) {
       sfc_alb_dif_vis, sfc_alb_dif_nir,
       sfc_alb_dir, sfc_alb_dif);
 
+    // Setup some dummy aerosol optical properties
+    auto aer_tau_sw = real3d("aer_tau_sw", ncol, nlay, nswbands);
+    auto aer_ssa_sw = real3d("aer_ssa_sw", ncol, nlay, nswbands);
+    auto aer_asm_sw = real3d("aer_asm_sw", ncol, nlay, nswbands);
+    auto aer_tau_lw = real3d("aer_tau_lw", ncol, nlay, nlwbands);
+    parallel_for(Bounds<3>(nswbands,nlay,ncol), YAKL_LAMBDA(int ibnd, int ilay, int icol) {
+        aer_tau_sw(icol,ilay,ibnd) = 0;
+        aer_ssa_sw(icol,ilay,ibnd) = 0;
+        aer_asm_sw(icol,ilay,ibnd) = 0;
+    });
+    parallel_for(Bounds<3>(nlwbands,nlay,ncol), YAKL_LAMBDA(int ibnd, int ilay, int icol) {
+        aer_tau_lw(icol,ilay,ibnd) = 0;
+    });
+
     // Run RRTMGP standalone codes and compare with AD run
     // Do something interesting here...
     // NOTE: these will get replaced with AD stuff that handles these
-    std::cout << "rrtmgp_main..." << std::endl;
+    logger->info("rrtmgp_main...");
+    const Real tsi_scaling = 1;
     rrtmgp::rrtmgp_main(
         ncol, nlay,
         p_lay, t_lay, p_lev, t_lev, gas_concs,
         sfc_alb_dir, sfc_alb_dif, mu0,
         lwp, iwp, rel, rei,
+        aer_tau_sw, aer_ssa_sw, aer_asm_sw,
+        aer_tau_lw,
         sw_flux_up, sw_flux_dn, sw_flux_dn_dir,
-        lw_flux_up, lw_flux_dn
+        lw_flux_up, lw_flux_dn,
+        sw_clrsky_flux_up, sw_clrsky_flux_dn, sw_clrsky_flux_dn_dir,
+        lw_clrsky_flux_up, lw_clrsky_flux_dn,
+        sw_bnd_flux_up, sw_bnd_flux_dn, sw_bnd_flux_dir,
+        lw_bnd_flux_up, lw_bnd_flux_dn, tsi_scaling,
+        logger
     );
 
     // Write fluxes
-    std::cout << "write_fluxes..." << std::endl;
+    logger->info("write_fluxes...");
     rrtmgpTest::write_fluxes(
         baseline, 
         sw_flux_up, sw_flux_dn, sw_flux_dn_dir,
         lw_flux_up, lw_flux_dn
     );
 
+    logger->info("cleaning up...");
     // Clean up from test; this is probably not necessary, these things
     // should be deallocated when they fall out of scope, but we should be
     // good citizens and clean up our mess.
@@ -141,6 +184,10 @@ int main (int argc, char** argv) {
     rel.deallocate();
     rei.deallocate();
     cld.deallocate();
+    aer_tau_sw.deallocate();
+    aer_ssa_sw.deallocate();
+    aer_asm_sw.deallocate();
+    aer_tau_lw.deallocate();
     sw_flux_up_ref.deallocate();
     sw_flux_dn_ref.deallocate();
     sw_flux_dn_dir_ref.deallocate();
@@ -151,10 +198,22 @@ int main (int argc, char** argv) {
     sw_flux_dn_dir.deallocate();
     lw_flux_up.deallocate();
     lw_flux_dn.deallocate();
+    sw_clrsky_flux_up.deallocate();
+    sw_clrsky_flux_dn.deallocate();
+    sw_clrsky_flux_dn_dir.deallocate();
+    lw_clrsky_flux_up.deallocate();
+    lw_clrsky_flux_dn.deallocate();
+    sw_bnd_flux_up.deallocate();
+    sw_bnd_flux_dn.deallocate();
+    sw_bnd_flux_dir.deallocate();
+    lw_bnd_flux_up.deallocate();
+    lw_bnd_flux_dn.deallocate();
 
     gas_concs.reset();
     rrtmgp::rrtmgp_finalize();
     yakl::finalize();
+
+    MPI_Finalize();
 
     return 0;
 }

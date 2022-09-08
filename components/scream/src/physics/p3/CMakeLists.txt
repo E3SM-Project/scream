@@ -3,15 +3,10 @@ set(P3_SRCS
   p3_functions_f90.cpp
   p3_ic_cases.cpp
   p3_iso_c.f90
-  p3_iso_f.f90
   ${SCREAM_BASE_DIR}/../eam/src/physics/cam/micro_p3.F90
+  atmosphere_microphysics.cpp
+  atmosphere_microphysics_run.cpp
 )
-
-if (NOT DEFINED ENV{SCREAM_FAKE_ONLY})
-  list(APPEND P3_SRCS
-    atmosphere_microphysics.cpp
-    atmosphere_microphysics_run.cpp)
-endif()
 
 # Add ETI source files if not on CUDA
 if (NOT CUDA_BUILD OR Kokkos_ENABLE_CUDA_RELOCATABLE_DEVICE_CODE)
@@ -66,6 +61,29 @@ target_include_directories(p3 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../share)
 set_target_properties(p3 PROPERTIES Fortran_MODULE_DIRECTORY ${SCREAM_F90_MODULES})
 target_link_libraries(p3 physics_share scream_share)
 target_compile_options(p3 PUBLIC $<$<COMPILE_LANGUAGE:Fortran>:${SCREAM_Fortran_FLAGS}>)
+
+# Ensure tables are present in the data dir
+if (SCREAM_DOUBLE_PRECISION)
+  set (PRECISION_SUFFIX "8")
+else()
+  set (PRECISION_SUFFIX "4")
+endif()
+set (P3_TABLES
+  tables/p3_lookup_table_1.dat-v4.1.1
+  tables/mu_r_table_vals.dat${PRECISION_SUFFIX}
+  tables/revap_table_vals.dat${PRECISION_SUFFIX}
+  tables/vm_table_vals.dat${PRECISION_SUFFIX}
+  tables/vn_table_vals.dat${PRECISION_SUFFIX}
+)
+
+include (ScreamUtils)
+foreach (file IN ITEMS ${P3_TABLES})
+  GetInputFile(${file})
+endforeach()
+
+# This executable can be used to re-generate tables in ${SCREAM_DATA_DIR}
+add_executable(p3_tables_setup EXCLUDE_FROM_ALL p3_tables_setup.cpp)
+target_link_libraries(p3_tables_setup p3)
 
 if (NOT SCREAM_LIB_ONLY)
   add_subdirectory(tests)

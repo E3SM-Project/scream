@@ -1,6 +1,8 @@
 #ifndef SCREAM_UTILS_HPP
 #define SCREAM_UTILS_HPP
 
+#include "share/scream_types.hpp"
+
 #include <ekat/ekat_assert.hpp>
 #include <ekat/kokkos/ekat_kokkos_types.hpp>
 #include <ekat/mpi/ekat_comm.hpp>
@@ -11,6 +13,19 @@
 #include <map>
 
 namespace scream {
+
+enum MemoryUnits {
+  B = 1,
+  KB,
+  MB,
+  GB,
+  KiB,
+  MiB,
+  GiB
+};
+
+// Gets current memory (RAM) usage by current process.
+long long get_mem_usage (const MemoryUnits u);
 
 // Micro-utility, that given an enum returns the underlying int.
 // The only use of this is if you need to sort scoped enums.
@@ -42,7 +57,7 @@ void sort (std::list<T>& l) {
     return;
   }
   l.sort();
-};
+}
 
 // This routine tries to find an arrangment of elements that allow each
 // of the input groups to be a contiguous subarray of the global arrangement.

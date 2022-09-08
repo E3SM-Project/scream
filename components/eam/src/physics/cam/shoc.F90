@@ -29,7 +29,7 @@ public  :: shoc_init, shoc_main
 logical :: use_cxx = .true.
 
 real(rtype), parameter, public :: largeneg = -99999999.99_rtype
-real(rtype), parameter, public :: pi = 3.14159265_rtype ! Pi
+real(rtype), parameter, public :: pi = 3.14159265358979323_rtype
 
 !=========================================================
 ! Physical constants used in SHOC
@@ -3801,7 +3801,7 @@ subroutine update_host_dse(&
 
   do k=1,nlev
     do i=1,shcol
-      temp = (thlm(i,k)+(lcond/cp)*shoc_ql(i,k))/inv_exner(i,k)
+      temp = (thlm(i,k)/inv_exner(i,k))+(lcond/cp)*shoc_ql(i,k)
       host_dse(i,k) = cp*temp+ggr*zt_grid(i,k)+phis(i)
     enddo
   enddo
@@ -4226,7 +4226,7 @@ subroutine pblintd(&
 #ifdef SCREAM_CONFIG_IS_CMAKE
   if (use_cxx) then
     call pblintd_f(&
-      shcol,nlev,nlevi,&             ! Input
+      shcol,nlev,nlevi,npbl,&        ! Input
       z,zi,thl,ql,&                  ! Input
       q,u,v,&                        ! Input
       ustar,obklen,kbfs,cldn,&       ! Input
@@ -4407,8 +4407,8 @@ subroutine pblintd_height(&
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
    if (use_cxx) then
-      call pblintd_height_f(shcol,nlev,z,u,v,ustar,thv,thv_ref,&             ! Input
-                            pblh,rino,check)          ! Output
+      call pblintd_height_f(shcol,nlev,npbl,z,u,v,ustar,thv,thv_ref,& ! Input
+                            pblh,rino,check)                          ! Output
       return
    endif
 #endif

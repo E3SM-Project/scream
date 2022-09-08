@@ -20,9 +20,6 @@ namespace scream
 class CldFraction : public AtmosphereProcess
 {
 public:
-  using field_type       = Field<      Real>;
-  using const_field_type = Field<const Real>;
-
   using CldFractionFunc = cld_fraction::CldFractionFunctions<Real, DefaultDevice>;
   using Spack           = CldFractionFunc::Spack;
   using Smask           = CldFractionFunc::Smask;
@@ -37,20 +34,13 @@ public:
   // The name of the subcomponent
   std::string name () const { return "CldFraction"; }
 
-  // Get the required grid for subcomponent
-  std::set<std::string> get_required_grids () const {
-    static std::set<std::string> s;
-    s.insert(m_params.get<std::string>("Grid"));
-    return s;
-  }
-
   // Set the grid
   void set_grids (const std::shared_ptr<const GridsManager> grids_manager);
 
 protected:
 
   // The three main overrides for the subcomponent
-  void initialize_impl ();
+  void initialize_impl (const RunType run_type);
   void run_impl        (const int dt);
   void finalize_impl   ();
 
@@ -58,6 +48,7 @@ protected:
   Int m_num_cols; 
   Int m_num_levs;
 
+  std::shared_ptr<const AbstractGrid> m_grid;
 }; // class CldFraction
 
 } // namespace scream

@@ -20,9 +20,9 @@ using namespace spa;
 template <typename S>
 using view_1d = typename KokkosTypes<DefaultDevice>::template view_1d<S>;
 
-Real ps_func(const Int t, const Int icol, const Int ncols);
-Real ccn3_func(const Int t, const Int icol, const Int klev, const Int ncols);
-Real aer_func(const Int t, const Int icol, const Int bnd, const Int klev, const Int ncols, const Int mode);
+Real ps_func(const Int t, const Int ncols);
+Real ccn3_func(const Int t, const Int klev, const Int ncols);
+Real aer_func(const Int t, const Int bnd, const Int klev, const Int ncols, const Int mode);
 
 TEST_CASE("spa_read_data","spa")
 {
@@ -36,8 +36,8 @@ TEST_CASE("spa_read_data","spa")
   using Spack = SPAFunc::Spack;
   using gid_type = SPAFunc::gid_type;
 
-  std::string spa_data_file = "spa_data_for_testing.nc";
-  std::string spa_remap_file = "spa_data_for_testing.nc";
+  std::string spa_data_file  = SCREAM_DATA_DIR "/init/spa_data_for_testing.nc";
+  std::string spa_remap_file = SCREAM_DATA_DIR "/init/spa_data_for_testing.nc";
   Int max_time = 3;
   Int ncols    = 48;
   Int nlevs    = 4;
@@ -62,7 +62,8 @@ TEST_CASE("spa_read_data","spa")
   SPAFunc::SPAHorizInterp spa_horiz_interp;
   spa_horiz_interp.m_comm = spa_comm;
   SPAFunc::get_remap_weights_from_file(spa_remap_file,ncols,min_dof,dofs_gids,spa_horiz_interp);
-  SPAFunc::SPAData spa_data(dofs_gids.size(), nlevs, nswbands, nlwbands);
+  // Recall, SPA data is padded, so we initialize with 2 more levels than the source data file.
+  SPAFunc::SPAInput spa_data(dofs_gids.size(), nlevs+2, nswbands, nlwbands);
 
   // Verify that the interpolated values match the algorithm for the data and the weights.
   //       weights(i) = 1 / (2**i), weights(-1) = 1 / (2**(ncols-1)) such that sum(weights) = 1., for i=0,1,2
@@ -74,36 +75,36 @@ TEST_CASE("spa_read_data","spa")
   //       aer_tau_sw(t,i,b,k) = b
   //       aer_tau_lw(t,i,b,k) = k
   auto ps_h         = Kokkos::create_mirror_view(spa_data.PS);
-  auto ccn3_h       = Kokkos::create_mirror_view(spa_data.CCN3);
-  auto aer_g_sw_h   = Kokkos::create_mirror_view(spa_data.AER_G_SW);
-  auto aer_ssa_sw_h = Kokkos::create_mirror_view(spa_data.AER_SSA_SW);
-  auto aer_tau_sw_h = Kokkos::create_mirror_view(spa_data.AER_TAU_SW);
-  auto aer_tau_lw_h = Kokkos::create_mirror_view(spa_data.AER_TAU_LW);
+  auto ccn3_h       = Kokkos::create_mirror_view(spa_data.data.CCN3);
+  auto aer_g_sw_h   = Kokkos::create_mirror_view(spa_data.data.AER_G_SW);
+  auto aer_ssa_sw_h = Kokkos::create_mirror_view(spa_data.data.AER_SSA_SW);
+  auto aer_tau_sw_h = Kokkos::create_mirror_view(spa_data.data.AER_TAU_SW);
+  auto aer_tau_lw_h = Kokkos::create_mirror_view(spa_data.data.AER_TAU_LW);
   auto dofs_gids_h = Kokkos::create_mirror_view(dofs_gids);
   Kokkos::deep_copy(dofs_gids_h,dofs_gids);
   for (int time_index = 0;time_index<max_time; time_index++) {
-    SPAFunc::update_spa_data_from_file(spa_data_file, time_index+1, nswbands, nlwbands,
+    SPAFunc::update_spa_data_from_file(spa_data_file, time_index, nswbands, nlwbands,
                                        spa_horiz_interp, spa_data);
     Kokkos::deep_copy(ps_h,spa_data.PS);
-    Kokkos::deep_copy(ccn3_h,spa_data.CCN3);
-    Kokkos::deep_copy(aer_g_sw_h,spa_data.AER_G_SW);
-    Kokkos::deep_copy(aer_ssa_sw_h,spa_data.AER_SSA_SW);
-    Kokkos::deep_copy(aer_tau_sw_h,spa_data.AER_TAU_SW);
-    Kokkos::deep_copy(aer_tau_lw_h,spa_data.AER_TAU_LW);
-    for (int dof_i=0;dof_i<dofs_gids_h.size();dof_i++) {
-      gid_type glob_i = dofs_gids_h(dof_i);
-      REQUIRE(ps_h(dof_i) == ps_func(time_index,glob_i,spa_horiz_interp.source_grid_ncols));
+    Kokkos::deep_copy(ccn3_h,spa_data.data.CCN3);
+    Kokkos::deep_copy(aer_g_sw_h,spa_data.data.AER_G_SW);
+    Kokkos::deep_copy(aer_ssa_sw_h,spa_data.data.AER_SSA_SW);
+    Kokkos::deep_copy(aer_tau_sw_h,spa_data.data.AER_TAU_SW);
+    Kokkos::deep_copy(aer_tau_lw_h,spa_data.data.AER_TAU_LW);
+    for (size_t dof_i=0;dof_i<dofs_gids_h.size();dof_i++) {
+      REQUIRE(ps_h(dof_i) == ps_func(time_index,spa_horiz_interp.source_grid_ncols));
       for (int kk=0;kk<nlevs;kk++) {
-        int kpack = kk / Spack::n;
-        int kidx  = kk % Spack::n;
-        REQUIRE(ccn3_h(dof_i,kpack)[kidx] == ccn3_func(time_index, glob_i, kk, spa_horiz_interp.source_grid_ncols));
+        // Recall, SPA data read from file is padded, so we need to offset the kk index for the data by 1.
+        int kpack = (kk+1) / Spack::n;
+        int kidx  = (kk+1) % Spack::n;
+        REQUIRE(ccn3_h(dof_i,kpack)[kidx] == ccn3_func(time_index, kk, spa_horiz_interp.source_grid_ncols));
         for (int n=0;n<nswbands;n++) {
-          REQUIRE(aer_g_sw_h(dof_i,n,kpack)[kidx]   == aer_func(time_index,glob_i,n,kk,spa_horiz_interp.source_grid_ncols,0));
-          REQUIRE(aer_ssa_sw_h(dof_i,n,kpack)[kidx] == aer_func(time_index,glob_i,n,kk,spa_horiz_interp.source_grid_ncols,1));
-          REQUIRE(aer_tau_sw_h(dof_i,n,kpack)[kidx] == aer_func(time_index,glob_i,n,kk,spa_horiz_interp.source_grid_ncols,2));
+          REQUIRE(aer_g_sw_h(dof_i,n,kpack)[kidx]   == aer_func(time_index,n,kk,spa_horiz_interp.source_grid_ncols,0));
+          REQUIRE(aer_ssa_sw_h(dof_i,n,kpack)[kidx] == aer_func(time_index,n,kk,spa_horiz_interp.source_grid_ncols,1));
+          REQUIRE(aer_tau_sw_h(dof_i,n,kpack)[kidx] == aer_func(time_index,n,kk,spa_horiz_interp.source_grid_ncols,2));
         }
         for (int n=0;n<nlwbands;n++) {
-          REQUIRE(aer_tau_lw_h(dof_i,n,kpack)[kidx] ==  aer_func(time_index,glob_i,n,kk,spa_horiz_interp.source_grid_ncols,3));
+          REQUIRE(aer_tau_lw_h(dof_i,n,kpack)[kidx] ==  aer_func(time_index,n,kk,spa_horiz_interp.source_grid_ncols,3));
         }
       }
     }
@@ -114,7 +115,7 @@ TEST_CASE("spa_read_data","spa")
 } // run_property
 
 // Some helper functions for the require statements:
-Real ps_func(const Int t, const Int icol, const Int ncols)
+Real ps_func(const Int t, const Int ncols)
 {
   Real ps = 0.0;
   for (int i=1;i<=ncols;i++) {
@@ -125,7 +126,7 @@ Real ps_func(const Int t, const Int icol, const Int ncols)
   return ps;
 } // ps_func
 //
-Real ccn3_func(const Int t, const Int icol, const Int klev, const Int ncols)
+Real ccn3_func(const Int t, const Int klev, const Int ncols)
 {
   Real ccn3 = 0.0;
   for (int i=1;i<=ncols;i++) {
@@ -136,7 +137,7 @@ Real ccn3_func(const Int t, const Int icol, const Int klev, const Int ncols)
   return ccn3;
 } // ccn3_func
 //
-Real aer_func(const Int t, const Int icol, const Int bnd, const Int klev, const Int ncols, const Int mode)
+Real aer_func(const Int t, const Int bnd, const Int klev, const Int ncols, const Int mode)
 {
   Real aer_out = 0.0;
   for (int i=1;i<=ncols;i++) {

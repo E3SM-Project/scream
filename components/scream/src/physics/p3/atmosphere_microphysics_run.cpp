@@ -4,6 +4,9 @@ namespace scream {
 
 void P3Microphysics::run_impl (const int dt)
 {
+  // Set the dt for p3 postprocessing
+  p3_postproc.set_dt(dt);
+
   // Assign values to local arrays used by P3, these are now stored in p3_loc.
   Kokkos::parallel_for(
     "p3_main_local_vals",
@@ -17,14 +20,16 @@ void P3Microphysics::run_impl (const int dt)
   infrastructure.dt = dt;
   infrastructure.it++;
 
-  // WorkspaceManager for internal local variables
-  const Int nk_pack = ekat::npack<Spack>(m_num_levs);
-  const auto policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nk_pack);
-  ekat::WorkspaceManager<Spack, KT::Device> workspace_mgr(m_buffer.wsm_data, nk_pack, 52, policy);
+  // Reset internal WSM variables.
+  workspace_mgr.reset_internals();
 
   // Run p3 main
+  get_field_out("micro_liq_ice_exchange").deep_copy(0.0);
+  get_field_out("micro_vap_liq_exchange").deep_copy(0.0);
+  get_field_out("micro_vap_ice_exchange").deep_copy(0.0);
+
   P3F::p3_main(prog_state, diag_inputs, diag_outputs, infrastructure,
-               history_only, workspace_mgr, m_num_cols, m_num_levs);
+               history_only, lookup_tables, workspace_mgr, m_num_cols, m_num_levs);
 
   // Conduct the post-processing of the p3_main output.
   Kokkos::parallel_for(
