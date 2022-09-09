@@ -340,6 +340,9 @@ void SPAFunctions<S,D>
           SPAHorizInterp&    spa_horiz_interp
   )
 {
+  auto comm = spa_horiz_interp.m_comm;
+  long long total_max_mem_usage = 0;
+  update_mem_usage(comm,total_max_mem_usage);
   // Note, the remap file doesn't follow a conventional grid setup so
   // here we manually go through all of the input steps rather than
   // use the scorpio_input class.
@@ -396,12 +399,17 @@ void SPAFunctions<S,D>
   scorpio::set_decomp(remap_file_name);
   
   // Now read all of the input
+  update_mem_usage(comm,total_max_mem_usage);
   scorpio::grid_read_data_array(remap_file_name,"S",-1,S_global_h.data()); 
+  update_mem_usage(comm,total_max_mem_usage);
   scorpio::grid_read_data_array(remap_file_name,"row",-1,row_global_h.data()); 
+  update_mem_usage(comm,total_max_mem_usage);
   scorpio::grid_read_data_array(remap_file_name,"col",-1,col_global_h.data()); 
+  update_mem_usage(comm,total_max_mem_usage);
 
   // Finished, close the file
   scorpio::eam_pio_closefile(remap_file_name);
+  update_mem_usage(comm,total_max_mem_usage);
 
   // Retain only the information needed on this rank. 
   auto dofs_gids_h = Kokkos::create_mirror_view(dofs_gids);
@@ -418,15 +426,18 @@ void SPAFunctions<S,D>
       }
     }
   }
+  update_mem_usage(comm,total_max_mem_usage);
   // Now that we have the full list of indexs in the global remap data that correspond to local columns we can construct
   // the spa_horiz_weights data.   Note: This is an important step when running with multiple MPI ranks.
   spa_horiz_interp.length          = local_idx.size();
   spa_horiz_interp.weights         = view_1d<Real>("",local_idx.size());
   spa_horiz_interp.source_grid_loc = view_1d<Int>("",local_idx.size());
   spa_horiz_interp.target_grid_loc = view_1d<Int>("",local_idx.size());
+  update_mem_usage(comm,total_max_mem_usage);
   auto weights_h         = Kokkos::create_mirror_view(spa_horiz_interp.weights);
   auto source_grid_loc_h = Kokkos::create_mirror_view(spa_horiz_interp.source_grid_loc);
   auto target_grid_loc_h = Kokkos::create_mirror_view(spa_horiz_interp.target_grid_loc);
+  update_mem_usage(comm,total_max_mem_usage);
   for (size_t idx=0;idx<local_idx.size();idx++) {
       int ii = global_idx[idx];
       weights_h(idx)         = S_global_h(ii);
@@ -436,11 +447,15 @@ void SPAFunctions<S,D>
       // which needs to start with 0 since cpp starts with 0.
       source_grid_loc_h(idx) = col_global_h(ii) - 1;
   }
+  update_mem_usage(comm,total_max_mem_usage);
   Kokkos::deep_copy(spa_horiz_interp.weights        , weights_h        );
   Kokkos::deep_copy(spa_horiz_interp.source_grid_loc, source_grid_loc_h);
   Kokkos::deep_copy(spa_horiz_interp.target_grid_loc, target_grid_loc_h);
   // Determine the set of unique columns in this remapping
   spa_horiz_interp.set_unique_cols();
+  update_mem_usage(comm,total_max_mem_usage);
+
+  printf("[SPA] get_remap_weights_from_file:: Max Mem Usage:: %d MB\n",total_max_mem_usage);
 }  // END get_remap_weights_from_file
 /*-----------------------------------------------------------------*/
 /* Note: In this routine the SPA source data is padded in the vertical
@@ -498,6 +513,8 @@ void SPAFunctions<S,D>
 {
   // Ensure all ranks are operating independently when reading the file, so there's a copy on all ranks
   auto comm = spa_horiz_interp.m_comm;
+  long long total_max_mem_usage = 0;
+  update_mem_usage(comm,total_max_mem_usage);
 
   // We have enough info to start opening the file
   std::vector<std::string> fnames = {"hyam","hybm","PS","CCN3","AER_G_SW","AER_SSA_SW","AER_TAU_SW","AER_TAU_LW"};
@@ -586,9 +603,13 @@ void SPAFunctions<S,D>
   //
   
   // Now that we have all the variables defined we can use the scorpio_input class to grab the data.
+  update_mem_usage(comm,total_max_mem_usage);
   spa_data_input.init(grid,host_views,layouts);
+  update_mem_usage(comm,total_max_mem_usage);
   spa_data_input.read_variables(time_index);
+  update_mem_usage(comm,total_max_mem_usage);
   spa_data_input.finalize();
+  update_mem_usage(comm,total_max_mem_usage);
 
   // Now that we have the data we can map the data onto the target data.
   auto hyam_h       = Kokkos::create_mirror_view(spa_data.hyam);
@@ -607,6 +628,7 @@ void SPAFunctions<S,D>
   Kokkos::deep_copy(aer_ssa_sw_h,0.0);
   Kokkos::deep_copy(aer_tau_sw_h,0.0);
   Kokkos::deep_copy(aer_tau_lw_h,0.0);
+  update_mem_usage(comm,total_max_mem_usage);
 
   auto weights_h         = Kokkos::create_mirror_view(spa_horiz_interp.weights);
   auto source_grid_loc_h = Kokkos::create_mirror_view(spa_horiz_interp.source_grid_loc);
@@ -614,6 +636,7 @@ void SPAFunctions<S,D>
   Kokkos::deep_copy(weights_h,         spa_horiz_interp.weights);
   Kokkos::deep_copy(source_grid_loc_h, spa_horiz_interp.source_grid_loc);
   Kokkos::deep_copy(target_grid_loc_h, spa_horiz_interp.target_grid_loc);
+  update_mem_usage(comm,total_max_mem_usage);
   for (int idx=0;idx<spa_horiz_interp.length;idx++) {
     auto src_wgt = weights_h(idx);
     int  src_col = spa_horiz_interp.source_local_col_map[source_grid_loc_h(idx)];
@@ -654,6 +677,7 @@ void SPAFunctions<S,D>
       aer_tau_lw_h(tgt_col,n,pack)[kidx] += AER_TAU_LW_v_h(src_col,n,kk)*src_wgt;
     }
   }
+  update_mem_usage(comm,total_max_mem_usage);
   // We also need to pad the hyam and hybm views with
   //   hya/b[0] = 0.0, note this is handled by deep copy above
   //   hya/b[N+2] = BIG number so always bigger than likely pmid for target
@@ -663,10 +687,12 @@ void SPAFunctions<S,D>
     hyam_h(pack)[kidx] = hyam_v_h(kk);
     hybm_h(pack)[kidx] = hybm_v_h(kk);
   }
+  update_mem_usage(comm,total_max_mem_usage);
   const int pack = (source_data_nlevs+1) / Spack::n;
   const int kidx = (source_data_nlevs+1) % Spack::n;
   hyam_h(pack)[kidx] = 1e5; 
   hybm_h(pack)[kidx] = 0.0;
+  update_mem_usage(comm,total_max_mem_usage);
   
   Kokkos::deep_copy(spa_data.hyam,hyam_h);
   Kokkos::deep_copy(spa_data.hybm,hybm_h);
@@ -676,6 +702,9 @@ void SPAFunctions<S,D>
   Kokkos::deep_copy(spa_data.data.AER_SSA_SW,aer_ssa_sw_h);
   Kokkos::deep_copy(spa_data.data.AER_TAU_SW,aer_tau_sw_h);
   Kokkos::deep_copy(spa_data.data.AER_TAU_LW,aer_tau_lw_h);
+  update_mem_usage(comm,total_max_mem_usage);
+
+  printf("[SPA] update_spa_data_from_file:: Max Mem Usage:: %d MB\n",total_max_mem_usage);
 
 } // END update_spa_data_from_file
 

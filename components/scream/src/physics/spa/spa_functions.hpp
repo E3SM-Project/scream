@@ -268,6 +268,17 @@ struct SPAFunctions
   KOKKOS_INLINE_FUNCTION
   static ScalarX linear_interp(const ScalarX& x0, const ScalarX& x1, const ScalarT& t);
 
+  // Helper memory usage calculator
+  KOKKOS_INLINE_FUNCTION
+  static void update_mem_usage(const ekat::Comm& comm, long long& current_max) {
+  #ifdef SCREAM_HAS_MEMORY_USAGE
+    long long my_mem_usage = get_mem_usage(MB);
+    long long max_mem_usage;
+    comm.all_reduce(&my_mem_usage,&max_mem_usage,1,MPI_MAX);
+    current_max = std::max(max_mem_usage,current_max);
+  #endif
+  }
+
 }; // struct Functions
 
 } // namespace spa
