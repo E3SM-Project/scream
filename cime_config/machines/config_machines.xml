@@ -3743,16 +3743,18 @@
     <BASELINE_ROOT>/gpfs/alpine/cli115/world-shared/e3sm/baselines/$COMPILER</BASELINE_ROOT>
     <CCSM_CPRNC>/gpfs/alpine/cli115/world-shared/e3sm/tools/cprnc.summit/cprnc</CCSM_CPRNC>
     <GMAKE_J>8</GMAKE_J>
-    <TESTS>e3sm_developer</TESTS>
+    <TESTS>e3sm_integration</TESTS>
     <NTEST_PARALLEL_JOBS>4</NTEST_PARALLEL_JOBS>
     <BATCH_SYSTEM>lsf</BATCH_SYSTEM>
     <SUPPORTED_BY>e3sm</SUPPORTED_BY>
-    <MAX_TASKS_PER_NODE>42</MAX_TASKS_PER_NODE>
+    <MAX_TASKS_PER_NODE>84</MAX_TASKS_PER_NODE>
     <MAX_TASKS_PER_NODE compiler="pgigpu">18</MAX_TASKS_PER_NODE>
-	<!-- Need to activate following attribute after CIME update from upstream -->
-    <!-- <MAX_GPUS_PER_NODE>6</MAX_GPUS_PER_NODE> -->
-    <MAX_MPITASKS_PER_NODE>42</MAX_MPITASKS_PER_NODE>
+    <MAX_TASKS_PER_NODE compiler="gnugpu">42</MAX_TASKS_PER_NODE>
+    <MAX_TASKS_PER_NODE compiler="ibmgpu">42</MAX_TASKS_PER_NODE>
+    <MAX_MPITASKS_PER_NODE>84</MAX_MPITASKS_PER_NODE>
     <MAX_MPITASKS_PER_NODE compiler="pgigpu">18</MAX_MPITASKS_PER_NODE>
+    <MAX_MPITASKS_PER_NODE compiler="gnugpu">42</MAX_MPITASKS_PER_NODE>
+    <MAX_MPITASKS_PER_NODE compiler="ibmgpu">42</MAX_MPITASKS_PER_NODE>
     <PROJECT_REQUIRED>TRUE</PROJECT_REQUIRED>
     <mpirun mpilib="spectrum-mpi">
       <executable>jsrun</executable>
@@ -3782,35 +3784,32 @@
       <modules>
         <command name="purge"/>
         <command name="load">DefApps</command>
-        <command name="load">python/3.7-anaconda3</command>
-        <command name="load">subversion/1.14.0</command>
+        <command name="load">python/3.8-anaconda3</command>
         <command name="load">git/2.31.1</command>
-        <command name="load">cmake/3.20.2</command>
+        <command name="load">subversion</command>
+        <command name="load">cmake/3.22.2</command>
         <command name="load">essl/6.3.0</command>
-        <command name="load">netlib-lapack/3.8.0</command>
+        <command name="load">netlib-lapack/3.9.1</command>
       </modules>
       <modules compiler="pgi.*">
         <command name="load">nvhpc/21.11</command>
       </modules>
+      <modules compiler="ibmgpu">
+        <command name="load">cuda/10.1.243</command>
+      </modules>
       <modules compiler="ibm.*">
         <command name="load">xl/16.1.1-10</command>
       </modules>
-      <modules compiler="gnu.*">
-        <command name="load">gcc/7.5.0</command>
-      </modules>
-      <modules compiler="pgigpu">
-        <command name="load">cuda/10.1.243</command>
-      </modules>
       <modules compiler="gnugpu">
-        <command name="load">cuda/10.1.168</command>
+        <command name="load">cuda/11.0.3</command>
       </modules>
-      <modules compiler="ibmgpu">
-        <command name="load">cuda/10.1.243</command>
+      <modules compiler="gnu.*">
+        <command name="load">gcc/9.1.0</command>
       </modules>
       <modules>
         <command name="load">spectrum-mpi/10.4.0.3-20210112</command>
         <command name="load">hdf5/1.10.7</command>
-        <command name="load">netcdf-c/4.8.0</command>
+        <command name="load">netcdf-c/4.8.1</command>
         <command name="load">netcdf-fortran/4.4.5</command>
         <command name="load">parallel-netcdf/1.12.2</command>
       </modules>
@@ -3818,6 +3817,7 @@
     <RUNDIR>$CIME_OUTPUT_ROOT/$CASE/run</RUNDIR>
     <EXEROOT>$CIME_OUTPUT_ROOT/$CASE/bld</EXEROOT>
     <TEST_TPUT_TOLERANCE>0.1</TEST_TPUT_TOLERANCE>
+    <MAX_GB_OLD_TEST_DATA>9000</MAX_GB_OLD_TEST_DATA>
     <environment_variables>
       <env name="NETCDF_C_PATH">$ENV{OLCF_NETCDF_C_ROOT}</env>
       <env name="NETCDF_FORTRAN_PATH">$ENV{OLCF_NETCDF_FORTRAN_ROOT}</env>
@@ -3836,27 +3836,7 @@
     <environment_variables compiler=".*gpu.*">
       <env name="SMPIARGS">--smpiargs="-gpu"</env>
     </environment_variables>
-    <environment_variables compiler="ibm">
-      <env name="RS_PER_NODE">2</env>
-      <env name="CPU_PER_RS">21</env>
-      <env name="GPU_PER_RS">0</env>
-      <env name="LTC_PRT">cpu-cpu</env>
-      <env name="NUM_RS">$SHELL{echo "2*((`./xmlquery --value TOTAL_TASKS` + `./xmlquery --value TASKS_PER_NODE` - 1)/`./xmlquery --value TASKS_PER_NODE`)"|bc}</env>
-      <env name="SMT_MODE">$SHELL{echo "(`./xmlquery --value MAX_TASKS_PER_NODE`+41)/42"|bc}</env>
-    </environment_variables>
-    <environment_variables compiler="gnu">
-      <env name="RS_PER_NODE">2</env>
-      <env name="CPU_PER_RS">21</env>
-      <env name="GPU_PER_RS">0</env>
-      <env name="LTC_PRT">cpu-cpu</env>
-      <env name="NUM_RS">$SHELL{echo "2*((`./xmlquery --value TOTAL_TASKS` + `./xmlquery --value TASKS_PER_NODE` - 1)/`./xmlquery --value TASKS_PER_NODE`)"|bc}</env>
-      <env name="SMT_MODE">$SHELL{echo "(`./xmlquery --value MAX_TASKS_PER_NODE`+41)/42"|bc}</env>
-      <env name="PAMI_ENABLE_STRIPING">1</env>
-      <env name="PAMI_IBV_ADAPTER_AFFINITY">1</env>
-      <env name="PAMI_IBV_DEVICE_NAME_1">mlx5_3:1,mlx5_0:1</env>
-      <env name="PAMI_IBV_DEVICE_NAME">mlx5_0:1,mlx5_3:1</env>
-    </environment_variables>
-    <environment_variables compiler="pgi">
+    <environment_variables>
       <env name="RS_PER_NODE">2</env>
       <env name="CPU_PER_RS">21</env>
       <env name="GPU_PER_RS">0</env>
@@ -3877,6 +3857,7 @@
       <env name="GPU_PER_RS">1</env>
       <env name="LTC_PRT">gpu-cpu</env>
       <env name="NUM_RS">$SHELL{echo "6*((`./xmlquery --value TOTAL_TASKS` + `./xmlquery --value TASKS_PER_NODE` - 1)/`./xmlquery --value TASKS_PER_NODE`)"|bc}</env>
+      <env name="NVCC_WRAPPER_DEFAULT_COMPILER">pgc++</env>
     </environment_variables>
     <environment_variables compiler="gnugpu">
       <env name="RS_PER_NODE">6</env>
@@ -3884,10 +3865,6 @@
       <env name="GPU_PER_RS">1</env>
       <env name="LTC_PRT">gpu-cpu</env>
       <env name="NUM_RS">$SHELL{echo "6*((`./xmlquery --value TOTAL_TASKS` + `./xmlquery --value TASKS_PER_NODE` - 1)/`./xmlquery --value TASKS_PER_NODE`)"|bc}</env>
-      <env name="PAMI_ENABLE_STRIPING">1</env>
-      <env name="PAMI_IBV_ADAPTER_AFFINITY">1</env>
-      <env name="PAMI_IBV_DEVICE_NAME_1">mlx5_3:1,mlx5_0:1</env>
-      <env name="PAMI_IBV_DEVICE_NAME">mlx5_0:1,mlx5_3:1</env>
     </environment_variables>
   </machine>
 
