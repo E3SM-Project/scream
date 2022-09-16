@@ -12,3 +12,5 @@ endif()
 set(SCREAM_MPIRUN_EXE "jsrun -E LD_PRELOAD=/opt/ibm/spectrum_mpi/lib/pami_490/libpami.so" CACHE STRING "")
 set(SCREAM_MPI_NP_FLAG "-n" CACHE STRING "")
 set(SCREAM_MACHINE "summit" CACHE STRING "")
+
+set(SCREAM_ENABLE_STATM TRUE CACHE BOOL "")

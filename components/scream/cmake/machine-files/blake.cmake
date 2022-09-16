@@ -3,3 +3,5 @@ set (EKAT_MACH_FILES_PATH ${CMAKE_CURRENT_LIST_DIR}/../../../../externals/ekat/c
 include (${EKAT_MACH_FILES_PATH}/blake.cmake)
 
 set(SCREAM_INPUT_ROOT "/home/projects/e3sm/scream/data" CACHE STRING "")
+
+set(SCREAM_ENABLE_STATM TRUE CACHE BOOL "")

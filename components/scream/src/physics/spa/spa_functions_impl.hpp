@@ -6,6 +6,7 @@
 #include "share/io/scorpio_input.hpp"
 #include "share/grid/point_grid.hpp"
 #include "physics/share/physics_constants.hpp"
+#include "share/util/scream_timing.hpp"
 
 #include "ekat/kokkos/ekat_subview_utils.hpp"
 #include "ekat/util/ekat_lin_interp.hpp"
@@ -306,6 +307,10 @@ void SPAFunctions<S,D>
           SPAHorizInterp&    spa_horiz_interp
   )
 {
+  start_timer("EAMxx::SPA::set_remap_weights_one_to_one");
+  auto comm = spa_horiz_interp.m_comm;
+  long long total_peak_mem_usage = 0;
+  update_mem_usage(comm,total_peak_mem_usage);
   // There may be cases where the SPA data is defined on the same grid as the simulation
   // and thus no remapping is required.  This simple routine establishes a 1-1 horizontal
   // mapping.
@@ -326,6 +331,9 @@ void SPAFunctions<S,D>
   });
   // Determine the set of unique columns in this remapping
   spa_horiz_interp.set_unique_cols();
+  update_mem_usage(comm,total_peak_mem_usage);
+  if (total_peak_mem_usage>0 && comm.am_i_root()) { printf("[SPA] set_remap_weights_one_to_one:: SPA Max Mem Usage:: %6d MB\n",total_peak_mem_usage); }
+  stop_timer("EAMxx::SPA::set_remap_weights_one_to_one");
 } // END set_remap_weights_one_to_one
 /*-----------------------------------------------------------------*/
 // Function to read the weights for conducting horizontal remapping
@@ -340,9 +348,13 @@ void SPAFunctions<S,D>
           SPAHorizInterp&    spa_horiz_interp
   )
 {
+  start_timer("EAMxx::SPA::get_remap_weights_from_file");
   // Note, the remap file doesn't follow a conventional grid setup so
   // here we manually go through all of the input steps rather than
   // use the scorpio_input class.
+  auto comm = spa_horiz_interp.m_comm;
+  long long total_peak_mem_usage = 0;
+  update_mem_usage(comm,total_peak_mem_usage);
 
   // Open input file: 
   scorpio::register_file(remap_file_name,scorpio::Read);
@@ -401,6 +413,7 @@ void SPAFunctions<S,D>
   scorpio::grid_read_data_array(remap_file_name,"col",-1,col_global_h.data(),col_global_h.size()); 
 
   // Finished, close the file
+  update_mem_usage(comm,total_peak_mem_usage);
   scorpio::eam_pio_closefile(remap_file_name);
 
   // Retain only the information needed on this rank. 
@@ -441,6 +454,9 @@ void SPAFunctions<S,D>
   Kokkos::deep_copy(spa_horiz_interp.target_grid_loc, target_grid_loc_h);
   // Determine the set of unique columns in this remapping
   spa_horiz_interp.set_unique_cols();
+  update_mem_usage(comm,total_peak_mem_usage);
+  if (total_peak_mem_usage>0 && comm.am_i_root()) { printf("[SPA] get_remap_weights_from_file:: SPA Max Mem Usage:: %6d MB\n",total_peak_mem_usage); }
+  stop_timer("EAMxx::SPA::get_remap_weights_from_file");
 }  // END get_remap_weights_from_file
 /*-----------------------------------------------------------------*/
 /* Note: In this routine the SPA source data is padded in the vertical
@@ -496,8 +512,12 @@ void SPAFunctions<S,D>
           SPAHorizInterp&       spa_horiz_interp,
           SPAInput&             spa_data)
 {
+  start_timer("EAMxx::SPA::update_spa_data_from_file");
+  start_timer("EAMxx::SPA::update_spa_data_from_file::read_data");
   // Ensure all ranks are operating independently when reading the file, so there's a copy on all ranks
   auto comm = spa_horiz_interp.m_comm;
+  long long total_peak_mem_usage = 0;
+  update_mem_usage(comm,total_peak_mem_usage);
 
   // We have enough info to start opening the file
   std::vector<std::string> fnames = {"hyam","hybm","PS","CCN3","AER_G_SW","AER_SSA_SW","AER_TAU_SW","AER_TAU_LW"};
@@ -506,6 +526,8 @@ void SPAFunctions<S,D>
   spa_data_in_params.set("Filename",spa_data_file_name);
   spa_data_in_params.set("Skip_Grid_Checks",true);  // We need to skip grid checks because multiple ranks may want the same column of source data.
   AtmosphereInput spa_data_input(comm,spa_data_in_params);
+  update_mem_usage(comm,total_peak_mem_usage);
+  stop_timer("EAMxx::SPA::update_spa_data_from_file::read_data");
 
   // Note that the SPA data follows a conventional GLL grid format, albeit at a different resolution than
   // the simulation.  For simplicity we can use the scorpio_input object class but we must construct a
@@ -525,6 +547,7 @@ void SPAFunctions<S,D>
                         + std::to_string(ncol) + " doesn't match the SPA data file (" + std::to_string(spa_horiz_interp.source_grid_ncols) + ").");
   scorpio::eam_pio_closefile(spa_data_file_name);
 
+  start_timer("EAMxx::SPA::update_spa_data_from_file::apply_remap");
   // Construct local arrays to read data into
   // Note, all of the views being created here are meant to hold the local "coarse" resolution
   // data that will need to be horizontally interpolated to the simulation grid using the remap
@@ -676,6 +699,10 @@ void SPAFunctions<S,D>
   Kokkos::deep_copy(spa_data.data.AER_SSA_SW,aer_ssa_sw_h);
   Kokkos::deep_copy(spa_data.data.AER_TAU_SW,aer_tau_sw_h);
   Kokkos::deep_copy(spa_data.data.AER_TAU_LW,aer_tau_lw_h);
+  stop_timer("EAMxx::SPA::update_spa_data_from_file::apply_remap");
+  update_mem_usage(comm,total_peak_mem_usage);
+  if (total_peak_mem_usage>0 && comm.am_i_root()) { printf("[SPA] update_spa_data_from_file::time_index_%d SPA Max Mem Usage:: %6d MB\n",time_index,total_peak_mem_usage); }
+  stop_timer("EAMxx::SPA::update_spa_data_from_file");
 
 } // END update_spa_data_from_file
 

@@ -4,11 +4,14 @@
 #include "share/grid/abstract_grid.hpp"
 #include "share/scream_types.hpp"
 #include "share/util/scream_time_stamp.hpp"
+#include "share/util/scream_utils.hpp"
 
 #include "ekat/ekat_pack_kokkos.hpp"
 #include "ekat/ekat_pack_utils.hpp"
 #include "ekat/ekat_workspace.hpp"
 #include "ekat/mpi/ekat_comm.hpp"
+
+#include <numeric>
 
 namespace scream {
 namespace spa {
@@ -268,6 +271,16 @@ struct SPAFunctions
   KOKKOS_INLINE_FUNCTION
   static ScalarX linear_interp(const ScalarX& x0, const ScalarX& x1, const ScalarT& t);
 
+  // Helper function to track max memory usage
+  KOKKOS_INLINE_FUNCTION
+  static void update_mem_usage(const ekat::Comm& comm, long long& current_max) {
+  #ifdef SCREAM_HAS_MEMORY_USAGE
+    long long my_mem_usage = get_mem_usage(MB);
+    long long peak_mem_usage;
+    comm.all_reduce(&my_mem_usage,&peak_mem_usage,1,MPI_MAX);
+    current_max = std::max(peak_mem_usage,current_max);
+  #endif
+  }
 }; // struct Functions
 
 } // namespace spa
