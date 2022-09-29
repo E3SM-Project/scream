@@ -1394,6 +1394,10 @@ contains
     ! Now we know the exact size of the array, and can shape the f90 pointer
     call pio_write_darray(pio_atm_file%pioFileDesc, var%piovar, var%iodesc, buf, ierr)
     call errorHandle( 'eam_grid_write_darray_float: Error writing variable '//trim(varname),ierr)
+    ! Added for debugging, will reduce performance but allow us to check on varibles that might hang
+    if (pio_atm_file%purpose .eq. file_purpose_out) then
+      call PIO_syncfile(pio_atm_file%pioFileDesc)
+    endif
   end subroutine grid_write_darray_float
   subroutine grid_write_darray_double(filename, varname, buf, buf_size)
     use piolib_mod, only: PIO_setframe
@@ -1424,6 +1428,10 @@ contains
     ! Now we know the exact size of the array, and can shape the f90 pointer
     call pio_write_darray(pio_atm_file%pioFileDesc, var%piovar, var%iodesc, buf, ierr)
     call errorHandle( 'eam_grid_write_darray_double: Error writing variable '//trim(varname),ierr)
+    ! Added for debugging, will reduce performance but allow us to check on varibles that might hang
+    if (pio_atm_file%purpose .eq. file_purpose_out) then
+      call PIO_syncfile(pio_atm_file%pioFileDesc)
+    endif
   end subroutine grid_write_darray_double
   subroutine grid_write_darray_int(filename, varname, buf, buf_size)
     use piolib_mod, only: PIO_setframe
@@ -1454,6 +1462,10 @@ contains
     ! Now we know the exact size of the array, and can shape the f90 pointer
     call pio_write_darray(pio_atm_file%pioFileDesc, var%piovar, var%iodesc, buf, ierr)
     call errorHandle( 'eam_grid_write_darray_int: Error writing variable '//trim(varname),ierr)
+    ! Added for debugging, will reduce performance but allow us to check on varibles that might hang
+    if (pio_atm_file%purpose .eq. file_purpose_out) then
+      call PIO_syncfile(pio_atm_file%pioFileDesc)
+    endif
   end subroutine grid_write_darray_int
 !=====================================================================!
   ! Read output from file based on type (int or real)
