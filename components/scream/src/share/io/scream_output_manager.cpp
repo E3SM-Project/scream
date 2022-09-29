@@ -17,6 +17,12 @@ namespace scream
 {
 
 void OutputManager::
+set_logger(const std::shared_ptr<ekat::logger::LoggerBase> atm_logger)
+{
+  m_atm_logger = atm_logger;
+}
+
+void OutputManager::
 setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
        const std::shared_ptr<fm_type>& field_mgr,
        const std::shared_ptr<const gm_type>& grids_mgr,
@@ -79,6 +85,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
   // For each grid, create a separate output stream.
   if (field_mgrs.size()==1) {
     auto output = std::make_shared<output_type>(m_io_comm,m_params,field_mgrs.begin()->second,grids_mgr);
+    output->set_logger(m_atm_logger);
     m_output_streams.push_back(output);
   } else {
     const auto& fields_pl = m_params.sublist("Fields");
@@ -91,6 +98,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
           "Error! Output requested on grid '" + gname + "', but no field manager is available for such grid.\n");
 
       auto output = std::make_shared<output_type>(m_io_comm,m_params,field_mgrs.at(gname),grids_mgr);
+      output->set_logger(m_atm_logger);
       m_output_streams.push_back(output);
     }
   }

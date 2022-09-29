@@ -529,8 +529,10 @@ void AtmosphereDriver::initialize_output_managers () {
         fms[it.first] = it.second;
       }
       om.setup(m_atm_comm,restart_pl,         fms,m_grids_manager,m_run_t0,m_case_t0,true);
+      om.set_logger(m_atm_logger);
     } else {
       om.setup(m_atm_comm,restart_pl,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0,true);
+      om.set_logger(m_atm_logger);
     }
     om.setup_globals_map(m_atm_process_group->get_restart_extra_data());
   }
@@ -551,6 +553,7 @@ void AtmosphereDriver::initialize_output_managers () {
     m_output_managers.emplace_back();
     auto& om = m_output_managers.back();
     om.setup(m_atm_comm,params,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0,false);
+    om.set_logger(m_atm_logger);
   }
 
   m_ad_status |= s_output_inited;

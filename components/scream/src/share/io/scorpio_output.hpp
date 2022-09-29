@@ -145,6 +145,7 @@ public:
   void setup_output_file (const std::string& filename, const std::string& fp_precision);
   void run (const std::string& filename, const bool write, const int nsteps_since_last_output);
   void finalize() {}
+  void set_logger (const std::shared_ptr<ekat::logger::LoggerBase> atm_logger);
 
   long long res_dep_memory_footprint () const;
 protected:
@@ -181,6 +182,9 @@ protected:
   // Local views of each field to be used for "averaging" output and writing to file.
   std::map<std::string,view_1d_host>    m_host_views_1d;
   std::map<std::string,view_1d_dev>     m_dev_views_1d;
+
+  // Make it possible to have output use the atmosphere logger:
+  std::shared_ptr<ekat::logger::LoggerBase> m_atm_logger;
 };
 
 } //namespace scream

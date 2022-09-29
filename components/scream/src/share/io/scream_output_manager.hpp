@@ -111,6 +111,8 @@ public:
   void finalize();
 
   long long res_dep_memory_footprint () const;
+
+  void set_logger(const std::shared_ptr<ekat::logger::LoggerBase> atm_logger);
 protected:
 
   std::string compute_filename (const IOControl& control,
@@ -159,6 +161,9 @@ protected:
   // restart happens, and the latter being the start time of the *original* run.
   util::TimeStamp   m_case_t0;
   util::TimeStamp   m_run_t0;
+
+  // Make it possible to have output use the atmosphere logger:
+  std::shared_ptr<ekat::logger::LoggerBase> m_atm_logger;
 };
 
 } // namespace scream

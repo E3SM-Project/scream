@@ -299,7 +299,9 @@ void AtmosphereOutput::run (const std::string& filename, const bool is_write_ste
       // Bring data to host
       auto view_host = m_host_views_1d.at(name);
       Kokkos::deep_copy (view_host,view_dev);
+      m_atm_logger->debug("[EAMxx::output::grid_write] var: " + name + ", on file: " + filename + ", START");
       grid_write_data_array(filename,name,view_host.data(),view_host.size());
+      m_atm_logger->debug("[EAMxx::output::grid_write] var: " + name + ", on file: " + filename + ", FINISH");
     }
   }
 } // run
@@ -652,6 +654,11 @@ Field AtmosphereOutput::get_field(const std::string& name, const bool eval_diagn
   } else {
     EKAT_ERROR_MSG ("Field " + name + " not found in output field manager or diagnostics list");
   }
+}
+/* ---------------------------------------------------------- */
+void AtmosphereOutput::set_logger(const std::shared_ptr<ekat::logger::LoggerBase> atm_logger)
+{
+  m_atm_logger = atm_logger;
 }
 /* ---------------------------------------------------------- */
 void AtmosphereOutput::set_diagnostics()

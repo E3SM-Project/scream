@@ -64,7 +64,9 @@ HommeDynamics::HommeDynamics (const ekat::Comm& comm, const ekat::ParameterList&
   }
 
   // Set the log filename in the F90 interface
-  const char* logname = m_atm_logger->get_logfile_name().c_str();
+//  const char* logname = m_atm_logger->get_logfile_name().c_str();
+  // If atm is using all ranks for logging we need to strip the mpi rank info from logname
+  const char* logname = "atm.log"; 
   set_homme_log_file_name_f90 (&logname);
 }
 
