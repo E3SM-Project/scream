@@ -729,6 +729,7 @@ void AtmosphereDriver::create_logger () {
 
   ci_string log_fname = deb_pl.get<std::string>("Atm Log File","atm.log");
   ci_string log_level_str = deb_pl.get<std::string>("atm_log_level","info");
+  ci_string log_mpi_policy_str = deb_pl.get<std::string>("atm_log_mpi_policy","root");
   EKAT_REQUIRE_MSG (log_fname!="",
       "Invalid string for 'Atm Log File': '" + log_fname + "'.\n");
 
@@ -749,8 +750,15 @@ void AtmosphereDriver::create_logger () {
     EKAT_ERROR_MSG ("Invalid choice for 'atm_log_level': " + log_level_str + "\n");
   }
 
-  using logger_t = Logger<LogBasicFile,LogRootRank>;
-  m_atm_logger = std::make_shared<logger_t>(log_fname,log_level,m_atm_comm,"");
+  if (log_mpi_policy_str=="root") {
+    using logger_t = Logger<LogBasicFile,LogRootRank>;
+    m_atm_logger = std::make_shared<logger_t>(log_fname,log_level,m_atm_comm,"");
+  } else if (log_mpi_policy_str=="all") {
+    using logger_t = Logger<LogBasicFile,LogAllRanks>;
+    m_atm_logger = std::make_shared<logger_t>(log_fname,log_level,m_atm_comm,"");
+  } else {
+    EKAT_ERROR_MSG ("Invalid choice for 'atm_log_mpi_policy': " + log_mpi_policy_str + "\n");
+  } 
   m_atm_logger->set_no_format();
 
   // In CIME runs, this is already set to false, so atm log does not pollute e3sm.loc.
