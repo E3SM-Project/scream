@@ -1366,7 +1366,7 @@ contains
   !
   !---------------------------------------------------------------------------
   subroutine grid_write_darray_float(filename, varname, buf, buf_size)
-    use piolib_mod, only: PIO_setframe
+    use piolib_mod, only: PIO_setframe, PIO_syncfile
     use piodarray,  only: PIO_write_darray
 
     ! Dummy arguments
@@ -1400,7 +1400,7 @@ contains
     endif
   end subroutine grid_write_darray_float
   subroutine grid_write_darray_double(filename, varname, buf, buf_size)
-    use piolib_mod, only: PIO_setframe
+    use piolib_mod, only: PIO_setframe, PIO_syncfile
     use piodarray,  only: PIO_write_darray
 
     ! Dummy arguments
@@ -1434,7 +1434,7 @@ contains
     endif
   end subroutine grid_write_darray_double
   subroutine grid_write_darray_int(filename, varname, buf, buf_size)
-    use piolib_mod, only: PIO_setframe
+    use piolib_mod, only: PIO_setframe, PIO_syncfile
     use piodarray,  only: PIO_write_darray
 
     ! Dummy arguments

@@ -53,11 +53,12 @@ module homme_context_mod
 
 contains
 
-  subroutine set_homme_log_file_name_f90(c_str) bind(c)
+  subroutine set_homme_log_file_name_f90(c_str, logroot) bind(c)
     use shr_file_mod, only: shr_file_getUnit
     use iso_c_binding, only: C_NULL_CHAR, c_ptr, c_f_pointer
     use kinds, only: iulog
     type (c_ptr), intent(in) :: c_str
+    logical (kind=c_bool)    :: logroot 
     !
     ! Local(s)
     !
@@ -80,18 +81,27 @@ contains
       homme_log_fname = trim(path)//"homme_"//fname
 
       iulog = shr_file_getunit()
-      if (masterproc) then
+      if (logroot) then 
         ! Create the homme log file on root rank...
+        if (masterproc) then
+          open (unit=iulog,file=trim(homme_log_fname),status='REPLACE', &
+                action='WRITE', access='SEQUENTIAL', position="append")
+          write(iulog,*) " ---- HOMME LOG FILE ----"
+          flush(iulog)
+        endif
+        call mpi_barrier(par%comm,ierr)
+        if (.not. masterproc) then
+          ! ... and open it on all other ranks
+          open (unit=iulog,file=trim(homme_log_fname),status='OLD', &
+                action='WRITE', access='SEQUENTIAL', position="append")
+        endif
+      else
+        ! Create the homme log file on all ranks...
         open (unit=iulog,file=trim(homme_log_fname),status='REPLACE', &
               action='WRITE', access='SEQUENTIAL', position="append")
         write(iulog,*) " ---- HOMME LOG FILE ----"
         flush(iulog)
-      endif
-      call mpi_barrier(par%comm,ierr)
-      if (.not. masterproc) then
-        ! ... and open it on all other ranks
-        open (unit=iulog,file=trim(homme_log_fname),status='OLD', &
-              action='WRITE', access='SEQUENTIAL', position="append")
+        call mpi_barrier(par%comm,ierr)
       endif
 
       homme_log_set = .true.

@@ -754,6 +754,15 @@ void AtmosphereDriver::create_logger () {
     using logger_t = Logger<LogBasicFile,LogRootRank>;
     m_atm_logger = std::make_shared<logger_t>(log_fname,log_level,m_atm_comm,"");
   } else if (log_mpi_policy_str=="all") {
+    // Need to update the log name to organize files into a directory.
+    auto tokens = ekat::split(log_fname,'/');
+    auto last = tokens.back();
+    last = "atm_logs/" + last;
+    tokens.back() = last;
+    log_fname = tokens[0];
+    for (int ii=1;ii<tokens.size();ii++) {
+      log_fname += "/" + tokens[ii];
+    }
     using logger_t = Logger<LogBasicFile,LogAllRanks>;
     m_atm_logger = std::make_shared<logger_t>(log_fname,log_level,m_atm_comm,"");
   } else {
