@@ -2,6 +2,7 @@
 
 #include "share/io/scorpio_input.hpp"
 #include "share/io/scream_scorpio_interface.hpp"
+#include "share/util/scream_timing.hpp"
 
 #include "diagnostics/register_diagnostics.hpp"
 
@@ -186,6 +187,11 @@ void OutputManager::run(const util::TimeStamp& timestamp)
   auto& filespecs = is_checkpoint_step ? m_checkpoint_file_specs : m_output_file_specs;
   auto& filename  = filespecs.filename;
 
+  if (m_is_model_restart_output && is_write_step) {
+   start_timer("EAMxx::scream_output::restart"); 
+  } else {
+   start_timer("EAMxx::scream_output::standard"); 
+  }
   // Compute filename (if write step)
   if (is_write_step) {
     // Check if we need to open a new file
@@ -307,6 +313,11 @@ void OutputManager::run(const util::TimeStamp& timestamp)
     // Whether we wrote an output or a checkpoint, the checkpoint counter needs to be reset
     m_checkpoint_control.nsamples_since_last_write = 0;
     m_checkpoint_control.timestamp_of_last_write = timestamp;
+  }
+  if (m_is_model_restart_output && is_write_step) {
+   stop_timer("EAMxx::scream_output::restart"); 
+  } else {
+   stop_timer("EAMxx::scream_output::standard"); 
   }
 }
 /*===============================================================================================*/
