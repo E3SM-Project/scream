@@ -50,6 +50,8 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
   m_io_comm = io_comm;
   m_run_t0 = run_t0;
   m_case_t0 = case_t0;
+  m_curr_atm_time = m_run_t0;
+
   m_is_restarted_run = (case_t0<run_t0);
   m_is_model_restart_output = is_model_restart_output;
 
@@ -77,7 +79,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
 
   // For each grid, create a separate output stream.
   if (field_mgrs.size()==1) {
-    auto output = std::make_shared<output_type>(m_io_comm,m_params,field_mgrs.begin()->second,grids_mgr);
+    auto output = std::make_shared<output_type>(m_io_comm,m_params,field_mgrs.begin()->second,grids_mgr,m_curr_atm_time);
     m_output_streams.push_back(output);
   } else {
     const auto& fields_pl = m_params.sublist("Fields");
@@ -258,11 +260,13 @@ void OutputManager::run(const util::TimeStamp& timestamp)
   }
 
   // Run the output streams
+  const auto dt = timestamp - m_curr_atm_time;
+  m_curr_atm_time = timestamp;
   for (auto& it : m_output_streams) {
     // Note: filename might reference an invalid string, but it's only used
     //       in case is_write_step=true, in which case it will *for sure* contain
     //       a valid file name.
-    it->run(filename,is_write_step,m_output_control.nsamples_since_last_write);
+    it->run(filename,dt,is_write_step,m_output_control.nsamples_since_last_write);
   }
 
   if (is_write_step) {

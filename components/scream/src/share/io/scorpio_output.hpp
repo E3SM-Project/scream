@@ -136,19 +136,20 @@ public:
   //    contains metadata, and is expected by the component coupled)
   AtmosphereOutput(const ekat::Comm& comm, const ekat::ParameterList& params,
                    const std::shared_ptr<const fm_type>& field_mgr,
-                   const std::shared_ptr<const gm_type>& grids_mgr);
+                   const std::shared_ptr<const gm_type>& grids_mgr,
+                   const util::TimeStamp& t0 = util::TimeStamp());
 
   // Main Functions
   void restart (const std::string& filename);
-  void init();
   void reset_dev_views();
   void setup_output_file (const std::string& filename, const std::string& fp_precision);
-  void run (const std::string& filename, const bool write, const int nsteps_since_last_output);
+  void run (const std::string& filename, const int dt, const bool write, const int nsteps_since_last_output);
   void finalize() {}
 
   long long res_dep_memory_footprint () const;
 protected:
   // Internal functions
+  void init(const util::TimeStamp& t0);
   void set_field_manager (const std::shared_ptr<const fm_type>& field_mgr);
   void set_grid (const std::shared_ptr<const AbstractGrid>& grid);
 
@@ -157,8 +158,8 @@ protected:
   void set_degrees_of_freedom(const std::string& filename);
   std::vector<scorpio::offset_t> get_var_dof_offsets (const FieldLayout& layout);
   void register_views();
-  Field get_field(const std::string& name, const bool eval_diagnostic = false) const;
-  void set_diagnostics();
+  Field get_field(const std::string& name, const int dt = -1) const;
+  void set_diagnostics(const util::TimeStamp& t0);
   void create_diagnostic (const std::string& diag_name);
 
   // --- Internal variables --- //

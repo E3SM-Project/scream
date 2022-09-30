@@ -159,6 +159,8 @@ protected:
   // restart happens, and the latter being the start time of the *original* run.
   util::TimeStamp   m_case_t0;
   util::TimeStamp   m_run_t0;
+
+  util::TimeStamp   m_curr_atm_time;
 };
 
 } // namespace scream

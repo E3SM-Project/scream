@@ -39,7 +39,8 @@ void combine (const Real& new_val, Real& curr_val, const OutputAvgType avg_type)
 AtmosphereOutput::
 AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
                   const std::shared_ptr<const fm_type>& field_mgr,
-                  const std::shared_ptr<const gm_type>& grids_mgr)
+                  const std::shared_ptr<const gm_type>& grids_mgr,
+                  const util::TimeStamp& t0)
  : m_comm      (comm)
 {
   using vos_t = std::vector<std::string>;
@@ -126,7 +127,7 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
   }
 
   // Setup I/O structures
-  init ();
+  init (t0);
 }
 
 /* ---------------------------------------------------------- */
@@ -148,10 +149,10 @@ void AtmosphereOutput::restart (const std::string& filename)
   }
 }
 
-void AtmosphereOutput::init()
+void AtmosphereOutput::init(const util::TimeStamp& t0)
 {
   // Register any diagnostics needed by this output stream
-  set_diagnostics();
+  set_diagnostics(t0);
 
   for (const auto& var_name : m_fields_names) {
     register_dimensions(var_name);
@@ -163,7 +164,7 @@ void AtmosphereOutput::init()
 
 } // init
 /*-----*/
-void AtmosphereOutput::run (const std::string& filename, const bool is_write_step, const int nsteps_since_last_output)
+void AtmosphereOutput::run (const std::string& filename, const int dt, const bool is_write_step, const int nsteps_since_last_output)
 {
   // If we do INSTANT output, but this is not an write step,
   // we can immediately return
@@ -191,7 +192,7 @@ void AtmosphereOutput::run (const std::string& filename, const bool is_write_ste
   // Take care of updating and possibly writing fields.
   for (auto const& name : m_fields_names) {
     // Get all the info for this field.
-    const auto  field = get_field(name,true); // If diagnostic, must evaluate it
+    const auto  field = get_field(name,dt); // If diagnostic, must evaluate it
     const auto& layout = m_layouts.at(name);
     const auto& dims = layout.dims();
     const auto  rank = layout.rank();
@@ -645,17 +646,17 @@ setup_output_file(const std::string& filename,
 // manager.  If not it will next check to see if it is in the list
 // of available diagnostics.  If neither of these two options it
 // will throw an error.
-Field AtmosphereOutput::get_field(const std::string& name, const bool eval_diagnostic) const
+Field AtmosphereOutput::get_field(const std::string& name, const int dt) const
 {
   if (m_field_mgr->has_field(name)) {
     return m_field_mgr->get_field(name);
   } else if (m_diagnostics.find(name) != m_diagnostics.end()) {
     const auto& diag = m_diagnostics.at(name);
-    if (eval_diagnostic) {
+    if (dt >= 0) {
       for (const auto& dep : m_diag_depends_on_diags.at(name)) {
-        get_field(dep,eval_diagnostic);
+        get_field(dep,dt);
       }
-      diag->compute_diagnostic();
+      diag->run(dt);
     }
     return diag->get_diagnostic();
   } else {
@@ -663,7 +664,8 @@ Field AtmosphereOutput::get_field(const std::string& name, const bool eval_diagn
   }
 }
 /* ---------------------------------------------------------- */
-void AtmosphereOutput::set_diagnostics()
+void AtmosphereOutput::
+set_diagnostics(const util::TimeStamp& t0)
 {
   // Create all diagnostics
   for (const auto& fname : m_fields_names) {
@@ -685,7 +687,7 @@ void AtmosphereOutput::set_diagnostics()
 
     // Note: this inits with an invalid timestamp. If by any chance we try to
     //       output the diagnostic without computing it, we'll get an error.
-    diag->initialize(util::TimeStamp(),RunType::Initial);
+    diag->initialize(t0,RunType::Initial);
   }
 }
 
