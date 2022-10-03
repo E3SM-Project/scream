@@ -23,6 +23,7 @@
 #include "diagnostics/zonal_vapor_flux.hpp"
 #include "diagnostics/meridional_vapor_flux.hpp"
 #include "diagnostics/ice_cloud_mask.hpp"
+#include "diagnostics/precipitation_rate.hpp"
 
 namespace scream {
 
@@ -49,6 +50,7 @@ inline void register_diagnostics () {
   diag_factory.register_product("ZonalVapFlux",&create_atmosphere_diagnostic<ZonalVapFluxDiagnostic>);
   diag_factory.register_product("MeridionalVapFlux",&create_atmosphere_diagnostic<MeridionalVapFluxDiagnostic>);
   diag_factory.register_product("IceCloudMask",&create_atmosphere_diagnostic<IceCloudMaskDiagnostic>);
+ diag_factory.register_product("PrecipitationRate",&create_atmosphere_diagnostic<PrecipitationRateDiagnostic>);
 
 }
 
