@@ -20,6 +20,7 @@ set(DIAGNOSTIC_SRCS
   vertical_layer_thickness.cpp
   virtual_temperature.cpp
   zonal_vapor_flux.cpp
+  precipitation_rate.cpp
 )
 
 add_library(diagnostics ${DIAGNOSTIC_SRCS})
