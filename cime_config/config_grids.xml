@@ -964,6 +964,16 @@
       <mask>oRRS18to6v3</mask>
     </model_grid>
 
+    <model_grid alias="conus_ne32x16_pg2">
+      <grid name="atm">ne0np4_conus_ne32x16.pg2</grid>
+      <grid name="lnd">ne0np4_conus_ne32x16.pg2</grid>
+      <grid name="ocnice">oRRS18to6v3</grid>
+      <grid name="rof">null</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>oRRS18to6v3</mask>
+      </model_grid>
+
     <model_grid alias="conus_ne32x32_pg2">
       <grid name="atm">ne0np4_conus_ne32x32.pg2</grid>
       <grid name="lnd">ne0np4_conus_ne32x32.pg2</grid>
@@ -2851,6 +2861,14 @@
       <desc>ne32 with ne256 over CONUS:</desc>
     </domain>
 
+    <domain name="ne0np4_conus_ne32x16.pg2">
+      <nx>267120</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.CONUS_ne32x16_oRRS18to6v3.221006.nc</file>
+      <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.CONUS_ne32x16_oRRS18to6v3.221006`.nc</file>
+      <desc>ne32 with ne512 over CONUS:</desc>
+    </domain>
+
     <domain name="ne0np4_conus_ne32x32.pg2">
       <nx>954144</nx>
       <ny>1</ny>
@@ -3580,6 +3598,14 @@
       <map name="ATM2OCN_SMAPNAME">cpl/gridmaps/conusne32x8pg2/map_CONUS_ne32x8_oRRS18to6v3_bilin.nc</map>
       <map name="OCN2ATM_FMAPNAME">cpl/gridmaps/conusne32x8pg2/map_oRRS18to6v3_to_CONUS_ne32x8_mono.20220816.nc</map>
       <map name="OCN2ATM_SMAPNAME">cpl/gridmaps/conusne32x8pg2/map_oRRS18to6v3_to_CONUS_ne32x8_mono.20220816.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne0np4_conus_ne32x16.pg2" ocn_grid="oRRS18to6v3">
+      <map name="ATM2OCN_FMAPNAME">cpl/gridmaps/conusne32x16pg2/map_CONUS_ne32x16_to_oRRS18to6v3_mono.20221006.nc</map>
+      <map name="ATM2OCN_VMAPNAME">cpl/gridmaps/conusne32x16pg2/map_CONUS_ne32x16_oRRS18to6v3_bilin.nc</map>
+      <map name="ATM2OCN_SMAPNAME">cpl/gridmaps/conusne32x16pg2/map_CONUS_ne32x16_oRRS18to6v3_bilin.nc</map>
+      <map name="OCN2ATM_FMAPNAME">cpl/gridmaps/conusne32x16pg2/map_oRRS18to6v3_to_CONUS_ne32x16_mono.20221006.nc</map>
+      <map name="OCN2ATM_SMAPNAME">cpl/gridmaps/conusne32x16pg2/map_oRRS18to6v3_to_CONUS_ne32x16_mono.20221006.nc</map>
     </gridmap>
 
     <gridmap atm_grid="ne0np4_conus_ne32x32.pg2" ocn_grid="oRRS18to6v3">

@@ -74,6 +74,7 @@
 <horiz_grid dyn="se" hgrid="ne0np4_conus_x4v1_lowcon.pg2"     ncol="39620"  csne="0" csnp="4" npg="2" />
 <horiz_grid dyn="se" hgrid="ne0np4_conus_ne32x4.pg2"          ncol="41616"  csne="0" csnp="4" npg="2" />
 <horiz_grid dyn="se" hgrid="ne0np4_conus_ne32x8.pg2"          ncol="89280"  csne="0" csnp="4" npg="2" />
+<horiz_grid dyn="se" hgrid="ne0np4_conus_ne32x16.pg2"         ncol="267120" csne="0" csnp="4" npg="2" />
 <horiz_grid dyn="se" hgrid="ne0np4_conus_ne32x32.pg2"         ncol="954144" csne="0" csnp="4" npg="2" />
 <horiz_grid dyn="se" hgrid="ne0np4_northamericax4v1"          ncol="130088" csne="0" csnp="4" npg="0" />
 <horiz_grid dyn="se" hgrid="ne0np4_northamericax4v1.pg2"      ncol="57816"  csne="0" csnp="4" npg="2" />

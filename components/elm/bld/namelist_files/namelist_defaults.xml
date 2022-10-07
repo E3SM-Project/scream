@@ -421,6 +421,8 @@ lnd/clm2/surfdata_map/surfdata_conusx4v1_simyr2000_c160503.nc</fsurdat>
 lnd/clm2/surfdata_map/surfdata_CONUS_ne32x4_simyr2010_c220705.nc</fsurdat>
 <fsurdat hgrid="ne0np4_conus_ne32x8.pg2" sim_year="2010" use_crop=".false." >
 lnd/clm2/surfdata_map/surfdata_CONUS_ne32x8_simyr2010_c220813.nc</fsurdat>
+<fsurdat hgrid="ne0np4_conus_ne32x16.pg2" sim_year="2010" use_crop=".false." >
+lnd/clm2/surfdata_map/surfdata_CONUS_ne32x16_simyr2010_c220906.nc</fsurdat>
 <fsurdat hgrid="ne0np4_conus_ne32x32.pg2" sim_year="2010" use_crop=".false." >
 lnd/clm2/surfdata_map/surfdata_CONUS_ne32x32_simyr2010_c220810.nc</fsurdat>
 
