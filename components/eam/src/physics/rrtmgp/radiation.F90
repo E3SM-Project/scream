@@ -2316,6 +2316,11 @@ contains
       ! Working variables
       integer :: ncol
       integer :: ktop_rad = 1
+      integer :: icol !>> export_surface_fluxes (zhang73)
+      real(r8), dimension(size(flux_all%bnd_flux_dn,1), & !>> export_surface_fluxes (zhang73)
+                          size(flux_all%bnd_flux_dn,2), &
+                          size(flux_all%bnd_flux_dn,3)) :: flux_dn_diffuse
+      real(r8), dimension(pcols) :: soll1, sols1, solld1, solsd1 !(zhang73)
 
       ncol = state%ncol
 
@@ -2357,6 +2362,41 @@ contains
       ! Send heating rates to history buffer
       call outfld('QRS'//diag(icall), qrs(1:ncol,1:pver)/cpair, ncol, state%lchnk)
       call outfld('QRSC'//diag(icall), qrsc(1:ncol,1:pver)/cpair, ncol, state%lchnk)
+
+      ! Send SOLL, SOLS, SOLLD, SOLSD to history buffer (zhang73)
+         ! Reset fluxes
+         soll1 = 0
+         sols1 = 0
+         solld1 = 0
+         solsd1 = 0
+
+         ! Calculate diffuse flux from total and direct
+         flux_dn_diffuse = flux_all%bnd_flux_dn - flux_all%bnd_flux_dn_dir
+
+         ! Calculate broadband surface solar flux_all(UV/visible vs near IR) for
+         ! each column.
+         do icol = 1,size(flux_all%bnd_flux_dn, 1)
+
+            ! Direct flux_all 
+            soll1(icol) &
+               = sum(flux_all%bnd_flux_dn_dir(icol,kbot+1,1:9)) &
+               + 0.5_r8 * flux_all%bnd_flux_dn_dir(icol,kbot+1,10)
+            sols1(icol) &
+               = 0.5_r8 * flux_all%bnd_flux_dn_dir(icol,kbot+1,10) &
+               + sum(flux_all%bnd_flux_dn_dir(icol,kbot+1,11:14))
+
+            ! Diffuse flux_all 
+            solld1(icol) &
+               = sum(flux_dn_diffuse(icol,kbot+1,1:9)) &
+               + 0.5_r8 * flux_dn_diffuse(icol,kbot+1,10)
+            solsd1(icol) &
+               = 0.5_r8 * flux_dn_diffuse(icol,kbot+1,10) &
+               + sum(flux_dn_diffuse(icol,kbot+1,11:14))
+         end do
+      call outfld('SOLL'//diag(icall),soll1(1:ncol), ncol, state%lchnk)
+      call outfld('SOLS'//diag(icall),sols1(1:ncol), ncol, state%lchnk)
+      call outfld('SOLLD'//diag(icall),solld1(1:ncol), ncol, state%lchnk)
+      call outfld('SOLSD'//diag(icall),solsd1(1:ncol), ncol, state%lchnk)
 
    end subroutine output_fluxes_sw
 
