@@ -64,7 +64,7 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
     // coarsening remapper is created we can gather the io grid directly
     // from it.
     remap_from_file = true;
-    remap_file      = params.get<std::string>("remap_file");
+    auto remap_file = params.get<std::string>("remap_file");
     m_remapper      = std::make_shared<CoarseningRemapper>(fm_grid,remap_file); 
     io_grid         = m_remapper->get_tgt_grid();
     m_fields_names  = params.get<vos_t>("Field Names");

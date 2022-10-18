@@ -158,7 +158,7 @@ create_src_layout (const FieldLayout& tgt_layout) const
   const auto lt = get_layout_type(tgt_layout.tags());
   auto src = FieldLayout::invalid();
   const bool midpoints = tgt_layout.has_tag(LEV);
-  const int vec_dim = tgt_layout.is_vector_layout() ? tgt_layout.get_vector_dim() : -1;
+  const int vec_dim = tgt_layout.is_vector_layout() ? tgt_layout.dim(CMP) : -1;
   switch (lt) {
     case LayoutType::Scalar2D:
       src = m_src_grid->get_2d_scalar_layout();
@@ -184,7 +184,7 @@ create_tgt_layout (const FieldLayout& src_layout) const
   const auto lt = get_layout_type(src_layout.tags());
   auto tgt = FieldLayout::invalid();
   const bool midpoints = src_layout.has_tag(LEV);
-  const int vec_dim = src_layout.is_vector_layout() ? src_layout.get_vector_dim() : -1;
+  const int vec_dim = src_layout.is_vector_layout() ? src_layout.dim(CMP) : -1;
   switch (lt) {
     case LayoutType::Scalar2D:
       tgt = m_tgt_grid->get_2d_scalar_layout();
