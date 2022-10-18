@@ -1,6 +1,7 @@
 #include "share/io/scorpio_output.hpp"
 #include "share/io/scorpio_input.hpp"
 #include "share/util/scream_array_utils.hpp"
+#include "share/grid/remap/coarsening_remapper.hpp"
 
 #include "ekat/util/ekat_units.hpp"
 #include "ekat/util/ekat_string_utils.hpp"
@@ -57,7 +58,17 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
   m_grids_manager = grids_mgr;
   std::shared_ptr<const grid_type> fm_grid, io_grid;
   io_grid = fm_grid = field_mgr->get_grid();
-  if (params.isParameter("Field Names")) {
+  bool remap_from_file = params.isParameter("remap_file");
+  if (remap_from_file) {
+    // When remapping from file we use the coarsening remapper.  Once the
+    // coarsening remapper is created we can gather the io grid directly
+    // from it.
+    remap_from_file = true;
+    remap_file      = params.get<std::string>("remap_file");
+    m_remapper      = std::make_shared<CoarseningRemapper>(fm_grid,remap_file); 
+    io_grid         = m_remapper->get_tgt_grid();
+    m_fields_names  = params.get<vos_t>("Field Names");
+  } else if (params.isParameter("Field Names")) {
     // This simple parameter list option does *not* allow to remap fields
     // to an io grid different from that of the field manager. In order to
     // use that functionality, you need the full syntax
@@ -86,9 +97,11 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
   // Try to set the IO grid (checks will be performed)
   set_grid (io_grid);
 
-  if (io_grid->name()!=fm_grid->name()) {
-    // We build a remapper, to remap fields from the fm grid to the io grid
-    m_remapper = grids_mgr->create_remapper(fm_grid,io_grid);
+  if (io_grid->name()!=fm_grid->name() || remap_from_file) {
+    if (!remap_from_file) {
+      // We build a remapper, to remap fields from the fm grid to the io grid
+      m_remapper = grids_mgr->create_remapper(fm_grid,io_grid);
+    }
 
     // Register all output fields in the remapper.
     m_remapper->registration_begins();
@@ -174,6 +187,9 @@ void AtmosphereOutput::run (const std::string& filename, const bool is_write_ste
   using namespace scream::scorpio;
 
   // If needed, remap fields from their grid to the unique grid, for I/O
+  // TODO: Should we keep variables on the native mesh and then only remap
+  // right before writing to file?  Would it save performance, instead of
+  // remapping every step?
   if (m_remapper) {
     m_remapper->remap(true);
 

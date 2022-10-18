@@ -645,6 +645,7 @@ get_my_triplets_gids (const std::string& map_file,
   scorpio::set_decomp(map_file);
   scorpio::grid_read_data_array(map_file,"col",-1,cols.data(),cols.size());
   scorpio::eam_pio_closefile(map_file);
+  // TODO: Revist assumption that all remap files are 1-based
   for (auto& id : cols) {
     --id; // Subtract 1 to get 0-based indices
   }
