@@ -15,6 +15,12 @@ CreateUnitTest(io_test "io.cpp" scream_io LABELS "io"
   MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
 )
 
+# Test regional output
+
+CreateUnitTest(regional_output "regional_output.cpp" scream_io LABELS "io"
+  MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS}
+)
+
 # Test output on SE grid
 configure_file(io_test_se_grid.yaml io_test_se_grid.yaml)
 CreateUnitTest(io_test_se_grid "io_se_grid.cpp" scream_io LABELS "io"
