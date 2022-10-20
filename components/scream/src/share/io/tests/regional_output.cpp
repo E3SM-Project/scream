@@ -34,6 +34,7 @@
 
 #include "share/grid/mesh_free_grids_manager.hpp"
 #include "share/grid/point_grid.hpp"
+#include "share/grid/remap/coarsening_remapper.hpp"
 
 #include "share/util/scream_time_stamp.hpp"
 
@@ -41,6 +42,7 @@
 #include "share/field/field_header.hpp"
 #include "share/field/field.hpp"
 #include "share/field/field_manager.hpp"
+#include "share/field/field_utils.hpp"
 
 #include "ekat/ekat_parameter_list.hpp"
 #include "ekat/util/ekat_units.hpp"
@@ -69,6 +71,92 @@ Real generate_data_3d(const int col, const int lev);
 Real generate_data_3d(const int col, const int lev,const int cmp);
 
 /*===================================================================================================*/
+// Simple structure to organize different test cases
+struct remap_test_case
+{
+  remap_test_case(const ekat::Comm& comm_, const std::string& casename_) :
+    comm(comm_),
+    casename(casename_)
+  {
+    filename = casename + "_remap_np" + std::to_string(comm.size()) + ".nc";
+  }
+
+  // Remap values
+  int n_a, n_b, n_s;
+  view_1d<int>  col, row;
+  view_1d<Real> S;
+
+  // Case values
+  ekat::Comm  comm;
+  std::string casename;
+  std::string filename;
+
+  // Output manager for this case
+  void construct_output(std::shared_ptr<FieldManager> fm, std::shared_ptr<GridsManager> gm) {
+    util::TimeStamp time ({2000,1,1},{0,0,0});
+    ekat::ParameterList params;
+    params.set<std::string>("Casename",casename+"_output");
+    params.set<std::string>("remap_file",filename);
+    params.set<std::string>("Averaging Type","Instant");
+    params.set<int>("Max Snapshots Per File",1);
+    using vos_type = std::vector<std::string>;
+    params.set<vos_type>("Field Names",
+        {"field_2d", "field_2d_vector", "field_3d", "field_3d_vector"});
+    auto& psub = params.sublist("output_control");
+    psub.set<bool>("MPI Ranks in Filename",true);
+    psub.set<int>("Frequency",1);
+    psub.set<std::string>("frequency_units","nsteps");
+    psub.set<bool>("avg_type_in_filename",false);
+    psub.set<bool>("Timestamp in Filename",false);
+    psub.set<bool>("frequency_in_filename",false);
+    OutputManager om;
+    om.setup(comm,params,fm,gm,time,time,false);
+    comm.barrier();
+    om.run(time);
+    om.finalize();
+  }
+
+  // Check that the output matches the expected output
+  void check_output(std::shared_ptr<FieldManager> src_fm, std::shared_ptr<GridsManager> gm) {
+    auto grid = gm->get_grid("Point Grid");
+    // Store the names of all fields
+    using vos_type = std::vector<std::string>;
+    vos_type list_of_fields;
+    for (const auto& it : *src_fm) {
+      list_of_fields.push_back(it.first);
+    }
+    // Create a coarsening remapper locally to test the output against
+    CoarseningRemapper c_remapper(grid,filename);
+    auto tgt_grid = c_remapper.get_tgt_grid();
+    auto tgt_fm   = get_test_fm(tgt_grid);
+    c_remapper.registration_begins();
+    for (const auto& fname : list_of_fields) {
+      auto src_field = src_fm->get_field(fname);
+      auto tgt_field = tgt_fm->get_field(fname);
+      c_remapper.register_field(src_field,tgt_field);
+    } 
+    c_remapper.registration_ends();
+    c_remapper.remap(true);
+
+    // Now we have the true solution on the "target field manager".
+    // Load the output data and compare.
+    auto test_fm   = get_test_fm(tgt_grid);
+    ekat::ParameterList in_params;
+    in_params.set<std::string>("Filename",casename+"_output.np" + std::to_string(comm.size()) + ".nc");
+    in_params.set<vos_type>("Field Names", list_of_fields);
+    in_params.set<std::string>("Floating Point Precision","real");
+    AtmosphereInput test_input(in_params,test_fm);
+    test_input.read_variables();
+    test_input.finalize();
+    // Now we have the data from the input and from the remapper.  Check they match:
+    for (const auto& fname : list_of_fields) {
+      const auto& test_field = test_fm->get_field(fname);
+      const auto& tgt_field  = tgt_fm->get_field(fname);
+      EKAT_REQUIRE_MSG(views_are_equal(test_field,tgt_field),"ERROR: test case " + casename + " does not match for field " + fname);
+    }
+  }
+};
+/*===================================================================================================*/
 void run()
 {
   // Get a comm group for this test, set up basic grid
@@ -81,60 +169,42 @@ void run()
   auto gm = get_test_gm(comm,num_gcols,num_levs);
   auto grid = gm->get_grid("Point Grid");
   // Create a test field manager, initialize the fields.
-  auto field_manager = get_test_fm(grid);
+  auto src_fm = get_test_fm(grid);
+  // Store the names of all fields
+  std::vector<std::string> list_of_fields;
+  for (const auto& it : *src_fm) {
+    list_of_fields.push_back(it.first);
+  }
 
+  // CASES
   // ------------------------------------------------------------------------------------------- //
-  // Create the remap file for each regional output test case
-  int n_a, n_b, n_s;
-  view_1d<int>  col, row;
-  view_1d<Real> S;
-  // Case 1: Test 1-1 mapping, i.e. no actual regional output, but we will run as
-  //         though we are remapping.
-  // The map will follow the pattern:
-  //   Y(n) = 1.0 * X(n) for n = 0,...,ncol-1
-  std::string case1_filename = "one_to_one_remap_np" + std::to_string(comm.size()) + ".nc";
-  n_a = num_gcols;
-  n_b = num_gcols;
-  n_s = num_gcols;
-  col = view_1d<int>("",n_s);
-  row = view_1d<int>("",n_s);
-  S   = view_1d<Real>("",n_s);
-  Kokkos::parallel_for("", n_a, KOKKOS_LAMBDA (const int& ii) {
-    col(ii) = ii+1;
-    row(ii) = ii+1;
-    S(ii)   = 1.0;
-  });
-  create_remap_file(comm,case1_filename,grid,n_a,n_b,col,row,S);
-  
+  {
+    // Case 1: Test 1-1 mapping, i.e. no actual regional output, but we will run as
+    //         though we are remapping.
+    // The map will follow the pattern:
+    //   Y(n) = 1.0 * X(n) for n = 0,...,ncol-1
+    remap_test_case test_case(comm,"one_to_one");
+    test_case.n_a = num_gcols;
+    test_case.n_b = num_gcols;
+    test_case.n_s = num_gcols;
+    test_case.col = view_1d<int>("",test_case.n_s);
+    test_case.row = view_1d<int>("",test_case.n_s);
+    test_case.S   = view_1d<Real>("",test_case.n_s);
+    Kokkos::parallel_for("", test_case.n_a, KOKKOS_LAMBDA (const int& ii) {
+      test_case.col(ii) = ii+1;
+      test_case.row(ii) = ii+1;
+      test_case.S(ii)   = 1.0;
+    });
+    create_remap_file(comm,test_case.filename,grid,test_case.n_a,test_case.n_b,test_case.col,test_case.row,test_case.S);
+    
+    // Setup and write output using our regional output case
+    test_case.construct_output(src_fm,gm);
+
+    // Check that output matches expectations.
+    test_case.check_output(src_fm, gm);
+  }
   // ------------------------------------------------------------------------------------------- //
-  // Setup and write output using our regional output cases.
-  // First we create a generic parameter list for the output manager.  We will simply change the
-  // one parameter that controls the remap file name and Casename for each case.
-  ekat::ParameterList params;
-  params.set<std::string>("Casename","dummy");
-  params.set<std::string>("remap_file","dummy");
-  params.set<std::string>("Averaging Type","Instant");
-  params.set<int>("Max Snapshots Per File",1);
-  using vos_type = std::vector<std::string>;
-  params.set<vos_type>("Field Names",
-      {"field_2d", "field_2d_vector", "field_3d", "field_3d_vector"});
-  auto& psub = params.sublist("output_control");
-  psub.set<bool>("MPI Ranks in Filename",true);
-  psub.set<int>("Frequency",1);
-  psub.set<std::string>("frequency_units","nsteps");
-  params.print();
-  // Case 1:
-  util::TimeStamp time ({2000,1,1},{0,0,0});
-  params.set<std::string>("Casename","regional_one_to_one");
-  params.set<std::string>("remap_file",case1_filename);
-  OutputManager om_case_1;
-  om_case_1.setup(comm,params,field_manager,gm,time,time,false);
-  comm.barrier();
-  om_case_1.run(time);
-  om_case_1.finalize();
-
   
-
   // All Done 
   scorpio::eam_pio_finalize();
 } // end function run
