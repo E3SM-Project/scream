@@ -61,7 +61,8 @@ get_test_fm(std::shared_ptr<const AbstractGrid> grid);
 std::shared_ptr<GridsManager>
 get_test_gm(const ekat::Comm& io_comm, const Int num_gcols, const Int num_levs);
 
-void create_remap_file(const ekat::Comm& comm, const std::string& filename, std::shared_ptr<const AbstractGrid> grid,
+void create_remap_file(const ekat::Comm& comm, const std::string& filename, const std::string& casename, 
+                       std::shared_ptr<const AbstractGrid> grid,
                        const int n_a, const int n_b,
                        const view_1d<int>& col, const view_1d<int>& row, const view_1d<Real>& S);
 
@@ -80,11 +81,6 @@ struct remap_test_case
   {
     filename = casename + "_remap_np" + std::to_string(comm.size()) + ".nc";
   }
-
-  // Remap values
-  int n_a, n_b, n_s;
-  view_1d<int>  col, row;
-  view_1d<Real> S;
 
   // Case values
   ekat::Comm  comm;
@@ -168,6 +164,8 @@ void run()
   int num_levs  = 2*SCREAM_SMALL_PACK_SIZE + 1;
   auto gm = get_test_gm(comm,num_gcols,num_levs);
   auto grid = gm->get_grid("Point Grid");
+  auto num_lcols = grid->get_num_local_dofs();
+  auto gids      = grid->get_dofs_gids();
   // Create a test field manager, initialize the fields.
   auto src_fm = get_test_fm(grid);
   // Store the names of all fields
@@ -184,18 +182,79 @@ void run()
     // The map will follow the pattern:
     //   Y(n) = 1.0 * X(n) for n = 0,...,ncol-1
     remap_test_case test_case(comm,"one_to_one");
-    test_case.n_a = num_gcols;
-    test_case.n_b = num_gcols;
-    test_case.n_s = num_gcols;
-    test_case.col = view_1d<int>("",test_case.n_s);
-    test_case.row = view_1d<int>("",test_case.n_s);
-    test_case.S   = view_1d<Real>("",test_case.n_s);
-    Kokkos::parallel_for("", test_case.n_a, KOKKOS_LAMBDA (const int& ii) {
-      test_case.col(ii) = ii+1;
-      test_case.row(ii) = ii+1;
-      test_case.S(ii)   = 1.0;
+    if (comm.am_i_root()) {
+      printf("Testing case: %s, on %d rank(s)...\n",test_case.casename.c_str(),comm.size());
+    }
+    int n_a = num_lcols;
+    int n_b = num_lcols;
+    int n_s = num_lcols;
+    view_1d<int>  col("",n_s);
+    view_1d<int>  row("",n_s);
+    view_1d<Real> S("",n_s);
+    Kokkos::parallel_for("", n_a, KOKKOS_LAMBDA (const int& ii) {
+      col(ii) = gids(ii)+1;
+      row(ii) = gids(ii)+1;
+      S(ii)   = 1.0;
     });
-    create_remap_file(comm,test_case.filename,grid,test_case.n_a,test_case.n_b,test_case.col,test_case.row,test_case.S);
+    create_remap_file(comm,test_case.filename,test_case.casename,grid,n_a,n_b,col,row,S);
+    
+    // Setup and write output using our regional output case
+    test_case.construct_output(src_fm,gm);
+
+    // Check that output matches expectations.
+    test_case.check_output(src_fm, gm);
+  }
+  // ------------------------------------------------------------------------------------------- //
+  {
+    // Case 2: Test 1-1 mirror mapping, i.e. no actual regional output, but we will run as
+    //         though we are remapping.
+    // The map will follow the pattern:
+    //   Y(n) = 1.0 * X(ncol-1-n) for n = 0,...,ncol-1
+    remap_test_case test_case(comm,"one_to_one_mirror");
+    if (comm.am_i_root()) {
+      printf("Testing case: %s, on %d rank(s)...\n",test_case.casename.c_str(),comm.size());
+    }
+    int n_a = num_lcols;
+    int n_b = num_lcols;
+    int n_s = num_lcols;
+    view_1d<int>  col("",n_s);
+    view_1d<int>  row("",n_s);
+    view_1d<Real> S("",n_s);
+    Kokkos::parallel_for("", n_a, KOKKOS_LAMBDA (const int& ii) {
+      col(ii) = gids(ii)+1;
+      row(ii) = num_gcols-gids(ii);
+      S(ii)   = 1.0;
+    });
+    create_remap_file(comm,test_case.filename,test_case.casename,grid,n_a,n_b,col,row,S);
+    
+    // Setup and write output using our regional output case
+    test_case.construct_output(src_fm,gm);
+
+    // Check that output matches expectations.
+    test_case.check_output(src_fm, gm);
+  }
+  // ------------------------------------------------------------------------------------------- //
+  {
+    // Case 3: Test regional_output for a subset of columns
+    // The map will follow the pattern:
+    //   Y(n) = 1.0 * X(n) for n = 0,...,floor(ncol)/2
+    remap_test_case test_case(comm,"column_subset");
+    if (comm.am_i_root()) {
+      printf("Testing case: %s, on %d rank(s)...\n",test_case.casename.c_str(),comm.size());
+    }
+    int n_a = num_lcols;
+    int n_b = num_lcols/2;
+    int n_s = num_lcols/2;
+    view_1d<int>  col("",n_s);
+    view_1d<int>  row("",n_s);
+    view_1d<Real> S("",n_s);
+    int myrank = comm.rank();
+    Kokkos::parallel_for("", n_b, KOKKOS_LAMBDA (const int& ii) {
+      col(ii) = gids(ii)+1;
+      row(ii) = myrank*n_b+ii+1;  // TODO: This may not work in all cases.  Motivation to just create remap files separately, before running tests.
+      S(ii)   = 1.0;
+    });
+    create_remap_file(comm,test_case.filename,test_case.casename,grid,n_a,n_b,col,row,S);
     
     // Setup and write output using our regional output case
     test_case.construct_output(src_fm,gm);
@@ -318,28 +377,32 @@ Real generate_data_3d(const int col, const int lev, const int cmp) {
 }
 /*===================================================================================================*/
 //  Function to simplify creation of remap files on the fly
-void create_remap_file(const ekat::Comm& comm, const std::string& filename, std::shared_ptr<const AbstractGrid> grid,
-                       const int n_a, const int n_b,
+void create_remap_file(const ekat::Comm& comm, const std::string& filename, const std::string& casename, 
+                      std::shared_ptr<const AbstractGrid> grid,
+                       const int n_a_in, const int n_b_in,
                        const view_1d<int>& col, const view_1d<int>& row, const view_1d<Real>& S)
 {
   // Gather data from all ranks
   const int n_s_local = S.extent(0);
-  int  n_s;
+  int  n_s, n_a, n_b;
   int* n_s_all_ranks = new Int[comm.size()]; 
   comm.all_gather(&n_s_local,n_s_all_ranks,1);
   comm.all_reduce(&n_s_local,&n_s,1,MPI_SUM);
+  comm.all_reduce(&n_a_in,&n_a,1,MPI_SUM);
+  comm.all_reduce(&n_b_in,&n_b,1,MPI_SUM);
   Int n_s_offset = 0; // The offset for this rank, used for writing the remap to output
   for (int ii=0; ii<comm.rank(); ii++) {
     n_s_offset += n_s_all_ranks[ii];
   }
+  // Get ready to write file
   scorpio::register_file(filename,scorpio::Write);
   //   - Dimensions
   scorpio::register_dimension(filename,"n_s","n_s",n_s);
   scorpio::register_dimension(filename,"n_a","n_a",n_a);
   scorpio::register_dimension(filename,"n_b","n_b",n_b);
   //   - Variables
-  std::string remap_decomp_tag_r = "n_s_real";
-  std::string remap_decomp_tag_i = "n_s_int";
+  std::string remap_decomp_tag_r = casename+"_real";
+  std::string remap_decomp_tag_i = casename+"_int";
   std::vector<std::string> vec_of_remap_dims = {"n_s"};
   scorpio::register_variable(filename,"col","col","unitless",vec_of_remap_dims,"int","int",remap_decomp_tag_i);
   scorpio::register_variable(filename,"row","row","unitless",vec_of_remap_dims,"int","int",remap_decomp_tag_i);
