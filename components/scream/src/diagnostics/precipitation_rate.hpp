@@ -22,7 +22,7 @@ public:
   using view_1d       = typename KT::template view_1d<Pack>;
 
   // Constructors
-  ZonalVapFluxDiagnostic (const ekat::Comm& comm, const ekat::ParameterList& params);
+  PrecipitationRateDiagnostic (const ekat::Comm& comm, const ekat::ParameterList& params);
 
   // Set type to diagnostic
   AtmosphereProcessType type () const { return AtmosphereProcessType::Diagnostic; }

@@ -4,7 +4,7 @@ namespace scream
 {
 
 // =========================================================================================
-PrecipitationRateDiagnostic::RainWaterPathDiagnostic (const ekat::Comm& comm, const ekat::ParameterList& params)
+PrecipitationRateDiagnostic::PrecipitationRateDiagnostic (const ekat::Comm& comm, const ekat::ParameterList& params)
   : AtmosphereDiagnostic(comm,params)
 {
   // Nothing to do here
@@ -50,13 +50,15 @@ void PrecipitationRateDiagnostic::compute_diagnostic_impl()
   const auto default_policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, npacks);
   const auto& precip_rate                = m_diagnostic_output.get_view<Real*>();
   const auto& precip_liq_surf             = get_field_in("precip_liq_surf").get_view<const Pack**>();
-  const auto& precip_ice_surf             = get_field_in("precip_ice_surf").get_view<const Pack**>();\
+  const auto& precip_ice_surf             = get_field_in("precip_ice_surf").get_view<const Pack**>();
+  const auto& dt                          = get_field_in("dt").get_view<const Pack**>();
+
 
   Kokkos::parallel_for("PrecipitationRateDiagnostic",
                        default_policy,
                        KOKKOS_LAMBDA(const MemberType& team) {
     const int icol = team.league_rank(); 
-    precip_rate(icol) = (precip_liq_surf(icol) + precip_ice_surf(icol))/dt
+    precip_rate(icol) = (precip_liq_surf(icol) + precip_ice_surf(icol))/dt ;
   });
   Kokkos::fence();
 
