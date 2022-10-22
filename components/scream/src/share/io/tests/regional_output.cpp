@@ -249,10 +249,45 @@ void run()
     view_1d<int>  row("",n_s);
     view_1d<Real> S("",n_s);
     int myrank = comm.rank();
-    Kokkos::parallel_for("", n_b, KOKKOS_LAMBDA (const int& ii) {
+    Kokkos::parallel_for("", n_s, KOKKOS_LAMBDA (const int& ii) {
       col(ii) = gids(ii)+1;
       row(ii) = myrank*n_b+ii+1;  // TODO: This may not work in all cases.  Motivation to just create remap files separately, before running tests.
       S(ii)   = 1.0;
+    });
+    create_remap_file(comm,test_case.filename,test_case.casename,grid,n_a,n_b,col,row,S);
+    
+    // Setup and write output using our regional output case
+    test_case.construct_output(src_fm,gm);
+
+    // Check that output matches expectations.
+    test_case.check_output(src_fm, gm);
+  }
+  // ------------------------------------------------------------------------------------------- //
+  {
+    // Case 4: Test regional_output for a 2-1 mapping.  Thus pairings of two source cols map to a single
+    // column, with weight 0.5 
+    // The map will follow the pattern:
+    //   Y(n) = 1.0 * X(n) for n = 0,...,floor(ncol)/2
+    remap_test_case test_case(comm,"two_to_one");
+    if (comm.am_i_root()) {
+      printf("Testing case: %s, on %d rank(s)...\n",test_case.casename.c_str(),comm.size());
+    }
+    int n_a = num_lcols;
+    int n_b = num_lcols/2;
+    int n_s = num_lcols;
+    view_1d<int>  col("",n_s);
+    view_1d<int>  row("",n_s);
+    view_1d<Real> S("",n_s);
+    int myrank = comm.rank();
+    Kokkos::parallel_for("", n_b, KOKKOS_LAMBDA (const int& ii) {
+      int idx1 = 2*ii;
+      int idx2 = 2*ii+1;
+      col(idx1) = gids(idx1)+1;
+      col(idx2) = gids(idx2)+1;
+      row(idx1) = myrank*n_b+ii+1;  // TODO: This may not work in all cases.  Motivation to just create remap files separately, before running tests.
+      row(idx2) = myrank*n_b+ii+1; 
+      S(idx1)   = 0.5;
+      S(idx2)   = 0.5;
     });
     create_remap_file(comm,test_case.filename,test_case.casename,grid,n_a,n_b,col,row,S);
     
