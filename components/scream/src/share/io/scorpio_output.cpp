@@ -1,6 +1,7 @@
 #include "share/io/scorpio_output.hpp"
 #include "share/io/scorpio_input.hpp"
 #include "share/util/scream_array_utils.hpp"
+#include "share/util/scream_timing.hpp"
 #include "share/grid/remap/coarsening_remapper.hpp"
 
 #include "ekat/util/ekat_units.hpp"
@@ -191,6 +192,7 @@ void AtmosphereOutput::run (const std::string& filename, const bool is_write_ste
   // right before writing to file?  Would it save performance, instead of
   // remapping every step?
   if (m_remapper) {
+    start_timer("EAMxx::IO::remap_output");
     m_remapper->remap(true);
 
     for (int i=0; i<m_remapper->get_num_fields(); ++i) {
@@ -202,6 +204,7 @@ void AtmosphereOutput::run (const std::string& filename, const bool is_write_ste
       auto src_t = src.get_header().get_tracking().get_time_stamp();
       tgt.get_header().get_tracking().update_time_stamp(src_t);
     }
+    stop_timer("EAMxx::IO::remap_output");
   }
 
   // Take care of updating and possibly writing fields.

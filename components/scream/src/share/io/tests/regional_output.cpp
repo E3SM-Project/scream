@@ -267,7 +267,7 @@ void run()
     // Case 4: Test regional_output for a 2-1 mapping.  Thus pairings of two source cols map to a single
     // column, with weight 0.5 
     // The map will follow the pattern:
-    //   Y(n) = 1.0 * X(n) for n = 0,...,floor(ncol)/2
+    //   Y(n) = 0.5 * ( X(2*n)+X(2*n+1) ) for n = 0,...,floor(ncol)/2
     remap_test_case test_case(comm,"two_to_one");
     if (comm.am_i_root()) {
       printf("Testing case: %s, on %d rank(s)...\n",test_case.casename.c_str(),comm.size());
