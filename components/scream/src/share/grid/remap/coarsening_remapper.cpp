@@ -134,8 +134,16 @@ CoarseningRemapper (const grid_ptr_type& src_grid,
   const int nlevs  = src_grid->get_num_vertical_levels();
 
   auto tgt_grid_gids = m_ov_tgt_grid->get_unique_gids ();
-  auto tgt_grid = std::make_shared<PointGrid>("tgt_grid",tgt_grid_gids.size(),nlevs,m_comm);
-  tgt_grid->set_dofs(tgt_grid_gids);
+  const int ngids = tgt_grid_gids.size();
+
+  auto tgt_grid = std::make_shared<PointGrid>("tgt_grid",ngids,nlevs,m_comm);
+
+  view_1d<gid_t> tgt_grid_gids_d("",ngids);
+  auto tgt_grid_gids_h = Kokkos::create_mirror_view(tgt_grid_gids_d);
+  std::memcpy(tgt_grid_gids_h.data(),tgt_grid_gids.data(),ngids*sizeof(gid_t));
+  Kokkos::deep_copy(tgt_grid_gids_d,tgt_grid_gids_h);
+  tgt_grid->set_dofs(tgt_grid_gids_d);
+
   this->set_grids(src_grid,tgt_grid);
 }
 
@@ -655,7 +663,7 @@ get_my_triplets_gids (const std::string& map_file,
   // 4. Group gids we read by the pid we need to send them to
   std::map<int,std::vector<int>> pid2gids_send;
   for (int i=0; i<nlweights; ++i) {
-    const auto pid = owners(i);
+    const auto pid = owners[i];
     pid2gids_send[pid].push_back(i+offset);
   }
 

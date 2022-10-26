@@ -249,9 +249,8 @@ void AbstractGrid::reset_num_vertical_lev (const int num_vertical_lev) {
   //       invalidate all geo data whose FieldLayout contains LEV/ILEV
 }
 
-auto
+std::vector<AbstractGrid::gid_type>
 AbstractGrid::get_unique_gids () const
- -> dofs_list_type
 {
   // Gather local sizes across all ranks
   std::vector<int> ngids (m_comm.size());
@@ -284,16 +283,11 @@ AbstractGrid::get_unique_gids () const
     }
   }
 
-  dofs_list_type unique_gids_d("",unique_dofs.size());
-  auto unique_gids_h = Kokkos::create_mirror_view(unique_gids_d);
-  std::memcpy(unique_gids_h.data(),unique_dofs.data(),sizeof(gid_type)*unique_dofs.size());
-  Kokkos::deep_copy(unique_gids_d,unique_gids_h);
-  return unique_gids_d;
+  return unique_dofs;
 }
 
-auto AbstractGrid::
-get_owners (const hview_1d<const gid_type>& gids) const
- -> hview_1d<int>
+std::vector<int> AbstractGrid::
+get_owners (const gid_view_h& gids) const
 {
   EKAT_REQUIRE_MSG (m_dofs_set,
       "Error! Cannot retrieve gids owners until dofs gids have been set.\n");
@@ -398,7 +392,7 @@ get_owners (const hview_1d<const gid_type>& gids) const
   // Step 2: each rank loops over its input gids, and retrieves the owner from the window
 
   //  - 1.a: Figure out what needs to be read from each rank
-  for (int i=0; i<gids.extent_int(0); ++i) {
+  for (size_t i=0; i<gids.size(); ++i) {
     const auto gid = gids[i];
     const auto pidlid = pid_and_lid (gid);
     const auto pid = pidlid.first;
@@ -427,16 +421,16 @@ get_owners (const hview_1d<const gid_type>& gids) const
   rma_offsets.clear();
   MPI_Win_fence(0,win);
 
-  // Step 3: copy data in rma types into output view, making sure we keep correct order
-  hview_1d<int> owners("",gids.size());
+  // Step 3: copy data in rma types into output vector, making sure we keep correct order
+  std::vector<int> owners(gids.size(),-1);
   std::map<int,int> curr_data_index;
-  for (int i=0; i<gids.extent_int(0); ++i) {
+  for (size_t i=0; i<gids.size(); ++i) {
     const auto gid = gids[i];
     const auto pidlid = pid_and_lid (gid);
     const auto pid = pidlid.first;
     auto it_bool = curr_data_index.emplace(pid,0);
     auto& idx = it_bool.first->second;
-    owners(i) = rma_data[pid][idx].pid;
+    owners[i] = rma_data[pid][idx].pid;
     ++idx;
   }
   rma_data.clear();
