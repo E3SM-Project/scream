@@ -5,6 +5,7 @@
 
 #ifndef NDEBUG
 #include "share/property_checks/field_nan_check.hpp"
+#include "share/property_checks/field_lower_bound_check.hpp"
 #endif
 
 #include "share/io/scorpio_input.hpp"
@@ -208,19 +209,19 @@ build_physics_grid (const ci_string& type, const ci_string& rebalance) {
   // Create the gids, coords, area views
   using namespace ShortFieldTagsNames;
   const auto layout2d = phys_grid->get_2d_scalar_layout();
-  const auto nondim = ekat::units::Units::nondimensional();
+  const auto rad = ekat::units::Units::nondimensional();
 
   auto dofs = phys_grid->get_dofs_gids();
-  auto lat  = phys_grid->create_geometry_data("lat",layout2d,nondim);
-  auto lon  = phys_grid->create_geometry_data("lon",layout2d,nondim);
-  auto area = phys_grid->create_geometry_data("area",layout2d,nondim);
+  auto lat  = phys_grid->create_geometry_data("lat",layout2d,rad);
+  auto lon  = phys_grid->create_geometry_data("lon",layout2d,rad);
+  auto area = phys_grid->create_geometry_data("area",layout2d,rad*rad);
 
   using gid_t = AbstractGrid::gid_type;
 
   auto dofs_h = dofs.get_view<gid_t*,Host>();
   auto lat_h  = lat.get_view<Real*,Host>();
   auto lon_h  = lon.get_view<Real*,Host>();
-  auto area_h = lon.get_view<Real*,Host>();
+  auto area_h = area.get_view<Real*,Host>();
 
   // Get all specs of phys grid cols (gids, coords, area)
   get_phys_grid_data_f90 (pg_code, dofs_h.data(), lat_h.data(), lon_h.data(), area_h.data());
@@ -237,9 +238,13 @@ build_physics_grid (const ci_string& type, const ci_string& rebalance) {
   auto lon_check = std::make_shared<FieldNaNCheck>(lon,phys_grid)->check();
   EKAT_REQUIRE_MSG (lon_check.result==CheckResult::Pass,
       "ERROR! NaN values detected in longitude field.\n" + lon_check.msg);
-  auto area_check = std::make_shared<FieldNaNCheck>(area,phys_grid)->check();
-  EKAT_REQUIRE_MSG (area_check.result==CheckResult::Pass,
-      "ERROR! NaN values detected in area field.\n" + area_check.msg);
+  auto area_check1 = std::make_shared<FieldNaNCheck>(area,phys_grid)->check();
+  EKAT_REQUIRE_MSG (area_check1.result==CheckResult::Pass,
+      "ERROR! NaN values detected in area field.\n" + area_check1.msg);
+  const auto eps = std::numeric_limits<Real>::epsilon();
+  auto area_check2 = std::make_shared<FieldLowerBoundCheck>(area,phys_grid,eps)->check();
+  EKAT_REQUIRE_MSG (area_check2.result==CheckResult::Pass,
+      "ERROR! NaN values detected in area field.\n" + area_check2.msg);
 #endif
 
   // Copy hybrid coords from dyn grid into phys grid
