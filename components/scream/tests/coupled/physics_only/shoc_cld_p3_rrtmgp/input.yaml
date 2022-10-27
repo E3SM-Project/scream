@@ -33,6 +33,8 @@ grids_manager:
   Type: Mesh Free
   number_of_global_columns:   218
   number_of_vertical_levels:  72  # Will want to change to 128 when a valid unit test is available.
+  latlon_filename: ${SCREAM_DATA_DIR}/init/${EAMxx_tests_IC_FILE_72lev}
+  hybrid_coefficients_filename: ${SCREAM_DATA_DIR}/init/${EAMxx_tests_IC_FILE_72lev}
 
 initial_conditions:
   # The name of the file containing the initial conditions for this test.
@@ -45,9 +47,6 @@ initial_conditions:
   aero_ssa_sw: 0.0
   aero_tau_sw: 0.0
   aero_tau_lw: 0.0
-  Load Latitude:  true
-  Load Longitude: true
-  Load Hybrid Coefficients: true
 
 # The parameters for I/O control
 Scorpio:
