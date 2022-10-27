@@ -31,6 +31,9 @@ public:
 
 protected:
 
+  void load_lat_lon (const nonconstgrid_ptr_type& grid) const;
+  void load_hybrid_coeffs (const nonconstgrid_ptr_type& grid) const;
+
   std::string get_reference_grid_name () const {
     return m_params.get<std::string>("reference_grid");
   }

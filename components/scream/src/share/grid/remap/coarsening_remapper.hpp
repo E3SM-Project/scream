@@ -117,14 +117,14 @@ protected:
   void setup_mpi_data_structures ();
 
   int gid2lid (const gid_t gid, const grid_ptr_type& grid) const {
-    const auto gids = grid->get_dofs_gids_host();
+    const auto gids = grid->get_dofs_gids().get_view<const gid_t*,Host>();
     const auto beg = gids.data();
     const auto end = gids.data()+grid->get_num_local_dofs();
     const auto it = std::find(beg,end,gid);
     return it==end ? -1 : std::distance(beg,it);
   }
 
-  view_1d<gid_t>::HostMirror
+  std::vector<gid_t>
   get_my_triplets_gids (const std::string& map_file,
                         const grid_ptr_type& src_grid) const;
 

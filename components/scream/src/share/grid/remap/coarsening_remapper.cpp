@@ -32,25 +32,25 @@ CoarseningRemapper (const grid_ptr_type& src_grid,
 
   // Create io_grid, containing the indices of the triplets
   // in the map file that this rank has to read
-  auto gids_h = get_my_triplets_gids (map_file,src_grid);
-  view_1d<gid_t> gids_d("",gids_h.size());
-  Kokkos::deep_copy(gids_d,gids_h);
-
-  auto io_grid = std::make_shared<PointGrid>("",gids_h.size(),0,m_comm);
-  io_grid->set_dofs(gids_d);
+  auto my_gids = get_my_triplets_gids (map_file,src_grid);
+  auto io_grid = std::make_shared<PointGrid>("",my_gids.size(),0,m_comm);
+  auto dofs_gids = io_grid->get_dofs_gids();
+  auto dofs_gids_h = dofs_gids.get_view<gid_t*,Host>();
+  std::memcpy(dofs_gids_h.data(),my_gids.data(),my_gids.size()*sizeof(gid_t));
+  dofs_gids.sync_to_dev();
 
   // Create CRS matrix views
 
   // Read in triplets.
   const int nlweights = io_grid->get_num_local_dofs();
-  view_1d<gid_t>::HostMirror  row_gids_h("",nlweights);
-  view_1d<gid_t>::HostMirror  col_gids_h("",nlweights);
-  view_1d<Real>::HostMirror S_h ("",nlweights);
+  std::vector<gid_t> row_gids_h(nlweights);
+  std::vector<gid_t> col_gids_h(nlweights);
+  std::vector<Real>  S_h (nlweights);
 
   // scream's gids are of type int, while scorpio wants long int as offsets.
   std::vector<scorpio::offset_t> dofs_offsets(nlweights);
   for (int i=0; i<nlweights; ++i) {
-    dofs_offsets[i] = gids_h[i];
+    dofs_offsets[i] = dofs_gids_h[i];
   }
   const std::string idx_decomp_tag = "coarsening_remapper::constructor_int_nnz" + std::to_string(nlweights);
   const std::string val_decomp_tag = "coarsening_remapper::constructor_real_nnz" + std::to_string(nlweights);
@@ -73,19 +73,17 @@ CoarseningRemapper (const grid_ptr_type& src_grid,
   // in its src_grid
   std::set<gid_t> ov_tgt_gids;
   for (int i=0; i<nlweights; ++i) {
-    ov_tgt_gids.insert(row_gids_h(i)-1);
+    ov_tgt_gids.insert(row_gids_h[i]-1);
   }
   const int num_ov_tgt_gids = ov_tgt_gids.size();
-  view_1d<int> ov_tgt_gids_d("",num_ov_tgt_gids);
-  auto ov_tgt_gids_h = Kokkos::create_mirror_view(ov_tgt_gids_d);
+  auto ov_tgt_grid = std::make_shared<PointGrid>("ov_tgt_grid",num_ov_tgt_gids,0,m_comm);
+  auto ov_tgt_gids_h = ov_tgt_grid->get_dofs_gids().get_view<gid_t*,Host>();
   auto it = ov_tgt_gids.begin();
   for (int i=0; i<num_ov_tgt_gids; ++i, ++it) {
     ov_tgt_gids_h[i] = *it;
   }
-  Kokkos::deep_copy(ov_tgt_gids_d,ov_tgt_gids_h);
+  ov_tgt_grid->get_dofs_gids().sync_to_dev();
 
-  auto ov_tgt_grid = std::make_shared<PointGrid>("ov_tgt_grid",num_ov_tgt_gids,0,m_comm);
-  ov_tgt_grid->set_dofs(ov_tgt_gids_d);
   m_ov_tgt_grid = ov_tgt_grid;
   const int num_ov_row_gids = m_ov_tgt_grid->get_num_local_dofs();
 
@@ -100,7 +98,7 @@ CoarseningRemapper (const grid_ptr_type& src_grid,
   std::vector<int> id (nlweights);
   std::iota(id.begin(),id.end(),0);
   auto compare = [&] (const int i, const int j) -> bool {
-    return row_gids_h(i) < row_gids_h(j);
+    return row_gids_h[i] < row_gids_h[j];
   };
   std::sort(id.begin(),id.end(),compare);
 
@@ -110,8 +108,8 @@ CoarseningRemapper (const grid_ptr_type& src_grid,
   auto weights_h     = Kokkos::create_mirror_view(m_weights);
 
   for (int i=0; i<nlweights; ++i) {
-    col_lids_h(i) = gid2lid(col_gids_h(id[i])-1,src_grid);
-    weights_h(i)  = S_h(id[i]);
+    col_lids_h(i) = gid2lid(col_gids_h[id[i]]-1,src_grid);
+    weights_h(i)  = S_h[id[i]];
   }
 
   Kokkos::deep_copy(m_weights,weights_h);
@@ -120,7 +118,7 @@ CoarseningRemapper (const grid_ptr_type& src_grid,
   // Compute row offsets
   std::vector<int> row_counts(num_ov_row_gids);
   for (int i=0; i<nlweights; ++i) {
-    ++row_counts[gid2lid(row_gids_h(i)-1,m_ov_tgt_grid)];
+    ++row_counts[gid2lid(row_gids_h[i]-1,m_ov_tgt_grid)];
   }
   std::partial_sum(row_counts.begin(),row_counts.end(),row_offsets_h.data()+1);
   EKAT_REQUIRE_MSG (
@@ -138,11 +136,9 @@ CoarseningRemapper (const grid_ptr_type& src_grid,
 
   auto tgt_grid = std::make_shared<PointGrid>("tgt_grid",ngids,nlevs,m_comm);
 
-  view_1d<gid_t> tgt_grid_gids_d("",ngids);
-  auto tgt_grid_gids_h = Kokkos::create_mirror_view(tgt_grid_gids_d);
+  auto tgt_grid_gids_h = tgt_grid->get_dofs_gids().get_view<gid_t*,Host>();
   std::memcpy(tgt_grid_gids_h.data(),tgt_grid_gids.data(),ngids*sizeof(gid_t));
-  Kokkos::deep_copy(tgt_grid_gids_d,tgt_grid_gids_h);
-  tgt_grid->set_dofs(tgt_grid_gids_d);
+  tgt_grid->get_dofs_gids().sync_to_dev();
 
   this->set_grids(src_grid,tgt_grid);
 }
@@ -625,10 +621,10 @@ void CoarseningRemapper::recv_and_unpack ()
 }
 
 
-auto CoarseningRemapper::
+std::vector<CoarseningRemapper::gid_t>
+CoarseningRemapper::
 get_my_triplets_gids (const std::string& map_file,
                       const grid_ptr_type& src_grid) const
-  -> view_1d<gid_t>::HostMirror
 {
   using namespace ShortFieldTagsNames;
 
@@ -676,7 +672,7 @@ get_my_triplets_gids (const std::string& map_file,
   for (const auto& it : pid2gids_recv) {
     num_my_triplets += it.second.size();
   }
-  view_1d<gid_t>::HostMirror my_triplets_gids("",num_my_triplets);
+  std::vector<gid_t> my_triplets_gids(num_my_triplets);
   int num_copied = 0;
   for (const auto& it : pid2gids_recv) {
     auto dst = my_triplets_gids.data()+num_copied;
@@ -833,7 +829,7 @@ void CoarseningRemapper::setup_mpi_data_structures ()
 
   // 1. Retrieve pid (and associated lid) of all ov_tgt gids
   //    on the tgt grid
-  const auto ov_gids = m_ov_tgt_grid->get_dofs_gids_host();
+  const auto ov_gids = m_ov_tgt_grid->get_dofs_gids().get_view<const gid_t*,Host>();
   auto gids_owners = m_tgt_grid->get_owners (ov_gids);
 
   // 2. Group dofs to send by remote pid
@@ -841,7 +837,7 @@ void CoarseningRemapper::setup_mpi_data_structures ()
   std::map<int,std::vector<int>> pid2lids_send;
   std::map<int,std::vector<gid_t>> pid2gids_send;
   for (int i=0; i<num_ov_gids; ++i) {
-    const int pid = gids_owners(i);
+    const int pid = gids_owners[i];
     pid2lids_send[pid].push_back(i);
     pid2gids_send[pid].push_back(ov_gids(i));
   }
@@ -931,9 +927,10 @@ void CoarseningRemapper::setup_mpi_data_structures ()
   auto recv_lids_beg_h  = Kokkos::create_mirror_view(m_recv_lids_beg);
   auto recv_lids_end_h  = Kokkos::create_mirror_view(m_recv_lids_end);
 
+  auto tgt_dofs_h = m_tgt_grid->get_dofs_gids().get_view<const gid_t*,Host>();
   for (int i=0,pos=0; i<num_tgt_dofs; ++i) {
     recv_lids_beg_h(i) = pos;
-    const int gid = m_tgt_grid->get_dofs_gids_host()[i];
+    const int gid = tgt_dofs_h[i];
     for (auto pid : lid2pids_recv[i]) {
       auto it = std::find(pid2gids_recv.at(pid).begin(),pid2gids_recv.at(pid).end(),gid);
       EKAT_REQUIRE_MSG (it!=pid2gids_recv.at(pid).end(),

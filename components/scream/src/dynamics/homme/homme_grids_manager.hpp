@@ -33,6 +33,9 @@ protected:
 
 protected:
 
+  // Read vertical coordinates and set them in hommexx's structures
+  void init_homme_vcoord (const nonconstgrid_ptr_type& dyn_grid);
+
   remapper_ptr_type
   do_create_remapper (const grid_ptr_type from_grid,
                       const grid_ptr_type to_grid) const;
