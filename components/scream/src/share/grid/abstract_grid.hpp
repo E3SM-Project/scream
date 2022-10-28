@@ -96,9 +96,11 @@ public:
   Field get_lid_to_idx_map () const;
   Field get_lid_to_idx_map ();
 
-  // Get geometry-related fields. Const version returns a read-only field
+  // Get geometry-related fields. Returns a read-only field
   Field get_geometry_data (const std::string& name) const;
-  Field get_geometry_data (const std::string& name);
+
+  // Same as the above one, but the field data is writable
+  Field get_geometry_data_nonconst (const std::string& name) const;
 
   // Create geometry data, throws if already existing. Returns writable field
   Field create_geometry_data (const std::string& name, const FieldLayout& layout,

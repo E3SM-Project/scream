@@ -125,7 +125,7 @@ AbstractGrid::get_geometry_data (const std::string& name) const {
 }
 
 Field
-AbstractGrid::get_geometry_data (const std::string& name) {
+AbstractGrid::get_geometry_data_nonconst (const std::string& name) const {
   EKAT_REQUIRE_MSG (has_geometry_data(name),
       "Error! Geometry data '" + name + "' not found.\n");
 
