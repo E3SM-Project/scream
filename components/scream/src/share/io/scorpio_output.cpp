@@ -64,11 +64,18 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
     // When remapping from file we use the coarsening remapper.  Once the
     // coarsening remapper is created we can gather the io grid directly
     // from it.
-    remap_from_file = true;
-    auto remap_file = params.get<std::string>("remap_file");
-    m_remapper      = std::make_shared<CoarseningRemapper>(fm_grid,remap_file); 
-    io_grid         = m_remapper->get_tgt_grid();
-    m_fields_names  = params.get<vos_t>("Field Names");
+    remap_from_file  = true;
+    auto remap_file  = params.get<std::string>("remap_file");
+    const auto& f_pl = params.sublist("Fields");
+    const auto& io_grid_aliases = io_grid->aliases();
+    for (const auto& grid_name : io_grid_aliases) {
+      if (f_pl.isSublist(grid_name)) {
+        const auto& pl = f_pl.sublist(grid_name);
+        m_fields_names = pl.get<vos_t>("Field Names");
+      }
+    }
+    m_remapper = std::make_shared<CoarseningRemapper>(fm_grid,remap_file); 
+    io_grid    = m_remapper->get_tgt_grid();
   } else if (params.isParameter("Field Names")) {
     // This simple parameter list option does *not* allow to remap fields
     // to an io grid different from that of the field manager. In order to
@@ -98,7 +105,8 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
   // Try to set the IO grid (checks will be performed)
   set_grid (io_grid);
 
-  if (io_grid->name()!=fm_grid->name() || remap_from_file) {
+  if (io_grid->name()!=fm_grid->name()) {
+
     if (!remap_from_file) {
       // We build a remapper, to remap fields from the fm grid to the io grid
       m_remapper = grids_mgr->create_remapper(fm_grid,io_grid);
