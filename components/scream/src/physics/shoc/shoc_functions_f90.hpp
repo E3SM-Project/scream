@@ -1,11 +1,12 @@
 #ifndef SCREAM_SHOC_FUNCTIONS_F90_HPP
 #define SCREAM_SHOC_FUNCTIONS_F90_HPP
 
-#include "share/scream_types.hpp"
+#include "shoc_functions_decl.hpp"
+
+#include "physics/share/physics_constants.hpp"
 #include "physics/share/physics_test_data.hpp"
 
-#include "shoc_functions.hpp"
-#include "physics_constants.hpp"
+#include "share/scream_types.hpp"
 
 #include <vector>
 #include <array>

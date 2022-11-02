@@ -1,10 +1,11 @@
-#include "ekat/ekat_assert.hpp"
 #include "physics/shoc/atmosphere_macrophysics.hpp"
 
 #include "share/property_checks/field_lower_bound_check.hpp"
 #include "share/property_checks/field_within_interval_check.hpp"
 
 #include "scream_config.h" // for SCREAM_CIME_BUILD
+
+#include "ekat/ekat_assert.hpp"
 
 namespace scream
 {

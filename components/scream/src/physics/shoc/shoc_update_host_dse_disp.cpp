@@ -1,4 +1,4 @@
-#include "shoc_functions.hpp"
+#include "shoc_functions_decl.hpp"
 
 #include "ekat/kokkos/ekat_subview_utils.hpp"
 

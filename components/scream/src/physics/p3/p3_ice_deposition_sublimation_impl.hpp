@@ -1,7 +1,7 @@
 #ifndef P3_ICE_DEPOSITION_SUBLIMATION_IMPL_HPP
 #define P3_ICE_DEPOSITION_SUBLIMATION_IMPL_HPP
 
-#include "physics/p3/p3_functions.hpp"
+#include "physics/p3/p3_functions_decl.hpp"
 #include "physics/share/physics_constants.hpp"
 
 namespace scream {

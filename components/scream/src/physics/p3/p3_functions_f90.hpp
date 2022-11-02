@@ -1,7 +1,7 @@
 #ifndef SCREAM_P3_FUNCTIONS_F90_HPP
 #define SCREAM_P3_FUNCTIONS_F90_HPP
 
-#include "physics/p3/p3_functions.hpp"
+#include "physics/p3/p3_functions_decl.hpp"
 #include "physics/share/physics_test_data.hpp"
 #include "share/scream_types.hpp"
 

@@ -1,7 +1,7 @@
 #ifndef P3_RAIN_SELF_COLLECTION_IMPL_HPP
 #define P3_RAIN_SELF_COLLECTION_IMPL_HPP
 
-#include "physics/p3/p3_functions.hpp" // for ETI only but harmless for GPU
+#include "physics/p3/p3_functions_decl.hpp" // for ETI only but harmless for GPU
 
 namespace scream {
 namespace p3 {

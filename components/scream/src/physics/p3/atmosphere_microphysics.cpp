@@ -1,9 +1,10 @@
 #include "physics/p3/atmosphere_microphysics.hpp"
+
+// Needed for p3_init, the only F90 code still used.
+#include "physics/p3/p3_f90.hpp"
+
 #include "share/property_checks/field_within_interval_check.hpp"
 #include "share/property_checks/field_lower_bound_check.hpp"
-// Needed for p3_init, the only F90 code still used.
-#include "physics/p3/p3_functions.hpp"
-#include "physics/p3/p3_f90.hpp"
 
 #include "ekat/ekat_assert.hpp"
 #include "ekat/util/ekat_units.hpp"

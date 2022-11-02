@@ -2,7 +2,7 @@
 
 #include "p3_unit_tests_common.hpp"
 
-#include "physics/p3/p3_functions.hpp"
+#include "physics/p3/p3_functions_decl.hpp"
 #include "physics/p3/p3_functions_f90.hpp"
 
 #include "share/scream_types.hpp"

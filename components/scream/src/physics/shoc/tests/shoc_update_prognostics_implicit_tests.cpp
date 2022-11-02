@@ -3,7 +3,7 @@
 #include "share/scream_types.hpp"
 #include "ekat/ekat_pack.hpp"
 #include "ekat/kokkos/ekat_kokkos_utils.hpp"
-#include "physics/shoc/shoc_functions.hpp"
+#include "physics/shoc/shoc_functions_decl.hpp"
 #include "physics/shoc/shoc_functions_f90.hpp"
 #include "share/util/scream_setup_random_test.hpp"
 

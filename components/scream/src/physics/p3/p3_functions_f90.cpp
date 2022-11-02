@@ -1,6 +1,7 @@
 #include "p3_functions_f90.hpp"
 #include "ekat/kokkos/ekat_kokkos_types.hpp"
 #include "p3_f90.hpp"
+#include "p3_functions.hpp"
 
 #include "ekat/kokkos/ekat_kokkos_utils.hpp"
 #include "ekat/ekat_pack_kokkos.hpp"
