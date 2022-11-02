@@ -39,4 +39,6 @@ if (NOT SCREAM_BASELINES_ONLY)
   CreateUnitTest(meridional_vapor_flux "meridional_vapor_flux_tests.cpp" "${NEED_LIBS}" LABELS "diagnostics" )
   # Test Meridional Vapor Flux
   CreateUnitTest(ice_cloud_mask "ice_cloud_mask_tests.cpp" "${NEED_LIBS}" LABELS "diagnostics" )
+  # Test Zonal Wind
+  CreateUnitTest(zonal_wind "zonal_wind_tests.cpp" "${NEED_LIBS}" LABELS "diagnostics" )
 endif()
