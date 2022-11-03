@@ -96,7 +96,9 @@ struct remap_test_case
     params.set<std::string>("Averaging Type","Instant");
     params.set<int>("Max Snapshots Per File",1);
     using vos_type = std::vector<std::string>;
-    params.set<vos_type>("Field Names",
+    auto& fsub_1 = params.sublist("Fields");
+    auto& fsub_2 = fsub_1.sublist("Physics");
+    fsub_2.set<vos_type>("Field Names",
         {"field_2d", "field_2d_vector", "field_3d", "field_3d_vector"});
     auto& psub = params.sublist("output_control");
     psub.set<bool>("MPI Ranks in Filename",true);
