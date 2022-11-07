@@ -366,7 +366,7 @@ get_owners (const hview_1d<const gid_type>& gids) const
   //  - 1.a Figure where each local dof specs will be written in the linearly
   //        distributed global array
   for (int i=0; i<get_num_local_dofs(); ++i) {
-    const auto gid = m_dofs_gids_host[i];
+    const auto gid = m_dofs_gids_host[i]-get_global_min_dof_gid();
     const auto pidlid = pid_and_lid (gid);
     const auto pid = pidlid.first;
     const auto lid = pidlid.second;

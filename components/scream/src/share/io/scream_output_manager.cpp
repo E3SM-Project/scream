@@ -37,6 +37,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
        const util::TimeStamp& case_t0,
        const bool is_model_restart_output)
 {
+  printf("ASD (%2d) - start setup for case: %s\n",io_comm.rank(),m_casename.c_str());
   // Sanity checks
   EKAT_REQUIRE_MSG (run_t0.is_valid(),
       "Error! Invalid case_t0 timestamp: " + case_t0.to_string() + "\n");
@@ -76,10 +77,13 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
   m_output_file_specs.filename_with_frequency   = out_control_pl.get("frequency_in_filename",true);
 
   // For each grid, create a separate output stream.
+  printf("ASD (%2d) - create output streams for case: %s\n",io_comm.rank(),m_casename.c_str());
   if (field_mgrs.size()==1) {
+    printf("ASD (%2d) -     case: %s,  single FM\n",io_comm.rank(),m_casename.c_str());
     auto output = std::make_shared<output_type>(m_io_comm,m_params,field_mgrs.begin()->second,grids_mgr);
     m_output_streams.push_back(output);
   } else {
+    printf("ASD (%2d) -     case: %s,  multi FM\n",io_comm.rank(),m_casename.c_str());
     const auto& fields_pl = m_params.sublist("Fields");
     for (auto it=fields_pl.sublists_names_cbegin(); it!=fields_pl.sublists_names_cend(); ++it) {
       const auto& gname = *it;
@@ -169,6 +173,7 @@ void OutputManager::setup_globals_map (const globals_map_t& globals) {
 /*===============================================================================================*/
 void OutputManager::run(const util::TimeStamp& timestamp)
 {
+  printf("ASD (%2d) - start run for case: %s\n",m_io_comm.rank(),m_casename.c_str());
   using namespace scorpio;
 
   // Check if we need to open a new file
