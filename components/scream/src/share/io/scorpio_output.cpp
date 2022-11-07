@@ -1,6 +1,7 @@
 #include "share/io/scorpio_output.hpp"
 #include "share/io/scorpio_input.hpp"
 #include "share/util/scream_array_utils.hpp"
+#include "share/grid/remap/coarsening_remapper.hpp"
 
 #include "ekat/util/ekat_units.hpp"
 #include "ekat/util/ekat_string_utils.hpp"
@@ -86,9 +87,18 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
   // Try to set the IO grid (checks will be performed)
   set_grid (io_grid);
 
-  if (io_grid->name()!=fm_grid->name()) {
+  bool remap_from_file = params.isParameter("remap_file");
+
+  if (io_grid->name()!=fm_grid->name() || remap_from_file) {
     // We build a remapper, to remap fields from the fm grid to the io grid
-    m_remapper = grids_mgr->create_remapper(fm_grid,io_grid);
+    if (remap_from_file) {
+      auto remap_file   = params.get<std::string>("remap_file");
+      m_remapper = std::make_shared<CoarseningRemapper>(io_grid,remap_file);
+      io_grid = m_remapper->get_tgt_grid();
+      set_grid(io_grid);
+    } else {
+      m_remapper = grids_mgr->create_remapper(fm_grid,io_grid);
+    }
 
     // Register all output fields in the remapper.
     m_remapper->registration_begins();

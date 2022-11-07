@@ -118,6 +118,9 @@ set_dofs (const dofs_list_type& dofs)
 
   m_dofs_gids_host = Kokkos::create_mirror_view(m_dofs_gids);
   Kokkos::deep_copy(m_dofs_gids_host,m_dofs_gids);
+
+  set_global_min_dof_gid();
+  set_global_max_dof_gid();
 }
 
 const AbstractGrid::dofs_list_type&
@@ -186,8 +189,8 @@ AbstractGrid::get_geometry_data_host (const std::string& name) const {
   return m_geo_views_host.at(name);
 }
 
-AbstractGrid::gid_type
-AbstractGrid::get_global_min_dof_gid () const
+void
+AbstractGrid::set_global_min_dof_gid ()
 {
   EKAT_REQUIRE_MSG (m_dofs_set,
       "Error! You need to set dofs gids before you can compute the global min dof.\n");
@@ -205,11 +208,11 @@ AbstractGrid::get_global_min_dof_gid () const
 
   m_comm.all_reduce(&local_min,&global_min,1,MPI_MIN);
 
-  return global_min;
+  m_global_min_dof_gid = global_min;
 }
 
-AbstractGrid::gid_type
-AbstractGrid::get_global_max_dof_gid () const
+void
+AbstractGrid::set_global_max_dof_gid ()
 {
   EKAT_REQUIRE_MSG (m_dofs_set,
       "Error! You need to set dofs gids before you can compute the global max dof.\n");
@@ -227,7 +230,7 @@ AbstractGrid::get_global_max_dof_gid () const
 
   m_comm.all_reduce(&local_max,&global_max,1,MPI_MAX);
 
-  return global_max;
+  m_global_max_dof_gid = global_max;
 }
 
 std::list<std::string>
@@ -325,11 +328,16 @@ get_owners (const hview_1d<const gid_type>& gids) const
   // have in that grid on that rank. This is doable without any communication
   // since the gids are partitioned linearly
   auto pid_and_lid = [&] (const gid_type gid) -> std::pair<int,int> {
-    auto it = std::upper_bound (offsets.begin(),offsets.end(),gid);
+    auto it = std::upper_bound (offsets.begin(),offsets.end(),gid-m_global_min_dof_gid);
     int pid = std::distance(offsets.begin(),it) - 1;
-    int lid = gid - offsets[pid];
-    EKAT_REQUIRE_MSG (pid>=0 && pid<comm.size(),
-        "Error! Failed to retrieve owner of GID in the linear grid.\n");
+    int lid = (gid - m_global_min_dof_gid) - offsets[pid];
+    std::string err_msg = "Error! Failed to retrieve owner of GID in the linear grid.\n";
+    err_msg += "  - rank     = " + std::to_string(comm.rank()) + "\n";
+    err_msg += "  - gid      = " + std::to_string(gid) + "\n";
+    err_msg += "  - gid_min  = " + std::to_string(m_global_min_dof_gid) + "\n";
+    err_msg += "  - lid      = " + std::to_string(lid) + "\n";
+    err_msg += "  - pid      = " + std::to_string(pid) + "\n";
+    EKAT_REQUIRE_MSG (pid>=0 && pid<comm.size(), err_msg);//
     return std::make_pair(pid,lid);
   };
 
