@@ -4,9 +4,9 @@
 
 The file that defines all parameter input files for SCREAM. This file
 will be processed by SCREAM's buildnml script and produces the
-$case/namelist_scream.xml which is the fully resolved/processed
+$case/namelist_eamxx.xml which is the fully resolved/processed
 info from this file. We recommend users use atm-config-chg for
-tweaking their $case/namelist_scream.xml file.
+tweaking their $case/namelist_eamxx.xml file.
 
 -->
 
@@ -30,7 +30,7 @@ tweaking their $case/namelist_scream.xml file.
       <partmethod nlev="128">42</partmethod>
       <partmethod nlev="72">420</partmethod>
 
-    Selector info will not be duplicated in the processed $case/namelist_scream.xml file.
+    Selector info will not be duplicated in the processed $case/namelist_eamxx.xml file.
   -->
   <selectors>
     <selector name="hgrid" case_env="ATM_GRID"/>
@@ -38,7 +38,7 @@ tweaking their $case/namelist_scream.xml file.
     <selector name="nlev" case_env="SCREAM_CMAKE_OPTIONS" regex=".*SCREAM_NUM_VERTICAL_LEV ([0-9]+).*"/>
   </selectors>
 
-  <!-- List of scream grids for a given compset. I/O can only happen on these grids -->
+  <!-- List of eamxx grids for a given compset. I/O can only happen on these grids -->
 
   <!-- Help buildnml by listing files to generate,
     specifying which sections of the xml go in each file -->
@@ -46,7 +46,7 @@ tweaking their $case/namelist_scream.xml file.
     <file name="data/namelist.nl" format="nml">
       <sections>ctl_nl</sections>
     </file>
-    <file name="data/scream_input.yaml" format="yaml">
+    <file name="data/eamxx_input.yaml" format="yaml">
       <sections>driver_options,atmosphere_processes,grids_manager,initial_conditions,Scorpio,e3sm_parameters</sections>
     </file>
   </generated_files>
@@ -82,7 +82,7 @@ tweaking their $case/namelist_scream.xml file.
 
         3) For a parameter whose elements all have selectors, if none of the selectors
            are matched, then the parameter will be omitted from the case XML
-           file ($case/namelist_scream.xml).
+           file ($case/namelist_eamxx.xml).
 
         4) Parameter types will be inferred. You can override the inferred type
            via the 'type' metadata attribute. Types are:
@@ -101,15 +101,15 @@ tweaking their $case/namelist_scream.xml file.
            TODO support numeric checks (<, >, ...)??
 
         6) You can inline case values into parameter values via this syntax, e.g.:
-           <init_file>scream_init_${ATM_GRID}.nc</init_file>
-           This would result in parameter init_file' having the value 'scream_init_ne4np4.nc'
+           <init_file>eamxx_init_${ATM_GRID}.nc</init_file>
+           This would result in parameter init_file' having the value 'eamxx_init_ne4np4.nc'
 
         7) Any parameter value with a comma will be assumed to be a list.
            TODO allow this behavior to be overridden?
 
         8) Every value in a list should be of the same type
 
-        9) All local changes made to $case/namelist_scream.xml must conform
+        9) All local changes made to $case/namelist_eamxx.xml must conform
            to the structure and metadata derived from this file.
 
        10) Outer elements can "inherit" from other outer elements. This allows to declare
@@ -295,7 +295,7 @@ tweaking their $case/namelist_scream.xml file.
     <Filename hgrid="ne4np4" COMPSET=".*SCREAM%AQUA.*">${DIN_LOC_ROOT}/atm/scream/init/screami_aquaplanet_ne4np4L72_20220823.nc</Filename>
     <Filename hgrid="ne30np4" COMPSET=".*SCREAM%AQUA.*">${DIN_LOC_ROOT}/atm/scream/init/screami_aquaplanet_ne30np4L128_20220823.nc</Filename> <!-- This will need to be updated to the new nccn name -->
 
-    <restart_casename>${CASE}.scream</restart_casename>
+    <restart_casename>${CASE}.eamxx</restart_casename>
     <!-- Fields that we need to initialize, but are not in an initial condition file need to be inited here -->
     <surf_evap>0.0</surf_evap> <!-- TODO, Delete this when the IC fixes come in -->
     <precip_liq_surf_mass>0.0</precip_liq_surf_mass>
@@ -332,9 +332,9 @@ tweaking their $case/namelist_scream.xml file.
 
   <!-- List of yaml files containing I/O output specs -->
   <Scorpio>
-    <output_yaml_files type="array(string)">${SRCROOT}/components/scream/data/scream_default_output.yaml</output_yaml_files>
+    <output_yaml_files type="array(string)">${SRCROOT}/components/eamxx/data/eamxx_default_output.yaml</output_yaml_files>
     <model_restart>
-      <Casename>./${CASE}.scream</Casename>
+      <Casename>./${CASE}.eamxx</Casename>
       <output_control>
         <Frequency>${REST_N}</Frequency>
         <frequency_units>${REST_OPTION}</frequency_units>
@@ -344,7 +344,7 @@ tweaking their $case/namelist_scream.xml file.
     </model_restart>
   </Scorpio>
 
-  <!-- driver_options options for scream -->
+  <!-- driver_options options for eamxx -->
   <driver_options>
     <atmosphere_dag_verbosity_level>0</atmosphere_dag_verbosity_level>
     <atm_log_level valid_values="trace,debug,info,warn,error">info</atm_log_level>

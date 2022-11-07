@@ -1380,7 +1380,7 @@
       <cmd_path lang="sh">module</cmd_path>
       <modules>
         <command name="purge"/>
-        <command name="load">sems-env</command>
+        <command name="load">sems-archive-env</command>
         <command name="load">acme-env</command>
         <command name="load">sems-git</command>
         <command name="load">acme-binutils</command>
@@ -2005,7 +2005,7 @@
       <cmd_path lang="sh">module</cmd_path>
       <modules>
         <command name="purge"/>
-        <command name="load">sems-env</command>
+        <command name="load">sems-archive-env</command>
         <command name="load">sems-git</command>
         <command name="load">sems-python/3.5.2</command>
         <command name="load">sems-cmake</command>

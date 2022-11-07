@@ -88,7 +88,7 @@ CONTAINS
     character(len=256)               :: atm_log_fname  ! name of ATM log file
 
     ! TODO: read this from the namelist?
-    character(len=256)                :: yaml_fname = "./data/scream_input.yaml"
+    character(len=256)                :: yaml_fname = "./data/eamxx_input.yaml"
     character(kind=c_char,len=256), target :: yaml_fname_c, atm_log_fname_c
     logical (kind=c_bool) :: restarted_run
 

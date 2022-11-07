@@ -127,7 +127,7 @@
       <value component="satm"                        >$SRCROOT/components/stub_comps/satm</value>
       <value component="xatm"                        >$SRCROOT/components/xcpl_comps/xatm</value>
       <value component="eam"                         >$SRCROOT/components/eam/</value>
-      <value component="scream"                      >$SRCROOT/components/scream/</value>
+      <value component="eamxx"                       >$SRCROOT/components/eamxx/</value>
     </values>
     <group>case_comps</group>
     <file>env_case.xml</file>
@@ -261,7 +261,7 @@
       <value component="allactive">$SRCROOT/cime_config/allactive/config_compsets.xml</value>
       <value component="drv"      >$COMP_ROOT_DIR_CPL/cime_config/config_compsets.xml</value>
       <value component="eam"      >$COMP_ROOT_DIR_ATM/cime_config/config_compsets.xml</value>
-      <value component="scream"   >$COMP_ROOT_DIR_ATM/cime_config/config_compsets.xml</value>
+      <value component="eamxx"    >$COMP_ROOT_DIR_ATM/cime_config/config_compsets.xml</value>
       <value component="elm"      >$COMP_ROOT_DIR_LND/cime_config/config_compsets.xml</value>
       <value component="cice"     >$COMP_ROOT_DIR_ICE/cime_config/config_compsets.xml</value>
       <value component="mpaso"    >$COMP_ROOT_DIR_OCN/cime_config/config_compsets.xml</value>
@@ -344,7 +344,7 @@
       <value component="elm"      >$COMP_ROOT_DIR_LND/cime_config/testdefs/testmods_dirs</value>
       <value component="cice"     >$COMP_ROOT_DIR_ICE/cime_config/testdefs/testmods_dirs</value>
       <value component="mosart"   >$COMP_ROOT_DIR_ROF/cime_config/testdefs/testmods_dirs</value>
-      <value component="scream"   >$COMP_ROOT_DIR_ATM/cime_config/testdefs/testmods_dirs</value>
+      <value component="eamxx"    >$COMP_ROOT_DIR_ATM/cime_config/testdefs/testmods_dirs</value>
     </values>
     <group>case_last</group>
     <file>env_case.xml</file>
@@ -361,7 +361,7 @@
       <value component="elm"      >$COMP_ROOT_DIR_LND/cime_config/usermods_dirs</value>
       <value component="cice"     >$COMP_ROOT_DIR_ICE/cime_config/usermods_dirs</value>
       <value component="mosart"   >$COMP_ROOT_DIR_ROF/cime_config/usermods_dirs</value>
-      <value component="scream"   >$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs</value>
+      <value component="eamxx"    >$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs</value>
     </values>
     <group>case_last</group>
     <file>env_case.xml</file>

@@ -2,7 +2,7 @@
 #define INCLUDE_SCREAM_TRIDIAG
 
 /* Warning: This file is a copy of
-      components/scream/src/share/util/scream_tridiag.hpp
+      components/eamxx/src/share/util/scream_tridiag.hpp
    Do not modify this file. If you need to make changes to it, modify the SCREAM
    source and then copy it in. This file will be removed when HOMME can depend
    on SCREAM.

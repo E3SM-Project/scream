@@ -1,11 +1,11 @@
-# For now, scream will rely on it's own build of kokkos rather than the
+# For now, eamxx will rely on it's own build of kokkos rather than the
 # one in sharedlib.
 
-function(build_scream)
+function(build_eamxx)
 
-  if (COMP_NAMES MATCHES ".*scream.*")
+  if (COMP_NAMES MATCHES ".*eamxx.*")
 
-    message(STATUS "Found scream component")
+    message(STATUS "Found eamxx component")
 
     include(${CMAKE_SOURCE_DIR}/cmake/common_setup.cmake)
 
@@ -32,8 +32,8 @@ function(build_scream)
     add_compile_definitions ("${CPPDEFS}")
 
     # Include machine file here
-    include(${CMAKE_SOURCE_DIR}/scream/cmake/machine-files/${MACH}.cmake)
-    add_subdirectory("scream")
+    include(${CMAKE_SOURCE_DIR}/eamxx/cmake/machine-files/${MACH}.cmake)
+    add_subdirectory("eamxx")
   endif()
 
-endfunction(build_scream)
+endfunction(build_eamxx)

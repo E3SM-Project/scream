@@ -94,7 +94,7 @@ project(E3SM C CXX Fortran)
 # Include function definitions
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_util.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/build_mpas_model.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/build_scream.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/build_eamxx.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/build_model.cmake)
 
 set(CMAKE_VERBOSE_MAKEFILE TRUE)
@@ -104,7 +104,7 @@ if(USE_CUDA)
 endif()
 
 # Scream manages its own flags
-build_scream()
+build_eamxx()
 
 # We do want CMAKE_BUILD_TYPE to be set, but we do NOT want CMake to
 # decide what optimization flags to append, based on build type,
@@ -134,7 +134,7 @@ endif()
 # Build E3SM components
 set(IDX 0)
 set(COMP_CLASSES cpl atm lnd ice ocn rof glc wav iac esp)
-set(SKIP_COMPS "scream" "mpaso" "mpassi" "mali")
+set(SKIP_COMPS "eamxx" "mpaso" "mpassi" "mali")
 foreach(COMP_NAME IN LISTS COMP_NAMES)
   list(GET COMP_CLASSES ${IDX} COMP_CLASS)
   if (NOT COMP_CLASS STREQUAL "cpl" AND NOT COMP_NAME IN_LIST SKIP_COMPS)
