@@ -22,6 +22,7 @@ GetInputFile(init/${EAMxx_tests_IC_FILE_72lev})
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/input.yaml
                ${CMAKE_CURRENT_BINARY_DIR}/input.yaml)
 configure_file(shoc_standalone_output.yaml shoc_standalone_output.yaml)
+configure_file(shoc_standalone_remap.yaml shoc_standalone_remap.yaml)
 
 ## Finally compare all MPI rank output files against the single rank output as a baseline, using CPRNC
 ## Only if running with 2+ ranks configurations

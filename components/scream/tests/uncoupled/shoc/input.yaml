@@ -16,7 +16,7 @@ atmosphere_processes:
 
 grids_manager:
   Type: Mesh Free
-  number_of_global_columns:   218
+  number_of_global_columns:   866
   number_of_vertical_levels:  72  # Will want to change to 128 when a valid unit test is available.
 
 initial_conditions:
@@ -29,5 +29,5 @@ initial_conditions:
 
 # The parameters for I/O control
 Scorpio:
-  output_yaml_files: ["shoc_standalone_output.yaml"]
+  output_yaml_files: ["shoc_standalone_output.yaml","shoc_standalone_remap.yaml"]
 ...
