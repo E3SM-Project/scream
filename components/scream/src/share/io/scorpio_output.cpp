@@ -550,8 +550,14 @@ AtmosphereOutput::get_var_dof_offsets(const FieldLayout& layout)
   //       All we need to do in this routine is to compute the offset of all the entries
   //       of the MPI-local array w.r.t. the global array. So long as the offsets are in
   //       the same order as the corresponding entry in the data to be read/written, we're good.
+  // NOTE: In the case of regional output this rank may have 0 columns to write, thus, var_dof
+  //       should be empty, we check for this special case and return an empty var_dof.
   if (layout.has_tag(ShortFieldTagsNames::COL)) {
     const int num_cols = m_io_grid->get_num_local_dofs();
+    if (num_cols==0) {
+      var_dof = std::vector<scorpio::offset_t>(0);
+      return var_dof;
+    }
 
     // Note: col_size might be *larger* than the number of vertical levels, or even smaller.
     //       E.g., (ncols,2,nlevs), or (ncols,2) respectively.
@@ -580,6 +586,10 @@ AtmosphereOutput::get_var_dof_offsets(const FieldLayout& layout)
     const int num_my_elems = layout2d.dim(0);
     const int ngp = layout2d.dim(1);
     const int num_cols = num_my_elems*ngp*ngp;
+    if (num_cols==0) {
+      var_dof = std::vector<scorpio::offset_t>(0);
+      return var_dof;
+    }
 
     // Note: col_size might be *larger* than the number of vertical levels, or even smaller.
     //       E.g., (ncols,2,nlevs), or (ncols,2) respectively.

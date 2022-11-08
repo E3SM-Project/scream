@@ -41,5 +41,15 @@ if (TEST_RANK_END GREATER TEST_RANK_START)
     set_tests_properties(${TEST_NAME} PROPERTIES LABELS "${TEST_LABELS}"
               RESOURCE_LOCK ${BASE_TEST_NAME}
               FIXTURES_REQUIRED shoc_generate_output_nc_files)
+    ## Also check remap files
+    set (SRC_FILE "${BASE_TEST_NAME}_standalone_remap.INSTANT.nsteps_x${NUM_STEPS}.np${MPI_RANKS}.nc")
+    set (TGT_FILE "${BASE_TEST_NAME}_standalone_remap.INSTANT.nsteps_x${NUM_STEPS}.np${TEST_RANK_START}.nc")
+    set (TEST_NAME "${BASE_TEST_NAME}_remap_ep${TEST_RANK_START}_vs_np${MPI_RANKS}_bfb")
+    add_test (NAME ${TEST_NAME} 
+              COMMAND cmake -P ${CMAKE_BINARY_DIR}/bin/CprncTest.cmake ${SRC_FILE} ${TGT_FILE}
+              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    set_tests_properties(${TEST_NAME} PROPERTIES LABELS "${TEST_LABELS}"
+              RESOURCE_LOCK ${BASE_TEST_NAME}
+              FIXTURES_REQUIRED shoc_generate_output_nc_files)
   endforeach()
 endif()
