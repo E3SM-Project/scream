@@ -645,9 +645,9 @@ get_my_triplets_gids (const std::string& map_file,
   scorpio::set_decomp(map_file);
   scorpio::grid_read_data_array(map_file,"col",-1,cols.data(),cols.size());
   scorpio::eam_pio_closefile(map_file);
-  for (auto& id : cols) {
-    --id; // Subtract 1 to get 0-based indices
-  }
+//ASD  for (auto& id : cols) {
+//ASD    --id; // Subtract 1 to get 0-based indices
+//ASD  }
 
   // 3. Get the owners of the cols gids we read in, according to the src grid
   auto owners = src_grid->get_owners(cols);
