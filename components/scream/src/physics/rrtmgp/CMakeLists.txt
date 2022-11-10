@@ -57,24 +57,22 @@ set(EXTERNAL_SRC
   ${EAM_RRTMGP_DIR}/external/cpp/rte/kernels/mo_rte_solver_kernels.cpp
   ${EAM_RRTMGP_DIR}/external/cpp/extensions/fluxes_byband/mo_fluxes_byband_kernels.cpp
 )
+
 add_library(rrtmgp ${EXTERNAL_SRC})
 EkatDisableAllWarning(rrtmgp)
 SetCudaFlags(rrtmgp)
-target_link_libraries(rrtmgp PUBLIC yakl)
+
+# NOTE: rrtmgp does not use kokkos, but by linking to it, we a) have rrtmgp be built
+#       using nvcc_wrapper, and b) all the (public) CUDA flags for kokkos are fwd-ed
+#       to rrtmgp (e.g., the arch flag).
+target_link_libraries(rrtmgp PUBLIC yakl kokkos)
 target_include_directories(rrtmgp PUBLIC
-    ${SCREAM_BASE_DIR}/../../externals/YAKL
     ${EAM_RRTMGP_DIR}/external/cpp
     ${EAM_RRTMGP_DIR}/external/cpp/rte
     ${EAM_RRTMGP_DIR}/external/cpp/rte/kernels
     ${EAM_RRTMGP_DIR}/external/cpp/rrtmgp
     ${EAM_RRTMGP_DIR}/external/cpp/rrtmgp/kernels
 )
-
-# The lines below are needed to ensure that kokkos_launch_compiler injects
-# nvcc into compilations. rrtmgp uses YAKL, not kokkos, so the wrapper
-# didn't know to add nvcc without these lines.
-target_compile_definitions(rrtmgp PRIVATE KOKKOS_DEPENDENCE)
-target_link_options(rrtmgp PRIVATE -DKOKKOS_DEPENDENCE)
 
 # Build RRTMGP interface; note that we separate the SCREAM-specific RRTMGP interface
 # from the external core RRTMGP library because, ideally, the RRTMGP library has its
