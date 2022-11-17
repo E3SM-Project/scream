@@ -39,6 +39,8 @@ protected:
 
   void build_pg_codes ();
 
+  void initialize_vertical_coordinates (const nonconstgrid_ptr_type& dyn_grid) const;
+
   ekat::Comm            m_comm;
 
   ekat::ParameterList   m_params;

@@ -6,9 +6,11 @@
 #include "share/grid/se_grid.hpp"
 #include "share/grid/point_grid.hpp"
 #include "share/grid/remap/inverse_remapper.hpp"
+#include "share/io/scorpio_input.hpp"
 
 // Get all Homme's compile-time dims
 #include "homme_dimensions.hpp"
+#include "PhysicalConstants.hpp"
 
 #include "ekat/std_meta/ekat_std_utils.hpp"
 
@@ -151,7 +153,7 @@ void HommeGridsManager::build_dynamics_grid () {
   auto h_lon    = Kokkos::create_mirror_view(lon);
 
   // Get (ie,igp,jgp,gid) data for each dof
-  get_dyn_grid_data_f90 (h_dg_dofs.data(),h_cg_dofs.data(),h_elgpgp.data(), h_lat.data(), h_lon.data());
+  get_dyn_grid_data_f90 (h_dg_dofs.data(),h_cg_dofs.data(),h_elgpgp.data(), h_lat.data(), h_lon.data());  
 
   Kokkos::deep_copy(dg_dofs,h_dg_dofs);
   Kokkos::deep_copy(cg_dofs,h_cg_dofs);
@@ -177,6 +179,10 @@ void HommeGridsManager::build_dynamics_grid () {
   dyn_grid->set_lid_to_idx_map(elgpgp);
   dyn_grid->set_geometry_data ("lat", lat);
   dyn_grid->set_geometry_data ("lon", lon);
+
+  // Read vertical coordinates, store in geometry data,
+  // and set in hommexx's structures.
+  initialize_vertical_coordinates(dyn_grid);
 
   add_grid(dyn_grid);
 }
@@ -208,17 +214,10 @@ build_physics_grid (const ci_string& type, const ci_string& rebalance) {
   AbstractGrid::geo_view_type  lat("lat",nlcols);
   AbstractGrid::geo_view_type  lon("lon",nlcols);
   AbstractGrid::geo_view_type  area("area",nlcols);
-  AbstractGrid::geo_view_type  hyam("hyam",nlev);
-  AbstractGrid::geo_view_type  hybm("hybm",nlev);
   auto h_dofs = Kokkos::create_mirror_view(dofs);
   auto h_lat  = Kokkos::create_mirror_view(lat);
   auto h_lon  = Kokkos::create_mirror_view(lon);
   auto h_area = Kokkos::create_mirror_view(area);
-
-  // For the following, set to NaN. They will need to be grabbed
-  // from input files later.
-  Kokkos::deep_copy(hyam, std::nan(""));
-  Kokkos::deep_copy(hybm, std::nan(""));
 
   // Get all specs of phys grid cols (gids, coords, area)
   get_phys_grid_data_f90 (pg_code, h_dofs.data(), h_lat.data(), h_lon.data(), h_area.data());
@@ -246,6 +245,11 @@ build_physics_grid (const ci_string& type, const ci_string& rebalance) {
   phys_grid->set_geometry_data("lat",lat);
   phys_grid->set_geometry_data("lon",lon);
   phys_grid->set_geometry_data("area",area);
+
+  // Grad vertical coordinates from dynamics grid
+  // and set in geometry data.
+  auto hyam = get_grid("Dynamics")->get_geometry_data("hyam");
+  auto hybm = get_grid("Dynamics")->get_geometry_data("hybm");
   phys_grid->set_geometry_data("hyam",hyam);
   phys_grid->set_geometry_data("hybm",hybm);
 
@@ -269,5 +273,53 @@ build_pg_codes () {
   m_pg_codes["PG2"]["None"] =  2;
   m_pg_codes["PG2"]["Twin"] = 12;
 } 
+
+void HommeGridsManager::initialize_vertical_coordinates(const nonconstgrid_ptr_type &dyn_grid) const {
+  using vos_t = std::vector<std::string>;
+  using namespace ShortFieldTagsNames;
+  using geo_view_host = AbstractGrid::geo_view_type::HostMirror;
+
+  const int nlev_int = HOMMEXX_NUM_INTERFACE_LEV;
+  const int nlev_mid = HOMMEXX_NUM_PHYSICAL_LEV;
+
+  // Read vcoords into host views
+  ekat::ParameterList vcoord_reader_pl;
+  vcoord_reader_pl.set("Filename",m_params.get<std::string>("vertical_coordinate_filename"));
+  vcoord_reader_pl.set<vos_t>("Field Names",{"hyai","hybi","hyam","hybm"});
+  std::map<std::string,geo_view_host> host_views = {
+    { "hyai", geo_view_host("hyai",nlev_int) },
+    { "hybi", geo_view_host("hybi",nlev_int) },
+    { "hyam", geo_view_host("hyam",nlev_mid) },
+    { "hybm", geo_view_host("hybm",nlev_mid) }
+  };
+  std::map<std::string,FieldLayout> layouts = {
+    { "hyai", FieldLayout({ILEV},{nlev_int}) },
+    { "hybi", FieldLayout({ILEV},{nlev_int}) },
+    { "hyam", FieldLayout({LEV}, {nlev_mid}) },
+    { "hybm", FieldLayout({LEV}, {nlev_mid}) }
+  };
+
+  AtmosphereInput vcoord_reader(m_comm,vcoord_reader_pl);
+  vcoord_reader.init(dyn_grid,host_views,layouts);
+  vcoord_reader.read_variables();
+  vcoord_reader.finalize();
+
+  // Pass host views data to hvcoord init function
+  const auto ps0 = Homme::PhysicalConstants::p0;
+  prim_set_hvcoords_f90 (ps0,
+                         host_views["hyai"].data(),
+                         host_views["hybi"].data(),
+                         host_views["hyam"].data(),
+                         host_views["hybm"].data());
+
+  // Create mirror device view and set in geometry data.
+  const auto cmvc = [&](const geo_view_host host_view) -> AbstractGrid::geo_view_type {
+    return Kokkos::create_mirror_view_and_copy(DefaultDevice(), host_view);
+  };
+  dyn_grid->set_geometry_data("hyai",cmvc(host_views["hyai"]));
+  dyn_grid->set_geometry_data("hybi",cmvc(host_views["hybi"]));
+  dyn_grid->set_geometry_data("hyam",cmvc(host_views["hyam"]));
+  dyn_grid->set_geometry_data("hybm",cmvc(host_views["hybm"]));
+}
 
 } // namespace scream

@@ -2,6 +2,9 @@
 #include "share/grid/point_grid.hpp"
 #include "share/grid/se_grid.hpp"
 #include "share/grid/remap/do_nothing_remapper.hpp"
+#include "share/io/scorpio_input.hpp"
+
+#include "physics/share/physics_constants.hpp"
 
 #include "ekat/std_meta/ekat_std_utils.hpp"
 
@@ -84,9 +87,118 @@ build_grids ()
   if (build_pt) {
     const int num_global_cols  = m_params.get<int>("number_of_global_columns");
     auto pt_grid = create_point_grid("Point Grid",num_global_cols,num_vertical_levels,m_comm);
+
+    using geo_view_type = AbstractGrid::geo_view_type;
+    using PC            = scream::physics::Constants<Real>;
+
+    const auto nan = ekat::ScalarTraits<Real>::invalid();
+    const int num_local_cols = pt_grid->get_num_local_dofs();
+
+    // Estimate cell area for a uniform grid by taking the surface area
+    // of the earth divided by the number of columns.  Note we do this in
+    // units of radians-squared.
+    geo_view_type area("area", num_local_cols);
+    const Real pi        = PC::Pi;
+    const Real cell_area = 4.0*pi/num_local_cols;
+    Kokkos::deep_copy(area, cell_area);
+    pt_grid->set_geometry_data("area", area);
+
+    // Load lat/lon if latlon_filename param is given,
+    // else values are stored as nan.
+    geo_view_type lon("lon",  num_local_cols);
+    geo_view_type lat("lat",  num_local_cols);
+    Kokkos::deep_copy(lon, nan);
+    Kokkos::deep_copy(lat, nan);
+    pt_grid->set_geometry_data("lon", lon);
+    pt_grid->set_geometry_data("lat", lat);
+    if (m_params.isParameter("latlon_filename")) {
+      load_lat_lon(pt_grid);
+    }
+
+    // Load hyam/hybm if hybrid_coefficients_filename param is given,
+    // else values are stored as nan.
+    geo_view_type hyam("hyam", num_vertical_levels);
+    geo_view_type hybm("hybm", num_vertical_levels);
+    Kokkos::deep_copy(hyam, nan);
+    Kokkos::deep_copy(hybm, nan);
+    pt_grid->set_geometry_data("hyam", hyam);
+    pt_grid->set_geometry_data("hybm", hybm);
+    if (m_params.isParameter("vertical_coordinate_filename")) {
+      load_vertical_coordinates(pt_grid);
+    }
+
     add_grid(pt_grid);
     this->alias_grid("Point Grid", "Physics");
   }
+}
+
+void MeshFreeGridsManager::
+load_lat_lon (const nonconstgrid_ptr_type& grid) const
+{
+  const int num_local_cols = grid->get_num_local_dofs();
+
+  using geo_view_host = AbstractGrid::geo_view_type::HostMirror;
+
+  // Create host mirrors for reading in data
+  std::map<std::string,geo_view_host> host_views = {
+    { "lat", geo_view_host("lat",num_local_cols) },
+    { "lon", geo_view_host("lon",num_local_cols) }
+  };
+
+  // Store view layouts
+  std::map<std::string,FieldLayout> layouts = {
+    { "lat", grid->get_2d_scalar_layout() },
+    { "lon", grid->get_2d_scalar_layout() }
+  };
+
+  // Read lat/lon into host views
+  ekat::ParameterList lat_lon_reader_pl;
+  lat_lon_reader_pl.set("Filename",m_params.get<std::string>("latlon_filename"));
+  lat_lon_reader_pl.set<std::vector<std::string>>("Field Names",{"lat","lon"});
+
+  AtmosphereInput lat_lon_reader(m_comm, lat_lon_reader_pl);
+  lat_lon_reader.init(grid, host_views, layouts);
+  lat_lon_reader.read_variables();
+  lat_lon_reader.finalize();
+
+  // Deep copy to geometry data
+  Kokkos::deep_copy(grid->get_geometry_data("lat"),host_views["lat"]);
+  Kokkos::deep_copy(grid->get_geometry_data("lon"),host_views["lon"]);
+}
+
+void MeshFreeGridsManager::
+load_vertical_coordinates (const nonconstgrid_ptr_type& grid) const
+{
+  const int num_vertical_levels = grid->get_num_vertical_levels();
+
+  using geo_view_host = AbstractGrid::geo_view_type::HostMirror;
+
+  // Create host mirrors for reading in data
+  std::map<std::string,geo_view_host> host_views = {
+    { "hyam", geo_view_host("hyam",num_vertical_levels) },
+    { "hybm", geo_view_host("hybm",num_vertical_levels) }
+  };
+
+  // Store view layouts
+  using namespace ShortFieldTagsNames;
+  std::map<std::string,FieldLayout> layouts = {
+    { "hyam", FieldLayout({LEV},{num_vertical_levels}) },
+    { "hybm", FieldLayout({LEV},{num_vertical_levels}) }
+  };
+
+  // Read hyam/hybm into host views
+  ekat::ParameterList vcoord_reader_pl;
+  vcoord_reader_pl.set("Filename",m_params.get<std::string>("vertical_coordinate_filename"));
+  vcoord_reader_pl.set<std::vector<std::string>>("Field Names",{"hyam","hybm"});
+
+  AtmosphereInput vcoord_reader(m_comm,vcoord_reader_pl);
+  vcoord_reader.init(grid, host_views, layouts);
+  vcoord_reader.read_variables();
+  vcoord_reader.finalize();
+
+  // Deep copy to geometry data
+  Kokkos::deep_copy(grid->get_geometry_data("hyam"),host_views["hyam"]);
+  Kokkos::deep_copy(grid->get_geometry_data("hybm"),host_views["hybm"]);
 }
 
 std::shared_ptr<GridsManager>

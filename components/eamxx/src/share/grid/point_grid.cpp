@@ -101,38 +101,6 @@ create_point_grid (const std::string& grid_name,
 
   grid->set_dofs(dofs_gids);
 
-  using device_type       = DefaultDevice;
-  using kokkos_types      = KokkosTypes<device_type>;
-  using geo_view_type     = kokkos_types::view_1d<Real>;
-  using C                 = scream::physics::Constants<Real>;
-
-  // Store cell area, longitude, latitude and reference/surface pressure fractions
-  // in geometry data. For  longitude, latitude and pressure fractions, set values
-  // to NaN since they are not necessarily required from all application using PointGrid
-  geo_view_type area("area", num_my_cols);
-  geo_view_type lon ("lon",  num_my_cols);
-  geo_view_type lat ("lat",  num_my_cols);
-  geo_view_type hyam("hyam", num_vertical_lev);
-  geo_view_type hybm("hybm", num_vertical_lev);
-
-  // Estimate cell area for a uniform grid by taking the surface area
-  // of the earth divided by the number of columns.  Note we do this in
-  // units of radians-squared.
-  const Real pi        = C::Pi;
-  const Real cell_area = 4.0*pi/num_my_cols;
-
-  Kokkos::deep_copy(area, cell_area);
-  Kokkos::deep_copy(lon,  std::nan(""));
-  Kokkos::deep_copy(lat,  std::nan(""));
-  Kokkos::deep_copy(hyam, std::nan(""));
-  Kokkos::deep_copy(hybm, std::nan(""));
-
-  grid->set_geometry_data("area", area);
-  grid->set_geometry_data("lon",  lon);
-  grid->set_geometry_data("lat",  lat);
-  grid->set_geometry_data("hyam", hyam);
-  grid->set_geometry_data("hybm", hybm);
-
   return grid;
 }
 
