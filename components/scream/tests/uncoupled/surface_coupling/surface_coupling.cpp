@@ -3,6 +3,7 @@
 #include "control/atmosphere_driver.hpp"
 #include "control/atmosphere_surface_coupling_importer.hpp"
 #include "control/atmosphere_surface_coupling_exporter.hpp"
+#include "diagnostics/register_diagnostics.hpp"
 #include "share/grid/mesh_free_grids_manager.hpp"
 #include "share/atm_process/atmosphere_process.hpp"
 #include "share/scream_types.hpp"
@@ -182,6 +183,7 @@ void test_exports(const FieldManager& fm,
                   const bool called_directly_after_init = false)
 {
   using PF = PhysicsFunctions<DefaultDevice>;
+  using PC = physics::Constants<Real>;
 
   // Some computed fields rely on calculations that are done in the AD.
   // Recompute here and verify that they were exported correctly.
@@ -243,8 +245,8 @@ void test_exports(const FieldManager& fm,
     Sa_pslv(i)    = PF::calculate_psl(T_int_bot, p_int_i(nlevs), phis(i));
 
     if (not called_directly_after_init) {
-      Faxa_rainl(i) = precip_liq_surf_mass(i)/dt;
-      Faxa_snowl(i) = precip_ice_surf_mass(i)/dt;
+      Faxa_rainl(i) = precip_liq_surf_mass(i)/dt*(1000.0/PC::RHO_H2O);
+      Faxa_snowl(i) = precip_ice_surf_mass(i)/dt*(1000.0/PC::RHO_H2O);
     }
   });
 
@@ -340,6 +342,7 @@ TEST_CASE("surface-coupling", "") {
   proc_factory.register_product("SurfaceCouplingImporter",&create_atmosphere_process<SurfaceCouplingImporter>);
   proc_factory.register_product("SurfaceCouplingExporter",&create_atmosphere_process<SurfaceCouplingExporter>);
   gm_factory.register_product("Mesh Free",&create_mesh_free_grids_manager);
+  register_diagnostics();
 
   // Create the AD
   AtmosphereDriver ad;
