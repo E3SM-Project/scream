@@ -3,7 +3,7 @@
 Casename: ${CASE}.scream.remap.hi
 Averaging Type: Instant
 Max Snapshots Per File: 744 # One output every 31 days
-remap_file: ${DIN_LOC_ROOT}/atm/scream/maps/map_ne4np4_to_ne2np4_mono.nc
+remap_file: /usr/gdata/climdat/ccsm3data/inputdata/atm/scream/init/map_ne4np4_to_ne2np4_mono.nc #/g/g17/donahue5/maps/one_to_one_remap.nc
 Fields:
   Physics ${PHYSICS_GRID_TYPE}:
     Field Names:
@@ -56,6 +56,8 @@ Fields:
       # Surface Fluxes
       - surf_evap
       - surf_sens_flux
+      # Diagnostics
+      - PotentialTemperature
 output_control:
   Frequency: ${HIST_N}
   frequency_units: ${HIST_OPTION}
@@ -64,6 +66,6 @@ output_control:
   avg_type_in_filename: false
   frequency_in_filename: false
 Checkpoint Control:
-  Frequency: 99999999 #${REST_N}
+  Frequency: ${REST_N}
   frequency_units: ${REST_OPTION}
 ...

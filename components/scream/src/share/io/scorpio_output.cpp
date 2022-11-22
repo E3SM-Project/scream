@@ -205,6 +205,9 @@ void AtmosphereOutput::run (const std::string& filename, const bool is_write_ste
     const auto& layout = m_layouts.at(name);
     const auto& dims = layout.dims();
     const auto  rank = layout.rank();
+    if (dims.size()==0) {  // ASD Not sure if this is actually needed, will need to test
+      continue;
+    }
 
     // Safety check: make sure that the field was written at least once before using it.
     EKAT_REQUIRE_MSG (field.get_header().get_tracking().get_time_stamp().is_valid(),
