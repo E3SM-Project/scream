@@ -275,9 +275,6 @@ void CoarseningRemapper::do_remap_fwd ()
     const auto& f_ov_tgt = m_ov_tgt_fields[i];
     const auto& src_layout = f_src.get_header().get_identifier().get_layout();
     const auto& tgt_layout = f_ov_tgt.get_header().get_identifier().get_layout();
-    if (src_layout.size()==0 || tgt_layout.size()==0) { // There's nothing to do, ASD - not sure if this is actually needed, should test
-      continue;
-    }
 
     // Dispatch kernel with the largest possible pack size
     const auto& src_ap = f_src.get_header().get_alloc_properties();
