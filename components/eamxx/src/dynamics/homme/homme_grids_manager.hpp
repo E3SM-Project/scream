@@ -40,6 +40,8 @@ protected:
   void build_pg_codes ();
 
   void initialize_vertical_coordinates (const nonconstgrid_ptr_type& dyn_grid) const;
+  void load_topography (const nonconstgrid_ptr_type& phys_grid,
+                        const ci_string&             type) const;
 
   ekat::Comm            m_comm;
 

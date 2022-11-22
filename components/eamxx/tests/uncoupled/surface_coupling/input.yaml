@@ -15,6 +15,9 @@ grids_manager:
   Type: Mesh Free
   number_of_global_columns:   218
   number_of_vertical_levels:  72  # Will want to change to 128 when a valid unit test is available.
+  # TODO: use topo files
+  #topography_filename: ${TOPO_DATA_DIR}/USGS-gtopo30_ne4np4_16x.c20160612.nc
+  topography_filename: ${SCREAM_DATA_DIR}/init/${EAMxx_tests_IC_FILE_72lev}
 
 initial_conditions:
   # The name of the file containing the initial conditions for this test.

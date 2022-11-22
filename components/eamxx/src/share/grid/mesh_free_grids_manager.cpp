@@ -91,7 +91,6 @@ build_grids ()
     using geo_view_type = AbstractGrid::geo_view_type;
     using PC            = scream::physics::Constants<Real>;
 
-    const auto nan = ekat::ScalarTraits<Real>::invalid();
     const int num_local_cols = pt_grid->get_num_local_dofs();
 
     // Estimate cell area for a uniform grid by taking the surface area
@@ -103,33 +102,44 @@ build_grids ()
     Kokkos::deep_copy(area, cell_area);
     pt_grid->set_geometry_data("area", area);
 
-    // Load lat/lon if latlon_filename param is given,
-    // else values are stored as nan.
-    geo_view_type lon("lon",  num_local_cols);
-    geo_view_type lat("lat",  num_local_cols);
-    Kokkos::deep_copy(lon, nan);
-    Kokkos::deep_copy(lat, nan);
-    pt_grid->set_geometry_data("lon", lon);
-    pt_grid->set_geometry_data("lat", lat);
+    // Load lat/lon if latlon_filename param is given.
     if (m_params.isParameter("latlon_filename")) {
       load_lat_lon(pt_grid);
     }
 
-    // Load hyam/hybm if hybrid_coefficients_filename param is given,
-    // else values are stored as nan.
-    geo_view_type hyam("hyam", num_vertical_levels);
-    geo_view_type hybm("hybm", num_vertical_levels);
-    Kokkos::deep_copy(hyam, nan);
-    Kokkos::deep_copy(hybm, nan);
-    pt_grid->set_geometry_data("hyam", hyam);
-    pt_grid->set_geometry_data("hybm", hybm);
+    // Load hyam/hybm if hybrid_coefficients_filename param is given.
     if (m_params.isParameter("vertical_coordinate_filename")) {
       load_vertical_coordinates(pt_grid);
+    }
+
+    // Load topography from file if topography_filename
+    // param is given.
+    // Create topography geometry data (filled with NaNs)
+    // if create_topography_without_file=true (ex. used
+    // for diagnostic unit tests where a random topo is needed).
+    if (m_params.isParameter("topography_filename")) {
+      EKAT_REQUIRE_MSG(not m_params.get<bool>("create_topography_without_file", false),
+                      "Error! Setting parameter topography_filename and "
+                      "create_topography_without_file=true is not allowed.\n");
+      load_topography(pt_grid);
+    } else if (m_params.get<bool>("create_topography_without_file", false)) {
+      geo_view_type topo("topo",num_local_cols);
+      Kokkos::deep_copy(topo,ekat::ScalarTraits<Real>::invalid());
+      pt_grid->set_geometry_data("topo",topo);
     }
 
     add_grid(pt_grid);
     this->alias_grid("Point Grid", "Physics");
   }
+}
+
+namespace {
+
+// Helper function for creating mirror device view used to set geometry data.
+const AbstractGrid::geo_view_type cmvc(const AbstractGrid::geo_view_h_type host_view) {
+  return Kokkos::create_mirror_view_and_copy(DefaultDevice(), host_view);
+}
+
 }
 
 void MeshFreeGridsManager::
@@ -161,9 +171,9 @@ load_lat_lon (const nonconstgrid_ptr_type& grid) const
   lat_lon_reader.read_variables();
   lat_lon_reader.finalize();
 
-  // Deep copy to geometry data
-  Kokkos::deep_copy(grid->get_geometry_data("lat"),host_views["lat"]);
-  Kokkos::deep_copy(grid->get_geometry_data("lon"),host_views["lon"]);
+  // Set geometry data
+  grid->set_geometry_data("lat", cmvc(host_views["lat"]));
+  grid->set_geometry_data("lon", cmvc(host_views["lon"]));
 }
 
 void MeshFreeGridsManager::
@@ -196,9 +206,50 @@ load_vertical_coordinates (const nonconstgrid_ptr_type& grid) const
   vcoord_reader.read_variables();
   vcoord_reader.finalize();
 
-  // Deep copy to geometry data
-  Kokkos::deep_copy(grid->get_geometry_data("hyam"),host_views["hyam"]);
-  Kokkos::deep_copy(grid->get_geometry_data("hybm"),host_views["hybm"]);
+  // Set to geometry data
+  grid->set_geometry_data("hyam", cmvc(host_views["hyam"]));
+  grid->set_geometry_data("hybm", cmvc(host_views["hybm"]));
+}
+
+void MeshFreeGridsManager::
+load_topography (const nonconstgrid_ptr_type& grid) const
+{
+  const int num_local_cols = grid->get_num_local_dofs();
+
+  using geo_view_host = AbstractGrid::geo_view_type::HostMirror;
+
+  // TODO: Use topo files instead of IC files. This hack is currently needed since
+  //       the topo files use uppercase PHIS, whereas IC files use lower case.
+  //       Right now the issue is that not all CIME compsets have equiv. topo
+  //       files. Ex. aquaplanet file is needed with phis=0.
+#if 0
+    std::string topo_name = "PHIS";
+#else
+    std::string topo_name = "phis";
+#endif
+
+  // Create host mirrors for reading in data
+  std::map<std::string,geo_view_host> host_views = {
+    { topo_name, geo_view_host("topo",num_local_cols) }
+  };
+
+  // Store view layouts
+  std::map<std::string,FieldLayout> layouts = {
+    { topo_name, grid->get_2d_scalar_layout() }
+  };
+
+  // Read topography into host views
+  ekat::ParameterList topo_reader_pl;
+  topo_reader_pl.set("Filename",m_params.get<std::string>("topography_filename"));
+  topo_reader_pl.set<std::vector<std::string>>("Field Names",{topo_name});
+
+  AtmosphereInput topo_reader(m_comm, topo_reader_pl);
+  topo_reader.init(grid, host_views, layouts);
+  topo_reader.read_variables();
+  topo_reader.finalize();
+
+  // Set geometry data
+  grid->set_geometry_data("topo",cmvc(host_views[topo_name]));
 }
 
 std::shared_ptr<GridsManager>

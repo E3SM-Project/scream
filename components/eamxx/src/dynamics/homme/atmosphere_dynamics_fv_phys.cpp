@@ -89,7 +89,7 @@ static void copy_prev (const int ncols, const int npacks,
       FM(icol,1,ilev) = uv(icol,1,ilev);
     });
   });
-  Kokkos::fence();  
+  Kokkos::fence();
 }
 
 void HommeDynamics::fv_phys_dyn_to_fv_phys (const bool restart) {
@@ -106,7 +106,7 @@ void HommeDynamics::fv_phys_dyn_to_fv_phys (const bool restart) {
     constexpr int NGP = HOMMEXX_NP;
     const int nelem = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
     const auto npg = m_phys_grid_pgN*m_phys_grid_pgN;
-    GllFvRemapTmp t;    
+    GllFvRemapTmp t;
     t.T_mid = Homme::ExecView<Real***>("T_mid_tmp", nelem, npg, npacks*N);
     t.horiz_winds = Homme::ExecView<Real****>("horiz_winds_tmp", nelem, npg, 2, npacks*N);
     // Really need just the first tracer.
@@ -156,12 +156,12 @@ void HommeDynamics::remap_dyn_to_fv_phys (GllFvRemapTmp* t) const {
   const auto nq = get_group_out("tracers").m_bundle->get_view<Real***>().extent_int(1);
   assert(get_field_out("T_mid", gn).get_view<Real**>().extent_int(0) == nelem*npg);
   assert(get_field_out("horiz_winds", gn).get_view<Real***>().extent_int(1) == 2);
-  
+
   const auto ps = Homme::GllFvRemap::Phys1T(
     get_field_out("ps", gn).get_view<Real*>().data(),
     nelem, npg);
   const auto phis = Homme::GllFvRemap::Phys1T(
-    get_field_out("phis", gn).get_view<Real*>().data(),
+    m_helper_fields.at("phis").get_view<Real*>().data(),
     nelem, npg);
   const auto T = Homme::GllFvRemap::Phys2T(
     t ? t->T_mid.data() : get_field_out("T_mid", gn).get_view<Real**>().data(),
@@ -208,7 +208,7 @@ void HommeDynamics::remap_fv_phys_to_dyn () const {
   const auto q = Homme::GllFvRemap::CPhys3T(
     get_group_in("tracers", gn).m_bundle->get_view<const Real***>().data(),
     nelem, npg, nq, nlev);
-  
+
   gfr.run_fv_phys_to_dyn(time_idx, T, uv, q);
   Kokkos::fence();
   gfr.run_fv_phys_to_dyn_dss();

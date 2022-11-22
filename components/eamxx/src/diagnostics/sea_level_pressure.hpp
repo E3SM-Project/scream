@@ -20,7 +20,7 @@ public:
 
   using KT            = KokkosTypes<DefaultDevice>;
   using MemberType    = typename KT::MemberType;
-  using view_1d       = typename KT::template view_1d<Pack>;
+  using view_1d       = typename KT::template view_1d<Real>;
 
   // Constructors
   SeaLevelPressureDiagnostic (const ekat::Comm& comm, const ekat::ParameterList& params);
@@ -40,6 +40,9 @@ public:
 #endif
   void compute_diagnostic_impl ();
 protected:
+
+  // Topography data
+  view_1d m_phis;
 
   // Keep track of field dimensions
   Int m_num_cols;

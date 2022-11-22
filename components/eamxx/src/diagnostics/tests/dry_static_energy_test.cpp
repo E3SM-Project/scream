@@ -30,6 +30,7 @@ create_gm (const ekat::Comm& comm, const int ncols, const int nlevs) {
   gm_params.set<int>("number_of_local_elements", num_local_elems);
   gm_params.set<int>("number_of_vertical_levels", nlevs);
   gm_params.set<int>("number_of_gauss_points", np);
+  gm_params.set<bool>("create_topography_without_file",true);
 
   auto gm = create_mesh_free_grids_manager(comm,gm_params);
   gm->build_grids();
@@ -123,8 +124,7 @@ void run(std::mt19937_64& engine)
     const auto& p_mid_v       = p_mid_f.get_view<Pack**>();
     const auto& qv_mid_f      = input_fields["qv"];
     const auto& qv_mid_v      = qv_mid_f.get_view<Pack**>();
-    const auto& phis_f        = input_fields["phis"];
-    const auto& phis_v        = phis_f.get_view<Real*>();
+    const auto& phis_v        = rview_1d("topo",ncols);
     for (int icol=0;icol<ncols;icol++) {
       const auto& T_sub      = ekat::subview(T_mid_v,icol);
       const auto& pseudo_sub = ekat::subview(pseudo_dens_v,icol);
@@ -140,6 +140,7 @@ void run(std::mt19937_64& engine)
       Kokkos::deep_copy(qv_sub,watervapor);
     }
     ekat::genRandArray(phis_v, engine, pdf_surface);
+    Kokkos::deep_copy(gm->get_grid("Physics")->get_geometry_data("topo"), phis_v);
 
     // Run diagnostic and compare with manual calculation
     diag->compute_diagnostic();
@@ -171,9 +172,9 @@ void run(std::mt19937_64& engine)
     Kokkos::fence();
     REQUIRE(views_are_equal(diag_out,dse_f));
   }
- 
+
   // Finalize the diagnostic
-  diag->finalize(); 
+  diag->finalize();
 
 } // run()
 

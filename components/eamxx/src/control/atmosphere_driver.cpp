@@ -281,7 +281,7 @@ void AtmosphereDriver::setup_surface_coupling_processes () const
   }
 }
 
-void AtmosphereDriver::set_precipitation_fields_to_zero () 
+void AtmosphereDriver::set_precipitation_fields_to_zero ()
 {
   auto phys_grid = m_grids_manager->get_grid("Physics");
 
@@ -310,7 +310,6 @@ void AtmosphereDriver::setup_column_conservation_checks ()
   // all fields exist.
   const auto pseudo_density_ptr = phys_field_mgr->get_field_ptr("pseudo_density");
   const auto ps_ptr             = phys_field_mgr->get_field_ptr("ps");
-  const auto phis_ptr           = phys_field_mgr->get_field_ptr("phis");
   const auto horiz_winds_ptr    = phys_field_mgr->get_field_ptr("horiz_winds");
   const auto T_mid_ptr          = phys_field_mgr->get_field_ptr("T_mid");
   const auto qv_ptr             = phys_field_mgr->get_field_ptr("qv");
@@ -323,7 +322,6 @@ void AtmosphereDriver::setup_column_conservation_checks ()
   const auto heat_flux_ptr      = phys_field_mgr->get_field_ptr("heat_flux");
   EKAT_REQUIRE_MSG(pseudo_density_ptr != nullptr &&
                    ps_ptr             != nullptr &&
-                   phis_ptr           != nullptr &&
                    horiz_winds_ptr    != nullptr &&
                    T_mid_ptr          != nullptr &&
                    qv_ptr             != nullptr &&
@@ -346,7 +344,7 @@ void AtmosphereDriver::setup_column_conservation_checks ()
   auto conservation_check =
     std::make_shared<MassAndEnergyColumnConservationCheck>(phys_grid,
                                                            mass_error_tol, energy_error_tol,
-                                                           pseudo_density_ptr, ps_ptr, phis_ptr,
+                                                           pseudo_density_ptr, ps_ptr,
                                                            horiz_winds_ptr, T_mid_ptr, qv_ptr,
                                                            qc_ptr, qr_ptr, qi_ptr,
                                                            vapor_flux_ptr, water_flux_ptr,
@@ -578,7 +576,7 @@ void AtmosphereDriver::initialize_output_managers () {
     }
     om.setup_globals_map(m_atm_process_group->get_restart_extra_data());
   }
-  
+
   // Build one manager per output yaml file
   using vos_t = std::vector<std::string>;
   const auto& output_yaml_files = io_params.get<vos_t>("output_yaml_files",vos_t{});

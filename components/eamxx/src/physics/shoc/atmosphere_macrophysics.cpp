@@ -36,7 +36,7 @@ void SHOCMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids
   m_num_levs = m_grid->get_num_vertical_levels();  // Number of levels per column
 
   m_cell_area = m_grid->get_geometry_data("area"); // area of each cell
-  m_cell_lat  = m_grid->get_geometry_data("lat"); // area of each cell
+  m_cell_lat  = m_grid->get_geometry_data("lat");  // area of each cell
 
   // Define the different field layouts that will be used for this process
   using namespace ShortFieldTagsNames;
@@ -76,7 +76,6 @@ void SHOCMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids
   add_field<Required>("p_mid",          scalar3d_layout_mid, Pa,    grid_name, ps);
   add_field<Required>("p_int",          scalar3d_layout_int, Pa,    grid_name, ps);
   add_field<Required>("pseudo_density", scalar3d_layout_mid, Pa,    grid_name, ps);
-  add_field<Required>("phis",           scalar2d_layout_col, m2/s2, grid_name, ps);
 
   // Input/Output variables
   add_field<Updated>("tke",           scalar3d_layout_mid, m2/s2,   grid_name, "tracers", ps);
@@ -244,8 +243,9 @@ void SHOCMacrophysics::initialize_impl (const RunType run_type)
   const auto& sgs_buoy_flux  = get_field_out("sgs_buoy_flux").get_view<Spack**>();
   const auto& tk             = get_field_out("eddy_diff_mom").get_view<Spack**>();
   const auto& inv_qc_relvar  = get_field_out("inv_qc_relvar").get_view<Spack**>();
-  const auto& phis           = get_field_in("phis").get_view<const Real*>();
   const auto& tracer_info    = get_group_out("tracers").m_info; // obtain tracer info structure
+
+  const auto phis = m_grid->get_geometry_data("topo");
 
   // Alias local variables from temporary buffer
   auto z_mid       = m_buffer.z_mid;
@@ -305,7 +305,6 @@ void SHOCMacrophysics::initialize_impl (const RunType run_type)
 
   // copy to device
   Kokkos::deep_copy(convert_wet_dry_idx_d,convert_wet_dry_idx_h);
-
 
   shoc_preprocess.set_variables(m_num_cols,m_num_levs,m_num_tracers,convert_wet_dry_idx_d,z_surf,m_cell_area,m_cell_lat,
                                 T_mid,p_mid,p_int,pseudo_density,omega,phis,surf_sens_flux,surf_evap,

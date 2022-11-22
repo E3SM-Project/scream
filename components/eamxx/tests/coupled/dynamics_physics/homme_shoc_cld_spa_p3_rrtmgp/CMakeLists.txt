@@ -67,6 +67,8 @@ set (TEST_INPUT_FILES
   init/map_ne4np4_to_ne2np4_mono.nc
   init/spa_file_unified_and_complete_ne4_20220428.nc
   init/${EAMxx_tests_IC_FILE_72lev}
+  # TODO: use topo files
+  #../cam/topo/USGS-gtopo30_ne4np4_16x.c20160612.nc
 )
 foreach (file IN ITEMS ${TEST_INPUT_FILES})
   GetInputFile(${file})

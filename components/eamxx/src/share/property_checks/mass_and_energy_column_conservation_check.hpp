@@ -32,7 +32,6 @@ public:
                                         const Real                                 energy_error_tolerance,
                                         const std::shared_ptr<const Field>&        pseudo_density_ptr,
                                         const std::shared_ptr<const Field>&        ps_ptr,
-                                        const std::shared_ptr<const Field>&        phis_ptr,
                                         const std::shared_ptr<const Field>&        horiz_winds_ptr,
                                         const std::shared_ptr<const Field>&        T_mid_ptr,
                                         const std::shared_ptr<const Field>&        qv_ptr,
@@ -52,9 +51,9 @@ public:
 
   std::shared_ptr<const AbstractGrid> get_grid () const { return m_grid; }
 
-  // Set the timestep for the process running the check. This 
+  // Set the timestep for the process running the check. This
   // should be the timestep of the current subcycle, equiv to
-  // dt = model_dt/num_subcycles. 
+  // dt = model_dt/num_subcycles.
   void set_dt (const int dt) { m_dt = dt; }
 
   // Compute total mass and store into m_current_mass.

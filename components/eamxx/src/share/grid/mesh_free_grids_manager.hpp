@@ -41,6 +41,7 @@ protected:
 
   void load_lat_lon (const nonconstgrid_ptr_type& grid) const;
   void load_vertical_coordinates (const nonconstgrid_ptr_type& grid) const;
+  void load_topography (const nonconstgrid_ptr_type& grid) const;
 
   remap_repo_type     m_remappers;
 

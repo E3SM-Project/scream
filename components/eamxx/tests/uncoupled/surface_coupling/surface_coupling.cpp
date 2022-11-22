@@ -176,6 +176,7 @@ void test_imports(const FieldManager& fm,
 }
 
 void test_exports(const FieldManager& fm,
+                  const std::shared_ptr<const AbstractGrid>& grid,
                   const KokkosTypes<HostDevice>::view_2d<Real> export_data_view,
                   const KokkosTypes<HostDevice>::view_1d<int>  export_cpl_indices_view,
                   const KokkosTypes<HostDevice>::view_1d<Real> export_constant_multiple_view,
@@ -192,9 +193,9 @@ void test_exports(const FieldManager& fm,
   const auto p_int                = fm.get_field("p_int").get_view<const Real**>();
   const auto T_mid                = fm.get_field("T_mid").get_view<const Real**>();
   const auto qv                   = fm.get_field("qv").get_view<const Real**>();
-  const auto phis                 = fm.get_field("phis").get_view<const Real*>();
   const auto precip_liq_surf_mass = fm.get_field("precip_liq_surf_mass").get_view<const Real*>();
   const auto precip_ice_surf_mass = fm.get_field("precip_ice_surf_mass").get_view<const Real*>();
+  const auto phis                 = grid->get_geometry_data("topo");
 
   const int ncols = fm.get_grid()->get_num_local_dofs();
   const int nlevs = fm.get_grid()->get_num_vertical_levels();
@@ -382,7 +383,7 @@ TEST_CASE("surface-coupling", "") {
                                                                        num_scream_imports);
   KokkosTypes<HostDevice>::view_1d<int>  import_vec_comps_view        ("import_vec_comps",
                                                                        num_scream_imports);
-  KokkosTypes<HostDevice>::view_1d<Real> import_constant_multiple_view("import_constant_multiple_view", 
+  KokkosTypes<HostDevice>::view_1d<Real> import_constant_multiple_view("import_constant_multiple_view",
                                                                        num_scream_imports);
   KokkosTypes<HostDevice>::view_1d<bool> do_import_during_init_view   ("do_import_during_init_view",
                                                                        num_scream_imports);
@@ -410,9 +411,9 @@ TEST_CASE("surface-coupling", "") {
                                                                        ncols, num_cpl_exports);
   KokkosTypes<HostDevice>::view_1d<int>  export_cpl_indices_view      ("export_vec_comps",
                                                                        num_scream_exports);
-  KokkosTypes<HostDevice>::view_1d<int>  export_vec_comps_view        ("export_vec_comps", 
+  KokkosTypes<HostDevice>::view_1d<int>  export_vec_comps_view        ("export_vec_comps",
                                                                        num_scream_exports);
-  KokkosTypes<HostDevice>::view_1d<Real> export_constant_multiple_view("export_constant_multiple_view", 
+  KokkosTypes<HostDevice>::view_1d<Real> export_constant_multiple_view("export_constant_multiple_view",
                                                                        num_scream_exports);
   KokkosTypes<HostDevice>::view_1d<bool> do_export_during_init_view   ("do_export_during_init_view",
                                                                        num_scream_exports);
@@ -467,7 +468,8 @@ TEST_CASE("surface-coupling", "") {
   // Verify any initial imports/exports were done as expected
   test_imports(*fm, import_data_view, import_cpl_indices_view,
                import_constant_multiple_view, true);
-  test_exports(*fm, export_data_view, export_cpl_indices_view,
+  test_exports(*fm, ad.get_grids_manager()->get_grid("Physics"),
+               export_data_view, export_cpl_indices_view,
                export_constant_multiple_view, dt, true);
 
   // Run the AD
@@ -476,7 +478,8 @@ TEST_CASE("surface-coupling", "") {
   // Verify all imports/exports were done as expected
   test_imports(*fm, import_data_view, import_cpl_indices_view,
                import_constant_multiple_view);
-  test_exports(*fm, export_data_view, export_cpl_indices_view,
+  test_exports(*fm, ad.get_grids_manager()->get_grid("Physics"),
+               export_data_view, export_cpl_indices_view,
                export_constant_multiple_view, dt);
 
   // Finalize  the AD

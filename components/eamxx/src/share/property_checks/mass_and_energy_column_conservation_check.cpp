@@ -11,7 +11,6 @@ MassAndEnergyColumnConservationCheck (const std::shared_ptr<const AbstractGrid>&
                                       const Real                                 energy_error_tolerance,
                                       const std::shared_ptr<const Field>&        pseudo_density_ptr,
                                       const std::shared_ptr<const Field>&        ps_ptr,
-                                      const std::shared_ptr<const Field>&        phis_ptr,
                                       const std::shared_ptr<const Field>&        horiz_winds_ptr,
                                       const std::shared_ptr<const Field>&        T_mid_ptr,
                                       const std::shared_ptr<const Field>&        qv_ptr,
@@ -26,7 +25,7 @@ MassAndEnergyColumnConservationCheck (const std::shared_ptr<const AbstractGrid>&
   , m_dt (std::nan(""))
   , m_mass_tol (mass_error_tolerance)
   , m_energy_tol (energy_error_tolerance)
-{  
+{
   m_num_cols = m_grid->get_num_local_dofs();
   m_num_levs = m_grid->get_num_vertical_levels();
 
@@ -35,7 +34,6 @@ MassAndEnergyColumnConservationCheck (const std::shared_ptr<const AbstractGrid>&
 
   m_fields["pseudo_density"] = pseudo_density_ptr;
   m_fields["ps"]             = ps_ptr;
-  m_fields["phis"]           = phis_ptr;
   m_fields["horiz_winds"]    = horiz_winds_ptr;
   m_fields["T_mid"]          = T_mid_ptr;
   m_fields["qv"]             = qv_ptr;
@@ -49,11 +47,10 @@ MassAndEnergyColumnConservationCheck (const std::shared_ptr<const AbstractGrid>&
 
   // Require that all fields needed for mass and energy computation are not null.
   const bool all_computation_fields_exist =
-      pseudo_density_ptr && ps_ptr          &&
-      phis_ptr           && horiz_winds_ptr &&
-      T_mid_ptr          && qv_ptr          &&
-      qc_ptr             && qr_ptr          &&
-      qi_ptr;
+      pseudo_density_ptr && ps_ptr    &&
+      horiz_winds_ptr    && T_mid_ptr &&
+      qv_ptr             && qc_ptr    &&
+      qr_ptr             && qi_ptr;
   EKAT_REQUIRE_MSG(all_computation_fields_exist,
                    "Error! Currently we require mass and energy conservation "
                    "check to contain all fields related to the mass and energy "
@@ -96,18 +93,18 @@ void MassAndEnergyColumnConservationCheck::compute_current_mass ()
 
 void MassAndEnergyColumnConservationCheck::compute_current_energy ()
 {
-  auto energy = m_current_energy;
+  auto energy      = m_current_energy;
   const auto ncols = m_num_cols;
   const auto nlevs = m_num_levs;
 
   const auto pseudo_density = m_fields.at("pseudo_density")->get_view<const Real**>();
-  const auto T_mid = m_fields.at("T_mid")->get_view<const Real**>();
-  const auto horiz_winds = m_fields.at("horiz_winds")->get_view<const Real***>();
-  const auto qv = m_fields.at("qv")->get_view<const Real**>();
-  const auto qc = m_fields.at("qc")->get_view<const Real**>();
-  const auto qr = m_fields.at("qr")->get_view<const Real**>();
-  const auto ps = m_fields.at("ps")->get_view<const Real*>();
-  const auto phis = m_fields.at("phis")->get_view<const Real*>();
+  const auto T_mid          = m_fields.at("T_mid")->get_view<const Real**>();
+  const auto horiz_winds    = m_fields.at("horiz_winds")->get_view<const Real***>();
+  const auto qv             = m_fields.at("qv")->get_view<const Real**>();
+  const auto qc             = m_fields.at("qc")->get_view<const Real**>();
+  const auto qr             = m_fields.at("qr")->get_view<const Real**>();
+  const auto ps             = m_fields.at("ps")->get_view<const Real*>();
+  const auto phis           = m_grid->get_geometry_data("topo");
 
   const auto policy = ExeSpaceUtils::get_default_team_policy(ncols, nlevs);
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA (const KT::MemberType& team) {
@@ -144,7 +141,7 @@ PropertyCheck::ResultAndMsg MassAndEnergyColumnConservationCheck::check() const
   const auto qi             = m_fields.at("qi"            )->get_view<const Real**> ();
   const auto qr             = m_fields.at("qr"            )->get_view<const Real**> ();
   const auto ps             = m_fields.at("ps"            )->get_view<const Real*>  ();
-  const auto phis           = m_fields.at("phis"          )->get_view<const Real*>  ();
+  const auto phis           = m_grid->get_geometry_data("topo");
 
   const auto vapor_flux = m_fields.at("vapor_flux")->get_view<const Real*>();
   const auto water_flux = m_fields.at("water_flux")->get_view<const Real*>();
@@ -173,7 +170,7 @@ PropertyCheck::ResultAndMsg MassAndEnergyColumnConservationCheck::check() const
     const Real tm = compute_total_mass_on_column(team, nlevs, pseudo_density_i, qv_i, qc_i, qi_i, qr_i);
     const Real previous_tm = mass(i);
 
-    // Calculate expected total mass. Here, dt should be set to the timestep of the 
+    // Calculate expected total mass. Here, dt should be set to the timestep of the
     // subcycle for the process that called this check. This effectively scales the boundary
     // fluxes by 1/num_subcycles (dt = model_dt/num_subcycles) so that we only include
     // the expected change after one substep (not a full timestep).

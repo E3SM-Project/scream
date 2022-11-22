@@ -159,9 +159,6 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
   //       into the n0 time-slice of Homme's vtheta_dp, and then do the conversion
   //       T_mid->VTheta_dp in place.
 
-  const auto m2 = m*m;
-  const auto s2 = s*s;
-
   // Note: qv is needed to transform T<->Theta
 
   const auto& pgn = m_phys_grid->name();
@@ -170,14 +167,14 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
   add_field<Computed>("pseudo_density",FL({COL,     LEV},{ncols,  nlev_mid}),Pa,    pgn,N);
   add_field<Computed>("pseudo_density_dry",FL({COL, LEV},{ncols,  nlev_mid}),Pa,    pgn,N);
   add_field<Updated> ("ps",            FL({COL         },{ncols           }),Pa,    pgn);
-  add_field<Updated >("qv",            FL({COL,     LEV},{ncols,  nlev_mid}),Q,     pgn,"tracers",N);
-  add_field<Updated >("phis",          FL({COL         },{ncols           }),m2/s2, pgn);
+  add_field<Updated> ("qv",            FL({COL,     LEV},{ncols,  nlev_mid}),Q,     pgn,"tracers",N);
   add_field<Computed>("p_int",         FL({COL,    ILEV},{ncols,  nlev_int}),Pa,    pgn,N);
   add_field<Computed>("p_mid",         FL({COL,     LEV},{ncols,  nlev_mid}),Pa,    pgn,N);
   add_field<Computed>("p_dry_int",     FL({COL,    ILEV},{ncols,  nlev_int}),Pa,    pgn,N);
   add_field<Computed>("p_dry_mid",     FL({COL,     LEV},{ncols,  nlev_mid}),Pa,    pgn,N);
   add_field<Computed>("omega",         FL({COL,     LEV},{ncols,  nlev_mid}),Pa/s,  pgn,N);
-  add_group<Updated>("tracers",pgn,N, Bundling::Required);
+  add_group<Updated> ("tracers",pgn,N, Bundling::Required);
+  create_helper_field("phis",{COL},{ncols},pgn);
 
   if (fv_phys_active()) {
     // [CGLL ICs in pg2] Read CGLL IC data even though our in/out format is
@@ -189,11 +186,21 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
     add_field<Required>("horiz_winds",   FL({COL,CMP, LEV},{nc,2,nlev_mid}),m/s,   rgn,N);
     add_field<Required>("T_mid",         FL({COL,     LEV},{nc,  nlev_mid}),K,     rgn,N);
     add_field<Required>("ps",            FL({COL         },{nc           }),Pa,    rgn);
-    add_field<Required>("phis",          FL({COL         },{nc           }),m2/s2, rgn);
     add_group<Required>("tracers",rgn,N, Bundling::Required, DerivationType::Import, "tracers", pgn);
     fv_phys_rrtmgp_active_gases_init(grids_manager);
     // This is needed for the dp_ref init in initialize_homme_state.
     add_field<Computed>("pseudo_density",FL({COL,     LEV},{nc,  nlev_mid}),Pa,    rgn,N);
+    create_helper_field("phis_cgll",{COL},{nc},rgn);
+  }
+
+  // Copy topography values from GLL grid data
+  // to helper field for remapping to phis_dyn.
+  if (fv_phys_active()) {
+    Kokkos::deep_copy(m_helper_fields.at("phis_cgll").get_view<Real*>(),
+                      m_cgll_grid->get_geometry_data("topo"));
+  } else {
+    Kokkos::deep_copy(m_helper_fields.at("phis").get_view<Real*>(),
+                      m_phys_grid->get_geometry_data("topo"));
   }
 
   // Dynamics grid states
@@ -240,7 +247,7 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
     m_p2d_remapper = grids_manager->create_remapper(m_phys_grid,m_dyn_grid);
     m_d2p_remapper = grids_manager->create_remapper(m_dyn_grid,m_phys_grid);
   }
-  
+
   // Create separate remapper for initial_conditions
   m_ic_remapper = grids_manager->create_remapper(m_cgll_grid,m_dyn_grid);
 }
@@ -429,10 +436,15 @@ void HommeDynamics::initialize_impl (const RunType run_type)
     // dynamics helper fields Computed and output on the dynamics grid. Worse
     // for I/O but better for device memory.
     const auto& rgn = m_cgll_grid->name();
-    for (const auto& f : {"horiz_winds", "T_mid", "ps", "phis"})
+    for (const auto& f : {"horiz_winds", "T_mid", "ps"})
       remove_field(f, rgn);
     remove_group("tracers", rgn);
+    m_helper_fields.erase("phis_cgll");
     fv_phys_rrtmgp_active_gases_remap();
+
+    // Copy phis data to geometry data for other processes to use.
+    Kokkos::deep_copy(m_phys_grid->get_geometry_data("topo"),
+                      m_helper_fields.at("phis").get_view<Real*>());
   }
 
   // Set up field property checks
@@ -655,7 +667,7 @@ void HommeDynamics::homme_post_process (const int dt) {
 
     return;
   }
-  
+
   // Convert VTheta_dp->T, store T,uv, and possibly w in FT, FM,
   // compute p_int on ref grid.
   const auto dp_view = get_field_out("pseudo_density").get_view<Pack**>();
@@ -1071,9 +1083,18 @@ void HommeDynamics::initialize_homme_state () {
   m_ic_remapper->register_field(get_field_in("horiz_winds",rgn),get_internal_field("v_dyn"));
   m_ic_remapper->register_field(get_field_out("pseudo_density",rgn),get_internal_field("dp3d_dyn"));
   m_ic_remapper->register_field(get_field_in("ps",rgn),get_internal_field("ps_dyn"));
-  m_ic_remapper->register_field(get_field_in("phis",rgn),m_helper_fields.at("phis_dyn"));
   m_ic_remapper->register_field(get_field_in("T_mid",rgn),get_internal_field("vtheta_dp_dyn"));
   m_ic_remapper->register_field(*get_group_in("tracers",rgn).m_bundle,m_helper_fields.at("Q_dyn"));
+
+  // If fv_phys_active()==true, we need to remap topography from
+  // the GLL grid given by the "phis_cgll" internal field. Else,
+  // "phis" internal field gives topography on the GLL grid.
+  if (fv_phys_active()) {
+    m_ic_remapper->register_field(m_helper_fields.at("phis_cgll"),m_helper_fields.at("phis_dyn"));
+  } else {
+    m_ic_remapper->register_field(m_helper_fields.at("phis"),m_helper_fields.at("phis_dyn"));
+  }
+
   m_ic_remapper->registration_ends();
   m_ic_remapper->remap(true);
 
@@ -1116,7 +1137,7 @@ void HommeDynamics::initialize_homme_state () {
     team.team_barrier();
     ColOps::compute_midpoint_values(team,nlevs,p_int,p_mid);
     team.team_barrier();
-    
+
     // Convert T->Theta->VTheta->VTheta*dp in place
     auto T      = ekat::subview(vth_view,ie,n0,igp,jgp);
     auto vTh_dp = ekat::subview(vth_view,ie,n0,igp,jgp);

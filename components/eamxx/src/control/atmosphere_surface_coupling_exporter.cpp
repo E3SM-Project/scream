@@ -26,7 +26,6 @@ void SurfaceCouplingExporter::set_grids(const std::shared_ptr<const GridsManager
   m_num_levs = m_grid->get_num_vertical_levels();  // Number of levels per column
 
   const auto m2 = m*m;
-  const auto s2 = s*s;
   auto Wm2 = W/m2;
   Wm2.set_string("W/m2");
 
@@ -48,7 +47,6 @@ void SurfaceCouplingExporter::set_grids(const std::shared_ptr<const GridsManager
   // These fields are required for computation/exports
   add_field<Required>("p_int",                scalar3d_layout_int,  Pa,    grid_name);
   add_field<Required>("pseudo_density",       scalar3d_layout_mid,  Pa,    grid_name, ps);
-  add_field<Required>("phis",                 scalar2d_layout,      m2/s2, grid_name);
   add_field<Required>("p_mid",                scalar3d_layout_mid,  Pa,    grid_name, ps);
   add_field<Required>("qv",                   scalar3d_layout_mid,  Qunit, grid_name, "tracers", ps);
   add_field<Required>("T_mid",                scalar3d_layout_mid,  K,     grid_name, ps);
@@ -146,7 +144,7 @@ void SurfaceCouplingExporter::setup_surface_coupling_data(const SCDataManager &s
   m_constant_multiple_view =
       decltype(m_constant_multiple_view)  (sc_data_manager.get_field_constant_multiple_ptr(),
                                            m_num_scream_exports);
-  m_do_export_during_init_view = 
+  m_do_export_during_init_view =
     decltype(m_do_export_during_init_view)(sc_data_manager.get_field_transfer_during_init_ptr(),
                                            m_num_scream_exports);
 
@@ -219,7 +217,7 @@ void SurfaceCouplingExporter::do_export(const Int dt, const bool called_during_i
   const auto& qv                   = get_field_in("qv").get_view<const Spack**>();
   const auto& T_mid                = get_field_in("T_mid").get_view<const Spack**>();
   const auto& p_mid                = get_field_in("p_mid").get_view<const Spack**>();
-  const auto& phis                 = get_field_in("phis").get_view<const Real*>();
+  const auto& phis                 = m_grid->get_geometry_data("topo");
 
   const auto& precip_liq_surf_mass = get_field_out("precip_liq_surf_mass").get_view<Real*>();
   const auto& precip_ice_surf_mass = get_field_out("precip_ice_surf_mass").get_view<Real*>();

@@ -99,7 +99,7 @@ protected:
   std::shared_ptr<const AbstractGrid> m_grid;
 
   // Keep track of field dimensions and the iteration count
-  Int m_num_cols; 
+  Int m_num_cols;
   Int m_num_levs;
 
   // Some helper fields.

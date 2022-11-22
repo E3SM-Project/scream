@@ -550,6 +550,7 @@ protected:
 
   KokkosTypes<DefaultDevice>::view_1d<Real> m_cell_area;
   KokkosTypes<DefaultDevice>::view_1d<Real> m_cell_lat;
+  KokkosTypes<DefaultDevice>::view_1d<Real> m_phis;
 
   // Struct which contains local variables
   Buffer m_buffer;

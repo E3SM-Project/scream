@@ -103,7 +103,7 @@ build_grids ()
   auto it = std::unique(pg_codes.begin(),pg_codes.end());
   const int* codes_ptr = pg_codes.data();
   init_grids_f90 (codes_ptr,std::distance(pg_codes.begin(),it));
-  
+
   // We know we need the dyn grid, so build it
   build_dynamics_grid ();
 
@@ -153,7 +153,7 @@ void HommeGridsManager::build_dynamics_grid () {
   auto h_lon    = Kokkos::create_mirror_view(lon);
 
   // Get (ie,igp,jgp,gid) data for each dof
-  get_dyn_grid_data_f90 (h_dg_dofs.data(),h_cg_dofs.data(),h_elgpgp.data(), h_lat.data(), h_lon.data());  
+  get_dyn_grid_data_f90 (h_dg_dofs.data(),h_cg_dofs.data(),h_elgpgp.data(), h_lat.data(), h_lon.data());
 
   Kokkos::deep_copy(dg_dofs,h_dg_dofs);
   Kokkos::deep_copy(cg_dofs,h_cg_dofs);
@@ -180,9 +180,11 @@ void HommeGridsManager::build_dynamics_grid () {
   dyn_grid->set_geometry_data ("lat", lat);
   dyn_grid->set_geometry_data ("lon", lon);
 
-  // Read vertical coordinates, store in geometry data,
-  // and set in hommexx's structures.
-  initialize_vertical_coordinates(dyn_grid);
+  if (m_params.isParameter("vertical_coordinate_filename")) {
+    // Read vertical coordinates, store in geometry data,
+    // and set in hommexx's structures.
+    initialize_vertical_coordinates(dyn_grid);
+  }
 
   add_grid(dyn_grid);
 }
@@ -226,7 +228,7 @@ build_physics_grid (const ci_string& type, const ci_string& rebalance) {
   Kokkos::deep_copy(lat, h_lat);
   Kokkos::deep_copy(lon, h_lon);
   Kokkos::deep_copy(area,h_area);
-  
+
 #ifndef NDEBUG
   // Check that latitude, longitude, and area are valid
   using KT = KokkosTypes<DefaultDevice>;
@@ -246,12 +248,21 @@ build_physics_grid (const ci_string& type, const ci_string& rebalance) {
   phys_grid->set_geometry_data("lon",lon);
   phys_grid->set_geometry_data("area",area);
 
-  // Grad vertical coordinates from dynamics grid
-  // and set in geometry data.
-  auto hyam = get_grid("Dynamics")->get_geometry_data("hyam");
-  auto hybm = get_grid("Dynamics")->get_geometry_data("hybm");
-  phys_grid->set_geometry_data("hyam",hyam);
-  phys_grid->set_geometry_data("hybm",hybm);
+  if (get_grid("Dynamics")->has_geometry_data("hyam") &&
+      get_grid("Dynamics")->has_geometry_data("hybm")) {
+    // Grad vertical coordinates and topography
+    // from dynamics grid and set in geometry data.
+    auto hyam = get_grid("Dynamics")->get_geometry_data("hyam");
+    auto hybm = get_grid("Dynamics")->get_geometry_data("hybm");
+    phys_grid->set_geometry_data("hyam",hyam);
+    phys_grid->set_geometry_data("hybm",hybm);
+  }
+
+  // Load in topography to geometry data
+  // if topography_filename is given.
+  if (m_params.isParameter("topography_filename")) {
+    load_topography(phys_grid, type);
+  }
 
   add_grid(phys_grid);
 }
@@ -272,7 +283,16 @@ build_pg_codes () {
   m_pg_codes["GLL"]["Twin"] = 10;
   m_pg_codes["PG2"]["None"] =  2;
   m_pg_codes["PG2"]["Twin"] = 12;
-} 
+}
+
+namespace {
+
+// Helper function for creating mirror device view used to set geometry data.
+const AbstractGrid::geo_view_type cmvc(const AbstractGrid::geo_view_h_type host_view) {
+  return Kokkos::create_mirror_view_and_copy(DefaultDevice(), host_view);
+}
+
+}
 
 void HommeGridsManager::initialize_vertical_coordinates(const nonconstgrid_ptr_type &dyn_grid) const {
   using vos_t = std::vector<std::string>;
@@ -312,14 +332,71 @@ void HommeGridsManager::initialize_vertical_coordinates(const nonconstgrid_ptr_t
                          host_views["hyam"].data(),
                          host_views["hybm"].data());
 
-  // Create mirror device view and set in geometry data.
-  const auto cmvc = [&](const geo_view_host host_view) -> AbstractGrid::geo_view_type {
-    return Kokkos::create_mirror_view_and_copy(DefaultDevice(), host_view);
-  };
-  dyn_grid->set_geometry_data("hyai",cmvc(host_views["hyai"]));
-  dyn_grid->set_geometry_data("hybi",cmvc(host_views["hybi"]));
-  dyn_grid->set_geometry_data("hyam",cmvc(host_views["hyam"]));
-  dyn_grid->set_geometry_data("hybm",cmvc(host_views["hybm"]));
+  // Set geometry data
+  dyn_grid->set_geometry_data("hyai", cmvc(host_views["hyai"]));
+  dyn_grid->set_geometry_data("hybi", cmvc(host_views["hybi"]));
+  dyn_grid->set_geometry_data("hyam", cmvc(host_views["hyam"]));
+  dyn_grid->set_geometry_data("hybm", cmvc(host_views["hybm"]));
+}
+
+void HommeGridsManager::load_topography (const nonconstgrid_ptr_type& phys_grid,
+                                         const ci_string&             type) const {
+  using geo_view_device = AbstractGrid::geo_view_type;
+  using geo_view_host   = geo_view_device::HostMirror;
+
+  const int nlcols = phys_grid->get_num_local_dofs();
+
+  if (type == "PG2") {
+
+    // For PG2, homme AD interface will compute
+    // these values, therefore store NaNs for now.
+    const auto nan = ekat::ScalarTraits<Real>::invalid();
+    geo_view_device topo("topo", nlcols);
+    Kokkos::deep_copy(topo, nan);
+    phys_grid->set_geometry_data("topo", topo);
+
+  } else {
+
+    // TODO: Use topo files instead of IC files. This hack is currently needed since
+    //       the topo files use uppercase PHIS, whereas IC files use lower case.
+    //       Right now the issue is that not all CIME compsets have equiv. topo
+    //       files. Example: aquaplanet file is needed with phis=0.
+#if 0
+    // If this is the GLL grid of a PG2 run, then the
+    // field name is PHIS_d in the topography file.
+    // Else the name is PHIS.
+    std::string topo_name = "PHIS";
+    const ci_string pg_type = m_params.get<std::string>("physics_grid_type");
+    if (pg_type == "PG2" and type == "GLL") {
+      topo_name = "PHIS_d";
+    }
+#else
+    std::string topo_name = "phis";
+#endif
+
+    // Create host mirrors for reading in data
+    std::map<std::string,geo_view_host> host_views = {
+      { topo_name, geo_view_host("topo",nlcols) }
+    };
+
+    // Store view layouts
+    std::map<std::string,FieldLayout> layouts = {
+      { topo_name, phys_grid->get_2d_scalar_layout() }
+    };
+
+    // Read topography into host views
+    ekat::ParameterList topo_reader_pl;
+    topo_reader_pl.set("Filename",m_params.get<std::string>("topography_filename"));
+    topo_reader_pl.set<std::vector<std::string>>("Field Names",{topo_name});
+
+    AtmosphereInput topo_reader(m_comm, topo_reader_pl);
+    topo_reader.init(phys_grid, host_views, layouts);
+    topo_reader.read_variables();
+    topo_reader.finalize();
+
+    // Set geometry data
+    phys_grid->set_geometry_data("topo", cmvc(host_views[topo_name]));
+  }
 }
 
 } // namespace scream
