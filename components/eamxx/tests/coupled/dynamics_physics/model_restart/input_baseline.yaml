@@ -52,9 +52,7 @@ grids_manager:
   physics_grid_type: GLL
   dynamics_namelist_file_name: namelist.nl
   vertical_coordinate_filename: ${SCREAM_DATA_DIR}/init/${EAMxx_tests_IC_FILE_72lev}
-  # TODO: use topo files
-  #topography_filename: ${TOPO_DATA_DIR}/USGS-gtopo30_ne4np4_16x.c20160612.nc
-  topography_filename: ${SCREAM_DATA_DIR}/init/${EAMxx_tests_IC_FILE_72lev}
+  topography_filename: ${TOPO_DATA_DIR}/USGS-gtopo30_ne4np4_16x.c20160612.nc
 
 # List all the yaml files with the output parameters
 Scorpio:

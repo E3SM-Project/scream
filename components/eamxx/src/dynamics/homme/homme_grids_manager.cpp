@@ -355,24 +355,16 @@ void HommeGridsManager::load_topography (const nonconstgrid_ptr_type& phys_grid,
     Kokkos::deep_copy(topo, nan);
     phys_grid->set_geometry_data("topo", topo);
 
+  } else if (m_params.get<std::string>("topography_filename") == "none") {
+
+    // If filename is given as "none" or not set, set topo to 0
+    geo_view_device topo("topo", nlcols);
+    Kokkos::deep_copy(topo, 0.0);
+    phys_grid->set_geometry_data("topo", topo);
+
   } else {
 
-    // TODO: Use topo files instead of IC files. This hack is currently needed since
-    //       the topo files use uppercase PHIS, whereas IC files use lower case.
-    //       Right now the issue is that not all CIME compsets have equiv. topo
-    //       files. Example: aquaplanet file is needed with phis=0.
-#if 0
-    // If this is the GLL grid of a PG2 run, then the
-    // field name is PHIS_d in the topography file.
-    // Else the name is PHIS.
     std::string topo_name = "PHIS";
-    const ci_string pg_type = m_params.get<std::string>("physics_grid_type");
-    if (pg_type == "PG2" and type == "GLL") {
-      topo_name = "PHIS_d";
-    }
-#else
-    std::string topo_name = "phis";
-#endif
 
     // Create host mirrors for reading in data
     std::map<std::string,geo_view_host> host_views = {

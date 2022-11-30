@@ -18,8 +18,7 @@ math (EXPR NUM_SUBCYCLES "(${ATM_TIME_STEP} + ${SHOC_MAX_DT} - 1) / ${SHOC_MAX_D
 
 # Ensure test input files are present in the data dir
 GetInputFile(init/${EAMxx_tests_IC_FILE_72lev})
-# TODO: use topo files
-#GetInputFile(../cam/topo/USGS-gtopo30_ne4np4_16x.c20160612.nc)
+GetInputFile(../cam/topo/USGS-gtopo30_ne4np4_16x.c20160612.nc)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/input.yaml
                ${CMAKE_CURRENT_BINARY_DIR}/input.yaml)
