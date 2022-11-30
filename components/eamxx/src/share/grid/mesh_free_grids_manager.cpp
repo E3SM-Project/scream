@@ -224,15 +224,7 @@ load_topography (const nonconstgrid_ptr_type& grid) const
 
   using geo_view_host = AbstractGrid::geo_view_type::HostMirror;
 
-  // TODO: Use topo files instead of IC files. This hack is currently needed since
-  //       the topo files use uppercase PHIS, whereas IC files use lower case.
-  //       Right now the issue is that not all CIME compsets have equiv. topo
-  //       files. Ex. aquaplanet file is needed with phis=0.
-#if 0
-    std::string topo_name = "PHIS";
-#else
-    std::string topo_name = "phis";
-#endif
+  std::string topo_name = "PHIS";
 
   // Create host mirrors for reading in data
   std::map<std::string,geo_view_host> host_views = {
