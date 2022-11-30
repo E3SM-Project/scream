@@ -103,9 +103,19 @@ build_grids ()
     pt_grid->set_geometry_data("area", area);
 
     // Load lat/lon if latlon_filename param is given.
+    // Else, create lat/lon with NaNs (place holders
+    // are needed for some unit tests using this
+    // grids manager).
     if (m_params.isParameter("latlon_filename")) {
       load_lat_lon(pt_grid);
-    }
+    } else {
+      geo_view_type lat("lat", num_local_cols);
+      geo_view_type lon("lon", num_local_cols);
+      Kokkos::deep_copy(lat, ekat::ScalarTraits<Real>::invalid());
+      Kokkos::deep_copy(lon, ekat::ScalarTraits<Real>::invalid());
+      pt_grid->set_geometry_data("lat",lat);
+      pt_grid->set_geometry_data("lon",lon);
+   }
 
     // Load hyam/hybm if hybrid_coefficients_filename param is given.
     if (m_params.isParameter("vertical_coordinate_filename")) {
@@ -113,16 +123,12 @@ build_grids ()
     }
 
     // Load topography from file if topography_filename
-    // param is given.
-    // Create topography geometry data (filled with NaNs)
-    // if create_topography_without_file=true (ex. used
-    // for diagnostic unit tests where a random topo is needed).
+    // param is given. Else, create topography with NaNs.
+    // (place holders are needed for some unit tests
+    // using this grids manager).
     if (m_params.isParameter("topography_filename")) {
-      EKAT_REQUIRE_MSG(not m_params.get<bool>("create_topography_without_file", false),
-                      "Error! Setting parameter topography_filename and "
-                      "create_topography_without_file=true is not allowed.\n");
       load_topography(pt_grid);
-    } else if (m_params.get<bool>("create_topography_without_file", false)) {
+    } else {
       geo_view_type topo("topo",num_local_cols);
       Kokkos::deep_copy(topo,ekat::ScalarTraits<Real>::invalid());
       pt_grid->set_geometry_data("topo",topo);

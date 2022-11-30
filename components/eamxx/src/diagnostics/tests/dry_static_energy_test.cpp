@@ -30,7 +30,6 @@ create_gm (const ekat::Comm& comm, const int ncols, const int nlevs) {
   gm_params.set<int>("number_of_local_elements", num_local_elems);
   gm_params.set<int>("number_of_vertical_levels", nlevs);
   gm_params.set<int>("number_of_gauss_points", np);
-  gm_params.set<bool>("create_topography_without_file",true);
 
   auto gm = create_mesh_free_grids_manager(comm,gm_params);
   gm->build_grids();
