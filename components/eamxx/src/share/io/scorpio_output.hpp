@@ -150,6 +150,7 @@ public:
 protected:
   // Internal functions
   void set_field_manager (const std::shared_ptr<const fm_type>& field_mgr);
+  void set_sim_field_manager (const std::shared_ptr<const fm_type>& field_mgr);
   void set_grid (const std::shared_ptr<const AbstractGrid>& grid);
 
   void register_dimensions(const std::string& name);
@@ -158,6 +159,7 @@ protected:
   std::vector<scorpio::offset_t> get_var_dof_offsets (const FieldLayout& layout);
   void register_views();
   Field get_field(const std::string& name, const bool eval_diagnostic = false) const;
+  Field get_field(const std::shared_ptr<const fm_type>& field_mgr, const std::string& name, const bool eval_diagnostic = false) const;
   void set_diagnostics();
   void create_diagnostic (const std::string& diag_name);
 
@@ -165,6 +167,7 @@ protected:
   ekat::Comm                          m_comm;
 
   std::shared_ptr<const fm_type>      m_field_mgr;
+  std::shared_ptr<const fm_type>      m_sim_field_mgr; // Simulation field manager, will be different if remapping
   std::shared_ptr<const grid_type>    m_io_grid;
   std::shared_ptr<remapper_type>      m_remapper;
   std::shared_ptr<const gm_type>      m_grids_manager;

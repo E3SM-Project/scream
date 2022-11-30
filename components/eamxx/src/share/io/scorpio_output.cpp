@@ -54,6 +54,7 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
       "       Valid options: Instant, Max, Min, Average. Case insensitive.\n");
 
   set_field_manager (field_mgr);
+  set_sim_field_manager (field_mgr);
 
   // By default, IO is done directly on the field mgr grid
   m_grids_manager = grids_mgr;
@@ -88,6 +89,9 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
   // Try to set the IO grid (checks will be performed)
   set_grid (io_grid);
 
+  // Register any diagnostics needed by this output stream
+  set_diagnostics();
+
   bool remap_from_file = params.isParameter("remap_file");
 
   if (io_grid->name()!=fm_grid->name() || remap_from_file) {
@@ -104,7 +108,7 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
     // Register all output fields in the remapper.
     m_remapper->registration_begins();
     for (const auto& fname : m_fields_names) {
-      auto f = get_field(fname);
+      auto f = get_field(field_mgr,fname);
       const auto& src_fid = f.get_header().get_identifier();
       EKAT_REQUIRE_MSG(src_fid.data_type()==DataType::RealType,
           "Error! I/O supports only Real data, for now.\n");
@@ -123,8 +127,8 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
 
     // Now that fields have been allocated on the io grid, we can bind them in the remapper
     for (const auto& fname : m_fields_names) {
-      auto src = get_field(fname);
-      auto tgt = io_fm->get_field(fname);
+      auto src = get_field(field_mgr,fname);
+      auto tgt = io_fm->get_field(src.name());
       m_remapper->bind_field(src,tgt);
     }
 
@@ -161,9 +165,6 @@ void AtmosphereOutput::restart (const std::string& filename)
 
 void AtmosphereOutput::init()
 {
-  // Register any diagnostics needed by this output stream
-  set_diagnostics();
-
   for (const auto& var_name : m_fields_names) {
     register_dimensions(var_name);
   }
@@ -186,6 +187,11 @@ void AtmosphereOutput::run (const std::string& filename, const bool is_write_ste
 
   // If needed, remap fields from their grid to the unique grid, for I/O
   if (m_remapper) {
+    // First set diagnostics on simulation field manager
+    for (auto& dd : m_diagnostics) {
+      auto dname = dd.first;
+      get_field(m_sim_field_mgr,dname,true);
+    }
     start_timer("EAMxx::IO::remap");
     m_remapper->remap(true);
 
@@ -204,7 +210,8 @@ void AtmosphereOutput::run (const std::string& filename, const bool is_write_ste
   // Take care of updating and possibly writing fields.
   for (auto const& name : m_fields_names) {
     // Get all the info for this field.
-    const auto  field = get_field(name,true); // If diagnostic, must evaluate it
+    bool eval_diag = m_remapper ? false : true;  // If remapping than all diags have already been evaluated.
+    const auto  field = get_field(name,eval_diag); // If diagnostic, must evaluate it
     const auto& layout = m_layouts.at(name);
     const auto& dims = layout.dims();
     const auto  rank = layout.rank();
@@ -348,6 +355,17 @@ res_dep_memory_footprint () const {
 }
 
 /* ---------------------------------------------------------- */
+
+void AtmosphereOutput::
+set_sim_field_manager (const std::shared_ptr<const fm_type>& field_mgr)
+{
+  // Sanity checks
+  EKAT_REQUIRE_MSG (field_mgr, "Error! Invalid field manager pointer.\n");
+  EKAT_REQUIRE_MSG (field_mgr->get_grid(), "Error! Field manager stores an invalid grid pointer.\n");
+
+  // All good, store it
+  m_sim_field_mgr = field_mgr;
+}
 
 void AtmosphereOutput::
 set_field_manager (const std::shared_ptr<const fm_type>& field_mgr)
@@ -669,13 +687,19 @@ setup_output_file(const std::string& filename,
 // will throw an error.
 Field AtmosphereOutput::get_field(const std::string& name, const bool eval_diagnostic) const
 {
-  if (m_field_mgr->has_field(name)) {
-    return m_field_mgr->get_field(name);
+  return get_field(m_field_mgr,name,eval_diagnostic);
+}
+
+
+Field AtmosphereOutput::get_field(const std::shared_ptr<const fm_type>& field_mgr, const std::string& name, const bool eval_diagnostic) const
+{
+  if (field_mgr->has_field(name)) {
+    return field_mgr->get_field(name);
   } else if (m_diagnostics.find(name) != m_diagnostics.end()) {
     const auto& diag = m_diagnostics.at(name);
     if (eval_diagnostic) {
       for (const auto& dep : m_diag_depends_on_diags.at(name)) {
-        get_field(dep,eval_diagnostic);
+        get_field(field_mgr,dep,eval_diagnostic);
       }
       diag->compute_diagnostic();
     }
