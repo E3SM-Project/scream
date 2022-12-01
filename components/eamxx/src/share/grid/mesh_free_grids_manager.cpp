@@ -4,7 +4,7 @@
 #include "share/grid/remap/do_nothing_remapper.hpp"
 #include "share/io/scorpio_input.hpp"
 
-#include "physics/share/physics_constants.hpp"
+#include "share/util/scream_universal_constants.hpp"
 
 #include "ekat/std_meta/ekat_std_utils.hpp"
 
@@ -89,7 +89,6 @@ build_grids ()
     auto pt_grid = create_point_grid("Point Grid",num_global_cols,num_vertical_levels,m_comm);
 
     using geo_view_type = AbstractGrid::geo_view_type;
-    using PC            = scream::physics::Constants<Real>;
 
     const int num_local_cols = pt_grid->get_num_local_dofs();
 
@@ -97,7 +96,7 @@ build_grids ()
     // of the earth divided by the number of columns.  Note we do this in
     // units of radians-squared.
     geo_view_type area("area", num_local_cols);
-    const Real pi        = PC::Pi;
+    const Real pi        = constants::pi;
     const Real cell_area = 4.0*pi/num_local_cols;
     Kokkos::deep_copy(area, cell_area);
     pt_grid->set_geometry_data("area", area);
