@@ -260,9 +260,7 @@ build_physics_grid (const ci_string& type, const ci_string& rebalance) {
 
   // Load in topography to geometry data
   // if topography_filename is given.
-  if (m_params.isParameter("topography_filename")) {
-    load_topography(phys_grid, type);
-  }
+  load_topography(phys_grid, type);
 
   add_grid(phys_grid);
 }
@@ -346,7 +344,17 @@ void HommeGridsManager::load_topography (const nonconstgrid_ptr_type& phys_grid,
 
   const int nlcols = phys_grid->get_num_local_dofs();
 
-  if (m_params.get<std::string>("topography_filename") == "none") {
+  if (type == "PG2") {
+
+    // For PG2, homme AD interface will compute
+    // these values, therefore store NaNs for now.
+    const auto nan = ekat::ScalarTraits<Real>::invalid();
+    geo_view_device topo("topo", nlcols);
+    Kokkos::deep_copy(topo, nan);
+    phys_grid->set_geometry_data("topo", topo);
+
+  } else if (m_params.get<std::string>("topography_filename") == "none" ||
+             not m_params.isParameter("topography_filename")) {
 
     // If filename is given as "none" or not set, set topo to 0
     geo_view_device topo("topo", nlcols);
