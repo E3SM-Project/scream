@@ -346,16 +346,7 @@ void HommeGridsManager::load_topography (const nonconstgrid_ptr_type& phys_grid,
 
   const int nlcols = phys_grid->get_num_local_dofs();
 
-  if (type == "PG2") {
-
-    // For PG2, homme AD interface will compute
-    // these values, therefore store NaNs for now.
-    const auto nan = ekat::ScalarTraits<Real>::invalid();
-    geo_view_device topo("topo", nlcols);
-    Kokkos::deep_copy(topo, nan);
-    phys_grid->set_geometry_data("topo", topo);
-
-  } else if (m_params.get<std::string>("topography_filename") == "none") {
+  if (m_params.get<std::string>("topography_filename") == "none") {
 
     // If filename is given as "none" or not set, set topo to 0
     geo_view_device topo("topo", nlcols);
@@ -364,7 +355,14 @@ void HommeGridsManager::load_topography (const nonconstgrid_ptr_type& phys_grid,
 
   } else {
 
+    // If this is a PG2 run, the naming is "PHIS" for the PG2 grid,
+    // and PHIS_d for the GLL grid. If this is not a PG2 run, the
+    // name is PHIS for the GLL grid.
     std::string topo_name = "PHIS";
+    const ci_string pg_type = m_params.get<std::string>("physics_grid_type");
+    if (pg_type == "PG2" and type == "GLL") {
+      topo_name = "PHIS_d";
+    }
 
     // Create host mirrors for reading in data
     std::map<std::string,geo_view_host> host_views = {
