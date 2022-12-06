@@ -2816,7 +2816,7 @@
     </domain>
 
     <domain name="ne0np4_CAx32v2.pg2">
-      <nx>67872</nx>
+      <nx>103536</nx>
       <ny>1</ny>
       <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.CAne32x32v2pg2_oRRS18to6v3.221202.nc</file>
       <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.CAne32x32v2pg2_oRRS18to6v3.221202.nc</file>
