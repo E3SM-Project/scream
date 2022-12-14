@@ -100,6 +100,7 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
     vert_remap_q_alg, &
     vert_remap_u_alg, &
     se_fv_phys_remap_alg, &
+    dp3d_thresh,   &
     timestep_make_subcycle_parameters_consistent
 
 
@@ -313,6 +314,7 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
       hv_theta_thresh,   &
       vert_remap_q_alg, &
       vert_remap_u_alg, &
+      dp3d_thresh,   &
       se_fv_phys_remap_alg
 
 
@@ -768,6 +770,7 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
     call MPI_bcast(dcmip2_0_zetam,  1, MPIreal_t,    par%root,par%comm,ierr)
     call MPI_bcast(dcmip2_x_ueq,    1, MPIreal_t,    par%root,par%comm,ierr)
     call MPI_bcast(dcmip2_x_h0,     1, MPIreal_t,    par%root,par%comm,ierr)
+    call MPI_bcast(dp3d_thresh,    1, MPIreal_t, par%root,par%comm,ierr)
     call MPI_bcast(dcmip2_x_d,      1, MPIreal_t,    par%root,par%comm,ierr)
     call MPI_bcast(dcmip2_x_xi,     1, MPIreal_t,    par%root,par%comm,ierr)
     call MPI_bcast(dcmip4_moist,    1, MPIinteger_t, par%root,par%comm,ierr)
@@ -1172,6 +1175,7 @@ end if
        write(iulog,*)"readnl: tstep_type    = ",tstep_type
        write(iulog,*)"readnl: theta_advect_form = ",theta_advect_form
        write(iulog,*)"readnl: vtheta_thresh     = ",vtheta_thresh
+       write(iulog,*)"readnl: dp3d_thresh     = ",dp3d_thresh
        write(iulog,*)"readnl: pgrad_correction  = ",pgrad_correction
        write(iulog,*)"readnl: hv_ref_profiles   = ",hv_ref_profiles
        write(iulog,*)"readnl: hv_theta_correction= ",hv_theta_correction
