@@ -984,6 +984,16 @@
       <mask>oRRS18to6v3</mask>
     </model_grid>
 
+    <model_grid alias="CAx32v3pg2_CAx32v3pg2">
+      <grid name="atm">ne0np4_CAx32v3.pg2</grid>
+      <grid name="lnd">ne0np4_CAx32v3.pg2</grid>
+      <grid name="ocnice">ne0np4_CAx32v3.pg2</grid>
+      <grid name="rof">r0125</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>oRRS18to6v3</mask>
+    </model_grid>
+
     <model_grid alias="northamericax4v1_r0125_oRRS15to5">
       <grid name="atm">ne0np4_northamericax4v1</grid>
       <grid name="lnd">r0125</grid>
@@ -2816,11 +2826,19 @@
     </domain>
 
     <domain name="ne0np4_CAx32v2.pg2">
-      <nx>67872</nx>
+      <nx>103536</nx>
       <ny>1</ny>
       <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.CAne32x32v2pg2_oRRS18to6v3.221202.nc</file>
       <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.CAne32x32v2pg2_oRRS18to6v3.221202.nc</file>
       <desc>1-deg with 3 km over California (version 2; larger refined area to west of CA) pg2:</desc>
+    </domain>
+
+    <domain name="ne0np4_CAx32v3.pg2">
+      <nx>1251844</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.CAne32x32v3pg2_oRRS18to6v3.221215.nc</file>
+      <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.CAne32x32v3pg2_oRRS18to6v3.221215.nc</file>
+      <desc>1-deg with 3 km over California (version 3; very large refined area over Pacific and US west coast) pg2:</desc>
     </domain>
 
     <domain name="ne0np4_arm_x8v3_lowcon">
@@ -3735,6 +3753,13 @@
      <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/CAx32v2pg2/map_CAne32x32v2pg2_to_r0125_mono.20221202.nc</map>
      <map name="LND2ROF_FMAPNAME">cpl/gridmaps/CAx32v2pg2/map_CAne32x32v2pg2_to_r0125_mono.20221202.nc</map>
      <map name="ROF2LND_FMAPNAME">cpl/gridmaps/CAx32v2pg2/map_r0125_to_CAne32x32v2pg2_mono.20221202.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne0np4_CAx32v3.pg2" rof_grid="r0125">
+     <map name="ATM2ROF_FMAPNAME">cpl/gridmaps/CAx32v3pg2/map_CAne32x32v3pg2_to_r0125_mono.20221214.nc</map>
+     <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/CAx32v3pg2/map_CAne32x32v3pg2_to_r0125_mono.20221214.nc</map>
+     <map name="LND2ROF_FMAPNAME">cpl/gridmaps/CAx32v3pg2/map_CAne32x32v3pg2_to_r0125_mono.20221214.nc</map>
+     <map name="ROF2LND_FMAPNAME">cpl/gridmaps/CAx32v3pg2/map_r0125_to_CAne32x32v3pg2_mono.20221214.nc</map>
     </gridmap>
 
     <gridmap atm_grid="T62" ocn_grid="gx3v7">
