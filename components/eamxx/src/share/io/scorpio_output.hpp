@@ -192,6 +192,9 @@ protected:
   // Local views of each field to be used for "averaging" output and writing to file.
   std::map<std::string,view_1d_host>    m_host_views_1d;
   std::map<std::string,view_1d_dev>     m_dev_views_1d;
+
+  // Local field to track any masked values in output.
+  Field m_mask_field;
 };
 
 } //namespace scream

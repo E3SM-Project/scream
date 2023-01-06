@@ -93,11 +93,35 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
   set_grid (io_grid);
 
   // Register any diagnostics needed by this output stream
+  // TODO: How do we handles horizontal pressure slice diagnostics (i.e. @500mb, etc.) for 
+  //       cases that use vertical and/or horizontal remapping?  Note that a pressure slice
+  //       might be masked and then that applied during horizontal remapping.  Do we track
+  //       that like we track the full 2D field?
   set_diagnostics();
 
   // Check if remapping and if so create the appropriate remapper 
-  bool vert_remap_from_file = params.isParameter("vertical_remap_file");
+  bool vert_remap_from_file  = params.isParameter("vertical_remap_file");
   bool horiz_remap_from_file = params.isParameter("horiz_remap_file");
+  bool vert_and_horiz_remap  = vert_remap_from_file && horiz_remap_from_file;
+
+  // If conducting both vertical and horizontal remapping we will want to track any
+  // masking in the output
+  if (vert_and_horiz_remap) {
+    using namespace ekat::units;
+    Units nondim(0,0,0,0,0,0,0);
+    using Pack = ekat::Pack<Real,SCREAM_PACK_SIZE>;
+    auto layout = io_grid->get_3d_scalar_layout(true);
+    auto fid    = FieldIdentifier("grid_mask",layout,nondim,io_grid->name());
+    m_mask_field = Field(fid);
+    m_mask_field.get_header().get_alloc_properties().request_allocation(SCREAM_PACK_SIZE);
+    m_mask_field.allocate_view();
+    auto mask_view = m_mask_field.get_view<Pack**>();
+    Kokkos::deep_copy(mask_view,1.0); // Setting the mask view to 1.0 will make it possible to track masking when interpolating.
+    // Set the timestamp for this field to match the timestamp of the simulation
+    auto src   = get_field(m_fields_names[0],m_sim_field_mgr);
+    auto src_t = src.get_header().get_tracking().get_time_stamp();
+    m_mask_field.get_header().get_tracking().update_time_stamp(src_t);
+  }
 
   // Setup remappers - if needed
   if (vert_remap_from_file) {  
@@ -121,6 +145,10 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
           "Error! I/O supports only Real data, for now.\n");
       m_vert_remapper->register_field_from_src(src_fid);
     }
+    if (vert_and_horiz_remap) { // add mask to remapper if needed
+      const auto& src_fid = m_mask_field.get_header().get_identifier();
+      m_vert_remapper->register_field_from_src(src_fid);
+    }
     m_vert_remapper->registration_ends();
 
     // Now create a new FM on io grid, and create copies of output fields from FM.
@@ -129,18 +157,31 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
     for (int i=0; i<m_vert_remapper->get_num_fields(); ++i) {
       const auto& tgt_fid = m_vert_remapper->get_tgt_field_id(i);
       const auto  name    = tgt_fid.name();
-      const auto  src     = get_field(name,m_sim_field_mgr);
-      const auto  packsize = src.get_header().get_alloc_properties().get_largest_pack_size();
-      io_fm->register_field(FieldRequest(tgt_fid,packsize)); 
+      if (name=="grid_mask") {
+        const auto  src     = m_mask_field;
+        const auto  packsize = src.get_header().get_alloc_properties().get_largest_pack_size();
+        io_fm->register_field(FieldRequest(tgt_fid,packsize));
+        m_fields_names.push_back("grid_mask"); 
+      } else {
+        const auto  src     = get_field(name,m_sim_field_mgr);
+        const auto  packsize = src.get_header().get_alloc_properties().get_largest_pack_size();
+        io_fm->register_field(FieldRequest(tgt_fid,packsize)); 
+      }
     }
     // Now end registration of variables in io_fm
     io_fm->registration_ends();
 
     // Now that fields have been allocated on the io grid, we can bind them in the remapper
     for (const auto& fname : m_fields_names) {
-      auto src = get_field(fname,m_sim_field_mgr);
-      auto tgt = io_fm->get_field(src.name());
-      m_vert_remapper->bind_field(src,tgt);
+      if (fname!="grid_mask") {
+        auto src = get_field(fname,m_sim_field_mgr);
+        auto tgt = io_fm->get_field(src.name());
+        m_vert_remapper->bind_field(src,tgt);
+      } else {
+        auto src = m_mask_field;
+        auto tgt = io_fm->get_field(src.name());
+        m_vert_remapper->bind_field(src,tgt);
+      }
     }
     
     // Reset the field manager
