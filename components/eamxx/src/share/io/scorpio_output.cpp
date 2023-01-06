@@ -54,10 +54,10 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
       "Error! Unsupported averaging type '" + avg_type + "'.\n"
       "       Valid options: Instant, Max, Min, Average. Case insensitive.\n");
 
-  set_field_manager (field_mgr,"sim");
-  // Need to just set the io_fm to match the sim_fm to start with.  If remapping then
-  // the io_fm will get setup accordingly.
-  set_field_manager (field_mgr,"io");
+  // Set all internal field managers to the simulation field manager to start with.  If
+  // vertical remapping, horizontal remapping or both are used then those remapper will
+  // set things accordingly.
+  set_field_manager (field_mgr,"all");
 
   // By default, IO is done directly on the field mgr grid
   m_grids_manager = grids_mgr;
@@ -98,19 +98,16 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
   // Check if remapping and if so create the appropriate remapper 
   bool vert_remap_from_file = params.isParameter("vertical_remap_file");
   bool horiz_remap_from_file = params.isParameter("horiz_remap_file");
-  if (vert_remap_from_file && horiz_remap_from_file) {
-    // TODO - support both horizontal and vertical remapping together.
-    EKAT_ERROR_MSG("Error! scorpio_output:: We currently do not support both vertical and horizontal remapping.");
-  }
 
   // Setup remappers - if needed
   if (vert_remap_from_file) {  
     using namespace ShortFieldTagsNames;
+    Real mask_val = horiz_remap_from_file ? 0.0 : -99999.0;
     // We build a remapper, to remap fields from the fm grid to the io grid
     auto vert_remap_file   = params.get<std::string>("vertical_remap_file");
     auto f_lev = get_field("p_mid",m_sim_field_mgr);
     auto f_ilev = get_field("p_int",m_sim_field_mgr);
-    m_vert_remapper = std::make_shared<VerticalRemapper>(io_grid,vert_remap_file,f_lev,f_ilev,-9999.0);
+    m_vert_remapper = std::make_shared<VerticalRemapper>(io_grid,vert_remap_file,f_lev,f_ilev,mask_val);
     io_grid = m_vert_remapper->get_tgt_grid();
     set_grid(io_grid);
 
@@ -133,25 +130,27 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
       const auto& tgt_fid = m_vert_remapper->get_tgt_field_id(i);
       const auto  name    = tgt_fid.name();
       const auto  src     = get_field(name,m_sim_field_mgr);
-      const auto packsize = src.get_header().get_alloc_properties().get_largest_pack_size();
+      const auto  packsize = src.get_header().get_alloc_properties().get_largest_pack_size();
       io_fm->register_field(FieldRequest(tgt_fid,packsize)); 
     }
+    // Now end registration of variables in io_fm
     io_fm->registration_ends();
 
     // Now that fields have been allocated on the io grid, we can bind them in the remapper
     for (const auto& fname : m_fields_names) {
       auto src = get_field(fname,m_sim_field_mgr);
       auto tgt = io_fm->get_field(src.name());
-      const auto& src_fid = src.get_header().get_identifier();
       m_vert_remapper->bind_field(src,tgt);
     }
+    
+    // Reset the field manager
+    set_field_manager(io_fm,"io");
+    set_field_manager(io_fm,"int");
 
     // This should never fail, but just in case
     EKAT_REQUIRE_MSG (m_vert_remapper->get_num_fields()==m_vert_remapper->get_num_bound_fields(),
         "Error! Something went wrong while building the scorpio input remapper.\n");
 
-    // Reset the field manager
-    set_field_manager(io_fm,"io");
   }
 
   if (io_grid->name()!=fm_grid->name() || horiz_remap_from_file) {
@@ -168,7 +167,7 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
     // Register all output fields in the remapper.
     m_horiz_remapper->registration_begins();
     for (const auto& fname : m_fields_names) {
-      auto f = get_field(fname,m_sim_field_mgr);
+      auto f = get_field(fname,m_int_field_mgr);
       const auto& src_fid = f.get_header().get_identifier();
       EKAT_REQUIRE_MSG(src_fid.data_type()==DataType::RealType,
           "Error! I/O supports only Real data, for now.\n");
@@ -187,7 +186,7 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
 
     // Now that fields have been allocated on the io grid, we can bind them in the remapper
     for (const auto& fname : m_fields_names) {
-      auto src = get_field(fname,m_sim_field_mgr);
+      auto src = get_field(fname,m_int_field_mgr);
       auto tgt = io_fm->get_field(src.name());
       m_horiz_remapper->bind_field(src,tgt);
     }
@@ -433,16 +432,23 @@ void AtmosphereOutput::
 set_field_manager (const std::shared_ptr<const fm_type>& field_mgr, const std::string& mode)
 {
   // Sanity checks
-  EKAT_REQUIRE_MSG (mode=="io" || mode=="sim", "Error! Invalid arg to set_field_manager, must be 'io' or 'sim'");
+  EKAT_REQUIRE_MSG (mode =="all" || mode=="int" || mode=="io" || mode=="sim", "Error! Invalid arg to set_field_manager, must be 'io' or 'sim'");
   EKAT_REQUIRE_MSG (field_mgr, "Error! Invalid field manager pointer.\n");
   EKAT_REQUIRE_MSG (field_mgr->get_grid(), "Error! Field manager stores an invalid grid pointer.\n");
 
   // All good, store it
-  if (mode=="io") {
-    m_io_field_mgr  = field_mgr;
-  } else { //mode = "sim"
+  if (mode=="sim" || mode=="all") {
     m_sim_field_mgr = field_mgr;
   }
+
+  if (mode=="io" || mode=="all") {
+    m_io_field_mgr  = field_mgr;
+  } 
+
+  if (mode=="int" || mode=="all") {
+    m_int_field_mgr  = field_mgr;
+  } 
+
 }
 
 void AtmosphereOutput::
