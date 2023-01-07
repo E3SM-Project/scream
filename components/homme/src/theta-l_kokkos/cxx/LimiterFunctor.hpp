@@ -130,21 +130,21 @@ struct LimiterFunctor {
         diff(ilev) = (dp(ilev) - m_dp3d_thresh*dp0(ilev))*spheremp;
       });
 
-//      kv.team_barrier();
+      kv.team_barrier();
 
       Real min_diff = Kokkos::reduction_identity<Real>::min();
       auto diff_as_real = Homme::viewAsReal(diff);
-//      auto dp_as_real   = Homme::viewAsReal(dp);
-//      auto dp0_as_real  = Homme::viewAsReal(dp0);
+      auto dp_as_real   = Homme::viewAsReal(dp);
+      auto dp0_as_real  = Homme::viewAsReal(dp0);
       Kokkos::Min<Real,ExecSpace> reducer(min_diff);
       Kokkos::parallel_reduce(Kokkos::ThreadVectorRange(kv.team,NUM_PHYSICAL_LEV),
                               [&](const int k,Real& result) {
-//#ifndef HOMMEXX_BFB_TESTING
-//        if(diff_as_real(k) < 0){
-//          printf("WARNING:CAAR: dp3d too small. k=%d, dp3d(k)=%f, dp0=%f \n",
-//           k+1,dp_as_real(k),dp0_as_real(k));
-//        }
-//#endif
+#ifndef HOMMEXX_BFB_TESTING
+        if(diff_as_real(k) < 0){
+          printf("WARNING:CAAR: dp3d too small. k=%d, dp3d(k)=%f, dp0=%f \n",
+           k+1,dp_as_real(k),dp0_as_real(k));
+        }
+#endif
         result = result<=diff_as_real(k) ? result : diff_as_real(k);
       }, reducer);
 
@@ -168,7 +168,7 @@ struct LimiterFunctor {
           });
         }
 
-//        kv.team_barrier();
+        kv.team_barrier();
 
         // This loop must be done over physical levels, unless we implement
         // masks, like it has been done in the E3SM/scream project
@@ -189,7 +189,7 @@ struct LimiterFunctor {
           if (mass<0) {
             diff(ilev) *= -1.0;
           }
-mmm
+
           dp(ilev) = diff(ilev)/spheremp + m_dp3d_thresh*dp0(ilev);
           vtheta_dp(ilev) *= dp(ilev);
         });
@@ -201,10 +201,10 @@ mmm
         // Note: another place where scream's masks could help
         for (int ivec=0; ivec<VECTOR_SIZE; ++ivec) {
           if ( (vtheta_dp(ilev)[ivec] - m_vtheta_thresh*dp(ilev)[ivec]) < 0) {
-//#ifndef HOMMEXX_BFB_TESTING
-//             printf("WARNING:CAAR: k=%d,theta(k)=%f<%f=th_thresh, applying limiter \n",
-//               ilev*VECTOR_SIZE+ivec+1,vtheta_dp(ilev)[ivec]/dp(ilev)[ivec],m_vtheta_thresh);
-//#endif
+#ifndef HOMMEXX_BFB_TESTING
+             printf("WARNING:CAAR: k=%d,theta(k)=%f<%f=th_thresh, applying limiter \n",
+               ilev*VECTOR_SIZE+ivec+1,vtheta_dp(ilev)[ivec]/dp(ilev)[ivec],m_vtheta_thresh);
+#endif
              vtheta_dp(ilev)[ivec]=m_vtheta_thresh*dp(ilev)[ivec];
           }
         }
