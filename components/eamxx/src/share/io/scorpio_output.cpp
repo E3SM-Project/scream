@@ -110,8 +110,8 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
     using namespace ekat::units;
     Units nondim(0,0,0,0,0,0,0);
     using Pack = ekat::Pack<Real,SCREAM_PACK_SIZE>;
-    auto layout = io_grid->get_3d_scalar_layout(true);
-    auto fid    = FieldIdentifier("grid_mask",layout,nondim,io_grid->name());
+    auto layout = m_io_grid->get_3d_scalar_layout(true);
+    auto fid    = FieldIdentifier("grid_mask",layout,nondim,m_io_grid->name());
     m_mask_field = Field(fid);
     m_mask_field.get_header().get_alloc_properties().request_allocation(SCREAM_PACK_SIZE);
     m_mask_field.allocate_view();
@@ -131,7 +131,7 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
     auto vert_remap_file   = params.get<std::string>("vertical_remap_file");
     auto f_lev = get_field("p_mid",m_sim_field_mgr);
     auto f_ilev = get_field("p_int",m_sim_field_mgr);
-    m_vert_remapper = std::make_shared<VerticalRemapper>(io_grid,vert_remap_file,f_lev,f_ilev,mask_val);
+    m_vert_remapper = std::make_shared<VerticalRemapper>(m_io_grid,vert_remap_file,f_lev,f_ilev,mask_val);
     io_grid = m_vert_remapper->get_tgt_grid();
     set_grid(io_grid);
 
@@ -198,7 +198,7 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
     // We build a remapper, to remap fields from the fm grid to the io grid
     if (horiz_remap_from_file) {
       auto horiz_remap_file   = params.get<std::string>("horiz_remap_file");
-      m_horiz_remapper = std::make_shared<CoarseningRemapper>(io_grid,horiz_remap_file);
+      m_horiz_remapper = std::make_shared<CoarseningRemapper>(m_io_grid,horiz_remap_file);
       io_grid = m_horiz_remapper->get_tgt_grid();
       set_grid(io_grid);
     } else {
