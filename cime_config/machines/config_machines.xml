@@ -597,8 +597,10 @@
     <NTEST_PARALLEL_JOBS>1</NTEST_PARALLEL_JOBS>
     <BATCH_SYSTEM>slurm</BATCH_SYSTEM>
     <SUPPORTED_BY>e3sm</SUPPORTED_BY>
+    <!-- potential conflict with e3sm -->
     <MAX_TASKS_PER_NODE>64</MAX_TASKS_PER_NODE>
     <MAX_MPITASKS_PER_NODE>64</MAX_MPITASKS_PER_NODE>
+    <!-- potential conflict with e3sm -->
     <MAX_MPITASKS_PER_NODE compiler="gnugpu">8</MAX_MPITASKS_PER_NODE>
     <MAX_MPITASKS_PER_NODE compiler="crayclanggpu">8</MAX_MPITASKS_PER_NODE>
     <MAX_MPITASKS_PER_NODE compiler="amdclanggpu">8</MAX_MPITASKS_PER_NODE>
@@ -611,7 +613,8 @@
         <!-- <arg name="binding">threads-per-core=1 -c 2</arg> -->
         <arg name="binding">--threads-per-core=1</arg>
         <arg name="thread_count">-c $ENV{OMP_NUM_THREADS}</arg>
-        <arg name="placement">-m *:block</arg>
+        <!-- potential conflict with e3sm -->
+        <!--arg name="placement">-m *:block</arg-->
         <!--<arg name="placement">-m plane={{ tasks_per_node }}</arg>-->
         <arg name="ntasks_per_gpu">$ENV{NTASKS_PER_GPU}</arg>
         <arg name="gpu_bind">$ENV{GPU_BIND_ARGS}</arg>
@@ -635,6 +638,7 @@
       </modules>
 
       <modules compiler="crayclanggpu">
+        <!-- potential conflict with e3sm -->
         <!-- See SCREAM issue #2080. -->
         <!--command name="load">craype-accel-amd-gfx90a</command-->
         <command name="load">rocm/5.2.0</command>
@@ -707,6 +711,7 @@
 
     <environment_variables compiler="crayclanggpu">
       <env name="PNETCDF_HINTS">romio_cb_read=disable</env>
+      <!-- potential conflict with e3sm -->
       <!-- See SCREAM issue #2080. -->
       <env name="MPICH_GPU_SUPPORT_ENABLED">0</env>
       <env name="MPIR_CVAR_GPU_EAGER_DEVICE_MEM">0</env>
