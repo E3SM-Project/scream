@@ -1,10 +1,11 @@
 #the only file that will be loaded for compiler crayclanggpu and machine crusher
 
 if (compile_threaded)
-  string(APPEND FFLAGS   " -fopenmp")
-  string(APPEND CFLAGS   " -fopenmp")
-  string(APPEND CXXFLAGS " -fopenmp")
-  string(APPEND LDFLAGS  " -fopenmp")
+  string(APPEND FFLAGS   " -h omp")
+  string(APPEND CFLAGS   " -h omp")
+  #potential conflict with e3sm
+  #string(APPEND CXXFLAGS " -h omp")
+  string(APPEND LDFLAGS  " -h omp")
 endif()
 if (DEBUG)
   string(APPEND CFLAGS   " -O0 -g")
@@ -18,7 +19,7 @@ string(APPEND FC_AUTO_R8 " -s real64")
 string(APPEND FFLAGS " -f free -N 255 -h byteswapio -em")
 
 if (NOT compile_threaded)
-	string(APPEND FFLAGS " -M1077")
+  string(APPEND FFLAGS " -M1077")
 endif()
 
 string(APPEND FFLAGS_NOOPT " -O0")
@@ -28,24 +29,32 @@ string(APPEND LDFLAGS " -Wl,--allow-multiple-definition")
 set(SUPPORTS_CXX "TRUE")
 set(CXX_LINKER "FORTRAN")
 
-#this differs from scream CMAKE_CXX_COMPILER...
-set(MPICC "cc")
-set(MPICXX "hipcc")
-set(MPIFC "ftn")
-set(SCC "cc")
-set(SCXX "hipcc")
-set(SFC "ftn")
+#potential conflict with e3sm
+#set(MPICC "cc")
+#set(MPICXX "hipcc")
+#set(MPIFC "ftn")
+#set(SCC "cc")
+#set(SCXX "hipcc")
+#set(SFC "ftn")
+SET(CMAKE_C_COMPILER "cc" CACHE STRING "")
+SET(CMAKE_Fortran_COMPILER "ftn" CACHE STRING "")
+SET(CMAKE_CXX_COMPILER "hipcc" CACHE STRING "")
+
+#potential conflict with e3sm
+#if (NOT DEBUG)
+#  string(APPEND CFLAGS   " -O2")
+#  string(APPEND CXXFLAGS " -O2")
+#  string(APPEND FFLAGS   " -O2")
+#endif()
+#if (COMP_NAME STREQUAL elm)
+#  string(APPEND FFLAGS " -hfp0")
+#endif()
+#string(APPEND FFLAGS " -hipa0 -hnoacc")
 
 if (NOT DEBUG)
-  string(APPEND CFLAGS   " -O2")
-  string(APPEND CXXFLAGS " -O2")
-  string(APPEND FFLAGS   " -O2")
+  string(APPEND CFLAGS " -O2 -hnoacc -hfp0 -hipa0")
+  string(APPEND FFLAGS " -O2 -hnoacc -hfp0 -hipa0")
 endif()
-
-if (COMP_NAME STREQUAL elm)
-  string(APPEND FFLAGS " -hfp0")
-endif()
-string(APPEND FFLAGS " -hipa0 -hnoacc")
 
 string(APPEND SLIBS " -L$ENV{PNETCDF_PATH}/lib -lpnetcdf")
 set(NETCDF_PATH "$ENV{NETCDF_DIR}")

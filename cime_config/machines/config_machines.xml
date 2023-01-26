@@ -609,9 +609,8 @@
       <executable>srun</executable>
       <arguments>
         <arg name="num_tasks"> -l -K -n {{ total_tasks }} -N {{ num_nodes }} </arg>
-        <!-- <arg name="binding">cpu_bind=cores</arg>  -->
-        <!-- <arg name="binding">threads-per-core=1 -c 2</arg> -->
-        <arg name="binding">--threads-per-core=1</arg>
+        <!-- potential conflict with e3sm -->
+	<!--arg name="binding"> dash dash threads-per-core=1</arg-->
         <arg name="thread_count">-c $ENV{OMP_NUM_THREADS}</arg>
         <!-- potential conflict with e3sm -->
         <!--arg name="placement">-m *:block</arg-->
@@ -694,8 +693,8 @@
     </environment_variables>
 
     <environment_variables compiler=".*gpu.*">
-      <env name="NTASKS_PER_GPU">--ntasks-per-gpu=1</env>
-      <env name="GPU_BIND_ARGS">--gpu-bind=closest</env>
+      <env name="NTASKS_PER_GPU"> </env>
+      <env name="GPU_BIND_ARGS">--gpu-bind=closest --gpus-per-node=8 </env>
     </environment_variables>
 
     <environment_variables compiler=".*gpu.*" DEBUG="TRUE">
