@@ -320,6 +320,8 @@ void AtmosphereDriver::set_precipitation_fields_to_zero ()
   }
 }
 
+
+// here
 void AtmosphereDriver::setup_column_conservation_checks ()
 {
   // Query m_atm_process_group if any process enables the conservation check,
@@ -810,6 +812,8 @@ void AtmosphereDriver::set_initial_conditions ()
     const auto& fname = fid.name();
     const auto& grid_name = fid.get_grid_name();
 
+std::cout << "grid_name " << grid_name << "\n";
+
     // First, check if the input file contains constant values for some of the fields
     if (ic_pl.isParameter(fname)) {
       // The user provided a constant value for this field. Simply use that.
@@ -896,6 +900,9 @@ void AtmosphereDriver::set_initial_conditions ()
   // (perhaps via initialize_constant_field, or copied from another field).
   for (auto& it1 : ic_fields_names) {
     const auto& grid_name =  it1.first;
+
+std::cout << "grid name is " << it1.first << "\n";
+
     auto fm = m_field_mgrs.at(grid_name);
 
     // Note: every time we erase an entry in the vector, all iterators are

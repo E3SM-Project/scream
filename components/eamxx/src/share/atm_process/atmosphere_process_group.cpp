@@ -8,6 +8,13 @@
 
 #include <memory>
 
+
+
+#include "share/scream_session.hpp"
+#include "mct_coupling/ScreamContext.hpp"
+#include "control/atmosphere_driver.hpp"
+
+
 namespace scream {
 
 AtmosphereProcessGroup::
@@ -340,6 +347,46 @@ void AtmosphereProcessGroup::run_impl (const int dt) {
 }
 
 void AtmosphereProcessGroup::run_sequential (const Real dt) {
+
+  auto& c = scream::ScreamContext::singleton();
+  auto ad = c.getNonConst<scream::control::AtmosphereDriver>();
+  const auto gn = "Physics GLL";
+  const auto fm = ad.get_field_mgr(gn);
+
+#if 0
+  const auto pseudo_density_ptr = phys_field_mgr->get_field_ptr("pseudo_density");
+  const auto ps_ptr             = phys_field_mgr->get_field_ptr("ps");
+  const auto phis_ptr           = phys_field_mgr->get_field_ptr("phis");
+  const auto horiz_winds_ptr    = phys_field_mgr->get_field_ptr("horiz_winds");
+  const auto T_mid_ptr          = phys_field_mgr->get_field_ptr("T_mid");
+  const auto qv_ptr             = phys_field_mgr->get_field_ptr("qv");
+  const auto qc_ptr             = phys_field_mgr->get_field_ptr("qc");
+  const auto qr_ptr             = phys_field_mgr->get_field_ptr("qr");
+  const auto qi_ptr             = phys_field_mgr->get_field_ptr("qi");
+  const auto vapor_flux_ptr     = phys_field_mgr->get_field_ptr("vapor_flux");
+  const auto water_flux_ptr     = phys_field_mgr->get_field_ptr("water_flux");
+  const auto ice_flux_ptr       = phys_field_mgr->get_field_ptr("ice_flux");
+  const auto heat_flux_ptr      = phys_field_mgr->get_field_ptr("heat_flux");
+#endif
+
+  //auto ff = fm->get_field("ps");
+  //
+  //for future gpu debug
+  //  fm.get_field("T_2m"            ).sync_to_host();
+  //
+
+  const int ncols = fm->get_grid()->get_num_local_dofs();
+  const int nlevs = fm->get_grid()->get_num_vertical_levels();
+
+  auto ff = fm->get_field("qv").get_view<const Real**, Host>();
+ 
+  //const auto vv = ff(1,1);
+  for (int ii = 0; ii < ncols; ii++)
+  for (int jj = 0; jj < nlevs; jj++){
+    const auto vv = ff(ii,jj);
+m_atm_logger->info("OG qv field ("+std::to_string(ii)+","+std::to_string(jj)+") = "+std::to_string(vv));
+  }
+ 
   // Get the timestamp at the beginning of the step and advance it.
   auto ts = timestamp();
   ts += dt;
@@ -352,6 +399,8 @@ void AtmosphereProcessGroup::run_sequential (const Real dt) {
   for (auto atm_proc : m_atm_processes) {
     atm_proc->set_update_time_stamps(do_update);
     // Run the process
+    //
+m_atm_logger->info("OG proc name "+atm_proc->name());
     atm_proc->run(dt);
 #ifdef SCREAM_HAS_MEMORY_USAGE
     long long my_mem_usage = get_mem_usage(MB);
