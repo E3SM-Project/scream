@@ -402,8 +402,6 @@ void AtmosphereProcessGroup::run_sequential (const Real dt) {
 
 printf("OG area is %.20f \n",aaa);
 
-//  m_atm_logger->info("area = "+std::to_string(aaa));
-
 #if 0
   auto ff = fm->get_field("qv").get_view<const Real**, Host>();
  
@@ -414,7 +412,8 @@ printf("OG area is %.20f \n",aaa);
 m_atm_logger->info("OG qv field ("+std::to_string(ii)+","+std::to_string(jj)+") = "+std::to_string(vv));
   }
 #endif
- 
+
+//how exactly is time updated? convert ts to string somehow 
   // Get the timestamp at the beginning of the step and advance it.
   auto ts = timestamp();
   ts += dt;
@@ -431,12 +430,19 @@ m_atm_logger->info("OG qv field ("+std::to_string(ii)+","+std::to_string(jj)+") 
     // Run the process
     
 //////////////////////////////////////////
-//    m_atm_logger->info("   ");
-//    m_atm_logger->info("OG proc "+atm_proc->name()+" begin------------------- dt "+std::to_string(dt));
-    //m_atm_logger->info("OG proc "+atm_proc->name()+" dt "+ std::to_string(ts)+", "+std::to_string(dt));
 printf("OG    \n");
-//printf("OG  proc %s begin -------------------- dt %f \n",std::to_string(atm_proc->name()),dt);
 std::cout << "OG  proc begin ------------------------ " << atm_proc->name() << " dt="<<std::to_string(dt) <<"\n";
+
+    std::string proc_string(atm_proc->name());
+    std::string phys_string("physics");
+    std::string dyn_string("Dynamics");
+    std::string mac_string("Macrophysics");
+    std::string mic_string("Microphysics");
+
+    const bool mephysics = (proc_string.compare(phys_string) == 0);
+    const bool medynamics = (proc_string.compare(dyn_string) == 0);
+    const bool memic = (proc_string.compare(mic_string) == 0);
+    const bool memac = (proc_string.compare(mac_string) == 0);
 
 
 //let's sum up all water mass, qv, qc, qr, qi
@@ -471,7 +477,6 @@ std::cout << "OG  proc begin ------------------------ " << atm_proc->name() << "
        qc_before +=aa*dp(ii,jj)*qc(ii,jj) / factor;
        qr_before +=aa*dp(ii,jj)*qr(ii,jj) / factor;
        qi_before +=aa*dp(ii,jj)*qi(ii,jj) / factor;
-    //m_atm_logger->info("OG wsum ("+std::to_string(ii)+","+std::to_string(jj)+") = "+std::to_string(vv));
     }};
 
     atm_proc->run(dt);
@@ -492,18 +497,38 @@ std::cout << "OG  proc begin ------------------------ " << atm_proc->name() << "
        qc_after +=aa*dp(ii,jj)*qc(ii,jj) / factor;
        qr_after +=aa*dp(ii,jj)*qr(ii,jj) / factor;
        qi_after +=aa*dp(ii,jj)*qi(ii,jj) / factor;
-    //m_atm_logger->info("OG wsum ("+std::to_string(ii)+","+std::to_string(jj)+") = "+std::to_string(vv));
     }};
 
-//    m_atm_logger->info("OG wsum b,a,a-b "+std::to_string(wsum_before)+", "+std::to_string(wsum_after)+
-//                       ", "+std::to_string(wsum_after - wsum_before));
-//    m_atm_logger->info("OG qflx b,a,a-b "+std::to_string(qqflx_before)+", "+std::to_string(qqflx_after)+
-//                       ", "+std::to_string(qqflx_after - qqflx_before));
-//    m_atm_logger->info("OG pp, b,a,b-a "+std::to_string(pp_before)+", "+std::to_string(pp_after)+
-//                       ", "+std::to_string(pp_after - pp_before));
+    //dycore, eval only total loss/leak, actually, do this for all except macmic and physics
+    if(medynamics){
+    printf("OG dyn wsum b,a,a-b,%.15f %.15f %.15f  \n",             wsum_before,    wsum_after,    wsum_after-wsum_before        );
+    };
+    if(!mephysics && !memac && !memic){
+    printf("OG other wsum b,a,a-b,%.15f %.15f %.15f  \n",             wsum_before,    wsum_after,    wsum_after-wsum_before        );
+    };
+    //physics whole loop, compare dt*qflx - precip with delta(wsum)
+    if(mephysics){
+    printf("OG wsum b,a,a-b,%.15f %.15f %.15f  \n",             wsum_before,    wsum_after,    wsum_after-wsum_before        );
+    printf("OG qflx a*dt, precip a, qflx*dt - precip,%.15f %.15f %.15f  \n",  qqflx_after*dt, pp_after, qqflx_after*dt-pp_after);
+    printf("OG phys [qflx*dt - precip] - [wsum_after - wsum_before], %.15f \n", qqflx_after*dt-pp_after - (wsum_after - wsum_before));   
+    };
+    //mac compare dt*qflx with delta(wsum)
+    if(memac){
+    printf("OG wsum b,a,a-b,%.15f %.15f %.15f  \n",             wsum_before,    wsum_after,    wsum_after-wsum_before        );
+    printf("OG qflx a*dt, %.15f \n",  qqflx_after*dt);
+    printf("OG mac [qflx*dt ] - [wsum_after - wsum_before], %.15f \n", qqflx_after*dt - (wsum_after - wsum_before));
+    };
+    //mic compare -delta(precip) with delta(wsum)
+    if(memic){
+    printf("OG wsum b,a,a-b,%.15f %.15f %.15f  \n",             wsum_before,    wsum_after,    wsum_after-wsum_before        );
+    printf("OG precip b-a,%.15f  \n",  pp_before-pp_after);
+    printf("OG mic [precip_before - precip_after] - [wsum_after - wsum_before], %.15f \n", pp_before-pp_after - (wsum_after - wsum_before));
+    };
 
-//    m_atm_logger->info("OG proc "+atm_proc->name()+" end---------------------");
 
+
+
+#if 0
 printf("OG  wsum b,a,a-b,%.15f %.15f %.15f  \n",             wsum_before,    wsum_after,    wsum_after-wsum_before        );
 printf("OG  qflx b,a,(a-b),%.15f %.15f %.15f  \n",           qqflx_before,   qqflx_after,   (qqflx_after-qqflx_before)    );
 printf("OG  qflx b*dt,a*dt,(a-b)*dt,%.15f %.15f %.15f  \n",  qqflx_before*dt,qqflx_after*dt,(qqflx_after-qqflx_before)*dt );
@@ -512,6 +537,7 @@ printf("OG  qv b,a,a-b,%.15f %.15f %.15f  \n",               qv_before,      qv_
 printf("OG  qc b,a,a-b,%.15f %.15f %.15f  \n",               qc_before,      qc_after,      qc_after-qc_before            );
 printf("OG  qr b,a,a-b,%.15f %.15f %.15f  \n",               qr_before,      qr_after,      qr_after-qr_before            );
 printf("OG  qi b,a,a-b,%.15f %.15f %.15f  \n",               qi_before,      qi_after,      qi_after-qi_before            );
+#endif
 std::cout << "OG  proc end ------------------------ " << atm_proc->name()  << " dt="<<std::to_string(dt) <<"\n";
 
 //////////////////////////////////////////
