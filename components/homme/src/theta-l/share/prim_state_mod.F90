@@ -10,7 +10,7 @@ module prim_state_mod
   use dimensions_mod,   only: nlev, np, qsize_d, qsize, nlevp
   use parallel_mod,     only:  iam, ordered, parallel_t, syncmp, abortmp
   use parallel_mod,     only: global_shared_buf, global_shared_sum
-  use global_norms_mod, only: wrap_repro_sum
+  use global_norms_mod, only: wrap_repro_sum, test_global_integral
   use hybrid_mod,       only: hybrid_t
   use time_mod,         only: tstep, secpday, timelevel_t, TimeLevel_Qdp, time_at
   use control_mod,      only: integration, test_case,  use_moisture, &
@@ -195,6 +195,8 @@ contains
     time2 = time 
     time1 = time - dt
 
+
+    call test_global_integral(elem, hybrid,nets,nete)
 
     npts = np
     do q=1,qsize
@@ -787,14 +789,14 @@ contains
        ! physics disabled (ftype<0).  So disable this diagnostic if ftype>=0:
        if (ftype>=0) TOTE0=-1  
 #endif       
-       if (TOTE0>0) then
-          write(iulog,100) "(E-E0)/E0    ",(TOTE(2)-TOTE0)/TOTE0
+       !if (TOTE0>0) then
+       !   write(iulog,100) "(E-E0)/E0    ",(TOTE(2)-TOTE0)/TOTE0
           do q=1,qsize
-             if(Qmass0(q)>0.0D0) then
+          !   if(Qmass0(q)>0.0D0) then
                 write(iulog,'(a,E23.15,a,i1)') "(Q-Q0)/Q0 ",(Qmass(q,2)-Qmass0(q))/Qmass0(q),"   Q",q
-             end if
+          !   end if
           enddo
-       endif
+       !endif
 
       ! IMEX diagnostics
       write(iulog,'(a,I3,2E23.15)') 'IMEX max iterations, error:',max_itercnt_g,max_deltaerr_g,max_reserr_g

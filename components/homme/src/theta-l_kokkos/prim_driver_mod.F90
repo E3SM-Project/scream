@@ -457,11 +457,13 @@ contains
       elem_state_ps_v_ptr      = c_loc(elem_state_ps_v)
       elem_derived_omega_p_ptr = c_loc(elem_derived_omega_p)
 
+!add FM, FQ, FT here
+
       ! Copy cxx arrays back to f90 structures
       call t_startf('push_to_f90')
       call cxx_push_results_to_f90(elem_state_v_ptr, elem_state_w_i_ptr, elem_state_vtheta_dp_ptr,   &
                                    elem_state_phinh_i_ptr, elem_state_dp3d_ptr, elem_state_ps_v_ptr, &
-                                   elem_state_Qdp_ptr, elem_state_Q_ptr, elem_derived_omega_p_ptr)
+                                   elem_state_Qdp_ptr, elem_state_Q_ptr, elem_derived_omega_p_ptr    )
       call t_stopf('push_to_f90')
     endif
 
@@ -509,6 +511,8 @@ contains
        compute_forcing_and_push_to_c = .true.
     endif
 #endif
+
+print *, "OG in init_logic_for_push_to_c, compute_forcing_and_push_to_c ", compute_forcing_and_push_to_c
 
   end subroutine init_logic_for_push_to_c
 
@@ -562,6 +566,8 @@ contains
     endif
 
 #endif
+
+print *, 'OG in init_logic_for_push_to_f, push_to_f ', push_to_f
 
   end subroutine init_logic_for_push_to_f
 

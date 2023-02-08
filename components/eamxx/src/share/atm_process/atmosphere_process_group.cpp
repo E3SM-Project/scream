@@ -13,7 +13,8 @@
 #include "share/scream_session.hpp"
 #include "mct_coupling/ScreamContext.hpp"
 #include "control/atmosphere_driver.hpp"
-
+#include <iomanip> 
+#include "physics/share/physics_constants.hpp"
 
 namespace scream {
 
@@ -348,10 +349,26 @@ void AtmosphereProcessGroup::run_impl (const int dt) {
 
 void AtmosphereProcessGroup::run_sequential (const Real dt) {
 
+  using C = scream::physics::Constants<Real>;
+  constexpr Real gravit = C::gravit;
+  constexpr Real Pi = C::Pi;
+  std::setprecision(20);
+
   auto& c = scream::ScreamContext::singleton();
   auto ad = c.getNonConst<scream::control::AtmosphereDriver>();
   const auto gn = "Physics GLL";
+  const auto& phys_grid = ad.get_grids_manager()->get_grid(gn);
+  auto area = phys_grid->get_geometry_data("area").get_view<const Real*, Host>();
+  //const auto gn = "Physics";
   const auto fm = ad.get_field_mgr(gn);
+
+//lets find all grids //does not work for grid_name
+//  const auto fms = ad.m_field_mgrs;
+//  for (const auto& it : ad.m_field_mgrs) {
+//      const auto& grid_name = it.first;
+//  m_atm_logger->info("OG find all grids: "+std::to_string(grid_name));
+//  }
+
 
 #if 0
   const auto pseudo_density_ptr = phys_field_mgr->get_field_ptr("pseudo_density");
@@ -370,14 +387,24 @@ void AtmosphereProcessGroup::run_sequential (const Real dt) {
 #endif
 
   //auto ff = fm->get_field("ps");
-  //
   //for future gpu debug
   //  fm.get_field("T_2m"            ).sync_to_host();
-  //
 
   const int ncols = fm->get_grid()->get_num_local_dofs();
   const int nlevs = fm->get_grid()->get_num_vertical_levels();
+  m_atm_logger->info("   ncols = "+std::to_string(ncols)+", nlevs = "+std::to_string(nlevs));
+  m_atm_logger->info("   ncols = "+std::to_string(sizeof(Real)));
 
+  Real aaa = 0.0;
+  for (int ii = 0; ii < ncols; ii++){
+       aaa+= area(ii);
+  }
+
+printf("OG area is %.20f \n",aaa);
+
+//  m_atm_logger->info("area = "+std::to_string(aaa));
+
+#if 0
   auto ff = fm->get_field("qv").get_view<const Real**, Host>();
  
   //const auto vv = ff(1,1);
@@ -386,6 +413,7 @@ void AtmosphereProcessGroup::run_sequential (const Real dt) {
     const auto vv = ff(ii,jj);
 m_atm_logger->info("OG qv field ("+std::to_string(ii)+","+std::to_string(jj)+") = "+std::to_string(vv));
   }
+#endif
  
   // Get the timestamp at the beginning of the step and advance it.
   auto ts = timestamp();
@@ -394,14 +422,100 @@ m_atm_logger->info("OG qv field ("+std::to_string(ii)+","+std::to_string(jj)+") 
   // The stored atm procs should update the timestamp if both
   //  - this is the last subcycle iteration
   //  - nobody from outside told this APG to not update timestamps
+
+//OG how does this work exactly?
   const bool do_update = do_update_time_stamp() &&
                       (get_subcycle_iter()==get_num_subcycles()-1);
   for (auto atm_proc : m_atm_processes) {
     atm_proc->set_update_time_stamps(do_update);
     // Run the process
-    //
-m_atm_logger->info("OG proc name "+atm_proc->name());
+    
+//////////////////////////////////////////
+//    m_atm_logger->info("   ");
+//    m_atm_logger->info("OG proc "+atm_proc->name()+" begin------------------- dt "+std::to_string(dt));
+    //m_atm_logger->info("OG proc "+atm_proc->name()+" dt "+ std::to_string(ts)+", "+std::to_string(dt));
+printf("OG    \n");
+//printf("OG  proc %s begin -------------------- dt %f \n",std::to_string(atm_proc->name()),dt);
+std::cout << "OG  proc begin ------------------------ " << atm_proc->name() << " dt="<<std::to_string(dt) <<"\n";
+
+
+//let's sum up all water mass, qv, qc, qr, qi
+    auto dp = fm->get_field("pseudo_density").get_view<const Real**, Host>();
+    auto qv = fm->get_field("qv").get_view<const Real**, Host>();
+    auto qc = fm->get_field("qc").get_view<const Real**, Host>();
+    auto qr = fm->get_field("qr").get_view<const Real**, Host>();
+    auto qi = fm->get_field("qi").get_view<const Real**, Host>();
+ 
+    auto qflx  = fm->get_field("surf_evap").get_view<const Real*, Host>(); // kg/m2/sec
+    auto precl = fm->get_field("precip_liq_surf_mass").get_view<const Real*, Host>(); //kg/m2
+    auto preci = fm->get_field("precip_ice_surf_mass").get_view<const Real*, Host>(); //kg/m2
+
+//names of procs: SurfaceCouplingExporter, SurfaceCouplingImporter, Simple Prescribed Aerosols (SPA),
+//CldFraction, Microphysics, Macrophysics
+
+    //int ii=1; // column #1
+    Real wsum_before = 0.0;
+    Real pp_before = 0.0;
+    Real qqflx_before = 0.0;
+    Real qv_before = 0.0, qc_before = 0.0, qr_before = 0.0, qi_before = 0.0;
+    for (int ii = 0; ii < ncols; ii++){
+       const auto aa = area(ii); // sums to 4*pi
+       const Real factor =  4.0 * Pi ;
+       pp_before += aa*(precl(ii) + preci(ii)) / factor;
+       qqflx_before += aa*qflx(ii) / factor;
+    for (int jj = 0; jj < nlevs; jj++){
+       //factor 1/(4\pi*g) is to make values kg/m2
+       const Real factor =  gravit * 4.0 * Pi ;
+       wsum_before += aa*dp(ii,jj)*(qv(ii,jj)+qr(ii,jj)+qc(ii,jj)+qi(ii,jj)) / factor;
+       qv_before +=aa*dp(ii,jj)*qv(ii,jj) / factor;
+       qc_before +=aa*dp(ii,jj)*qc(ii,jj) / factor;
+       qr_before +=aa*dp(ii,jj)*qr(ii,jj) / factor;
+       qi_before +=aa*dp(ii,jj)*qi(ii,jj) / factor;
+    //m_atm_logger->info("OG wsum ("+std::to_string(ii)+","+std::to_string(jj)+") = "+std::to_string(vv));
+    }};
+
     atm_proc->run(dt);
+
+    Real wsum_after = 0.0;
+    Real pp_after = 0.0;
+    Real qqflx_after = 0.0;
+    Real qv_after = 0.0, qc_after = 0.0, qr_after = 0.0, qi_after = 0.0;
+    for (int ii = 0; ii < ncols; ii++){
+       const auto aa = area(ii);
+       const Real factor = 4.0 * Pi ;
+       pp_after += aa*(precl(ii) + preci(ii)) / factor;
+       qqflx_after += aa*qflx(ii) / factor;
+    for (int jj = 0; jj < nlevs; jj++){
+       const Real factor =  gravit * 4.0 * Pi ;
+       wsum_after += aa*dp(ii,jj)*(qv(ii,jj)+qr(ii,jj)+qc(ii,jj)+qi(ii,jj)) / factor;
+       qv_after +=aa*dp(ii,jj)*qv(ii,jj) / factor;
+       qc_after +=aa*dp(ii,jj)*qc(ii,jj) / factor;
+       qr_after +=aa*dp(ii,jj)*qr(ii,jj) / factor;
+       qi_after +=aa*dp(ii,jj)*qi(ii,jj) / factor;
+    //m_atm_logger->info("OG wsum ("+std::to_string(ii)+","+std::to_string(jj)+") = "+std::to_string(vv));
+    }};
+
+//    m_atm_logger->info("OG wsum b,a,a-b "+std::to_string(wsum_before)+", "+std::to_string(wsum_after)+
+//                       ", "+std::to_string(wsum_after - wsum_before));
+//    m_atm_logger->info("OG qflx b,a,a-b "+std::to_string(qqflx_before)+", "+std::to_string(qqflx_after)+
+//                       ", "+std::to_string(qqflx_after - qqflx_before));
+//    m_atm_logger->info("OG pp, b,a,b-a "+std::to_string(pp_before)+", "+std::to_string(pp_after)+
+//                       ", "+std::to_string(pp_after - pp_before));
+
+//    m_atm_logger->info("OG proc "+atm_proc->name()+" end---------------------");
+
+printf("OG  wsum b,a,a-b,%.15f %.15f %.15f  \n",             wsum_before,    wsum_after,    wsum_after-wsum_before        );
+printf("OG  qflx b,a,(a-b),%.15f %.15f %.15f  \n",           qqflx_before,   qqflx_after,   (qqflx_after-qqflx_before)    );
+printf("OG  qflx b*dt,a*dt,(a-b)*dt,%.15f %.15f %.15f  \n",  qqflx_before*dt,qqflx_after*dt,(qqflx_after-qqflx_before)*dt );
+printf("OG  precip b,a,a-b,%.15f %.15f %.15f  \n",           pp_before,      pp_after,      (pp_after-pp_before)          );
+printf("OG  qv b,a,a-b,%.15f %.15f %.15f  \n",               qv_before,      qv_after,      qv_after-qv_before            );
+printf("OG  qc b,a,a-b,%.15f %.15f %.15f  \n",               qc_before,      qc_after,      qc_after-qc_before            );
+printf("OG  qr b,a,a-b,%.15f %.15f %.15f  \n",               qr_before,      qr_after,      qr_after-qr_before            );
+printf("OG  qi b,a,a-b,%.15f %.15f %.15f  \n",               qi_before,      qi_after,      qi_after-qi_before            );
+std::cout << "OG  proc end ------------------------ " << atm_proc->name()  << " dt="<<std::to_string(dt) <<"\n";
+
+//////////////////////////////////////////
+
 #ifdef SCREAM_HAS_MEMORY_USAGE
     long long my_mem_usage = get_mem_usage(MB);
     long long max_mem_usage;

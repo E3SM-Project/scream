@@ -470,6 +470,8 @@ void HommeDynamics::run_impl (const int dt)
     Kokkos::fence();
     homme_pre_process (dt);
 
+std::cout <<"homme nsplit "<< nsplit <<" and dt " << dt << "\n";
+
     for (int subiter=0; subiter<nsplit; ++subiter) {
       Kokkos::fence();
       prim_run_f90(/* nsplit_iteration = */ subiter+1);
@@ -568,6 +570,11 @@ void HommeDynamics::homme_pre_process (const int dt) {
 
   const auto ftype = params.ftype;
 
+std::cout << "OG ftype==FA::FORCING_0 " << (ftype == ForcingAlg::FORCING_0) << "\n";
+std::cout << "OG ftype==FA::FORCING_1 " << (ftype == ForcingAlg::FORCING_1) << "\n";
+std::cout << "OG ftype==FA::FORCING_2 " << (ftype == ForcingAlg::FORCING_2) << "\n";
+
+
   if (fv_phys_active()) {
     fv_phys_pre_process();
   } else {
@@ -597,7 +604,8 @@ void HommeDynamics::homme_pre_process (const int dt) {
     const auto n0 = tl.n0;  // The time level where pd coupling remapped into
     constexpr int NVL = HOMMEXX_NUM_LEV;
     const int qsize = params.qsize;
-    const auto Q_dyn = m_helper_fields.at("Q_dyn").get_view<Homme::Scalar*****>();
+//not used
+//    const auto Q_dyn = m_helper_fields.at("Q_dyn").get_view<Homme::Scalar*****>();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,Q.size()),KOKKOS_LAMBDA(const int idx) {
       const int ie = idx / (qsize*NP*NP*NVL);
       const int iq = (idx / (NP*NP*NVL)) % qsize;
@@ -613,6 +621,10 @@ void HommeDynamics::homme_pre_process (const int dt) {
       fq -= q_prev;
       fq /= dt;
       fq *= dp;
+
+//printf("OG FQ calc fq=%.15f  \n",fq[0]);
+
+
     });
     Kokkos::fence();
   }
@@ -704,6 +716,7 @@ void HommeDynamics::homme_post_process (const int dt) {
     auto p_dry_mid = ekat::subview(p_dry_mid_view,icol);
     auto p_dry_int = ekat::subview(p_dry_int_view,icol);
 
+//WL
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team,npacks), [&](const int& jpack) {
       dp_dry(jpack) = dp(jpack) * (1.0 - qv(jpack));
     });

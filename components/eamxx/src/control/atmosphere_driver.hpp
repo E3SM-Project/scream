@@ -145,6 +145,9 @@ public:
 
   const std::shared_ptr<AtmosphereProcessGroup>& get_atm_processes () const { return m_atm_process_group; }
 
+  //make public for now
+  std::map<std::string,field_mgr_ptr>       m_field_mgrs;
+
 #ifndef KOKKOS_ENABLE_CUDA
   // Cuda requires methods enclosing __device__ lambda's to be public
 protected:
@@ -175,7 +178,7 @@ protected:
                               const util::TimeStamp& t0);
   void register_groups ();
 
-  std::map<std::string,field_mgr_ptr>       m_field_mgrs;
+  //std::map<std::string,field_mgr_ptr>       m_field_mgrs;
 
   std::shared_ptr<AtmosphereProcessGroup>   m_atm_process_group;
 

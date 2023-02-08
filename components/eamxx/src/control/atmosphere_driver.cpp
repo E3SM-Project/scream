@@ -931,17 +931,18 @@ std::cout << "grid name is " << it1.first << "\n";
   // If a filename is specified, use it to load inputs on all grids
   if (ic_pl.isParameter("Filename")) {
     // Now loop over all grids, and load from file the needed fields on each grid (if any).
-    m_atm_logger->debug("    [EAMxx] Reading fields from file ...");
+    m_atm_logger->info("    [EAMxx] Reading fields from file ...");
     const auto& file_name = ic_pl.get<std::string>("Filename");
     for (const auto& it : m_field_mgrs) {
       const auto& grid_name = it.first;
+      //m_atm_logger->info("grd name for FM is "+grid_name);
       read_fields_from_file (ic_fields_names[grid_name],it.first,file_name,m_current_ts);
     }
-    m_atm_logger->debug("    [EAMxx] Reading fields from file ... done!");
+    m_atm_logger->info("    [EAMxx] Reading fields from file ... done!");
   }
 
   // If there were any fields that needed to be copied per the input yaml file, now we copy them.
-  m_atm_logger->debug("    [EAMxx] Processing fields to copy ...");
+  m_atm_logger->info("    [EAMxx] Processing fields to copy ...");
   for (const auto& tgt_fid : ic_fields_to_copy) {
     const auto& tgt_fname = tgt_fid.name();
     const auto& gname = tgt_fid.get_grid_name();
@@ -949,6 +950,8 @@ std::cout << "grid name is " << it1.first << "\n";
     const auto& src_fname = ic_pl.get<std::string>(tgt_fname);
 
     auto fm = get_field_mgr(gname);
+
+    //m_atm_logger->info("grd name for FM is "+gname);
 
     // The field must exist in the fm on the input field's grid
     EKAT_REQUIRE_MSG (fm->has_field(src_fname),
@@ -997,7 +1000,7 @@ std::cout << "grid name is " << it1.first << "\n";
 
   // Load topography from file if topography file is given.
   if (ic_pl.isParameter("topography_filename")) {
-    m_atm_logger->debug("    [EAMxx] Reading topography from file ...");
+    m_atm_logger->info("    [EAMxx] Reading topography from file ...");
     const auto& file_name = ic_pl.get<std::string>("topography_filename");
     for (const auto& it : m_field_mgrs) {
       const auto& grid_name = it.first;
@@ -1005,7 +1008,8 @@ std::cout << "grid name is " << it1.first << "\n";
                              topography_fields_names_eamxx[grid_name],
                              it.first,file_name,m_current_ts);
     }
-    m_atm_logger->debug("    [EAMxx] Processing topography from file ... done!");
+    //m_atm_logger->info("grd name for FM is "+grid_name);
+    m_atm_logger->info("    [EAMxx] Processing topography from file ... done!");
   } else {
     // Ensure that, if no topography_filename is given, no
     // processes is asking for topography data (assuming a
