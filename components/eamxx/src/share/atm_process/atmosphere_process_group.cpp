@@ -499,6 +499,8 @@ std::cout << "OG  proc begin ------------------------ " << atm_proc->name() << "
        qi_after +=aa*dp(ii,jj)*qi(ii,jj) / factor;
     }};
 
+//note one exception for other=mac_aero_mic -- it id not done properly here
+
     //dycore, eval only total loss/leak, actually, do this for all except macmic and physics
     if(medynamics){
     printf("OG dyn wsum b,a,a-b,%.15f %.15f %.15f  \n",             wsum_before,    wsum_after,    wsum_after-wsum_before        );
