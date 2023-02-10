@@ -86,20 +86,20 @@ public:
 
         //Since "qv" has a wet mixing ratio, we can use "qv" to compute dry mixing ratios of the following constituents:
         //Units of all constituents below are [kg/kg(dry-air)] for mass and [#/kg(dry-air)] for number
-        qc(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(qc(icol,ipack),qv(icol,ipack)); //Cloud liquid mass
-        nc(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(nc(icol,ipack),qv(icol,ipack)); //Cloud liquid numbe
-        qr(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(qr(icol,ipack),qv(icol,ipack)); //Rain mass
-        nr(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(nr(icol,ipack),qv(icol,ipack)); //Rain number
-        qi(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(qi(icol,ipack),qv(icol,ipack)); //Cloud ice mass
-        ni(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(ni(icol,ipack),qv(icol,ipack)); //Cloud ice number
-        qm(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(qm(icol,ipack),qv(icol,ipack)); //Rimmed ice mass
-        bm(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(bm(icol,ipack),qv(icol,ipack)); //Rimmed ice number
+//        qc(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(qc(icol,ipack),qv(icol,ipack)); //Cloud liquid mass
+//        nc(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(nc(icol,ipack),qv(icol,ipack)); //Cloud liquid numbe
+//        qr(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(qr(icol,ipack),qv(icol,ipack)); //Rain mass
+//        nr(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(nr(icol,ipack),qv(icol,ipack)); //Rain number
+//        qi(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(qi(icol,ipack),qv(icol,ipack)); //Cloud ice mass
+//        ni(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(ni(icol,ipack),qv(icol,ipack)); //Cloud ice number
+//        qm(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(qm(icol,ipack),qv(icol,ipack)); //Rimmed ice mass
+//        bm(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(bm(icol,ipack),qv(icol,ipack)); //Rimmed ice number
         //Water vapor from previous time step
-        qv_prev(icol, ipack) = PF::calculate_drymmr_from_wetmmr(qv_prev(icol,ipack),qv(icol,ipack));
+//        qv_prev(icol, ipack) = PF::calculate_drymmr_from_wetmmr(qv_prev(icol,ipack),qv(icol,ipack));
 
         // ^^ Ensure that qv is "wet mmr" till this point ^^
         //NOTE: Convert "qv" to dry mmr in the end after converting all other constituents to dry mmr
-        qv(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(qv(icol,ipack),qv(icol,ipack));
+//        qv(icol, ipack)      = PF::calculate_drymmr_from_wetmmr(qv(icol,ipack),qv(icol,ipack));
 
         // Exner
         const auto& exner = PF::exner_function(pmid_pack);
@@ -219,18 +219,18 @@ public:
          *----------------------------------------------------------------------------------------------------------------------
          */
         //Units of all constituents below are [kg/kg(wet-air)] for mass and [#/kg(wet-air)] for number
-        qc(icol,ipack) = PF::calculate_wetmmr_from_drymmr(qc(icol,ipack), qv(icol,ipack));//Cloud liquid mass
-        nc(icol,ipack) = PF::calculate_wetmmr_from_drymmr(nc(icol,ipack), qv(icol,ipack));//Cloud liquid number
-        qr(icol,ipack) = PF::calculate_wetmmr_from_drymmr(qr(icol,ipack), qv(icol,ipack));//Rain mass
-        nr(icol,ipack) = PF::calculate_wetmmr_from_drymmr(nr(icol,ipack), qv(icol,ipack));//Rain number
-        qi(icol,ipack) = PF::calculate_wetmmr_from_drymmr(qi(icol,ipack), qv(icol,ipack));//Cloud ice mass
-        ni(icol,ipack) = PF::calculate_wetmmr_from_drymmr(ni(icol,ipack), qv(icol,ipack));//Cloud ice number
-        qm(icol,ipack) = PF::calculate_wetmmr_from_drymmr(qm(icol,ipack), qv(icol,ipack));//Rimmed ice mass
-        bm(icol,ipack) = PF::calculate_wetmmr_from_drymmr(bm(icol,ipack), qv(icol,ipack));//Rimmed ice number
+//        qc(icol,ipack) = PF::calculate_wetmmr_from_drymmr(qc(icol,ipack), qv(icol,ipack));//Cloud liquid mass
+//        nc(icol,ipack) = PF::calculate_wetmmr_from_drymmr(nc(icol,ipack), qv(icol,ipack));//Cloud liquid number
+//        qr(icol,ipack) = PF::calculate_wetmmr_from_drymmr(qr(icol,ipack), qv(icol,ipack));//Rain mass
+//        nr(icol,ipack) = PF::calculate_wetmmr_from_drymmr(nr(icol,ipack), qv(icol,ipack));//Rain number
+//        qi(icol,ipack) = PF::calculate_wetmmr_from_drymmr(qi(icol,ipack), qv(icol,ipack));//Cloud ice mass
+//        ni(icol,ipack) = PF::calculate_wetmmr_from_drymmr(ni(icol,ipack), qv(icol,ipack));//Cloud ice number
+//        qm(icol,ipack) = PF::calculate_wetmmr_from_drymmr(qm(icol,ipack), qv(icol,ipack));//Rimmed ice mass
+//        bm(icol,ipack) = PF::calculate_wetmmr_from_drymmr(bm(icol,ipack), qv(icol,ipack));//Rimmed ice number
 
         // ^^ Ensure that qv is "dry mmr" till this point ^^
         //NOTE:Convert "qv" to wet mmr in the end after converting all other constituents to wet mmr
-        qv(icol,ipack) = PF::calculate_wetmmr_from_drymmr(qv(icol,ipack), qv(icol,ipack));
+//        qv(icol,ipack) = PF::calculate_wetmmr_from_drymmr(qv(icol,ipack), qv(icol,ipack));
 
         // Update qv_prev with qv(which should now be a wet mmr) so that qv_prev is in wet mmr
         qv_prev(icol,ipack) = qv(icol,ipack);

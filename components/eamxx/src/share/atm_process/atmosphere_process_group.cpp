@@ -356,10 +356,10 @@ void AtmosphereProcessGroup::run_sequential (const Real dt) {
 
   auto& c = scream::ScreamContext::singleton();
   auto ad = c.getNonConst<scream::control::AtmosphereDriver>();
-  const auto gn = "Physics GLL";
+  const auto gn = "Physics";
+  //const auto gn = "Physics GLL";
   const auto& phys_grid = ad.get_grids_manager()->get_grid(gn);
   auto area = phys_grid->get_geometry_data("area").get_view<const Real*, Host>();
-  //const auto gn = "Physics";
   const auto fm = ad.get_field_mgr(gn);
 
 //lets find all grids //does not work for grid_name
@@ -392,8 +392,8 @@ void AtmosphereProcessGroup::run_sequential (const Real dt) {
 
   const int ncols = fm->get_grid()->get_num_local_dofs();
   const int nlevs = fm->get_grid()->get_num_vertical_levels();
-  m_atm_logger->info("   ncols = "+std::to_string(ncols)+", nlevs = "+std::to_string(nlevs));
-  m_atm_logger->info("   ncols = "+std::to_string(sizeof(Real)));
+  m_atm_logger->info("OG   ncols = "+std::to_string(ncols)+", nlevs = "+std::to_string(nlevs));
+  m_atm_logger->info("OG   size of real = "+std::to_string(sizeof(Real)));
 
   Real aaa = 0.0;
   for (int ii = 0; ii < ncols; ii++){
@@ -452,7 +452,8 @@ std::cout << "OG  proc begin ------------------------ " << atm_proc->name() << "
     auto qr = fm->get_field("qr").get_view<const Real**, Host>();
     auto qi = fm->get_field("qi").get_view<const Real**, Host>();
  
-    auto qflx  = fm->get_field("surf_evap").get_view<const Real*, Host>(); // kg/m2/sec
+    //auto qflx  = fm->get_field("surf_evap").get_view<const Real*, Host>(); // kg/m2/sec
+    auto qflx  = fm->get_field("surf_evap").get_view<Real*, Host>(); // kg/m2/sec
     auto precl = fm->get_field("precip_liq_surf_mass").get_view<const Real*, Host>(); //kg/m2
     auto preci = fm->get_field("precip_ice_surf_mass").get_view<const Real*, Host>(); //kg/m2
 
@@ -465,6 +466,10 @@ std::cout << "OG  proc begin ------------------------ " << atm_proc->name() << "
     Real qqflx_before = 0.0;
     Real qv_before = 0.0, qc_before = 0.0, qr_before = 0.0, qi_before = 0.0;
     for (int ii = 0; ii < ncols; ii++){
+
+///////////!!!!!!!!!!! zero qflz
+       //qflx(ii) = 0.0;
+
        const auto aa = area(ii); // sums to 4*pi
        const Real factor =  4.0 * Pi ;
        pp_before += aa*(precl(ii) + preci(ii)) / factor;

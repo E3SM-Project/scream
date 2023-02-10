@@ -395,6 +395,8 @@ void SHOCMacrophysics::initialize_impl (const RunType run_type)
     const auto& water_flux = get_field_out("water_flux").get_view<Real*>();
     const auto& ice_flux   = get_field_out("ice_flux").get_view<Real*>();
     const auto& heat_flux  = get_field_out("heat_flux").get_view<Real*>();
+
+//why does this have 2, surf_evap and vapor_flux???
     shoc_postprocess.set_mass_and_energy_fluxes (surf_evap, surf_sens_flux,
       					         vapor_flux, water_flux,
                                                  ice_flux, heat_flux);
