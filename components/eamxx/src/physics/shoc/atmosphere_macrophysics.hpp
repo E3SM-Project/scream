@@ -9,6 +9,8 @@
 
 #include <string>
 
+#define CONSERVE
+
 namespace scream
 {
 
@@ -82,16 +84,6 @@ public:
 
       const int nlev_packs = ekat::npack<Spack>(nlev);
 
-//PACK size is 16
-//use bottom as more likely?
-//int iii;
-//iii=0; printf("OG qc, qv be lev=%d %.20f %.20f \n", iii, qc(i,nlev_packs-1)[iii], qv(i,nlev_packs-1)[iii]);
-//iii=1; printf("OG qc, qv be lev=%d %.20f %.20f \n", iii, qc(i,nlev_packs-1)[iii], qv(i,nlev_packs-1)[iii]);
-//iii=2; printf("OG qc, qv be lev=%d %.20f %.20f \n", iii, qc(i,nlev_packs-1)[iii], qv(i,nlev_packs-1)[iii]);
-//iii=3; printf("OG qc, qv be lev=%d %.20f %.20f \n", iii, qc(i,nlev_packs-1)[iii], qv(i,nlev_packs-1)[iii]);
-//iii=4; printf("OG qc, qv be lev=%d %.20f %.20f \n", iii, qc(i,nlev_packs-1)[iii], qv(i,nlev_packs-1)[iii]);
-//iii=5; printf("OG qc, qv be lev=%d %.20f %.20f \n", iii, qc(i,nlev_packs-1)[iii], qv(i,nlev_packs-1)[iii]);
-
       Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev_packs), [&] (const Int& k) {
       /*---------------------------------------------------------------------------------
        *Wet to dry mixing ratios:
@@ -109,8 +101,12 @@ public:
           //Units of all tracers (except TKE and qv) will become [kg/kg(dry-air)] for mass and
           //[#/kg(dry-air)] for number after the following conversion. qv will be converted
           //to dry mmr in the next parallel for
-//          for (Int iq = 0; iq < num_qtracers-2; ++iq)
-//            qtracers(i,convert_wet_dry_idx_d(iq),k) = PF::calculate_drymmr_from_wetmmr(qtracers(i,convert_wet_dry_idx_d(iq),k), qv(i,k));
+
+//OG CHANGE
+#ifndef CONSERVE
+          for (Int iq = 0; iq < num_qtracers-2; ++iq)
+            qtracers(i,convert_wet_dry_idx_d(iq),k) = PF::calculate_drymmr_from_wetmmr(qtracers(i,convert_wet_dry_idx_d(iq),k), qv(i,k));
+#endif
 
         const auto range = ekat::range<IntSmallPack>(k*Spack::n);
         const Smask in_nlev_range = (range < nlev);
@@ -122,7 +118,10 @@ public:
         inv_exner(i,k).set(nonzero, 1/exner);
 
         //At this point, convert qv to dry mmr, the units will become kg/kg(dry air)
-//        qv(i,k) = PF::calculate_drymmr_from_wetmmr(qv(i,k), qv(i,k));
+//OG CHANGE
+#ifndef CONSERVE
+        qv(i,k) = PF::calculate_drymmr_from_wetmmr(qv(i,k), qv(i,k));
+#endif
 
         tke(i,k) = ekat::max(sp(0.004), tke(i,k));
 
@@ -150,14 +149,6 @@ public:
         wm_zt(i,k) = -1*omega(i,k)/(rrho(i,k)*ggr);
       });
       team.team_barrier();
-
-//iii=0; printf("OG qc, qv af lev=%d %.20f %.20f \n", iii, qc(i,nlev_packs-1)[iii], qv(i,nlev_packs-1)[iii]);
-//iii=1; printf("OG qc, qv af lev=%d %.20f %.20f \n", iii, qc(i,nlev_packs-1)[iii], qv(i,nlev_packs-1)[iii]);
-//iii=2; printf("OG qc, qv af lev=%d %.20f %.20f \n", iii, qc(i,nlev_packs-1)[iii], qv(i,nlev_packs-1)[iii]);
-//iii=3; printf("OG qc, qv af lev=%d %.20f %.20f \n", iii, qc(i,nlev_packs-1)[iii], qv(i,nlev_packs-1)[iii]);
-//iii=4; printf("OG qc, qv af lev=%d %.20f %.20f \n", iii, qc(i,nlev_packs-1)[iii], qv(i,nlev_packs-1)[iii]);
-//iii=5; printf("OG qc, qv af lev=%d %.20f %.20f \n", iii, qc(i,nlev_packs-1)[iii], qv(i,nlev_packs-1)[iii]);
-
 
       // Compute vertical layer heights
       const auto dz_s    = ekat::subview(dz,    i);
@@ -372,9 +363,13 @@ public:
           //Units of all tracers (except TKE and qv) will become [kg/kg(wet-air)] for mass and
           //[#/kg(wet-air)] for number after the following conversion. qv will be converted
           //to wet mmr in the next parallel for
-//          for (Int iq = 0; iq < num_qtracers-2; ++iq)
-//            qtracers(i,convert_wet_dry_idx_d(iq),k) = PF::calculate_wetmmr_from_drymmr(qtracers(i,convert_wet_dry_idx_d(iq),k), qv(i,k));
-//          qv(i,k) = PF::calculate_wetmmr_from_drymmr(qv(i,k), qv(i,k));
+
+//OG CHANGE
+#ifndef CONSERVE
+          for (Int iq = 0; iq < num_qtracers-2; ++iq)
+            qtracers(i,convert_wet_dry_idx_d(iq),k) = PF::calculate_wetmmr_from_drymmr(qtracers(i,convert_wet_dry_idx_d(iq),k), qv(i,k));
+          qv(i,k) = PF::calculate_wetmmr_from_drymmr(qv(i,k), qv(i,k));
+#endif
       });
 
       // If necessary, set appropriate boundary fluxes for energy and mass conservation checks.

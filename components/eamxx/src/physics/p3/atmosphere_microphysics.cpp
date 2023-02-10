@@ -10,6 +10,10 @@
 
 #include <array>
 
+
+#define CONSERVE
+
+
 namespace scream
 {
 
@@ -86,8 +90,14 @@ void P3Microphysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
   }
   add_field<Required>("ni_activated",       scalar3d_layout_mid, 1/kg,     grid_name, ps);
   add_field<Required>("inv_qc_relvar",      scalar3d_layout_mid, Q*Q,      grid_name, ps);
-//  add_field<Required>("pseudo_density_dry", scalar3d_layout_mid, Pa,       grid_name, ps);
+
+//OG CHANGE
+#ifndef CONSERVE
+  add_field<Required>("pseudo_density_dry", scalar3d_layout_mid, Pa,       grid_name, ps);
+#else
   add_field<Required>("pseudo_density", scalar3d_layout_mid, Pa,       grid_name, ps);
+#endif
+
   add_field<Updated> ("qv_prev_micro_step", scalar3d_layout_mid, Q,        grid_name, ps);
   add_field<Updated> ("T_prev_micro_step",  scalar3d_layout_mid, K,        grid_name, ps);
 
@@ -228,8 +238,14 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   const Int nk_pack = ekat::npack<Spack>(m_num_levs);
   const Int nk_pack_p1 = ekat::npack<Spack>(m_num_levs+1);
   const  auto& pmid           = get_field_in("p_dry_mid").get_view<const Pack**>();
-//  const  auto& pseudo_density = get_field_in("pseudo_density_dry").get_view<const Pack**>();
+
+//OG CHANGE
+#ifndef CONSERVE
+  const  auto& pseudo_density = get_field_in("pseudo_density_dry").get_view<const Pack**>();
+#else
   const  auto& pseudo_density = get_field_in("pseudo_density").get_view<const Pack**>();
+#endif
+
   const  auto& T_atm          = get_field_out("T_mid").get_view<Pack**>();
   const  auto& cld_frac_t     = get_field_in("cldfrac_tot").get_view<const Pack**>();
   const  auto& qv             = get_field_out("qv").get_view<Pack**>();

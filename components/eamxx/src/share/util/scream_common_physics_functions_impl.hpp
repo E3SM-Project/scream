@@ -275,9 +275,6 @@ KOKKOS_INLINE_FUNCTION
 ScalarT PhysicsFunctions<DeviceT>::
 calculate_drymmr_from_wetmmr(const ScalarT& wetmmr, const ScalarT& qv_wet)
 {
-
-//printf("OG indrymmr wetmmr %.20f, qv_wet %.20f, result %.20f \n",wetmmr[0],qv_wet[0],wetmmr[0]/(1-qv_wet[0]));
-
   return wetmmr/(1-qv_wet);
 }
 
