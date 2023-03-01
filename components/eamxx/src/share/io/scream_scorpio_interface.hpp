@@ -21,7 +21,8 @@ namespace scorpio {
   // in the scream_scorpio_interface F90 module
   enum FileMode {
     Read = 1,
-    Write = 2
+    Write = 2,
+    Append = 4 + Write
   };
   /* All scorpio usage requires that the pio_subsystem is initialized. Happens only once per simulation */
   void eam_init_pio_subsystem(const ekat::Comm& comm);

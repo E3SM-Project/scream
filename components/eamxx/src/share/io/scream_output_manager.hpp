@@ -161,6 +161,9 @@ protected:
   // we might have to load an output checkpoint file (depending on avg type)
   bool m_is_restarted_run;
 
+  // Whether a restarted run can resume filling previous run output file (if not full)
+  bool m_resume_output_file = false;
+
   // If the user specifies freq units "none" or "never", output is disabled
   bool m_output_disabled = false;
 

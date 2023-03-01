@@ -8,6 +8,14 @@
 #include "ekat/mpi/ekat_comm.hpp"
 #include "ekat/util/ekat_string_utils.hpp"
 
+#if __cplusplus > 201700L
+#include <filesystem>
+namespace filesystem_ns = std::filesystem;
+#else
+#include <experimental/filesystem>
+namespace filesystem_ns = std::experimental::filesystem;
+#endif
+
 #include <fstream>
 #include <memory>
 
@@ -129,7 +137,10 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
     }
   }
 
-  const auto has_restart_data = (m_avg_type!=OutputAvgType::Instant && m_output_control.frequency>1);
+  // Check if this kind of output needs history restart files (in general)
+  const auto has_restart_data = m_avg_type!=OutputAvgType::Instant
+    && (m_output_control.frequency_units!="nsteps" || m_output_control.frequency>1);
+
   if (has_restart_data && m_params.isSublist("Checkpoint Control")) {
     // Output control
     // TODO: It would be great if there was an option where, if Checkpoint Control was not a sublist, we
@@ -170,16 +181,14 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
     auto hist_restart_casename = restart_pl.get("filename_prefix",m_casename);
 
     if (perform_history_restart) {
-      // We can use the step counter in run_t0 to check at what point within an output interval
-      // the previous simulation was stopped at.
-      // NOTE: if you change the output frequency when you restart, this could lead to wonky behavior
-      m_output_control.nsamples_since_last_write = m_run_t0.get_num_steps() % m_output_control.frequency; 
-
       if (has_restart_data) {
+        // This is non-instantaneous output, with freq>1 or freq=1 and freq_units!=nsteps
+        // We need to read
         using namespace scorpio;
         auto fn = find_filename_in_rpointer(hist_restart_casename,false,m_io_comm,m_run_t0);
 
-        m_output_control.timestamp_of_last_write = read_timestamp(fn,"last_write");
+        // We will use this to see if the last output file still has room.
+        m_output_control.nsamples_since_last_write = get_attribute<int>(fn, "num_samples_since_last_write");
 
         // If the type/freq of output needs restart data, we need to restart the streams
         if (m_output_control.nsamples_since_last_write>0) {
@@ -188,8 +197,78 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
           }
         }
       }
+
+      // Whether we do have restart data or not, let's find the last output file that was
+      // created, to a) check if there's still room in it, and b) ensure we are not
+      // changing the control settings for output.
+      auto cwd = filesystem_ns::current_path();
+      auto match = m_casename
+                 + "." + e2str(m_avg_type)
+                 + "." + m_output_control.frequency_units
+                 + "_x" + std::to_string(m_output_control.frequency);
+
+      util::TimeStamp last_file_ts;
+      for (auto entry : filesystem_ns::directory_iterator(cwd)) {
+        std::string fn = entry.path().filename();
+        if (fn.substr(0,match.size())==match) {
+          auto t_str = fn.substr(fn.size()-19,16);
+          auto t = util::str_to_time_stamp(t_str);
+          EKAT_REQUIRE_MSG (t.is_valid(),
+              "Error! Something went wrong while extracting time string from filename.\n"
+              " - filename: " + fn + "\n"
+              " - time str: " + t_str + "\n");
+          if (not last_file_ts.is_valid() || last_file_ts<t) {
+            last_file_ts = t;
+          }
+        }
+      }
+
+      // If no output file was found from previous runs, last_write_ts remains m_case_t0.
+      // This is correct, since INSTANT output would have written at least t=0, so this MUST
+      // be some average type. And since no snap was written, we are still in the first
+      // averaging window, which starts precisely at m_case_t0.
+      if (last_file_ts.is_valid()) {
+        auto last_output_fname = compute_filename(m_output_control,m_output_file_specs,false,last_file_ts);
+        // There was at least one snapshot written in the previous run, so there was a file.
+
+        // Check if we need to resume filling the output file
+        scorpio::register_file(last_output_fname,scorpio::Read);
+        int num_snaps = scorpio::get_dimlen_c2f(last_output_fname.c_str(),"time");
+        scorpio::eam_pio_closefile(last_output_fname);
+        m_resume_output_file = num_snaps<m_output_file_specs.max_snapshots_in_file;
+
+        // Check consistency of output specs across restart
+        auto old_freq = scorpio::get_attribute<int>(last_output_fname,"frequency");
+        auto old_freq_units = scorpio::get_attribute<std::string>(last_output_fname,"frequency_units");
+        auto old_avg_type = scorpio::get_attribute<std::string>(last_output_fname,"avg_type");
+        EKAT_REQUIRE_MSG (old_freq == m_output_control.frequency,
+            "Error! Cannot change frequency when performing history restart.\n"
+            "  - old freq: " << old_freq << "\n"
+            "  - new freq: " << m_output_control.frequency << "\n");
+        EKAT_REQUIRE_MSG (old_freq_units == m_output_control.frequency_units,
+            "Error! Cannot change frequency units when performing history restart.\n"
+            "  - old freq units: " << old_freq_units << "\n"
+            "  - new freq units: " << m_output_control.frequency_units << "\n");
+        EKAT_REQUIRE_MSG (old_avg_type == e2str(m_avg_type),
+            "Error! Cannot change avg type when performing history restart.\n"
+            "  - old avg type: " << old_avg_type + "\n"
+            "  - new avg type: " << e2str(m_avg_type) << "\n");
+
+        // We can also check the time of the last write
+        scorpio::register_file(last_output_fname,scorpio::Read);
+        auto time = scorpio::read_curr_time_c2f(last_output_fname.c_str());
+        scorpio::eam_pio_closefile(last_output_fname);
+
+        m_output_control.timestamp_of_last_write = m_case_t0 + std::round(time*86400);
+      }
+
+      // If we need to resume output file, let's open the file immediately, so the run method remains the same
+      if (m_resume_output_file) {
+        setup_file(m_output_file_specs,m_output_control,last_file_ts);
+      }
     }
   }
+
 
   if (m_avg_type!=OutputAvgType::Instant) {
     // Init the left hand point of time_bnds based on run/case t0.
@@ -293,6 +372,10 @@ void OutputManager::run(const util::TimeStamp& timestamp)
       m_time_bnds[1] = timestamp.days_from(m_case_t0);
       scorpio::grid_write_data_array(filename, "time_bnds", m_time_bnds.data(), 2);
       m_time_bnds[0] = m_time_bnds[1];
+    }
+
+    if (is_checkpoint_step) {
+      set_attribute (filename,"num_samples_since_last_write",control.nsamples_since_last_write);
     }
 
     // Since we wrote to file we need to reset the nsamples_since_last_write, the timestamp ...
@@ -434,7 +517,8 @@ set_params (const ekat::ParameterList& params,
 }
 /*===============================================================================================*/
 void OutputManager::
-setup_file (      IOFileSpecs& filespecs, const IOControl& control,
+setup_file (      IOFileSpecs& filespecs,
+            const IOControl& control,
             const util::TimeStamp& timestamp)
 {
   using namespace scorpio;
@@ -443,42 +527,64 @@ setup_file (      IOFileSpecs& filespecs, const IOControl& control,
   auto& filename = filespecs.filename;
 
   // Compute new file name
-  filename = compute_filename (control,filespecs,is_checkpoint_step,timestamp);
+  // If this is normal output, with some sort of average, and we're not resuming an existing
+  // output file, then the timestamp should be the one of the last write, since that's when
+  // the current avg window started.
+  auto file_ts = m_resume_output_file || m_avg_type==OutputAvgType::Instant || is_checkpoint_step
+               ? timestamp : control.timestamp_of_last_write;
 
-  // Register new netCDF file for output. First, check no other output managers
-  // are trying to write on the same file
-  EKAT_REQUIRE_MSG (not is_file_open_c2f(filename.c_str(),Write),
-      "Error! File '" + filename + "' is currently open for write. Cannot share with other output managers.\n");
-  register_file(filename,Write);
+  filename = compute_filename (control,filespecs,is_checkpoint_step,file_ts);
 
-  // Note: time has an unknown length. Setting its "length" to 0 tells the scorpio to
-  // set this dimension as having an 'unlimited' length, thus allowing us to write
-  // as many timesnaps to file as we desire.
-  register_dimension(filename,"time","time",0,false);
+  // Register new netCDF file for output. Check if we need to append to an existing file
+  auto mode = m_resume_output_file ? Append : Write;
+  register_file(filename,mode);
 
-  // Register time as a variable.
-  auto time_units="days since " + m_case_t0.get_date_string() + " " + m_case_t0.get_time_string();
-  register_variable(filename,"time","time",time_units,{"time"}, "double", "double","time");
+  if (m_resume_output_file) {
+    // No need to add time dims/vars to the nc file, simply add them to our online scream-scorpio metadata
+    get_variable(filename,"time","time",{"time"}, "double","time");
+    if (m_avg_type!=OutputAvgType::Instant) {
+      get_variable(filename,"time_bnds","time_bnds",{"dim2","time"},"double","time-dim2");
+      scorpio::offset_t time_bnds_dofs[2] = {0,1};
+      set_dof(filename,"time_bnds",2,time_bnds_dofs);
+    }
+  } else {
+    // Note: length=0 is how scorpio recognizes that this is an 'unlimited' dimension, which
+    // allows to write as many timesnaps as we desire.
+    register_dimension(filename,"time","time",0,false);
+
+    // Register time as a variable.
+    auto time_units="days since " + m_case_t0.get_date_string() + " " + m_case_t0.get_time_string();
+    register_variable(filename,"time","time",time_units,{"time"}, "double", "double","time");
 #ifdef SCREAM_HAS_LEAP_YEAR
-  set_variable_metadata (filename,"time","calendar","gregorian");
+    set_variable_metadata (filename,"time","calendar","gregorian");
 #else
-  set_variable_metadata (filename,"time","calendar","noleap");
+    set_variable_metadata (filename,"time","calendar","noleap");
 #endif
-  if (m_avg_type!=OutputAvgType::Instant) {
-    // First, ensure a 'dim2' dimension with len=2 is registered.
-    register_dimension(filename,"dim2","dim2",2,false);
-    
-    // Register time_bnds var, with its dofs
-    register_variable(filename,"time_bnds","time_bnds",time_units,{"dim2","time"},"double","double","time-dim2");
-    scorpio::offset_t time_bnds_dofs[2] = {0,1};
-    set_dof(filename,"time_bnds",2,time_bnds_dofs);
+    if (m_avg_type!=OutputAvgType::Instant) {
+      // First, ensure a 'dim2' dimension with len=2 is registered.
+      register_dimension(filename,"dim2","dim2",2,false);
+      
+      // Register time_bnds var, with its dofs
+      register_variable(filename,"time_bnds","time_bnds",time_units,{"dim2","time"},"double","double","time-dim2");
+      scorpio::offset_t time_bnds_dofs[2] = {0,1};
+      set_dof(filename,"time_bnds",2,time_bnds_dofs);
 
-    // Make it clear how the time_bnds should be interpreted
-    set_variable_metadata(filename,"time_bnds","note","right endpoint accummulation");
+      // Make it clear how the time_bnds should be interpreted
+      set_variable_metadata(filename,"time_bnds","note","right endpoint accummulation");
 
-    // I'm not sure what's the point of this, but CF conventions seem to require it
-    set_variable_metadata (filename,"time","bounds","time_bnds");
+      // I'm not sure what's the point of this, but CF conventions seem to require it
+      set_variable_metadata (filename,"time","bounds","time_bnds");
+    }
+
+    // Add info regarding freq, freq_units, and avg_type
+    set_attribute(filename,"frequency_units",control.frequency_units);
+    set_attribute(filename,"frequency",control.frequency);
+    set_attribute(filename,"avg_type",e2str(m_avg_type));
   }
+
+  // Set degree of freedom for "time"
+  scorpio::offset_t time_dof[1] = {0};
+  set_dof(filename,"time",0,time_dof);
 
   std::string fp_precision = is_checkpoint_step
                            ? "real"
@@ -486,19 +592,16 @@ setup_file (      IOFileSpecs& filespecs, const IOControl& control,
 
   // Make all output streams register their dims/vars
   for (auto& it : m_output_streams) {
-    it->setup_output_file(filename,fp_precision);
+    it->setup_output_file(filename,fp_precision,m_resume_output_file);
   }
 
-  if (filespecs.save_grid_data) {
-    // If not a restart file, also register geo data fields.
+  // If grid data is needed,  also register geo data fields. Skip if file is resumed,
+  // since grid data was written in the previous run
+  if (filespecs.save_grid_data and not m_resume_output_file) {
     for (auto& it : m_geo_data_streams) {
-      it->setup_output_file(filename,fp_precision);
+      it->setup_output_file(filename,fp_precision,false);
     }
   }
-
-  // Set degree of freedom for "time"
-  scorpio::offset_t time_dof[1] = {0};
-  set_dof(filename,"time",0,time_dof);
 
   // Finish the definition phase for this file.
   auto t0_date = m_case_t0.get_date()[0]*10000 + m_case_t0.get_date()[1]*100 + m_case_t0.get_date()[2];
@@ -527,6 +630,8 @@ setup_file (      IOFileSpecs& filespecs, const IOControl& control,
   }
 
   filespecs.is_open = true;
+
+  m_resume_output_file = false;
 }
 /*===============================================================================================*/
 void set_file_header(const std::string& filename)

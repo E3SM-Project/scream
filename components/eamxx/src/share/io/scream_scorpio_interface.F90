@@ -78,7 +78,7 @@ module scream_scorpio_interface
             read_time_at_index,          & ! Returns the time stamp for a specific time index
             has_variable                   ! Checks if given file contains a certain variable
 
-  private :: errorHandle, get_coord
+  private :: errorHandle, get_coord, is_read, is_write, is_append
 
   ! Universal PIO variables for the module
   integer               :: atm_mpicom
@@ -93,9 +93,10 @@ module scream_scorpio_interface
   integer,parameter :: max_chars = 256
   integer,parameter :: max_hvarname_len = 64
   integer,parameter :: max_hvar_dimlen  = 5
-  integer,parameter :: file_purpose_not_set  = 0
-  integer,parameter :: file_purpose_in  = 1
-  integer,parameter :: file_purpose_out = 2
+  integer,parameter :: file_purpose_not_set  = 0  ! Not set (to catch uninited stuff errors)
+  integer,parameter :: file_purpose_in  = 1       ! Read
+  integer,parameter :: file_purpose_out = 2       ! Write and replace if file exists
+  integer,parameter :: file_purpose_app = 4       ! Write and append if file exists
 
   type, public :: hist_coord_t
     character(len=max_hcoordname_len) :: name = ''  ! coordinate name
@@ -420,7 +421,7 @@ contains
       elseif (hist_var%dtype .ne. dtype) then
         ! Different data type
         call errorHandle("PIO Error: variable "//trim(shortname)//", already registered with different dtype, in file: "//trim(filename),-999)
-      elseif (pio_atm_file%purpose .eq. file_purpose_out .and. & ! Out files must match the decomp tag
+      elseif ( is_write(pio_atm_file%purpose) .and. & ! Out files must match the decomp tag
               (hist_var%numdims .ne. numdims .or. &
                trim(hist_var%pio_decomp_tag) .ne. trim(pio_decomp_tag))) then
         ! Different decomp tag in output file
@@ -565,7 +566,7 @@ contains
       elseif (hist_var%nc_dtype .ne. nc_dtype .or. hist_var%dtype .ne. dtype) then
         ! Different data type
         call errorHandle("PIO Error: variable "//trim(shortname)//", already registered with different dtype, in file: "//trim(filename),-999)
-      elseif (pio_atm_file%purpose .eq. file_purpose_out .and. & ! Out files must match the decomp tag
+      elseif ( is_write(pio_atm_file%purpose) .and. & ! Out files must match the decomp tag
               (hist_var%numdims .ne. numdims .or. &
                trim(hist_var%pio_decomp_tag) .ne. trim(pio_decomp_tag))) then
         ! Different decomp tag in output file
@@ -778,7 +779,7 @@ contains
     integer                          :: retval           ! PIO error return value
     integer                          :: mode             ! Mode for how to handle the new file
 
-    if (pio_file%purpose .eq. file_purpose_in) then
+    if (is_read(pio_file%purpose)) then
       mode = pio_nowrite
     else
       mode = pio_write
@@ -805,7 +806,7 @@ contains
     call lookup_pio_atm_file(trim(fname),pio_atm_file,found,pio_file_list_ptr)
     if (found) then
       if (pio_atm_file%num_customers .eq. 1) then
-        if (pio_atm_file%purpose .eq. file_purpose_out) then
+        if ( is_write(pio_atm_file%purpose) ) then
           call PIO_syncfile(pio_atm_file%pioFileDesc)
         endif
         call PIO_closefile(pio_atm_file%pioFileDesc)
@@ -1218,20 +1219,24 @@ contains
 
     integer                        :: ierr, time_id
 
-    ! Sanity check
-    if (purpose .ne. file_purpose_in .and. purpose .ne. file_purpose_out) then
-      call errorHandle("PIO Error: unrecognized file purpose for file '"//filename//"'.",-999)
+    ! Sanity checks
+    if ( is_read(purpose) .and. is_write(purpose) ) then
+      call errorHandle("PIO Error: both READ and WRITE mode requested for file '"//filename//"'.",-999)
+    endif
+    if ( .not. (is_read(purpose) .or. is_write(purpose)) ) then
+      call errorHandle("PIO Error: no READ nor WRITE mode requested for file '"//filename//"'.",-999)
+    endif
+    if ( is_read(purpose) .and. is_append(purpose) ) then
+      call errorHandle("PIO Error: APPEND mode requested along with READ mode for file '"//filename//"'.",-999)
     endif
 
     ! If the file already exists, return that file
     call lookup_pio_atm_file(trim(filename),pio_file,found)
     if (found) then
-      if (purpose .ne. file_purpose_in .or. &
-          pio_file%purpose .ne. file_purpose_in ) then
+      if (is_write(purpose) .or. is_write(pio_file%purpose) ) then
         ! We only allow multiple customers of the file if they all use it in read mode.
         call errorHandle("PIO Error: file '"//trim(filename)//"' was already open for writing.",-999)
       else
-        pio_file%purpose = purpose
         call eam_pio_openfile(pio_file,trim(pio_file%filename))
         pio_file%num_customers = pio_file%num_customers + 1
       endif
@@ -1245,12 +1250,9 @@ contains
       pio_file%numRecs = 0
       pio_file%num_customers = 1
       pio_file%purpose = purpose
-      if (purpose == file_purpose_out) then  ! Will be used for output.  Set numrecs to zero and create the new file.
-        call eam_pio_createfile(pio_file%pioFileDesc,trim(pio_file%filename))
-        call eam_pio_createHeader(pio_file%pioFileDesc)
-      elseif (purpose == file_purpose_in) then ! Will be used for input, just open it
+      if (is_read(purpose) .or. is_append(purpose)) then
+        ! Either read or append to existing file. Either way, file must exist on disk
         call eam_pio_openfile(pio_file,trim(pio_file%filename))
-        pio_file%is_enddef = .true. ! Files open in read mode are in data mode already
         ! Update the numRecs to match the number of recs in this file.
         ierr = pio_inq_dimid(pio_file%pioFileDesc,"time",time_id)
         if (ierr.ne.0) then
@@ -1261,6 +1263,10 @@ contains
           ierr = pio_inq_dimlen(pio_file%pioFileDesc,time_id,pio_file%numRecs)
           call errorHandle("EAM_PIO ERROR: Unable to determine length for dimension time in file "//trim(pio_file%filename),ierr)
         end if
+      elseif (is_write(purpose)) then
+        ! New output file
+        call eam_pio_createfile(pio_file%pioFileDesc,trim(pio_file%filename))
+        call eam_pio_createHeader(pio_file%pioFileDesc)
       else
         call errorHandle("PIO Error: get_pio_atm_file with filename = "//trim(filename)//", purpose (int) assigned to this lookup is not valid" ,-999)
       end if
@@ -1729,5 +1735,21 @@ contains
 
     hist_coord => curr%coord
   end subroutine get_coord
+
+  function is_read (purpose)
+    integer, intent(in) :: purpose
+    logical :: is_read
+    is_read = iand(purpose,file_purpose_in) .ne. 0
+  end function is_read
+  function is_write (purpose)
+    integer, intent(in) :: purpose
+    logical :: is_write
+    is_write = iand(purpose,file_purpose_out) .ne. 0
+  end function is_write
+  function is_append (purpose)
+    integer, intent(in) :: purpose
+    logical :: is_append
+    is_append = iand(purpose,file_purpose_app) .ne. 0
+  end function is_append
 !=====================================================================!
 end module scream_scorpio_interface

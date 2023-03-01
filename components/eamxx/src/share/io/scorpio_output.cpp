@@ -675,7 +675,8 @@ reset_dev_views()
 /* ---------------------------------------------------------- */
 void AtmosphereOutput::
 register_variables(const std::string& filename,
-                   const std::string& fp_precision)
+                   const std::string& fp_precision,
+                   const bool existing_file)
 {
   using namespace scorpio;
 
@@ -719,27 +720,33 @@ register_variables(const std::string& filename,
     // Currently the field_manager only stores Real variables so it is not an issue,
     // but in the future if non-Real variables are added we will want to accomodate that.
 
-    register_variable(filename, name, name, units, vec_of_dims,
-                      "real",fp_precision, io_decomp_tag);
-
-    // Add any extra attributes for this variable, examples include:
-    //   1. A list of subfields associated with a field group output
-    //   2. A CF longname (TODO)
-    // First check if this is a field group w/ subfields.
-    const auto& children = field.get_header().get_children();
-    if (children.size()>0) {
-      // This field is a parent to a set of subfields
-      std::string children_list;
-      children_list += "[ ";
-      for (const auto& ch_w : children) {
-        auto child = ch_w.lock();
-        children_list += child->get_identifier().name() + ", ";
+    if (existing_file) {
+      // This file is already existing, so simply register in the online scream-scorpio metadata,
+      // without actually asking to add var in the nc file
+      get_variable(filename, name, name, vec_of_dims,
+                   "real", io_decomp_tag);
+    } else {
+      register_variable(filename, name, name, units, vec_of_dims,
+                        "real",fp_precision, io_decomp_tag);
+      // Add any extra attributes for this variable, examples include:
+      //   1. A list of subfields associated with a field group output
+      //   2. A CF longname (TODO)
+      // First check if this is a field group w/ subfields.
+      const auto& children = field.get_header().get_children();
+      if (children.size()>0) {
+        // This field is a parent to a set of subfields
+        std::string children_list;
+        children_list += "[ ";
+        for (const auto& ch_w : children) {
+          auto child = ch_w.lock();
+          children_list += child->get_identifier().name() + ", ";
+        }
+        // Replace last "," with "]"
+        children_list.pop_back();
+        children_list.pop_back();
+        children_list += " ]";
+        set_variable_metadata(filename,name,"sub_fields",children_list);
       }
-      // Replace last "," with "]"
-      children_list.pop_back();
-      children_list.pop_back();
-      children_list += " ]";
-      set_variable_metadata(filename,name,"sub_fields",children_list);
     }
   }
 } // register_variables
@@ -848,17 +855,20 @@ void AtmosphereOutput::set_degrees_of_freedom(const std::string& filename)
 /* ---------------------------------------------------------- */
 void AtmosphereOutput::
 setup_output_file(const std::string& filename,
-                  const std::string& fp_precision)
+                  const std::string& fp_precision,
+                  const bool existing_file)
 {
   using namespace scream::scorpio;
 
-  // Register dimensions with netCDF file.
-  for (auto it : m_dims) {
-    register_dimension(filename,it.first,it.first,it.second.first,it.second.second);
+  if (not existing_file) {
+    // Register dimensions with netCDF file.
+    for (auto it : m_dims) {
+      register_dimension(filename,it.first,it.first,it.second.first,it.second.second);
+    }
   }
 
   // Register variables with netCDF file.  Must come after dimensions are registered.
-  register_variables(filename,fp_precision);
+  register_variables(filename,fp_precision,existing_file);
 
   // Set the offsets of the local dofs in the global vector.
   set_degrees_of_freedom(filename);
