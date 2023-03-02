@@ -61,8 +61,7 @@ class OutputManager
 public:
   using fm_type = FieldManager;
   using gm_type = GridsManager;
-  using str_any_pair_t = std::pair<std::string,ekat::any>;
-  using globals_map_t = std::map<std::string,str_any_pair_t>;
+  using globals_map_t = std::map<std::string,ekat::any>;
 
   // Constructor(s) & Destructor
   OutputManager () = default;
@@ -106,7 +105,7 @@ public:
     setup (io_comm,params,field_mgrs,grids_mgr,run_t0,run_t0,is_model_restart_output);
   }
 
-  void setup_globals_map (const globals_map_t& globals);
+  void add_global (const std::string& name, const ekat::any& global);
   void run (const util::TimeStamp& current_ts);
   void finalize();
 
