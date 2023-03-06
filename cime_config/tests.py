@@ -476,6 +476,7 @@ _TESTS = {
             "SMS_D_Ln9.ne4_ne4.F2010-SCREAMv1-noAero",
             "ERP_Ln22.ne4pg2_ne4pg2.F2010-SCREAMv1",
             "ERS_D_Ln22.ne4pg2_ne4pg2.F2010-SCREAMv1",
+            "SMS_D_Ln9.ne4_ne4.F2010-SCREAMv1.scream-output_coarsening",
             )
     },
 

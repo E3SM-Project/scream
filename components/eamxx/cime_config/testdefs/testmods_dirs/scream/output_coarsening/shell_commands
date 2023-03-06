@@ -1,0 +1,1 @@
+./xmlchange SCREAM_ATMCHANGE_BUFFER='Scorpio::output_yaml_files=${SRCROOT}/components/eamxx/data/scream_coarsening_output.yaml'
