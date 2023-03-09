@@ -149,6 +149,7 @@ protected:
 
   void register_variables();
   void set_degrees_of_freedom();
+  void check_layout_dimensions(const std::string& name,const FieldLayout& layout);
 
   std::vector<std::string> get_vec_of_dims (const FieldLayout& layout);
   std::string get_io_decomp (const FieldLayout& layout);

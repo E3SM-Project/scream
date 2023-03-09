@@ -429,6 +429,7 @@ void AtmosphereInput::register_variables()
     // Determine the IO-decomp and construct a vector of dimension ids for this variable:
     auto vec_of_dims   = get_vec_of_dims(m_layouts.at(name));
     auto io_decomp_tag = get_io_decomp(m_layouts.at(name));
+    check_layout_dimensions(name,m_layouts.at(name));
 
     // TODO: Reverse order of dimensions to match flip between C++ -> F90 -> PIO,
     // may need to delete this line when switching to full C++/C implementation.
@@ -456,6 +457,24 @@ AtmosphereInput::get_vec_of_dims(const FieldLayout& layout)
   }
 
   return dims_names;
+}
+
+/* ---------------------------------------------------------- */
+void AtmosphereInput::
+check_layout_dimensions(const std::string& name, const FieldLayout& layout)
+{
+  const int num_cols = m_io_grid->get_num_global_dofs();
+  const auto layout_extents = layout.extents();
+  for (int i=0; i<layout.rank(); ++i) {
+    auto dimname = scorpio::get_nc_tag_name(layout.tag(i),layout.dim(i));
+    const int dimlen_file  = scorpio::get_dimlen_c2f(m_filename.c_str(),dimname.c_str());
+    const int dimlen_eamxx = layout.tag(i) == ShortFieldTagsNames::COL ? num_cols : layout_extents(i);
+    EKAT_REQUIRE_MSG(dimlen_file == dimlen_eamxx,"ERROR! scorpio_input::check_layout_dimensions\n        Dimension: " + dimname +"\n"
+      + "        Filename: " + m_filename + "\n"
+      + "      Field name: " + name + "\n"
+      + "   Field dimsize: " + std::to_string(dimlen_eamxx) + "\n"
+      + "    File dimsize: " + std::to_string(dimlen_file)); 
+  }
 }
 
 /* ---------------------------------------------------------- */
