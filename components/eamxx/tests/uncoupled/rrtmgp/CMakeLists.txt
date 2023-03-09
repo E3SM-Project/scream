@@ -42,7 +42,7 @@ if (NOT SCREAM_BASELINES_ONLY)
 
   ## Add a standalone test with chunked columns, and compare against non-chunked
   set (SUFFIX "_chunked")
-  math (EXPR COL_PER_RANK "218 / ${TEST_RANK_END}")
+  math (EXPR COL_PER_RANK "866 / ${TEST_RANK_END}")
   math (EXPR COL_CHUNK_SIZE "${COL_PER_RANK} / 2")
   if (COL_CHUNK_SIZE LESS 1)
     message (FATAL_ERROR "Error! Chunk size for rrtmgp unit test is less than 1.")

@@ -11,7 +11,7 @@ Time Stepping:
 
 initial_conditions:
   Filename: ${SCREAM_DATA_DIR}/init/${EAMxx_tests_IC_FILE_128lev}
-  topography_filename: ${TOPO_DATA_DIR}/USGS-gtopo30_ne4np4pg2_16x_converted.c20200527.nc
+  topography_filename: ${TOPO_DATA_DIR}/USGS-gtopo30_ne4np4pg2_16x_converted.c20200527.nc  ## WARNING!!! this test runs ne2 not ne4, so this topo file is wrong.
   surf_evap: 0.0
   surf_sens_flux: 0.0
   precip_ice_surf_mass: 0.0

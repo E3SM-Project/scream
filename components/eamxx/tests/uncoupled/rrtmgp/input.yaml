@@ -27,7 +27,7 @@ atmosphere_processes:
 
 grids_manager:
   Type: Mesh Free
-  number_of_global_columns: 218
+  number_of_global_columns: 866
   number_of_vertical_levels: 72
   geo_data_source: IC_FILE
 
