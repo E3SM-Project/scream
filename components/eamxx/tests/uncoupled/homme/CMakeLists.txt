@@ -2,7 +2,7 @@ include (ScreamUtils)
 
 # Get or create the dynamics lib
 #                 HOMME_TARGET   NP PLEV QSIZE_D
-CreateDynamicsLib("theta-l_kokkos"  4   72   10)
+CreateDynamicsLib("theta-l_kokkos"  4   128   10)
 
 # Create the test
 set (TEST_LABELS "dynamics;driver")
@@ -49,15 +49,15 @@ set (HOMME_TEST_MOISTURE notdry)
 set (HOMME_THETA_HY_MODE .true.)
 
 # Vert coord settings
-set (HOMME_TEST_VCOORD_INT_FILE acme-72i.ascii)
-set (HOMME_TEST_VCOORD_MID_FILE acme-72m.ascii)
+set (HOMME_TEST_VCOORD_INT_FILE acme-128i.ascii)
+set (HOMME_TEST_VCOORD_MID_FILE acme-128m.ascii)
 
 # Configure the namelist into the test directory
 configure_file(${SCREAM_BASE_DIR}/src/dynamics/homme/tests/theta.nl
                ${CMAKE_CURRENT_BINARY_DIR}/namelist.nl)
 
 # Ensure test input files are present in the data dir
-GetInputFile(scream/init/${EAMxx_tests_IC_FILE_72lev})
+GetInputFile(scream/init/${EAMxx_tests_IC_FILE_128lev})
 GetInputFile(cam/topo/USGS-gtopo30_ne4np4pg2_16x_converted.c20200527.nc)
 
 ## Finally compare all MPI rank output files against the single rank output as a baseline, using CPRNC

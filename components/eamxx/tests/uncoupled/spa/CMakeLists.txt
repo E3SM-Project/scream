@@ -22,7 +22,7 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/spa_standalone_output.yaml
 
 # Ensure test input files are present in the data dir
 set (TEST_INPUT_FILES
-  ${EAMxx_tests_IC_FILE_72lev}
+  ${EAMxx_tests_IC_FILE_128lev}
   map_ne4np4_to_ne2np4_mono.nc
   spa_file_unified_and_complete_ne4_20220428.nc
 )
