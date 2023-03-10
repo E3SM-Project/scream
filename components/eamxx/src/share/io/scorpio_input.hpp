@@ -172,6 +172,7 @@ protected:
 
   bool m_inited_with_fields        = false;
   bool m_inited_with_views         = false;
+  bool m_skip_grid_chk;
 }; // Class AtmosphereInput
 
 } //namespace scream

@@ -38,7 +38,7 @@ struct HorizontalMapSegment {
   HorizontalMapSegment(const gid_type dof_gid, const int length, const view_1d<const gid_type>& source_dofs, const view_1d<const Real>& weights);
 
   // Helper Functions
-  bool check() const;      // Check if this segment is valid
+  bool check() const;  // Check if this segment is valid
   void print() const;  // Useful for debugging, print the segment mapping info
 
   // Setter Functions
