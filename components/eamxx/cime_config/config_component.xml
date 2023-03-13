@@ -48,6 +48,14 @@
     </desc>
   </entry>
 
+  <entry id="EAMXX_OUTPUT_REMAP_GRID">
+    <type>char</type>
+    <default_value>UNSET</default_value>
+    <group>build_grid</group>
+    <file>env_build.xml</file>
+    <desc>eamxx remap grid</desc>
+  </entry>
+
   <entry id="SCREAM_HACK_XML">
     <type>logical</type>
     <default_value>FALSE</default_value>
@@ -57,7 +65,6 @@
       User intends to edit namelist_scream.xml by hand, do not regenerate it.
     </desc>
   </entry>
-
 
   <description>
     <desc compset="_SCREAM">scream default</desc>

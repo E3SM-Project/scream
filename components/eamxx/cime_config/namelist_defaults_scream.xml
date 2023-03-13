@@ -37,6 +37,7 @@ be lost if SCREAM_HACK_XML is not enabled.
     <selector name="hgrid" case_env="ATM_GRID"/>
     <selector name="dyn" case_env="ATM_DYN_TARGET"/>
     <selector name="nlev" case_env="SCREAM_CMAKE_OPTIONS" regex=".*SCREAM_NUM_VERTICAL_LEV ([0-9]+).*"/>
+    <selector name="output_remap_grid" case_env="EAMXX_OUTPUT_REMAP_GRID"/>
   </selectors>
 
   <!-- List of scream grids for a given compset. I/O can only happen on these grids -->
@@ -282,6 +283,15 @@ be lost if SCREAM_HACK_XML is not enabled.
     <vertical_coordinate_filename nlev="72">${DIN_LOC_ROOT}/atm/scream/init/vertical_coordinates_L72_20220927.nc</vertical_coordinate_filename>
     <vertical_coordinate_filename nlev="128">${DIN_LOC_ROOT}/atm/scream/init/vertical_coordinates_L128_20220927.nc</vertical_coordinate_filename>
   </grids_manager>
+
+  <!-- List of nc files for generic remapping -->
+  <output_remap_files>
+    <horiz_remap_file type="file">UNSET</horiz_remap_file>
+    <horiz_remap_file hgrid="ne4np4" output_remap_grid="ne2np4">${DIN_LOC_ROOT}/atm/scream/maps/map_ne4np4_to_ne2np4_mono.vert_remap.20230306.nc</horiz_remap_file>
+
+    <vertical_remap_file type="file">UNSET</vertical_remap_file>
+    <vertical_remap_file hgrid="ne4np4" output_remap_grid="ne2np4">${DIN_LOC_ROOT}/atm/scream/maps/map_ne4np4_to_ne2np4_mono.vert_remap.20230306.nc</vertical_remap_file>
+  </output_remap_files>
 
   <!-- List of nc files for loading inputs on specified grids -->
   <initial_conditions>
