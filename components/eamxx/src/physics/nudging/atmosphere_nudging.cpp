@@ -51,7 +51,6 @@ void Nudging::initialize_impl (const RunType /* run_type */)
 {
   using namespace ShortFieldTagsNames;
   FieldLayout scalar3d_layout_mid { {COL,LEV}, {m_num_cols, m_num_src_levs} };
-  FieldLayout horiz_wind_layout { {COL,CMP,LEV}, {m_num_cols,2,m_num_src_levs} };
   fields_ext["T_mid"] = view_2d<Real>("T_mid",m_num_cols,m_num_src_levs);
   fields_ext_h["T_mid"]       = Kokkos::create_mirror_view(fields_ext["T_mid"]);
   auto T_mid_h=fields_ext_h["T_mid"];

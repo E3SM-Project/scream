@@ -12,9 +12,6 @@ struct NudgingFunctions
   template <typename S>
   using view_2d = typename KT::template view_2d<S>;
 
-  template <typename S>
-  using view_3d = typename KT::template view_3d<S>;
-
   struct NudgingData
   {
     NudgingData() = default;
