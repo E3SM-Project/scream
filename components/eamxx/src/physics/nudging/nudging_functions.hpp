@@ -10,6 +10,9 @@ struct NudgingFunctions
   using KT = KokkosTypes<DefaultDevice>;
 
   template <typename S>
+  using view_1d = typename KT::template view_1d<S>;
+
+  template <typename S>
   using view_2d = typename KT::template view_2d<S>;
 
   struct NudgingData
@@ -30,6 +33,12 @@ struct NudgingFunctions
         qv = view_2d<Real>("",ncols,nlevs);
         u = view_2d<Real>("",ncols,nlevs);
         v = view_2d<Real>("",ncols,nlevs);
+        sfc_flux_dir_nir = view_1d<Real>("",ncols);
+        sfc_flux_dir_vis = view_1d<Real>("",ncols);
+        sfc_flux_dif_nir = view_1d<Real>("",ncols);
+        sfc_flux_dif_vis = view_1d<Real>("",ncols);
+        sfc_flux_sw_net  = view_1d<Real>("",ncols);
+        sfc_flux_lw_dn   = view_1d<Real>("",ncols);
       }
     }
     
@@ -41,6 +50,12 @@ struct NudgingFunctions
     view_2d<Real> qv;
     view_2d<Real> u;
     view_2d<Real> v;
+    view_1d<Real> sfc_flux_dir_nir;
+    view_1d<Real> sfc_flux_dir_vis;
+    view_1d<Real> sfc_flux_dif_nir;
+    view_1d<Real> sfc_flux_dif_vis;
+    view_1d<Real> sfc_flux_sw_net;
+    view_1d<Real> sfc_flux_lw_dn;
   };
 
 };

@@ -108,11 +108,18 @@ TEST_CASE("nudging") {
 
     const std::string& gn = grid2->name();
 
+    auto nondim = m/m;  // dummy unit for non-dimensional fields
     FieldIdentifier fid1("p_mid",FL{tag_2d,dims_2d},Pa,gn);
     FieldIdentifier fid2("T_mid",FL{tag_2d,dims_2d},K,gn);
     FieldIdentifier fid3("qv",FL{tag_2d,dims_2d},kg/kg,gn);
     FieldIdentifier fid4("u",FL{tag_2d,dims_2d},m/s,gn);
     FieldIdentifier fid5("v",FL{tag_2d,dims_2d},m/s,gn);
+    FieldIdentifier fid6("sfc_flux_dir_nir",FL{tag_h,dims_h},nondim,gn);
+    FieldIdentifier fid7("sfc_flux_dir_vis",FL{tag_h,dims_h},nondim,gn);
+    FieldIdentifier fid8("sfc_flux_dif_nir",FL{tag_h,dims_h},nondim,gn);
+    FieldIdentifier fid9("sfc_flux_dif_vis",FL{tag_h,dims_h},nondim,gn);
+    FieldIdentifier fid10("sfc_flux_sw_net",FL{tag_h,dims_h},nondim,gn);
+    FieldIdentifier fid11("sfc_flux_lw_dn",FL{tag_h,dims_h},nondim,gn);
 
     // Register fields with fm
     fm->registration_begins();
@@ -121,6 +128,12 @@ TEST_CASE("nudging") {
     fm->register_field(FR{fid3,"output"});
     fm->register_field(FR{fid4,"output"});
     fm->register_field(FR{fid5,"output"});
+    fm->register_field(FR{fid6,"output"});
+    fm->register_field(FR{fid7,"output"});
+    fm->register_field(FR{fid8,"output"});
+    fm->register_field(FR{fid9,"output"});
+    fm->register_field(FR{fid10,"output"});
+    fm->register_field(FR{fid11,"output"});
     fm->registration_ends();
 
     // Initialize these fields
@@ -138,6 +151,24 @@ TEST_CASE("nudging") {
 
     auto f5      = fm->get_field(fid5);
     auto f5_host = f5.get_view<Real**,Host>();
+
+    auto f6      = fm->get_field(fid6);
+    auto f6_host = f6.get_view<Real*,Host>();
+
+    auto f7      = fm->get_field(fid7);
+    auto f7_host = f7.get_view<Real*,Host>();
+
+    auto f8      = fm->get_field(fid8);
+    auto f8_host = f8.get_view<Real*,Host>();
+
+    auto f9      = fm->get_field(fid9);
+    auto f9_host = f9.get_view<Real*,Host>();
+    
+    auto f10      = fm->get_field(fid10);
+    auto f10_host = f10.get_view<Real*,Host>();
+    
+    auto f11      = fm->get_field(fid11);
+    auto f11_host = f11.get_view<Real*,Host>();
     
     for (int ii=0;ii<num_lcols;++ii) {
       for (int jj=0;jj<num_levs;++jj) {
@@ -147,6 +178,12 @@ TEST_CASE("nudging") {
 	f4_host(ii,jj) = (ii-1)*10000+200*jj+10*(-1);
 	f5_host(ii,jj) = (ii-1)*10000+200*jj+10*(-1);
       }
+      f6_host(ii)  = (ii-1)*10000+10*(-1);
+      f7_host(ii)  = (ii-1)*10000+10*(-1);
+      f8_host(ii)  = (ii-1)*10000+10*(-1);
+      f9_host(ii)  = (ii-1)*10000+10*(-1);
+      f10_host(ii) = (ii-1)*10000+10*(-1);
+      f11_host(ii) = (ii-1)*10000+10*(-1);
     }
     fm->init_fields_time_stamp(time);
     f1.sync_to_dev();
@@ -154,13 +191,19 @@ TEST_CASE("nudging") {
     f3.sync_to_dev();
     f4.sync_to_dev();
     f5.sync_to_dev();
+    f6.sync_to_dev();
+    f7.sync_to_dev();
+    f8.sync_to_dev();
+    f9.sync_to_dev();
+    f10.sync_to_dev();
+    f11.sync_to_dev();
 
     // Set up parameter list control for output
     ekat::ParameterList params;
     params.set<std::string>("filename_prefix","io_output_test");
     params.set<std::string>("Averaging Type","Instant");
     params.set<int>("Max Snapshots Per File",15);
-    std::vector<std::string> fnames = {"T_mid","p_mid","qv","u","v"};
+    std::vector<std::string> fnames = {"T_mid","p_mid","qv","u","v","sfc_flux_dir_nir","sfc_flux_dir_vis","sfc_flux_dif_nir","sfc_flux_dif_vis","sfc_flux_sw_net","sfc_flux_lw_dn"};
     params.set<std::vector<std::string>>("Field Names",fnames);
     auto& params_sub = params.sublist("output_control");
     params_sub.set<std::string>("frequency_units","nsteps");
@@ -185,6 +228,14 @@ TEST_CASE("nudging") {
         f.sync_to_host();
         auto fl = f.get_header().get_identifier().get_layout();
         switch (fl.rank()) {
+          case 1:
+            {
+              auto v = f.get_view<Real*,Host>();
+              for (int i=0; i<fl.dim(0); ++i) {
+	        v(i) = (i-1)*10000+10*(dt/250.)*ii;
+              }
+            }
+	    break;
           case 2:
             {
               auto v = f.get_view<Real**,Host>();

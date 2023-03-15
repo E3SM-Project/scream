@@ -8,7 +8,8 @@ namespace scream
 Nudging::Nudging (const ekat::Comm& comm, const ekat::ParameterList& params)
   : AtmosphereProcess(comm, params)
 {
-  datafile=m_params.get<std::string>("Nudging_Filename");
+  EKAT_REQUIRE_MSG(params.isParameter("Nudging_Filename"),"Error! nudging_process - Require `Nudging_Filename` to be passed via YAML parameter, this is currently missing.");
+  m_datafile = m_params.get<std::string>("Nudging_Filename");
 }
 
 // =========================================================================================
@@ -17,79 +18,141 @@ void Nudging::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   using namespace ekat::units;
   using namespace ShortFieldTagsNames;
 
+  // Open the nudging data file, need it to check if nudging will be compatible.
+  scorpio::register_file(m_datafile,scorpio::Read);
+
+  // Get simulation grid information
   m_grid = grids_manager->get_grid("Physics");
   const auto& grid_name = m_grid->name();
   m_num_cols = m_grid->get_num_local_dofs(); // Number of columns on this rank
   m_num_levs = m_grid->get_num_vertical_levels();  // Number of levels per column
+  // Check that number of columns in nudging file matches horizontal grid.
+  const int file_ncols = scorpio::get_dimlen_c2f(m_datafile.c_str(),"ncol");
+  EKAT_REQUIRE_MSG(m_num_cols==file_ncols,"Error!! Nudging::set_grids - The number of columns in nudging source data doesn't match the simulation grid.");
 
+  FieldLayout scalar2d_layout     { {COL    }, {m_num_cols            } };
   FieldLayout scalar3d_layout_mid { {COL,LEV}, {m_num_cols, m_num_levs} };
 
   constexpr int ps = 1;
   auto Q = kg/kg;
   Q.set_string("kg/kg");
+  auto Wm2 = W / m / m;
+  Wm2.set_string("W/m2");
+
+  // p_mid is required for the vertical interpolation that will be needed to cast nudged source values onto simulation grid.
   add_field<Required>("p_mid", scalar3d_layout_mid, Pa, grid_name, ps);
+
+  // Add nudged fields
   add_field<Updated>("T_mid", scalar3d_layout_mid, K, grid_name, ps);
   add_field<Updated>("qv", scalar3d_layout_mid, Q, grid_name, "tracers", ps);
   add_field<Updated>("u", scalar3d_layout_mid, m/s, grid_name, ps);  
-  add_field<Updated>("v", scalar3d_layout_mid, m/s, grid_name, ps);  
+  add_field<Updated>("v", scalar3d_layout_mid, m/s, grid_name, ps); 
+ 
+  add_field<Updated>("sfc_flux_dir_nir", scalar2d_layout, Wm2, grid_name, ps);  
+  add_field<Updated>("sfc_flux_dir_vis", scalar2d_layout, Wm2, grid_name, ps);  
+  add_field<Updated>("sfc_flux_dif_nir", scalar2d_layout, Wm2, grid_name, ps);  
+  add_field<Updated>("sfc_flux_dif_vis", scalar2d_layout, Wm2, grid_name, ps);  
+  add_field<Updated>("sfc_flux_sw_net" , scalar2d_layout, Wm2, grid_name);
+  add_field<Updated>("sfc_flux_lw_dn"  , scalar2d_layout, Wm2, grid_name);
 
-  //Now need to read in the file
-  scorpio::register_file(datafile,scorpio::Read);
-  m_num_src_levs = scorpio::get_dimlen_c2f(datafile.c_str(),"lev");
-  double time_value_1= scorpio::read_time_at_index_c2f(datafile.c_str(),1);
-  double time_value_2= scorpio::read_time_at_index_c2f(datafile.c_str(),2);
-    
+  // Gather important information from the nudging data file.
+  // Determine the extent of the vertical dimension of source data.
+  // Note: We assume the horizontal grid of the nudging data matches the simulation grid.
+  m_num_src_levs = scorpio::get_dimlen_c2f(m_datafile.c_str(),"lev");
+  // Set the length of time between nudging steps.
+  double time_value_1= scorpio::read_time_at_index_c2f(m_datafile.c_str(),1);
+  double time_value_2= scorpio::read_time_at_index_c2f(m_datafile.c_str(),2);
   //Here we are assuming that the time in the netcdf file is in days
   //Internally we want this in seconds so need to convert
   //Only consider integer time steps in seconds to resolve any roundoff error
+  // TODO: Create function to check units of time in file and convert accordingly.
   time_step_file=int((time_value_2-time_value_1)*86400);
-  scorpio::eam_pio_closefile(datafile);
+  scorpio::eam_pio_closefile(m_datafile);
 }
 
 // =========================================================================================
 void Nudging::initialize_impl (const RunType /* run_type */)
 {
   using namespace ShortFieldTagsNames;
+  FieldLayout scalar2d_layout     { {COL    }, {m_num_cols            } };
   FieldLayout scalar3d_layout_mid { {COL,LEV}, {m_num_cols, m_num_src_levs} };
-  fields_ext["T_mid"] = view_2d<Real>("T_mid",m_num_cols,m_num_src_levs);
-  fields_ext_h["T_mid"]       = Kokkos::create_mirror_view(fields_ext["T_mid"]);
+  fields_ext["T_mid"]   = view_2d<Real>("T_mid",m_num_cols,m_num_src_levs);
+  fields_ext_h["T_mid"] = Kokkos::create_mirror_view(fields_ext["T_mid"]);
   auto T_mid_h=fields_ext_h["T_mid"];
-  host_views["T_mid"] = view_1d_host<Real>(T_mid_h.data(),T_mid_h.size());
+  host_views["T_mid"]   = view_1d_host<Real>(T_mid_h.data(),T_mid_h.size());
   layouts.emplace("T_mid", scalar3d_layout_mid);
 
-  fields_ext["p_mid"] = view_2d<Real>("p_mid",m_num_cols,m_num_src_levs);
-  fields_ext_h["p_mid"]       = Kokkos::create_mirror_view(fields_ext["p_mid"]);
+  fields_ext["p_mid"]   = view_2d<Real>("p_mid",m_num_cols,m_num_src_levs);
+  fields_ext_h["p_mid"] = Kokkos::create_mirror_view(fields_ext["p_mid"]);
   auto p_mid_h=fields_ext_h["p_mid"];
-  host_views["p_mid"] = view_1d_host<Real>(p_mid_h.data(),p_mid_h.size());
+  host_views["p_mid"]   = view_1d_host<Real>(p_mid_h.data(),p_mid_h.size());
   layouts.emplace("p_mid", scalar3d_layout_mid);
   
-  fields_ext["qv"] = view_2d<Real>("qv",m_num_cols,m_num_src_levs);
-  fields_ext_h["qv"]       = Kokkos::create_mirror_view(fields_ext["qv"]);
+  fields_ext["qv"]   = view_2d<Real>("qv",m_num_cols,m_num_src_levs);
+  fields_ext_h["qv"] = Kokkos::create_mirror_view(fields_ext["qv"]);
   auto qv_h=fields_ext_h["qv"];
-  host_views["qv"] = view_1d_host<Real>(qv_h.data(),qv_h.size());
+  host_views["qv"]   = view_1d_host<Real>(qv_h.data(),qv_h.size());
   layouts.emplace("qv", scalar3d_layout_mid);
 
-  fields_ext["u"] = view_2d<Real>("u",m_num_cols,m_num_src_levs);
-  fields_ext_h["u"]       = Kokkos::create_mirror_view(fields_ext["u"]);
+  fields_ext["u"]   = view_2d<Real>("u",m_num_cols,m_num_src_levs);
+  fields_ext_h["u"] = Kokkos::create_mirror_view(fields_ext["u"]);
   auto u_h=fields_ext_h["u"];
-  host_views["u"] = view_1d_host<Real>(u_h.data(),u_h.size());
+  host_views["u"]   = view_1d_host<Real>(u_h.data(),u_h.size());
   layouts.emplace("u", scalar3d_layout_mid);
 
-  fields_ext["v"] = view_2d<Real>("v",m_num_cols,m_num_src_levs);
-  fields_ext_h["v"]       = Kokkos::create_mirror_view(fields_ext["v"]);
+  fields_ext["v"]   = view_2d<Real>("v",m_num_cols,m_num_src_levs);
+  fields_ext_h["v"] = Kokkos::create_mirror_view(fields_ext["v"]);
   auto v_h=fields_ext_h["v"];
-  host_views["v"] = view_1d_host<Real>(v_h.data(),v_h.size());
+  host_views["v"]   = view_1d_host<Real>(v_h.data(),v_h.size());
   layouts.emplace("v", scalar3d_layout_mid);
+
+  fields_ext_1d["sfc_flux_dir_nir"]   = view_1d<Real>("sfc_flux_dir_nir",m_num_cols);
+  fields_ext_1d_h["sfc_flux_dir_nir"] = Kokkos::create_mirror_view(fields_ext_1d["sfc_flux_dir_nir"]);
+  auto sfc_flux_dir_nir_h=fields_ext_1d_h["sfc_flux_dir_nir"];
+  host_views["sfc_flux_dir_nir"]   = view_1d_host<Real>(sfc_flux_dir_nir_h.data(),sfc_flux_dir_nir_h.size());
+  layouts.emplace("sfc_flux_dir_nir", scalar2d_layout);
+
+  fields_ext_1d["sfc_flux_dir_vis"]   = view_1d<Real>("sfc_flux_dir_vis",m_num_cols);
+  fields_ext_1d_h["sfc_flux_dir_vis"] = Kokkos::create_mirror_view(fields_ext_1d["sfc_flux_dir_vis"]);
+  auto sfc_flux_dir_vis_h=fields_ext_1d_h["sfc_flux_dir_vis"];
+  host_views["sfc_flux_dir_vis"]   = view_1d_host<Real>(sfc_flux_dir_vis_h.data(),sfc_flux_dir_vis_h.size());
+  layouts.emplace("sfc_flux_dir_vis", scalar2d_layout);
+
+  fields_ext_1d["sfc_flux_dif_nir"]   = view_1d<Real>("sfc_flux_dif_nir",m_num_cols);
+  fields_ext_1d_h["sfc_flux_dif_nir"] = Kokkos::create_mirror_view(fields_ext_1d["sfc_flux_dif_nir"]);
+  auto sfc_flux_dif_nir_h=fields_ext_1d_h["sfc_flux_dif_nir"];
+  host_views["sfc_flux_dif_nir"]   = view_1d_host<Real>(sfc_flux_dif_nir_h.data(),sfc_flux_dif_nir_h.size());
+  layouts.emplace("sfc_flux_dif_nir", scalar2d_layout);
+
+  fields_ext_1d["sfc_flux_dif_vis"]   = view_1d<Real>("sfc_flux_dif_vis",m_num_cols);
+  fields_ext_1d_h["sfc_flux_dif_vis"] = Kokkos::create_mirror_view(fields_ext_1d["sfc_flux_dif_vis"]);
+  auto sfc_flux_dif_vis_h=fields_ext_1d_h["sfc_flux_dif_vis"];
+  host_views["sfc_flux_dif_vis"]   = view_1d_host<Real>(sfc_flux_dif_vis_h.data(),sfc_flux_dif_vis_h.size());
+  layouts.emplace("sfc_flux_dif_vis", scalar2d_layout);
+
+  fields_ext_1d["sfc_flux_sw_net"]   = view_1d<Real>("sfc_flux_sw_net",m_num_cols);
+  fields_ext_1d_h["sfc_flux_sw_net"] = Kokkos::create_mirror_view(fields_ext_1d["sfc_flux_sw_net"]);
+  auto sfc_flux_sw_net_h=fields_ext_1d_h["sfc_flux_sw_net"];
+  host_views["sfc_flux_sw_net"]   = view_1d_host<Real>(sfc_flux_sw_net_h.data(),sfc_flux_sw_net_h.size());
+  layouts.emplace("sfc_flux_sw_net", scalar2d_layout);
+
+  fields_ext_1d["sfc_flux_lw_dn"]   = view_1d<Real>("sfc_flux_lw_dn",m_num_cols);
+  fields_ext_1d_h["sfc_flux_lw_dn"] = Kokkos::create_mirror_view(fields_ext_1d["sfc_flux_lw_dn"]);
+  auto sfc_flux_lw_dn_h=fields_ext_1d_h["sfc_flux_lw_dn"];
+  host_views["sfc_flux_lw_dn"]   = view_1d_host<Real>(sfc_flux_lw_dn_h.data(),sfc_flux_lw_dn_h.size());
+  layouts.emplace("sfc_flux_lw_dn", scalar2d_layout);
+
+  
 
   auto grid_l = m_grid->clone("Point Grid", false);
   grid_l->reset_num_vertical_lev(m_num_src_levs);
   ekat::ParameterList data_in_params;
-  m_fnames = {"T_mid","p_mid","qv","u","v"};
+  m_fnames = {"T_mid","p_mid","qv","u","v","sfc_flux_dir_nir","sfc_flux_dir_vis","sfc_flux_dif_nir","sfc_flux_dif_vis","sfc_flux_sw_net","sfc_flux_lw_dn"};
   data_in_params.set("Field Names",m_fnames);
-  data_in_params.set("Filename",datafile);
+  data_in_params.set("Filename",m_datafile);
   // We need to skip grid checks because multiple ranks 
   // may want the same column of source data.
-  data_in_params.set("Skip_Grid_Checks",true);  
+  data_in_params.set("Skip_Grid_Checks",true); 
   data_input = std::make_shared<AtmosphereInput>(m_comm,data_in_params);
   data_input->init(grid_l,host_views,layouts);
 
@@ -98,11 +161,17 @@ void Nudging::initialize_impl (const RunType /* run_type */)
   qv_ext = fields_ext["qv"];
   u_ext = fields_ext["u"];
   v_ext = fields_ext["v"];
+  sfc_flux_dir_nir_ext = fields_ext_1d["sfc_flux_dir_nir"];
+  sfc_flux_dir_vis_ext = fields_ext_1d["sfc_flux_dir_vis"];
+  sfc_flux_dif_nir_ext = fields_ext_1d["sfc_flux_dif_nir"];
+  sfc_flux_dif_vis_ext = fields_ext_1d["sfc_flux_dif_vis"];
+  sfc_flux_sw_net_ext = fields_ext_1d["sfc_flux_sw_net"];
+  sfc_flux_lw_dn_ext  = fields_ext_1d["sfc_flux_lw_dn"];
   ts0=timestamp();
 
   //Check that internal timestamp starts at same point as time in external file
-  int start_date=scorpio::get_int_attribute_c2f(datafile.c_str(),"start_date");
-  int start_time=scorpio::get_int_attribute_c2f(datafile.c_str(),"start_time");
+  int start_date=scorpio::get_int_attribute_c2f(m_datafile.c_str(),"start_date");
+  int start_time=scorpio::get_int_attribute_c2f(m_datafile.c_str(),"start_time");
   int start_year=int(start_date/10000);
   int start_month=int((start_date-start_year*10000)/100);
   int start_day=int(start_date-start_year*10000-start_month*100);
@@ -142,6 +211,12 @@ void Nudging::initialize_impl (const RunType /* run_type */)
   Kokkos::deep_copy(NudgingData_bef.u,fields_ext_h["u"]);
   Kokkos::deep_copy(NudgingData_bef.v,fields_ext_h["v"]);
   Kokkos::deep_copy(NudgingData_bef.qv,fields_ext_h["qv"]);
+  Kokkos::deep_copy(NudgingData_bef.sfc_flux_dir_nir,fields_ext_1d_h["sfc_flux_dir_nir"]);
+  Kokkos::deep_copy(NudgingData_bef.sfc_flux_dir_vis,fields_ext_1d_h["sfc_flux_dir_vis"]);
+  Kokkos::deep_copy(NudgingData_bef.sfc_flux_dif_nir,fields_ext_1d_h["sfc_flux_dif_nir"]);
+  Kokkos::deep_copy(NudgingData_bef.sfc_flux_dif_vis,fields_ext_1d_h["sfc_flux_dif_vis"]);
+  Kokkos::deep_copy(NudgingData_bef.sfc_flux_sw_net,fields_ext_1d_h["sfc_flux_sw_net"]);
+  Kokkos::deep_copy(NudgingData_bef.sfc_flux_lw_dn,fields_ext_1d_h["sfc_flux_lw_dn"]);
   NudgingData_bef.time = 0.;
 
   //Read in the first time step
@@ -151,6 +226,12 @@ void Nudging::initialize_impl (const RunType /* run_type */)
   Kokkos::deep_copy(NudgingData_aft.u,fields_ext_h["u"]);
   Kokkos::deep_copy(NudgingData_aft.v,fields_ext_h["v"]);
   Kokkos::deep_copy(NudgingData_aft.qv,fields_ext_h["qv"]);
+  Kokkos::deep_copy(NudgingData_aft.sfc_flux_dir_nir,fields_ext_1d_h["sfc_flux_dir_nir"]);
+  Kokkos::deep_copy(NudgingData_aft.sfc_flux_dir_vis,fields_ext_1d_h["sfc_flux_dir_vis"]);
+  Kokkos::deep_copy(NudgingData_aft.sfc_flux_dif_nir,fields_ext_1d_h["sfc_flux_dif_nir"]);
+  Kokkos::deep_copy(NudgingData_aft.sfc_flux_dif_vis,fields_ext_1d_h["sfc_flux_dif_vis"]);
+  Kokkos::deep_copy(NudgingData_aft.sfc_flux_sw_net,fields_ext_1d_h["sfc_flux_sw_net"]);
+  Kokkos::deep_copy(NudgingData_aft.sfc_flux_lw_dn,fields_ext_1d_h["sfc_flux_lw_dn"]);
   NudgingData_aft.time = time_step_file;
 
 }
@@ -165,7 +246,7 @@ void Nudging::time_interpolation (const int time_s) {
   const int time_index = time_s/time_step_file;
   double time_step_file_d = time_step_file;
   double w_bef = ((time_index+1)*time_step_file-time_s) / time_step_file_d;
-  double w_aft = (time_s-(time_index)*time_step_file) / time_step_file_d;
+  double w_aft = 1.0 - w_bef; //(time_s-(time_index)*time_step_file) / time_step_file_d;
   const int num_cols = NudgingData_aft.T_mid.extent(0);
   const int num_vert_packs = NudgingData_aft.T_mid.extent(1);
   const auto policy = ESU::get_default_team_policy(num_cols, num_vert_packs);
