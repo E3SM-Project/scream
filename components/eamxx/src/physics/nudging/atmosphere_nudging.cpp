@@ -311,6 +311,12 @@ void Nudging::update_time_step (const int time_s)
       Kokkos::deep_copy(NudgingData_aft.u,fields_ext_h["u"]);
       Kokkos::deep_copy(NudgingData_aft.v,fields_ext_h["v"]);
       Kokkos::deep_copy(NudgingData_aft.qv,fields_ext_h["qv"]);
+      Kokkos::deep_copy(NudgingData_aft.sfc_flux_dir_nir,fields_ext_1d_h["sfc_flux_dir_nir"]);
+      Kokkos::deep_copy(NudgingData_aft.sfc_flux_dir_vis,fields_ext_1d_h["sfc_flux_dir_vis"]);
+      Kokkos::deep_copy(NudgingData_aft.sfc_flux_dif_nir,fields_ext_1d_h["sfc_flux_dif_nir"]);
+      Kokkos::deep_copy(NudgingData_aft.sfc_flux_dif_vis,fields_ext_1d_h["sfc_flux_dif_vis"]);
+      Kokkos::deep_copy(NudgingData_aft.sfc_flux_sw_net,fields_ext_1d_h["sfc_flux_sw_net"]);
+      Kokkos::deep_copy(NudgingData_aft.sfc_flux_lw_dn,fields_ext_1d_h["sfc_flux_lw_dn"]);
       NudgingData_aft.time = time_step_file*(time_index+1);
     }
   
@@ -336,8 +342,14 @@ void Nudging::run_impl (const double dt)
 
   auto T_mid       = get_field_out("T_mid").get_view<mPack**>();
   auto qv          = get_field_out("qv").get_view<mPack**>();
-  auto u          = get_field_out("u").get_view<mPack**>();
-  auto v          = get_field_out("v").get_view<mPack**>();
+  auto u           = get_field_out("u").get_view<mPack**>();
+  auto v           = get_field_out("v").get_view<mPack**>();
+  auto sfc_flux_dir_nir           = get_field_out("sfc_flux_dir_nir").get_view<Real*>();
+  auto sfc_flux_dir_vis           = get_field_out("sfc_flux_dir_vis").get_view<Real*>();
+  auto sfc_flux_dif_nir           = get_field_out("sfc_flux_dif_nir").get_view<Real*>();
+  auto sfc_flux_dif_vis           = get_field_out("sfc_flux_dif_vis").get_view<Real*>();
+  auto sfc_flux_sw_net            = get_field_out("sfc_flux_sw_net").get_view<Real*>();
+  auto sfc_flux_lw_dn             = get_field_out("sfc_flux_lw_dn").get_view<Real*>();
 
   const auto& p_mid    = get_field_in("p_mid").get_view<const mPack**>();
 
@@ -402,6 +414,15 @@ void Nudging::run_impl (const double dt)
       auto p_mid_ext_1d = ekat::subview(p_mid_ext,icol);
       auto qv_1d = ekat::subview(qv,icol);
       auto qv_ext_1d = ekat::subview(qv_ext,icol);
+
+      // COL only variables
+      sfc_flux_dir_nir(icol) = sfc_flux_dir_nir_ext(icol);
+      sfc_flux_dir_vis(icol) = sfc_flux_dir_vis_ext(icol);
+      sfc_flux_dif_nir(icol) = sfc_flux_dif_nir_ext(icol);
+      sfc_flux_dif_vis(icol) = sfc_flux_dif_vis_ext(icol);
+      sfc_flux_sw_net(icol)  = sfc_flux_sw_net_ext(icol);
+      sfc_flux_lw_dn(icol)   = sfc_flux_lw_dn_ext(icol);
+
       const auto range = Kokkos::TeamThreadRange(team, num_vert_packs);
       Kokkos::parallel_for(range, [&] (const Int & k) {
         const auto above_max = p_mid_1d(k) > p_mid_ext_1d(num_vert_packs_ext-1);
