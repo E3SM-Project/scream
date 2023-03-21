@@ -4250,6 +4250,15 @@
       <env name="PAMI_IBV_DEVICE_NAME_1">mlx5_3:1,mlx5_0:1</env>
       <env name="PAMI_IBV_DEVICE_NAME">mlx5_0:1,mlx5_3:1</env>
     </environment_variables>
+    <environment_variables compiler="ibm.*" mpilib="spectrum-mpi">
+      <env name="ADIOS2_DIR">/gpfs/alpine/cli115/world-shared/3rdparty/adios2/2.8.3.patch/spectrum-mpi-10.4.0.3/xl-16.1.1-10</env>
+    </environment_variables>
+    <environment_variables compiler="pgi.*" mpilib="spectrum-mpi">
+      <env name="ADIOS2_DIR">/gpfs/alpine/cli115/world-shared/3rdparty/adios2/2.8.3.patch/spectrum-mpi-10.4.0.3/nvhpc-21.11</env>
+    </environment_variables>
+    <environment_variables compiler="gnu.*" mpilib="spectrum-mpi">
+      <env name="ADIOS2_DIR">/gpfs/alpine/cli115/world-shared/3rdparty/adios2/2.8.3.patch/spectrum-mpi-10.4.0.3/gcc-9.1.0</env>
+    </environment_variables>
   </machine>
 
   <machine MACH="ascent">
