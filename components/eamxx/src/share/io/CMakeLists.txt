@@ -8,13 +8,17 @@ set(SCREAM_SCORPIO_SRCS
   scream_io_utils.cpp
 )
 
+# Add ADIOS lib as dependency
+find_package (ADIOS2)
+
 # Create io lib
 add_library(scream_io ${SCREAM_SCORPIO_SRCS})
 set_target_properties(scream_io PROPERTIES
   Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules
 )
 target_include_directories(scream_io PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/modules)
-target_link_libraries(scream_io PUBLIC scream_share piof pioc)
+#target_link_libraries(scream_io PUBLIC scream_share piof pioc adios2::adios2 adios2pio-nm-lib)
+target_link_libraries(scream_io PUBLIC scream_share piof pioc adios2::adios2)
 
 if (SCREAM_CIME_BUILD)
   target_link_libraries(scream_io PUBLIC csm_share)
