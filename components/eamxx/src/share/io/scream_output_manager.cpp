@@ -231,16 +231,20 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
         auto last_output_fname = compute_filename(m_output_control,m_output_file_specs,false,last_file_ts);
         // There was at least one snapshot written in the previous run, so there was a file.
 
-        // Check if we need to resume filling the output file
+        // Check if we need to resume filling the output file.
         scorpio::register_file(last_output_fname,scorpio::Read);
         int num_snaps = scorpio::get_dimlen_c2f(last_output_fname.c_str(),"time");
         scorpio::eam_pio_closefile(last_output_fname);
-        m_resume_output_file = num_snaps<m_output_file_specs.max_snapshots_in_file;
+
+        m_resume_output_file = not restart_pl.get("force_new_file",false);
 
         // Check consistency of output specs across restart
+        // NOTE: to avoid a full file being resumed if max snaps is changed across runs (which might
+        //       be unintended), we check that max_snapshots is not changed across runs.
         auto old_freq = scorpio::get_attribute<int>(last_output_fname,"frequency");
         auto old_freq_units = scorpio::get_attribute<std::string>(last_output_fname,"frequency_units");
         auto old_avg_type = scorpio::get_attribute<std::string>(last_output_fname,"avg_type");
+        auto old_max_snaps = scorpio::get_attribute<int>(last_output_fname,"max_snapshots_per_file");
         EKAT_REQUIRE_MSG (old_freq == m_output_control.frequency,
             "Error! Cannot change frequency when performing history restart.\n"
             "  - old freq: " << old_freq << "\n"
@@ -253,6 +257,15 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
             "Error! Cannot change avg type when performing history restart.\n"
             "  - old avg type: " << old_avg_type + "\n"
             "  - new avg type: " << e2str(m_avg_type) << "\n");
+        EKAT_REQUIRE_MSG (!m_resume_output_file || old_max_snaps == m_output_file_specs.max_snapshots_in_file,
+            "Error! Cannot change max snapshots per file when performing history restart.\n"
+            "  - old max snaps: " << old_max_snaps + "\n"
+            "  - new max snaps: " << m_output_file_specs.max_snapshots_in_file << "\n"
+            "If you really want to change the file capacity, you need to force using a new file, setting\n"
+            "  Restart:\n"
+            "    force_new_file: true\n");
+
+        m_resume_output_file = num_snaps<m_output_file_specs.max_snapshots_in_file;
 
         // We can also check the time of the last write
         scorpio::register_file(last_output_fname,scorpio::Read);
