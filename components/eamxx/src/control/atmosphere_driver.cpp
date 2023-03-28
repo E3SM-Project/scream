@@ -589,14 +589,14 @@ void AtmosphereDriver::initialize_output_managers () {
 
   auto& io_params = m_atm_params.sublist("Scorpio");
 
-  // IMPORTANT: create model restart OutputManager first! This OM will be able to
-  // retrieve the original simulation start date, which we later pass to the
-  // OM of all the requested outputs.
+  // IMPORTANT: create model restart OutputManager first! This OM will be in charge
+  // of creating rpointer.atm, while other OM's will simply append to it.
+  // If this assumption is not verified, we must always append to rpointer, which
+  // can make the rpointer file a bit confusing.
 
   // Check for model restart output
   if (io_params.isSublist("model_restart")) {
     auto restart_pl = io_params.sublist("model_restart");
-    // Signal that this is not a normal output, but the model restart one
     m_output_managers.emplace_back();
     auto& om = m_output_managers.back();
     if (fvphyshack) {

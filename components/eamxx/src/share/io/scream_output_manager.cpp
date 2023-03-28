@@ -88,9 +88,9 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
   m_output_control.timestamp_of_last_write = start_ref ? m_case_t0 : m_run_t0;
 
   // File specs
-  m_output_file_specs.max_snapshots_in_file = m_params.get<int>("Max Snapshots Per File",-1);
-  m_output_file_specs.filename_with_mpiranks    = out_control_pl.get("MPI Ranks in Filename",false);
-  m_output_file_specs.save_grid_data            = out_control_pl.get("save_grid_data",!m_is_model_restart_output);
+  m_output_file_specs.max_snapshots_in_file  = m_params.get<int>("Max Snapshots Per File",-1);
+  m_output_file_specs.filename_with_mpiranks = out_control_pl.get("MPI Ranks in Filename",false);
+  m_output_file_specs.save_grid_data         = out_control_pl.get("save_grid_data",!m_is_model_restart_output);
 
   // For each grid, create a separate output stream.
   if (field_mgrs.size()==1) {
@@ -181,12 +181,14 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
     auto hist_restart_casename = restart_pl.get("filename_prefix",m_casename);
 
     if (perform_history_restart) {
+      std::cout << "restarting history...\n";
       if (has_restart_data) {
         // This is non-instantaneous output, with freq>1 or freq=1 and freq_units!=nsteps
         // We need to read
         using namespace scorpio;
         auto fn = find_filename_in_rpointer(hist_restart_casename,false,m_io_comm,m_run_t0);
 
+        std::cout << "restarting from " << fn << "...\n";
         // We will use this to see if the last output file still has room.
         m_output_control.nsamples_since_last_write = get_attribute<int>(fn, "num_samples_since_last_write");
 
@@ -211,6 +213,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
       for (auto entry : filesystem_ns::directory_iterator(cwd)) {
         std::string fn = entry.path().filename();
         if (fn.substr(0,match.size())==match) {
+          std::cout << " found old output file: " << fn << ", matching " << match << "\n";
           auto t_str = fn.substr(fn.size()-19,16);
           auto t = util::str_to_time_stamp(t_str);
           EKAT_REQUIRE_MSG (t.is_valid(),
@@ -222,6 +225,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
           }
         }
       }
+      std::cout << "last write ts: " << last_file_ts.to_string() << "...\n";
 
       // If no output file was found from previous runs, last_write_ts remains m_case_t0.
       // This is correct, since INSTANT output would have written at least t=0, so this MUST
@@ -231,6 +235,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
         auto last_output_fname = compute_filename(m_output_control,m_output_file_specs,false,last_file_ts);
         // There was at least one snapshot written in the previous run, so there was a file.
 
+        std::cout << "found file " << last_output_fname <<  "\n";
         // Check if we need to resume filling the output file.
         scorpio::register_file(last_output_fname,scorpio::Read);
         int num_snaps = scorpio::get_dimlen_c2f(last_output_fname.c_str(),"time");
@@ -308,6 +313,7 @@ void OutputManager::run(const util::TimeStamp& timestamp)
   if (m_output_disabled) {
     return;
   }
+
   using namespace scorpio;
 
   std::string timer_root = m_is_model_restart_output ? "EAMxx::IO::restart" : "EAMxx::IO::standard";
@@ -340,12 +346,23 @@ void OutputManager::run(const util::TimeStamp& timestamp)
     // If we are going to write an output checkpoint file, or a model restart file,
     // we need to append to the filename ".rhist" or ".r" respectively, and add
     // the filename to the rpointer.atm file.
-    if (m_is_model_restart_output || is_checkpoint_step) {
-      if (m_io_comm.am_i_root()) {
-        std::ofstream rpointer;
+    if (m_io_comm.am_i_root()) {
+      std::ofstream rpointer;
+      if (m_is_model_restart_output) {
+        rpointer.open("rpointer.atm");  // Open rpointer and nuke its content
+      } else if (is_checkpoint_step) {
+        EKAT_REQUIRE_MSG (std::ifstream("rpointer.atm").good(),
+            "Error! Cannot find rpointer.atm file to append history restart file in.\n"
+            " Model restart output is supposed to be in charge of creating rpointer.atm.\n"
+            " There are two possible causes:\n"
+            "   1. You have a 'Checkpoint Control' list in your output stream, but no Scorpio::model_restart\n"
+            "      section in the input yaml file. This makes no sense, please correct.\n"
+            "   2. The current implementation assumes that the model restart OutputManager runs\n"
+            "      *before* any other output stream (so it can nuke rpointer.atm if already existing).\n"
+            "      If this has changed, we need to revisit this piece of the code.\n");
         rpointer.open("rpointer.atm",std::ofstream::app);  // Open rpointer file and append to it
-        rpointer << filename << std::endl;
       }
+      rpointer << filename << std::endl;
     }
 
     // Update time and nsteps in the output file
