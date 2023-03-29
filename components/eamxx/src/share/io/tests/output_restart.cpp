@@ -20,6 +20,7 @@
 #include "ekat/ekat_parameter_list.hpp"
 #include "ekat/ekat_parse_yaml_file.hpp"
 #include "ekat/util/ekat_string_utils.hpp"
+#include "ekat/util/ekat_test_utils.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -47,17 +48,20 @@ TEST_CASE("output_restart","io")
   // Note to AaronDonahue:  You are trying to figure out why you can't change the number of cols and levs for this test.  
   // Something having to do with freeing up and then resetting the io_decompositions.
   ekat::Comm io_comm(MPI_COMM_WORLD);
-  Int num_gcols = 2*io_comm.size();
-  Int num_levs = 3;
+  int num_gcols = 2*io_comm.size();
+  int num_levs = 3;
+  int dt = 1;
 
   auto engine = setup_random_test(&io_comm);
 
   // First set up a field manager and grids manager to interact with the output functions
   auto gm = get_test_gm(io_comm,num_gcols,num_levs);
   auto grid = gm->get_grid("Point Grid");
-  auto field_manager = get_test_fm(grid);
-  randomize_fields(*field_manager,engine);
-  const auto& out_fields = field_manager->get_groups_info().at("output")->m_fields_names;
+
+  // The IC field manager
+  auto fm0 = get_test_fm(grid);
+  randomize_fields(*fm0,engine);
+  const auto& out_fields = fm0->get_groups_info().at("output")->m_fields_names;
 
   // Initialize the pio_subsystem for this test:
   MPI_Fint fcomm = MPI_Comm_c2f(io_comm.mpi_comm());
@@ -67,90 +71,55 @@ TEST_CASE("output_restart","io")
   util::TimeStamp t0 ({2000,1,1},{0,0,0});
 
   // Create an Output manager for testing output
-  std::string param_filename = "io_test_restart.yaml";
+  auto& ts = ekat::TestSession::get();
+  EKAT_REQUIRE_MSG (ts.params.count("ifile")==1,
+      "Error! Missing input file name. Please, re-run with '--ekat-test-params ifile=<file>'\n");
+  std::string param_filename = ts.params.at("ifile");
   ekat::ParameterList output_params;
   ekat::parse_yaml_file(param_filename,output_params);
   output_params.set<std::string>("Floating Point Precision","real");
-  OutputManager output_manager;
-  output_manager.setup(io_comm,output_params,field_manager,gm,t0,t0,false);
 
-  // We advance the fields, by adding dt to each entry of the fields at each time step
-  // The output restart data is written every 5 time steps, while the output freq is 10.
+  // Runs an OM with output_params
+  auto run = [&](std::shared_ptr<FieldManager> fm,
+                 const util::TimeStamp& case_t0,
+                 const util::TimeStamp& run_t0,
+                 const int nsteps)
+  {
+    OutputManager output_manager;
+    output_manager.setup(io_comm,output_params,fm,gm,case_t0,run_t0,false);
+
+    // We advance the fields, by adding dt to each entry of the fields at each time step
+    // The output restart data is written every 5 time steps, while the output freq is 10.
+    auto time = run_t0;
+    for (int i=0; i<nsteps; ++i) {
+      time_advance(*fm,out_fields,dt);
+      time += dt;
+      output_manager.run(time);
+    }
+  };
+
   // We run for 15 steps, which means that after 15 steps we should have a history restart
   // file, with output history right in the middle between two output steps.
 
-  // Time-advance all fields
-  const int dt = 1;
-  const int nsteps = 15;
-  auto time = t0;
-  for (int i=0; i<nsteps; ++i) {
-    time_advance(*field_manager,out_fields,dt);
-    time += dt;
-    output_manager.run(time);
-  }
+  // Time-advance all fields for all 20 steps (no checkpointing)
+  output_params.set<std::string>("filename_prefix","monolithic");
+  output_params.sublist("Checkpoint Control").set<std::string>("frequency_units","never");
+  auto fm20 = backup_fm(fm0);
+  run(fm20,t0,t0,20);
 
-  // THIS IS HACKY BUT VERY IMPORTANT!
-  // E3SM relies on the 'rpointer.atm' file to write/read the name of the model/output
-  // restart files. As of this point, rpointer contains the restart info for the timestep 15.
-  // But when we run the next 5 time steps, we will reach another checkpoint step,
-  // at which point the rpointer file will be updated, and the info about the
-  // restart files at timestep 15 will be lost.
-  // To overcome this, we open the rpointer fiile NOW, store its content in a string,
-  // run the next 5 timesteps, and then OVERWRITE the rpointer file with the content
-  // we saved from the timestep=15 one.
-  std::string rpointer_content;
-  if (io_comm.am_i_root()) {
-    std::ifstream rpointer_file_in;
-    rpointer_file_in.open("rpointer.atm");
-    std::string line;
-    while (rpointer_file_in >> line) {
-      rpointer_content += line + "\n";
-    }
-    rpointer_file_in.close();
-  }
-
-  // Create a copy of the FM at the current state (used later to emulate a "restarted state")
-  auto fm_res = backup_fm(field_manager);
-
-  // Continue initial simulation for 5 more steps, to get to the next output step
-  for (int i=0; i<5; ++i) {
-    time_advance(*field_manager,out_fields,dt);
-    time += dt;
-    output_manager.run(time);
-  }
-  output_manager.finalize();
-
-  // Restore the rpointer file as it was after timestep=15
-  if (io_comm.am_i_root()) {
-    std::ofstream rpointer_file_out;
-    rpointer_file_out.open("rpointer.atm", std::ios_base::trunc | std::ios_base::out);
-    rpointer_file_out << rpointer_content;
-    rpointer_file_out.close();
-  }
-
-  // Now we redo the timesteps 16-20 with a fresh new output manager,
-  // but we specify to the output manager that this is a restarted simulation.
-  // NOTE: we use fm_res (the copy of field_manager at t=15), since we don't want
-  //       to have to do a state restart, which would/could mix issues related to
-  //       model restart with the testing of output history restart.
-  util::TimeStamp time_res ({2000,1,1},{0,0,15},5);
-  std::string param_filename_res = "io_test_restart_check.yaml";
-
-  ekat::ParameterList output_params_res;
-  ekat::parse_yaml_file(param_filename_res,output_params_res);
-  output_params_res.set<std::string>("Floating Point Precision","real");
-
-  OutputManager output_manager_res;
-  output_manager_res.setup(io_comm,output_params_res,fm_res,gm,time_res,t0,false);
-
-  // Run 5 more steps from the restart, to get to the next output step.
-  // We should be generating the same output file as before.
-  for (int i=0; i<5; ++i) {
-    time_advance(*fm_res,out_fields,dt);
-    time_res += dt;
-    output_manager_res.run(time_res);
-  }
-  output_manager_res.finalize();
+  // Time-advance for 15 steps only (with checkpointing)
+  output_params.set<std::string>("filename_prefix","restarted");
+  output_params.sublist("Checkpoint Control").set<std::string>("frequency_units","nsteps");
+  auto fm15 = backup_fm(fm0);
+  run(fm15,t0,t0,15);
+  
+  // Restart simulation, on different fm (no need to checkpoint)
+  output_params.sublist("Checkpoint Control").set<std::string>("frequency_units","never");
+  auto fm_res = get_test_fm(grid);
+  auto t15 = t0;
+  t0.shift_fwd(15*dt);
+  t0.set_num_steps(15);
+  run(fm_res,t0,t15,5);
 
   // Finalize everything
   scorpio::eam_pio_finalize();

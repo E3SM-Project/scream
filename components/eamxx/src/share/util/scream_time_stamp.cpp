@@ -145,6 +145,12 @@ void TimeStamp::set_num_steps (const int num_steps) {
 }
 
 TimeStamp& TimeStamp::operator+=(const double seconds) {
+  shift_fwd(seconds);
+  ++m_num_steps;
+  return *this;
+}
+
+void TimeStamp::shift_fwd(const double seconds) {
   // Sanity checks
   // Note: (x-int(x)) only works for x small enough that can be stored in an int,
   //       but that should be the case here, for use cases in EAMxx.
@@ -163,28 +169,27 @@ TimeStamp& TimeStamp::operator+=(const double seconds) {
   auto& mm = m_date[1];
   auto& yy = m_date[0];
 
-  ++m_num_steps;
   sec += seconds;
 
   // Carry over
   int carry;
   carry = sec / 60;
   if (carry==0) {
-    return *this;
+    return;
   }
 
   sec = sec % 60;
   min += carry;
   carry = min / 60;
   if (carry==0) {
-    return *this;
+    return;
   }
   min = min % 60;
   hour += carry;
   carry = hour / 24;
 
   if (carry==0) {
-    return *this;
+    return;
   }
   hour = hour % 24;
   dd += carry;
@@ -198,8 +203,6 @@ TimeStamp& TimeStamp::operator+=(const double seconds) {
       mm = 1;
     }
   }
-
-  return *this;
 }
 
 bool operator== (const TimeStamp& ts1, const TimeStamp& ts2) {

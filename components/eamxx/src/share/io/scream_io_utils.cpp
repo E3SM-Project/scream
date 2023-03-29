@@ -44,6 +44,7 @@ std::string find_filename_in_rpointer (
         // Extra check: make sure the date in the filename (if present) precedes this->t0.
         // If there's no time stamp in one of the filenames, we assume this is some sort of
         // unit test, with no time stamp in the filename, and we accept the filename.
+        // std::cout << "potential candidate: " << line << "\n";
         auto ts = extract_ts(line);
         if (not ts.is_valid() || !(ts<=run_t0) ) {
           found = true;

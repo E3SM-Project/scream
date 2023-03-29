@@ -1,8 +1,6 @@
 %YAML 1.1
 ---
-filename_prefix: io_output_restart
-Averaging Type: Average
-Max Snapshots Per File: 1
+Averaging Type: ${AVG_TYPE}
 Field Names: [field_1, field_2, field_3, field_4]
 output_control:
   MPI Ranks in Filename: true
@@ -10,6 +8,8 @@ output_control:
   frequency_units: nsteps
 Checkpoint Control:
   MPI Ranks in Filename: true
-  Frequency: 5
-  frequency_units: nsteps
+  Frequency: 5  # units set in the cpp file to nsteps or never, depending on which run it is
+  is_unit_testing: true # Skip a check only relevant for AD runs
+Restart:
+  MPI Ranks in Filename: true
 ...

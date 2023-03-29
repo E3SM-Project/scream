@@ -55,6 +55,9 @@ public:
   // This method checks that time shifts forward (i.e. that seconds is positive)
   TimeStamp& operator+= (const double seconds);
 
+  // Adds given seconds to the time stamp, without updating steps
+  void shift_fwd (const double seconds);
+
 protected:
 
   std::vector<int> m_date;  // [year, month, day]

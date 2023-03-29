@@ -67,7 +67,8 @@ struct IOControl {
       auto ts_diff = (ts-timestamp_of_last_write);
       if (frequency_units == "nsteps") {
         // Just use the num_steps from timestamps
-        return ((ts.get_num_steps()-timestamp_of_last_write.get_num_steps()) % frequency == 0);
+        ret = (ts.get_num_steps()-timestamp_of_last_write.get_num_steps()) % frequency == 0;
+        printf("ts_nsteps=%d, last_nsteps=%d, freq=%d, ret=%s\n",ts.get_num_steps(),timestamp_of_last_write.get_num_steps(),frequency,ret ? "yes":"no");
       // We will need to use timestamp information
       } else if (frequency_units == "nsecs") {
         ret = ((ts_diff > 0) && (ts_diff % frequency == 0));

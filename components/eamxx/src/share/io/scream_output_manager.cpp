@@ -85,6 +85,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
   EKAT_REQUIRE_MSG (m_output_control.frequency>0,
       "Error! Invalid frequency (" + std::to_string(m_output_control.frequency) + ") in Output Control. Please, use positive number.\n");
 
+  printf("case_t0_nsteps=%d, run_t0_nsteps=%d\n",m_case_t0.get_num_steps(),m_run_t0.get_num_steps());
   m_output_control.timestamp_of_last_write = start_ref ? m_case_t0 : m_run_t0;
 
   // File specs
@@ -137,9 +138,8 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
     }
   }
 
-  // Check if this kind of output needs history restart files (in general)
-  const auto has_restart_data = m_avg_type!=OutputAvgType::Instant
-    && (m_output_control.frequency_units!="nsteps" || m_output_control.frequency>1);
+  // Check if this kind of output needs history restart files
+  const auto has_restart_data = m_output_control.frequency_units!="nsteps" || m_output_control.frequency>1;
 
   if (has_restart_data && m_params.isSublist("Checkpoint Control")) {
     // Output control
@@ -208,10 +208,15 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
                  + "." + e2str(m_avg_type)
                  + "." + m_output_control.frequency_units
                  + "_x" + std::to_string(m_output_control.frequency);
+      if (m_output_file_specs.filename_with_mpiranks) {
+        match += ".np" + std::to_string(m_io_comm.size());
+      }
 
       util::TimeStamp last_file_ts;
+      std::cout << "match: " << match << "\n";
       for (auto entry : filesystem_ns::directory_iterator(cwd)) {
         std::string fn = entry.path().filename();
+        std::cout << "file: " << fn << "\n";
         if (fn.substr(0,match.size())==match) {
           std::cout << " found old output file: " << fn << ", matching " << match << "\n";
           auto t_str = fn.substr(fn.size()-19,16);
@@ -272,12 +277,19 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
 
         m_resume_output_file = num_snaps<m_output_file_specs.max_snapshots_in_file;
 
+        std::cout << "num_snaps: " << num_snaps << "\n";
+        std::cout << "max_snaps: " << m_output_file_specs.max_snapshots_in_file << "\n";
+        std::cout << "can resume: " << m_resume_output_file << "\n";
         // We can also check the time of the last write
         scorpio::register_file(last_output_fname,scorpio::Read);
         auto time = scorpio::read_curr_time_c2f(last_output_fname.c_str());
         scorpio::eam_pio_closefile(last_output_fname);
 
-        m_output_control.timestamp_of_last_write = m_case_t0 + std::round(time*86400);
+        std::cout << "last write ts: " << m_output_control.timestamp_of_last_write.to_string() << "\n";
+        std::cout << "last write time: " << time*86400 << "\n";
+        m_output_control.timestamp_of_last_write.shift_fwd(std::round(time*86400));
+        std::cout << "last write nsteps: " << time*86400 << std::endl;
+        // std::exit(0);
       }
 
       // If we need to resume output file, let's open the file immediately, so the run method remains the same
@@ -334,13 +346,18 @@ void OutputManager::run(const util::TimeStamp& timestamp)
   auto& filespecs = is_checkpoint_step ? m_checkpoint_file_specs : m_output_file_specs;
   auto& filename  = filespecs.filename;
 
+  std::cout << "run at t=" << timestamp.to_string() << ", write: " << is_write_step << "\n";
+
   // Compute filename (if write step)
   start_timer(timer_root+"::get_new_file"); 
   if (is_write_step) {
     // Check if we need to open a new file
     if (not filespecs.is_open) {
+      std::cout << "write step, but file not open\n";
       // Register all dims/vars, write geometry data (e.g. lat/lon/hyam/hybm)
       setup_file(filespecs,control,timestamp);
+    } else {
+      std::cout << "write step, and file " << filespecs.filename << " is open\n";
     }
 
     // If we are going to write an output checkpoint file, or a model restart file,
@@ -351,7 +368,10 @@ void OutputManager::run(const util::TimeStamp& timestamp)
       if (m_is_model_restart_output) {
         rpointer.open("rpointer.atm");  // Open rpointer and nuke its content
       } else if (is_checkpoint_step) {
-        EKAT_REQUIRE_MSG (std::ifstream("rpointer.atm").good(),
+        // Output restart unit tests do not have a model-output stream that generates rpointer.atm,
+        // so allow to skip the next check for them.
+        auto is_unit_testing = m_params.sublist("Checkpoint Control").get("is_unit_testing",false);
+        EKAT_REQUIRE_MSG (is_unit_testing || std::ifstream("rpointer.atm").good(),
             "Error! Cannot find rpointer.atm file to append history restart file in.\n"
             " Model restart output is supposed to be in charge of creating rpointer.atm.\n"
             " There are two possible causes:\n"
@@ -469,6 +489,7 @@ compute_filename (const IOControl& control,
                        : (m_is_model_restart_output ? ".r" : "");
   auto filename = m_casename + suffix;
 
+  std::cout << "computing filename with t: " << timestamp.to_string() << "\n";
   // Always add avg type and frequency info
   filename += "." + e2str(m_avg_type);
   filename += "." + control.frequency_units+ "_x" + std::to_string(control.frequency);
@@ -555,6 +576,7 @@ setup_file (      IOFileSpecs& filespecs,
 
   const bool is_checkpoint_step = &control==&m_checkpoint_control;
   auto& filename = filespecs.filename;
+  std::cout << "write step, but file was not open\n";
 
   // Compute new file name
   // If this is normal output, with some sort of average, and we're not resuming an existing
@@ -564,6 +586,7 @@ setup_file (      IOFileSpecs& filespecs,
                ? timestamp : control.timestamp_of_last_write;
 
   filename = compute_filename (control,filespecs,is_checkpoint_step,file_ts);
+  std::cout << "  new filename: " << filename << "\n";
 
   // Register new netCDF file for output. Check if we need to append to an existing file
   auto mode = m_resume_output_file ? Append : Write;
