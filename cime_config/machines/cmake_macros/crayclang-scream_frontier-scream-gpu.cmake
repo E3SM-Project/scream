@@ -16,6 +16,7 @@ SET(CMAKE_Fortran_COMPILER "ftn" CACHE STRING "")
 SET(CMAKE_CXX_COMPILER "hipcc" CACHE STRING "")
 
 string(APPEND LDFLAGS " -L$ENV{ROCM_PATH}/lib -lamdhip64")
+string(APPEND LDFLAGS " -L$ENV{ADIOS2_DIR}/lib64 -ladios2_c_mpi -ladios2_c -ladios2_core_mpi -ladios2_core -ladios2_evpath -ladios2_ffs -ladios2_dill -ladios2_atl -ladios2_enet")
 string(APPEND CXXFLAGS " -I$ENV{ROCM_PATH}/include")
 
 # Crusher: this resolves a crash in mct in docn init
