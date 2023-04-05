@@ -40,7 +40,7 @@ set(P3_TESTS_SRCS
     p3_prevent_liq_supersaturation_tests.cpp
     ) # P3_TESTS_SRCS
 
-if (SCREAM_DEBUG AND NOT EKAT_ENABLE_CUDA_MEMCHECK)
+if (SCREAM_ENABLE_BFB_UNIT_TESTING)
   set (FORCE_RUN_DIFF_FAILS TRUE)
 else ()
   set (FORCE_RUN_DIFF_FAILS FALSE)

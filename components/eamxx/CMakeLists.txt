@@ -201,6 +201,13 @@ if (Kokkos_ENABLE_HIP)
   set(DEFAULT_SMALL_KERNELS TRUE)
 endif()
 
+set(DEFAULT_ENABLE_BFB_UNIT_TESTING ${SCREAM_DEBUG})
+if (EKAT_ENABLE_CUDA_MEMCHECK OR EKAT_ENABLE_COMPUTE_SANITIZER)
+  # cuda memcheckers make the bfb math layer very
+  # expensive and so should default to off.
+  set(DEFAULT_ENABLE_BFB_UNIT_TESTING FALSE)
+endif()
+
 ### Set CACHE vars
 set(SCREAM_MIMIC_GPU ${DEFAULT_MIMIC_GPU} CACHE BOOL "Mimic GPU to correctness-test inter-column parallelism on non-GPU platform")
 set(SCREAM_PACK_CHECK_BOUNDS FALSE CACHE BOOL "If defined, scream::pack objects check indices against bounds")
@@ -212,6 +219,7 @@ set(SCREAM_MACHINE ${DEFAULT_SCREAM_MACHINE} CACHE STRING "The CIME/SCREAM name 
 option(SCREAM_MPI_ON_DEVICE "Whether to use device pointers for MPI calls" ON)
 option(SCREAM_ENABLE_MAM "Whether to enable MAM aerosol support" OFF)
 set(SCREAM_SMALL_KERNELS ${DEFAULT_SMALL_KERNELS} CACHE STRING "Use small, non-monolothic kokkos kernels")
+set(SCREAM_ENABLE_BFB_UNIT_TESTING ${DEFAULT_ENABLE_BFB_UNIT_TESTING} CACHE STRING "Enable bfb unit tests between f90 and cxx")
 if (NOT SCREAM_SMALL_KERNELS)
   set(EKAT_DISABLE_WORKSPACE_SHARING TRUE CACHE STRING "")
 endif()
@@ -382,7 +390,7 @@ endif()
 # This is a meta-variable, which individual tests can use to set *different* degrees
 # of testing, in terms of resolutions. E.g., for SHORT use 3 timesteps, for MEDIUM use 10,
 # for LONG use 100. It is *completely* up to the test to decide what short, medium, and long mean.
-if (EKAT_ENABLE_COVERAGE OR EKAT_ENABLE_CUDA_MEMCHECK OR EKAT_ENABLE_VALGRIND)
+if (EKAT_ENABLE_COVERAGE OR EKAT_ENABLE_CUDA_MEMCHECK OR EKAT_ENABLE_VALGRIND OR EKAT_ENABLE_COMPUTE_SANITIZER)
   set (SCREAM_TEST_SIZE_DEFAULT SHORT)
   # also set thread_ing=$max_thread - 1, so we test at most 2 threading configurations
   if (SCREAM_TEST_MAX_THREADS GREATER 1)
@@ -455,8 +463,8 @@ print_var(SCREAM_TEST_MAX_RANKS)
 # whether to include scream_config.h.
 add_definitions(-DSCREAM_CONFIG_IS_CMAKE)
 
-if (EKAT_ENABLE_CUDA_MEMCHECK)
-  add_definitions(-DEKAT_ENABLE_CUDA_MEMCHECK)
+if (NOT SCREAM_ENABLE_BFB_UNIT_TESTING)
+  add_definitions(-DNO_BFB_UNIT_TESTING)
 endif()
 
 # Hooks for testing test-all-scream within test-scripts
