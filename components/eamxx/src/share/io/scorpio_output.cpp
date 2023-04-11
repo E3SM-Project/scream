@@ -297,9 +297,11 @@ run (const std::string& filename,
      const int nsteps_since_last_output,
      const bool allow_invalid_fields)
 {
+  printf("eamxx::scorpio_output::run::%s - Begin Run...\n",filename.c_str());
   // If we do INSTANT output, but this is not an write step,
   // we can immediately return
   if (not is_write_step and m_avg_type==OutputAvgType::Instant) {
+    printf("eamxx::scorpio_output::run::%s - Begin Run...DONE - !(is_write_step and m_avg_type=INSTANT)\n",filename.c_str());
     return;
   }
 
@@ -309,9 +311,11 @@ run (const std::string& filename,
   // to make sure that the remapped fields are the most up to date.
   // First we reset the diag computed map so that all diags are recomputed.
   m_diag_computed.clear();
+  printf("eamxx::scorpio_output::run::%s     - compute_diagnostics...\n",filename.c_str());
   for (auto& it : m_diagnostics) {
     compute_diagnostic(it.first,allow_invalid_fields);
   }
+  printf("eamxx::scorpio_output::run::%s     - compute_diagnostics... DONE\n",filename.c_str());
 
   auto apply_remap = [&](const std::shared_ptr<AbstractRemapper> remapper)
   {
@@ -331,18 +335,24 @@ run (const std::string& filename,
   // If needed, remap fields from their grid to the unique grid, for I/O
   if (m_vert_remapper) {
     start_timer("EAMxx::IO::vert_remap");
+    printf("eamxx::scorpio_output::run::%s     - vert_remapper...\n",filename.c_str());
     apply_remap(m_vert_remapper);
+    printf("eamxx::scorpio_output::run::%s     - vert_remapper... DONE\n",filename.c_str());
     stop_timer("EAMxx::IO::vert_remap");
   }
 
   if (m_horiz_remapper) {
     start_timer("EAMxx::IO::horiz_remap");
+    printf("eamxx::scorpio_output::run::%s     - horiz_remapper...\n",filename.c_str());
     apply_remap(m_horiz_remapper);
+    printf("eamxx::scorpio_output::run::%s     - horiz_remapper... DONE\n",filename.c_str());
     stop_timer("EAMxx::IO::horiz_remap");
   }
 
   // Take care of updating and possibly writing fields.
+  printf("eamxx::scorpio_output::run::%s     - Take care of fields...\n",filename.c_str());
   for (auto const& name : m_fields_names) {
+    printf("eamxx::scorpio_output::run::%s     - updating field... %s\n",filename.c_str(),name.c_str());
     // Get all the info for this field.
           auto  field = get_field(name,"io");
     const auto& layout = m_layouts.at(name);
@@ -451,6 +461,7 @@ run (const std::string& filename,
     }
 
     if (is_write_step) {
+      printf("eamxx::scorpio_output::run::%s     - writing fields... %s\n",filename.c_str(),name.c_str());
       if (avg_type==OutputAvgType::Average) {
         // Divide by steps count only when the summation is complete
         Kokkos::parallel_for(policy, KOKKOS_LAMBDA(int i) {
@@ -463,6 +474,7 @@ run (const std::string& filename,
       grid_write_data_array(filename,name,view_host.data(),view_host.size());
     }
   }
+  printf("eamxx::scorpio_output::run::%s - Begin Run... DONE\n",filename.c_str());
 } // run
 
 long long AtmosphereOutput::
