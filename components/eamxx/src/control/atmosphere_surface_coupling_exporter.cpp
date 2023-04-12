@@ -209,7 +209,39 @@ void SurfaceCouplingExporter::initialize_impl (const RunType /* run_type */)
   m_export_source_h = Kokkos::create_mirror_view(m_export_source);
   Kokkos::deep_copy(m_export_source_h,FROM_MODEL);  // The default is that all export variables will be derived from the EAMxx state.
   m_num_from_model_exports = m_num_scream_exports;
- 
+
+  // Set up any fields that will be prescribed by reading data from file. 
+  if (m_params.isSublist("prescribed_from_file")) {
+    m_export_from_file_fm_t0 = std::make_shared<FieldManager>(m_grid);
+    m_export_from_file_fm_t0->registration_begins(); 
+    m_export_from_file_fm_t0->registration_ends(); 
+    m_export_from_file_fm_t1 = std::make_shared<FieldManager>(m_grid);
+    m_export_from_file_fm_t1->registration_begins(); 
+    m_export_from_file_fm_t1->registration_ends(); 
+    auto export_from_file_params = m_params.sublist("prescribed_from_file");
+    EKAT_REQUIRE_MSG(export_from_file_params.isParameter("fields"),"Error! surface_coupling_exporter::init - prescribed_constants does not have 'fields' parameter.");
+    auto export_from_file_fields = export_from_file_params.get<vos_type>("fields");
+    if (export_from_file_fields.size()>0) {
+      for (int i=0; i<m_num_scream_exports; ++i) {  // TODO: This loop would probably be simpler if we just checked which "i" corresponded to each name in the fields list.
+        std::string fname = m_export_field_names[i];
+        auto loc = std::find(export_from_file_fields.begin(),export_from_file_fields.end(),fname);
+        if (loc != export_from_file_fields.end()) {
+          // This field should not have been set to anything else yet (recall FROM_MODEL is the default)
+          EKAT_REQUIRE_MSG(export_source_h(i)==FROM_MODEL,"Error! surface_coupling_exporter::init - attempting to set field " + fname + " export type, which has already been set.  Please check namelist options");
+          export_source_h(i) = FROM_FILE;
+          ++ m_num_from_file_exports;
+          -- m_num_from_model_exports;
+          const auto f_helper = m_helper_fields.at(fname);
+          auto f_t0 = f_helper.clone();
+          auto f_t1 = f_helper.clone();
+          m_export_from_file_fm_t0->add_field(f_t0);
+          m_export_from_file_fm_t1->add_field(f_t1);
+        }
+      }
+    }
+  }
+
+  // Set up any fields that will be prescribed to a constant value.
   if (m_params.isSublist("prescribed_constants")) {
     auto export_constant_params = m_params.sublist("prescribed_constants");
     EKAT_REQUIRE_MSG(export_constant_params.isParameter("fields"),"Error! surface_coupling_exporter::init - prescribed_constants does not have 'fields' parameter.");
@@ -223,6 +255,8 @@ void SurfaceCouplingExporter::initialize_impl (const RunType /* run_type */)
         std::string fname = m_export_field_names[i];
         auto loc = std::find(export_constant_fields.begin(),export_constant_fields.end(),fname);
         if (loc != export_constant_fields.end()) {
+          // This field should not have been set to anything else yet (recall FROM_MODEL is the default)
+          EKAT_REQUIRE_MSG(export_source_h(i)==FROM_MODEL,"Error! surface_coupling_exporter::init - attempting to set field " + fname + " export type, which has already been set.  Please check namelist options");
           const auto pos = loc-export_constant_fields.begin();
           m_export_source_h(i) = CONSTANT;
           ++m_num_const_exports;

@@ -6,6 +6,7 @@
 #include "share/util/scream_common_physics_functions.hpp"
 #include "share/atm_process/ATMBufferManager.hpp"
 #include "share/atm_process/SCDataManager.hpp"
+#include "share/field/field_manager.hpp"
 
 #include "surface_coupling_utils.hpp"
 
@@ -127,8 +128,11 @@ protected:
   view_1d<DefaultDevice,ExportType> m_export_source;
   view_1d<HostDevice,ExportType>    m_export_source_h;
   std::map<std::string,Real>        m_export_constants;
+  std::shared_ptr<FieldManager>     m_export_from_file_fm_t0;
+  std::shared_ptr<FieldManager>     m_export_from_file_fm_t1;
   int                               m_num_from_model_exports=0;
   int                               m_num_const_exports=0;
+  int                               m_num_from_file_exports=0;
 
   // Views storing a 2d array with dims (num_cols,num_fields) for cpl export data.
   // The field idx strides faster, since that's what mct does (so we can "view" the
