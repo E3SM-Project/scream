@@ -36,6 +36,52 @@ TEST_CASE("utils") {
   f1.get_header().get_alloc_properties().request_allocation(P8::n);
   f1.allocate_view();
 
+  SECTION ("weighted_average") {
+
+    Field f2(fid);
+    f2.allocate_view();
+    // Also create a field with weighted avg already calculated, for comparison
+    Real w0 = 0.3;
+    Field fs0(fid);
+    fs0.allocate_view();
+
+    auto v1   = f1.get_view<P8**>();
+    auto v1_s = f1.get_view<Real**>();
+    auto v2   = f2.get_view<Real**>();
+    auto vs0  = fs0.get_view<Real**>();
+    auto dim0 = fid.get_layout().dim(0);
+    auto dim1 = fid.get_layout().dim(1);
+    auto am_i_root = comm.am_i_root();
+    Kokkos::parallel_for(kt::RangePolicy(0,dim0*dim1),
+                         KOKKOS_LAMBDA(int idx) {
+      int i = idx / dim1;
+      int j = idx % dim1;
+      v2(i,j) = i*dim1+j;
+
+      int jpack = j / P8::n;
+      int jvec = j % P8::n;
+      v1(i,jpack)[jvec] = i*dim1+j;
+      if (parallel_test and not am_i_root) {
+        v1(i,jpack)[jvec] *= -1;
+      }
+
+      vs0(i,j) = w0*v1_s(i,j) + (1.0-w0)*v2(i,j);
+ 
+    });
+    Kokkos::fence();
+
+    // Weighted average with weights of 0 and 1, views should be equal to the respective view w/ weight 1
+    auto f01 = field_weighted_average(f1,f2,0.0,1.0);
+    auto f10 = field_weighted_average(f1,f2,1.0,0.0);
+
+    REQUIRE(views_are_equal(f2,f01));
+    REQUIRE(views_are_equal(f1,f10));
+
+    // Weighted average using weight w such that `0<w<1`
+    auto fw0 = field_weighted_average(f1,f2,w0,1.0-w0);
+    REQUIRE(views_are_equal(fw0,fs0));
+  }
+
   SECTION ("compare") {
 
     Field f2(fid);

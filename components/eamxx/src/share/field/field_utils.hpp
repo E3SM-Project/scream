@@ -139,6 +139,31 @@ print_field_hyperslab (const Field& f,
   }
 }
 
+// Calculates the weighted average between two fields with certain weights
+// This function is essentially a wrapper for using the `update` function
+// but with a focus on combining two fields into a separate third field.
+template<typename ST>
+inline Field
+field_weighted_average(const Field& f0,
+                       const Field& f1,
+                       const ST     w0,
+                       const ST     w1)
+{
+  // TODO: Add error checks that f0 and f1 are compatible for interpolation.
+  // Like, that their views are the same size.
+  // They have the same layout.
+
+  // We clone the first source field and then use the `update` method to combine
+  // f0 and f1 with the appropriate weights. 
+  // Note, in `update` the 2nd arg is the scaling factor for the input field, the
+  // 3rd arg is the scaling factor for the field doing the call.
+  Field ft = f0.clone();
+  ft.update(f1,w1,w0); 
+
+  return ft;
+  
+}
+
 } // namespace scream
 
 #endif // SCREAM_FIELD_UTILS_HPP
