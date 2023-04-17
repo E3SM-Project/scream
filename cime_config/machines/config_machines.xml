@@ -505,6 +505,152 @@
     </resource_limits>
   </machine>
 
+  <machine MACH="tioga">
+    <DESC>Tioga at llnl</DESC>
+    <NODENAME_REGEX>tioga</NODENAME_REGEX>
+    <OS>Linux</OS>
+    <COMPILERS>craygpu,gnugpu,gnu,amdclang,amdclanggpu</COMPILERS>
+    <MPILIBS>mpich</MPILIBS>
+    <PROJECT>e3sm_g</PROJECT>
+    <SAVE_TIMING_DIR>$ENV{SCRATCH}/e3sm_save_timing</SAVE_TIMING_DIR>
+    <SAVE_TIMING_DIR_PROJECTS>e3sm</SAVE_TIMING_DIR_PROJECTS>
+    <CIME_OUTPUT_ROOT>$ENV{SCRATCH}/e3sm_scratch/tioga</CIME_OUTPUT_ROOT>
+    <DIN_LOC_ROOT>$ENV{SCRATCH}/inputdata</DIN_LOC_ROOT>
+    <DIN_LOC_ROOT_CLMFORC>$ENV{SCRATCH}/inputdata/atm/datm7</DIN_LOC_ROOT_CLMFORC>
+    <DOUT_S_ROOT>$CIME_OUTPUT_ROOT/archive/$CASE</DOUT_S_ROOT>
+    <CCSM_CPRNC>$ENV{SCRATCH}/cprnc</CCSM_CPRNC>
+    <GMAKE_J>20</GMAKE_J>
+    <TESTS>e3sm_developer</TESTS>
+    <NTEST_PARALLEL_JOBS>4</NTEST_PARALLEL_JOBS>
+    <BATCH_SYSTEM>nersc_slurm</BATCH_SYSTEM>
+    <SUPPORTED_BY>e3sm</SUPPORTED_BY>
+    <MAX_TASKS_PER_NODE>128</MAX_TASKS_PER_NODE>
+    <MAX_TASKS_PER_NODE compiler="gnu">256</MAX_TASKS_PER_NODE>
+    <MAX_TASKS_PER_NODE compiler="amdclang">256</MAX_TASKS_PER_NODE>
+    <MAX_MPITASKS_PER_NODE>4</MAX_MPITASKS_PER_NODE>
+    <MAX_MPITASKS_PER_NODE compiler="gnu">64</MAX_MPITASKS_PER_NODE>
+    <MAX_MPITASKS_PER_NODE compiler="amdclang">64</MAX_MPITASKS_PER_NODE>
+    <PROJECT_REQUIRED>TRUE</PROJECT_REQUIRED>
+    <!-- flux mini submit -xl -N1 -n8 -d-exclusive -d-output=out -d-error=out -d-job-name=e -d-label ../bld/e3sm.exe -->
+    <mpirun mpilib="default">
+      <executable>flux mini</executable>
+      <arguments>
+        <arg name="label"> --label</arg>
+        <arg name="num_tasks"> -n {{ total_tasks }} -N {{ num_nodes }}</arg>
+        <arg name="thread_count">-c $SHELL{echo 128/`./xmlquery --value MAX_MPITASKS_PER_NODE`|bc}</arg>
+        <arg name="binding"> $SHELL{if [ 64 -ge `./xmlquery --value MAX_MPITASKS_PER_NODE` ]; then echo "--cpu_bind=cores"; else echo "--cpu_bind=threads";fi;} </arg>
+        <arg name="placement"> -m plane=$SHELL{echo `./xmlquery --value MAX_MPITASKS_PER_NODE`}</arg>
+    </arguments>
+    </mpirun>
+    <module_system type="module" allow_error="true">
+      <init_path lang="perl">/usr/share/lmod/lmod/init/perl</init_path>
+      <init_path lang="python">/usr/share/lmod/lmod/init/python</init_path>
+      <init_path lang="sh">/usr/share/lmod/lmod/init/sh</init_path>
+      <init_path lang="csh">/usr/share/lmod/lmod/init/csh</init_path>
+      <cmd_path lang="perl">/usr/share/lmod/lmod/libexec/lmod perl</cmd_path>
+      <cmd_path lang="python">/usr/share/lmod/lmod/libexec/lmod python</cmd_path>
+      <cmd_path lang="sh">module</cmd_path>
+      <cmd_path lang="csh">module</cmd_path>
+
+      <modules>
+        <command name="unload">cray-hdf5-parallel</command>
+        <command name="unload">cray-netcdf-hdf5parallel</command>
+        <command name="unload">cray-parallel-netcdf</command>
+        <command name="unload">PrgEnv-cray</command>
+        <command name="unload">PrgEnv-gnu</command>
+        <command name="unload">PrgEnv-gnu-amd</command>
+        <command name="unload">PrgEnv-amd</command>
+        <command name="unload">cudatoolkit</command>
+        <command name="unload">rocm</command>
+        <command name="unload">amd</command>
+        <command name="unload">amd-mixed</command>
+        <command name="unload">craype-accel-amd-gfx908</command>
+        <command name="unload">craype-x86-trento</command>
+        <command name="unload">perftools-base</command>
+        <command name="unload">perftools</command>
+        <command name="unload">darshan</command>
+      </modules>
+
+      <modules compiler="amdclang">
+        <command name="load">PrgEnv-amd</command>
+        <command name="load">amd</command>
+	<command name="load">craype-x86-trento</command>
+      </modules>
+
+      <modules compiler="amdclanggpu">
+        <command name="load">PrgEnv-amd</command>
+	<command name="load">craype-accel-amd-gfx908</command>
+	<command name="load">craype-x86-trento</command>
+        <command name="load">rocm/5.4.3</command>
+      </modules>
+
+      <modules compiler="gnu">
+        <command name="load">PrgEnv-gnu</command>
+        <command name="load">gcc/12.2.0</command>
+        <!--command name="load">gcc/12.1.0</command-->
+	<command name="load">craype-x86-trento</command>
+      </modules>
+
+      <modules compiler="gnugpu">
+	<!--command name="load">PrgEnv-gnu-amd</command--> <!-- gnu-amd uses gnu for fortran and AMD for C/C++ -->
+	<command name="load">PrgEnv-gnu</command>
+	<command name="load">craype-accel-amd-gfx908</command>
+	<command name="load">craype-x86-trento</command>
+        <command name="load">rocm/5.4.3</command>
+      </modules>
+
+      <modules compiler="craygpu">
+        <command name="load">PrgEnv-cray</command>
+	<command name="load">craype-accel-amd-gfx908</command>
+	<command name="load">craype-x86-trento</command>
+        <command name="load">rocm/5.4.3</command>
+        <!--command name="load">cce/14.0.4</command-->
+        <!--command name="load">cce/15.0.0</command-->
+        <command name="load">cce/15.0.1</command>
+      </modules>
+
+      <modules>
+        <command name="load">cray-libsci/23.02.1.1</command>
+        <command name="load">craype/2.7.19</command>
+        <!--command name="load">cray-mpich/8.1.17</command-->
+        <command name="load">cray-mpich/8.1.24</command>
+        <command name="load">cray-hdf5-parallel/1.12.2.1</command>
+        <command name="load">cray-netcdf-hdf5parallel</command>
+        <!--command name="load">cray-parallel-netcdf/1.12.2.1</command-->
+        <command name="load">cray-parallel-netcdf/1.12.3.1</command>
+        <command name="load">cmake</command>
+      </modules>
+    </module_system>
+
+    <RUNDIR>$CIME_OUTPUT_ROOT/$CASE/run</RUNDIR>
+    <EXEROOT>$CIME_OUTPUT_ROOT/$CASE/bld</EXEROOT>
+    <TEST_TPUT_TOLERANCE>0.1</TEST_TPUT_TOLERANCE>
+
+    <environment_variables>
+      <env name="MPICH_ENV_DISPLAY">1</env>
+      <env name="MPICH_VERSION_DISPLAY">1</env>
+      <env name="OMP_STACKSIZE">128M</env>
+      <env name="OMP_PROC_BIND">spread</env>
+      <env name="OMP_PLACES">threads</env>
+      <env name="HDF5_USE_FILE_LOCKING">FALSE</env>
+      <env name="MPICH_COLL_SYNC">MPI_Bcast</env>
+    </environment_variables>
+    <environment_variables compiler="gnugpu">
+      <env name="MPICH_GPU_SUPPORT_ENABLED">1</env>
+    </environment_variables>
+    <environment_variables compiler="amdclanggpu">
+      <env name="MPICH_GPU_SUPPORT_ENABLED">1</env>
+      <env name="GCC_X86_64">/opt/cray/pe/gcc/10.3.0/snos</env>
+    </environment_variables>
+    <environment_variables compiler="craygpu">
+      <env name="MPICH_GPU_SUPPORT_ENABLED">1</env>
+      <env name="GCC_X86_64">/opt/cray/pe/gcc/10.3.0/snos</env>
+    </environment_variables>
+    <resource_limits>
+      <resource name="RLIMIT_STACK">-1</resource>
+    </resource_limits>
+  </machine>
+
   <machine MACH="spock">
     <DESC>Spock. NCCS moderate-security system that contains similar hardware and software as the upcoming Frontier system at ORNL.</DESC>
     <NODENAME_REGEX>.*spock.*</NODENAME_REGEX>

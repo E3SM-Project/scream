@@ -421,12 +421,14 @@ include(EkatMpiUtils)
 DisableMpiCxxBindings()
 
 message("CMAKE_CXX_COMPILER_ID is ${CMAKE_CXX_COMPILER_ID}")
+message("ndk SCREAM_DOUBLE_PRECISION=${SCREAM_DOUBLE_PRECISION} CMAKE_CXX_COMPILER_ID=${CMAKE_CXX_COMPILER_ID}")
 if (SCREAM_DOUBLE_PRECISION)
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
     set(SCREAM_Fortran_FLAGS -real-size 64)
   elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "[Cc]lang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "HIPCC")
     #find what is crayclang id in cmake
     set(SCREAM_Fortran_FLAGS -s default32 -eZ)
+    #ndk set(SCREAM_Fortran_FLAGS -fdefault-real-8 -fdefault-double-8) #ndk add hack -- for gnu-amd mixed
   else()
     set(SCREAM_Fortran_FLAGS -fdefault-real-8 -fdefault-double-8)
   endif()

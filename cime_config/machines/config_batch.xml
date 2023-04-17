@@ -456,6 +456,22 @@
     </queues>
   </batch_system>
 
+  <batch_system MACH="tioga" type="nersc_slurm">
+    <batch_submit>flux mini batch</batch_submit>
+    <jobid_pattern>(\S+)$</jobid_pattern>
+    
+    <directives compiler="gnugpu">
+      <directive> --gpus-per-task=1</directive>
+    </directives>
+    <directives compiler="gnu">
+      <directive> -G 0</directive>
+    </directives>
+    <queues>
+      <queue walltimemax="00:45:00" nodemax="1500" default="true">regular</queue>
+      <queue walltimemax="00:15:00" nodemax="4" strict="true">debug</queue>
+    </queues>
+  </batch_system>
+    
   <batch_system MACH="stampede2" type="slurm">
     <directives>
       <directive>-n {{ total_tasks }}</directive>
