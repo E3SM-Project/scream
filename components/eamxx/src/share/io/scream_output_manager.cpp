@@ -162,7 +162,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
       // NOTE: if you change the output frequency when you restart, this could lead to wonky behavior
       m_output_control.nsamples_since_last_write = m_run_t0.get_num_steps() % m_output_control.frequency; 
 
-      if (has_restart_data) {
+      if (has_restart_data && m_output_control.nsamples_since_last_write>0) {
         using namespace scorpio;
         auto fn = find_filename_in_rpointer(hist_restart_casename,false,m_io_comm,m_run_t0);
         register_file(fn.c_str(),FileMode::Read);
