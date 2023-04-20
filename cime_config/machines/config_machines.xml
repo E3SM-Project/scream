@@ -565,6 +565,7 @@
         <command name="unload">amd</command>
         <command name="unload">amd-mixed</command>
         <command name="unload">craype-accel-amd-gfx908</command>
+        <command name="unload">craype-accel-amd-gfx90a</command>
         <command name="unload">craype-x86-trento</command>
         <command name="unload">perftools-base</command>
         <command name="unload">perftools</command>
@@ -579,7 +580,7 @@
 
       <modules compiler="amdclanggpu">
         <command name="load">PrgEnv-amd</command>
-	<command name="load">craype-accel-amd-gfx908</command>
+	<command name="load">craype-accel-amd-gfx90a</command>
 	<command name="load">craype-x86-trento</command>
         <command name="load">rocm/5.4.3</command>
       </modules>
@@ -594,14 +595,14 @@
       <modules compiler="gnugpu">
 	<!--command name="load">PrgEnv-gnu-amd</command--> <!-- gnu-amd uses gnu for fortran and AMD for C/C++ -->
 	<command name="load">PrgEnv-gnu</command>
-	<command name="load">craype-accel-amd-gfx908</command>
+	<command name="load">craype-accel-amd-gfx90a</command>
 	<command name="load">craype-x86-trento</command>
         <command name="load">rocm/5.4.3</command>
       </modules>
 
       <modules compiler="craygpu">
         <command name="load">PrgEnv-cray</command>
-	<command name="load">craype-accel-amd-gfx908</command>
+	<command name="load">craype-accel-amd-gfx90a</command>
 	<command name="load">craype-x86-trento</command>
         <command name="load">rocm/5.4.3</command>
         <!--command name="load">cce/14.0.4</command-->
