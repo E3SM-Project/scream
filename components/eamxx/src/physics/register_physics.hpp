@@ -27,6 +27,9 @@
 #ifdef EAMXX_HAS_MAM
 #include "physics/mam/eamxx_mam_microphysics_process_interface.hpp"
 #endif
+#ifdef EAMXX_HAS_COSP
+#include "physics/cosp/eamxx_cosp.hpp"
+#endif
 
 namespace scream {
 
@@ -52,6 +55,9 @@ inline void register_physics () {
 #endif
 #ifdef EAMXX_HAS_MAM
   proc_factory.register_product("MAMMicrophysics",&create_atmosphere_process<MAMMicrophysics>);
+#endif
+#ifdef EAMXX_HAS_COSP
+  proc_factory.register_product("Cosp",&create_atmosphere_process<Cosp>);
 #endif
 }
 
