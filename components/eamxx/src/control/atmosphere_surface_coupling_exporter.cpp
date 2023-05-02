@@ -1,5 +1,6 @@
 #include "atmosphere_surface_coupling_exporter.hpp"
 
+#include "share/io/scorpio_input.hpp"
 #include "ekat/ekat_assert.hpp"
 #include "ekat/util/ekat_units.hpp"
 
@@ -221,19 +222,21 @@ void SurfaceCouplingExporter::initialize_impl (const RunType /* run_type */)
     auto export_from_file_params = m_params.sublist("prescribed_from_file");
     EKAT_REQUIRE_MSG(export_from_file_params.isParameter("fields"),"Error! surface_coupling_exporter::init - prescribed_constants does not have 'fields' parameter.");
     auto export_from_file_fields = export_from_file_params.get<vos_type>("fields");
+    m_export_from_file_filenames = export_from_file_params.get<vos_type>("files");
     if (export_from_file_fields.size()>0) {
       for (int i=0; i<m_num_scream_exports; ++i) {  // TODO: This loop would probably be simpler if we just checked which "i" corresponded to each name in the fields list.
         std::string fname = m_export_field_names[i];
         auto loc = std::find(export_from_file_fields.begin(),export_from_file_fields.end(),fname);
         if (loc != export_from_file_fields.end()) {
           // This field should not have been set to anything else yet (recall FROM_MODEL is the default)
-          EKAT_REQUIRE_MSG(export_source_h(i)==FROM_MODEL,"Error! surface_coupling_exporter::init - attempting to set field " + fname + " export type, which has already been set.  Please check namelist options");
-          export_source_h(i) = FROM_FILE;
+          EKAT_REQUIRE_MSG(m_export_source_h(i)==FROM_MODEL,"Error! surface_coupling_exporter::init - attempting to set field " + fname + " export type, which has already been set.  Please check namelist options");
+          m_export_source_h(i) = FROM_FILE;
           ++ m_num_from_file_exports;
           -- m_num_from_model_exports;
           const auto f_helper = m_helper_fields.at(fname);
           auto f_t0 = f_helper.clone();
           auto f_t1 = f_helper.clone();
+          m_export_from_file_field_names.push_back(fname);
           m_export_from_file_fm_t0->add_field(f_t0);
           m_export_from_file_fm_t1->add_field(f_t1);
         }
@@ -256,7 +259,7 @@ void SurfaceCouplingExporter::initialize_impl (const RunType /* run_type */)
         auto loc = std::find(export_constant_fields.begin(),export_constant_fields.end(),fname);
         if (loc != export_constant_fields.end()) {
           // This field should not have been set to anything else yet (recall FROM_MODEL is the default)
-          EKAT_REQUIRE_MSG(export_source_h(i)==FROM_MODEL,"Error! surface_coupling_exporter::init - attempting to set field " + fname + " export type, which has already been set.  Please check namelist options");
+          EKAT_REQUIRE_MSG(m_export_source_h(i)==FROM_MODEL,"Error! surface_coupling_exporter::init - attempting to set field " + fname + " export type, which has already been set.  Please check namelist options");
           const auto pos = loc-export_constant_fields.begin();
           m_export_source_h(i) = CONSTANT;
           ++m_num_const_exports;
@@ -284,8 +287,13 @@ void SurfaceCouplingExporter::run_impl (const double dt)
 void SurfaceCouplingExporter::do_export(const double dt, const bool called_during_initialization)
 {
   if (m_num_const_exports>0) {
-    set_constant_exports(dt,called_during_initialization);
+    set_constant_exports();
   }
+
+  if (m_num_from_file_exports>0) {
+    set_from_file_exports();
+  }
+
   if (m_num_from_model_exports>0) {
     compute_eamxx_exports(dt,called_during_initialization);
   }
@@ -294,7 +302,7 @@ void SurfaceCouplingExporter::do_export(const double dt, const bool called_durin
   do_export_to_cpl(called_during_initialization);
 }
 // =========================================================================================
-void SurfaceCouplingExporter::set_constant_exports(const double dt, const bool called_during_initialization)
+void SurfaceCouplingExporter::set_constant_exports()
 {
   // Cycle through those fields that will be set to a constant value:
   for (int i=0; i<m_num_scream_exports; ++i) {
@@ -305,6 +313,29 @@ void SurfaceCouplingExporter::set_constant_exports(const double dt, const bool c
     }
   }
   
+}
+// =========================================================================================
+// DELETE THE FOLLOWING:
+// Strategy:
+// 1. pass set of files as vos in parameter list.
+// 2. Store two sets of data in the two file managers m_export_from_file_fm_t0/1
+// 3. Also need to store the timestamp associated w/ t0 and t1.
+//      a. if simulation timestamp is > t1 then we will need to update the data by reading more input
+//      b. that is done by copying t1 to t0, then reading new t1 data.
+// 4. We also need to store the final timestamp for the current file, if the simulation timestamp is
+//    greater than that we need to open a new file.
+// 5. Note, we will assume that a timestamp per file can be calculated by taking the timestamp metadata
+//    and adding the time value which will be in days.
+// 6. If simulation timestamp is greater than t1 timestamp and no new files are available then we will throw
+//    an error.
+// 7. Actual field interpolation will use the weighted average field function.
+void SurfaceCouplingExporter::set_from_file_exports()
+{
+  using vos_string = std::vector<std::string>;
+  ekat::ParameterList reader_pl;
+  reader_pl.set<std::string>("Filename",m_export_from_file_filenames[0]);
+  reader_pl.set<vos_string>("Field Names",m_export_from_file_field_names);
+  AtmosphereInput reader(reader_pl,m_export_from_file_fm_t0);
 }
 // =========================================================================================
 // This compute_eamxx_exports routine  handles all export variables that are derived from the EAMxx state.

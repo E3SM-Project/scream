@@ -355,11 +355,16 @@ TEST_CASE("surface-coupling", "") {
   const Real Faxa_swvdf_const = pdf_real_constant_data(engine);
   const vos_type exp_const_fields = {"Faxa_swndf","Faxa_swvdf"};
   const vor_type exp_const_values = {Faxa_swndf_const,Faxa_swvdf_const};
+  const vos_type exp_file_fields = {"Faxa_swndr","Faxa_swvdr"};
+  const vos_type exp_file_files =  {"test.nc"};
   auto& ap_params     = ad_params.sublist("atmosphere_processes");
   auto& sc_exp_params = ap_params.sublist("SurfaceCouplingExporter");
   auto& exp_const_params = sc_exp_params.sublist("prescribed_constants");
   exp_const_params.set<vos_type>("fields",exp_const_fields);
   exp_const_params.set<vor_type>("values",exp_const_values);
+  auto& exp_file_params = sc_exp_params.sublist("prescribed_from_file");
+  exp_file_params.set<vos_type>("fields",exp_file_fields);
+  exp_file_params.set<vos_type>("files",exp_file_files);
 
   // Need to register products in the factory *before* we create any atm process or grids manager.
   auto& proc_factory = AtmosphereProcessFactory::instance();

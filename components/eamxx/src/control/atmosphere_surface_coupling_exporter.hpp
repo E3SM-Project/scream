@@ -80,7 +80,8 @@ public:
   // which do not have valid entries.
   void do_export(const double dt, const bool called_during_initialization=false);             // Main export routine
   void compute_eamxx_exports(const double dt, const bool called_during_initialization=false); // Export vars are derived from eamxx state
-  void set_constant_exports(const double dt, const bool called_during_initialization=false);  // Export vars are set to a constant
+  void set_constant_exports();                                                                // Export vars are set to a constant
+  void set_from_file_exports();                                                               // Export vars are set to values prescribed by file
   void do_export_to_cpl(const bool called_during_initialization=false);                       // Finish export by copying data to cpl structures.
 
   // Take and store data from SCDataManager
@@ -128,6 +129,8 @@ protected:
   view_1d<DefaultDevice,ExportType> m_export_source;
   view_1d<HostDevice,ExportType>    m_export_source_h;
   std::map<std::string,Real>        m_export_constants;
+  std::vector<std::string>          m_export_from_file_field_names;
+  std::vector<std::string>          m_export_from_file_filenames;
   std::shared_ptr<FieldManager>     m_export_from_file_fm_t0;
   std::shared_ptr<FieldManager>     m_export_from_file_fm_t1;
   int                               m_num_from_model_exports=0;
