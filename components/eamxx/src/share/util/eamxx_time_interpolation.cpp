@@ -1,4 +1,5 @@
 #include "share/util/eamxx_time_interpolation.hpp"
+#include "share/io/scream_io_utils.hpp"
 
 namespace scream{
 namespace util {
@@ -246,10 +247,9 @@ void TimeInterpolation::set_file_data_triplets(const vos_type& list_of_files) {
   for (int ii=0; ii<list_of_files.size(); ii++) {
     const auto filename = list_of_files[ii];
     // Reference TimeStamp
-    auto ts_file_start = scorpio::read_timestamp(filename,"case_t0");
+    auto ts_file_start = read_timestamp(filename,"case_t0");
     // Gather the units of time
-    auto time_units_tmp = scorpio::get_any_attribute(filename,"time","units");
-    auto& time_units = ekat::any_cast<std::string>(time_units_tmp);
+    auto time_units = scorpio::get_attribute<std::string>(filename,"time","units");
     int time_mult;
     if (time_units.find("seconds") != std::string::npos) {
       time_mult = 1;
@@ -269,7 +269,7 @@ void TimeInterpolation::set_file_data_triplets(const vos_type& list_of_files) {
     scorpio::register_file(filename,scorpio::Read);
     const int ntime = scorpio::get_dimlen(filename,"time");
     for (int tt=0; tt<ntime; tt++) {
-      auto time_snap = scorpio::read_time_at_index_c2f(filename.c_str(),tt+1);
+      auto time_snap = scorpio::get_time(filename,tt+1);
       TimeStamp ts_snap = ts_file_start;
       if (time_snap>0) {
         ts_snap += (time_snap*time_mult);

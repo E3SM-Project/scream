@@ -137,7 +137,9 @@ public:
   void restart (const std::string& filename);
   void init();
   void reset_dev_views();
-  void setup_output_file (const std::string& filename, const std::string& fp_precision);
+  void setup_output_file (const std::string& filename,
+                          const std::string& fp_precision,
+                          const bool resume_output);
   void run (const std::string& filename,
             const bool output_step, const bool checkpoint_step,
             const int nsteps_since_last_output,
@@ -158,9 +160,10 @@ protected:
   std::shared_ptr<const fm_type> get_field_manager (const std::string& mode) const;
 
   void register_dimensions(const std::string& name);
-  void register_variables(const std::string& filename, const std::string& fp_precision);
-  void set_degrees_of_freedom(const std::string& filename);
-  std::vector<scorpio::offset_t> get_var_dof_offsets (const FieldLayout& layout);
+  void register_variables(const std::string& filename,
+                          const std::string& fp_precision,
+                          const bool resume_output);
+  void set_decompositions(const std::string& filename);
   void register_views();
   Field get_field(const std::string& name, const std::string mode) const;
   void compute_diagnostic (const std::string& name, const bool allow_invalid_fields = false);
@@ -187,8 +190,7 @@ protected:
   std::vector<std::string>                              m_fields_names;
   std::map<std::string,std::string>                     m_fields_alt_name;
   std::map<std::string,FieldLayout>                     m_layouts;
-  std::map<std::string,int>                             m_dofs;
-  std::map<std::string,std::pair<int,bool>>             m_dims;
+  std::map<std::string,int>                             m_dims;
   std::map<std::string,std::shared_ptr<atm_diag_type>>  m_diagnostics;
   std::map<std::string,std::vector<std::string>>        m_diag_depends_on_diags;
   std::map<std::string,bool>                            m_diag_computed;

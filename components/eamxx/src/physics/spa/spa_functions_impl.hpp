@@ -434,7 +434,7 @@ void SPAFunctions<S,D>
   // Retrieve number of cols on spa_data_file.
   scorpio::register_file(spa_data_file_name,scorpio::Read);
   int num_global_cols = scorpio::get_dimlen(spa_data_file_name,"ncol");
-  scorpio::eam_pio_closefile(spa_data_file_name);
+  scorpio::release_file(spa_data_file_name);
 
   // Construct the grid needed for input:
   auto grid = std::make_shared<PointGrid>("grid",num_local_cols,num_global_cols,source_data_nlevs,comm);
@@ -503,7 +503,7 @@ void SPAFunctions<S,D>
   AtmosphereInput spa_data_input(spa_data_in_params,grid,host_views,layouts);
   spa_data_input.read_variables(time_index);
   spa_data_input.finalize();
-  scorpio::eam_pio_closefile(spa_data_file_name);
+  scorpio::release_file(spa_data_file_name);
   stop_timer("EAMxx::SPA::update_spa_data_from_file::read_data");
   start_timer("EAMxx::SPA::update_spa_data_from_file::apply_remap");
   // Copy data from host back to the device views.

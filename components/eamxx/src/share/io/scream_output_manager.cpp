@@ -17,6 +17,11 @@ namespace scream
 // Local helper functions:
 void set_file_header(const std::string& filename);
 
+OutputManager::~OutputManager ()
+{
+  finalize();
+}
+
 void OutputManager::
 setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
        const std::shared_ptr<fm_type>& field_mgr,
@@ -213,7 +218,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
 
       // From restart file, get the time of last write, as well as the current size of the avg sample
       m_output_control.timestamp_of_last_write = read_timestamp(rhist_file,"last_write");
-      m_output_control.nsamples_since_last_write = get_attribute<int>(rhist_file,"num_snapshots_since_last_write");
+      m_output_control.nsamples_since_last_write = get_global_attribute<int>(rhist_file,"num_snapshots_since_last_write");
 
       if (m_avg_type!=OutputAvgType::Instant) {
         m_time_bnds.resize(2);
@@ -230,22 +235,22 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
 
       // We do NOT allow changing output specs across restart. If you do want to change
       // any of these, you MUST start a new output stream (e.g., setting 'Perform Restart: false')
-      auto old_freq = scorpio::get_attribute<int>(rhist_file,"averaging_frequency");
+      auto old_freq = scorpio::get_global_attribute<int>(rhist_file,"averaging_frequency");
       EKAT_REQUIRE_MSG (old_freq == m_output_control.frequency,
           "Error! Cannot change frequency when performing history restart.\n"
           "  - old freq: " << old_freq << "\n"
           "  - new freq: " << m_output_control.frequency << "\n");
-      auto old_freq_units = scorpio::get_attribute<std::string>(rhist_file,"averaging_frequency_units");
+      auto old_freq_units = scorpio::get_global_attribute<std::string>(rhist_file,"averaging_frequency_units");
       EKAT_REQUIRE_MSG (old_freq_units == m_output_control.frequency_units,
           "Error! Cannot change frequency units when performing history restart.\n"
           "  - old freq units: " << old_freq_units << "\n"
           "  - new freq units: " << m_output_control.frequency_units << "\n");
-      auto old_avg_type = scorpio::get_attribute<std::string>(rhist_file,"averaging_type");
+      auto old_avg_type = scorpio::get_global_attribute<std::string>(rhist_file,"averaging_type");
       EKAT_REQUIRE_MSG (old_avg_type == e2str(m_avg_type),
           "Error! Cannot change avg type when performing history restart.\n"
           "  - old avg type: " << old_avg_type + "\n"
           "  - new avg type: " << e2str(m_avg_type) << "\n");
-      auto old_max_snaps = scorpio::get_attribute<int>(rhist_file,"max_snapshots_per_file");
+      auto old_max_snaps = scorpio::get_global_attribute<int>(rhist_file,"max_snapshots_per_file");
       EKAT_REQUIRE_MSG (old_max_snaps == m_output_file_specs.max_snapshots_in_file,
           "Error! Cannot change max snapshots per file when performing history restart.\n"
           "  - old max snaps: " << old_max_snaps << "\n"
@@ -254,7 +259,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
           "  Restart:\n"
           "    force_new_file: true\n");
       std::string fp_precision = m_params.get<std::string>("Floating Point Precision");
-      auto old_fp_precision = scorpio::get_attribute<std::string>(rhist_file,"fp_precision");
+      auto old_fp_precision = scorpio::get_global_attribute<std::string>(rhist_file,"fp_precision");
       EKAT_REQUIRE_MSG (old_fp_precision == fp_precision,
           "Error! Cannot change floating point precision when performing history restart.\n"
           "  - old fp precision: " << old_fp_precision << "\n"
@@ -262,14 +267,14 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
 
       // Check if the prev run wrote any output file (it may have not, if the restart was written
       // before the 1st output step). If there is a file, check if there's still room in it.
-      const auto& last_output_filename = get_attribute<std::string>(rhist_file,"last_output_filename");
+      const auto& last_output_filename = get_global_attribute<std::string>(rhist_file,"last_output_filename");
       m_resume_output_file = last_output_filename!="" and not restart_pl.get("force_new_file",false);
       if (m_resume_output_file) {
         scorpio::register_file(last_output_filename,scorpio::Read);
         int num_snaps = scorpio::get_dimlen(last_output_filename,"time");
 
         // End of checks. Close the file.
-        scorpio::eam_pio_closefile(last_output_filename);
+        scorpio::release_file(last_output_filename);
 
         // If last output was full, we can no longer try to resume the file
         if (num_snaps<m_output_file_specs.max_snapshots_in_file) {
@@ -391,14 +396,14 @@ void OutputManager::run(const util::TimeStamp& timestamp)
     setup_output_file(m_output_control,m_output_file_specs,m_is_model_restart_output,m_is_model_restart_output ? "model restart" : "model output");
 
     // Update time (must be done _before_ writing fields)
-    pio_update_time(m_output_file_specs.filename,timestamp.days_from(m_case_t0));
+    update_time(m_output_file_specs.filename,timestamp.days_from(m_case_t0));
   }
   if (is_checkpoint_step) {
     setup_output_file(m_checkpoint_control,m_checkpoint_file_specs,true,"history restart");
 
     if (is_full_checkpoint_step) {
       // Update time (must be done _before_ writing fields)
-      pio_update_time(m_checkpoint_file_specs.filename,timestamp.days_from(m_case_t0));
+      update_time(m_checkpoint_file_specs.filename,timestamp.days_from(m_case_t0));
     }
   }
   stop_timer(timer_root+"::get_new_file");
@@ -427,36 +432,37 @@ void OutputManager::run(const util::TimeStamp& timestamp)
     auto write_global_data = [&](IOControl& control, IOFileSpecs& filespecs) {
       if (m_is_model_restart_output) {
         // Only write nsteps on model restart
-        set_attribute(filespecs.filename,"nsteps",timestamp.get_num_steps());
+        set_global_attribute(filespecs.filename,"nsteps",timestamp.get_num_steps());
       } else {
         if (filespecs.hist_restart_file) {
           // Update the date of last write and sample size
-          scorpio::write_timestamp (filespecs.filename,"last_write",m_output_control.timestamp_of_last_write);
-          scorpio::set_attribute (filespecs.filename,"last_output_filename",m_output_file_specs.filename);
-          scorpio::set_attribute (filespecs.filename,"num_snapshots_since_last_write",m_output_control.nsamples_since_last_write);
+          write_timestamp (filespecs.filename,"last_write",m_output_control.timestamp_of_last_write);
+          scorpio::set_global_attribute (filespecs.filename,"last_output_filename",m_output_file_specs.filename);
+          scorpio::set_global_attribute (filespecs.filename,"num_snapshots_since_last_write",m_output_control.nsamples_since_last_write);
         }
         // Write these in both output and rhist file. The former, b/c we need these info when we postprocess
         // output, and the latter b/c we want to make sure these params don't change across restarts
-        set_attribute(filespecs.filename,"averaging_type",e2str(m_avg_type));
-        set_attribute(filespecs.filename,"averaging_frequency_units",m_output_control.frequency_units);
-        set_attribute(filespecs.filename,"averaging_frequency",m_output_control.frequency);
-        set_attribute(filespecs.filename,"max_snapshots_per_file",m_output_file_specs.max_snapshots_in_file);
+        set_global_attribute(filespecs.filename,"averaging_type",e2str(m_avg_type));
+        set_global_attribute(filespecs.filename,"averaging_frequency_units",m_output_control.frequency_units);
+        set_global_attribute(filespecs.filename,"averaging_frequency",m_output_control.frequency);
+        set_global_attribute(filespecs.filename,"max_snapshots_per_file",m_output_file_specs.max_snapshots_in_file);
         const auto& fp_precision = m_params.get<std::string>("Floating Point Precision");
-        set_attribute(filespecs.filename,"fp_precision",fp_precision);
+        set_global_attribute(filespecs.filename,"fp_precision",fp_precision);
       }
 
       // Write all stored globals
       for (const auto& it : m_globals) {
         const auto& name = it.first;
         const auto& any = it.second;
-        set_any_attribute(filespecs.filename,name,any);
+        set_any_attribute(filespecs.filename,"GLOBAL",name,any);
       }
 
       // We're adding one snapshot to the file
       ++filespecs.num_snapshots_in_file;
 
-      if (m_time_bnds.size()>0) {
-        scorpio::grid_write_data_array(filespecs.filename, "time_bnds", m_time_bnds.data(), 2);
+      // Write time bnds only in output files (no need in restart files)
+      if (m_time_bnds.size()>0 and not filespecs.hist_restart_file) {
+        write_var (filespecs.filename, "time_bnds", m_time_bnds.data());
       }
 
       // Since we wrote to file we need to reset the nsamples_since_last_write, the timestamp ...
@@ -465,7 +471,7 @@ void OutputManager::run(const util::TimeStamp& timestamp)
 
       // Check if we need to close the output file
       if (filespecs.file_is_full()) {
-        eam_pio_closefile(filespecs.filename);
+        release_file(filespecs.filename);
         filespecs.num_snapshots_in_file = 0;
         filespecs.is_open = false;
       }
@@ -494,15 +500,26 @@ void OutputManager::finalize()
 {
   // Close any output file still open
   if (m_output_file_specs.is_open) {
-    scorpio::eam_pio_closefile (m_output_file_specs.filename);
+    scorpio::release_file (m_output_file_specs.filename);
   }
   if (m_checkpoint_file_specs.is_open) {
-    scorpio::eam_pio_closefile (m_checkpoint_file_specs.filename);
+    scorpio::release_file (m_checkpoint_file_specs.filename);
   }
 
-  // Swapping with an empty mgr is the easiest way to cleanup.
-  OutputManager other;
-  std::swap(*this,other);
+  // Clean up all internal data
+  m_output_streams.clear();
+  m_geo_data_streams.clear();
+  m_globals.clear();
+  m_params = {};
+  m_casename = "";
+  m_time_bnds.clear();
+  m_output_control = {};
+  m_checkpoint_control = {};
+  m_output_file_specs = {};
+  m_checkpoint_file_specs = {};
+  m_case_t0 = {};
+  m_run_t0 = {};
+  m_atm_logger = nullptr;
 }
 
 long long OutputManager::res_dep_memory_footprint () const {
@@ -617,70 +634,73 @@ setup_file (      IOFileSpecs& filespecs,
   auto mode = m_resume_output_file ? Append : Write;
   register_file(filename,mode);
   if (m_resume_output_file) {
-    eam_pio_redef(filename);
-  }
+    redef(filename);
+  } else {
 
-  // Note: length=0 is how scorpio recognizes that this is an 'unlimited' dimension, which
-  // allows to write as many timesnaps as we desire.
-  register_dimension(filename,"time","time",0,false);
+    auto time_units="days since " + m_case_t0.get_date_string() + " " + m_case_t0.get_time_string();
+    define_time(filename,time_units);
 
-  // Register time (and possibly time_bnds) var(s)
-  auto time_units="days since " + m_case_t0.get_date_string() + " " + m_case_t0.get_time_string();
-  register_variable(filename,"time","time",time_units,{"time"}, "double", "double","time");
 #ifdef SCREAM_HAS_LEAP_YEAR
-  set_variable_metadata (filename,"time","calendar","gregorian");
+    set_attribute<std::string> (filename,"time","calendar","gregorian");
 #else
-  set_variable_metadata (filename,"time","calendar","noleap");
+    set_attribute<std::string> (filename,"time","calendar","noleap");
 #endif
-  if (m_avg_type!=OutputAvgType::Instant) {
-    // First, ensure a 'dim2' dimension with len=2 is registered.
-    register_dimension(filename,"dim2","dim2",2,false);
-    register_variable(filename,"time_bnds","time_bnds",time_units,{"dim2","time"},"double","double","time-dim2");
-    
-    // Make it clear how the time_bnds should be interpreted
-    set_variable_metadata(filename,"time_bnds","note","right endpoint accummulation");
+    if (m_avg_type!=OutputAvgType::Instant) {
+      // First, ensure a 'dim2' dimension with len=2 is registered.
+      define_dim(filename,"dim2",2);
 
-    // I'm not sure what's the point of this, but CF conventions seem to require it
-    set_variable_metadata (filename,"time","bounds","time_bnds");
-  }
+      // Register time_bnds var, with its dofs
+      define_var(filename,"time_bnds",time_units,{"dim2"},"double","double",true);
 
-  if (not m_resume_output_file) {
+      // Make it clear how the time_bnds should be interpreted
+      set_attribute<std::string> (filename,"time_bnds","note","right endpoint accummulation");
+
+      // I'm not sure what's the point of this, but CF conventions seem to require it
+      set_attribute<std::string> (filename,"time","bounds","time_bnds");
+    }
+
     // Finish the definition phase for this file.
     write_timestamp(filename,"case_t0",m_case_t0);
     write_timestamp(filename,"run_t0",m_run_t0);
-    set_attribute(filename,"averaging_type",e2str(m_avg_type));
-    set_attribute(filename,"averaging_frequency_units",m_output_control.frequency_units);
-    set_attribute(filename,"averaging_frequency",m_output_control.frequency);
-    set_attribute(filename,"max_snapshots_per_file",m_output_file_specs.max_snapshots_in_file);
-    set_attribute(filename,"fp_precision",fp_precision);
+    set_global_attribute(filename,"averaging_type",e2str(m_avg_type));
+    set_global_attribute(filename,"averaging_frequency_units",m_output_control.frequency_units);
+    set_global_attribute(filename,"averaging_frequency",m_output_control.frequency);
+    set_global_attribute(filename,"max_snapshots_per_file",m_output_file_specs.max_snapshots_in_file);
+    set_global_attribute(filename,"fp_precision",fp_precision);
     set_file_header(filename);
-  }
-
-  // Set degree of freedom for "time" and "time_bnds"
-  scorpio::offset_t time_dof[1] = {0};
-  set_dof(filename,"time",1,time_dof);
-  if (m_avg_type!=OutputAvgType::Instant) {
-    scorpio::offset_t time_bnds_dofs[2] = {0,1};
-    set_dof(filename,"time_bnds",2,time_bnds_dofs);
   }
 
   // Make all output streams register their dims/vars
   for (auto& it : m_output_streams) {
-    it->setup_output_file(filename,fp_precision);
+    it->setup_output_file(filename,fp_precision,m_resume_output_file);
   }
 
   // If grid data is needed,  also register geo data fields. Skip if file is resumed,
   // since grid data was written in the previous run
   if (filespecs.save_grid_data and not m_resume_output_file) {
     for (auto& it : m_geo_data_streams) {
-      it->setup_output_file(filename,fp_precision);
+      it->setup_output_file(filename,fp_precision,false);
     }
   }
 
-  // When resuming a file, PIO opens it in data mode.
-  // NOTE: all the above register_dimension/register_variable are already checking that
-  //       the dims/vars are already in the file (we don't allow adding dims/vars)
-  eam_pio_enddef (filename);
+  // Finish the definition phase for this file.
+  auto t0_date = m_case_t0.get_date()[0]*10000 + m_case_t0.get_date()[1]*100 + m_case_t0.get_date()[2];
+  auto t0_time = m_case_t0.get_time()[0]*10000 + m_case_t0.get_time()[1]*100 + m_case_t0.get_time()[2];
+
+  set_global_attribute(filename,"start_date",t0_date);
+  set_global_attribute(filename,"start_time",t0_time);
+  set_global_attribute(filename,"averaging_type",e2str(m_avg_type));
+  set_global_attribute(filename,"averaging_frequency_units",m_output_control.frequency_units);
+  set_global_attribute(filename,"averaging_frequency",m_output_control.frequency);
+  set_global_attribute(filename,"max_snapshots_per_file",m_output_file_specs.max_snapshots_in_file);
+  set_file_header(filename);
+  enddef (filename);
+
+  if (m_avg_type!=OutputAvgType::Instant) {
+    // Unfortunately, attributes cannot be set in define mode (why?), so this could
+    // not be done while we were setting the time_bnds
+    set_global_attribute(filename,"sample_size",control.frequency);
+  }
 
   if (filespecs.save_grid_data and not m_resume_output_file) {
     // Immediately run the geo data streams
@@ -701,20 +721,20 @@ void set_file_header(const std::string& filename)
   // TODO: All attributes marked TODO below need to be set.  Hopefully by a universal value that reflects
   // what the attribute is.  For example, git-hash should be the git-hash associated with this version of
   // the code at build time for this executable.
-  set_attribute<std::string>(filename,"source","E3SM Atmosphere Model Version 4 (EAMxx)");  // TODO: probably want to make sure that new versions are reflected here.
-  set_attribute<std::string>(filename,"case","");  // TODO
-  set_attribute<std::string>(filename,"title","EAMxx History File");
-  set_attribute<std::string>(filename,"compset","");  // TODO
-  set_attribute<std::string>(filename,"git_hash","");  // TODO
-  set_attribute<std::string>(filename,"host","");  // TODO
-  set_attribute<std::string>(filename,"version","");  // TODO
-  set_attribute<std::string>(filename,"initial_file","");  // TODO
-  set_attribute<std::string>(filename,"topography_file","");  // TODO
-  set_attribute<std::string>(filename,"contact","");  // TODO
-  set_attribute<std::string>(filename,"institution_id","");  // TODO
-  set_attribute<std::string>(filename,"product","");  // TODO
-  set_attribute<std::string>(filename,"component","ATM");
-  set_attribute<std::string>(filename,"Conventions","CF-1.8");  // TODO: In the future we may be able to have this be set at runtime.  We hard-code for now, because post-processing needs something in this global attribute. 2023-04-12
+  set_global_attribute<std::string>(filename,"source","E3SM Atmosphere Model Version 4 (EAMxx)");  // TODO: probably want to make sure that new versions are reflected here.
+  set_global_attribute<std::string>(filename,"case","");  // TODO
+  set_global_attribute<std::string>(filename,"title","EAMxx History File");
+  set_global_attribute<std::string>(filename,"compset","");  // TODO
+  set_global_attribute<std::string>(filename,"git_hash","");  // TODO
+  set_global_attribute<std::string>(filename,"host","");  // TODO
+  set_global_attribute<std::string>(filename,"version","");  // TODO
+  set_global_attribute<std::string>(filename,"initial_file","");  // TODO
+  set_global_attribute<std::string>(filename,"topography_file","");  // TODO
+  set_global_attribute<std::string>(filename,"contact","");  // TODO
+  set_global_attribute<std::string>(filename,"institution_id","");  // TODO
+  set_global_attribute<std::string>(filename,"product","");  // TODO
+  set_global_attribute<std::string>(filename,"component","ATM");
+  set_global_attribute<std::string>(filename,"Conventions","CF-1.8");  // TODO: In the future we may be able to have this be set at runtime.  We hard-code for now, because post-processing needs something in this global attribute. 2023-04-12
 }
 /*===============================================================================================*/
 void OutputManager::
@@ -741,9 +761,6 @@ push_to_logger()
   m_atm_logger->info("      Includes Grid Data ?: " + bool_to_string(m_output_file_specs.save_grid_data));
   // List each GRID - TODO
   // List all FIELDS - TODO
-
-
-
 }
 
 } // namespace scream

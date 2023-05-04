@@ -55,21 +55,22 @@ CoarseningRemapper (const grid_ptr_type& src_grid,
   for (int i=0; i<nlweights; ++i) {
     dofs_offsets[i] = dofs_gids_h[i];
   }
-  const std::string idx_decomp_tag = "coarsening_remapper::constructor_int_nnz" + std::to_string(nlweights);
-  const std::string val_decomp_tag = "coarsening_remapper::constructor_real_nnz" + std::to_string(nlweights);
 
   scorpio::register_file(map_file,scorpio::FileMode::Read);
-  scorpio::register_variable(map_file, "row", "row", {"n_s"}, "int", idx_decomp_tag);
-  scorpio::register_variable(map_file, "col", "col", {"n_s"}, "int", idx_decomp_tag);
-  scorpio::register_variable(map_file, "S",   "S",   {"n_s"}, "real", val_decomp_tag);
-  scorpio::set_dof(map_file,"row",nlweights,dofs_offsets.data());
-  scorpio::set_dof(map_file,"col",nlweights,dofs_offsets.data());
-  scorpio::set_dof(map_file,"S",nlweights,dofs_offsets.data());
-  scorpio::set_decomp(map_file);
-  scorpio::grid_read_data_array(map_file,"row",-1,row_gids_h.data(),nlweights);
-  scorpio::grid_read_data_array(map_file,"col",-1,col_gids_h.data(),nlweights);
-  scorpio::grid_read_data_array(map_file,"S",  -1,S_h.data(),       nlweights);
-  scorpio::eam_pio_closefile(map_file);
+  for (const std::string& vname : {"row", "col", "S"}) {
+    EKAT_REQUIRE_MSG (scorpio::has_variable(map_file,"row"),
+        "Error! Map file is missing the '" + vname + "' variable.\n"
+        " - map file: " + map_file + "\n");
+  }
+
+  const std::string dim_decomp_tag = "CoarseningRemapper::CoarseningRemapper::nnz";
+  scorpio::set_dim_decomp(map_file,"n_s",dofs_offsets,dim_decomp_tag);
+  scorpio::set_vars_decomp(map_file,{"row","col","S"},"n_s",dim_decomp_tag);
+
+  scorpio::read_var(map_file,"row",row_gids_h.data());
+  scorpio::read_var(map_file,"col",col_gids_h.data());
+  scorpio::read_var(map_file,"S",  S_h.data());
+  scorpio::release_file(map_file);
 
   // Offset the cols ids to match the source grid.
   // Determine the min id among the cols array, we
@@ -902,6 +903,10 @@ get_my_triplets_gids (const std::string& map_file,
   using namespace ShortFieldTagsNames;
 
   scorpio::register_file(map_file,scorpio::FileMode::Read);
+  for (const std::string& vname : {"row", "col"})
+    EKAT_REQUIRE_MSG (scorpio::has_variable(map_file,"row"),
+        "Error! Map file is missing the '" + vname + "' variable.\n"
+        " - filename" + map_file + "\n");
   // 1. Create a "helper" grid, with as many dofs as the number
   //    of triplets in the map file, and divided linearly across ranks
   const int ngweights = scorpio::get_dimlen(map_file,"n_s");
@@ -915,17 +920,12 @@ get_my_triplets_gids (const std::string& map_file,
   // 2. Read a chunk of triplets col indices
   std::vector<gid_t> cols(nlweights);
   std::vector<gid_t> rows(nlweights); // Needed to calculate min_dof
-  const std::string idx_decomp_tag = "coarsening_remapper::get_my_triplet_gids_int_dim" + std::to_string(nlweights);
-  scorpio::register_variable(map_file, "col", "col", {"n_s"}, "int", idx_decomp_tag);
-  scorpio::register_variable(map_file, "row", "row", {"n_s"}, "int", idx_decomp_tag);
-  std::vector<scorpio::offset_t> dofs_offsets(nlweights);
-  std::iota(dofs_offsets.begin(),dofs_offsets.end(),offset);
-  scorpio::set_dof(map_file,"col",nlweights,dofs_offsets.data());
-  scorpio::set_dof(map_file,"row",nlweights,dofs_offsets.data());
-  scorpio::set_decomp(map_file);
-  scorpio::grid_read_data_array(map_file,"col",-1,cols.data(),cols.size());
-  scorpio::grid_read_data_array(map_file,"row",-1,rows.data(),rows.size());
-  scorpio::eam_pio_closefile(map_file);
+  std::string dim_decomp_tag = "CoarseningRemapper::get_my_triplets_gids::nnz";
+  scorpio::set_dim_decomp(map_file,"n_s",offset,nlweights,dim_decomp_tag);
+  scorpio::set_vars_decomp(map_file,{"col","row"},"n_s",dim_decomp_tag);
+  scorpio::read_var(map_file,"col",cols.data());
+  scorpio::read_var(map_file,"row",rows.data());
+  scorpio::release_file(map_file);
 
   // Offset the cols ids to match the source grid.
   // Determine the min id among the cols array, we
@@ -943,6 +943,11 @@ get_my_triplets_gids (const std::string& map_file,
   }
 
   // 3. Get the owners of the cols gids we read in, according to the src grid
+  std::vector<gid_t> src_gids;
+  auto src_gids_h = src_grid->get_dofs_gids().get_view<const gid_t*,Host>();
+  for (int i=0; i<src_grid->get_num_local_dofs(); ++i) {
+    src_gids.push_back(src_gids_h[i]);
+  }
   auto owners = src_grid->get_owners(cols);
 
   // 4. Group gids we read by the pid we need to send them to

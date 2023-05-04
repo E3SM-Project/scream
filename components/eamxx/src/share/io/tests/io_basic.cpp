@@ -260,7 +260,7 @@ TEST_CASE ("io_basic") {
   };
 
   ekat::Comm comm(MPI_COMM_WORLD);
-  scorpio::eam_init_pio_subsystem(comm);
+  scorpio::init_pio_subsystem(comm);
 
   auto seed = get_random_test_seed(&comm);
 
@@ -284,7 +284,7 @@ TEST_CASE ("io_basic") {
       print(" PASS\n");
     }
   }
-  scorpio::eam_pio_finalize();
+  scorpio::finalize_pio_subsystem();
 }
 
 } // anonymous namespace

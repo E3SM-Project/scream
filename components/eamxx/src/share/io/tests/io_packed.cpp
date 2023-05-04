@@ -179,7 +179,7 @@ void read (const int freq, const int seed, const int ps_write, const int ps_read
 
 TEST_CASE ("io_packs") {
   ekat::Comm comm(MPI_COMM_WORLD);
-  scorpio::eam_init_pio_subsystem(comm);
+  scorpio::init_pio_subsystem(comm);
 
   auto seed = get_random_test_seed(&comm);
 
@@ -203,7 +203,7 @@ TEST_CASE ("io_packs") {
       print(" PASS\n");
     }
   }
-  scorpio::eam_pio_finalize();
+  scorpio::finalize_pio_subsystem();
 }
 
 } // anonymous namespace

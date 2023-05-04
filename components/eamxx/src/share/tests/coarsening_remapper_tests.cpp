@@ -141,25 +141,24 @@ void create_remap_file(const std::string& filename, std::vector<std::int64_t>& d
 
   scorpio::register_file(filename, scorpio::FileMode::Write);
 
-  scorpio::register_dimension(filename,"n_a", "n_a", na, true);
-  scorpio::register_dimension(filename,"n_b", "n_b", nb, true);
-  scorpio::register_dimension(filename,"n_s", "n_s", ns, true);
+  scorpio::define_dim(filename, "n_a", na);
+  scorpio::define_dim(filename, "n_b", nb);
+  scorpio::define_dim(filename, "n_s", ns);
+  scorpio::set_dim_decomp(filename,"n_s",dofs,"nnz");
 
-  scorpio::register_variable(filename,"col","col","none",{"n_s"},"real","int","int-nnz");
-  scorpio::register_variable(filename,"row","row","none",{"n_s"},"real","int","int-nnz");
-  scorpio::register_variable(filename,"S","S","none",{"n_s"},"real","real","Real-nnz");
+  scorpio::define_var(filename,"col","none",{"n_s"},"real","int", false);
+  scorpio::define_var(filename,"row","none",{"n_s"},"real","int", false);
+  scorpio::define_var(filename,"S",  "none",{"n_s"},"real","real",false);
 
-  scorpio::set_dof(filename,"col",dofs.size(),dofs.data());
-  scorpio::set_dof(filename,"row",dofs.size(),dofs.data());
-  scorpio::set_dof(filename,"S",  dofs.size(),dofs.data());
-  
-  scorpio::eam_pio_enddef(filename);
+  scorpio::set_vars_decomp(filename,{"col","row","S"},"nnz");
 
-  scorpio::grid_write_data_array(filename,"row",row.data(),ns);
-  scorpio::grid_write_data_array(filename,"col",col.data(),ns);
-  scorpio::grid_write_data_array(filename,"S",    S.data(),ns);
+  scorpio::enddef(filename);
 
-  scorpio::eam_pio_closefile(filename);
+  scorpio::write_var(filename,"row",row.data());
+  scorpio::write_var(filename,"col",col.data());
+  scorpio::write_var(filename,"S",    S.data());
+
+  scorpio::release_file(filename);
 }
 
 TEST_CASE("coarsening_remap_nnz>nsrc") {
@@ -173,9 +172,7 @@ TEST_CASE("coarsening_remap_nnz>nsrc") {
   // -------------------------------------- //
 
   ekat::Comm comm(MPI_COMM_WORLD);
-
-  MPI_Fint fcomm = MPI_Comm_c2f(comm.mpi_comm());
-  scorpio::eam_init_pio_subsystem(fcomm);
+  scorpio::init_pio_subsystem(comm);
 
   // -------------------------------------- //
   //           Set grid/map sizes           //
@@ -317,7 +314,7 @@ TEST_CASE("coarsening_remap_nnz>nsrc") {
   }
 
   // Clean up scorpio stuff
-  scorpio::eam_pio_finalize();
+  scorpio::finalize_pio_subsystem();
 
 }
 
@@ -329,9 +326,7 @@ TEST_CASE ("coarsening_remap") {
   // -------------------------------------- //
 
   ekat::Comm comm(MPI_COMM_WORLD);
-
-  MPI_Fint fcomm = MPI_Comm_c2f(comm.mpi_comm());
-  scorpio::eam_init_pio_subsystem(fcomm);
+  scorpio::init_pio_subsystem(comm);
 
   // -------------------------------------- //
   //           Set grid/map sizes           //
@@ -678,7 +673,7 @@ TEST_CASE ("coarsening_remap") {
   }
 
   // Clean up scorpio stuff
-  scorpio::eam_pio_finalize();
+  scorpio::finalize_pio_subsystem();
 }
 
 } // namespace scream

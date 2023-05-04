@@ -92,22 +92,18 @@ Real data_func(const int col, const int vec, const Real pres) {
 }
 
 // Helper function to create a remap file
-void create_remap_file(const std::string& filename, const int nlevs, const std::vector<std::int64_t>& dofs_p, const std::vector<Real>& p_tgt) 
+void create_remap_file(const std::string& filename, const int nlevs, const std::vector<Real>& p_tgt) 
 {
 
   scorpio::register_file(filename, scorpio::FileMode::Write);
 
-  scorpio::register_dimension(filename,"nlevs","nlevs",nlevs, false);
+  scorpio::define_dim(filename,"nlevs",nlevs);
+  scorpio::define_var(filename,"p_levs","none",{"nlevs"},"real","real",false);
+  scorpio::enddef(filename);
 
-  scorpio::register_variable(filename,"p_levs","p_levs","none",{"nlevs"},"real","real","Real-nlevs");
+  scorpio::write_var(filename,"p_levs",p_tgt.data());
 
-  scorpio::set_dof(filename,"p_levs",dofs_p.size(),dofs_p.data()); 
-  
-  scorpio::eam_pio_enddef(filename);
-
-  scorpio::grid_write_data_array(filename,"p_levs",p_tgt.data(),nlevs);
-
-  scorpio::eam_pio_closefile(filename);
+  scorpio::release_file(filename);
 }
 
 TEST_CASE ("vertical_remap") {
@@ -117,9 +113,7 @@ TEST_CASE ("vertical_remap") {
   // -------------------------------------- //
 
   ekat::Comm comm(MPI_COMM_WORLD);
-
-  MPI_Fint fcomm = MPI_Comm_c2f(comm.mpi_comm());
-  scorpio::eam_init_pio_subsystem(fcomm);
+  scorpio::init_pio_subsystem(comm);
 
   // -------------------------------------- //
   //           Set grid/map sizes           //
@@ -142,14 +136,12 @@ TEST_CASE ("vertical_remap") {
   const Real ptop_tgt = 1;
   const Real pbot_tgt = nlevs_src-2;
   const Real dp_tgt   = (pbot_tgt-ptop_tgt)/(nlevs_tgt-1);
-  std::vector<std::int64_t> dofs_p(nlevs_tgt);
-  std::iota(dofs_p.begin(),dofs_p.end(),0);
   std::vector<Real> p_tgt;
   for (int ii=0; ii<nlevs_tgt; ++ii) {
     p_tgt.push_back(ptop_tgt + dp_tgt*ii);
   }
 
-  create_remap_file(filename, nlevs_tgt, dofs_p, p_tgt);
+  create_remap_file(filename, nlevs_tgt, p_tgt);
   print (" -> creating map file ... done!\n",comm);
 
   // -------------------------------------- //
@@ -386,7 +378,7 @@ TEST_CASE ("vertical_remap") {
   }
 
   // Clean up scorpio stuff
-  scorpio::eam_pio_finalize();
+  scorpio::finalize_pio_subsystem();
 }
 
 } // namespace scream

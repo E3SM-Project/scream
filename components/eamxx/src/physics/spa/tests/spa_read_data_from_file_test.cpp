@@ -27,9 +27,8 @@ Real aer_func(const int t, const int bnd, const int klev, const int ncols, const
 TEST_CASE("spa_read_data","spa")
 {
   // Set up the mpi communicator and init the pio subsystem
-  ekat::Comm spa_comm(MPI_COMM_WORLD);  // MPI communicator group used for I/O set as ekat object.
-  MPI_Fint fcomm = MPI_Comm_c2f(spa_comm.mpi_comm());  // MPI communicator group used for I/O.  In our simple test we use MPI_COMM_WORLD, however a subset could be used.
-  scorpio::eam_init_pio_subsystem(fcomm);   // Gather the initial PIO subsystem data creater by component coupler
+  ekat::Comm spa_comm(MPI_COMM_WORLD);
+  scorpio::init_pio_subsystem(spa_comm);
 
   // Establish the SPA function object
   using SPAFunc = spa::SPAFunctions<Real, DefaultDevice>;
@@ -113,7 +112,7 @@ TEST_CASE("spa_read_data","spa")
   }
   
   // All Done 
-  scorpio::eam_pio_finalize();
+  scorpio::finalize_pio_subsystem();
 } // run_property
 
 // Some helper functions for the require statements:

@@ -218,51 +218,59 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   }
 //----------------------
   // Step 3: Write source data and remap data to a file.
-  std::string filename = "horizontal_remap_test_data_" + std::to_string(comm.size()) + "_ranks_" + std::to_string(src_min_dof) + "_case.nc";
-  // Initialize the pio_subsystem for this test:
-  MPI_Fint fcomm = MPI_Comm_c2f(comm.mpi_comm()); 
-  scorpio::eam_init_pio_subsystem(fcomm);   // Gather the initial PIO subsystem data creater by component coupler
+  std::string filename = "horizontal_remap_test_data_" + std::to_string(comm.size())
+                       + "_ranks_" + std::to_string(src_min_dof) + "_case.nc";
+
   // Register the output file
   scorpio::register_file(filename,scorpio::Write);
-  //   - Dimensions
-  scorpio::register_dimension(filename,"n_s","n_s",n_s,true);
-  scorpio::register_dimension(filename,"n_a","n_a",num_src_cols,false);
-  scorpio::register_dimension(filename,"n_b","n_b",num_tgt_cols,false);
-  scorpio::register_dimension(filename,"ncol","ncol",num_src_cols,true);
-  //   - Variables
-  std::string remap_decomp_tag_r = "n_s_real";
-  std::string data_decomp_tag_r  = "data_real";
-  std::string remap_decomp_tag_i = "n_s_int";
-  std::vector<std::string> vec_of_remap_dims = {"n_s"};
-  std::vector<std::string> vec_of_data_dims  = {"ncol"};
-  std::string int_type = "int";
-  scorpio::register_variable(filename,"col","col","unitless",vec_of_remap_dims,"int","int",remap_decomp_tag_i);
-  scorpio::register_variable(filename,"row","row","unitless",vec_of_remap_dims,"int","int",remap_decomp_tag_i);
-  scorpio::register_variable(filename,"S","S",    "unitless",vec_of_remap_dims,"real","real",remap_decomp_tag_r);
-  scorpio::register_variable(filename,"src_data","src_data", "m",vec_of_data_dims,"real","real",data_decomp_tag_r);
-  //   - DOFs
+
+  // Define dimensions
+  scorpio::define_dim(filename,"n_s", n_s);
+  scorpio::define_dim(filename,"n_a", num_src_cols);
+  scorpio::define_dim(filename,"n_b", num_tgt_cols);
+  scorpio::define_dim(filename,"ncol",num_src_cols);
+
+  // Decompose n_s and ncol dimensions
   std::vector<int64_t> var_dof(n_s_local);
   std::iota(var_dof.begin(),var_dof.end(),n_s_offset);
-  scorpio::set_dof(filename,"col",var_dof.size(),var_dof.data());
-  scorpio::set_dof(filename,"row",var_dof.size(),var_dof.data());
-  scorpio::set_dof(filename,"S",var_dof.size(),var_dof.data());
+  scorpio::set_dim_decomp(filename,"n_s",var_dof);
+
   var_dof.resize(unique_dofs_from_views.size());
   auto unique_dofs_from_views_h = Kokkos::create_mirror_view(unique_dofs_from_views);
   Kokkos::deep_copy(unique_dofs_from_views_h,unique_dofs_from_views);
   for (size_t ii=0; ii<var_dof.size(); ii++) {
     var_dof[ii] = unique_dofs_from_views_h(ii);
   }
-  scorpio::set_dof(filename,"src_data",var_dof.size(),var_dof.data());
-  scorpio::eam_pio_enddef(filename);
+  scorpio::set_dim_decomp(filename,"ncol",var_dof);
+
+  // Define variables
+  std::string remap_decomp_tag_r = "n_s_real";
+  std::string data_decomp_tag_r  = "data_real";
+  std::string remap_decomp_tag_i = "n_s_int";
+  std::vector<std::string> vec_of_remap_dims = {"n_s"};
+  std::vector<std::string> vec_of_data_dims  = {"ncol"};
+  scorpio::define_var(filename,"col",     "1",{"n_s"}, "int","int",false);
+  scorpio::define_var(filename,"row",     "1",{"n_s"}, "int","int",false);
+  scorpio::define_var(filename,"S",       "1",{"n_s"}, "real","real",false);
+  scorpio::define_var(filename,"src_data","m",{"ncol"},"real","real",false);
+
+  // Decompose variables
+  scorpio::set_vars_decomp(filename,{"col","row","S"},"n_s");
+  scorpio::set_var_decomp (filename,"src_data","ncol");
+
+  // Enter data mode
+  scorpio::enddef(filename);
+
   // Write data
   auto x_data_from_views_h = Kokkos::create_mirror_view(x_data_from_views);
   Kokkos::deep_copy(x_data_from_views_h,x_data_from_views);
-  scorpio::grid_write_data_array(filename,"col",map_src_cols_h.data(),vec_wgt.size());
-  scorpio::grid_write_data_array(filename,"row",map_tgt_cols_h.data(),vec_wgt.size());
-  scorpio::grid_write_data_array(filename,"S",map_wgts_h.data(),vec_wgt.size());
-  scorpio::grid_write_data_array(filename,"src_data",x_data_from_views_h.data(),num_unique_dofs_from_views);
-  // All done writing 
-  scorpio::eam_pio_closefile(filename);
+  scorpio::write_var(filename,"col",map_src_cols_h.data());
+  scorpio::write_var(filename,"row",map_tgt_cols_h.data());
+  scorpio::write_var(filename,"S",map_wgts_h.data());
+  scorpio::write_var(filename,"src_data",x_data_from_views_h.data());
+
+  // All done writing, release the file
+  scorpio::release_file(filename);
 
 //----------------------
   // Step 4: Load remap information and source data from the file created in step 3
@@ -275,20 +283,28 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   auto unique_dofs_from_file = remap_from_file.get_unique_source_dofs();
   auto unique_dofs_from_file_h = Kokkos::create_mirror_view(unique_dofs_from_file);
   Kokkos::deep_copy(unique_dofs_from_file_h,unique_dofs_from_file);
+
   // Read source data at unique points
   scorpio::register_file(filename,scorpio::Read);
-  scorpio::register_variable(filename,"src_data","src_data",vec_of_data_dims,"real",data_decomp_tag_r);
+
+  // Check needed dim/var is in the file
+  REQUIRE (scorpio::has_variable(filename,"src_data",vec_of_data_dims));
+  REQUIRE (scorpio::has_dimension(filename,"ncol"));
+
+  // Set decomposition for dim and var
   var_dof.resize(unique_dofs_from_file.size());
   for (size_t ii=0; ii<var_dof.size(); ii++) {
     var_dof[ii] = unique_dofs_from_file_h(ii);
   }
-  scorpio::set_dof(filename,"src_data",var_dof.size(),var_dof.data());
-  scorpio::set_decomp(filename);
+  scorpio::set_dim_decomp(filename,"ncol",var_dof);
+  scorpio::set_var_decomp(filename,"src_data","ncol");
+
   view_1d<Real> x_data_from_file("",var_dof.size());
   auto x_data_from_file_h = Kokkos::create_mirror_view(x_data_from_file);
-  scorpio::grid_read_data_array(filename,"src_data",0,x_data_from_file.data(),x_data_from_file.size()); 
-  scorpio::eam_pio_closefile(filename);
+  scorpio::read_var(filename,"src_data",x_data_from_file.data(),0); 
+  scorpio::release_file(filename);
   Kokkos::deep_copy(x_data_from_file_h,x_data_from_file);
+
   // Apply remap using the data
   view_1d<Real> y_data_from_file("",num_loc_tgt_cols);
   remap_from_file.apply_remap(x_data_from_file,y_data_from_file);
@@ -300,9 +316,6 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
     auto y_base = y_baseline[dof];
     REQUIRE(std::abs(y_data_from_file_h(ii)-y_base)<tol);
   } 
-
-  // All Done with testing
-  scorpio::eam_pio_finalize();
 
   // Test to check that a 2D and 3D views work
   Int num_bands = 4;
@@ -338,8 +351,6 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
       }
     }
   } 
-  
-  
 } // end function run
 
 //===============================================================================
@@ -349,6 +360,9 @@ TEST_CASE("horizontal_remap_test", "[horizontal_remap_test]"){
 
   ekat::Comm comm (MPI_COMM_WORLD);
   auto engine = scream::setup_random_test();
+
+  // Initialize the IO system
+  scorpio::init_pio_subsystem(comm);
 
   if (comm.am_i_root()) {
     printf(" -> Testing horizontal remapping for minimum source dof = 0...");
@@ -366,9 +380,11 @@ TEST_CASE("horizontal_remap_test", "[horizontal_remap_test]"){
     printf("ok!\n");
   }
 
+  // All done with IO
+  scorpio::finalize_pio_subsystem();
 } // TEST_CASE
-//===============================================================================
 
+//===============================================================================
 TEST_CASE("horizontal_remap_units", "") {
 
   using namespace scream;

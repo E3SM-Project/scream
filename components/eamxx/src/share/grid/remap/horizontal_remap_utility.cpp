@@ -43,7 +43,12 @@ void HorizontalMap::set_remap_segments_from_file(const std::string& remap_filena
   start_timer("EAMxx::HorizontalMap::set_remap_segments_from_file");
   // Open remap file and determine the amount of data to be read
   scorpio::register_file(remap_filename,scorpio::Read);
-  const auto remap_size = scorpio::get_dimlen(remap_filename,"n_s"); // Note, here we assume a standard format of col, row, S
+  for (const std::string& vname : {"row", "col", "S"}) {
+    EKAT_REQUIRE_MSG (scorpio::has_variable(remap_filename,"row"),
+        "Error! Map file is missing the '" + vname + "' variable.\n"
+        " - map file: " + remap_filename + "\n");
+  }
+  const auto remap_size = scorpio::get_dimlen(remap_filename,"n_s");
   // Step 1: Read in the "row" data from the file to figure out which mpi ranks care about which
   //         chunk of the remap data.  This step reduces the memory footprint of reading in the
   //         map data, which can be rather large.
@@ -76,13 +81,9 @@ void HorizontalMap::set_remap_segments_from_file(const std::string& remap_filena
   auto tgt_col_h = Kokkos::create_mirror_view(tgt_col);
   std::vector<std::string> vec_of_dims = {"n_s"};
   std::string i_decomp = std::string("int-row-n_s-") + std::to_string(my_chunk);
-  scorpio::register_variable(remap_filename, "row", "row", vec_of_dims, "int", i_decomp);
-  std::vector<int64_t> var_dof(my_chunk);
-  std::iota(var_dof.begin(),var_dof.end(),my_start);
-  scorpio::set_dof(remap_filename,"row",var_dof.size(),var_dof.data());
-  scorpio::set_decomp(remap_filename);
-  scorpio::grid_read_data_array(remap_filename,"row",0,tgt_col_h.data(),tgt_col_h.size()); 
-  scorpio::eam_pio_closefile(remap_filename);
+  scorpio::set_dim_decomp(remap_filename,"n_s",my_start,my_chunk,"n_s-linear");
+  scorpio::set_var_decomp(remap_filename,"row","n_s-linear");
+  scorpio::read_var(remap_filename,"row",tgt_col_h.data());
   // Step 2: Now that we have the data distributed among all ranks we organize the data
   //         into sets of target column, start location in data and length of data.
   //         At the same time, determine the min_dof for remap column indices.
@@ -123,7 +124,7 @@ void HorizontalMap::set_remap_segments_from_file(const std::string& remap_filena
   // Step 3: Now that all of the ranks are aware of all of the "sets" of source -> target mappings we
   //         construct and add segments for just the DOF's this rank cares about.
   std::vector<int> seg_dof, seg_start, seg_length;
-  var_dof.clear();
+  std::vector<scorpio::offset_t> var_dof;
   auto dofs_gids_h = Kokkos::create_mirror_view(m_dofs_gids);
   Kokkos::deep_copy(dofs_gids_h,m_dofs_gids);
   for (int ii=0; ii<total_num_chunks; ii++) {
@@ -147,15 +148,12 @@ void HorizontalMap::set_remap_segments_from_file(const std::string& remap_filena
   vec_of_dims = {"n_s"};
   i_decomp = std::string("int-col-n_s-") + std::to_string(var_dof.size());
   std::string r_decomp = std::string("Real-S-n_s-") + std::to_string(var_dof.size());
-  scorpio::register_file(remap_filename,scorpio::Read);
-  scorpio::register_variable(remap_filename, "col", "col", vec_of_dims, "int", i_decomp);
-  scorpio::register_variable(remap_filename, "S", "S", vec_of_dims, "real", r_decomp);
-  scorpio::set_dof(remap_filename,"col",var_dof.size(),var_dof.data());
-  scorpio::set_dof(remap_filename,"S",var_dof.size(),var_dof.data());
-  scorpio::set_decomp(remap_filename);
-  scorpio::grid_read_data_array(remap_filename,"col",0,col_h.data(),col_h.size()); 
-  scorpio::grid_read_data_array(remap_filename,"S",0,S_h.data(),S_h.size()); 
-  scorpio::eam_pio_closefile(remap_filename);
+
+  scorpio::set_dim_decomp(remap_filename,"n_s",var_dof,"n_s-distributed");
+  scorpio::set_vars_decomp(remap_filename,{"col","S"},"n_s-distributed");
+  scorpio::read_var(remap_filename,"col",col_h.data());
+  scorpio::read_var(remap_filename,"S",S_h.data());
+  scorpio::release_file(remap_filename);
   Kokkos::deep_copy(col,col_h);
   Kokkos::deep_copy(S,S_h);
   // Construct segments based on data just read from file

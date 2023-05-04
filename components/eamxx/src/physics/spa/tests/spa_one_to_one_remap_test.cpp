@@ -32,8 +32,7 @@ TEST_CASE("spa_one_to_one_remap","spa")
 {
   // Set up the mpi communicator and init the pio subsystem
   ekat::Comm spa_comm(MPI_COMM_WORLD);  // MPI communicator group used for I/O set as ekat object.
-  MPI_Fint fcomm = MPI_Comm_c2f(spa_comm.mpi_comm());  // MPI communicator group used for I/O.  In our simple test we use MPI_COMM_WORLD, however a subset could be used.
-  scorpio::eam_init_pio_subsystem(fcomm);   // Gather the initial PIO subsystem data creater by component coupler
+  scorpio::init_pio_subsystem(spa_comm);
 
   std::string spa_data_file = SCREAM_DATA_DIR "/init/spa_data_for_testing.nc";
 
@@ -115,7 +114,7 @@ TEST_CASE("spa_one_to_one_remap","spa")
   }
 
   // All Done
-  scorpio::eam_pio_finalize();
+  scorpio::finalize_pio_subsystem();
 } // run_property
 
 // Some helper functions for the require statements:

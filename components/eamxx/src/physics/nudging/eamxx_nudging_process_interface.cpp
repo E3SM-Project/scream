@@ -36,14 +36,14 @@ void Nudging::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   //Now need to read in the file
   scorpio::register_file(datafile,scorpio::Read);
   m_num_src_levs = scorpio::get_dimlen(datafile,"lev");
-  double time_value_1= scorpio::read_time_at_index_c2f(datafile.c_str(),1);
-  double time_value_2= scorpio::read_time_at_index_c2f(datafile.c_str(),2);
+  double time_value_1= scorpio::get_time(datafile.c_str(),1);
+  double time_value_2= scorpio::get_time(datafile.c_str(),2);
     
   //Here we are assuming that the time in the netcdf file is in days
   //Internally we want this in seconds so need to convert
   //Only consider integer time steps in seconds to resolve any roundoff error
   time_step_file=int((time_value_2-time_value_1)*86400);
-  scorpio::eam_pio_closefile(datafile);
+  scorpio::release_file(datafile);
 }
 
 // =========================================================================================
@@ -101,7 +101,7 @@ void Nudging::initialize_impl (const RunType /* run_type */)
   ts0=timestamp();
 
   //Check that internal timestamp starts at same point as time in external file
-  auto case_t0 = scorpio::read_timestamp(datafile,"case_t0");
+  auto case_t0 = read_timestamp(datafile,"case_t0");
 
   EKAT_REQUIRE_MSG(case_t0.get_year()==ts0.get_year(),
 		   "ERROR: The start year from the nudging file is "\
@@ -225,9 +225,7 @@ void Nudging::update_time_step (const int time_s)
       Kokkos::deep_copy(NudgingData_aft.qv,fields_ext_h["qv"]);
       NudgingData_aft.time = time_step_file*(time_index+1);
     }
-  
 }
-
   
 // =========================================================================================
 void Nudging::run_impl (const double dt)

@@ -140,11 +140,10 @@ init_scorpio(const int atm_id)
   // Init scorpio right away, in case some class (atm procs, grids,...)
   // needs to source some data from NC files during construction,
   // before we start processing IC files.
-  EKAT_REQUIRE_MSG (!scorpio::is_eam_pio_subsystem_inited(),
+  EKAT_REQUIRE_MSG (!scorpio::is_pio_subsystem_inited(),
       "Error! The PIO subsystem was alreday inited before the driver was constructed.\n"
       "       This is an unexpected behavior. Please, contact developers.\n");
-  MPI_Fint fcomm = MPI_Comm_c2f(m_atm_comm.mpi_comm());
-  scorpio::eam_init_pio_subsystem(fcomm,atm_id);
+  scorpio::init_pio_subsystem(m_atm_comm,atm_id);
 
   // In CIME runs, gptl is already inited. In standalone runs, it might
   // not be, depending on what scorpio does.
@@ -777,7 +776,7 @@ void AtmosphereDriver::restart_model ()
   }
 
   // Restart the num steps counter in the atm time stamp
-  int nsteps = scorpio::get_attribute<int>(filename,"nsteps");
+  int nsteps = scorpio::get_global_attribute<int>(filename,"nsteps");
   m_current_ts.set_num_steps(nsteps);
   m_run_t0.set_num_steps(nsteps);
 
@@ -785,8 +784,7 @@ void AtmosphereDriver::restart_model ()
     const auto& name = it.first;
           auto& any  = it.second;
 
-
-    auto data = scorpio::get_any_attribute(filename,name);
+    auto data = scorpio::get_any_attribute(filename,"GLOBAL",name);
     EKAT_REQUIRE_MSG (any->content().type()==data.content().type(),
         "Error! Type mismatch for restart global attribute.\n"
         " - file name: " + filename + "\n"
@@ -1378,8 +1376,8 @@ void AtmosphereDriver::finalize ( /* inputs? */ ) {
   }
 
   // Finalize scorpio
-  if (scorpio::is_eam_pio_subsystem_inited()) {
-    scorpio::eam_pio_finalize();
+  if (scorpio::is_pio_subsystem_inited()) {
+    scorpio::finalize_pio_subsystem();
   }
 
   m_atm_logger->info("[EAMxx] Finalize ... done!");

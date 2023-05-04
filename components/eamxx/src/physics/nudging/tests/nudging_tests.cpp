@@ -65,11 +65,7 @@ TEST_CASE("nudging") {
   Int num_levs = 34;
 
   // Initialize the pio_subsystem for this test:
-  // MPI communicator group used for I/O.
-  // In our simple test we use MPI_COMM_WORLD, however a subset could be used.
-  MPI_Fint fcomm = MPI_Comm_c2f(io_comm.mpi_comm());
-  // Gather the initial PIO subsystem data creater by component coupler
-  scorpio::eam_init_pio_subsystem(fcomm);
+  scorpio::init_pio_subsystem(io_comm);
 
   // First set up a field manager and grids manager to interact
   // with the output functions
@@ -144,11 +140,11 @@ TEST_CASE("nudging") {
 
     for (int ii=0;ii<num_lcols;++ii) {
       for (int jj=0;jj<num_levs;++jj) {
-	f1_host(ii,jj) = 2*jj+1;
-	f2_host(ii,jj) = (ii-1)*10000+200*jj+10*(-1);
-	f3_host(ii,jj) = (ii-1)*10000+200*jj+10*(-1);
-	f4_host(ii,jj) = (ii-1)*10000+200*jj+10*(-1);
-	f5_host(ii,jj) = (ii-1)*10000+200*jj+10*(-1);
+        f1_host(ii,jj) = 2*jj+1;
+        f2_host(ii,jj) = (ii-1)*10000+200*jj+10*(-1);
+        f3_host(ii,jj) = (ii-1)*10000+200*jj+10*(-1);
+        f4_host(ii,jj) = (ii-1)*10000+200*jj+10*(-1);
+        f5_host(ii,jj) = (ii-1)*10000+200*jj+10*(-1);
       }
     }
     fm->init_fields_time_stamp(time);
@@ -193,15 +189,15 @@ TEST_CASE("nudging") {
               for (int i=0; i<fl.dim(0); ++i) {
                 for (int j=0; j<fl.dim(1); ++j) {
                   if (fname != "p_mid"){
-		      v(i,j) = (i-1)*10000+200*j+10*(dt/250.)*ii;
+                    v(i,j) = (i-1)*10000+200*j+10*(dt/250.)*ii;
                   }
                   if (fname == "p_mid"){
                     v(i,j) = 2*j+1;
-		  }
+                  }
                 }
               }
             }
-	    break;
+          break;
           default:
             EKAT_ERROR_MSG ("Error! Unexpected field rank.\n");
         }
@@ -298,63 +294,60 @@ TEST_CASE("nudging") {
       for (int ilev=0; ilev<nlevs; ilev++){
         const int time_index = time_s*100./250.;
 
-	//First deal with cases where destination pressure levels are outside
-	//the range of the pressure levels from the external file
-        //If destination pressure is 0 than it will use pressure value of 1
-	//from external file since that is the lowest value. A time interpolation
-	//is performed but there is no interpolation between levels necessary
-	if (ilev == 0){
-	  double val_before  = 10000*(icol-1) + 10*int(time_index-1);
-	  double val_after   = 10000*(icol-1) + 10*int(time_index);
-	  double w_aft       = time_s*100.-time_index*250.;
-	  double w_bef       = (time_index+1)*250-time_s*100.;
-	  double val_tim_avg = (val_before*w_bef + val_after*w_aft) / 250.;
-          REQUIRE(abs(T_mid_v_h_o(icol,ilev) - val_tim_avg)<0.001);
-          REQUIRE(abs(qv_h_o(icol,ilev) - val_tim_avg)<0.001);
-          REQUIRE(abs(u_h_o(icol,ilev) - val_tim_avg)<0.001);
-          REQUIRE(abs(v_h_o(icol,ilev) - val_tim_avg)<0.001);
-	  continue;
-	}
+        //First deal with cases where destination pressure levels are outside
+        //the range of the pressure levels from the external file
+              //If destination pressure is 0 than it will use pressure value of 1
+        //from external file since that is the lowest value. A time interpolation
+        //is performed but there is no interpolation between levels necessary
+        if (ilev == 0){
+          double val_before  = 10000*(icol-1) + 10*int(time_index-1);
+          double val_after   = 10000*(icol-1) + 10*int(time_index);
+          double w_aft       = time_s*100.-time_index*250.;
+          double w_bef       = (time_index+1)*250-time_s*100.;
+          double val_tim_avg = (val_before*w_bef + val_after*w_aft) / 250.;
+          REQUIRE(std::abs(T_mid_v_h_o(icol,ilev) - val_tim_avg)<0.001);
+          REQUIRE(std::abs(qv_h_o(icol,ilev) - val_tim_avg)<0.001);
+          REQUIRE(std::abs(u_h_o(icol,ilev) - val_tim_avg)<0.001);
+          REQUIRE(std::abs(v_h_o(icol,ilev) - val_tim_avg)<0.001);
+          continue;
+        }
 
         //If destination pressure is 68 than it will use highest pressure value
-	//from external file. A time interpolation is performed but there is
-	//no interpolation between levels necessary
-	if (ilev == (nlevs-1)){
-	  double val_before  = 10000*(icol-1) + 200*(ilev-1) + 10*int(time_index-1);
-	  double val_after   = 10000*(icol-1) + 200*(ilev-1) + 10*int(time_index);
-	  double w_aft       = time_s*100.-time_index*250.;
-	  double w_bef       = (time_index+1)*250-time_s*100.;
-	  double val_tim_avg = (val_before*w_bef + val_after*w_aft) / 250.;
-          REQUIRE(abs(T_mid_v_h_o(icol,ilev) - val_tim_avg)<0.001);
-          REQUIRE(abs(qv_h_o(icol,ilev) - val_tim_avg)<0.001);
-          REQUIRE(abs(u_h_o(icol,ilev) - val_tim_avg)<0.001);
-          REQUIRE(abs(v_h_o(icol,ilev) - val_tim_avg)<0.001);
-	  continue;
-	}
+        //from external file. A time interpolation is performed but there is
+        //no interpolation between levels necessary
+        if (ilev == (nlevs-1)){
+          double val_before  = 10000*(icol-1) + 200*(ilev-1) + 10*int(time_index-1);
+          double val_after   = 10000*(icol-1) + 200*(ilev-1) + 10*int(time_index);
+          double w_aft       = time_s*100.-time_index*250.;
+          double w_bef       = (time_index+1)*250-time_s*100.;
+          double val_tim_avg = (val_before*w_bef + val_after*w_aft) / 250.;
+          REQUIRE(std::abs(T_mid_v_h_o(icol,ilev) - val_tim_avg)<0.001);
+          REQUIRE(std::abs(qv_h_o(icol,ilev) - val_tim_avg)<0.001);
+          REQUIRE(std::abs(u_h_o(icol,ilev) - val_tim_avg)<0.001);
+          REQUIRE(std::abs(v_h_o(icol,ilev) - val_tim_avg)<0.001);
+          continue;
+        }
 
         double val_before = 10000*(icol-1) + 200*(ilev-1) + 10*int(time_index-1);
         double val_after = 10000*(icol-1) + 200*(ilev-1) + 10*int(time_index);
         double w_aft = time_s*100.-time_index*250.;
         double w_bef = (time_index+1)*250-time_s*100.;
-	double val_tim_avg = (val_before*w_bef + val_after*w_aft) / 250.;
+        double val_tim_avg = (val_before*w_bef + val_after*w_aft) / 250.;
 
         double val_before_n = 10000*(icol-1) + 200*(ilev) + 10*int(time_index-1);
         double val_after_n = 10000*(icol-1) + 200*(ilev) + 10*int(time_index);
         double w_aft_n = time_s*100.-time_index*250.;
         double w_bef_n = (time_index+1)*250-time_s*100.;
-	double val_tim_avg_next = (val_before_n*w_bef_n + val_after_n*w_aft_n) / 250.;
-	double val_avg = (val_tim_avg_next + val_tim_avg)/2.;
+        double val_tim_avg_next = (val_before_n*w_bef_n + val_after_n*w_aft_n) / 250.;
+        double val_avg = (val_tim_avg_next + val_tim_avg)/2.;
 
-	REQUIRE(abs(T_mid_v_h_o(icol,ilev) - val_avg)<0.001);
-	REQUIRE(abs(qv_h_o(icol,ilev) - val_avg)<0.001);
-	REQUIRE(abs(u_h_o(icol,ilev) - val_avg)<0.001);
-	REQUIRE(abs(v_h_o(icol,ilev) - val_avg)<0.001);
+        REQUIRE(std::abs(T_mid_v_h_o(icol,ilev) - val_avg)<0.001);
+        REQUIRE(std::abs(qv_h_o(icol,ilev) - val_avg)<0.001);
+        REQUIRE(std::abs(u_h_o(icol,ilev) - val_avg)<0.001);
+        REQUIRE(std::abs(v_h_o(icol,ilev) - val_avg)<0.001);
       }
     }
+  }
 
-}
-
-nudging_mid->finalize();
-
-}
-
+  nudging_mid->finalize();
+} // TEST_CASE

@@ -87,8 +87,7 @@ VerticalRemapper (const grid_ptr_type& src_grid,
 
   // Gather the pressure level data for vertical remapping
   set_pressure_levels(map_file);
-
-  scorpio::eam_pio_closefile(map_file);
+  scorpio::release_file(map_file);
 }
 
 FieldLayout VerticalRemapper::
@@ -158,14 +157,10 @@ set_pressure_levels(const std::string& map_file) {
 
   auto remap_pres_scal = m_remap_pres.get_view<Real*,Host>();
 
-  std::vector<scorpio::offset_t> dofs_offsets(m_num_remap_levs);
-  std::iota(dofs_offsets.begin(),dofs_offsets.end(),0);
-  const std::string idx_decomp_tag = "vertical_remapper::" + std::to_string(m_num_remap_levs);
-  scorpio::register_variable(map_file, "p_levs", "p_levs", {"nlevs"}, "real", idx_decomp_tag);
-  scorpio::set_dof(map_file,"p_levs",m_num_remap_levs,dofs_offsets.data());
-  scorpio::set_decomp(map_file);
-  scorpio::grid_read_data_array(map_file,"p_levs",-1,remap_pres_scal.data(),remap_pres_scal.size());
-
+  EKAT_REQUIRE_MSG (scorpio::has_variable(map_file,"p_levs"),
+      "Error!! Input map file is missing the 'p_levs' variable.\n"
+      " - map file: " + map_file + "\n");
+  scorpio::read_var(map_file,"p_levs",remap_pres_scal.data());
   m_remap_pres.sync_to_dev();
 }
 
