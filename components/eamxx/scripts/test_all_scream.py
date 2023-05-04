@@ -699,6 +699,9 @@ remove existing baselines first. Otherwise, please run 'git fetch $remote'.
         stat, c_path, _ = run_cmd("nc-config --prefix")
         if stat == 0:
             result += f" -DNetCDF_C_PATH={c_path}"
+        stat, p_path, _ = run_cmd("pnetcdf-config --prefix")
+        if stat == 0:
+            result += f" -DPnetCDF_PATH={p_path}"
 
         # Test-specific cmake options
         for key, value in test.cmake_args:
