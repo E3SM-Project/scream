@@ -9,7 +9,8 @@
 
 <!-- <sim_year>1850</sim_year> -->
 
-<!-- set sim_year_range for ssp585 (2015-2100) here (zhang73) -->
+<!-- set sim_year_range (2015-2100), sim_year (2015) for ssp585 here (zhang73) -->
+<sim_year>2015</sim_year>
 <sim_year_range>2015-2100</sim_year_range>
 
 <clm_start_type>arb_ic</clm_start_type>
