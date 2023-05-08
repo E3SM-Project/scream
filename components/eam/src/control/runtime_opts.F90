@@ -180,6 +180,7 @@ logical  :: scm_observed_aero
 logical  :: precip_off
 logical  :: scm_multcols
 logical  :: dp_crm
+logical  :: scm_zero_non_iop_tracers
 
 contains
 
@@ -278,6 +279,7 @@ contains
    use metdata,             only: metdata_readnl
 #endif
    use radiation,           only: radiation_readnl
+   use conditional_diag,    only: cnd_diag_readnl
 
 !---------------------------Arguments-----------------------------------
 
@@ -336,7 +338,8 @@ contains
                          iop_nudge_tq_high, iop_nudge_tscale, &
                          scm_diurnal_avg,scm_crm_mode,scm_clubb_iop_name, &
                          scm_observed_aero, precip_off, &
-                         iop_perturb_high, dp_crm
+                         iop_perturb_high, dp_crm, &
+                         scm_zero_non_iop_tracers
 
 !-----------------------------------------------------------------------
 
@@ -387,7 +390,8 @@ contains
         precip_off_out=precip_off, &
         scm_multcols_out=scm_multcols, &
         dp_crm_out=dp_crm, &
-        scm_clubb_iop_name_out=scm_clubb_iop_name)
+        scm_clubb_iop_name_out=scm_clubb_iop_name, &
+        scm_zero_non_iop_tracers_out=scm_zero_non_iop_tracers)
    end if
 
    ! Read in the cam_inparm namelist from input filename
@@ -471,7 +475,8 @@ contains
                             precip_off_in=precip_off, &
                             scm_multcols_in=scm_multcols,&
                             dp_crm_in=dp_crm,&
-                            scm_clubb_iop_name_in=scm_clubb_iop_name)
+                            scm_clubb_iop_name_in=scm_clubb_iop_name, &
+                            scm_zero_non_iop_tracers_in=scm_zero_non_iop_tracers)
       end if
    endif
 
@@ -537,6 +542,7 @@ contains
 #if ( defined OFFLINE_DYN )
    call metdata_readnl(nlfilename)
 #endif
+   call cnd_diag_readnl(nlfilename)
 
    ! Read radiation namelist
    call radiation_readnl(nlfilename, dtime_in=dtime)
