@@ -4,8 +4,18 @@ namespace scream {
 namespace util {
 
 // Constructors:
-TimeInterpolation::TimeInterpolation() {
-  // Do nothing for now
+TimeInterpolation::TimeInterpolation(const grid_ptr_type& grid)
+{
+  m_grid = grid;
+
+  // Construct field manager to use with ScorpioInput interface
+  m_fm_t0 = std::make_shared<FieldManager>(m_grid);
+  m_fm_t1 = std::make_shared<FieldManager>(m_grid);
+  m_fm_t0->registration_begins();
+  m_fm_t0->registration_ends();
+  m_fm_t1->registration_begins();
+  m_fm_t1->registration_ends();
+
 }
 
 /* ----------------------------------------------------------------
@@ -26,19 +36,62 @@ TimeInterpolation::TimeInterpolation() {
  * we query all files and populate a map of timestamp to filename.
  * ---------------------------------------------------------------- */
 
+void TimeInterpolation::add_field(const Field& field)
+{
+  EKAT_REQUIRE_MSG(std::find(m_fields_names.begin(),m_fields_names.end(),field.name())==m_fields_names.end(),"Error!! TimeInterpolation:add_field, field + " + field.name() + " has already been added");
+  auto f0 = field.clone();
+  auto f1 = field.clone();
+  m_fm_t0->add_field(f0);
+  m_fm_t1->add_field(f1);
+  m_fields_t0.push_back(f0);
+  m_fields_t1.push_back(f1);
+  m_fields_names.push_back(field.name());
+}
+
 void TimeInterpolation::init(
-  const std::vector<std::string>& variables,
   const std::vector<std::string>& files)
 {
-  // Copy the list of variables to internal vector
-  m_list_of_vars = variables;
-
   // Construct map of timestamps and files.  Cycle through all files and check the
   // retrieve the start date and the 'time' variable to back our timestamps.
   set_list_of_files(files);
 
   // We have a sorted list of files and timestamps.  We can now populate the first two sets of interpolation
   // data using the first 2 indices.
+  m_tstamp_ind = -1;
+  advance_index_and_update_data();
+  advance_index_and_update_data();
+  // After that need a function to check if we need to load new data at all.  Check timestamp of the current max data
+  // against the simulation timestamp and shift_data, load_new_data if needed.
+
+}
+
+void TimeInterpolation::advance_index_and_update_data()
+{
+  // Since we are loading new data, we need to shift the data stored for fm_t1 to fm_t0.
+  shift_data();
+
+  // Now we update the index to the next timesnap and load new data into t1.
+  m_tstamp_ind++;
+  const auto data_triplet = m_list_of_timestamps[m_tstamp_ind];
+  if (data_triplet.m_filename != m_data_input.get_filename()) {
+    // Then we need to close this input stream and open a new file.
+    m_data_input.finalize();
+    ekat::ParameterList input_params;
+    input_params.set("Field Names",m_fields_names);
+    input_params.set("Filename",data_triplet.m_filename);
+    m_data_input = AtmosphereInput(input_params,m_fm_t1);
+  }
+  m_data_input.read_variables(data_triplet.m_snap);
+}
+
+void TimeInterpolation::shift_data()
+{
+  for (auto ff = m_fm_t1->begin(); ff != m_fm_t1->end(); ff++) {
+    auto field1 = ff->second;
+    auto name = field1->name();
+    auto field0 = m_fm_t0->get_field(name);
+    field0.deep_copy(*field1);
+  }
 }
 
 void TimeInterpolation::set_list_of_files(const std::vector<std::string>& files)
@@ -82,7 +135,7 @@ void TimeInterpolation::set_list_of_files(const std::vector<std::string>& files)
   // index for each time in the associated file.
   for (auto a = map_of_times.begin();a!=map_of_times.end();a++) {
     auto ind = a->second;
-    DataTriplet trip;
+    TimesnapTriplet trip;
     trip.m_ts       = list_of_timestamps[ind];
     trip.m_filename = list_of_files[ind];
     trip.m_snap     = list_of_snaps[ind];

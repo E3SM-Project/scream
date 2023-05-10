@@ -215,19 +215,18 @@ TEST_CASE ("scream_time_interpolation") {
   std::vector<std::string> files;
   write_test_files(gm,fm_write,seed,comm,files);
 
+  // Create Interpolator object
+  auto time_interp = TimeInterpolation(grid);
+
   // Set list of variables and files to feed to time_interp
-  std::vector<std::string> variables;
   const auto num_of_fields = fm_track->size();
   for (auto ii = fm_track->begin(); ii != fm_track->end(); ii++) {
     auto ff = ii->second;
-    variables.push_back(ff->name());
+    time_interp.add_field(*ff);
   }
   // List files in backwards order to force sorting.
   std::reverse(files.begin(),files.end());
-
-  // Create Interpolator object
-  auto time_interp = TimeInterpolation();
-  time_interp.init(variables,files);
+  time_interp.init(files);
 
   // All done with IO
   scorpio::eam_pio_finalize();

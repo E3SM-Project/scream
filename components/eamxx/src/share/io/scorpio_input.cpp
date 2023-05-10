@@ -303,7 +303,9 @@ set_views (const std::map<std::string,view_1d_host>& host_views_1d,
 /* ---------------------------------------------------------- */
 void AtmosphereInput::finalize() 
 {
-  scorpio::eam_pio_closefile(m_filename);
+  if (scorpio::is_file_open_c2f(m_filename.c_str(),0)) {
+    scorpio::eam_pio_closefile(m_filename);
+  }
 
   m_field_mgr = nullptr;
   m_io_grid   = nullptr;
