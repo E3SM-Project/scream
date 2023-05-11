@@ -340,7 +340,7 @@ void register_file (const std::string& filename, const FileMode mode)
           }
         }
 
-        for (const auto& dt : {"int","float","double"}) {
+        for (const auto& dt : {"int","int64","float","double"}) {
           if (nctype(dt)==dtype) {
             var->dtype = var->nc_dtype = dt;
             break;
@@ -1034,13 +1034,15 @@ void write_var (const std::string &filename, const std::string &varname, const T
 
 // ========================== READ/WRITE ETI ========================== //
 
-template void read_var<int>   (const std::string&, const std::string&, int*, const int);
-template void read_var<float> (const std::string&, const std::string&, float*, const int);
-template void read_var<double>(const std::string&, const std::string&, double*, const int);
+template void read_var<int>       (const std::string&, const std::string&, int*,       const int);
+template void read_var<long long> (const std::string&, const std::string&, long long*, const int);
+template void read_var<float>     (const std::string&, const std::string&, float*,     const int);
+template void read_var<double>    (const std::string&, const std::string&, double*,    const int);
 
-template void write_var<int>   (const std::string&, const std::string&, const int*   , const int*);
-template void write_var<float> (const std::string&, const std::string&, const float* , const float*);
-template void write_var<double>(const std::string&, const std::string&, const double*, const double*);
+template void write_var<int>       (const std::string&, const std::string&, const int*,       const int*);
+template void write_var<long long> (const std::string&, const std::string&, const long long*, const long long*);
+template void write_var<float>     (const std::string&, const std::string&, const float*,     const float*);
+template void write_var<double>    (const std::string&, const std::string&, const double*,    const double*);
 
 // =============== Attributes operations ================== //
 
