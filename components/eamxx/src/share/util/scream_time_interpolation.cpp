@@ -43,12 +43,11 @@ void TimeInterpolation::add_field(const Field& field)
   auto f1 = field.clone();
   m_fm_t0->add_field(f0);
   m_fm_t1->add_field(f1);
-  m_fields_t0.push_back(f0);
-  m_fields_t1.push_back(f1);
   m_fields_names.push_back(field.name());
 }
 
 void TimeInterpolation::init(
+  const TimeStamp& timestamp,
   const std::vector<std::string>& files)
 {
   // Construct map of timestamps and files.  Cycle through all files and check the
@@ -56,23 +55,18 @@ void TimeInterpolation::init(
   set_list_of_files(files);
 
   // We have a sorted list of files and timestamps.  We can now populate the first two sets of interpolation
-  // data using the first 2 indices.
-  m_tstamp_ind = -1;
-  advance_index_and_update_data();
-  advance_index_and_update_data();
-  // After that need a function to check if we need to load new data at all.  Check timestamp of the current max data
-  // against the simulation timestamp and shift_data, load_new_data if needed.
+  // data using the first two data stamps.
+  read_data(0);
+  shift_data();
+  read_data(1);
+  m_tstamp_ind = 1;
+  // Finally, run advance_index_and_update_data, just in case the initialization timestamp is actually later in the data.
+  advance_index_and_update_data(timestamp);
 
 }
 
-void TimeInterpolation::advance_index_and_update_data()
-{
-  // Since we are loading new data, we need to shift the data stored for fm_t1 to fm_t0.
-  shift_data();
-
-  // Now we update the index to the next timesnap and load new data into t1.
-  m_tstamp_ind++;
-  const auto data_triplet = m_list_of_timestamps[m_tstamp_ind];
+void TimeInterpolation::read_data(const int idx) {
+  const auto data_triplet = m_list_of_timestamps[idx];
   if (data_triplet.m_filename != m_data_input.get_filename()) {
     // Then we need to close this input stream and open a new file.
     m_data_input.finalize();
@@ -82,6 +76,33 @@ void TimeInterpolation::advance_index_and_update_data()
     m_data_input = AtmosphereInput(input_params,m_fm_t1);
   }
   m_data_input.read_variables(data_triplet.m_snap);
+  m_t1 = data_triplet.m_ts;
+
+}
+
+void TimeInterpolation::advance_index_and_update_data(const TimeStamp& timestamp)
+{
+  // We check if the current timestamp of data has the appropriate bounds
+  const auto triplet = m_list_of_timestamps[m_tstamp_ind];
+  if (triplet.m_ts-timestamp<0) {
+    int new_timestamp_ind = -1;
+    // Find the timestamp index that is greater than the passed timestamp
+    for (int ii=m_tstamp_ind+1;ii++;ii<m_list_of_timestamps.size()) {
+      const auto triplet = m_list_of_timestamps[ii];
+      if (triplet.m_ts-timestamp>=0) {
+        new_timestamp_ind = ii;
+	break;
+      }
+    }
+    EKAT_REQUIRE_MSG(new_timestamp_ind>0, "ERROR!!! scream_time_interpolation::advance_and_update, simulation timestamp out of bounds of time interpolation timestamps");
+    if (new_timestamp_ind-m_tstamp_ind > 1) {
+      // We have jumped multiple timestamps, need to first read data from the previous timestamp before shifting data
+      read_data(new_timestamp_ind-1);
+    }
+    shift_data();
+    read_data(new_timestamp_ind);
+    m_tstamp_ind = new_timestamp_ind;
+  }
 }
 
 void TimeInterpolation::shift_data()
@@ -92,6 +113,7 @@ void TimeInterpolation::shift_data()
     auto field0 = m_fm_t0->get_field(name);
     field0.deep_copy(*field1);
   }
+  m_t0 = m_t1;
 }
 
 void TimeInterpolation::set_list_of_files(const std::vector<std::string>& files)
@@ -142,17 +164,27 @@ void TimeInterpolation::set_list_of_files(const std::vector<std::string>& files)
     m_list_of_timestamps.push_back(trip);
   }
 }
-//// Time interpolation routine
-//// templated on P as a pack or scalar
-//template<typename P>
-//void perform_time_interpolation(
-//  const std::string& field_name,
-//  const TimeStamp&   time,
-//        view_Nd<P>&  view_out
-//)
-//{
-//  // Do nothing
-//}
+// Time interpolation routine
+std::map<std::string,Field> 
+TimeInterpolation::perform_time_interpolation( const TimeStamp& time)
+{
+  std::map<std::string,Field> interp_fields;
+  // Make sure data is up to date w/ this timestamp
+  advance_index_and_update_data(time);
+
+  // Now perform interpolation
+  for (auto name : m_fields_names) {
+    const auto& f0 = m_fm_t0->get_field(name);
+    const auto& f1 = m_fm_t1->get_field(name);
+    Field ft = f0.clone();
+    Real w_num = m_t1-time;
+    Real w_den = m_t1-m_t0;
+    Real w0 = w_num/w_den;
+    ft.update(f1,1.0-w0,w0); 
+    interp_fields.emplace(name,ft);
+  }
+  return interp_fields;
+}
 
 
 } // namespace util

@@ -18,15 +18,19 @@ public:
   TimeInterpolation(const grid_ptr_type& grid);
 
   void init(
+    const TimeStamp& timestamp,
     const std::vector<std::string>& list_of_files);
+
+  std::map<std::string,Field> perform_time_interpolation( const TimeStamp& time);
 
   void set_list_of_files(const std::vector<std::string>& files);
   void add_field(const Field& field);
 
 protected:
 
+  void read_data(const int idx);
   void shift_data();
-  void advance_index_and_update_data();
+  void advance_index_and_update_data(const TimeStamp& timestamp);
 
   // A simple structure to store all the time snap information to be used for interpolation
   struct TimesnapTriplet {
@@ -44,8 +48,8 @@ protected:
   std::vector<TimesnapTriplet>  m_list_of_timestamps; // A vector that stores the full list of timestamps available for interpolation
   std::shared_ptr<FieldManager> m_fm_t0;
   std::shared_ptr<FieldManager> m_fm_t1;
-  std::vector<Field>            m_fields_t0; 
-  std::vector<Field>            m_fields_t1; 
+  TimeStamp                     m_t0;
+  TimeStamp                     m_t1;
   std::vector<std::string>      m_fields_names;
   int                           m_tstamp_ind=-1;       // A tally of which timestamps have been loaded from files.
   AtmosphereInput               m_data_input;
