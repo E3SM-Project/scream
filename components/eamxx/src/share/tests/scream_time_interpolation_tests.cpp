@@ -20,8 +20,11 @@
 #include "ekat/util/ekat_test_utils.hpp"
 namespace scream {
 
-constexpr int num_output_steps = 5;
-constexpr int dt_data          = 3600;
+constexpr Real tol               = 1e-8;
+constexpr int num_output_steps   = 5;
+constexpr int dt_data            = 3600;
+constexpr int freq               = 3;
+const     std::string freq_units = "nsteps";
 
 // Subclass of OutputManager that will is needed to track the set of output files
 // written in the test setup.
@@ -53,8 +56,8 @@ Real test_func(const Real t, const Real y0)
 }
 
 void update_field (const Field& f, const Field& f_0, const Real t) {
-  auto data   = f.get_internal_view_data<Real,Host>();
-  auto data_0 = f_0.get_internal_view_data<Real,Host>();
+  auto data     = f.get_internal_view_data<Real,Host>();
+  auto data_0   = f_0.get_internal_view_data<Real,Host>();
   auto nscalars = f.get_header().get_alloc_properties().get_num_scalars();
   for (int i=0; i<nscalars; ++i) {
     data[i] = test_func(t,data_0[i]);
@@ -132,9 +135,7 @@ get_fm (const std::shared_ptr<const AbstractGrid>& grid,
 void write_test_files (const std::shared_ptr<const GridsManager>& gm, const std::shared_ptr<FieldManager>& fm, const int seed, const ekat::Comm& comm, std::vector<std::string>& list_of_files)
 {
 
-  const std::string freq_units = "nsteps";
-  const int         dt         = dt_data;
-  const int         freq       = 3;
+  const int dt = dt_data;
   // Time advance parameters
   auto t0 = get_t0();
 
@@ -171,7 +172,7 @@ void write_test_files (const std::shared_ptr<const GridsManager>& gm, const std:
     // Update time
     t += dt;
 
-    // Add 1 to all fields entries
+    // Add to all fields entries
     for (const auto& n : fnames) {
       auto f   = fm->get_field(n);
       auto f_0 = fm_0->get_field(n);
@@ -210,10 +211,17 @@ TEST_CASE ("scream_time_interpolation") {
   // so at this point fm_write and fm_track match.  The function write_test_files
   // will update fm_write so we need the copy for testing.
   auto t0 = get_t0();
-  auto fm_write = get_fm(grid,t0,seed);
-  auto fm_track = get_fm(grid,t0,seed);
+  auto fm_write     = get_fm(grid,t0,seed); // TODO: probably don't need this.
+  auto fm_t0        = get_fm(grid,t0,seed);
+  auto fm_reference = get_fm(grid,t0,seed); 
+  auto fm_track     = get_fm(grid,t0,seed);
   std::vector<std::string> files;
   write_test_files(gm,fm_write,seed,comm,files);
+
+  std::vector<std::string> fnames;
+  for (auto it : *fm_reference) {
+    fnames.push_back(it.second->name());
+  }
 
   // Create Interpolator object
   auto time_interp = TimeInterpolation(grid);
@@ -226,7 +234,75 @@ TEST_CASE ("scream_time_interpolation") {
   }
   // List files in backwards order to force sorting.
   std::reverse(files.begin(),files.end());
-  time_interp.init(files);
+  time_interp.init(t0,files);
+
+  // Now run for each timestep and interpolate.  The interpolated fields
+  // are stored in fm_track, we can compare them to the test function (test_func),
+  // which is linear and thus should match to within machine precision.
+  const int nsteps = num_output_steps*freq*2-1;
+  auto t = t0;
+  const int dt = dt_data/freq;
+  for (int nn=0; nn<nsteps; nn++) {
+    t += dt;
+    auto interp_fields = time_interp.perform_time_interpolation(t);
+    for (const auto& n : fnames) {
+      auto f   = fm_reference->get_field(n);
+      auto f_0 = fm_t0->get_field(n);
+      auto f_t = interp_fields.at(n);
+      auto tt  = t-t0;
+      update_field(f,f_0,tt);
+      f_0.sync_to_host();
+      f_t.sync_to_host();
+      bool same_locally = true;
+      const auto& l1 = f_0.get_header().get_identifier().get_layout();
+      const auto& dims = l1.dims();
+      switch (l1.rank()) {
+        case 1:
+          {
+            auto v1 = f_0.template get_view<Real*,Host>();
+            auto v2 = f_t.template get_view<Real*,Host>();
+            for (int i=0; i<dims[0]; ++i) {
+              if (std::abs(v1(i) - v2(i)) < tol) {
+                same_locally = false;
+                break;
+              }
+            }
+          }
+          break;
+        case 2:
+          {
+            auto v1 = f_0.template get_view<Real**,Host>();
+            auto v2 = f_t.template get_view<Real**,Host>();
+            for (int i=0; same_locally && i<dims[0]; ++i) {
+              for (int j=0; j<dims[1]; ++j) {
+                if (std::abs(v1(i,j) - v2(i,j)) < tol) {
+                  same_locally = false;
+                  break;
+                }
+            }}
+          }
+          break;
+        case 3:
+          {
+            auto v1 = f_0.template get_view<Real***,Host>();
+            auto v2 = f_t.template get_view<Real***,Host>();
+            for (int i=0; same_locally && i<dims[0]; ++i) {
+              for (int j=0; same_locally && j<dims[1]; ++j) {
+                for (int k=0; k<dims[2]; ++k) {
+                  if (std::abs(v1(i,j,k) - v2(i,j,k)) < tol) {
+                    same_locally = false;
+                    break;
+                  }
+            }}}
+          }
+          break;
+        default:
+          EKAT_ERROR_MSG ("Error! Unsupported field rank.\n");
+      }
+      REQUIRE(same_locally);
+    }
+  }
+
 
   // All done with IO
   scorpio::eam_pio_finalize();
