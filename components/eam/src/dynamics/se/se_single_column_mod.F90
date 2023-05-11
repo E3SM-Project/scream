@@ -5,7 +5,7 @@ module se_single_column_mod
 
 use element_mod, only: element_t
 use scamMod
-use constituents, only: cnst_get_ind
+use constituents, only: cnst_get_ind, pcnst
 use dimensions_mod, only: nelemd, np
 use time_manager, only: get_nstep, dtime, is_first_step, &
   is_first_restart_step, is_last_step
@@ -33,12 +33,13 @@ contains
 subroutine scm_setinitial(elem)
 
   use kinds, only : real_kind
+  use constituents, only: qmin
 
   implicit none
 
   type(element_t), intent(inout) :: elem(:)
 
-  integer i, j, k, ie, thelev
+  integer i, j, k, cix, ie, thelev
   integer inumliq, inumice, icldliq, icldice
 
   if (.not. use_replay .and. get_nstep() .eq. 0 .and. par%dynproc) then
@@ -81,6 +82,9 @@ subroutine scm_setinitial(elem)
           endif
 
           if (get_nstep() .eq. 0) then
+            do cix = 1, pcnst
+               if (scm_zero_non_iop_tracers) elem(ie)%state%Q(i,j,:,cix) = qmin(cix)
+            end do
             do k=thelev, PLEV
 #ifdef MODEL_THETA_L
               if (have_t) elem(ie)%derived%FT(i,j,k)=tobs(k)
@@ -262,9 +266,11 @@ subroutine apply_SC_forcing(elem,hvcoord,hybrid,tl,n,t_before_advance,nets,nete)
 #endif
 
     ! collect stats from dycore for analysis
+#ifdef MODEL_THETA_L
     if (dp_crm) then
       call crm_resolved_turb(elem,hvcoord,hybrid,t1,nelemd_todo,np_todo)
     endif
+#endif
 
     do ie=1,nelemd_todo
 
@@ -510,6 +516,7 @@ subroutine iop_domain_relaxation(elem,hvcoord,hybrid,t1,dp,nelemd_todo,np_todo,d
 
 end subroutine iop_domain_relaxation
 
+#ifdef MODEL_THETA_L
 subroutine crm_resolved_turb(elem,hvcoord,hybrid,t1,&
                               nelemd_todo,np_todo)
 
@@ -655,5 +662,6 @@ subroutine crm_resolved_turb(elem,hvcoord,hybrid,t1,&
   enddo
 
 end subroutine crm_resolved_turb
+#endif  // MODEL_THETA_L
 
 end module se_single_column_mod

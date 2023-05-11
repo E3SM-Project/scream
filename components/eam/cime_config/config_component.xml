@@ -47,7 +47,9 @@
     <values modifier='additive'>
       <value compset=""                >-mach $MACH</value>
       <value compset="_EAM"            >-phys default</value>
-      <value compset="_EAM%CMIP6_"     >&eam_phys_defaults; &eam_chem_defaults;</value>
+      <value compset="_EAM%CMIP6_"      >&eam_phys_defaults; &eam_chem_defaults;</value>
+      <value compset="_EAM%CMIP6-1pctCO2" >&eam_phys_defaults; &eam_chem_defaults;</value>
+      <value compset="_EAM%CMIP6-4xCO2"   >&eam_phys_defaults; &eam_chem_defaults;</value>
       <value compset="_EAM%AR5sf"      >&eam_phys_defaults; -chem superfast_mam4_resus_mom_soag -rain_evap_to_coarse_aero</value>
       <value compset="_ELM%[^_]*BC"    >-bc_dep_to_snow_updates</value>
       <value compset="_EAM.*_BGC%*"    >-co2_cycle</value>
@@ -66,6 +68,8 @@
       <value compset="_EAM%.*MMF"      >-crm_dt 10 -crm_dx 2000 -crm_nx 64 -crm_ny 1 </value>
       <value compset="_EAM%.*MMF"      >-crm_nx_rad 4 -crm_ny_rad 1 -rad rrtmgp -rrtmgpxx</value>
       <value compset="_EAM%.*MMF1"     >-MMF_microphysics_scheme sam1mom -chem none</value>
+      <value compset="_EAM%.*MMF"      >-use_MMF_VT</value>   <!-- CRM variance transport -->
+      <value compset="_EAM%.*MMF"      >-use_MMF_ESMT</value> <!-- explicit scalar momentum transport -->
       <value compset="_EAM%AQP-MMF.*"  >-aquaplanet</value>
       <value compset="_EAM%RCE-MMF.*"  >-aquaplanet -rce</value>
       <value compset="_EAM%SCM-MMF.*"  >-scam</value>

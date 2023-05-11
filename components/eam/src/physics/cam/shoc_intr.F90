@@ -20,13 +20,13 @@ module shoc_intr
   use phys_control,  only: phys_getopts
   use physconst,     only: rair, cpair, gravit, latvap, latice, zvir, &
                            rh2o, karman, tms_orocnst, tms_z0fac  
-  use constituents,  only: pcnst, cnst_add
+  use constituents,  only: pcnst, cnst_add, stateq_names=>cnst_name
   use pbl_utils,     only: calc_ustar, calc_obklen
   use perf_mod,      only: t_startf, t_stopf
-  use spmd_utils,    only: masterproc
   use cam_logfile,   only: iulog 
   use shoc,          only: linear_interp, largeneg 
   use spmd_utils,    only: masterproc
+  use cam_abortutils, only: endrun
  
   implicit none	
 
@@ -60,10 +60,10 @@ module shoc_intr
              radf_idx, &
              tpert_idx, &
              fice_idx, &
-	     vmag_gust_idx 	     	     
+	     vmag_gust_idx, &
+             ixq                 ! water vapor index in state%q array
   
-  integer, public :: &
-    ixtke = 0
+  integer :: ixtke ! SHOC_TKE index in state%q array
 
   integer :: cmfmc_sh_idx = 0
     
@@ -81,12 +81,11 @@ module shoc_intr
       shoc_ice_sh = 50.e-6  
          
   logical      :: lq(pcnst)
-  logical      :: lq2(pcnst)
- 
+
   logical            :: history_budget
   integer            :: history_budget_histfile_num  
   logical            :: micro_do_icesupersat
-  
+
   character(len=16)  :: eddy_scheme      ! Default set in phys_control.F90
   character(len=16)  :: deep_scheme      ! Default set in phys_control.F90 
   
@@ -222,7 +221,6 @@ end function shoc_implements_cnst
 
     use units,           only: getunit, freeunit
     use namelist_utils,  only: find_group_name
-    use cam_abortutils,  only: endrun
     use mpishorthand
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
@@ -307,7 +305,7 @@ end function shoc_implements_cnst
     real(r8) :: dp1_in
     
     integer :: lptr
-    integer :: nmodes, nspec, m, l
+    integer :: nmodes, nspec, m, l, icnst, idw
     integer :: ixnumliq
     integer :: ntop_shoc
     integer :: nbot_shoc
@@ -320,6 +318,7 @@ end function shoc_implements_cnst
     
     !----- Begin Code -----
 
+    call cnst_get_ind('Q',ixq) ! get water vapor index from the state%q array
     ! ----------------------------------------------------------------- !
     ! Determine how many constituents SHOC will transport.  Note that  
     ! SHOC does not transport aerosol consituents.  Therefore, need to 
@@ -497,11 +496,9 @@ end function shoc_implements_cnst
     use camsrfexch,     only: cam_in_t
     use ref_pres,       only: top_lev => trop_cloud_top_lev  
     use time_manager,   only: is_first_step   
-    use cam_abortutils, only: endrun
     use wv_saturation,  only: qsat
     use micro_mg_cam,   only: micro_mg_version  
     use cldfrc2m,                  only: aist_vector 
-    use hb_diff,                   only: pblintd
     use trb_mtn_stress,            only: compute_tms
     use shoc,           only: shoc_main
     use cam_history,    only: outfld
@@ -551,7 +548,7 @@ end function shoc_implements_cnst
    type(physics_ptend) :: ptend_loc             ! Local tendency from processes, added up to return as ptend_all
 
    integer :: i, j, k, t, ixind, nadv
-   integer :: ixcldice, ixcldliq, ixnumliq, ixnumice, ixq
+   integer :: ixcldice, ixcldliq, ixnumliq, ixnumice
    integer :: itim_old
    integer :: ncol, lchnk                       ! # of columns, and chunk identifier
    integer :: err_code                          ! Diagnostic, for if some calculation goes amiss.
@@ -666,7 +663,6 @@ end function shoc_implements_cnst
    ic_limit   = 1.e-12_r8
    frac_limit = 0.01_r8
    
-   call cnst_get_ind('Q',ixq)
    call cnst_get_ind('CLDLIQ',ixcldliq)
    call cnst_get_ind('CLDICE',ixcldice)
    call cnst_get_ind('NUMLIQ',ixnumliq)
@@ -874,15 +870,15 @@ end function shoc_implements_cnst
    
    do k=1,pver
      do i=1,ncol 
-     
        cloud_frac(i,k) = min(cloud_frac(i,k),1._r8)
-       
-       do ixind=1,edsclr_dim
-         edsclr_out(i,k,ixind) = edsclr_in(i,k,ixind)
-       enddo      
- 
-     enddo
+      enddo
    enddo
+      
+!sort out edsclr_in, edsclr_out
+   do ixind=1,edsclr_dim
+     edsclr_out(:,:,ixind) = edsclr_in(:,:,ixind)
+   enddo 
+
 
    ! Eddy diffusivities and TKE are needed for aerosol activation code.
    !   Linearly interpolate from midpoint grid and onto the interface grid.
@@ -1184,7 +1180,7 @@ end function shoc_implements_cnst
   real(r8), parameter :: earth_ellipsoid2 = 559.82_r8 ! second expansion coefficient for WGS84 ellipsoid
   real(r8), parameter :: earth_ellipsoid3 = 1.175_r8 ! third expansion coefficient for WGS84 ellipsoid
 
-  real(r8) :: mpdeglat, column_area, degree
+  real(r8) :: mpdeglat, column_area, degree, lat_in_rad
   integer  :: i
 
   do i=1,state%ncol
@@ -1192,11 +1188,14 @@ end function shoc_implements_cnst
       column_area = get_area_p(state%lchnk,i)
       ! convert to degrees
       degree = sqrt(column_area)*(180._r8/shr_const_pi)
+
+      ! convert latitude to radians
+      lat_in_rad = state%lat(i)*(shr_const_pi/180._r8)
        
       ! Now find meters per degree latitude
       ! Below equation finds distance between two points on an ellipsoid, derived from expansion
       !  taking into account ellipsoid using World Geodetic System (WGS84) reference 
-      mpdeglat = earth_ellipsoid1 - earth_ellipsoid2 * cos(2._r8*state%lat(i)) + earth_ellipsoid3 * cos(4._r8*state%lat(i))
+      mpdeglat = earth_ellipsoid1 - earth_ellipsoid2 * cos(2._r8*lat_in_rad) + earth_ellipsoid3 * cos(4._r8*lat_in_rad)
       grid_dx(i) = mpdeglat * degree
       grid_dy(i) = grid_dx(i) ! Assume these are the same
   enddo   

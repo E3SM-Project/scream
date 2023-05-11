@@ -4,6 +4,9 @@
  * See the file 'COPYRIGHT' in the HOMMEXX/src/share/cxx directory
  *******************************************************************************/
 
+#include "Config.hpp"
+#ifdef HOMME_ENABLE_COMPOSE
+
 #include "ComposeTransportImpl.hpp"
 #include "PhysicalConstants.hpp"
 
@@ -310,7 +313,8 @@ KOKKOS_FUNCTION static void calc_vertically_lagrangian_levels (
 #endif
     };
     cti::loop_ijk<cti::num_lev_pack>(kv, f_v);
-    if (cti::num_lev_pack == cti::max_num_lev_pack) {
+    if (static_cast<int>(cti::num_lev_pack) ==
+        static_cast<int>(cti::max_num_lev_pack)) {
       // Re-zero eta_dot_dpdn at bottom.
       RNlevp edds(cti::pack2real(edd));
       const auto f = [&] (const int idx) {
@@ -444,8 +448,7 @@ void ComposeTransportImpl::calc_trajectory (const int np1, const Real dt) {
     const int packn = this->packn;
     const int num_phys_lev = this->num_phys_lev;
     const auto m_sphere_cart = geo.m_sphere_cart;
-    //todo get scale_factor into PhysicalConstants
-    const auto scale_factor = m_data.geometry_type == 1 ? 1 : geo.m_rearth;
+    const auto scale_factor = geo.m_scale_factor;
     const auto m_dep_pts = m_data.dep_pts;
     const auto calc_departure_point = KOKKOS_LAMBDA (const MT& team) {
       KernelVariables kv(team, tu_ne);
@@ -684,3 +687,5 @@ test_trajectory (Real t0, Real t1, const bool independent_time_steps) {
 }
 
 } // namespace Homme
+
+#endif // HOMME_ENABLE_COMPOSE
