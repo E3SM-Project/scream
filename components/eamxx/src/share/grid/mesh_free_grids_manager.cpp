@@ -159,6 +159,7 @@ add_geo_data (const nonconstgrid_ptr_type& grid) const
     hybm.sync_to_dev();
   } else if (geo_data_source=="IC_FILE"){
     const auto& filename = m_params.get<std::string>("ic_filename");
+    scorpio::register_file(filename,scorpio::Read);
     if (scorpio::has_variable(filename,"lat") &&
         scorpio::has_variable(filename,"lon")) {
       load_lat_lon(grid,filename);
@@ -168,6 +169,7 @@ add_geo_data (const nonconstgrid_ptr_type& grid) const
         scorpio::has_variable(filename,"hybm")) {
       load_vertical_coordinates(grid,filename);
     }
+    scorpio::release_file(filename);
   }
 }
 

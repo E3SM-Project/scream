@@ -233,7 +233,7 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   // Decompose n_s and ncol dimensions
   std::vector<int64_t> var_dof(n_s_local);
   std::iota(var_dof.begin(),var_dof.end(),n_s_offset);
-  scorpio::set_dim_decomp(filename,"n_s",var_dof);
+  scorpio::set_dim_decomp(filename,"n_s",var_dof,"write_decomp");
 
   var_dof.resize(unique_dofs_from_views.size());
   auto unique_dofs_from_views_h = Kokkos::create_mirror_view(unique_dofs_from_views);
@@ -241,12 +241,9 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   for (size_t ii=0; ii<var_dof.size(); ii++) {
     var_dof[ii] = unique_dofs_from_views_h(ii);
   }
-  scorpio::set_dim_decomp(filename,"ncol",var_dof);
+  scorpio::set_dim_decomp(filename,"ncol",var_dof,"write_decomp");
 
   // Define variables
-  std::string remap_decomp_tag_r = "n_s_real";
-  std::string data_decomp_tag_r  = "data_real";
-  std::string remap_decomp_tag_i = "n_s_int";
   std::vector<std::string> vec_of_remap_dims = {"n_s"};
   std::vector<std::string> vec_of_data_dims  = {"ncol"};
   scorpio::define_var(filename,"col",     "1",{"n_s"}, "int","int",false);
@@ -255,8 +252,8 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   scorpio::define_var(filename,"src_data","m",{"ncol"},"real","real",false);
 
   // Decompose variables
-  scorpio::set_vars_decomp(filename,{"col","row","S"},"n_s");
-  scorpio::set_var_decomp (filename,"src_data","ncol");
+  scorpio::set_vars_decomp(filename,{"col","row","S"},"n_s","write_decomp");
+  scorpio::set_var_decomp (filename,"src_data","ncol","write_decomp");
 
   // Enter data mode
   scorpio::enddef(filename);
@@ -296,8 +293,8 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
   for (size_t ii=0; ii<var_dof.size(); ii++) {
     var_dof[ii] = unique_dofs_from_file_h(ii);
   }
-  scorpio::set_dim_decomp(filename,"ncol",var_dof);
-  scorpio::set_var_decomp(filename,"src_data","ncol");
+  scorpio::set_dim_decomp(filename,"ncol",var_dof,"read_decomp");
+  scorpio::set_var_decomp(filename,"src_data","ncol","read_decomp");
 
   view_1d<Real> x_data_from_file("",var_dof.size());
   auto x_data_from_file_h = Kokkos::create_mirror_view(x_data_from_file);
@@ -350,7 +347,7 @@ void run(std::mt19937_64& engine, const ekat::Comm& comm, const gid_type src_min
         REQUIRE(std::abs(y_3d_data_h(ii,nn,kk)-(nn+1)*(kk+1)*y_base)<tol*100);
       }
     }
-  } 
+  }
 } // end function run
 
 //===============================================================================
@@ -371,6 +368,13 @@ TEST_CASE("horizontal_remap_test", "[horizontal_remap_test]"){
   if (comm.am_i_root()) {
     printf("ok!\n");
   }
+
+  // The run method uses the same name for the decomps in both runs.
+  // If we don't clean up the decomps, the second run will see that the
+  // decomps with those names already exist, and will attempt to use them.
+  // Since the two runs may use different distribution of dofs, we need
+  // to clean up decomps, to force creation of new ones.
+  scorpio::free_unused_decomps();
 
   if (comm.am_i_root()) {
     printf(" -> Testing horizontal remapping for minimum source dof = 1...");

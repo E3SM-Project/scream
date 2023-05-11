@@ -80,9 +80,9 @@ void HorizontalMap::set_remap_segments_from_file(const std::string& remap_filena
   view_1d<int>  tgt_col("row",my_chunk); 
   auto tgt_col_h = Kokkos::create_mirror_view(tgt_col);
   std::vector<std::string> vec_of_dims = {"n_s"};
-  std::string i_decomp = std::string("int-row-n_s-") + std::to_string(my_chunk);
   scorpio::set_dim_decomp(remap_filename,"n_s",my_start,my_chunk,"n_s-linear");
-  scorpio::set_var_decomp(remap_filename,"row","n_s-linear");
+  scorpio::set_var_decomp(remap_filename,"row","n_s","n_s-linear");
+  scorpio::change_var_dtype(remap_filename,"row","int"); // May be int64 in input file
   scorpio::read_var(remap_filename,"row",tgt_col_h.data());
   // Step 2: Now that we have the data distributed among all ranks we organize the data
   //         into sets of target column, start location in data and length of data.
@@ -146,11 +146,11 @@ void HorizontalMap::set_remap_segments_from_file(const std::string& remap_filena
   auto col_h = Kokkos::create_mirror_view(col);
   auto S_h = Kokkos::create_mirror_view(S);
   vec_of_dims = {"n_s"};
-  i_decomp = std::string("int-col-n_s-") + std::to_string(var_dof.size());
   std::string r_decomp = std::string("Real-S-n_s-") + std::to_string(var_dof.size());
 
   scorpio::set_dim_decomp(remap_filename,"n_s",var_dof,"n_s-distributed");
-  scorpio::set_vars_decomp(remap_filename,{"col","S"},"n_s-distributed");
+  scorpio::set_vars_decomp(remap_filename,{"col","S"},"n_s","n_s-distributed");
+  scorpio::change_var_dtype(remap_filename,"col","int"); // May be int64 in input file
   scorpio::read_var(remap_filename,"col",col_h.data());
   scorpio::read_var(remap_filename,"S",S_h.data());
   scorpio::release_file(remap_filename);

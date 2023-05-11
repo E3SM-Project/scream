@@ -150,7 +150,7 @@ void create_remap_file(const std::string& filename, std::vector<std::int64_t>& d
   scorpio::define_var(filename,"row","none",{"n_s"},"real","int", false);
   scorpio::define_var(filename,"S",  "none",{"n_s"},"real","real",false);
 
-  scorpio::set_vars_decomp(filename,{"col","row","S"},"nnz");
+  scorpio::set_vars_decomp(filename,{"col","row","S"},"n_s","nnz");
 
   scorpio::enddef(filename);
 

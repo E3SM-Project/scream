@@ -284,6 +284,7 @@ void register_file (const std::string& filename, const FileMode mode)
         " - pio error: " + std::to_string(err) + "\n");
 
     f.mode = mode;
+    f.name = filename;
 
     if (mode & Read) {
       // Read all dims/vars from file
@@ -569,7 +570,7 @@ void set_var_decomp (const std::string& filename,
 
   auto& var = get_var(filename,varname,"scorpio::set_var_decomp");
 
-  EKAT_REQUIRE_MSG (not throw_if_var_does_not_have_decomp_dim or var.decomp==nullptr,
+  EKAT_REQUIRE_MSG (not throw_if_decomp_already_set or var.decomp==nullptr,
       "Error! Variable decomposition was already set, and you requested to not allow a reset.\n"
       " - filename: " + filename + "\n"
       " - varname : " + varname + "\n"
