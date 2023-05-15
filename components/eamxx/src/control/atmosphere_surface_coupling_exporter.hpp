@@ -7,6 +7,7 @@
 #include "share/atm_process/ATMBufferManager.hpp"
 #include "share/atm_process/SCDataManager.hpp"
 #include "share/field/field_manager.hpp"
+#include "share/util/scream_time_interpolation.hpp"
 
 #include "surface_coupling_utils.hpp"
 
@@ -81,7 +82,7 @@ public:
   void do_export(const double dt, const bool called_during_initialization=false);             // Main export routine
   void compute_eamxx_exports(const double dt, const bool called_during_initialization=false); // Export vars are derived from eamxx state
   void set_constant_exports();                                                                // Export vars are set to a constant
-  void set_from_file_exports();                                                               // Export vars are set to values prescribed by file
+  void set_from_file_exports(const double dt);                                                // Export vars are set to values prescribed by file
   void do_export_to_cpl(const bool called_during_initialization=false);                       // Finish export by copying data to cpl structures.
 
   // Take and store data from SCDataManager
@@ -136,6 +137,7 @@ protected:
   int                               m_num_from_model_exports=0;
   int                               m_num_const_exports=0;
   int                               m_num_from_file_exports=0;
+  util::TimeInterpolation           m_time_interp;
 
   // Views storing a 2d array with dims (num_cols,num_fields) for cpl export data.
   // The field idx strides faster, since that's what mct does (so we can "view" the

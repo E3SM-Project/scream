@@ -15,6 +15,7 @@ class TimeInterpolation {
 public:
   using grid_ptr_type    = std::shared_ptr<const AbstractGrid>;
 
+  TimeInterpolation() = default;
   TimeInterpolation(const grid_ptr_type& grid);
 
   void init(
