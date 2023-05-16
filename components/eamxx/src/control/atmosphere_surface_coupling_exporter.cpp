@@ -337,6 +337,9 @@ void SurfaceCouplingExporter::set_constant_exports()
 void SurfaceCouplingExporter::set_from_file_exports(const double dt)
 {
   auto ts = timestamp();
+  if (dt > 0) {
+    ts += dt;
+  }
   auto interp_fields_map = m_time_interp.perform_time_interpolation(ts);
   // Cycle through those fields that will be set to a constant value:
   int num_set = 0;

@@ -118,6 +118,7 @@ void TimeInterpolation::shift_data()
 
 void TimeInterpolation::set_list_of_files(const std::vector<std::string>& files)
 {
+  EKAT_REQUIRE_MSG(files.size()>0,"ERROR! TimeInterpolation::set_list_of_files - the list of files is empty.  Please check.");
   int it = -1;
   std::map<Real,int>  map_of_times; // A vector listing the timestamps associated with each file
   std::vector<std::string> list_of_files;

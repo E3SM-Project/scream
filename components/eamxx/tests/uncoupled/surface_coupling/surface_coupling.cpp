@@ -16,6 +16,120 @@
 
 namespace scream {
 
+// Subclass of OutputManager that will is needed to track the set of output files
+// written in the test setup.
+class OutputManager4Test : public scream::OutputManager
+{
+public:
+  OutputManager4Test()
+   : OutputManager()
+  {
+    // Do Nothing
+  }
+
+  void run_me(const util::TimeStamp& ts) {
+    run(ts);
+    update_file_list();
+  }
+
+  void update_file_list() {
+    if (std::find(m_list_of_files.begin(),m_list_of_files.end(), m_output_file_specs.filename) == m_list_of_files.end()) {
+      m_list_of_files.push_back(m_output_file_specs.filename);
+    }
+  }
+  std::vector<std::string> get_files() { return m_list_of_files; }
+
+protected:
+  std::vector<std::string> m_list_of_files;
+};
+
+std::vector<std::string> setup_export_from_file_data(const int dt, const util::TimeStamp& ts,const ekat::Comm& comm, const int ncol, const int y0)
+{
+  scorpio::eam_init_pio_subsystem(comm);
+  using FL  = FieldLayout;
+  using FID = FieldIdentifier;
+  using namespace ShortFieldTagsNames;
+  // Create a grids manager to use
+  ekat::ParameterList gm_params;
+  gm_params.set("number_of_global_columns",ncol);
+  gm_params.set("number_of_vertical_levels",1);  // We don't care about levels
+  auto gm = create_mesh_free_grids_manager(comm,gm_params);
+  gm->build_grids();
+  auto grid = gm->get_grid("Point Grid");
+
+  // Create a field manager to use
+  const int nlcols = grid->get_num_local_dofs();
+  FL field_layout({COL         }, {nlcols        });
+  auto fm = std::make_shared<FieldManager>(grid);
+  fm->registration_begins();
+  fm->registration_ends();
+  const auto units = ekat::units::Units::nondimensional();
+  {
+    FID fid("Faxa_lwdn",field_layout,units,grid->name());
+    Field f(fid);
+    f.allocate_view();
+    f.get_header().get_tracking().update_time_stamp(ts);
+    fm->add_field(f);
+  }
+
+  // Create data file to test exports prescribed by file
+  using vos_type = std::vector<std::string>;
+  const vos_type exp_file_fields = {"Faxa_lwdn"};
+  ekat::ParameterList om_pl;
+  om_pl.set("MPI Ranks in Filename",true);
+  om_pl.set("filename_prefix",std::string("PrescribedExportData"));
+  om_pl.set("Field Names",exp_file_fields);
+  om_pl.set("Averaging Type", std::string("INSTANT"));
+  om_pl.set("Max Snapshots Per File",1);
+  auto& ctrl_pl = om_pl.sublist("output_control");
+  ctrl_pl.set("frequency_units",std::string("nsteps"));
+  ctrl_pl.set("Frequency",1);
+  ctrl_pl.set("MPI Ranks in Filename",true);
+  ctrl_pl.set("save_grid_data",false);
+  OutputManager4Test om;
+  util::TimeStamp tout = ts - dt; // Make sure that the prescribed data has bounds outside the simulation timesteps.
+  om.setup(comm,om_pl,fm,gm,tout,tout,false);
+  // We will create a file with two timesnaps of data, before and after the test is expected to run so there is something to interpolate.
+  std::map<std::string,Field> old_vals;
+  for (int ii=0; ii<exp_file_fields.size(); ii++) {
+    const auto name = exp_file_fields[ii];
+    auto ff   = fm->get_field(name);  //TODO: There must be a better way to do this that doesn't change the ad field manager.
+    auto ftmp = ff.clone();
+    old_vals.emplace(name,ftmp);
+    const Real val = y0 + (ii+1)*tout.seconds_from(ts);
+    ff.deep_copy(val);
+  }
+  om.run_me(tout);
+  // Next time step
+//  tout = ts + 3*dt;
+  tout += dt;
+  tout += dt;
+  tout += dt;
+  tout += dt;
+  for (int ii=0; ii<exp_file_fields.size(); ii++) {
+    const auto name = exp_file_fields[ii];
+    auto ff   = fm->get_field(name);
+    const Real val = y0 + (ii+1)*tout.seconds_from(ts);
+    ff.deep_copy(val);
+  }
+  om.run_me(tout);
+  // Now reset those fields changed in the fm
+  for (int ii=0; ii<exp_file_fields.size(); ii++) {
+    const auto name = exp_file_fields[ii];
+    auto ff   = fm->get_field(name);
+    auto ftmp = old_vals.at(name);
+    ff.deep_copy(ftmp);
+  }
+
+  auto list_of_files = om.get_files();
+
+  om.finalize();
+  scorpio::eam_pio_finalize();
+
+  return om.get_files(); 
+
+}
+
 void setup_import_and_export_data(
   // Imports
   const int num_cpl_imports, const int num_scream_imports,
@@ -184,7 +298,7 @@ void test_exports(const FieldManager& fm,
                   const KokkosTypes<HostDevice>::view_1d<int>  export_cpl_indices_view,
                   const KokkosTypes<HostDevice>::view_1d<Real> export_constant_multiple_view,
                   const ekat::ParameterList prescribed_constants,
-                  const int dt,
+                  const int dt, const int y0, const util::TimeStamp ts, const util::TimeStamp t0,
                   const bool called_directly_after_init = false)
 {
   using PF = PhysicsFunctions<DefaultDevice>;
@@ -288,6 +402,8 @@ void test_exports(const FieldManager& fm,
   const auto prescribed_const_values = prescribed_constants.get<vor_type>("values");
   const Real Faxa_swndf_const = prescribed_const_values[0]; 
   const Real Faxa_swndv_const = prescribed_const_values[1]; 
+  // And one field is prescribed from file
+  const Real Faxa_lwdn = y0 + ts.seconds_from(t0);  //TODO should be seconds_from t0
 
 
   // Check cpl data to scream fields
@@ -323,7 +439,7 @@ void test_exports(const FieldManager& fm,
       EKAT_REQUIRE(Faxa_swndf_const                                        == export_data_view(i, export_cpl_indices_view(13)));
       EKAT_REQUIRE(Faxa_swndv_const                                        == export_data_view(i, export_cpl_indices_view(14)));
       EKAT_REQUIRE(export_constant_multiple_view(15)*sfc_flux_sw_net_h(i)  == export_data_view(i, export_cpl_indices_view(15)));
-      EKAT_REQUIRE(export_constant_multiple_view(16)*sfc_flux_lw_dn_h(i)   == export_data_view(i, export_cpl_indices_view(16)));
+      EKAT_REQUIRE(Faxa_lwdn                                               == export_data_view(i, export_cpl_indices_view(16)));
     }
   }
 }
@@ -335,6 +451,13 @@ TEST_CASE("surface-coupling", "") {
   // Create a comm
   ekat::Comm atm_comm (MPI_COMM_WORLD);
   auto engine = setup_random_test(&atm_comm);
+
+  // Create engine and pdfs for random test data
+  std::uniform_int_distribution<int> pdf_int_additional_fields(0,10);
+  std::uniform_int_distribution<int> pdf_int_dt(1,1800);
+  std::uniform_real_distribution<Real> pdf_real_import_data(0.0,1.0);
+  // Set up random value for dt
+  const int dt = pdf_int_dt(engine);
 
   // Load ad parameter list
   std::string fname = "input.yaml";
@@ -355,16 +478,19 @@ TEST_CASE("surface-coupling", "") {
   const Real Faxa_swvdf_const = pdf_real_constant_data(engine);
   const vos_type exp_const_fields = {"Faxa_swndf","Faxa_swvdf"};
   const vor_type exp_const_values = {Faxa_swndf_const,Faxa_swvdf_const};
-  const vos_type exp_file_fields = {"Faxa_swndr","Faxa_swvdr"};
-  const vos_type exp_file_files =  {"test.nc"};
+  const vos_type exp_file_fields = {"Faxa_lwdn"};
   auto& ap_params     = ad_params.sublist("atmosphere_processes");
   auto& sc_exp_params = ap_params.sublist("SurfaceCouplingExporter");
   auto& exp_const_params = sc_exp_params.sublist("prescribed_constants");
   exp_const_params.set<vos_type>("fields",exp_const_fields);
   exp_const_params.set<vor_type>("values",exp_const_values);
+  // Create test data for presribed from file
+  std::uniform_int_distribution<int> pdf_y0(dt,3*dt);
+  const int export_from_file_y0 = pdf_y0(engine)*2;  // Ensure that it is even to play nice w/ test.
+  auto export_data_files = setup_export_from_file_data(dt,t0,atm_comm,218,export_from_file_y0);
   auto& exp_file_params = sc_exp_params.sublist("prescribed_from_file");
   exp_file_params.set<vos_type>("fields",exp_file_fields);
-  exp_file_params.set<vos_type>("files",exp_file_files);
+  exp_file_params.set<vos_type>("files",export_data_files);
 
   // Need to register products in the factory *before* we create any atm process or grids manager.
   auto& proc_factory = AtmosphereProcessFactory::instance();
@@ -388,12 +514,6 @@ TEST_CASE("surface-coupling", "") {
 
   // Create test data for SurfaceCouplingDataManager
 
-  // Create engine and pdfs for random test data
-  std::uniform_int_distribution<int> pdf_int_additional_fields(0,10);
-  std::uniform_int_distribution<int> pdf_int_dt(1,1800);
-  std::uniform_real_distribution<Real> pdf_real_import_data(0.0,1.0);
-  // Set up random value for dt
-  const int dt = pdf_int_dt(engine);
   // Setup views to test import/export. For this test we consider a random number of non-imported/exported
   // cpl fields (in addition to the required scream imports/exports), then assign a random, non-repeating
   // cpl index for each field in [0, num_cpl_fields).
@@ -495,21 +615,23 @@ TEST_CASE("surface-coupling", "") {
   ad.initialize_atm_procs ();
 
   const auto fm = ad.get_field_mgr("Physics");
+  const auto gm = ad.get_grids_manager();
 
   // Verify any initial imports/exports were done as expected
   test_imports(*fm, import_data_view, import_cpl_indices_view,
                import_constant_multiple_view, true);
   test_exports(*fm, export_data_view, export_cpl_indices_view,
-               export_constant_multiple_view,  exp_const_params, dt, true);
+               export_constant_multiple_view,  exp_const_params, dt, export_from_file_y0, t0, t0, true);
 
   // Run the AD
   ad.run(dt);
+  const auto ts_current = ad.get_atm_time_stamp();
 
   // Verify all imports/exports were done as expected
   test_imports(*fm, import_data_view, import_cpl_indices_view,
                import_constant_multiple_view);
   test_exports(*fm, export_data_view, export_cpl_indices_view,
-               export_constant_multiple_view, exp_const_params, dt);
+               export_constant_multiple_view, exp_const_params, dt, export_from_file_y0, ts_current, t0);
 
   // Finalize  the AD
   ad.finalize();
