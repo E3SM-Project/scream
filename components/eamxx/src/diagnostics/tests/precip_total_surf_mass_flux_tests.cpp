@@ -1,12 +1,12 @@
 #include "catch2/catch.hpp"
 
-#include "share/grid/mesh_free_grids_manager.hpp"
+#include "share/scream_test_support/mesh_free_grids_manager.hpp"
 #include "diagnostics/precip_total_surf_mass_flux.hpp"
 #include "diagnostics/register_diagnostics.hpp"
 
 #include "physics/share/physics_constants.hpp"
 
-#include "share/util/scream_setup_random_test.hpp"
+#include "share/scream_test_support/scream_setup_random_test.hpp"
 #include "share/field/field_utils.hpp"
 
 #include "ekat/kokkos/ekat_kokkos_utils.hpp"

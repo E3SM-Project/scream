@@ -7,7 +7,7 @@
 #include "share/io/scorpio_input.hpp"
 #include "share/io/scream_scorpio_interface.hpp"
 
-#include "share/grid/mesh_free_grids_manager.hpp"
+#include "share/scream_test_support/mesh_free_grids_manager.hpp"
 
 namespace {
 

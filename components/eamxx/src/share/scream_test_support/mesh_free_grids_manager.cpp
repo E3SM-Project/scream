@@ -1,4 +1,4 @@
-#include "share/grid/mesh_free_grids_manager.hpp"
+#include "mesh_free_grids_manager.hpp"
 #include "share/grid/point_grid.hpp"
 #include "share/grid/se_grid.hpp"
 #include "share/grid/remap/do_nothing_remapper.hpp"

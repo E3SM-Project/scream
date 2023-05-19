@@ -5,12 +5,12 @@
 #include "share/io/scorpio_input.hpp"
 #include "share/io/scream_output_manager.hpp"
 
-#include "share/grid/mesh_free_grids_manager.hpp"
+#include "share/scream_test_support/mesh_free_grids_manager.hpp"
 #include "share/grid/point_grid.hpp"
 
 #include "share/field/field_manager.hpp"
 
-#include "share/util/scream_setup_random_test.hpp"
+#include "share/scream_test_support/scream_setup_random_test.hpp"
 
 #include "ekat/util/ekat_units.hpp"
 #include "ekat/util/ekat_test_utils.hpp"

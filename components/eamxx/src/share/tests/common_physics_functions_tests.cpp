@@ -2,7 +2,7 @@
 
 #include "physics/share/physics_constants.hpp"
 
-#include "share/util/scream_setup_random_test.hpp"
+#include "share/scream_test_support/scream_setup_random_test.hpp"
 #include "share/util/scream_common_physics_functions.hpp"
 
 #include "ekat/ekat_pack.hpp"

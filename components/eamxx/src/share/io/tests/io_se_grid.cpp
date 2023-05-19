@@ -4,14 +4,14 @@
 #include "share/io/scorpio_input.hpp"
 #include "share/io/scream_scorpio_interface.hpp"
 
-#include "share/grid/mesh_free_grids_manager.hpp"
+#include "share/scream_test_support/mesh_free_grids_manager.hpp"
 
 #include "share/field/field_identifier.hpp"
 #include "share/field/field.hpp"
 #include "share/field/field_manager.hpp"
 #include "share/field/field_utils.hpp"
 
-#include "share/util/scream_setup_random_test.hpp"
+#include "share/scream_test_support/scream_setup_random_test.hpp"
 #include "share/util/scream_time_stamp.hpp"
 #include "share/scream_types.hpp"
 

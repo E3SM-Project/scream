@@ -84,12 +84,7 @@ endif()
 add_subdirectory(io)
 
 if (NOT SCREAM_LIB_ONLY)
-  # Create test_support lib
-  add_library(scream_test_support
-    grid/mesh_free_grids_manager.cpp
-    util/scream_test_session.cpp
-  )
-  target_link_libraries(scream_test_support PUBLIC scream_share scream_io)
+  add_subdirectory(scream_test_support)
 
   add_subdirectory(tests)
 endif()

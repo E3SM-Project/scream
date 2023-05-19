@@ -4,7 +4,7 @@
 #include "share/util/scream_universal_constants.hpp"
 #include "share/util/scream_utils.hpp"
 #include "share/util/scream_time_stamp.hpp"
-#include "share/util/scream_setup_random_test.hpp"
+#include "share/scream_test_support/scream_setup_random_test.hpp"
 
 TEST_CASE("contiguous_superset") {
   using namespace scream;
