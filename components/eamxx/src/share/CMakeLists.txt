@@ -80,6 +80,9 @@ if (NOT WGET STREQUAL "WGET-NOTFOUND")
     COMMENT "Downloading CF conventions XML file and building YAML dictionary...")
 endif()
 
+# Diagnostics library
+add_subdirectory(diagnostics)
+
 # IO library
 add_subdirectory(io)
 
