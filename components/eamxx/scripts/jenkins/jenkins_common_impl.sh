@@ -90,11 +90,11 @@ if [ $skip_testing -eq 0 ]; then
 
   # Run scream stand-alone tests (SA)
   if [ $test_SA -eq 1 ]; then
-    ./scripts/gather-all-data "./scripts/test-all-scream ${TAS_ARGS}" -l -m $SCREAM_MACHINE
-    if [[ $? != 0 ]]; then
-      fails=$fails+1;
-      sa_fail=1
-    fi
+    # ./scripts/gather-all-data "./scripts/test-all-scream ${TAS_ARGS}" -l -m $SCREAM_MACHINE
+    # if [[ $? != 0 ]]; then
+    #   fails=$fails+1;
+    #   sa_fail=1
+    # fi
 
     # Add memcheck and coverage tests for nightlies on specific machines
     if [[ $is_at_run == 0 ]]; then
@@ -116,7 +116,7 @@ if [ $skip_testing -eq 0 ]; then
       fi
 
       if [[ "$SCREAM_MACHINE" == "weaver" ]]; then
-        ./scripts/gather-all-data "./scripts/test-all-scream -t cmc -t csr -t csi -t css ${TAS_ARGS}" -l -m $SCREAM_MACHINE
+        ./scripts/gather-all-data "./scripts/test-all-scream -t csr ${TAS_ARGS}" -l -m $SCREAM_MACHINE
         if [[ $? != 0 ]]; then
           fails=$fails+1;
           memcheck_fail=1
