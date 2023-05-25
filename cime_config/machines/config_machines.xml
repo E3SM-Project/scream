@@ -1601,7 +1601,7 @@
     <NODENAME_REGEX>mappy</NODENAME_REGEX>
     <OS>LINUX</OS>
     <PROXY>proxy.sandia.gov:80</PROXY>
-    <COMPILERS>gnu,gnu9,intel</COMPILERS>
+    <COMPILERS>gnu,gnu9,gnu12,intel</COMPILERS>
     <MPILIBS>openmpi</MPILIBS>
     <SAVE_TIMING_DIR>/sems-data-store/ACME/mappy/timings</SAVE_TIMING_DIR>
     <SAVE_TIMING_DIR_PROJECTS>.*</SAVE_TIMING_DIR_PROJECTS>
@@ -1645,6 +1645,9 @@
       <modules compiler="gnu9">
         <command name="load">sems-archive-gcc/9.2.0</command>
       </modules>
+      <modules compiler="gnu12">
+        <command name="load">acme-gcc/12.3.0</command>
+      </modules>
       <modules compiler="intel">
         <command name="load">sems-archive-intel/19.0.5</command>
       </modules>
@@ -1655,9 +1658,13 @@
       <modules mpilib="mpi-serial" compiler="gnu9">
         <command name="load">sems-archive-netcdf/4.7.3/base</command>
       </modules>
-      <modules mpilib="!mpi-serial">
+      <modules mpilib="!mpi-serial" compiler="!gnu12">
         <command name="load">acme-openmpi/4.1.4</command>
         <command name="load">acme-netcdf/4.7.4/acme</command>
+      </modules>
+      <modules mpilib="!mpi-serial" compiler="gnu12">
+        <command name="load">acme-openmpi/4.0.7</command>
+        <command name="load">acme-netcdf/4.9.2/acme</command>
       </modules>
     </module_system>
     <RUNDIR>$CIME_OUTPUT_ROOT/$CASE/run</RUNDIR>
