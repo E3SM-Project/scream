@@ -9,8 +9,8 @@ Nudging::Nudging (const ekat::Comm& comm, const ekat::ParameterList& params)
   : AtmosphereProcess(comm, params)
 {
   datafile=m_params.get<std::string>("Nudging_Filename");
+  m_timescale = m_params.get<int>("Nudging_Timescale",0);  //TODO, add a warning message if nudging set to <=0 that nudging will be doing full replacement.
 }
-
 // =========================================================================================
 void Nudging::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
 {
@@ -32,6 +32,11 @@ void Nudging::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   add_field<Updated>("qv", scalar3d_layout_mid, Q, grid_name, "tracers", ps);
   add_field<Updated>("u", scalar3d_layout_mid, m/s, grid_name, ps);  
   add_field<Updated>("v", scalar3d_layout_mid, m/s, grid_name, ps);  
+  // Add helper fields which will be used to apply the nudging at a specific timescale
+  create_helper_field("T_mid", scalar3d_layout_mid, grid_name, ps);
+  create_helper_field("qv",    scalar3d_layout_mid, grid_name, ps);
+  create_helper_field("u",     scalar3d_layout_mid, grid_name, ps);  
+  create_helper_field("v",     scalar3d_layout_mid, grid_name, ps);  
 
   //Now need to read in the file
   scorpio::register_file(datafile,scorpio::Read);
@@ -213,7 +218,13 @@ void Nudging::time_interpolation (const int time_s) {
   });
   Kokkos::fence();   
 }
-
+// =========================================================================================
+Field Nudging::calculate_tendency(const Field& base, const Field& next)
+{
+  Field tend = base.clone();
+  tend.update(next,-1.0,1.0);
+  return tend;
+}
 // =========================================================================================
 void Nudging::update_time_step (const int time_s)
 {
@@ -253,10 +264,25 @@ void Nudging::run_impl (const double dt)
   //perform time interpolation
   time_interpolation(time_since_zero);
 
-  auto T_mid       = get_field_out("T_mid").get_view<mPack**>();
-  auto qv          = get_field_out("qv").get_view<mPack**>();
+  auto field_T_mid      = get_field_out("T_mid");
+  auto field_qv         = get_field_out("qv");
+  auto field_u          = get_field_out("u");
+  auto field_v          = get_field_out("v");
+
+  auto T_mid      = get_field_out("T_mid").get_view<mPack**>();
+  auto qv         = get_field_out("qv").get_view<mPack**>();
   auto u          = get_field_out("u").get_view<mPack**>();
   auto v          = get_field_out("v").get_view<mPack**>();
+
+  auto field_int_T_mid      = m_helper_fields.at("T_mid");
+  auto field_int_qv         = m_helper_fields.at("qv");
+  auto field_int_u          = m_helper_fields.at("u");
+  auto field_int_v          = m_helper_fields.at("v");
+
+  auto int_T_mid      = m_helper_fields.at("T_mid").get_view<mPack**>();
+  auto int_qv         = m_helper_fields.at("qv").get_view<mPack**>();
+  auto int_u          = m_helper_fields.at("u").get_view<mPack**>();
+  auto int_v          = m_helper_fields.at("v").get_view<mPack**>();
 
   const auto& p_mid    = get_field_in("p_mid").get_view<const mPack**>();
 
@@ -276,30 +302,49 @@ void Nudging::run_impl (const double dt)
   perform_vertical_interpolation<Real,1,2>(p_mid_ext_p,
                                            p_mid,
                                            T_mid_ext_p,
-                                           T_mid,
+                                           int_T_mid,
                                            m_num_src_levs,
                                            m_num_levs);
 
   perform_vertical_interpolation<Real,1,2>(p_mid_ext_p,
                                            p_mid,
                                            qv_ext_p,
-                                           qv,
+                                           int_qv,
                                            m_num_src_levs,
                                            m_num_levs);
 
   perform_vertical_interpolation<Real,1,2>(p_mid_ext_p,
                                            p_mid,
                                            u_ext_p,
-                                           u,
+                                           int_u,
                                            m_num_src_levs,
                                            m_num_levs);
 
   perform_vertical_interpolation<Real,1,2>(p_mid_ext_p,
                                            p_mid,
                                            v_ext_p,
-                                           v,
+                                           int_v,
                                            m_num_src_levs,
                                            m_num_levs);
+
+  // Back out tendencies and apply them
+  if (m_timescale <= 0) {
+    // We do full replacement
+    field_T_mid.deep_copy(field_int_T_mid);
+    field_qv.deep_copy(field_int_qv);
+    field_u.deep_copy(field_int_u);
+    field_v.deep_copy(field_int_v);
+  } else {
+    Real dtend = Real(dt)/Real(m_timescale);
+    auto T_tend = calculate_tendency(field_T_mid,field_int_T_mid);
+    auto u_tend = calculate_tendency(field_u,field_int_u);
+    auto v_tend = calculate_tendency(field_v,field_int_v);
+    auto qv_tend = calculate_tendency(field_qv,field_int_qv);
+    field_T_mid.update(T_tend,dtend,1.0);
+    field_u.update(u_tend,dtend,1.0);
+    field_v.update(v_tend,dtend,1.0);
+    field_qv.update(qv_tend,dtend,1.0);
+  }
 
   //This code removes any masked values and sets them to the corresponding
   //values at the lowest/highest pressure levels from the external file
@@ -341,6 +386,23 @@ void Nudging::run_impl (const double dt)
       team.team_barrier();
   });
   Kokkos::fence();   
+}
+// =========================================================================================
+void Nudging::create_helper_field (const std::string& name,
+                                   const FieldLayout& layout,
+                                   const std::string& grid_name,
+				   const int ps)
+{
+  using namespace ekat::units;
+  FieldIdentifier id(name,layout,Units::nondimensional(),grid_name);
+
+  // Create the field. Init with NaN's, so we spot instances of uninited memory usage
+  Field f(id);
+  f.get_header().get_alloc_properties().request_allocation(ps);
+  f.allocate_view();
+  f.deep_copy(ekat::ScalarTraits<Real>::invalid());
+
+  m_helper_fields[name] = f;
 }
 
 // =========================================================================================
