@@ -76,12 +76,20 @@ protected:
   void initialize_impl (const RunType run_type);
   void finalize_impl   ();
 
+  // Creates an helper field, not to be shared with the AD's FieldManager
+  void create_helper_field (const std::string& name,
+                            const FieldLayout& layout,
+                            const std::string& grid_name,
+			    const int ps);
+  Field calculate_tendency(const Field& base, const Field& next);
+
   std::shared_ptr<const AbstractGrid>   m_grid;
   // Keep track of field dimensions and the iteration count
   int m_num_cols; 
   int m_num_levs;
   int m_num_src_levs;
   int time_step_file;
+  int m_timescale;
   std::string datafile;
   std::map<std::string,view_1d_host<Real>> host_views;
   std::map<std::string,FieldLayout>  layouts;
@@ -97,6 +105,8 @@ protected:
   NudgingFunc::NudgingData NudgingData_bef;
   NudgingFunc::NudgingData NudgingData_aft;
   AtmosphereInput data_input;
+  // Some helper fields.
+  std::map<std::string,Field> m_helper_fields;
 }; // class Nudging
 
 } // namespace scream
