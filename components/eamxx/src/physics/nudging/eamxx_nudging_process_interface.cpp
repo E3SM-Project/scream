@@ -222,7 +222,7 @@ void Nudging::time_interpolation (const int time_s) {
 Field Nudging::calculate_tendency(const Field& base, const Field& next)
 {
   Field tend = base.clone();
-  tend.update(next,-1.0,1.0);
+  tend.update(next,1.0,-1.0);
   return tend;
 }
 // =========================================================================================
