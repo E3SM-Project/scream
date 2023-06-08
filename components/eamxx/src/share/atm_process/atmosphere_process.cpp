@@ -1086,5 +1086,22 @@ void AtmosphereProcess::compute_column_conservation_checks_data (const int dt)
   conservation_check->compute_current_mass();
   conservation_check->compute_current_energy();
 }
+// =========================================================================================
+void AtmosphereProcess::create_helper_field (const std::string& name,
+                                                   const FieldLayout& layout,
+                                                   const std::string& grid_name)
+{
+  using namespace ekat::units;
+  // For helper fields we don't bother w/ units, so we set them to non-dimensional
+  FieldIdentifier id(name,layout,Units::nondimensional(),grid_name);
+
+  // Create the field. Init with NaN's, so we spot instances of uninited memory usage
+  Field f(id);
+  f.get_header().get_alloc_properties().request_allocation();
+  f.allocate_view();
+  f.deep_copy(ekat::ScalarTraits<Real>::invalid());
+
+  m_helper_fields[name] = f;
+}
 
 } // namespace scream

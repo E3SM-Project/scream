@@ -373,6 +373,16 @@ protected:
     }
   }
 
+  // Creates an helper field, not to be shared with the AD's FieldManager
+  void create_helper_field (const std::string& name,
+                            const FieldLayout& layout,
+                            const std::string& grid_name);
+
+  // Query if a local field exists
+  bool has_helper_field (const std::string& name) const { return m_helper_fields.find(name)!=m_helper_fields.end(); }
+  // Retrieve a helper field
+  Field get_helper_field (const std::string& name) const { return m_helper_fields.at(name); }
+
   // Override this method to initialize the derived
   virtual void initialize_impl(const RunType run_type) = 0;
 
@@ -493,6 +503,9 @@ private:
   std::list<Field>        m_fields_in;
   std::list<Field>        m_fields_out;
   std::list<Field>        m_internal_fields;
+
+  // Helper fields.
+  std::map<std::string,Field> m_helper_fields;
 
   // Data structures necessary to compute tendencies of updated fields
   strmap_t<std::string>    m_tend_to_field;
