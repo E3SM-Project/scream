@@ -88,7 +88,7 @@ protected:
   int m_num_cols;
   int m_num_levs;
   int m_num_src_levs;
-  int time_step_file;
+  int m_time_step_file;
   int m_timescale;
   std::string m_datafile;
   std::map<std::string,view_1d_host<Real>> host_views;
