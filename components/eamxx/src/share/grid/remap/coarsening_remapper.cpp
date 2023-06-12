@@ -58,7 +58,7 @@ CoarseningRemapper (const grid_ptr_type& src_grid,
 
   scorpio::register_file(map_file,scorpio::FileMode::Read);
   for (const std::string& vname : {"row", "col", "S"}) {
-    EKAT_REQUIRE_MSG (scorpio::has_variable(map_file,"row"),
+    EKAT_REQUIRE_MSG (scorpio::has_variable(map_file,vname),
         "Error! Map file is missing the '" + vname + "' variable.\n"
         " - map file: " + map_file + "\n");
   }
@@ -904,7 +904,7 @@ get_my_triplets_gids (const std::string& map_file,
 
   scorpio::register_file(map_file,scorpio::FileMode::Read);
   for (const std::string& vname : {"row", "col"})
-    EKAT_REQUIRE_MSG (scorpio::has_variable(map_file,"row"),
+    EKAT_REQUIRE_MSG (scorpio::has_variable(map_file,vname),
         "Error! Map file is missing the '" + vname + "' variable.\n"
         " - filename" + map_file + "\n");
   // 1. Create a "helper" grid, with as many dofs as the number

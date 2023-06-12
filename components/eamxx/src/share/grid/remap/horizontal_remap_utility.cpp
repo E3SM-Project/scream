@@ -44,7 +44,7 @@ void HorizontalMap::set_remap_segments_from_file(const std::string& remap_filena
   // Open remap file and determine the amount of data to be read
   scorpio::register_file(remap_filename,scorpio::Read);
   for (const std::string& vname : {"row", "col", "S"}) {
-    EKAT_REQUIRE_MSG (scorpio::has_variable(remap_filename,"row"),
+    EKAT_REQUIRE_MSG (scorpio::has_variable(remap_filename,vname),
         "Error! Map file is missing the '" + vname + "' variable.\n"
         " - map file: " + remap_filename + "\n");
   }
