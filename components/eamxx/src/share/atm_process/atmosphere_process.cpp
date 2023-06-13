@@ -1088,8 +1088,9 @@ void AtmosphereProcess::compute_column_conservation_checks_data (const int dt)
 }
 // =========================================================================================
 void AtmosphereProcess::create_helper_field (const std::string& name,
-                                                   const FieldLayout& layout,
-                                                   const std::string& grid_name)
+                                             const FieldLayout& layout,
+                                             const std::string& grid_name,
+                                             const int ps)
 {
   using namespace ekat::units;
   // For helper fields we don't bother w/ units, so we set them to non-dimensional
@@ -1097,7 +1098,11 @@ void AtmosphereProcess::create_helper_field (const std::string& name,
 
   // Create the field. Init with NaN's, so we spot instances of uninited memory usage
   Field f(id);
-  f.get_header().get_alloc_properties().request_allocation();
+  if (ps>=0) {
+    f.get_header().get_alloc_properties().request_allocation(ps);
+  } else {
+    f.get_header().get_alloc_properties().request_allocation();
+  }
   f.allocate_view();
   f.deep_copy(ekat::ScalarTraits<Real>::invalid());
 

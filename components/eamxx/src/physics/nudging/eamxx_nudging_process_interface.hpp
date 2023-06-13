@@ -72,9 +72,12 @@ protected:
 
 protected:
 
-  // The three main overrides for the subcomponent
+  // The two other main overrides for the subcomponent
   void initialize_impl (const RunType run_type);
   void finalize_impl   ();
+
+  // Internal function to apply nudging at specific timescale
+  void apply_tendency(Field& base, const Field& next, const int dt);
 
   std::shared_ptr<const AbstractGrid>   m_grid;
   // Keep track of field dimensions and the iteration count
@@ -82,6 +85,7 @@ protected:
   int m_num_levs;
   int m_num_src_levs;
   int m_time_step_file;
+  int m_timescale;
   std::string m_datafile;
 
   std::map<std::string,view_2d<Real>> m_fields_ext;

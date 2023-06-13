@@ -376,7 +376,8 @@ protected:
   // Creates an helper field, not to be shared with the AD's FieldManager
   void create_helper_field (const std::string& name,
                             const FieldLayout& layout,
-                            const std::string& grid_name);
+                            const std::string& grid_name,
+                            const int ps=0);
 
   // Query if a local field exists
   bool has_helper_field (const std::string& name) const { return m_helper_fields.find(name)!=m_helper_fields.end(); }
