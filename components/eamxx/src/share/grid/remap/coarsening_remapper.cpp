@@ -875,7 +875,7 @@ get_my_triplets_gids (const std::string& map_file,
   std::vector<gid_t> rows(nlweights); // Needed to calculate min_dof
   std::string dim_decomp_tag = "CoarseningRemapper::get_my_triplets_gids::nnz";
   scorpio::set_dim_decomp(map_file,"n_s",offset,nlweights,dim_decomp_tag);
-  scorpio::set_vars_decomp(map_file,{"col","row"},"n_s",dim_decomp_tag);
+  scorpio::reset_vars_decomp(map_file,{"col","row"},"n_s",dim_decomp_tag);
   scorpio::read_var(map_file,"col",cols.data());
   scorpio::read_var(map_file,"row",rows.data());
   scorpio::release_file(map_file);

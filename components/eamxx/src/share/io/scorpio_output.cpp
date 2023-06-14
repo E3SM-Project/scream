@@ -700,6 +700,12 @@ register_variables(const std::string& filename,
           " - varname : " + name + "\n"
           " - file dims: " + ekat::join(get_vardims(filename,name),",") + "\n"
           " - expected dims: " + ekat::join(vec_of_dims,",") + "\n");
+
+      // We may be saving single-precision output, but our vars are double precision.
+      // When we opened the file, we set dtype=nc_dtype=float, since we had no knowledge
+      // of where the data came from, but now we do, so we need to update dtype to
+      // match the real type of eamxx
+      change_var_dtype (filename,name,"real");
     } else {
       define_var(filename, name, units, vec_of_dims,
                  "real",fp_precision,m_add_time_dim);

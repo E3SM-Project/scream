@@ -79,28 +79,37 @@ void set_dim_decomp (const std::string& filename,
 //  - dimname specifies the decomposed dimension, while dim_decomp_name specifies
 //    which decomposition along that dim should be used (in case set_dim_decomp
 //    was called multiple times for that dimension during the lifetime of the PIOFile)
-//  - throw_if_decomp_already_set=false allows to change a var decomp without closing
-//    and reopening the file (it is used at least once, by CoarseningRemapper)
+//  - if a decomp is already present, this function throws if the new decomp is different.
+//    Use reset_var_decomp (below) to allow a change of decomp
 //  - throw_if_var_does_not_have_decomp_dim=false allows to call these method on all vars,
 //    without checking first which ones are indeed decomposed
 //  - the actual PIO decomp objects are created here
-//  - or efficiency reasons, decompositions are kept in memory even after a file is closed,
+//  - for efficiency reasons, decompositions are kept in memory even after a file is closed,
 //    so a call to this function may be quick (if we can recycle an existing decomp)
 //  - if you wish to clear any currently unused decomposition, use free_unused_decomps()
 void set_var_decomp (const std::string& filename,
                      const std::string& varname,
                      const std::string& dimname,
                      const std::string& dim_decomp_name = "DEFAULT",
-                     const bool throw_if_decomp_already_set = true,
                      const bool throw_if_var_does_not_have_decomp_dim = false);
 
 void set_vars_decomp (const std::string& filename,
                       const std::vector<std::string>& varnames,
                       const std::string& dimname,
                       const std::string& dim_decomp_name = "DEFAULT",
-                      const bool throw_if_decomp_already_set = true,
                       const bool throw_if_var_does_not_have_decomp_dim = false);
 
+void reset_var_decomp (const std::string& filename,
+                       const std::string& varname,
+                       const std::string& dimname,
+                       const std::string& dim_decomp_name = "DEFAULT",
+                       const bool throw_if_var_does_not_have_decomp_dim = false);
+
+void reset_vars_decomp (const std::string& filename,
+                        const std::vector<std::string>& varnames,
+                        const std::string& dimname,
+                        const std::string& dim_decomp_name = "DEFAULT",
+                        const bool throw_if_var_does_not_have_decomp_dim = false);
 // Clean up any currently unused decompositions (meaning the decomp is associated to *no* variables)
 void free_unused_decomps ();
 

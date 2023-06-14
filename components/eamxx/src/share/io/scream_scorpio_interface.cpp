@@ -563,19 +563,10 @@ void set_var_decomp (const std::string& filename,
                      const std::string& varname,
                      const std::string& dimname,
                      const std::string& dim_decomp_name,
-                     const bool throw_if_decomp_already_set,
                      const bool throw_if_var_does_not_have_decomp_dim)
 {
-  auto& f = get_file(filename,"scorpio::set_var_decomp");
-
   auto& var = get_var(filename,varname,"scorpio::set_var_decomp");
 
-  EKAT_REQUIRE_MSG (not throw_if_decomp_already_set or var.decomp==nullptr,
-      "Error! Variable decomposition was already set, and you requested to not allow a reset.\n"
-      " - filename: " + filename + "\n"
-      " - varname : " + varname + "\n"
-      " - old decomp name: " + var.decomp->name + "\n"
-      " - new dim decomp name: " + dim_decomp_name + "\n");
 
   // Create decomp name: dtype-dim1$N1_dim2$N2_..._dimk$Nk-$dim_decomp_name
   std::shared_ptr<const PIODim> decomp_dim;
@@ -588,7 +579,7 @@ void set_var_decomp (const std::string& filename,
       decomp_dim = d;
       idecompdim = idim;
     }
-    decomp_tag += d->name + std::to_string(d->length) + "_";
+    decomp_tag += d->name + "<" + std::to_string(d->length) + ">_";
   }
 
   if (decomp_tag.back()=='_') {
@@ -597,6 +588,30 @@ void set_var_decomp (const std::string& filename,
 
   if (decomp_dim==nullptr and not throw_if_var_does_not_have_decomp_dim) {
     // We are allowing to call this fucntion on not-decomposed vars.
+    return;
+  }
+
+  if (var.decomp!=nullptr) {
+    EKAT_REQUIRE_MSG (var.decomp_dim==dimname,
+        "Error! In order to change a variable decomp, you must call reset_var_decomp instead.\n"
+        " - filename: " + filename + "\n"
+        " - varname : " + varname + "\n"
+        " - old decomp dimname : " + var.decomp_dim + "\n"
+        " - new decomp dimname : " + dimname + "\n");
+    EKAT_REQUIRE_MSG (var.decomp->name==decomp_tag,
+        "Error! In order to change a variable decomp, you must call reset_var_decomp instead.\n"
+        " - filename: " + filename + "\n"
+        " - varname : " + varname + "\n"
+        " - dimname : " + dimname + "\n"
+        " - old decomp tag: " + var.decomp->name + "\n"
+        " - new decomp tag: " + decomp_tag + "\n");
+    EKAT_REQUIRE_MSG (var.dim_decomp_name==dim_decomp_name,
+        "Error! In order to change a variable decomp, you must call reset_var_decomp instead.\n"
+        " - filename: " + filename + "\n"
+        " - varname : " + varname + "\n"
+        " - dimname : " + dimname + "\n"
+        " - old dim decomp name: " + var.dim_decomp_name + "\n"
+        " - new dim decomp name: " + dim_decomp_name + "\n");
     return;
   }
 
@@ -678,8 +693,11 @@ void set_var_decomp (const std::string& filename,
     int err = PIOc_init_decomp(s.pio_sysid,nctype(var.dtype),ndims,gdimlen.data(),
                                maplen,compmap, &decomp->ncid,s.pio_rearranger,
                                nullptr,nullptr);
-    check_scorpio_noerr(err,f.name,"decomp",decomp_tag,"set_var_decomp","InitDecomp");
+
+    check_scorpio_noerr(err,filename,"decomp",decomp_tag,"set_var_decomp","InitDecomp");
   }
+
+  // Set decomp data in the var
   var.decomp = decomp;
   var.decomp_dim = dimname;
   var.dim_decomp_name = dim_decomp_name;
@@ -689,13 +707,33 @@ void set_vars_decomp (const std::string& filename,
                       const std::vector<std::string>& varnames,
                       const std::string& dimname,
                       const std::string& dim_decomp_name,
-                      const bool throw_if_decomp_already_set,
                       const bool throw_if_var_does_not_have_decomp_dim)
 {
   for (const auto& vname : varnames) {
     set_var_decomp(filename,vname,dimname,dim_decomp_name,
-                   throw_if_decomp_already_set,
                    throw_if_var_does_not_have_decomp_dim);
+  }
+}
+
+void reset_var_decomp (const std::string& filename,
+                       const std::string& varname,
+                       const std::string& dimname,
+                       const std::string& dim_decomp_name,
+                       const bool throw_if_var_does_not_have_decomp_dim)
+{
+  auto& var = get_var(filename,varname,"scorpio::reset_var_decomp");
+  var.decomp = nullptr;
+  set_var_decomp(filename,varname,dimname,dim_decomp_name,throw_if_var_does_not_have_decomp_dim);
+}
+
+void reset_vars_decomp (const std::string& filename,
+                        const std::vector<std::string>& varnames,
+                        const std::string& dimname,
+                        const std::string& dim_decomp_name,
+                        const bool throw_if_var_does_not_have_decomp_dim)
+{
+  for (const auto& vname : varnames) {
+    reset_var_decomp(filename,vname,dimname,dim_decomp_name,throw_if_var_does_not_have_decomp_dim);
   }
 }
 
@@ -818,14 +856,14 @@ void change_var_dtype (const std::string& filename, const std::string& varname,
 {
   auto& var = get_var(filename,varname,"scorpio::change_var_dtype");
 
-  if (dtype==var.dtype) {
+  if (nctype(dtype)==nctype(var.dtype)) {
     return;
   }
 
   var.dtype = dtype;
   if (var.decomp) {
     // Re-decompose the variable, with new data type
-    set_var_decomp (filename,varname,var.decomp_dim,var.dim_decomp_name,false,true);
+    reset_var_decomp (filename,varname,var.decomp_dim,var.dim_decomp_name,true);
   }
 }
 
