@@ -337,11 +337,11 @@ std::shared_ptr<FieldManager> get_fm (const std::shared_ptr<const AbstractGrid>&
   const int nlcols = grid->get_num_local_dofs();
   const int nlevs  = grid->get_num_vertical_levels();
 
-  std::vector<FL> layouts =
+  std::map<std::string,FL> layouts =
   {
-    FL({COL         }, {nlcols        }),
-    FL({COL,     LEV}, {nlcols,  nlevs}),
-    FL({COL,CMP,ILEV}, {nlcols,2,nlevs+1})
+    { "f1", FL({COL         }, {nlcols        })   },
+    { "f1", FL({COL,     LEV}, {nlcols,  nlevs})   },
+    { "f1", FL({COL,CMP,ILEV}, {nlcols,2,nlevs+1}) }
   };
 
   auto fm = std::make_shared<FieldManager>(grid);
@@ -349,8 +349,10 @@ std::shared_ptr<FieldManager> get_fm (const std::shared_ptr<const AbstractGrid>&
   fm->registration_ends();
 
   const auto units = ekat::units::Units::nondimensional();
-  for (const auto& fl : layouts) {
-    FID fid("f_"+std::to_string(fl.size()),fl,units,grid->name());
+  for (const auto& it : layouts) {
+    const auto& name = it.first;
+    const auto& fl   = it.second;
+    FID fid(name,fl,units,grid->name());
     Field f(fid);
     f.allocate_view();
     randomize (f,engine,my_pdf);
