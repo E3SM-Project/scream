@@ -628,7 +628,7 @@ void set_var_decomp (const std::string& filename,
         " - filename: " + filename + "\n"
         " - varname : " + varname + "\n"
         " - dimname : " + dimname + "\n"
-        " - dim decmops: " + print_map_keys(decomp_dim->decomps) + "\n");
+        " - dim decomps: " + print_map_keys(decomp_dim->decomps) + "\n");
   }
   
   // The decomp_tag is dtype_dim1$N1_dim2$N2_.._dimK$NK-$decomp_name, where decomp_name is

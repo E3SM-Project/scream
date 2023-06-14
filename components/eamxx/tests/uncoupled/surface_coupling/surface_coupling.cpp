@@ -88,7 +88,7 @@ std::vector<std::string> create_from_file_test_data(const ekat::Comm& comm, cons
   }
 
   // Create output manager to handle the data
-  scorpio::eam_init_pio_subsystem(comm);
+  scorpio::init_pio_subsystem(comm);
   ekat::ParameterList om_pl;
   om_pl.set("MPI Ranks in Filename",true);
   om_pl.set("filename_prefix",std::string("surface_coupling_forcing"));
@@ -121,7 +121,7 @@ std::vector<std::string> create_from_file_test_data(const ekat::Comm& comm, cons
 
   // Done, finalize
   om.finalize();
-  scorpio::eam_pio_finalize();
+  scorpio::finalize_pio_subsystem();
   return om.get_list_of_files();
 }
 
