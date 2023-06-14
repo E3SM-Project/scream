@@ -1098,7 +1098,7 @@ void AtmosphereProcess::create_helper_field (const std::string& name,
 
   // Create the field. Init with NaN's, so we spot instances of uninited memory usage
   Field f(id);
-  if (ps>=0) {
+  if (ps>0) {
     f.get_header().get_alloc_properties().request_allocation(ps);
   } else {
     f.get_header().get_alloc_properties().request_allocation();
