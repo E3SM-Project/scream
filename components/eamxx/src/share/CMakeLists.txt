@@ -4,6 +4,7 @@ set(SHARE_SRC
   scream_config.cpp
   scream_session.cpp
   atm_process/atmosphere_process.cpp
+  atm_process/atmosphere_process_hash.cpp
   atm_process/atmosphere_process_group.cpp
   atm_process/atmosphere_process_dag.cpp
   atm_process/atmosphere_diagnostic.cpp
@@ -27,9 +28,13 @@ set(SHARE_SRC
   property_checks/field_nan_check.cpp
   property_checks/field_within_interval_check.cpp
   property_checks/mass_and_energy_column_conservation_check.cpp
+  util/eamxx_fv_phys_rrtmgp_active_gases_workaround.cpp
   util/scream_time_stamp.cpp
   util/scream_timing.cpp
   util/scream_utils.cpp
+  util/eamxx_time_interpolation.cpp
+  util/scream_bfbhash.cpp
+  util/eamxx_time_interpolation.cpp
 )
 
 add_library(scream_share ${SHARE_SRC})
