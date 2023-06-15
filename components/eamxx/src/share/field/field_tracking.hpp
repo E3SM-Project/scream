@@ -1,22 +1,16 @@
 #ifndef SCREAM_FIELD_TRACKING_HPP
 #define SCREAM_FIELD_TRACKING_HPP
 
-#include "share/field/field_group_info.hpp"
 #include "share/scream_types.hpp"
 #include "share/util/scream_time_stamp.hpp"
 #include "share/util/scream_family_tracking.hpp"
 
 #include "ekat/util/ekat_string_utils.hpp"
-#include "ekat/std_meta/ekat_std_utils.hpp"
 #include "ekat/ekat_assert.hpp"
 
-#include <memory>   // For std::weak_ptr
-#include <string>
+#include <set>
 
 namespace scream {
-
-// Forward declarations
-class FieldHeader;
 
 class FieldTracking : public FamilyTracking<FieldTracking> {
 public:
@@ -41,8 +35,9 @@ public:
   const std::set<std::string>& get_providers () const { return m_providers; }
   const std::set<std::string>& get_customers () const { return m_customers; }
 
-  // List of field groups that this field belongs to
-  const ekat::WeakPtrSet<const FieldGroupInfo>& get_groups_info () const { return m_groups; }
+  // ----  Set/query group info ---- //
+  bool is_in_group (const std::string& group_name) const;
+  void add_to_group (const std::string& group_name);
 
   // ----- Setters ----- //
 
@@ -51,7 +46,6 @@ public:
   void add_customer (const std::string& customer);
 
   // Add the field to a given group
-  void add_to_group (const std::shared_ptr<const FieldGroupInfo>& group);
 
   // Set the time stamp for this field. This can only be called once, due to TimeStamp implementation.
   // NOTE: if the field has 'children' (see FamilyTracking), their ts will be updated too.
@@ -79,7 +73,10 @@ protected:
   std::set<std::string>   m_providers;
   std::set<std::string>   m_customers;
 
-  ekat::WeakPtrSet<const FieldGroupInfo>    m_groups;
+  // Groups are used to "bundle" together fields, so that a process can request all of them
+  // without knowing/listing all their names. Here, we only store the name of the groups this
+  // field belongs to (the field has no need to know what other fields belong to the group).
+  std::set<std::string> m_groups;
 };
 
 // Use this free function to exploit features of enable_shared_from_this,

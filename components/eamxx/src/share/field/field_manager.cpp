@@ -121,7 +121,7 @@ add_to_group (const std::string& field_name, const std::string& group_name)
 
   group->m_fields_names.push_back(field_name);
   auto& ft = get_field(field_name).get_header().get_tracking();
-  ft.add_to_group(group);
+  ft.add_to_group(group->m_group_name);
 }
 
 bool FieldManager::has_field (const identifier_type& id) const
@@ -699,7 +699,7 @@ void FieldManager::registration_ends ()
     const auto& fnames = group_info->m_fields_names;
     for (const auto& fn : fnames) {
       // Update the field tracking
-      m_fields.at(fn)->get_header().get_tracking().add_to_group(group_info);
+      m_fields.at(fn)->get_header().get_tracking().add_to_group(group_info->m_group_name);
     }
   }
 
@@ -717,29 +717,35 @@ void FieldManager::clean_up() {
 }
 
 void FieldManager::add_field (const Field& f) {
+  const auto& fh = f.get_header();
   // This method has a few restrictions on the input field.
   EKAT_REQUIRE_MSG (m_repo_state==RepoState::Closed or m_repo_state==RepoState::Clean,
       "Error! The method 'add_field' can only be called on a closed repo.\n");
   EKAT_REQUIRE_MSG (f.is_allocated(),
       "Error! The method 'add_field' requires the input field to be already allocated.\n");
-  EKAT_REQUIRE_MSG (f.get_header().get_identifier().get_grid_name()==m_grid->name(),
+  EKAT_REQUIRE_MSG (fh.get_identifier().get_grid_name()==m_grid->name(),
       "Error! Input field to 'add_field' is defined on a grid different from the one stored.\n"
       "  - field manager grid: " + m_grid->name() + "\n"
       "  - input field grid:   " + f.get_header().get_identifier().get_grid_name() + "\n");
-  EKAT_REQUIRE_MSG (not has_field(f.get_header().get_identifier().name()),
-      "Error! The method 'add_field' requires the input field to not be already existing.\n"
-      "  - field name: " + f.get_header().get_identifier().name() + "\n");
-  EKAT_REQUIRE_MSG (f.get_header().get_tracking().get_groups_info().size()==0 ||
-                    m_group_requests.size()==0,
-      "Error! When calling 'add_field', one of the following must be true:\n"
-      "  - the input field is not be part of any group,\n"
-      "  - there were no group requests for this field manager.\n"
+  EKAT_REQUIRE_MSG (not has_field(fh.get_identifier().name()),
+      "Error! The method 'add_field' requires the input field to not be already existing in the repo.\n"
+      "  - field name: " + fh.get_identifier().name() + "\n");
+
+  EKAT_REQUIRE_MSG (fh.get_tracking().get_groups_info().size()==0 ||
+                    (fh.get_tracking().get_groups_info().size()==1 &&
+                     fh.get_tracking().is_in_group("RESTART")),
+      "Error! When calling 'add_field', the input field is only allowed to be part of the RESTART group.\n"
       "The reason for this is that otherwise we *might* have missed some inclusion dependency\n"
       "when we allocated the fields for one of those groups.\n");
 
   // All good, add the field to the repo
-  m_fields[f.get_header().get_identifier().name()] = std::make_shared<Field>(f);
+  m_fields[f.name()] = std::make_shared<Field>(f);
 
+  if (fh.get_tracking.get_groups_info().size()==1) {
+    add_to_group (f.name(),"RESTART");
+  }
+
+  // If the repo wasn't closed before, it is closed now
   m_repo_state = RepoState::Closed;
 }
 

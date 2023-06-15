@@ -2,6 +2,12 @@
 
 namespace scream {
 
+bool FieldTracking::
+is_in_group (const std::string& group_name) const
+{
+  return ekat::contains(m_groups,group_name);
+}
+
 void FieldTracking::add_provider (const std::string& provider) {
   m_providers.insert(provider);
 }
@@ -11,7 +17,8 @@ void FieldTracking::add_customer (const std::string& customer) {
 }
 
 void FieldTracking::
-add_to_group (const std::shared_ptr<const FieldGroupInfo>& group) {
+add_to_group (const std::string& group)
+{
   m_groups.insert(group);
 }
 

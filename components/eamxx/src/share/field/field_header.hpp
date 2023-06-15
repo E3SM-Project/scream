@@ -78,6 +78,7 @@ public:
   // Get the extra data
   const extra_data_type& get_extra_data () const { return m_extra_data; }
 
+  // Create a shallow copy of this header with a different name
   std::shared_ptr<FieldHeader> alias (const std::string& name) const;
 
 protected:

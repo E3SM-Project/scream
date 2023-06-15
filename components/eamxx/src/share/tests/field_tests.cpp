@@ -455,23 +455,13 @@ TEST_CASE("field_mgr", "") {
   REQUIRE_THROWS(field_mgr.get_field("bad")); // Not in the field_mgr
   REQUIRE(f1.get_header().get_identifier()==fid1);
 
-  // Check that the groups names are in the header. While at it, make sure that case insensitive works fine.
-  auto has_group = [](const ekat::WeakPtrSet<const FieldGroupInfo>& groups,
-                      const std::string& name)->bool {
-    for (auto it : groups) {
-      if (it.lock()->m_group_name==name) {
-        return true;
-      }
-    }
-    return false;
-  };
-  REQUIRE (has_group(f1.get_header().get_tracking().get_groups_info(),"gRouP_1"));
-  REQUIRE (has_group(f2.get_header().get_tracking().get_groups_info(),"Group_2"));
-  REQUIRE (has_group(f2.get_header().get_tracking().get_groups_info(),"Group_4"));
-  REQUIRE (has_group(f3.get_header().get_tracking().get_groups_info(),"Group_1"));
-  REQUIRE (has_group(f3.get_header().get_tracking().get_groups_info(),"Group_2"));
-  REQUIRE (has_group(f3.get_header().get_tracking().get_groups_info(),"Group_3"));
-  REQUIRE (has_group(f3.get_header().get_tracking().get_groups_info(),"Group_4"));
+  REQUIRE (f1.get_header().get_tracking().is_in_group("gRouP_1"));
+  REQUIRE (f2.get_header().get_tracking().is_in_group("Group_2"));
+  REQUIRE (f2.get_header().get_tracking().is_in_group("Group_4"));
+  REQUIRE (f3.get_header().get_tracking().is_in_group("Group_1"));
+  REQUIRE (f3.get_header().get_tracking().is_in_group("Group_2"));
+  REQUIRE (f3.get_header().get_tracking().is_in_group("Group_3"));
+  REQUIRE (f3.get_header().get_tracking().is_in_group("Group_4"));
 
   // Check that the groups in the field_mgr contain the correct fields
   REQUIRE (field_mgr.get_groups_info().count("GROUP_1")==1);
