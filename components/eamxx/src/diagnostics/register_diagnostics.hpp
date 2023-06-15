@@ -4,6 +4,7 @@
 // Include all diagnostics
 #include "diagnostics/field_at_level.hpp"
 #include "diagnostics/potential_temperature.hpp"
+#include "diagnostics/potential_temperature2.hpp"
 #include "diagnostics/atm_density.hpp"
 #include "diagnostics/exner.hpp"
 #include "diagnostics/virtual_temperature.hpp"
@@ -32,6 +33,7 @@ namespace scream {
 inline void register_diagnostics () {
   auto& diag_factory = AtmosphereDiagnosticFactory::instance();
   diag_factory.register_product("PotentialTemperature",&create_atmosphere_diagnostic<PotentialTemperatureDiagnostic>);
+  diag_factory.register_product("PotentialTemperature2",&create_atmosphere_diagnostic<PotentialTemperatureDiagnostic2>);
   diag_factory.register_product("FieldAtLevel",&create_atmosphere_diagnostic<FieldAtLevel>);
   diag_factory.register_product("FieldAtPressureLevel",&create_atmosphere_diagnostic<FieldAtPressureLevel>);
   diag_factory.register_product("AtmosphereDensity",&create_atmosphere_diagnostic<AtmDensityDiagnostic>);

@@ -58,6 +58,7 @@ Fields:
       - surf_evap
       - surf_sens_flux
       # Diagnostics
+      - VirtualTemperature
       - PotentialTemperature
 output_control:
 # WARNING: ERS/ERP tets will override this with STOP_N/STOP_OPTION
