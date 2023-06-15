@@ -183,6 +183,8 @@ public:
   bool has_computed_field (const std::string& name, const std::string& grid_name) const;
   bool has_required_group (const std::string& name, const std::string& grid) const;
   bool has_computed_group (const std::string& name, const std::string& grid) const;
+  bool has_internal_field (const std::string& name, const std::string& grid_name) const;
+  bool has_internal_field (const std::string& name) const;
 
   // Computes total number of bytes needed for local variables
   virtual size_t requested_buffer_size_in_bytes () const { return 0; }
@@ -402,7 +404,19 @@ protected:
   virtual void set_computed_group_impl (const FieldGroup& /* group */) {}
 
   // Adds a field to the list of internal fields
-  void add_internal_field (const Field& f);
+  enum InternalFieldType {
+    Helper,   // Persists for the whole run
+    Restart,  // Will be added to restart group
+    InitOnly  // Will be destroyed after init sequence completes
+  };
+  template<typename ST>
+  void create_internal_field (const std::string& name, const FieldLayout& fl,
+                              const std::string& grid_name,
+                              const InternalFieldType type = Helper,
+                              const int pack_size = 1,
+                              const ekat::units::Units& u = ekat::units::Units::invalid());
+  void add_internal_field (const Field& f,
+                           const InternalFieldType type = Helper);
 
   // These methods set up an extra pointer in the m_[fields|groups]_[in|out]_pointers,
   // for convenience of use (e.g., use a short name for a field/group).
@@ -572,6 +586,24 @@ void AtmosphereProcess::
 add_invariant_check (const Args... args) {
   auto fpc = std::make_shared<FPC>(args...);
   add_invariant_check(fpc);
+}
+
+template<typename ST>
+void AtmosphereProcess::
+create_internal_field (const std::string& name, const FieldLayout& fl,
+                       const std::string& grid_name,
+                       const InternalFieldType type = Helper,
+                       const int pack_size,
+                       const ekat::units::Units& u)
+{
+  auto dt = get_data_type<ST>();
+  FieldIdentifier fid(name,fl,u,grid_name,dt);
+  Field f (fid);
+  f.get_header().get_alloc_properties().request_allocation(pack_size);
+  f.get_header().get_alloc_properties().request_allocation(pack_size);
+  f.allocate_view();
+  f.deep_copy(ekat::ScalarTraits<ST>::invalid());
+  add_internal_field(f, type);
 }
 
 // A short name for the factory for atmosphere processes

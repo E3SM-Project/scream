@@ -94,14 +94,6 @@ protected:
   void run_impl        (const double dt);
   void finalize_impl   ();
 
-  // Creates an helper field, not to be shared with the AD's FieldManager
-  void create_helper_field (const std::string& name,
-                            const FieldLayout& layout,
-                            const std::string& grid_name);
-
-  // Query if a local field exists
-  bool has_helper_field (const std::string& name) const { return m_helper_fields.find(name)!=m_helper_fields.end(); }
-
   // Computes total number of bytes needed for local variables
   size_t requested_buffer_size_in_bytes() const;
 
@@ -114,9 +106,6 @@ protected:
   // Keep track of field dimensions and the iteration count
   Int m_num_cols; 
   Int m_num_levs;
-
-  // Some helper fields.
-  std::map<std::string,Field> m_helper_fields;
 
   // Struct which contains local variables
   Buffer m_buffer;

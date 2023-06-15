@@ -37,6 +37,7 @@ public:
 
   // ----  Set/query group info ---- //
   bool is_in_group (const std::string& group_name) const;
+  const std::set<ci_string>& get_groups_names () const { return m_groups; }
   void add_to_group (const std::string& group_name);
 
   // ----- Setters ----- //
@@ -76,7 +77,7 @@ protected:
   // Groups are used to "bundle" together fields, so that a process can request all of them
   // without knowing/listing all their names. Here, we only store the name of the groups this
   // field belongs to (the field has no need to know what other fields belong to the group).
-  std::set<std::string> m_groups;
+  std::set<ci_string> m_groups;
 };
 
 // Use this free function to exploit features of enable_shared_from_this,

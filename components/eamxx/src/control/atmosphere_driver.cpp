@@ -568,12 +568,6 @@ void AtmosphereDriver::create_fields()
       }
     }
   }
-  for (const auto& f : m_atm_process_group->get_internal_fields()) {
-    const auto& fid = f.get_header().get_identifier();
-    const auto& gn = fid.get_grid_name();
-    auto fm = get_field_mgr(gn);
-    fm->add_to_group(fid.name(),"RESTART");
-  }
 
   m_ad_status |= s_fields_created;
 

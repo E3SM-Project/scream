@@ -542,6 +542,14 @@ bool AtmosphereProcess::has_computed_group (const std::string& name, const std::
   return false;
 }
 
+bool AtmosphereProcess::has_internal_field (const std::string& name) const {
+  return m_internal_fields_pointers.count(name)==1;
+}
+
+bool AtmosphereProcess::has_internal_field (const std::string& name, const std::string& grid) const {
+  return has_internal_field(name) and m_internal_fields_pointers.at(name).count(grid)==1;
+}
+
 void AtmosphereProcess::log (const LogLevel lev, const std::string& msg) const {
   m_atm_logger->log(lev,msg);
 }
@@ -578,8 +586,16 @@ void AtmosphereProcess::add_me_as_customer (const Field& f) {
   f.get_header_ptr()->get_tracking().add_customer(name());
 }
 
-void AtmosphereProcess::add_internal_field (const Field& f) {
+void AtmosphereProcess::
+add_internal_field (const Field& f,
+                    const InternalFieldType type)
+{
   m_internal_fields.push_back(f);
+  if (type==Restart) {
+    m_internal_fields.back().get_header().get_tracking().add_to_group("RESTART");
+  } else if (type==InitOnly) {
+    m_internal_fields.back().get_header().get_tracking().add_to_group("INIT_ONLY");
+  }
 }
 
 const Field& AtmosphereProcess::

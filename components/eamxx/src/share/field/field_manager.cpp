@@ -731,8 +731,8 @@ void FieldManager::add_field (const Field& f) {
       "Error! The method 'add_field' requires the input field to not be already existing in the repo.\n"
       "  - field name: " + fh.get_identifier().name() + "\n");
 
-  EKAT_REQUIRE_MSG (fh.get_tracking().get_groups_info().size()==0 ||
-                    (fh.get_tracking().get_groups_info().size()==1 &&
+  EKAT_REQUIRE_MSG (fh.get_tracking().get_groups_names().size()==0 ||
+                    (fh.get_tracking().get_groups_names().size()==1 &&
                      fh.get_tracking().is_in_group("RESTART")),
       "Error! When calling 'add_field', the input field is only allowed to be part of the RESTART group.\n"
       "The reason for this is that otherwise we *might* have missed some inclusion dependency\n"
@@ -741,7 +741,7 @@ void FieldManager::add_field (const Field& f) {
   // All good, add the field to the repo
   m_fields[f.name()] = std::make_shared<Field>(f);
 
-  if (fh.get_tracking.get_groups_info().size()==1) {
+  if (fh.get_tracking().get_groups_names().size()==1) {
     add_to_group (f.name(),"RESTART");
   }
 

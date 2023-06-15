@@ -101,8 +101,8 @@ void HommeDynamics::fv_phys_dyn_to_fv_phys (const bool restart) {
   const auto npacks = ekat::PackInfo<N>::num_packs(nlevs);
   const auto& pgn = m_phys_grid->name();
   const auto ncols = m_phys_grid->get_num_local_dofs();
-  const auto FT = m_helper_fields.at("FT_phys").get_view<Pack**>();
-  const auto FM = m_helper_fields.at("FM_phys").get_view<Pack***>();
+  const auto FT = get_internal_field("FT_phys").get_view<Pack**>();
+  const auto FM = get_internal_field("FM_phys").get_view<Pack***>();
   if (restart) {
     constexpr int NGP = HOMMEXX_NP;
     const int nelem = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
@@ -208,18 +208,18 @@ void HommeDynamics::remap_fv_phys_to_dyn () const {
   const int nelem = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
   const auto npg = m_phys_grid_pgN*m_phys_grid_pgN;
   const auto& gn = m_phys_grid->name();
-  const auto nlev = m_helper_fields.at("FT_phys").get_view<const Real**>().extent_int(1);
+  const auto nlev = get_internal_field("FT_phys").get_view<const Real**>().extent_int(1);
   const auto nq = get_group_in("tracers", gn).m_bundle->get_view<const Real***>().extent_int(1);
-  assert(m_helper_fields.at("FT_phys").get_view<const Real**>().extent_int(0) == nelem*npg);
+  assert(get_internal_field("FT_phys").get_view<const Real**>().extent_int(0) == nelem*npg);
 
-  const auto uv_ndim = m_helper_fields.at("FM_phys").get_view<const Real***>().extent_int(1);
+  const auto uv_ndim = get_internal_field("FM_phys").get_view<const Real***>().extent_int(1);
   assert(uv_ndim == 2);
 
   const auto T = Homme::GllFvRemap::CPhys2T(
-    m_helper_fields.at("FT_phys").get_view<const Real**>().data(),
+    get_internal_field("FT_phys").get_view<const Real**>().data(),
     nelem, npg, nlev);
   const auto uv = Homme::GllFvRemap::CPhys3T(
-    m_helper_fields.at("FM_phys").get_view<const Real***>().data(),
+    get_internal_field("FM_phys").get_view<const Real***>().data(),
     nelem, npg, uv_ndim, nlev);
   const auto q = Homme::GllFvRemap::CPhys3T(
     get_group_in("tracers", gn).m_bundle->get_view<const Real***>().data(),
@@ -275,11 +275,11 @@ void HommeDynamics::fv_phys_rrtmgp_active_gases_remap () {
     { // CGLL -> DGLL
       const auto nlev = m_dyn_grid->get_num_vertical_levels();
       for (const auto& e : trace_gases_workaround.get_active_gases())
-        create_helper_field(e, {EL,GP,GP,LEV}, {nelem,NGP,NGP,nlev}, dgn);
+        create_internal_field(e, FieldLayout({EL,GP,GP,LEV}, {nelem,NGP,NGP,nlev}), dgn, InitOnly);
       auto r = trace_gases_workaround.get_remapper();
       r->registration_begins();
       for (const auto& e : trace_gases_workaround.get_active_gases())
-        r->register_field(get_field_in(e, rgn), m_helper_fields.at(e));
+        r->register_field(get_field_in(e, rgn), get_internal_field(e));
       r->registration_ends();
       r->remap(true);
       trace_gases_workaround.erase_remapper();
@@ -289,7 +289,7 @@ void HommeDynamics::fv_phys_rrtmgp_active_gases_remap () {
       auto& gfr = c.get<Homme::GllFvRemap>();
       const auto time_idx = c.get<Homme::TimeLevel>().n0;
       for (const auto& e : trace_gases_workaround.get_active_gases()) {
-        const auto& f_dgll = m_helper_fields.at(e);
+        const auto& f_dgll = get_internal_field(e);
         const auto& f_phys = get_field_out(e, pgn);
         const auto& v_dgll = f_dgll.get_view<const Real****>();
         const auto& v_phys = f_phys.get_view<Real**>();
@@ -307,10 +307,6 @@ void HommeDynamics::fv_phys_rrtmgp_active_gases_remap () {
   }
   // Done with all of these, so remove them.
   trace_gases_workaround.erase_remapper();
-  for (const auto& e : trace_gases_workaround.get_active_gases())
-    m_helper_fields.erase(e);
-  for (const auto& e : trace_gases_workaround.get_active_gases())
-    remove_field(e, rgn);
 }
 
 } // namespace scream
