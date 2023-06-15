@@ -73,12 +73,6 @@ protected:
 };
 
 // A short name for the factory for atmosphere diagnostics
-// WARNING: you do not need to write your own creator function to register your atmosphere diagnostic in the factory.
-//          You could, but there's no need. You can simply register the common one right below, using your
-//          atmosphere diagnostic subclass name as templated argument. If you roll your own creator function, you
-//          *MUST* ensure that it correctly sets up the self pointer after creating the shared_ptr.
-//          This is *necessary* until we can safely switch to std::enable_shared_from_this.
-//          For more details, see the comments at the top of ekat_std_enable_shared_from_this.hpp.
 using AtmosphereDiagnosticFactory =
     ekat::Factory<AtmosphereDiagnostic,
                   ekat::CaseInsensitiveString,
@@ -89,9 +83,7 @@ using AtmosphereDiagnosticFactory =
 template <typename AtmDiagType>
 inline std::shared_ptr<AtmosphereDiagnostic>
 create_atmosphere_diagnostic (const ekat::Comm& comm, const ekat::ParameterList& p) {
-  auto ptr = std::make_shared<AtmDiagType>(comm,p);
-  ptr->setSelfPointer(ptr);
-  return ptr;
+  return std::make_shared<AtmDiagType>(comm,p);
 }
 } //namespace scream
 

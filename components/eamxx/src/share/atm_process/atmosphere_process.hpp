@@ -16,7 +16,6 @@
 #include "ekat/ekat_parameter_list.hpp"
 #include "ekat/util/ekat_factory.hpp"
 #include "ekat/util/ekat_string_utils.hpp"
-#include "ekat/std_meta/ekat_std_enable_shared_from_this.hpp"
 #include "ekat/std_meta/ekat_std_any.hpp"
 #include "ekat/logging/ekat_logger.hpp"
 
@@ -69,7 +68,7 @@ namespace scream
  *     to override the get_internal_fields method.
  */
 
-class AtmosphereProcess : public ekat::enable_shared_from_this<AtmosphereProcess>
+class AtmosphereProcess
 {
 public:
   using TimeStamp = util::TimeStamp;
@@ -576,12 +575,6 @@ add_invariant_check (const Args... args) {
 }
 
 // A short name for the factory for atmosphere processes
-// WARNING: you do not need to write your own creator function to register your atmosphere process in the factory.
-//          You could, but there's no need. You can simply register the common one right below, using your
-//          atmosphere process class name as templated argument. If you roll your own creator function, you
-//          *MUST* ensure that it correctly sets up the self pointer after creating the shared_ptr.
-//          This is *necessary* until we can safely switch to std::enable_shared_from_this.
-//          For more details, see the comments at the top of ekat_std_enable_shared_from_this.hpp.
 using AtmosphereProcessFactory =
     ekat::Factory<AtmosphereProcess,
                   ekat::CaseInsensitiveString,
@@ -592,9 +585,7 @@ using AtmosphereProcessFactory =
 template <typename AtmProcType>
 inline std::shared_ptr<AtmosphereProcess>
 create_atmosphere_process (const ekat::Comm& comm, const ekat::ParameterList& p) {
-  auto ptr = std::make_shared<AtmProcType>(comm,p);
-  ptr->setSelfPointer(ptr);
-  return ptr;
+  return std::make_shared<AtmProcType>(comm,p);
 }
 
 } // namespace scream

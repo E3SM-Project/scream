@@ -116,20 +116,6 @@ AtmosphereProcessGroup (const ekat::Comm& comm, const ekat::ParameterList& param
     auto ap = apf.create(ap_type,proc_comm,params_i);
     m_atm_processes.push_back(ap);
 
-    // NOTE: the shared_ptr of the new atmosphere process *MUST* have been created correctly.
-    //       Namely, the creation process must have set up enable_shared_from_this's status correctly.
-    //       This is done by the library-provided templated function 'create_atm_process<T>.
-    //       However, if the user has decided to roll his/her own creator function to be registered
-    //       in the AtmosphereProcessFactory, he/she may have forgot to set the self pointer in the process.
-    //       To make sure this is not the case, we check that the weak_ptr in the newly created
-    //       atmosphere process (which comes through inheritance from enable_shared_from_this) is valid.
-    EKAT_REQUIRE_MSG(!ap->weak_from_this().expired(),
-        "Error! The newly created std::shared_ptr<AtmosphereProcess> did not correctly setup\n"
-        "       the 'enable_shared_from_this' interface.\n"
-        "       Did you by chance register your own creator function in the AtmosphereProccessFactory class?\n"
-        "       If so, don't. Instead, use the instantiation of create_atmosphere_process<T>,\n"
-        "       with T = YourAtmProcessClassName.\n");
-
     // Store a copy of all the restart extra data of the atm proc.
     // NOTE: any uses std::shared_ptr internally, so if the atm proc updates
     //       the extra data, it will be updated in this class too.

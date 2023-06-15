@@ -2,11 +2,11 @@
 
 namespace scream {
 
-void FieldTracking::add_provider (const std::weak_ptr<AtmosphereProcess>& provider) {
+void FieldTracking::add_provider (const std::string& provider) {
   m_providers.insert(provider);
 }
 
-void FieldTracking::add_customer (const std::weak_ptr<AtmosphereProcess>& customer) {
+void FieldTracking::add_customer (const std::string& customer) {
   m_customers.insert(customer);
 }
 
