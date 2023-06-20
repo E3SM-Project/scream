@@ -582,14 +582,18 @@ void set_var_decomp (const std::string& filename,
     decomp_tag += d->name + "<" + std::to_string(d->length) + ">_";
   }
 
-  if (decomp_tag.back()=='_') {
-    decomp_tag.pop_back();
-  }
-
   if (decomp_dim==nullptr and not throw_if_var_does_not_have_decomp_dim) {
     // We are allowing to call this fucntion on not-decomposed vars.
     return;
   }
+
+  if (decomp_tag.back()=='_') {
+    decomp_tag.pop_back();
+  }
+
+  // The decomp_tag is dtype-dim1<$N1>_dim2<$N2>_ ... _dimK<$NK>-$decomp_name, where decomp_name is
+  // the tag passed to decomp_dimension.
+  decomp_tag += "-" + dim_decomp_name;
 
   if (var.decomp!=nullptr) {
     EKAT_REQUIRE_MSG (var.decomp_dim==dimname,
@@ -630,10 +634,6 @@ void set_var_decomp (const std::string& filename,
         " - dimname : " + dimname + "\n"
         " - dim decomps: " + print_map_keys(decomp_dim->decomps) + "\n");
   }
-  
-  // The decomp_tag is dtype_dim1$N1_dim2$N2_.._dimK$NK-$decomp_name, where decomp_name is
-  // the tag passed to decomp_dimension.
-  decomp_tag += "-" + dim_decomp_name;
 
   // Check if a decomp with this name already exists
   auto& s = ScorpioSession::instance();
