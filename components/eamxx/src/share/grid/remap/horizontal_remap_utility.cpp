@@ -82,7 +82,6 @@ void HorizontalMap::set_remap_segments_from_file(const std::string& remap_filena
   std::vector<std::string> vec_of_dims = {"n_s"};
   scorpio::set_dim_decomp(remap_filename,"n_s",my_start,my_chunk,"n_s-linear");
   scorpio::set_var_decomp(remap_filename,"row","n_s","n_s-linear");
-  scorpio::change_var_dtype(remap_filename,"row","int"); // May be int64 in input file
   scorpio::read_var(remap_filename,"row",tgt_col_h.data());
   // Step 2: Now that we have the data distributed among all ranks we organize the data
   //         into sets of target column, start location in data and length of data.
@@ -150,7 +149,6 @@ void HorizontalMap::set_remap_segments_from_file(const std::string& remap_filena
 
   scorpio::set_dim_decomp(remap_filename,"n_s",var_dof,"n_s-distributed");
   scorpio::set_vars_decomp(remap_filename,{"col","S"},"n_s","n_s-distributed");
-  scorpio::change_var_dtype(remap_filename,"col","int"); // May be int64 in input file
   scorpio::read_var(remap_filename,"col",col_h.data());
   scorpio::read_var(remap_filename,"S",S_h.data());
   scorpio::release_file(remap_filename);

@@ -369,10 +369,6 @@ void AtmosphereInput::register_variables()
         "Error! Input file does not store a required variable.\n"
         " - filename: " + m_filename + "\n"
         " - varname : " + name + "\n");
-
-    // Regardless of how data is stored in the NC file, we need the var to have a decomp
-    // (if any) with the data type matching what we use in our views
-    scorpio::change_var_dtype(m_filename,name,"real");
   }
 }
 

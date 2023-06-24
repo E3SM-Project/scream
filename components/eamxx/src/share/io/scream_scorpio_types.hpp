@@ -77,6 +77,10 @@ struct PIOVar : public PIOEntity {
   std::string decomp_dim;
   std::string dim_decomp_name;
   std::shared_ptr<const PIODecomp> decomp;
+
+  // Used only if a) var is not decomposed, and b) dtype!=nc_dtype
+  int size = -1; // Product of all dims
+  std::vector<char> buf;
 };
 
 // A file, which is basically a container for dims and vars
