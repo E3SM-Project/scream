@@ -27,7 +27,7 @@ contains
 
     integer (kind=c_int) :: iotype
 
-    iotype = shr_pio_getiosys_fromid(atm_id)
+    iotype = shr_pio_getiotype(atm_id)
   end function shr_get_iotype_c2f
 
 !=====================================================================!
