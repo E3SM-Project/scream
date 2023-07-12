@@ -43,6 +43,8 @@ void Functions<S,D>::eddy_diffusivities(
   // Minimum allowable value for stability diffusivities
   const Scalar Ckh_s_min = 0.1;
   const Scalar Ckm_s_min = 0.1;
+  // Maximum allowable value for PBL stability correction
+  const Scalar eddycorr_max = 1;
 
   const auto s_zt_grid = ekat::scalarize(zt_grid);
 
@@ -61,17 +63,20 @@ void Functions<S,D>::eddy_diffusivities(
                                          ekat::impl::min(Ckm_s_max,
                                                          z_over_L/zL_crit_val));
 
-    // If surface layer is stable, based on near surface dimensionless Monin-Obukov
-    // use modified coefficients of tkh and tk that are primarily based on shear
-    // production and SHOC length scale, to promote mixing within the PBL and to a
-    // height slighty above to ensure smooth transition.
-    const Smask condition = (zt_grid(k) < pblh+pbl_trans) && (z_over_L > 0);
-    tkh(k).set(condition, Ckh_s*ekat::square(shoc_mix(k))*ekat::sqrt(sterm_zt(k)));
-    tk(k).set(condition,  Ckm_s*ekat::square(shoc_mix(k))*ekat::sqrt(sterm_zt(k)));
-
     // Default definition of eddy diffusivity for heat and momentum
-    tkh(k).set(!condition, Ckh*isotropy(k)*tke(k));
-    tk(k).set(!condition,  Ckm*isotropy(k)*tke(k));
+    tkh(k) = Ckh*isotropy(k)*tke(k);
+    tk(k) = Ckm*isotropy(k)*tke(k);
+
+    // If surface layer is stable, based on near surface dimensionless Monin-Obukov
+    //  add a correction background diffusivity of which the stength is based
+    //  primarily on shear production and SHOC length scale to promote mixing
+    //  within the PBL
+    const Smask condition = (zt_grid(k) < pblh+pbl_trans) && (z_over_L > 0);
+    tkh(k).set(condition,ekat::min(tkh(k)+Ckh_s*
+           ekat::square(shoc_mix(k))*ekat::sqrt(sterm_zt(k)),eddycorr_max));
+    tk(k).set(condition,ekat::min(tk(k)+Ckm_s*
+           ekat::square(shoc_mix(k))*ekat::sqrt(sterm_zt(k)),eddycorr_max));
+
   });
 }
 
