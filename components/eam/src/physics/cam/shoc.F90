@@ -3384,25 +3384,24 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
         !  the lowest model grid layer height to scale
         z_over_L = zt_grid_1d(i)/obklen(i)
 
-        if (z_over_L .gt. 0._rtype .and. (zt_grid(i,k) .lt. pblh(i)+pbl_trans)) then
-           ! If surface layer is stable, based on near surface
-           !  dimensionless Monin-Obukov use modified coefficients of
-           !  tkh and tk that are primarily based on shear production
-           !  and SHOC length scale, to promote mixing within the PBL
-           !  and to a height slighty above to ensure smooth transition.
+        ! Default definition of eddy diffusivity for heat and momentum
+        tkh(i,k) = Ckh*isotropy(i,k)*tke(i,k)
+        tk(i,k)  = Ckm*isotropy(i,k)*tke(i,k)
 
+        ! If surface layer is stable, based on near surface dimensionless Monin-Obukov
+	!   add a correction background diffusivity of which the stength is based
+	!   primarily on shear production and SHOC length scale to promote mixing
+	!   within the PBL
+
+        if (z_over_L .gt. 0._rtype .and. (zt_grid(i,k) .lt. pblh(i)+pbl_trans)) then
 	   ! Compute diffusivity coefficient as function of dimensionless
            !  Obukhov, given a critical value
            Ckh_s = max(Ckh_s_min,min(Ckh_s_max,z_over_L/zL_crit_val))
            Ckm_s = max(Ckm_s_min,min(Ckm_s_max,z_over_L/zL_crit_val))
 
 	   ! Compute stable PBL diffusivities
-           tkh(i,k) = Ckh_s*bfb_square(shoc_mix(i,k))*bfb_sqrt(sterm_zt(i,k))
-           tk(i,k)  = Ckm_s*bfb_square(shoc_mix(i,k))*bfb_sqrt(sterm_zt(i,k))
-        else
-           ! Default definition of eddy diffusivity for heat and momentum
-           tkh(i,k) = Ckh*isotropy(i,k)*tke(i,k)
-           tk(i,k)  = Ckm*isotropy(i,k)*tke(i,k)
+           tkh(i,k) = tkh(i,k) + min(Ckh_s*bfb_square(shoc_mix(i,k))*bfb_sqrt(sterm_zt(i,k)),5.0_rtype)
+           tk(i,k)  = tk(i,k) + min(Ckm_s*bfb_square(shoc_mix(i,k))*bfb_sqrt(sterm_zt(i,k)),5.0_rtype)
         endif
 
      enddo
