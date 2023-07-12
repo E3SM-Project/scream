@@ -110,6 +110,7 @@ module shoc_intr
   real(r8) :: shoc_Ckm_s_min = unset_r8
   real(r8) :: shoc_Ckh_s_max = unset_r8
   real(r8) :: shoc_Ckm_s_max = unset_r8
+  real(r8) :: shoc_eddycorr_max = unset_r8
 
   integer :: edsclr_dim
   
@@ -231,7 +232,8 @@ end function shoc_implements_cnst
                                shoc_w2tune, shoc_length_fac, shoc_c_diag_3rd_mom, &
                                shoc_lambda_low, shoc_lambda_high, shoc_lambda_slope, &
                                shoc_lambda_thresh, shoc_Ckh, shoc_Ckm, shoc_Ckh_s_min, &
-                               shoc_Ckm_s_min, shoc_Ckh_s_max, shoc_Ckm_s_max
+                               shoc_Ckm_s_min, shoc_Ckh_s_max, shoc_Ckm_s_max, &
+                               shoc_eddycorr_max
     
     !  Read namelist to determine if SHOC history should be called
     if (masterproc) then
@@ -269,6 +271,7 @@ end function shoc_implements_cnst
       call mpibcast(shoc_Ckm_s_min,          1,   mpir8,   0, mpicom)
       call mpibcast(shoc_Ckh_s_max,          1,   mpir8,   0, mpicom)
       call mpibcast(shoc_Ckm_s_max,          1,   mpir8,   0, mpicom)
+      call mpibcast(shoc_eddycorr_max,       1,   mpir8,   0, mpicom)
 #endif
   
   end subroutine shoc_readnl
@@ -456,7 +459,8 @@ end function shoc_implements_cnst
           shoc_w2tune, shoc_length_fac, shoc_c_diag_3rd_mom, &
           shoc_lambda_low, shoc_lambda_high, shoc_lambda_slope, &
           shoc_lambda_thresh, shoc_Ckh, shoc_Ckm, shoc_Ckh_s_min, &
-          shoc_Ckm_s_min, shoc_Ckh_s_max, shoc_Ckm_s_max )
+          shoc_Ckm_s_min, shoc_Ckh_s_max, shoc_Ckm_s_max, &
+          shoc_eddycorr_max )
     
     ! --------------- !
     ! End             !

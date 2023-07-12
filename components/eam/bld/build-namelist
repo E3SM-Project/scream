@@ -3669,6 +3669,7 @@ if ($shoc_sgs  =~ /$TRUE/io) {
    add_default($nl, 'shoc_Ckm_s_min');
    add_default($nl, 'shoc_Ckh_s_max');
    add_default($nl, 'shoc_Ckm_s_max');
+   add_default($nl, 'shoc_eddycorr_max');
 }
 
 

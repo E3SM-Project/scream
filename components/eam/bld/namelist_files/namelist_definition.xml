@@ -3415,6 +3415,11 @@ Maximum allowable value for coefficient for eddy diffusivity for momentum for st
 Default: set by build-namelist
 </entry>
 
+<entry id="shoc_eddycorr_max" type="real" category="pblrad"
+       group="shocpbl_diff_nl" valid_values="" >
+Maximum allowable value for background eddy correction for stable PBL. Set to zero to turn off correction.
+</entry>
+
 <entry id="clubb_cloudtop_cooling" type="logical"  category="pblrad"
        group="clubbpbl_diff_nl" valid_values="" >
 Apply cloud top radiative cooling parameterization

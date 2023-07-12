@@ -69,6 +69,7 @@ real(rtype) :: Ckh_s_min = 0.1_rtype ! Stable PBL diffusivity minimum for heat
 real(rtype) :: Ckm_s_min = 0.1_rtype ! Stable PBL diffusivity minimum for momentum
 real(rtype) :: Ckh_s_max = 0.1_rtype ! Stable PBL diffusivity maximum for heat
 real(rtype) :: Ckm_s_max = 0.1_rtype ! Stable PBL diffusivity maximum for momentum
+real(rtype) :: eddycorr_max = 1.0_rtype ! Max allowable value for correction in PBL
 
 !=========================================================
 ! Private module parameters
@@ -133,7 +134,8 @@ subroutine shoc_init( &
          w2tune_in, length_fac_in, c_diag_3rd_mom_in, &
          lambda_low_in, lambda_high_in, lambda_slope_in, &
          lambda_thresh_in, Ckh_in, Ckm_in, Ckh_s_min_in, &
-         Ckm_s_min_in, Ckh_s_max_in, Ckm_s_max_in)
+         Ckm_s_min_in, Ckh_s_max_in, Ckm_s_max_in, &
+         eddycorr_max_in)
 
   implicit none
 
@@ -174,6 +176,7 @@ subroutine shoc_init( &
   real(rtype), intent(in), optional :: Ckm_s_min_in ! Stable PBL diffusivity minimum for momentum
   real(rtype), intent(in), optional :: Ckh_s_max_in ! Stable PBL diffusivity maximum for heat
   real(rtype), intent(in), optional :: Ckm_s_max_in ! Stable PBL diffusivity maximum for momentum
+  real(rtype), intent(in), optional :: eddycorr_max_in ! Max stable PBL correction
 
   integer :: k
 
@@ -204,6 +207,7 @@ subroutine shoc_init( &
   if (present(Ckm_s_min_in)) Ckm_s_min=Ckm_s_min_in
   if (present(Ckh_s_max_in)) Ckh_s_max=Ckh_s_max_in
   if (present(Ckm_s_max_in)) Ckm_s_max=Ckm_s_max_in
+  if (present(eddycorr_max_in)) eddycorr_max=eddycorr_max_in
 
    ! Limit pbl height to regions below 400 mb
    ! npbl = max number of levels (from bottom) in pbl
@@ -3400,8 +3404,10 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
            Ckm_s = max(Ckm_s_min,min(Ckm_s_max,z_over_L/zL_crit_val))
 
 	   ! Compute stable PBL diffusivities
-           tkh(i,k) = tkh(i,k) + min(Ckh_s*bfb_square(shoc_mix(i,k))*bfb_sqrt(sterm_zt(i,k)),5.0_rtype)
-           tk(i,k)  = tk(i,k) + min(Ckm_s*bfb_square(shoc_mix(i,k))*bfb_sqrt(sterm_zt(i,k)),5.0_rtype)
+           tkh(i,k) = tkh(i,k) + &
+              min(Ckh_s*bfb_square(shoc_mix(i,k))*bfb_sqrt(sterm_zt(i,k)),eddycorr_max)
+           tk(i,k)  = tk(i,k) +  &
+              min(Ckm_s*bfb_square(shoc_mix(i,k))*bfb_sqrt(sterm_zt(i,k)),eddycorr_max)
         endif
 
      enddo
