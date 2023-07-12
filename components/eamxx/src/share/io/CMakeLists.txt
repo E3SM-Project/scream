@@ -27,7 +27,7 @@ if (SCREAM_CIME_BUILD)
   target_sources (scream_scorpio_interface PRIVATE
     scream_shr_interface_c2f.F90
   )
-  target_compile_definitions (scream_scorpio_interface PRIVATE SCREAM_CIM_BUILD)
+  target_compile_definitions (scream_scorpio_interface PRIVATE SCREAM_CIME_BUILD)
   set_target_properties(scream_scorpio_interface PROPERTIES
     Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules
   )

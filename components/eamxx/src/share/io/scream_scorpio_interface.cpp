@@ -1,4 +1,5 @@
 #include "scream_scorpio_interface.hpp"
+#include "scream_shr_interface_c2f.hpp"
 
 #include "scream_config.h"
 
@@ -250,11 +251,13 @@ void init_pio_subsystem(const ekat::Comm& comm, const int atm_id)
       "Error! Attmept to re-initialize pio subsystem.\n");
 
 #ifdef SCREAM_CIME_BUILD
-  s.pio_sysid      = shr_get_iosysid_c2d(atm_id);
+  s.pio_sysid      = shr_get_iosysid_c2f(atm_id);
   s.pio_type       = shr_get_iotype_c2f(atm_id);
   s.pio_rearranger = shr_get_rearranger_c2f(atm_id);
   s.pio_format     = shr_get_ioformat_c2f(atm_id);
+  printf("E3sM, iotype: %d\n", s.pio_type);
 #else
+  printf("STANDALONE!\n");
   // Use some reasonable defaults for standalone EAMxx tests
   int stride = 1;
   int base = 0;
@@ -931,22 +934,26 @@ bool has_variable (const std::string& filename, const std::string& varname,
   const auto& f = get_file(filename,"scorpio::has_variable");
 
   if (f.vars.count(varname)==0) {
+    printf("var not found\n");
     return false;
   }
 
   const auto& var = *f.vars.at(varname);
   if (units!="" && var.units!=units) {
+    printf("wrong units\n");
     return false;
   }
 
   if (dims.size()!=0) {
     size_t ndims     = dims.size();
     if (var.dims.size()!=ndims) {
+      printf("wrong ndims: %lu!=%lu\n",ndims,var.dims.size());
       return false;
     }
 
     for (size_t idx=0; idx!=ndims; ++idx) {
       if (dims[idx]!=var.dims[idx]->name) {
+        printf("wrong dims[%d]: %s!=%s\n",idx,dims[idx].c_str(),var.dims[idx]->name.c_str());
         return false;
       }
     }
@@ -954,9 +961,11 @@ bool has_variable (const std::string& filename, const std::string& varname,
 
   if (ekat::upper_case(time_dep)=="YES" or
       ekat::upper_case(time_dep)=="TRUE") {
+    printf("should be time dep, and var.time_dep: %s\n",(var.time_dep ? "yes" : "no"));
     return var.time_dep;
   } else if (ekat::upper_case(time_dep)=="NO" or
              ekat::upper_case(time_dep)=="FALSE") {
+    printf("should be NOT time dep, and var.time_dep: %s\n",(var.time_dep ? "yes" : "no"));
     return not var.time_dep;
   } else {
     return true;
