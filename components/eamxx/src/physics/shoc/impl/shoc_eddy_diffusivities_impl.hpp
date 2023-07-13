@@ -37,12 +37,9 @@ void Functions<S,D>::eddy_diffusivities(
   // Turbulent coefficients
   const Scalar Ckh = 0.1;
   const Scalar Ckm = 0.1;
-  // Maximum eddy coefficients for stable PBL diffusivities
-  const Scalar Ckh_s_max = 0.1;
-  const Scalar Ckm_s_max = 0.1;
-  // Minimum allowable value for stability diffusivities
-  const Scalar Ckh_s_min = 0.1;
-  const Scalar Ckm_s_min = 0.1;
+  // Eddy coefficients for stable PBL diffusivities
+  const Scalar Ckh_s = 0.1;
+  const Scalar Ckm_s = 0.1;
   // Maximum allowable value for PBL stability correction
   const Scalar eddycorr_max = 1;
 
@@ -50,22 +47,14 @@ void Functions<S,D>::eddy_diffusivities(
 
   const Int nlev_pack = ekat::npack<Spack>(nlev);
   Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlev_pack), [&] (const Int& k) {
-    // Dimensionless Okukhov length considering only
-    // the lowest model grid layer height to scale
-    const auto z_over_L = s_zt_grid(nlev-1)/obklen;
-
-    // Compute diffusivity coefficient as function of dimensionless Obukhov,
-    // given a critical value
-    const Scalar Ckh_s = ekat::impl::max(Ckh_s_min,
-                                         ekat::impl::min(Ckh_s_max,
-                                                         z_over_L/zL_crit_val));
-    const Scalar Ckm_s = ekat::impl::max(Ckm_s_min,
-                                         ekat::impl::min(Ckm_s_max,
-                                                         z_over_L/zL_crit_val));
 
     // Default definition of eddy diffusivity for heat and momentum
     tkh(k) = Ckh*isotropy(k)*tke(k);
     tk(k) = Ckm*isotropy(k)*tke(k);
+
+    // Dimensionless Okukhov length considering only
+    // the lowest model grid layer height to scale
+    const auto z_over_L = s_zt_grid(nlev-1)/obklen;
 
     // If surface layer is stable, based on near surface dimensionless Monin-Obukov
     //  add a correction background diffusivity of which the stength is based
