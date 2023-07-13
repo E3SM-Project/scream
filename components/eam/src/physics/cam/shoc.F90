@@ -3352,12 +3352,11 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
 
   !local vars
   integer     :: i, k
-  real(rtype) :: z_over_L, zt_grid_1d(shcol)
 
   !parameters
-  ! Critical value of dimensionless Monin-Obukhov length,
-  !  for which diffusivities are no longer damped
-  real(rtype), parameter :: zL_crit_val = 100.0_rtype
+  ! Critical value of Monin-Obukhov length,
+  !  for which correction diffusivity is applied
+  real(rtype), parameter :: obk_crit = 0.01_rtype
   ! Transition depth [m] above PBL top to allow
   ! stability diffusivities
   real(rtype), parameter :: pbl_trans = 200.0_rtype
@@ -3370,9 +3369,6 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
    endif
 #endif
 
-  !store zt_grid at nlev in 1d array
-  zt_grid_1d(1:shcol) = zt_grid(1:shcol,nlev)
-
   do k = 1, nlev
      do i = 1, shcol
 
@@ -3380,15 +3376,11 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
         tkh(i,k) = Ckh*isotropy(i,k)*tke(i,k)
         tk(i,k)  = Ckm*isotropy(i,k)*tke(i,k)
 
-        ! Dimensionless Okukhov length considering only
-        !  the lowest model grid layer height to scale
-        z_over_L = zt_grid_1d(i)/obklen(i)
-
-        ! If surface layer is stable, based on near surface dimensionless Monin-Obukov
+        ! If surface layer is strongly stable, based on Monin-Obukov
 	!   add a correction background diffusivity of which the stength is based
 	!   primarily on shear production and SHOC length scale to promote mixing
 	!   within the PBL
-        if (z_over_L .gt. 0._rtype .and. (zt_grid(i,k) .lt. pblh(i)+pbl_trans)) then
+        if (obklen(i) .lt. obk_crit .and. (zt_grid(i,k) .lt. pblh(i)+pbl_trans)) then
 	   ! Compute stable PBL diffusivities
            tkh(i,k) = tkh(i,k) + &
               min(Ckh_s*bfb_square(shoc_mix(i,k))*bfb_sqrt(sterm_zt(i,k)),eddycorr_max)
