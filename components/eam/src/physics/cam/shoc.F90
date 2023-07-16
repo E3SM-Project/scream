@@ -3356,7 +3356,7 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
   !parameters
   ! Critical value of Monin-Obukhov length,
   !  for which correction diffusivity is applied
-  real(rtype), parameter :: obk_crit = 0.01_rtype
+  real(rtype), parameter :: obk_crit = 0.0_rtype
   ! Transition depth [m] above PBL top to allow
   ! stability diffusivities
   real(rtype), parameter :: pbl_trans = 200.0_rtype
@@ -3380,7 +3380,7 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
 	!   add a correction background diffusivity of which the stength is based
 	!   primarily on shear production and SHOC length scale to promote mixing
 	!   within the PBL
-        if (obklen(i) .lt. obk_crit .and. (zt_grid(i,k) .lt. pblh(i)+pbl_trans)) then
+        if (obklen(i) .gt. obk_crit .and. (zt_grid(i,k) .lt. pblh(i)+pbl_trans)) then
 	   ! Compute stable PBL diffusivities
            tkh(i,k) = tkh(i,k) + &
               min(Ckh_s*bfb_square(shoc_mix(i,k))*bfb_sqrt(sterm_zt(i,k)),eddycorr_max)
