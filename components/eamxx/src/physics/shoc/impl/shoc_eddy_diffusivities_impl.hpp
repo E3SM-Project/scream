@@ -28,9 +28,8 @@ void Functions<S,D>::eddy_diffusivities(
 {
   // Parameters
 
-  // Critical value of dimensionless Monin-Obukhov length,
-  // for which diffusivities are no longer damped
-  const Int zL_crit_val = 100;
+  // Critical value of Monin-Obukhov length [m]
+  const Scalar obk_crit = 0;
   // Transition depth [m] above PBL top to allow
   // stability diffusivities
   const Int pbl_trans = 200;
@@ -41,9 +40,7 @@ void Functions<S,D>::eddy_diffusivities(
   const Scalar Ckh_s = 0.1;
   const Scalar Ckm_s = 0.1;
   // Maximum allowable value for PBL stability correction
-  const Scalar eddycorr_max = 1;
-
-  const auto s_zt_grid = ekat::scalarize(zt_grid);
+  const Scalar eddycorr_max = 0.1;
 
   const Int nlev_pack = ekat::npack<Spack>(nlev);
   Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlev_pack), [&] (const Int& k) {
@@ -52,18 +49,14 @@ void Functions<S,D>::eddy_diffusivities(
     tkh(k) = Ckh*isotropy(k)*tke(k);
     tk(k) = Ckm*isotropy(k)*tke(k);
 
-    // Dimensionless Okukhov length considering only
-    // the lowest model grid layer height to scale
-    const auto z_over_L = s_zt_grid(nlev-1)/obklen;
-
     // If surface layer is stable, based on near surface dimensionless Monin-Obukov
     //  add a correction background diffusivity of which the stength is based
     //  primarily on shear production and SHOC length scale to promote mixing
     //  within the PBL
-    const Smask condition = (zt_grid(k) < pblh+pbl_trans) && (z_over_L > 0);
-    tkh(k).set(condition,ekat::min(tkh(k)+Ckh_s*
+    const Smask condition = (zt_grid(k) < pblh+pbl_trans) && (obklen > obk_crit);
+    tkh(k).set(condition,tkh(k)+ekat::min(Ckh_s*
            ekat::square(shoc_mix(k))*ekat::sqrt(sterm_zt(k)),eddycorr_max));
-    tk(k).set(condition,ekat::min(tk(k)+Ckm_s*
+    tk(k).set(condition,tk(k)+ekat::min(Ckm_s*
            ekat::square(shoc_mix(k))*ekat::sqrt(sterm_zt(k)),eddycorr_max));
 
   });
