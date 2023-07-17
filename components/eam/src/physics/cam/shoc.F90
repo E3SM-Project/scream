@@ -67,7 +67,7 @@ real(rtype) :: Ckh = 0.1_rtype ! Eddy diffusivity coefficient for heat
 real(rtype) :: Ckm = 0.1_rtype ! Eddy diffusivity coefficient for momentum
 real(rtype) :: Ckh_s = 0.1_rtype ! Stable PBL diffusivity for heat
 real(rtype) :: Ckm_s = 0.1_rtype ! Stable PBL diffusivity for momentum
-real(rtype) :: eddycorr_max = 1.0_rtype ! Max allowable value for correction in PBL
+real(rtype) :: eddycorr_max = 0.1_rtype ! Max allowable value for correction in PBL
 
 !=========================================================
 ! Private module parameters
