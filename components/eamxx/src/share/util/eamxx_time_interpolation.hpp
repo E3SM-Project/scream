@@ -42,6 +42,7 @@ public:
   Field get_field(const std::string& name) {
     return m_interp_fields.at(name);
   };
+  std::string get_current_file() { return m_file_data_triplets[m_triplet_idx].filename; }
 
   // Informational
   void print();

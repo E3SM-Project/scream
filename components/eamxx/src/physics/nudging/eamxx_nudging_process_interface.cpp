@@ -92,18 +92,21 @@ void Nudging::initialize_impl (const RunType /* run_type */)
     auto pmid_ext = get_helper_field("p_mid_ext");
     m_time_interp.add_field(pmid_ext,"p_mid",true);
   } else if (m_src_pres_type == STATIC) {
-    // Load p_lev from source data file
+    // Load p_levs from source data file
     create_helper_field("p_mid_ext", scalar2d_layout_mid, grid_name, ps);
     auto pmid_ext = get_helper_field("p_mid_ext");
     auto pmid_ext_v = pmid_ext.get_view<Real*,Host>();
+    // Extract p_levs information from file.  The default is to assume that data is in the nudging source data, but we give the
+    // user the runtime option to specify a different file.
+    auto plevs_file = m_params.get<std::string>("static_pressure_levels_file",m_datafiles[0]);
     ekat::ParameterList in_params;
-    in_params.set<std::vector<std::string>>("Field Names",{"p_lev"});
-    in_params.set("Filename",m_datafiles[0]);
+    in_params.set<std::vector<std::string>>("Field Names",{"p_levs"});
+    in_params.set("Filename",plevs_file);
     in_params.set("Skip_Grid_Checks",true);  // We need to skip grid checks because multiple ranks may want the same column of source data.
     std::map<std::string,view_1d_host<Real>> host_views;
     std::map<std::string,FieldLayout>  layouts;
-    host_views["p_lev"] = pmid_ext_v;
-    layouts.emplace("p_lev",scalar2d_layout_mid);
+    host_views["p_levs"] = pmid_ext_v;
+    layouts.emplace("p_levs",scalar2d_layout_mid);
     AtmosphereInput src_input(in_params,grid_ext,host_views,layouts);
     src_input.read_variables(-1);
     src_input.finalize();
@@ -135,6 +138,7 @@ void Nudging::run_impl (const double dt)
 
   // Perform time interpolation
   m_time_interp.perform_time_interpolation(ts);
+  auto current_file = m_time_interp.get_current_file();
 
   // Process data and nudge the atmosphere state
   const auto& p_mid_v     = get_field_in("p_mid").get_view<const mPack**>();
@@ -160,9 +164,7 @@ void Nudging::run_impl (const double dt)
     // We pre-process the data and map any masked values (sometimes called "filled" values) to the
     // nearest un-masked value.
     Real var_fill_value;
-    // WARNING!!! Assumes that all datafiles use the same FillValue.  It is unlikely that a user will use a mismatch of files
-    // with different defined FillValues, but if they do, this loop won't catch the change.
-    scorpio::get_variable_metadata(m_datafiles[0],name,"_FillValue",var_fill_value);
+    scorpio::get_variable_metadata(current_file,name,"_FillValue",var_fill_value);
     const int num_cols           = int_state_view.extent(0);
     const int num_vert_packs     = int_state_view.extent(1);
     const auto policy = ESU::get_default_team_policy(num_cols, num_vert_packs);
