@@ -99,6 +99,10 @@ void Nudging::initialize_impl (const RunType /* run_type */)
     // Extract p_levs information from file.  The default is to assume that data is in the nudging source data, but we give the
     // user the runtime option to specify a different file.
     auto plevs_file = m_params.get<std::string>("static_pressure_levels_file",m_datafiles[0]);
+    // Note, for CIME based cases we might get passed "NONE" by default, so treat that case appropriately.
+    if (plevs_file == "NONE") {
+      plevs_file = m_datafiles[0];
+    }
     ekat::ParameterList in_params;
     in_params.set<std::vector<std::string>>("Field Names",{"p_levs"});
     in_params.set("Filename",plevs_file);
