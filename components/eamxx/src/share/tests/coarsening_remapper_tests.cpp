@@ -3,8 +3,11 @@
 #include "share/grid/remap/coarsening_remapper.hpp"
 #include "share/grid/point_grid.hpp"
 #include "share/io/scream_scorpio_interface.hpp"
+#include <limits>
 
 namespace scream {
+
+constexpr Real FILL_VALUE = std::numeric_limits<float>::max()/1e5;
 
 template<typename ViewT>
 typename ViewT::HostMirror
@@ -17,8 +20,9 @@ cmvc (const ViewT& v) {
 class CoarseningRemapperTester : public CoarseningRemapper {
 public:
   CoarseningRemapperTester (const grid_ptr_type& src_grid,
-                            const std::string& map_file)
-   : CoarseningRemapper(src_grid,map_file)
+                            const std::string& map_file,
+			    const bool track_mask = false)
+   : CoarseningRemapper(src_grid,map_file,track_mask)
   {
     // Nothing to do
   }
@@ -127,7 +131,9 @@ create_field(const std::string& name, const std::shared_ptr<const AbstractGrid>&
     Field f_mask(fid_mask);
     f_mask.get_header().get_alloc_properties().request_allocation(ps);
     f_mask.allocate_view();
+    f_mask.deep_copy(1.0);
     f.get_header().set_extra_data("mask_data",f_mask);
+    f.get_header().set_extra_data("mask_value",FILL_VALUE);
   }
 
   return f;
@@ -234,7 +240,7 @@ TEST_CASE("coarsening_remap_nnz>nsrc") {
   // Here we will simplify and just remap a simple 2D horizontal field.
   auto tgt_grid = remap->get_tgt_grid();
 
-  auto src_s2d   = create_field("s2d",  src_grid,true,false,false,1,true);
+  auto src_s2d   = create_field("s2d",  src_grid,true,false,false,1);
   auto tgt_s2d   = create_field("s2d",  tgt_grid,true,false);
 
   std::vector<Field> src_f = {src_s2d};
@@ -294,7 +300,7 @@ TEST_CASE("coarsening_remap_nnz>nsrc") {
       const auto& l = f.get_header().get_identifier().get_layout();
       const auto ls = to_string(l);
       std::string dots (25-ls.size(),'.');
-      print ("   -> Checking field with layout " + to_string(l) + " " + dots + "\n",comm);
+      print ("   -> Checking field (" + f.name() + ") with layout " + to_string(l) + " " + dots + "\n",comm);
 
       f.sync_to_host();
 
@@ -378,7 +384,7 @@ TEST_CASE ("coarsening_remap") {
 
   auto src_grid = build_src_grid(comm, nldofs_src);
 
-  auto remap = std::make_shared<CoarseningRemapperTester>(src_grid,filename);
+  auto remap = std::make_shared<CoarseningRemapperTester>(src_grid,filename,true);
   print (" -> creating grid and remapper ... done!\n",comm);
 
   // -------------------------------------- //
@@ -400,6 +406,7 @@ TEST_CASE ("coarsening_remap") {
   auto src_s3d_i = create_field("s3d_i",src_grid,false,false,false,SCREAM_PACK_SIZE);
   auto src_v3d_m = create_field("v3d_m",src_grid,false,true ,true, 1);
   auto src_v3d_i = create_field("v3d_i",src_grid,false,true ,false,SCREAM_PACK_SIZE);
+  auto src_s2d_msk = create_field("s2d_masked", src_grid,true,false,false,1,true);
 
   auto tgt_s2d   = create_field("s2d",  tgt_grid,true,false);
   auto tgt_v2d   = create_field("v2d",  tgt_grid,true,true);
@@ -407,9 +414,10 @@ TEST_CASE ("coarsening_remap") {
   auto tgt_s3d_i = create_field("s3d_i",tgt_grid,false,false,false,SCREAM_PACK_SIZE);
   auto tgt_v3d_m = create_field("v3d_m",tgt_grid,false,true ,true, 1);
   auto tgt_v3d_i = create_field("v3d_i",tgt_grid,false,true ,false,SCREAM_PACK_SIZE);
+  auto tgt_s2d_msk = create_field("s2d_masked", tgt_grid,true,false,false,1,true);
 
-  std::vector<Field> src_f = {src_s2d,src_v2d,src_s3d_m,src_s3d_i,src_v3d_m,src_v3d_i};
-  std::vector<Field> tgt_f = {tgt_s2d,tgt_v2d,tgt_s3d_m,tgt_s3d_i,tgt_v3d_m,tgt_v3d_i};
+  std::vector<Field> src_f = {src_s2d,src_v2d,src_s3d_m,src_s3d_i,src_v3d_m,src_v3d_i,src_s2d_msk};
+  std::vector<Field> tgt_f = {tgt_s2d,tgt_v2d,tgt_s3d_m,tgt_s3d_i,tgt_v3d_m,tgt_v3d_i,tgt_s2d_msk};
 
   const int nfields = src_f.size();
 
@@ -436,6 +444,7 @@ TEST_CASE ("coarsening_remap") {
   remap->register_field(src_s3d_i,tgt_s3d_i);
   remap->register_field(src_v3d_m,tgt_v3d_m);
   remap->register_field(src_v3d_i,tgt_v3d_i);
+  remap->register_field(src_s2d_msk,tgt_s2d_msk);
   remap->registration_ends();
   print (" -> registering fields ... done!\n",comm);
 
@@ -549,14 +558,22 @@ TEST_CASE ("coarsening_remap") {
   // Generate data in a deterministic way, so that when we check results,
   // we know a priori what the input data that generated the tgt field's
   // values was, even if that data was off rank.
+  const int ntgt_gids = tgt_gids.size();
   for (const auto& f : src_f) {
     const auto& l = f.get_header().get_identifier().get_layout();
+    auto& f_extra = f.get_header().get_extra_data();
     switch (get_layout_type(l.tags())) {
       case LayoutType::Scalar2D:
       {
         const auto v_src = f.get_view<Real*,Host>();
         for (int i=0; i<nldofs_src; ++i) {
           v_src(i) = src_gids(i);
+	  if (f.name() == "s2d_masked" && i < ntgt_gids) {
+            auto& msk = ekat::any_cast<Field>(f_extra.at("mask_data"));
+	    auto msk_v = msk.get_view<Real*, Host>();
+	    msk_v(i) = 0.0;
+	    v_src(i) = FILL_VALUE;
+	  }
         }
       } break;
       case LayoutType::Vector2D:
@@ -610,14 +627,14 @@ TEST_CASE ("coarsening_remap") {
     // -------------------------------------- //
 
     print (" -> check tgt fields ...\n",comm);
-    // Recall, tgt gid K should be the avg of src gids K and K+ngdofs_tgt
-    const int ntgt_gids = tgt_gids.size();
+    // Recall, tgt gid K should be the avg of src gids K and K+ngdofs_tgt,
+    // unless we are checking the masked version, which should just be the value of src_gids K+ndofs_tgt because the first value is masked.
     for (size_t ifield=0; ifield<tgt_f.size(); ++ifield) {
       const auto& f = tgt_f[ifield];
       const auto& l = f.get_header().get_identifier().get_layout();
       const auto ls = to_string(l);
       std::string dots (25-ls.size(),'.');
-      print ("   -> Checking field with layout " + to_string(l) + " " + dots + "\n",comm);
+      print ("   -> Checking field (" + f.name() + ") with layout " + to_string(l) + " " + dots + "\n",comm);
 
       f.sync_to_host();
 
@@ -629,7 +646,11 @@ TEST_CASE ("coarsening_remap") {
             const auto gid = tgt_gids(i);
             const auto term1 = gid;
             const auto term2 = gid+ngdofs_tgt;
-            REQUIRE ( v_tgt(i)== combine(term1,term2) );
+	    if (f.name() == "s2d_masked") {
+              REQUIRE ( v_tgt(i) == term2 );
+	    } else {
+              REQUIRE ( v_tgt(i) == combine(term1,term2) );
+	    }
           }
         } break;
         case LayoutType::Vector2D:
