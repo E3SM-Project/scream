@@ -22,7 +22,7 @@ set(NETCDF_PATH "$ENV{NETCDF_DIR}")
 set(PNETCDF_PATH "$ENV{PNETCDF_DIR}")
 string(APPEND CXX_LIBS " -lstdc++")
 
-string(APPEND SLIBS " -L$ENV{ROCM_PATH}/lib "
+string(APPEND SLIBS " -L$ENV{ROCM_PATH}/lib ")
 string(APPEND FFLAGS " -hipa0 -hzero -f free")
 
 SET(CMAKE_C_COMPILER "mpicc" CACHE STRING "")
