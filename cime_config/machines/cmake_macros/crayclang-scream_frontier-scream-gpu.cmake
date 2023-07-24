@@ -36,6 +36,7 @@ string(APPEND CXXFLAGS " -I$ENV{ROCM_PATH}/include")
 if (NOT DEBUG)
   string(APPEND CFLAGS " -O2 -hnoacc -hfp0 -hipa0")
   string(APPEND FFLAGS " -O2 -hnoacc -hfp0 -hipa0")
+  string(APPEND CXXFLAGS " -O2 ")
 endif()
 
 string(APPEND CPPDEFS " -DCPRCRAY")
