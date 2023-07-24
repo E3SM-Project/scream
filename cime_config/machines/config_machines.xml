@@ -1081,6 +1081,7 @@
       <modules>
         <command name="load">cce/15.0.1</command>
         <command name="switch">craype craype/2.7.20</command>
+        <command name="switch">cray-mpich cray-mpich/8.1.26</command>
         <command name="load">cray-python/3.9.13.1</command>
         <command name="load">subversion/1.14.1</command>
         <command name="load">git/2.36.1</command>
