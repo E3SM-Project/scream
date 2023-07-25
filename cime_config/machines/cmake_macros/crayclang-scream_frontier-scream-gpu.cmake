@@ -34,9 +34,9 @@ string(APPEND CXXFLAGS " -I$ENV{ROCM_PATH}/include")
 
 # Crusher: this resolves a crash in mct in docn init
 if (NOT DEBUG)
-  string(APPEND CFLAGS " -O2 -hnoacc -hfp0 -hipa0")
-  string(APPEND FFLAGS " -O2 -hnoacc -hfp0 -hipa0")
-  string(APPEND CXXFLAGS " -O2 ")
+  string(APPEND CFLAGS " -O3 -hnoacc -hfp0 -hipa0")
+  string(APPEND FFLAGS " -O3 -hnoacc -hfp0 -hipa0")
+  string(APPEND CXXFLAGS " -O3 ")
 endif()
 
 string(APPEND CPPDEFS " -DCPRCRAY")
