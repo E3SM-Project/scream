@@ -28,19 +28,6 @@ public:
   }
 };
 
-template<typename ViewT>
-bool contains (const ViewT& v, const typename ViewT::traits::value_type& entry) {
-  const auto vh = cmvc (v);
-  const auto beg = vh.data();
-  const auto end = vh.data() + vh.size();
-  for (auto it=beg; it!=end; ++it) {
-    if (*it == entry) {
-      return true;
-    }
-  }
-  return false;
-}
-
 void print (const std::string& msg, const ekat::Comm& comm) {
   if (comm.am_i_root()) {
     printf("%s",msg.c_str());
@@ -134,7 +121,6 @@ TEST_CASE ("vertical_remap") {
   // -------------------------------------- //
 
   print (" -> creating map file ...\n",comm);
-
 
   std::string filename = "vertical_map_file_np" + std::to_string(comm.size()) + ".nc";
 
