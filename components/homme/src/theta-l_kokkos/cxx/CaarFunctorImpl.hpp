@@ -392,7 +392,7 @@ struct CaarFunctorImpl {
       auto &sphere_dinv = m_sphere_ops.m_dinv;
       auto &sphere_dvv = m_sphere_ops.dvv;
       auto &sphere_metdet = m_sphere_ops.m_metdet;
-      const Real sphere_rrearth = m_sphere_ops.m_rrearth;
+      const Real sphere_rrearth = m_sphere_ops.m_scale_factor_inv;
 
       auto &state_dp3d = m_state.m_dp3d;
       auto &state_phinh_i = m_state.m_phinh_i;
