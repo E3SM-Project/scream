@@ -365,7 +365,7 @@ void Field::deep_copy_impl (const ST value) {
 
 template<HostOrDevice HD, typename ST>
 void Field::
-update (const Field& x, const ST alpha, const ST beta)
+update (const Field& x, const ST alpha, const ST beta, const float fill_val)
 {
   const auto& dt = data_type();
 
@@ -380,11 +380,11 @@ update (const Field& x, const ST alpha, const ST beta)
       " - coeff data type: " + e2str(dt_st) + "\n");
 
   if (dt==DataType::IntType) {
-    return update_impl<CombineMode::ScaleUpdate,HD,int>(x,alpha,beta);
+    return update_impl<CombineMode::ScaleUpdate,HD,int>(x,alpha,beta,fill_val);
   } else if (dt==DataType::FloatType) {
-    return update_impl<CombineMode::ScaleUpdate,HD,float>(x,alpha,beta);
+    return update_impl<CombineMode::ScaleUpdate,HD,float>(x,alpha,beta,fill_val);
   } else if (dt==DataType::DoubleType) {
-    return update_impl<CombineMode::ScaleUpdate,HD,double>(x,alpha,beta);
+    return update_impl<CombineMode::ScaleUpdate,HD,double>(x,alpha,beta,fill_val);
   } else {
     EKAT_ERROR_MSG ("Error! Unrecognized/unsupported field data type in Field::update.\n");
   }
@@ -392,7 +392,7 @@ update (const Field& x, const ST alpha, const ST beta)
 
 template<HostOrDevice HD, typename ST>
 void Field::
-scale (const ST beta)
+scale (const ST beta, const float fill_val)
 {
   const auto& dt = data_type();
 
@@ -407,11 +407,11 @@ scale (const ST beta)
       " - coeff data type: " + e2str(dt_st) + "\n");
 
   if (dt==DataType::IntType) {
-    return update_impl<CombineMode::Rescale,HD,int>(*this,ST(0),beta);
+    return update_impl<CombineMode::Rescale,HD,int>(*this,ST(0),beta,fill_val);
   } else if (dt==DataType::FloatType) {
-    return update_impl<CombineMode::Rescale,HD,float>(*this,ST(0),beta);
+    return update_impl<CombineMode::Rescale,HD,float>(*this,ST(0),beta,fill_val);
   } else if (dt==DataType::DoubleType) {
-    return update_impl<CombineMode::Rescale,HD,double>(*this,ST(0),beta);
+    return update_impl<CombineMode::Rescale,HD,double>(*this,ST(0),beta,fill_val);
   } else {
     EKAT_ERROR_MSG ("Error! Unrecognized/unsupported field data type in Field::scale.\n");
   }
@@ -419,7 +419,7 @@ scale (const ST beta)
 
 template<CombineMode CM, HostOrDevice HD,typename ST>
 void Field::
-update_impl (const Field& x, const ST alpha, const ST beta)
+update_impl (const Field& x, const ST alpha, const ST beta, const float fill_val)
 {
   // Check x/y are allocated
   EKAT_REQUIRE_MSG (is_allocated(),
@@ -477,13 +477,21 @@ update_impl (const Field& x, const ST alpha, const ST beta)
           auto xv = x.get_view<const ST*,HD>();
           auto yv =   get_view<      ST*,HD>();
           Kokkos::parallel_for(policy,KOKKOS_LAMBDA(const int idx) {
-            combine<CM>(xv(idx),yv(idx),alpha,beta);
+	    if ( (xv(idx)==fill_val && alpha!=0) || (yv(idx)==fill_val && beta!=0)) {
+	      yv(idx) = fill_val;
+	    } else {
+              combine<CM>(xv(idx),yv(idx),alpha,beta);
+	    }
           });
         } else {
           auto xv = x.get_strided_view<const ST*,HD>();
           auto yv =   get_strided_view<      ST*,HD>();
           Kokkos::parallel_for(policy,KOKKOS_LAMBDA(const int idx) {
-            combine<CM>(xv(idx),yv(idx),alpha,beta);
+	    if ( (xv(idx)==fill_val && alpha!=0) || (yv(idx)==fill_val && beta!=0)) {
+	      yv(idx) = fill_val;
+	    } else {
+              combine<CM>(xv(idx),yv(idx),alpha,beta);
+	    }
           });
         }
       }
@@ -495,7 +503,11 @@ update_impl (const Field& x, const ST alpha, const ST beta)
         Kokkos::parallel_for(policy,KOKKOS_LAMBDA(const int idx) {
           int i,j;
           unflatten_idx(idx,ext,i,j);
-          combine<CM>(xv(i,j),yv(i,j),alpha,beta);
+	  if ( (xv(i,j)==fill_val && alpha!=0) || (yv(i,j)==fill_val && beta!=0)) {
+	    yv(i,j) = fill_val;
+	  } else {
+            combine<CM>(xv(i,j),yv(i,j),alpha,beta);
+	  }
         });
       }
       break;
@@ -506,7 +518,11 @@ update_impl (const Field& x, const ST alpha, const ST beta)
         Kokkos::parallel_for(policy,KOKKOS_LAMBDA(const int idx) {
           int i,j,k;
           unflatten_idx(idx,ext,i,j,k);
-          combine<CM>(xv(i,j,k),yv(i,j,k),alpha,beta);
+	  if ( (xv(i,j,k)==fill_val && alpha!=0) || (yv(i,j,k)==fill_val && beta!=0)) {
+	    yv(i,j,k) = fill_val;
+	  } else {
+            combine<CM>(xv(i,j,k),yv(i,j,k),alpha,beta);
+	  }
         });
       }
       break;
@@ -517,7 +533,11 @@ update_impl (const Field& x, const ST alpha, const ST beta)
         Kokkos::parallel_for(policy,KOKKOS_LAMBDA(const int idx) {
           int i,j,k,l;
           unflatten_idx(idx,ext,i,j,k,l);
-          combine<CM>(xv(i,j,k,l),yv(i,j,k,l),alpha,beta);
+	  if ( (xv(i,j,k,l)==fill_val && alpha!=0) || (yv(i,j,k,l)==fill_val && beta!=0)) {
+	    yv(i,j,k,l) = fill_val;
+	  } else {
+            combine<CM>(xv(i,j,k,l),yv(i,j,k,l),alpha,beta);
+	  }
         });
       }
       break;
@@ -528,7 +548,11 @@ update_impl (const Field& x, const ST alpha, const ST beta)
         Kokkos::parallel_for(policy,KOKKOS_LAMBDA(const int idx) {
           int i,j,k,l,m;
           unflatten_idx(idx,ext,i,j,k,l,m);
-          combine<CM>(xv(i,j,k,l,m),yv(i,j,k,l,m),alpha,beta);
+	  if ( (xv(i,j,k,l,m)==fill_val && alpha!=0) || (yv(i,j,k,l,m)==fill_val && beta!=0)) {
+	    yv(i,j,k,l,m) = fill_val;
+	  } else {
+            combine<CM>(xv(i,j,k,l,m),yv(i,j,k,l,m),alpha,beta);
+	  }
         });
       }
       break;
@@ -539,7 +563,11 @@ update_impl (const Field& x, const ST alpha, const ST beta)
         Kokkos::parallel_for(policy,KOKKOS_LAMBDA(const int idx) {
           int i,j,k,l,m,n;
           unflatten_idx(idx,ext,i,j,k,l,m,n);
-          combine<CM>(xv(i,j,k,l,m,n),yv(i,j,k,l,m,n),alpha,beta);
+	  if ( (xv(i,j,k,l,m,n)==fill_val && alpha!=0) || (yv(i,j,k,l,m,n)==fill_val && beta!=0)) {
+	    yv(i,j,k,l,m,n) = fill_val;
+	  } else {
+            combine<CM>(xv(i,j,k,l,m,n),yv(i,j,k,l,m,n),alpha,beta);
+	  }
         });
       }
       break;

@@ -1,6 +1,7 @@
 #ifndef SCREAM_NUDGING_HPP
 #define SCREAM_NUDGING_HPP
 
+#include "share/util/eamxx_time_interpolation.hpp"
 #include "share/atm_process/atmosphere_process.hpp"
 #include "ekat/ekat_parameter_list.hpp"
 #include "ekat/util/ekat_lin_interp.hpp"
@@ -12,7 +13,6 @@
 #include "share/grid/point_grid.hpp"
 #include "share/util/scream_vertical_interpolation.hpp"
 #include "share/util/scream_time_stamp.hpp"
-#include "physics/nudging/nudging_functions.hpp"
 
 #include <string>
 
@@ -23,11 +23,17 @@ namespace scream
  * The class responsible to handle the nudging of variables
 */
 
+// enum to track how the source pressure levels are defined
+enum SourcePresType {
+  DYNAMIC = 0,  // DEFAULT - source data should include time/spatially varying p_mid
+  STATIC  = 1,  // source data includes p_lev which is a static set of levels in both space and time.
+};
+
 class Nudging : public AtmosphereProcess
 {
 public:
-  using NudgingFunc = nudging::NudgingFunctions;
   using mPack = ekat::Pack<Real,1>;
+  using mMask = ekat::Mask<1>;
   using KT = KokkosTypes<DefaultDevice>;
 
   template <typename S>
@@ -57,12 +63,6 @@ public:
   // Set the grid
   void set_grids (const std::shared_ptr<const GridsManager> grids_manager);
 
-  //Update the time step
-  void update_time_step(const int time_s);
-
-  //Time interpolation function
-  void time_interpolation(const int time_s);
-
 #ifndef KOKKOS_ENABLE_CUDA
   // Cuda requires methods enclosing __device__ lambda's to be public
 protected:
@@ -72,25 +72,26 @@ protected:
 
 protected:
 
-  // The three main overrides for the subcomponent
+  // The two other main overrides for the subcomponent
   void initialize_impl (const RunType run_type);
   void finalize_impl   ();
+
+  // Internal function to apply nudging at specific timescale
+  void apply_tendency(Field& base, const Field& next, const int dt);
 
   std::shared_ptr<const AbstractGrid>   m_grid;
   // Keep track of field dimensions and the iteration count
   int m_num_cols;
   int m_num_levs;
   int m_num_src_levs;
-  int m_time_step_file;
-  std::string m_datafile;
+  int m_timescale;
+  std::vector<std::string> m_datafiles;
+  SourcePresType m_src_pres_type;
+  
 
-  std::map<std::string,view_2d<Real>> m_fields_ext;
-  std::map<std::string,view_2d_host<Real>> m_fields_ext_h;
+  std::vector<std::string> m_fields_nudge;
 
-  TimeStamp m_ts0;
-  NudgingFunc::NudgingData m_NudgingData_bef;
-  NudgingFunc::NudgingData m_NudgingData_aft;
-  AtmosphereInput m_data_input;
+  util::TimeInterpolation m_time_interp;
 }; // class Nudging
 
 } // namespace scream
