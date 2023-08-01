@@ -394,7 +394,7 @@ void Functions<S,D>::shoc_assumed_pdf(
 
       // Compute the SGS buoyancy flux
       wthv_sec(k) = wthlsec + ((1 - epsterm)/epsterm)*basetemp*wqwsec
-                   + ((lcond/cp)*ekat::pow(basepres/pval, (rair/cp))
+                   + 2*((lcond/cp)*ekat::pow(basepres/pval, (rair/cp))
                    - (1/epsterm)*basetemp)*wqls(k);
   });
 
