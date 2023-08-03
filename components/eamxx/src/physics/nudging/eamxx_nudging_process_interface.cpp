@@ -79,7 +79,7 @@ void Nudging::initialize_impl (const RunType /* run_type */)
   using namespace ShortFieldTagsNames;
 
   // Initialize the time interpolator
-  auto grid_ext = m_grid->clone("Point Grid", false);
+  auto grid_ext = m_grid->clone("Physics PG2", false);
   grid_ext->reset_num_vertical_lev(m_num_src_levs);
   FieldLayout scalar2d_layout_mid { {LEV}, {m_num_src_levs} };
   FieldLayout scalar3d_layout_mid { {COL,LEV}, {m_num_cols, m_num_src_levs} };
@@ -175,36 +175,35 @@ void Nudging::run_impl (const double dt)
     Kokkos::parallel_for("correct_for_masked_values", policy,
        	       KOKKOS_LAMBDA(MemberType const& team) {
       const int icol = team.league_rank();
-      auto int_mask_view_1d  = ekat::subview(int_mask_view,icol);
-      auto int_state_view_1d = ekat::subview(int_state_view,icol);
+      auto ext_state_view_1d = ekat::subview(ext_state_view,icol);
       Real fill_value;
       int  fill_idx = -1;
       // Scan top to surf and backfill all values near TOM that are masked.
-      for (int kk=0; kk<m_num_levs; ++kk) {
+      for (int kk=0; kk<m_num_src_levs; ++kk) {
         const auto ipack = kk / mPack::n;
 	const auto iidx  = kk % mPack::n;
         // Check if this index is masked
-	if (!(int_state_view_1d(ipack)[iidx]==var_fill_value)) {
-	  fill_value = int_state_view_1d(ipack)[iidx];
+	if (ext_state_view_1d(ipack)[iidx]<var_fill_value) { 
+	  fill_value = ext_state_view_1d(ipack)[iidx];
 	  fill_idx = kk;
 	  for (int jj=0; jj<kk; ++jj) {
             const auto jpack = jj / mPack::n;
 	    const auto jidx  = jj % mPack::n;
-	    int_state_view_1d(jpack)[jidx] = fill_value;
+	    ext_state_view_1d(jpack)[jidx] = fill_value;
 	  }
 	  break;
 	}
       }
       // Now fill the rest, the fill_idx should be non-negative.  If it isn't that means
       // we have a column that is fully masked 
-      for (int kk=fill_idx+1; kk<m_num_levs; ++kk) {
+      for (int kk=fill_idx+1; kk<m_num_src_levs; ++kk) {
         const auto ipack = kk / mPack::n;
 	const auto iidx  = kk % mPack::n;
         // Check if this index is masked
-	if (!(int_state_view_1d(ipack)[iidx]==var_fill_value)) {
-	  fill_value = int_state_view_1d(ipack)[iidx];
+	if (ext_state_view_1d(ipack)[iidx]<var_fill_value) {
+	  fill_value = ext_state_view_1d(ipack)[iidx];
 	} else {
-	  int_state_view_1d(ipack)[iidx] = fill_value;
+	  ext_state_view_1d(ipack)[iidx] = fill_value;
 	}
       }
     });
