@@ -7,6 +7,8 @@
 #include "cpp/extensions/cloud_optics/mo_cloud_optics.h"
 #include "cpp/rte/mo_rte_sw.h"
 #include "cpp/rte/mo_rte_lw.h"
+#include "physics/share/physics_constants.hpp"
+#include <ekat/util/ekat_math_utils.hpp>
 
 namespace scream {
     void yakl_init ()
@@ -878,5 +880,199 @@ namespace scream {
             });
         }
 
+        void compute_aerocom_cloudtop(
+            int ncol, int nlay, const real2d &tmid, const real2d &pmid,
+            const real2d &p_del, const real2d &z_del, const real2d &qc,
+            const real2d &qi, const real2d &cldfrac_tot, const real2d &nc,
+            real1d &T_mid_at_cldtop, real1d &p_mid_at_cldtop,
+            real1d &cldfrac_ice_at_cldtop, real1d &cldfrac_liq_at_cldtop,
+            real1d &cldfrac_tot_at_cldtop, real1d &nc_at_cldtop) {
+            /* Summary of algorithm
+            The goal of this routine is to calculate properties at cloud top
+            based on the AeroCOM recommendation. There are two main parts of
+            the algorithm: probabilistically  determining "cloud top" and then
+            "calculating properties" at said cloud top.
+            */
+
+            /* PART I: Probabilistically  determining cloud top
+            We treat model columns independently, so we loop over all columns
+            in parallel. We then loop over all layers in serial (due to
+            needing an accumulative product), starting at 2 (second highest)
+            layer because the highest is assumed to have no clouds. Let's take a
+            photonic approach from above the model top. Let's say pp(k) is
+            the probability of a photon passing through the layer k. We follow
+            the maximum-random overlap assumption. In all cases, we assume
+            the cloudiness (or cloudy fraction) is completely opaque.
+
+            1.  Assume the highest layer has no clouds, thus the pp(k) = 1 for
+                the highest layer. Note that pp(k) is initialized as 1 for all
+                layers. We also clip cld(i,k) to [ 0+eps, 1-eps ].
+            2.  Starting at the second highest layer, k+1, if some "cloudy"
+                conditions are met,
+                A.  and if we assume randomn overalp, we can write pp(k+1) =
+                    pp(k) * (1-cld(k+1)),
+                B.  but if we assume maximum overlap, we can write pp(k+1) =
+                    pp(k) * (1-max(cld(k+1),cld(k)),
+                C.  instead, we can assume maximum-random overlap, pp(k+1) =
+                    pp(k) * (1-max(cld(k+1),cld(k))) / (1-cld(k)),
+                which we use. We use a minimum in the denominator to avoid
+                division by 0. The maximum-random overlap assumption is designed to form
+                maximum overlap for contiguous cloudy layers and random overlap
+                for noncontiguous ones. To see this,
+                A.  consider the case of two noncontiguous layers, where higher
+                    one has no clouds, the expression in C reduces to
+                    pp(k+1) = pp(k) * (1-cld(k+1)), which is the same as A;
+                B.  consider the case of three contiguous cloudy layers after the first,
+                    where cld(2) < cld(3) > cld(4) (i.e., the middle layer is highest).
+                    pp(1) = 1 (by assumption, also cld(1) = 0)
+                    pp(2) = pp(1) * (1-cld(2))/(1)        = 1-cld(2)
+                    pp(3) = pp(2) * (1-cld(3))/(1-cld(2)) = 1-cld(3)
+                    pp(4) = pp(3) * (1-cld(3))/(1-cld(3)) = 1-cld(3)
+                    Effectively, the denominator in C removes the randomness
+                    introduced in A because we do not want it in the case of contiguous
+                    cloudy layers, instead simplifying to B. On the other hand,
+                    the denominator becomes 1 in the case of noncontiguous cloudiness, thus
+                    simplifying to A.
+            */
+
+            /* PART II: The inferred properties
+            The properties come in three different flavors (naming is mine for
+            ease).
+
+            1.  "Cloud components" like ice, liquid, and total cloud fraction,
+                where we need to consider photonic probabilities, pp(k),
+                and the thermodynamic phases, but nothing else.
+            2.  "Cloud properties" like nc or droplet size at cloud top,
+                where we need to consider pp(k), thermodynamic phases,
+                and external 3D properties as inputs.
+            3.  Other properties like temperature at cloud top,
+                where we need to consider pp(k) and external 3D properties as inputs,
+                but not thermodynamic phase.
+
+            All properties are calculated as a weighted average being
+            accumulated going down the layers.
+            */
+
+            /* Notes on current version of algorithm
+            1.  We assume the cloudy fraction is compltely opaque, which will be
+                revisited at a later time for flexibility.
+            2.  We establish some independence between the ice and liquid
+                components, but either of the components is allowed to mask the other
+                component. This assumption works well when studying one of the
+                components in isolation, but may not be ideal as a generic solution.
+                For now, we care about getting low liquid clouds correctly and this
+                implementation enables us to do so. See test case 6 for a specific example.
+            3.  Simply inverting the serial loop over layers enables us to
+                calculate the "cloud bottom" which will be important for other
+                studies later.
+            */
+
+            // Set outputs to zero
+            memset(T_mid_at_cldtop, 0);
+            memset(p_mid_at_cldtop, 0);
+            memset(cldfrac_ice_at_cldtop, 0);
+            memset(cldfrac_liq_at_cldtop, 0);
+            memset(cldfrac_tot_at_cldtop, 0);
+            memset(nc_at_cldtop, 0);
+            // Initialize the 1D "clear fraction" as 1 (totally clear)
+            // Note: aerocom_clr can be considered as pp(k)
+            auto aerocom_clr = real1d("aerocom_clr", ncol);
+            memset(aerocom_clr, 1);
+            // Initialize helper variable as 0
+            // Note: aerocom_tmp can be considered as pp(k+1)
+            auto aerocom_tmp = real1d("aerocom_tmp", ncol);
+            memset(aerocom_tmp, 0);
+            // Initialize the 2D "cloudy fraction" as 0 (totally clear)
+            // Note: aerocom_cld can be considered as cldfrac(k)
+            // (in the future, we should use a clip on this for clarity)
+            auto aerocom_cld = real2d("aerocom_cld", ncol, nlay);
+            memset(aerocom_cld, 0);
+            // Get gravity acceleration constant from constants
+            using physconst = scream::physics::Constants<Real>;
+            // Loop over all columns in parallel
+            yakl::fortran::parallel_for(
+                SimpleBounds<1>(ncol), YAKL_LAMBDA(int icol) {
+                  // Loops over all layers in serial (due to accumulative
+                  // product), starting at 2 (second highest) layer because the
+                  // highest is assumed to hav no clouds
+                  for(int ilay = 2; ilay <= nlay; ++ilay) {
+                    // We only do the calculation if certain conditions are met
+                    if((qc(icol, ilay) + qi(icol, ilay)) >
+                           0 &&                              // BAD_CONSTANT!
+                       (cldfrac_tot(icol, ilay) > 0.001)) {  // BAD_CONSTANT!
+                      // If conditions met, populate aerocom_cld with
+                      // cldfrac_tot (if not, aerocom_cld remains 0)
+                      aerocom_cld(icol, ilay) = cldfrac_tot(icol, ilay);
+                      /* PART I: Probabilistically  determining cloud top */
+                      /* Recall that aerocom_tmp is pp(k+1), so pp(k+1) = pp(k)
+                       * * (1-max(cldfrac(k+1),cldfrac(k)) / (1-cldfrac(k)). The
+                       * minimum in the denominator is to avoid division by 0 */
+                      aerocom_tmp(icol) =
+                          aerocom_clr(icol) *
+                          (1 - ekat::impl::max(aerocom_cld(icol, ilay - 1),
+                                               aerocom_cld(icol, ilay))) /
+                          (1 - ekat::impl::min(aerocom_cld(icol, ilay - 1),
+                                               1 - 0.001));  // BAD_CONSTANT!
+                      /* PART II: The inferred properties */
+                      /* T_mid and p_mid are the "other properties" and so we
+                       * don't need thermodynamic phase here, but we do need the
+                       * 3D properties themselves. The general logic is thus:
+                       * x(i) = x(i) + X(i,k)*(pp(k)-pp(k-1)) where x is 2D but
+                       * X is 3D. Other candidates to add later: height */
+                      // T_mid_at_cldtop
+                      T_mid_at_cldtop(icol) =
+                          T_mid_at_cldtop(icol) +
+                          tmid(icol, ilay) *
+                              (aerocom_clr(icol) - aerocom_tmp(icol));
+                      // p_mid_at_cldtop
+                      p_mid_at_cldtop(icol) =
+                          p_mid_at_cldtop(icol) +
+                          pmid(icol, ilay) *
+                              (aerocom_clr(icol) - aerocom_tmp(icol));
+                      /* Now, the cloud components, and so we need to consider
+                       * the thermodynamic phase, but no external 3D
+                       * properties. The general logic is thus: x(i) = x(i) +
+                       * phase(i,k)*(pp(k)-pp(k-1)) where x is 2D but
+                       * X and phase are 3D */
+                      // cldfrac_ice_at_cldtop
+                      cldfrac_ice_at_cldtop(icol) =
+                          cldfrac_ice_at_cldtop(icol) +
+                          (1 -
+                           qc(icol, ilay) / (qc(icol, ilay) + qi(icol, ilay))) *
+                              (aerocom_clr(icol) - aerocom_tmp(icol));
+                      // cldfrac_liq_at_cldtop
+                      cldfrac_liq_at_cldtop(icol) =
+                          cldfrac_liq_at_cldtop(icol) +
+                          (qc(icol, ilay) / (qc(icol, ilay) + qi(icol, ilay))) *
+                              (aerocom_clr(icol) - aerocom_tmp(icol));
+                      /* Finally cloud properties where we need to consider
+                       * external 3D properties, the fractions, and the
+                       * thermodynamic phases altogether. The general logic is
+                       * thus: x(i) = x(i) + X(i,k)*phase(i,k)*(pp(k)-pp(k-1))
+                       * where x is 2D but X and phase are 3D. Other candidates
+                       * to add later: droplet radius, crystal radius, etc. */
+                      // nc_at_cldtop
+                      /* A specific note about nc is in order. We need to
+                       * convert nc from 1/mass to 1/volume first, but then the
+                       * calculation follows the general logic */
+                      nc_at_cldtop(icol) =
+                          nc_at_cldtop(icol) +
+                          nc(icol, ilay) * p_del(icol, ilay) /
+                              z_del(icol, ilay) / physconst::gravit /
+                              aerocom_cld(icol, ilay) *
+                              (qc(icol, ilay) /
+                               (qc(icol, ilay) + qi(icol, ilay))) *
+                              (aerocom_clr(icol) - aerocom_tmp(icol));
+                      // Reset aerocom_clr to aerocom_tmp
+                      // Note: pp(k+1) becomes pp(k) for the next iteration
+                      aerocom_clr(icol) = aerocom_tmp(icol);
+                    }
+                  }
+                  // After the serial loop over levels, the cloudy fraction is
+                  // defined (1 - pp(k)). This is true because pp(k) is the
+                  // result of accumulative probabilities (their products)
+                  cldfrac_tot_at_cldtop(icol) = 1 - aerocom_clr(icol);
+                });
+        }
     }  // namespace rrtmgp
 }  // namespace scream
