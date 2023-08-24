@@ -912,9 +912,9 @@ namespace scream {
                 A.  and if we assume randomn overalp, we can write pp(k+1) =
                     pp(k) * (1-cld(k+1)),
                 B.  but if we assume maximum overlap, we can write pp(k+1) =
-                    pp(k) * (1-max(cld(k+1),cld(k)),
+                    pp(k) * (1-max(cld(k+1),1-pp(k)),
                 C.  instead, we can assume maximum-random overlap, pp(k+1) =
-                    pp(k) * (1-max(cld(k+1),cld(k))) / (1-cld(k)),
+                    pp(k) * (1-max(cld(k+1),1-pp(k))) / pp(k),
                 which we use. We use a minimum in the denominator to avoid
                 division by 0. The maximum-random overlap assumption is designed to form
                 maximum overlap for contiguous cloudy layers and random overlap
@@ -925,9 +925,9 @@ namespace scream {
                 B.  consider the case of three contiguous cloudy layers after the first,
                     where cld(2) < cld(3) > cld(4) (i.e., the middle layer is highest).
                     pp(1) = 1 (by assumption, also cld(1) = 0)
-                    pp(2) = pp(1) * (1-cld(2))/(1)        = 1-cld(2)
-                    pp(3) = pp(2) * (1-cld(3))/(1-cld(2)) = 1-cld(3)
-                    pp(4) = pp(3) * (1-cld(3))/(1-cld(3)) = 1-cld(3)
+                    pp(2) = pp(1) * (1-cld(2))/pp(1) = 1-cld(2)
+                    pp(3) = pp(2) * (1-cld(3))/pp(2) = 1-cld(3)
+                    pp(4) = pp(3) * pp(3)/pp(3)      = 1-cld(3)
                     Effectively, the denominator in C removes the randomness
                     introduced in A because we do not want it in the case of contiguous
                     cloudy layers, instead simplifying to B. On the other hand,
@@ -1009,9 +1009,9 @@ namespace scream {
                        * minimum in the denominator is to avoid division by 0 */
                       aerocom_tmp(icol) =
                           aerocom_clr(icol) *
-                          (1 - ekat::impl::max(aerocom_cld(icol, ilay - 1),
+                          (1 - ekat::impl::max(1-aerocom_clr(icol),
                                                aerocom_cld(icol, ilay))) /
-                          (1 - ekat::impl::min(aerocom_cld(icol, ilay - 1),
+                          (1 - ekat::impl::min(1-aerocom_clr(icol),
                                                1 - 0.001));  // BAD_CONSTANT!
                       /* PART II: The inferred properties */
                       /* T_mid and p_mid are the "other properties" and so we

@@ -696,6 +696,20 @@ TEST_CASE("rrtmgp_aerocom_cloudtop") {
         cldfrac_liq_at_cldtop, cldfrac_tot_at_cldtop, nc_at_cldtop);
     REQUIRE(cldfrac_tot_at_cldtop.createHostCopy()(1) == .7);
 
+    // Case 3xtra: test max overlap (sneaky bug)
+    // This case should still produce 0.7 because it is all contiguous
+    yakl::fortran::parallel_for(
+        1, YAKL_LAMBDA(int /* dummy */) {
+          cldfrac_tot(1, 5) = 0.3;
+          cldfrac_tot(1, 6) = 0.4;
+          cldfrac_tot(1, 7) = 0.2;
+        });
+    scream::rrtmgp::compute_aerocom_cloudtop(
+        ncol, nlay, tmid, pmid, p_del, z_del, qc, qi, cldfrac_tot, nc,
+        tmid_at_cldtop, pmid_at_cldtop, cldfrac_ice_at_cldtop,
+        cldfrac_liq_at_cldtop, cldfrac_tot_at_cldtop, nc_at_cldtop);
+    REQUIRE(cldfrac_tot_at_cldtop.createHostCopy()(1) == .7);
+
     // Case 4: test random overlap (if non-contiguous cloudy layers, then
     // random)
     yakl::fortran::parallel_for(
