@@ -80,6 +80,7 @@ void SurfaceCouplingExporter::set_grids(const std::shared_ptr<const GridsManager
   create_helper_field("Faxa_swvdf", scalar2d_layout, grid_name);
   create_helper_field("Faxa_swnet", scalar2d_layout, grid_name);
   create_helper_field("Faxa_lwdn",  scalar2d_layout, grid_name);
+
 }
 // =========================================================================================
 size_t SurfaceCouplingExporter::requested_buffer_size_in_bytes() const
@@ -221,11 +222,20 @@ void SurfaceCouplingExporter::initialize_impl (const RunType /* run_type */)
       // that don't use the conventional EAMxx ATM->SRFC variable names.
       if (export_from_file_params.isParameter("fields_alt_name")) {
         // The parameter may exist but not be set, so check that it really exists
-        auto tmp = export_from_file_params.get<vos_type>("fields_alt_name");
-        bool are_alt_names_present = (std::find(tmp.begin(),tmp.end(),"NONE") == tmp.end()) and (tmp.size() > 0);
-        if (are_alt_names_present) {
-          EKAT_REQUIRE_MSG(tmp.size()==export_from_file_reg_names.size(),"Error! SurfaceCouplingExport::prescribed_from_file - List of alternative names (fields_alt_name) exists but isn't the same size as the list of fields (fields).");
-          export_from_file_reg_names = tmp;
+        auto alt_names = export_from_file_params.get<vos_type>("fields_alt_name");
+        for (auto entry : alt_names) {
+          ekat::strip(entry, ' '); // remove empty spaces in case user did `a : b`
+          auto tokens = ekat::split(entry,':');
+          EKAT_REQUIRE_MSG(tokens.size()==2,"Error! surface_coupling_exporter::init - expected 'EAMxx_var_name:FILE_var_name' entry in fields_alt_names, got '" + entry + "' instead.\n");
+          auto it = ekat::find(export_from_file_fields,tokens[0]);
+          EKAT_REQUIRE_MSG(it!=export_from_file_fields.end(),
+                         "Error! surface_coupling_exporter::init - LHS of entry '" + entry + "' in field_alt_names does not match a valid EAMxx field.\n");
+          // Make sure that a user hasn't accidentally copy/pasted 
+          auto chk = ekat::find(export_from_file_reg_names,tokens[1]);
+          EKAT_REQUIRE_MSG(chk==export_from_file_reg_names.end(),
+                	  "Error! surface_coupling_exporter::init - RHS of entry '" + entry + "' in field_alt_names has already been used for a different field.\n");
+          auto idx = std::distance(export_from_file_fields.begin(),it);
+          export_from_file_reg_names[idx] = tokens[1];
         }
       }
       // Construct a time interpolation object
@@ -243,7 +253,7 @@ void SurfaceCouplingExporter::initialize_impl (const RunType /* run_type */)
         --m_num_from_model_exports;
         auto f_helper = get_helper_field(fname);
 	// We want to add the field as a deep copy so that the helper_fields are automatically updated.
-        m_time_interp.add_field(f_helper, rname, true);
+        m_time_interp.add_field(f_helper.alias(rname), true);
         m_export_from_file_field_names.push_back(fname);
       }
       m_time_interp.initialize_data_from_files();
@@ -510,6 +520,7 @@ void SurfaceCouplingExporter::compute_eamxx_exports(const double dt, const bool 
   if (m_export_source_h(idx_Faxa_swvdf)==FROM_MODEL) { Kokkos::deep_copy(Faxa_swvdf, sfc_flux_dif_vis); }
   if (m_export_source_h(idx_Faxa_swnet)==FROM_MODEL) { Kokkos::deep_copy(Faxa_swnet, sfc_flux_sw_net); }
   if (m_export_source_h(idx_Faxa_lwdn )==FROM_MODEL) { Kokkos::deep_copy(Faxa_lwdn,  sfc_flux_lw_dn); }
+
 }
 // =========================================================================================
 void SurfaceCouplingExporter::do_export_to_cpl(const bool called_during_initialization)

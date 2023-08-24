@@ -88,7 +88,7 @@ void TimeInterpolation::add_field(const Field& field_in, const bool store_shallo
 void TimeInterpolation::add_field(const Field& field_in, const std::string& alt_name, const bool store_shallow_copy)
 {
   // First check that we haven't already added a field with the same name.
-  const std::string name = alt_name == "" ? field_in.name() : alt_name;
+  const std::string name = field_in.name();
   EKAT_REQUIRE_MSG(!m_fm_time0->has_field(name) and !m_fm_time1->has_field(name),
 		  "Error!! TimeInterpolation:add_field, field + " << name << " has already been added." << "\n");
 
