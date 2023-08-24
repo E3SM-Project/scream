@@ -444,6 +444,22 @@ struct PhysicsFunctions
                              const InputProviderQ& qv_wet,
                              const view_1d<ScalarT>& drymmr);
 
+  template<typename ScalarT, typename InputProviderX, typename InputProviderPD>
+  KOKKOS_INLINE_FUNCTION
+  static void calculate_wetmmr_from_drymmr_dp_based (const MemberType& team,
+                             const InputProviderX& drymmr,
+                             const InputProviderPD& pseudo_density,
+                             const InputProviderPD& pseudo_density_dry,
+                             const view_1d<ScalarT>& wetmmr);
+
+  template<typename ScalarT, typename InputProviderX, typename InputProviderPD>
+  KOKKOS_INLINE_FUNCTION
+  static void calculate_drymmr_from_wetmmr_dp_based (const MemberType& team,
+                             const InputProviderX& wetmmr,
+                             const InputProviderPD& pseudo_density,
+                             const InputProviderPD& pseudo_density_dry,
+                             const view_1d<ScalarT>& drymmr);
+
   template<typename ScalarT,
            typename InputProviderPD, typename InputProviderP,
            typename InputProviderT,  typename InputProviderQ,
