@@ -22,11 +22,39 @@ module wv_sat_scream
   implicit none
   private
 
-  public:: qv_sat_dry, qv_sat_wet, MurphyKoop_svp
+  public:: qv_sat_dry, qv_sat_wet, qv_sat, MurphyKoop_svp
 
 contains
 
   
+  !===========================================================================================
+  real(rtype) function qv_sat(t_atm,p_atm,i_wrt)
+
+    !------------------------------------------------------------------------------------
+    ! Calls MurphyKoop to obtain the saturation vapor pressure, and then computes
+    ! and returns the dry saturation mixing ratio, with respect to either liquid or ice,
+    ! depending on value of 'i_wrt'
+    !------------------------------------------------------------------------------------
+
+    use micro_p3_utils, only: ep_2
+    implicit none
+
+    !Calling parameters:
+    real(rtype), intent(in)    :: t_atm      !temperature [K]
+    real(rtype), intent(in)    :: p_atm      !pressure    [Pa]
+    integer, intent(in) :: i_wrt  !index, 0 = w.r.t. liquid, 1 = w.r.t. ice
+
+    !Local variables:
+    real(rtype)            :: e_pres         !saturation vapor pressure [Pa]
+
+    !e_pres    = polysvp1(t_atm,i_wrt)
+    e_pres = MurphyKoop_svp(t_atm,i_wrt)
+    qv_sat = ep_2*e_pres/max(1.e-3_rtype,p_atm-e_pres)
+
+    return
+
+  end function qv_sat
+
   !===========================================================================================
   real(rtype) function qv_sat_dry(t_atm,p_atm_dry,i_wrt)
 
@@ -49,11 +77,7 @@ contains
 
     !e_pres    = polysvp1(t_atm,i_wrt)
     e_pres     = MurphyKoop_svp(t_atm,i_wrt)
-#ifdef JGF_NEW
     qv_sat_dry = ep_2*e_pres/max(1.e-3_rtype,p_atm_dry)
-#else
-    qv_sat_dry = ep_2*e_pres/max(1.e-3_rtype,p_atm_dry-e_pres)
-#endif
 
     return
 
