@@ -102,7 +102,7 @@ public:
         // to tracer group in postprocessing.
         // TODO: remove *_copy views once SHOC can request a subset of tracers.
         tke_copy(i,k) = tke(i,k);
-        qc_copy(i,k)  = qc(i,k); 
+        qc_copy(i,k)  = qc(i,k);
 
         qw(i,k) = qv(i,k) + qc(i,k);
 
@@ -294,7 +294,7 @@ public:
 
         cldfrac_liq(i,k) = ekat::min(cldfrac_liq(i,k), 1);
 
-        //P3 uses inv_qc_relvar, P3 is using dry mmrs, but 
+        //P3 uses inv_qc_relvar, P3 is using dry mmrs, but
         //wet<->dry conversion is a constant factor that cancels out in mean(qc)^2/mean(qc'*qc').
         inv_qc_relvar(i,k) = 1;
         const auto condition = (qc(i,k) != 0 && qc2(i,k) != 0);
@@ -398,7 +398,7 @@ public:
     static constexpr int num_2d_vector_mid  = 18;
     static constexpr int num_2d_vector_int  = 12;
 #else
-    static constexpr int num_2d_vector_mid  = 22;
+    static constexpr int num_2d_vector_mid  = 23;
     static constexpr int num_2d_vector_int  = 13;
 #endif
     static constexpr int num_2d_vector_tr   = 1;
@@ -460,6 +460,7 @@ public:
 #ifdef SCREAM_SMALL_KERNELS
     uview_2d<Spack> rho_zt;
     uview_2d<Spack> shoc_qv;
+    uview_2d<Spack> tabs;
     uview_2d<Spack> dz_zt;
     uview_2d<Spack> dz_zi;
     uview_2d<Spack> tkh;
@@ -474,6 +475,9 @@ protected:
 #endif
 
   void initialize_impl (const RunType run_type);
+
+  // Update flux (if necessary)
+  void check_flux_state_consistency(const double dt);
 
 protected:
 

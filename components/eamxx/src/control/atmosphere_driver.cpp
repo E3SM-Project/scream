@@ -24,6 +24,10 @@
 // didn't realize I could do without the workaround.
 #include "share/util/eamxx_fv_phys_rrtmgp_active_gases_workaround.hpp"
 
+#ifndef SCREAM_CIME_BUILD
+#include <unistd.h>
+#endif
+
 #include <fstream>
 
 namespace scream {
@@ -209,9 +213,12 @@ void AtmosphereDriver::create_grids()
     const auto& casename = ic_pl.get<std::string>("restart_casename");
     auto filename = find_filename_in_rpointer (casename,true,m_atm_comm,m_run_t0);
     gm_params.set("ic_filename", filename);
+    m_atm_params.sublist("provenance").set("initial_conditions_file",filename);
   } else if (ic_pl.isParameter("Filename")) {
     // Initial run, if an IC file is present, pass it.
-    gm_params.set("ic_filename", ic_pl.get<std::string>("Filename"));
+    auto filename = ic_pl.get<std::string>("Filename");
+    gm_params.set("ic_filename", filename);
+    m_atm_params.sublist("provenance").set("initial_conditions_file",filename);
   }
 
   m_atm_logger->debug("  [EAMxx] Creating grid manager '" + gm_type + "' ...");
@@ -405,6 +412,24 @@ void AtmosphereDriver::setup_column_conservation_checks ()
   // Pass energy checker to the process group to be added
   // to postcondition checks of appropriate processes.
   m_atm_process_group->setup_column_conservation_checks(conservation_check, fail_handling_type);
+}
+
+void AtmosphereDriver::add_additional_column_data_to_property_checks () {
+  // Get list of additional data fields from driver_options parameters.
+  // If no fields given, return.
+  using vos_t = std::vector<std::string>;
+  auto additional_data_fields = m_atm_params.sublist("driver_options").get<vos_t>("property_check_data_fields",
+                                                                                  {"NONE"});
+  if (additional_data_fields == vos_t{"NONE"}) return;
+
+  // Add requested fields to property checks
+  auto phys_field_mgr = m_field_mgrs[m_grids_manager->get_grid("Physics")->name()];
+  for (auto fname : additional_data_fields) {
+    EKAT_REQUIRE_MSG(phys_field_mgr->has_field(fname), "Error! The field "+fname+" is requested for property check output "
+                                                       "but does not exist in the physics field manager.\n");
+    
+    m_atm_process_group->add_additional_data_fields_to_property_checks(phys_field_mgr->get_field(fname));
+  }
 }
 
 void AtmosphereDriver::create_fields()
@@ -603,6 +628,7 @@ void AtmosphereDriver::initialize_output_managers () {
   if (io_params.isSublist("model_restart")) {
     auto restart_pl = io_params.sublist("model_restart");
     m_output_managers.emplace_back();
+    restart_pl.sublist("provenance") = m_atm_params.sublist("provenance");
     auto& om = m_output_managers.back();
     if (fvphyshack) {
       // Don't save CGLL fields from ICs to the restart file.
@@ -643,6 +669,7 @@ void AtmosphereDriver::initialize_output_managers () {
       params.set<std::string>("filename_prefix",m_casename+".scream.h"+std::to_string(om_tally));
       om_tally++;
     }
+    params.sublist("provenance") = m_atm_params.sublist("provenance");
     // Add a new output manager
     m_output_managers.emplace_back();
     auto& om = m_output_managers.back();
@@ -655,6 +682,43 @@ void AtmosphereDriver::initialize_output_managers () {
   stop_timer("EAMxx::initialize_output_managers");
   stop_timer("EAMxx::init");
   m_atm_logger->info("[EAMxx] initialize_output_managers ... done!");
+}
+
+void AtmosphereDriver::
+set_provenance_data (std::string caseid,
+                     std::string hostname,
+                     std::string username)
+{
+#ifdef SCREAM_CIME_BUILD
+  // Check the inputs are valid
+  EKAT_REQUIRE_MSG (caseid!="", "Error! Invalid case id: " + caseid + "\n");
+  EKAT_REQUIRE_MSG (hostname!="", "Error! Invalid hostname: " + hostname + "\n");
+  EKAT_REQUIRE_MSG (username!="", "Error! Invalid username: " + username + "\n");
+#else
+  caseid = "EAMxx standalone";
+  char* user = new char[32];
+  char* host = new char[256];
+  int err;
+  err = gethostname(host,255);
+  if (err==0) {
+    hostname = std::string(host);
+  } else {
+    hostname = "UNKNOWN";
+  }
+  err = getlogin_r(user,31);
+  if (err==0) {
+    username = std::string(user);
+  } else {
+    username = "UNKNOWN";
+  }
+  delete[] user;
+  delete[] host;
+#endif
+  auto& provenance = m_atm_params.sublist("provenance");
+  provenance.set("caseid",caseid);
+  provenance.set("hostname",hostname);
+  provenance.set("username",username);
+  provenance.set("version",std::string(EAMXX_GIT_VERSION));
 }
 
 void AtmosphereDriver::
@@ -1075,6 +1139,8 @@ void AtmosphereDriver::set_initial_conditions ()
                              topography_eamxx_fields_names[grid_name],
                              io_grid,file_name,m_current_ts);
     }
+    // Store in provenance list, for later usage in output file metadata
+    m_atm_params.sublist("provenance").set("topography_file",file_name);
     m_atm_logger->debug("    [EAMxx] Processing topography from file ... done!");
   } else {
     // Ensure that, if no topography_filename is given, no
@@ -1087,6 +1153,8 @@ void AtmosphereDriver::set_initial_conditions ()
                       "topography_filename or entry matching the field name "
                       "was given in IC parameters.\n");
     }
+
+    m_atm_params.sublist("provenance").set<std::string>("topography_file","NONE");
   }
 
   m_atm_logger->info("  [EAMxx] set_initial_conditions ... done!");
@@ -1256,6 +1324,9 @@ void AtmosphereDriver::initialize_atm_procs ()
     m_atm_process_group->add_postcondition_nan_checks();
   }
 
+  // Add additional column data fields to pre/postcondition checks (if they exist)
+  add_additional_column_data_to_property_checks();
+
   if (fvphyshack) {
     // [CGLL ICs in pg2] See related notes in atmosphere_dynamics.cpp.
     const auto gn = "Physics GLL";
@@ -1280,6 +1351,7 @@ initialize (const ekat::Comm& atm_comm,
 {
   set_comm(atm_comm);
   set_params(params);
+  set_provenance_data ();
 
   init_scorpio ();
 
