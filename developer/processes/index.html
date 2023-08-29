@@ -9,18 +9,18 @@
       
       
       
-        <link rel="prev" href="../style_guide/">
+        <link rel="prev" href="../grid/">
       
       
-        <link rel="next" href="../field/">
+        <link rel="next" href="../managers/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.5.2, mkdocs-material-9.2.3">
+      <meta name="generator" content="mkdocs-1.5.2, mkdocs-material-9.2.5">
     
     
       
-        <title>Kokkos and EKAT - The C++ E3SM Atmosphere Model (EAMxx)</title>
+        <title>Atmosphere Processes - The C++ E3SM Atmosphere Model (EAMxx)</title>
       
     
     
@@ -75,7 +75,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#building-blocks" class="md-skip">
+        <a href="#atmospheric-processes" class="md-skip">
           Skip to content
         </a>
       
@@ -111,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Kokkos and EKAT
+              Atmosphere Processes
             
           </span>
         </div>
@@ -379,6 +379,26 @@
 
               
             
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../common/eamxx_params/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Runtime parameters
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -488,29 +508,9 @@
                 
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Kokkos and EKAT
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../kokkos_ekat/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -519,60 +519,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#kokkos-views" class="md-nav__link">
-    Kokkos Views
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#vectorization-packs" class="md-nav__link">
-    Vectorization: Packs
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fields-and-the-field-manager" class="md-nav__link">
-    Fields and the Field Manager
-  </a>
-  
-    <nav class="md-nav" aria-label="Fields and the Field Manager">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#preconditions-postconditions-and-invariants" class="md-nav__link">
-    Preconditions, Postconditions, and Invariants
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -583,18 +529,40 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../source_tree/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Source Tree
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" checked>
         
-          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -605,8 +573,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_6">
             <span class="md-nav__icon md-icon"></span>
             Important Data Structures
           </label>
@@ -656,9 +624,18 @@
                 
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../processes/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -667,6 +644,7 @@
   
 
       </a>
+      
     </li>
   
 
@@ -734,9 +712,9 @@
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
         
-          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -747,8 +725,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_7">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8">
             <span class="md-nav__icon md-icon"></span>
             Testing
           </label>
@@ -849,48 +827,6 @@
     
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#kokkos-views" class="md-nav__link">
-    Kokkos Views
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#vectorization-packs" class="md-nav__link">
-    Vectorization: Packs
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fields-and-the-field-manager" class="md-nav__link">
-    Fields and the Field Manager
-  </a>
-  
-    <nav class="md-nav" aria-label="Fields and the Field Manager">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#preconditions-postconditions-and-invariants" class="md-nav__link">
-    Preconditions, Postconditions, and Invariants
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -904,13 +840,20 @@
                   
 
 
-<h1 id="building-blocks">Building Blocks</h1>
-<p>Here we can discuss EKAT, Kokkos, and all of the highly-technical non-scientific
-stuff that makes our heads hurt.</p>
-<h2 id="kokkos-views">Kokkos Views</h2>
-<h2 id="vectorization-packs">Vectorization: Packs</h2>
-<h2 id="fields-and-the-field-manager">Fields and the Field Manager</h2>
-<h3 id="preconditions-postconditions-and-invariants">Preconditions, Postconditions, and Invariants</h3>
+<h1 id="atmospheric-processes">Atmospheric Processes</h1>
+<p>In EAMxx, the <code>AtmosphereProcess</code> (AP) is a class representing a portion of the atmosphere timestep algorithm.
+In simple terms, an AP is an object that given certain input fields performs some calculations to compute
+some output fields.</p>
+<p>TODO: describe init sequcene (e.g., the process of requesting fields), base class main
+      interfaces/capabilities (e.g., subcycling), class expectations (e.g., must update fields on physics grid)</p>
+<p>Here is a list of currently implemented atmosphere processes.
+TODO: add links to papers/github-repos, and a SMALL description
+* p3: Microphysics, blah blah
+* SHOC: Macrophysics/Turbulence, blah
+* rrtmgp: Radiation, blah
+* spa: prescribed aerosols, blah blah
+* surface coupling: blah
+* mam: prognostic aerosols, blah blah</p>
 
 
 

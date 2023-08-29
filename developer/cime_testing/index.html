@@ -9,16 +9,18 @@
       
       
       
-        <link rel="prev" href="../cime_testing/">
+        <link rel="prev" href="../standalone_testing/">
       
+      
+        <link rel="next" href="../ci_nightly/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.5.2, mkdocs-material-9.2.3">
+      <meta name="generator" content="mkdocs-1.5.2, mkdocs-material-9.2.5">
     
     
       
-        <title>CI and Nightly Testing - The C++ E3SM Atmosphere Model (EAMxx)</title>
+        <title>Full model - The C++ E3SM Atmosphere Model (EAMxx)</title>
       
     
     
@@ -73,7 +75,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#continuous-integration-and-nightly-testing" class="md-skip">
+        <a href="#full-model-testing" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              CI and Nightly Testing
+              Full model
             
           </span>
         </div>
@@ -377,6 +379,26 @@
 
               
             
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../common/eamxx_params/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Runtime parameters
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -507,6 +529,26 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../source_tree/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Source Tree
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
     
     
     
@@ -516,9 +558,9 @@
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
         
-          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -529,8 +571,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
             <span class="md-nav__icon md-icon"></span>
             Important Data Structures
           </label>
@@ -660,9 +702,9 @@
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" checked>
         
-          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -673,8 +715,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_3_7">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_8">
             <span class="md-nav__icon md-icon"></span>
             Testing
           </label>
@@ -704,26 +746,6 @@
                 
   
   
-  
-    <li class="md-nav__item">
-      <a href="../cime_testing/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Full model
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -739,12 +761,32 @@
         
   
   <span class="md-ellipsis">
-    CI and Nightly Testing
+    Full model
   </span>
   
 
       </a>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ci_nightly/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CI and Nightly Testing
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -798,10 +840,12 @@
                   
 
 
-<h1 id="continuous-integration-and-nightly-testing">Continuous Integration and Nightly Testing</h1>
+<h1 id="full-model-testing">Full Model Testing</h1>
+<p>Quickly review CIME test infrastructure and how EAMxx uses it</p>
 <ul>
-<li>Autotester quick overview</li>
-<li>Nightly overview, CDash</li>
+<li>test types, specifiers (<code>_LnX</code>,<code>_D</code>,<code>_PMxN</code>,..), grids, compsets, test-mods</li>
+<li>available grids/compsets for EAMxx, and where to find them</li>
+<li>how to add atmchange in <code>shell_commands</code> test mods</li>
 </ul>
 
 
