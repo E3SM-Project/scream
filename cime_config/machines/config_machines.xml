@@ -5811,6 +5811,70 @@ AMD EPYC 7713 64-Core (Milan) (256GB) and 4 nvidia A100'</DESC>
     </environment_variables>
   </machine>
 
+  <machine MACH="sandia-workstation">
+    <DESC>My linux workstation at Sandia</DESC>
+    <NODENAME_REGEX>none</NODENAME_REGEX>
+    <OS>LINUX</OS>
+    <COMPILERS>gnu</COMPILERS>
+    <MPILIBS>openmpi,mpich</MPILIBS>
+    <CIME_OUTPUT_ROOT>/home/tccleve/E3SM-Project/SCREAM/cime_scratch_dir</CIME_OUTPUT_ROOT>
+    <DIN_LOC_ROOT>/home/tccleve/E3SM-Project/SCREAM/data</DIN_LOC_ROOT>
+    <DIN_LOC_ROOT_CLMFORC>/home/tccleve/E3SM-Project/SCREAM/data/atm/datm7</DIN_LOC_ROOT_CLMFORC>
+    <DOUT_S_ROOT>$CIME_OUTPUT_ROOT/archive/$CASE</DOUT_S_ROOT>
+    <CCSM_CPRNC>/home/tccleve/E3SM-Project/SCREAM/build-eamxx/externals/cprnc/cprnc</CCSM_CPRNC>
+    <GMAKE_J>32</GMAKE_J>
+    <TESTS>e3sm_developer</TESTS>
+    <BATCH_SYSTEM>none</BATCH_SYSTEM>
+    <SUPPORTED_BY>tccleve at sandia dot gov</SUPPORTED_BY>
+    <MAX_TASKS_PER_NODE>20</MAX_TASKS_PER_NODE>
+    <MAX_MPITASKS_PER_NODE>20</MAX_MPITASKS_PER_NODE>
+    <mpirun mpilib="default">
+      <executable>mpirun</executable>
+      <arguments>
+        <arg name="num_tasks"> -np {{ total_tasks }}</arg>
+      </arguments>
+    </mpirun>
+    <module_system type="none"/>
+    <RUNDIR>$CIME_OUTPUT_ROOT/$CASE/run</RUNDIR>
+    <EXEROOT>$CIME_OUTPUT_ROOT/$CASE/bld</EXEROOT>
+    <environment_variables>
+      <env name="NETCDF_C_PATH">/usr/local</env>
+      <env name="NETCDF_FORTRAN_PATH">/usr/local</env>
+    </environment_variables>
+  </machine>
+
+  <machine MACH="home-workstation">
+    <DESC>My linux workstation at home</DESC>
+    <NODENAME_REGEX>none</NODENAME_REGEX>
+    <OS>LINUX</OS>
+    <COMPILERS>gnu</COMPILERS>
+    <MPILIBS>openmpi</MPILIBS>
+    <CIME_OUTPUT_ROOT>/home/tcclevenger/E3SM-Project/SCREAM/cime_scratch_dir</CIME_OUTPUT_ROOT>
+    <DIN_LOC_ROOT>/home/tcclevenger/E3SM-Project/SCREAM/data</DIN_LOC_ROOT>
+    <DIN_LOC_ROOT_CLMFORC>/home/tcclevenger/E3SM-Project/SCREAM/data/atm/datm7</DIN_LOC_ROOT_CLMFORC>
+    <DOUT_S_ROOT>$CIME_OUTPUT_ROOT/archive/$CASE</DOUT_S_ROOT>
+    <GMAKE_J>8</GMAKE_J>
+    <TESTS>e3sm_developer</TESTS>
+    <BATCH_SYSTEM>none</BATCH_SYSTEM>
+    <SUPPORTED_BY>tccleve at sandia dot gov</SUPPORTED_BY>
+    <MAX_TASKS_PER_NODE>8</MAX_TASKS_PER_NODE>
+    <MAX_MPITASKS_PER_NODE>8</MAX_MPITASKS_PER_NODE>
+    <mpirun mpilib="default">
+      <executable>mpirun</executable>
+      <arguments>
+        <arg name="num_tasks"> -np {{ total_tasks }}</arg>
+        <arg name="tasks_per_node">--bind-to core</arg>
+      </arguments>
+    </mpirun>
+    <module_system type="none"/>
+    <RUNDIR>$CIME_OUTPUT_ROOT/$CASE/run</RUNDIR>
+    <EXEROOT>$CIME_OUTPUT_ROOT/$CASE/bld</EXEROOT>
+    <environment_variables>
+      <env name="NETCDF_C_PATH">/usr/local</env>
+      <env name="NETCDF_FORTRAN_PATH">/usr/local</env>
+    </environment_variables>
+  </machine>
+
   <default_run_suffix>
     <default_run_exe>${EXEROOT}/e3sm.exe </default_run_exe>
     <default_run_misc_suffix> &gt;&gt; e3sm.log.$LID 2&gt;&amp;1 </default_run_misc_suffix>
