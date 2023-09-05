@@ -648,9 +648,6 @@ setup_file (      IOFileSpecs& filespecs,
   // Register new netCDF file for output. Check if we need to append to an existing file
   auto mode = m_resume_output_file ? Append : Write;
   register_file(filename,mode);
-  if (m_resume_output_file) {
-    eam_pio_redef(filename);
-  }
 
   // Note: length=0 is how scorpio recognizes that this is an 'unlimited' dimension, which
   // allows to write as many timesnaps as we desire.
@@ -676,18 +673,6 @@ setup_file (      IOFileSpecs& filespecs,
     set_variable_metadata (filename,"time","bounds","time_bnds");
   }
 
-  if (not m_resume_output_file) {
-    // Finish the definition phase for this file.
-    write_timestamp(filename,"case_t0",m_case_t0);
-    write_timestamp(filename,"run_t0",m_run_t0);
-    set_attribute(filename,"averaging_type",e2str(m_avg_type));
-    set_attribute(filename,"averaging_frequency_units",m_output_control.frequency_units);
-    set_attribute(filename,"averaging_frequency",m_output_control.frequency);
-    set_attribute(filename,"max_snapshots_per_file",m_output_file_specs.max_snapshots_in_file);
-    set_attribute(filename,"fp_precision",fp_precision);
-    set_file_header(filespecs);
-  }
-
   // Set degree of freedom for "time" and "time_bnds"
   scorpio::offset_t time_dof[1] = {0};
   set_dof(filename,"time",1,time_dof);
@@ -701,23 +686,35 @@ setup_file (      IOFileSpecs& filespecs,
     it->setup_output_file(filename,fp_precision,mode);
   }
 
-  // If grid data is needed,  also register geo data fields. Skip if file is resumed,
-  // since grid data was written in the previous run
-  if (filespecs.save_grid_data and not m_resume_output_file) {
-    for (auto& it : m_geo_data_streams) {
-      it->setup_output_file(filename,fp_precision,mode);
+  if (not m_resume_output_file) {
+    // Finish the definition phase for this file.
+    write_timestamp(filename,"case_t0",m_case_t0);
+    write_timestamp(filename,"run_t0",m_run_t0);
+    set_attribute(filename,"averaging_type",e2str(m_avg_type));
+    set_attribute(filename,"averaging_frequency_units",m_output_control.frequency_units);
+    set_attribute(filename,"averaging_frequency",m_output_control.frequency);
+    set_attribute(filename,"max_snapshots_per_file",m_output_file_specs.max_snapshots_in_file);
+    set_attribute(filename,"fp_precision",fp_precision);
+    set_file_header(filespecs);
+
+    // If grid data is needed,  also register geo data fields. Skip if file is resumed,
+    // since grid data was written in the previous run
+    if (filespecs.save_grid_data) {
+      for (auto& it : m_geo_data_streams) {
+        it->setup_output_file(filename,fp_precision,mode);
+      }
     }
-  }
 
-  // When resuming a file, PIO opens it in data mode.
-  // NOTE: all the above register_dimension/register_variable are already checking that
-  //       the dims/vars are already in the file (we don't allow adding dims/vars)
-  eam_pio_enddef (filename);
+    // When resuming a file, PIO opens it in data mode.
+    // NOTE: all the above register_dimension/register_variable are already checking that
+    //       the dims/vars are already in the file (we don't allow adding dims/vars)
+    eam_pio_enddef (filename);
 
-  if (filespecs.save_grid_data and not m_resume_output_file) {
-    // Immediately run the geo data streams
-    for (const auto& it : m_geo_data_streams) {
-      it->run(filename,true,false,0);
+    if (filespecs.save_grid_data) {
+      // Immediately run the geo data streams
+      for (const auto& it : m_geo_data_streams) {
+        it->run(filename,true,false,0);
+      }
     }
   }
 
