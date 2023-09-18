@@ -387,6 +387,9 @@ subroutine shoc_main ( &
   ! Grid difference centereted on interface grid [m]
   real(rtype) :: dz_zi(shcol,nlevi)
 
+  ! Dimensionless stability function
+  real(rtype) :: stab_func(shcol,nlev)
+
   ! Surface friction velocity [m/s]
   real(rtype) :: ustar(shcol)
   ! Monin Obukhov length [m]
@@ -491,7 +494,7 @@ subroutine shoc_main ( &
        u_wind,v_wind,brunt,obklen,&         ! Input
        zt_grid,zi_grid,pblh,&               ! Input
        tke,tk,tkh,&                         ! Input/Output
-       isotropy)                            ! Output
+       isotropy,stab_func)                  ! Output
 
     ! Update SHOC prognostic variables here
     !   via implicit diffusion solver
@@ -531,7 +534,7 @@ subroutine shoc_main ( &
        thetal,qw,w_field,thl_sec,qw_sec,&   ! Input
        wthl_sec,w_sec,&                     ! Input
        wqw_sec,qwthl_sec,w3,pres,&          ! Input
-       zt_grid,zi_grid,&                    ! Input
+       zt_grid,zi_grid,stab_func,&          ! Input
        shoc_cldfrac,shoc_ql,&               ! Output
        wqls_sec,wthv_sec,shoc_ql2)          ! Output
 
@@ -2192,7 +2195,7 @@ subroutine shoc_assumed_pdf(&
          thetal,qw,w_field,thl_sec,qw_sec,& ! Input
          wthl_sec,w_sec, &                  ! Input
          wqw_sec,qwthl_sec,w3,pres, &       ! Input
-         zt_grid,zi_grid,&                  ! Input
+         zt_grid,zi_grid,stab_func,&        ! Input
          shoc_cldfrac,shoc_ql,&             ! Output
          wqls,wthv_sec,shoc_ql2)            ! Output
 
@@ -2244,6 +2247,7 @@ subroutine shoc_assumed_pdf(&
   real(rtype), intent(in) :: zt_grid(shcol,nlev)
   ! heights on interface grid [m]
   real(rtype), intent(in) :: zi_grid(shcol,nlevi)
+  real(rtype), intent(in) :: stab_func(shcol,nlev)
 
 ! OUTPUT VARIABLES
   ! SGS cloud fraction [-]
@@ -2458,8 +2462,8 @@ subroutine shoc_assumed_pdf(&
 
       ! Compute the SGS buoyancy flux
       call shoc_assumed_pdf_compute_buoyancy_flux(&
-        wthlsec, epsterm, wqwsec, pval, wqls(i,k),& ! Input
-        wthv_sec(i,k))                              ! Output
+        wthlsec, epsterm, wqwsec, pval, wqls(i,k),stab_func(i,k), & ! Input
+        wthv_sec(i,k))                                              ! Output
 
     enddo  ! end i loop here
   enddo ! end k loop here
@@ -2943,8 +2947,8 @@ subroutine shoc_assumed_pdf_compute_liquid_water_flux(&
 end subroutine shoc_assumed_pdf_compute_liquid_water_flux
 
 subroutine shoc_assumed_pdf_compute_buoyancy_flux(&
-  wthlsec,epsterm,wqwsec,pval,wqls,& ! Input
-  wthv_sec)                          ! Output
+  wthlsec,epsterm,wqwsec,pval,wqls,stab_func,& ! Input
+  wthv_sec)                                    ! Output
   ! Compute the SGS buoyancy flux
   implicit none
 
@@ -2954,12 +2958,13 @@ subroutine shoc_assumed_pdf_compute_buoyancy_flux(&
   real(rtype), intent(in) :: wqwsec
   real(rtype), intent(in) :: pval
   real(rtype), intent(in) :: wqls
+  real(rtype), intent(in) :: stab_func
 
   ! intent-out
   real(rtype), intent(out) :: wthv_sec
 
   wthv_sec=wthlsec+((1._rtype-epsterm)/epsterm)*basetemp*wqwsec &
-  +((lcond/cp)*bfb_pow(basepres/pval,(rgas/cp))-(1._rtype/epsterm)*basetemp)*wqls
+  +stab_func*((lcond/cp)*bfb_pow(basepres/pval,(rgas/cp))-(1._rtype/epsterm)*basetemp)*wqls
 
 end subroutine shoc_assumed_pdf_compute_buoyancy_flux
 
@@ -2973,7 +2978,7 @@ subroutine shoc_tke(&
          u_wind,v_wind,brunt,obklen,&! Input
          zt_grid,zi_grid,pblh,&      ! Input
          tke,tk,tkh, &               ! Input/Output
-         isotropy)                   ! Output
+         isotropy,stab_func)         ! Output
 
   ! Purpose of this subroutine is to advance the SGS
   !  TKE equation due to shear production, buoyant
@@ -3025,6 +3030,7 @@ subroutine shoc_tke(&
 ! OUTPUT VARIABLES
   ! Return to isotropic timescale [s]
   real(rtype), intent(out) :: isotropy(shcol,nlev)
+  real(rtype), intent(out) :: stab_func(shcol,nlev)
 
 ! LOCAL VARIABLES
   real(rtype) :: sterm(shcol,nlevi), sterm_zt(shcol,nlev)
@@ -3049,7 +3055,7 @@ subroutine shoc_tke(&
        sterm_zt, tk, tke, a_diss)
 
   !Compute isotropic time scale [s]
-  call isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
+  call isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy, stab_func)
 
   !Compute eddy diffusivity for heat and momentum
   call eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
@@ -3249,7 +3255,7 @@ subroutine adv_sgs_tke(nlev, shcol, dtime, shoc_mix, wthv_sec, &
 
 end subroutine adv_sgs_tke
 
-subroutine isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
+subroutine isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy, stab_func)
   !------------------------------------------------------------
   ! Compute the return to isotropic timescale as per
   ! Canuto et al. 2004.  This is used to define the
@@ -3278,10 +3284,11 @@ subroutine isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
   ! intent-out
   ! Return to isotropic timescale [s]
   real(rtype), intent(out) :: isotropy(shcol,nlev)
+  real(rtype), intent(out) :: stab_func(shcol,nlev)
 
   !local vars
   integer     :: i, k
-  real(rtype) :: tscale, lambda, buoy_sgs_save
+  real(rtype) :: tscale, lambda, buoy_sgs_save, a, b
 
   !Parameters
   real(rtype), parameter :: maxiso       = 20000.0_rtype ! Return to isotropic timescale [s]
@@ -3309,6 +3316,12 @@ subroutine isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
 
         ! Compute the return to isotropic timescale
         isotropy(i,k)=min(maxiso,tscale/(1._rtype+lambda*buoy_sgs_save*bfb_square(tscale)))
+
+	! Compute stability function
+	a = (1._rtype-2._rtype)/(lambda_high-lambda_low)
+	b = 2._rtype - a * lambda_low
+	stab_func(i,k) = a * lambda + b
+
      enddo
   enddo
 
