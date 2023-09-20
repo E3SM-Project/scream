@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.5.2, mkdocs-material-9.3.1">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.3.2">
     
     
       
@@ -24,7 +24,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.046329b4.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.30068a00.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.85d0ee34.min.css">
@@ -356,6 +356,17 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Model output
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -365,6 +376,66 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#basic-output-yaml-file-syntax" class="md-nav__link">
+    Basic output YAML file syntax
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diagnostic-output" class="md-nav__link">
+    Diagnostic output
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#remapped-output" class="md-nav__link">
+    Remapped output
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-output-stream-to-a-cime-case" class="md-nav__link">
+    Add output stream to a CIME case
+  </a>
+  
+    <nav class="md-nav" aria-label="Add output stream to a CIME case">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#important-notes" class="md-nav__link">
+    Important notes
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -888,6 +959,55 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#basic-output-yaml-file-syntax" class="md-nav__link">
+    Basic output YAML file syntax
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diagnostic-output" class="md-nav__link">
+    Diagnostic output
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#remapped-output" class="md-nav__link">
+    Remapped output
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-output-stream-to-a-cime-case" class="md-nav__link">
+    Add output stream to a CIME case
+  </a>
+  
+    <nav class="md-nav" aria-label="Add output stream to a CIME case">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#important-notes" class="md-nav__link">
+    Important notes
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -902,92 +1022,111 @@
 
 
 <h1 id="model-output">Model output</h1>
-<p>EAMxx allows to configure the desired model output via <a href="https://yaml.org/">YAML</a> files,
+<p>EAMxx allows the user to configure the desired model output via <a href="https://yaml.org/">YAML</a> files,
 with each YAML file associated to a different output file.</p>
-<h1 id="basic-output-yaml-file-syntax">Basic output YAML file syntax</h1>
+<h2 id="basic-output-yaml-file-syntax">Basic output YAML file syntax</h2>
 <p>The following is an example of a simple output request.</p>
-<p><div class="highlight"><pre><span></span><code>%YAML 1.1
----
-filename_prefix: my_output
-Averaging Type: Average
-Max Snapshots Per File: 10
-Fields:
-  Physics:
-    Field Names:
-      - T_mid
-      - qv
-  Dynamics:
-    Field Names:
-      - dp3d_dyn
-      - omega_dyn
-output_control:
-  Frequency: 6
-  frequency_units: nhours
-...
+<div class="highlight"><pre><span></span><code><span class="nt">%YAML</span><span class="w"> </span><span class="m">1.1</span>
+<span class="nn">---</span>
+<span class="nt">filename_prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my_output</span>
+<span class="nt">Averaging Type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Average</span>
+<span class="nt">Max Snapshots Per File</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="nt">Fields</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">Physics</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">Field Names</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">T_mid</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qv</span>
+<span class="w">  </span><span class="nt">Dynamics</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">Field Names</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dp3d_dyn</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">omega_dyn</span>
+<span class="nt">output_control</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">Frequency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">6</span>
+<span class="w">  </span><span class="nt">frequency_units</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nhours</span>
 </code></pre></div>
-Notice that lists can be equivalently specified in YAML as <code>Field Names: [f1, f2, f3]</code>.
-The user can specify fields to be outputed from any of the grids used in the simulation.
-In the exampole above, we requested fields from both the Physics and Dynamics grid.
-The other parameters are
-- <code>Averaging Type</code>: how the fields are integrated in time before being saved. Valid
-  options are
-  - Instant: no integration, each time frame saved corresponds to instantaneous values
-    of the fields
-  - Average/Max/Min: the fields undergo the corresponding operation over the time
-    interval specified in the <code>output_control</code> section. In the case above, each snapshot
-    saved to file corresponds to an average of the output fields over 6h windows.
-- <code>filename_prefix</code>: the prefix of the output file, which will be created in the run
+<p>Notice that lists can be equivalently specified in YAML as <code>Field Names: [f1, f2, f3]</code>.
+The user can specify fields to be outputted from any of the grids used in the simulation.
+In the example above, we requested fields from both the Physics and Dynamics grid.
+The other parameters are</p>
+<ul>
+<li>
+<p><code>Averaging Type</code>: how the fields are integrated in time before being saved. Valid
+  options are</p>
+<ul>
+<li>Instant: no integration, each time frame saved corresponds to instantaneous values
+  of the fields</li>
+<li>Average/Max/Min: the fields undergo the corresponding operation over the time
+  interval specified in the <code>output_control</code> section. In the case above, each snapshot
+  saved to file corresponds to an average of the output fields over 6h windows.</li>
+</ul>
+</li>
+<li>
+<p><code>filename_prefix</code>: the prefix of the output file, which will be created in the run
   directory. The full filename will be <code>$prefix.$avgtype.$frequnits_x$freq.$timestamp.nc</code>,
   where $timestamp corresponds to the first snapshot saved in the file for Instant output,
-  or the beginning of the first averaging window for the other averaging types
-- <code>Max Snapshots Per File</code>: specifies how many time snapshots can be put in a file. Once
-  this number is reached, EAMxx will close the file and open a new one.
-- <code>Frequency</code>: how many units of time are between two consecutive writes to file. For
+  or the beginning of the first averaging window for the other averaging types</p>
+</li>
+<li><code>Max Snapshots Per File</code>: specifies how many time snapshots can be put in a file. Once
+  this number is reached, EAMxx will close the file and open a new one.</li>
+<li><code>Frequency</code>: how many units of time are between two consecutive writes to file. For
   Instant output the fields are "sampled" at this frequency, while for other averaging
-  types the fields are "integrated" in time over this window
-- <code>frequency_units</code>: units of the output frequency. Valid options are <code>nsteps</code> (the
+  types the fields are "integrated" in time over this window</li>
+<li><code>frequency_units</code>: units of the output frequency. Valid options are <code>nsteps</code> (the
   number of atmosphere time steps), <code>nsecs</code>, <code>nmins</code>, <code>nhours</code>, <code>ndays</code>, <code>nmonths</code>,
-  <code>nyears</code>.</p>
-<h1 id="diagnostic-output">Diagnostic output</h1>
+  <code>nyears</code>.</li>
+</ul>
+<h2 id="diagnostic-output">Diagnostic output</h2>
 <p>In addition to the fields computed by EAMxx as part of the timestep, the user can
 request to output derived quantities, which will be computed on the fly by the
-I/O interface of EAMxx. There are two types of diagnostic outputs:
-- quantities computed as a function of EAMxx fields. These are simply physical quantities
+I/O interface of EAMxx. There are two types of diagnostic outputs:</p>
+<ul>
+<li>
+<p>quantities computed as a function of EAMxx fields. These are simply physical quantities
   that EAMxx does not keep in persistent storage. As of August 2023, the available
-  derived quantities are (case sensitive):
-  - PotentialTemperature
-  - AtmosphereDensity
-  - Exner
-  - VirtualTemperature
-  - z_int
-  - z_mid
-  - geopotential_int
-  - geopotential_mid
-  - dz
-  - DryStaticEnergy
-  - SeaLevelPressure
-  - LiqWaterPath
-  - IceWaterPath
-  - VapWaterPath
-  - RainWaterPath
-  - RimeWaterPath
-  - ShortwaveCloudForcing
-  - LongwaveCloudForcing
-  - RelativeHumidity
-  - ZonalVapFlux
-  - MeridionalVapFlux
-  - precip_surf_mass_flux
-  - surface_upward_latent_heat_flux
-- lower-dimensional slices of a field. These are hyperslices of an existing field or of
+  derived quantities are (case sensitive):</p>
+<ul>
+<li><code>PotentialTemperature</code></li>
+<li><code>AtmosphereDensity</code></li>
+<li><code>Exner</code></li>
+<li><code>VirtualTemperature</code></li>
+<li><code>z_int</code></li>
+<li><code>z_mid</code></li>
+<li><code>geopotential_int</code></li>
+<li><code>geopotential_mid</code></li>
+<li><code>dz</code></li>
+<li><code>DryStaticEnergy</code></li>
+<li><code>SeaLevelPressure</code></li>
+<li><code>LiqWaterPath</code></li>
+<li><code>IceWaterPath</code></li>
+<li><code>VapWaterPath</code></li>
+<li><code>RainWaterPath</code></li>
+<li><code>RimeWaterPath</code></li>
+<li><code>ShortwaveCloudForcing</code></li>
+<li><code>LongwaveCloudForcing</code></li>
+<li><code>RelativeHumidity</code></li>
+<li><code>ZonalVapFlux</code></li>
+<li><code>MeridionalVapFlux</code></li>
+<li><code>precip_liq_surf_mass_flux</code></li>
+<li><code>precip_ice_surf_mass_flux</code></li>
+<li><code>precip_total_surf_mass_flux</code></li>
+<li><code>surface_upward_latent_heat_flux</code></li>
+</ul>
+</li>
+<li>
+<p>lower-dimensional slices of a field. These are hyperslices of an existing field or of
   another diagnostic output. As of August 2023, given a field X, the available options
-  are:
-  - X_at_lev_N: subviews the field X at the N-th vertical level index. Recall that
-    in EAMxx N=0 corresponds to the model top.
-  - X_at_model_bot, X_at_model_top: special case for top and bottom of the model.
-  - X_at_Ymb, X_at_YPa, X_at_YhPa: interpolates the field X at a vertical position
-    specified by the give pressure Y. Available units are mb (millibar), Pa, and hPa.
-  - X_at_Ym: interpolates the field X at a vertical height of Y meters.</p>
-<h1 id="output-remap">Output remap</h1>
+  are:</p>
+<ul>
+<li><code>X_at_lev_N</code>: slice the field <code>X</code> at the N-th vertical level index. Recall that
+  in EAMxx N=0 corresponds to the model top.</li>
+<li><code>X_at_model_bot</code>, <code>X_at_model_top</code>: special case for top and bottom of the model.</li>
+<li><code>X_at_Ymb</code>, <code>X_at_YPa</code>, <code>X_at_YhPa</code>: interpolates the field <code>X</code> at a vertical position
+  specified by the give pressure <code>Y</code>. Available units are <code>mb</code> (millibar), <code>Pa</code>, and <code>hPa</code>.</li>
+<li><code>X_at_Ym</code>: interpolates the field <code>X</code> at a vertical height of <code>Y</code> meters.</li>
+</ul>
+</li>
+</ul>
+<h2 id="remapped-output">Remapped output</h2>
 <p>The following options can be used to to save fields on a different grid from the one
 they are computed on.</p>
 <ul>
@@ -1005,28 +1144,30 @@ they are computed on.</p>
   where <code>ngp</code> is the number of Gauss points along each axis in the 2d spectral element.
   Note: this feature cannot be used along with the horizontal/vertical remapper.</li>
 </ul>
-<h1 id="add-output-stream-to-a-cime-case">Add output stream to a CIME case</h1>
+<h2 id="add-output-stream-to-a-cime-case">Add output stream to a CIME case</h2>
 <p>In order to tell EAMxx that a new output stream is needed, one must add the name of
 the yaml file to be used to the list of yaml files that EAMxx will process. From the
-case folder, after <code>case.setup</code> has run, one can do
-<div class="highlight"><pre><span></span><code>$ ./atmchange output_yaml_files=/path/to/my/yaml/file
+case folder, after <code>case.setup</code> has run, one can do</p>
+<div class="highlight"><pre><span></span><code>./atmchange<span class="w"> </span><span class="nv">output_yaml_files</span><span class="o">=</span>/path/to/my/yaml/file
 </code></pre></div>
-to specify a single yaml file, or
-<div class="highlight"><pre><span></span><code>$ ./atmchange output_yaml_files+=/path/to/my/yaml/file
+<p>to specify a single yaml file, or</p>
+<div class="highlight"><pre><span></span><code>./atmchange<span class="w"> </span><span class="nv">output_yaml_files</span><span class="o">+=</span>/path/to/my/yaml/file
 </code></pre></div>
-to append to the list of yaml files.
-Important notes:
-- The user should not specify a path to a file in <code>$RUNDIR/data</code>. EAMxx will
+<p>to append to the list of yaml files.</p>
+<h3 id="important-notes">Important notes</h3>
+<ul>
+<li>The user should not specify a path to a file in <code>$RUNDIR/data</code>. EAMxx will
 put a copy of the specified yaml files in that directory, pruning any existing copy
 of that file. This happens every time that <code>buildnml</code> runs; in particular, it happens
-during <code>case.submit</code>.
-- As a consequence of the above, the user should not modify the generated yaml files
+during <code>case.submit</code>.</li>
+<li>As a consequence of the above, the user should not modify the generated yaml files
   that are in <code>$RUNDIR/data</code>, since any modification will be lost on the next run
   of <code>buildnml</code>. To modify output parmeters, the user should modify the yaml file
-  that was specified with the <code>atmchange</code> command.
-- EAMxx will parse the yaml file and expand any string of the form $VAR, by looking
+  that was specified with the <code>atmchange</code> command.</li>
+<li>EAMxx will parse the yaml file and expand any string of the form $VAR, by looking
   for the value of the variable VAR in the CIME case. If VAR is not a valid CIME
-  variable, an error will be raised.</p>
+  variable, an error will be raised.</li>
+</ul>
 
 
 
