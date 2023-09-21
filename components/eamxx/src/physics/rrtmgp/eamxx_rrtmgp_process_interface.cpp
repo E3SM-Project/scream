@@ -95,7 +95,7 @@ void RRTMGPRadiation::set_grids(const std::shared_ptr<const GridsManager> grids_
   add_field<Required>("qc", scalar3d_layout_mid, kgkg, grid_name, ps);
   add_field<Required>("nc", scalar3d_layout_mid, 1/kg, grid_name, ps);
   add_field<Required>("qi", scalar3d_layout_mid, kgkg, grid_name, ps);
-  add_field<Required>("cldfrac_tot", scalar3d_layout_mid, nondim, grid_name, ps);
+  add_field<Required>("cldfrac_tot_for_analysis", scalar3d_layout_mid, nondim, grid_name, ps);
   add_field<Required>("eff_radius_qc", scalar3d_layout_mid, micron, grid_name, ps);
   add_field<Required>("eff_radius_qi", scalar3d_layout_mid, micron, grid_name, ps);
   add_field<Required>("qv",scalar3d_layout_mid,kgkg,grid_name, ps);
@@ -416,7 +416,7 @@ void RRTMGPRadiation::run_impl (const double dt) {
   auto d_qc = get_field_in("qc").get_view<const Real**>();
   auto d_nc = get_field_in("nc").get_view<const Real**>();
   auto d_qi = get_field_in("qi").get_view<const Real**>();
-  auto d_cldfrac_tot = get_field_in("cldfrac_tot").get_view<const Real**>();
+  auto d_cldfrac_tot = get_field_in("cldfrac_tot_for_analysis").get_view<const Real**>();
   auto d_rel = get_field_in("eff_radius_qc").get_view<const Real**>();
   auto d_rei = get_field_in("eff_radius_qi").get_view<const Real**>();
   auto d_surf_lw_flux_up = get_field_in("surf_lw_flux_up").get_view<const Real*>();
