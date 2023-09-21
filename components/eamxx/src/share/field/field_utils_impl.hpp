@@ -32,6 +32,13 @@ bool views_are_equal(const Field& f1, const Field& f2, const ekat::Comm* comm)
   bool same_locally = true;
   const auto& dims = l1.dims();
   switch (l1.rank()) {
+    case 0:
+      {
+        auto v1 = f1.template get_view<ST,Host>();
+        auto v2 = f2.template get_view<ST,Host>();
+        same_locally = v1()==v2();
+      }
+      break;
     case 1:
       {
         auto v1 = f1.template get_strided_view<ST*,Host>();
@@ -137,6 +144,12 @@ void randomize (const Field& f, Engine& engine, PDF&& pdf)
 {
   const auto& fl = f.get_header().get_identifier().get_layout();
   switch (fl.rank()) {
+    case 0:
+      {
+        auto v = f.template get_view<ST,Host>();
+        v() = pdf(engine);
+      }
+      break;
     case 1:
       {
         auto v = f.template get_view<ST*,Host>();
@@ -221,6 +234,12 @@ ST frobenius_norm(const Field& f, const ekat::Comm* comm)
   ST c = 0;
   ST temp,y;
   switch (fl.rank()) {
+    case 0:
+      {
+        auto v = f.template get_view<const ST,Host>();
+        norm = std::pow(v(),2);
+      }
+      break;
     case 1:
       {
         auto v = f.template get_view<const ST*,Host>();
@@ -328,6 +347,12 @@ ST field_sum(const Field& f, const ekat::Comm* comm)
   ST c = 0;
   ST temp,y;
   switch (fl.rank()) {
+    case 0:
+      {
+        auto v = f.template get_view<const ST,Host>();
+        sum = v();
+      }
+      break;
     case 1:
       {
         auto v = f.template get_view<const ST*,Host>();
@@ -432,6 +457,12 @@ ST field_max(const Field& f, const ekat::Comm* comm)
 
   ST max = std::numeric_limits<ST>::lowest();
   switch (fl.rank()) {
+    case 0:
+      {
+        auto v = f.template get_view<const ST,Host>();
+        max = v();
+      }
+      break;
     case 1:
       {
         auto v = f.template get_view<const ST*,Host>();
@@ -518,6 +549,12 @@ ST field_min(const Field& f, const ekat::Comm* comm)
 
   ST min = std::numeric_limits<ST>::max();
   switch (fl.rank()) {
+    case 0:
+      {
+        auto v = f.template get_view<const ST,Host>();
+        min = v();
+      }
+      break;
     case 1:
       {
         auto v = f.template get_view<const ST*,Host>();

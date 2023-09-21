@@ -218,6 +218,15 @@ deep_copy_impl (const Field& src) {
   auto policy = RangePolicy(0,layout.size());
 
   switch (rank) {
+    case 0:
+      {
+        auto v     =     get_view<      ST,HD>();
+        auto v_src = src.get_view<const ST,HD>();
+        Kokkos::parallel_for(policy,KOKKOS_LAMBDA(const int){
+          v() = v_src();
+        });
+      }
+      break;
     case 1:
       {
         if (src_alloc_props.contiguous() and tgt_alloc_props.contiguous()) {
@@ -318,6 +327,12 @@ void Field::deep_copy_impl (const ST value) {
   const auto& layout = get_header().get_identifier().get_layout();
   const auto  rank   = layout.rank();
   switch (rank) {
+    case 0:
+      {
+        auto v = get_view<ST,HD>();
+        Kokkos::deep_copy(v,value);
+      }
+      break;
     case 1:
       {
         if (m_header->get_alloc_properties().contiguous()) {
@@ -482,6 +497,15 @@ update_impl (const Field& x, const ST alpha, const ST beta, const ST fill_val)
 
   auto policy = RangePolicy(0,x_l.size());
   switch (x_l.rank()) {
+    case 0:
+      {
+        auto xv = x.get_view<const ST,HD>();
+        auto yv =   get_view<      ST,HD>();
+        Kokkos::parallel_for(policy,KOKKOS_LAMBDA(const int) {
+          combine_and_fill<CM>(xv(),yv(),fill_val,alpha,beta);
+        });
+      }
+      break;
     case 1:
       {
         // Must handle the case where one of the two views is strided

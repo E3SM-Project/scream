@@ -6,6 +6,8 @@ if (NOT SCREAM_BASELINES_ONLY)
 
   # Test extracting a single level of a field
   CreateUnitTest(field_at_level "field_at_level_tests.cpp" "${NEED_LIBS}" LABELS "diagnostics" )
+  # Test elementary combinations of fields
+  CreateUnitTest(simple_op "simple_op_tests.cpp" "${NEED_LIBS}" LABELS "diagnostics" )
 
   # Test interpolating a field onto a single pressure level
   CreateUnitTest(field_at_pressure_level "field_at_pressure_level_tests.cpp" "${NEED_LIBS}" LABELS "diagnostics" )

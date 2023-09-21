@@ -70,7 +70,7 @@ struct OpFunctor<ScalarT,BinOp::Sub>
   }
 };
 
-template<typename ScalarT>
+template<typename ScalarT, typename Node>
 struct EvalNode {
   ScalarT lhs;
   ScalarT rhs;

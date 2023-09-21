@@ -163,7 +163,7 @@ void FieldAllocProp::commit (const layout_ptr_type& layout)
 
   // Loop on all value type sizes.
   m_last_extent = 0;
-  int last_phys_extent = m_layout->dims().back();
+  int last_phys_extent = m_layout->rank()==0 ? 1 : m_layout->dims().back();
   for (auto vts : m_value_type_sizes) {
     // The number of scalar_type in a value_type
     const int vt_len = vts / m_scalar_type_size;

@@ -94,7 +94,7 @@ public:
 
   // Constructor(s)
   Field () = default;
-  explicit Field (const identifier_type& id);
+  Field (const identifier_type& id, const bool allocate = false);
   Field (const Field& src) = default;
   ~Field () = default;
 

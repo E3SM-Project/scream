@@ -1188,6 +1188,28 @@ create_diagnostic (const std::string& diag_field_name) {
   ekat::ParameterList params;
   std::string diag_name;
 
+  // if (diag_field_name.find('=')!=std::string::npos) {
+  //   auto tokens = ekat::split(diag_field_name,'=');
+  //   EKAT_REQUIRE_MSG (tokens.size()==2,
+  //       "Error! Unexpected diagnostic name: " + diag_field_name + "\n");
+
+  //   params.set("diag_name",tokens[0]);
+  //   const auto& expr = tokens[1];
+  //   auto valid_term [] (const std::string& s) {
+
+  //   };
+  //   if (expr.find('+')!=std::string::npos) {
+  //     auto terms = ekat::split(expr,"+");
+
+  //   } else if (expr.find('/')!=std::string::npos) {
+  //     auto terms = ekat::split(expr,"/");
+  //   } else if (expr.find('-')!=std::string::npos) {
+  //     auto terms = ekat::split(expr,"-");
+  //   } else {
+  //     auto terms = ekat::split(expr,"*");
+  //   }
+  // }
+
   if (diag_field_name.find("_at_")!=std::string::npos) {
     // The diagnostic must be one of
     //  - ${field_name}_at_lev_${N}     <- interface fields still use "_lev_"

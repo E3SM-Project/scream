@@ -11,6 +11,7 @@ set(DIAGNOSTIC_SRCS
   relative_humidity.cpp
   sea_level_pressure.cpp
   shortwave_cloud_forcing.cpp
+  simple_op.cpp
   surf_upward_latent_heat_flux.cpp
   vapor_flux.cpp
   vertical_layer.cpp
