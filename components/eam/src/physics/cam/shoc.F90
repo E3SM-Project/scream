@@ -218,12 +218,13 @@ end subroutine shoc_init
 ! Host models should call the following routine to call SHOC
 
 subroutine shoc_main ( &
-     shcol, nlev, nlevi, dtime, nadv, &   ! Input
-     host_dx, host_dy,thv, &              ! Input
+     shcol, nlev, nlevi, dtime, &
+     lambda_low, lambda_high, lambda_slope, lambda_thresh, & ! Runtime options
+     nadv, host_dx, host_dy,thv, &        ! Input
      zt_grid,zi_grid,pres,presi,pdel,&    ! Input
      wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, & ! Input
      wtracer_sfc,num_qtracers,w_field, &  ! Input
-     inv_exner,phis, &                        ! Input
+     inv_exner,phis, &                    ! Input
      host_dse, tke, thetal, qw, &         ! Input/Output
      u_wind, v_wind,qtracers,&            ! Input/Output
      wthv_sec,tkh,tk,&                    ! Input/Output
@@ -244,6 +245,11 @@ subroutine shoc_main ( &
 #endif
 
   implicit none
+! RUNTIME PARAMS
+  real(rtype), intent(in) :: lambda_low
+  real(rtype), intent(in) :: lambda_high
+  real(rtype), intent(in) :: lambda_slope
+  real(rtype), intent(in) :: lambda_thresh
 
 ! INPUT VARIABLES
   ! number of SHOC columns in the array
@@ -486,6 +492,7 @@ subroutine shoc_main ( &
     ! Advance the SGS TKE equation
     call shoc_tke(&
        shcol,nlev,nlevi,dtime,&             ! Input
+       lambda_low, lambda_high, lambda_slope, lambda_thresh, & ! Runtime options
        wthv_sec,shoc_mix,&                  ! Input
        dz_zi,dz_zt,pres,shoc_tabs,&         ! Input
        u_wind,v_wind,brunt,&                ! Input
@@ -3021,6 +3028,7 @@ end subroutine shoc_assumed_pdf_compute_buoyancy_flux
 
 subroutine shoc_tke(&
          shcol,nlev,nlevi,dtime,&    ! Input
+         lambda_low, lambda_high, lambda_slope, lambda_thresh, & ! Runtime options
          wthv_sec,shoc_mix,&         ! Input
          dz_zi,dz_zt,pres,tabs,&     ! Input
          u_wind,v_wind,brunt,&       ! Input
@@ -3031,6 +3039,11 @@ subroutine shoc_tke(&
   ! Purpose of this subroutine is to advance the SGS
   !  TKE equation due to shear production, buoyant
   !  production, and dissipation processes.
+! RUNTIME OPTIONS
+  real(rtype), intent(in) :: lambda_low
+  real(rtype), intent(in) :: lambda_high
+  real(rtype), intent(in) :: lambda_slope
+  real(rtype), intent(in) :: lambda_thresh
 
 ! INPUT VARIABLES
   ! number of columns

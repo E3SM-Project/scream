@@ -283,7 +283,9 @@ struct UnitWrap::UnitTest<D>::TestShocTke {
     // Get data from cxx
     for (auto& d : cxx_data) {
       d.transpose<ekat::TransposeDirection::c2f>(); // _f expects data in fortran layout
-      shoc_tke_f(d.shcol, d.nlev, d.nlevi, d.dtime, d.wthv_sec, d.shoc_mix, d.dz_zi, d.dz_zt,
+      shoc_tke_f(d.shcol, d.nlev, d.nlevi, d.dtime, 
+		 d.lambda_low, d.lambda_high, d.lambda_slope, d.lambda_thresh,
+		 d.wthv_sec, d.shoc_mix, d.dz_zi, d.dz_zt,
                  d.pres, d.tabs, d.u_wind, d.v_wind, d.brunt, d.zt_grid, d.zi_grid, d.pblh,
                  d.tke, d.tk, d.tkh, d.isotropy);
       d.transpose<ekat::TransposeDirection::f2c>(); // go back to C layout

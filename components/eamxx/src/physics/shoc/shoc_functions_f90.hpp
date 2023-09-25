@@ -311,6 +311,9 @@ struct CheckTkeData : public PhysicsTestData {
 };
 
 struct ShocTkeData : public ShocTestGridDataBase {
+  // Runtime options
+  Real lambda_low, lambda_high, lambda_slope, lambda_thresh;
+
   // Inputs
   Int shcol, nlev, nlevi;
   Real dtime;
@@ -1240,7 +1243,7 @@ void pblintd_f(Int shcol, Int nlev, Int nlevi, Int npbl, Real* z, Real* zi, Real
 void shoc_grid_f(Int shcol, Int nlev, Int nlevi, Real* zt_grid, Real* zi_grid, Real* pdel, Real* dz_zt, Real* dz_zi, Real* rho_zt);
 void eddy_diffusivities_f(Int nlev, Int shcol, Real* pblh, Real* zt_grid, Real* tabs, Real* shoc_mix, Real* sterm_zt, Real* isotropy,
                           Real* tke, Real* tkh, Real* tk);
-void shoc_tke_f(Int shcol, Int nlev, Int nlevi, Real dtime, Real* wthv_sec, Real* shoc_mix, Real* dz_zi, Real* dz_zt, Real* pres,
+void shoc_tke_f(Int shcol, Int nlev, Int nlevi, Real dtime, Real lambda_low, Real lambda_high, Real lambda_slope, Real lambda_thresh, Real* wthv_sec, Real* shoc_mix, Real* dz_zi, Real* dz_zt, Real* pres,
                 Real* u_wind, Real* v_wind, Real* brunt, Real* obklen, Real* zt_grid, Real* zi_grid, Real* pblh, Real* tke,
                 Real* tk, Real* tkh, Real* isotropy);
 void compute_shoc_temperature_f(Int shcol, Int nlev, Real* thetal, Real* ql, Real* inv_exner, Real* tabs);

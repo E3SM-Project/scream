@@ -506,7 +506,8 @@ end subroutine dp_inverse_f
     real(kind=c_real) , intent(out), dimension(shcol, nlev) :: tkh, tk
   end subroutine eddy_diffusivities_f
 
-  subroutine shoc_tke_f(shcol, nlev, nlevi, dtime, wthv_sec, shoc_mix, dz_zi, dz_zt, pres, tabs, &
+  subroutine shoc_tke_f(shcol, nlev, nlevi, dtime, lambda_low, lambda_high, lambda_slope, lambda_threshm, wthv_sec, &
+                        shoc_mix, dz_zi, dz_zt, pres, tabs, &
                         u_wind, v_wind, brunt, zt_grid, zi_grid, pblh, tke, tk, tkh, isotropy) bind(C)
     use iso_c_binding
 

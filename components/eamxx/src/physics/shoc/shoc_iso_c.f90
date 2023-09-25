@@ -73,7 +73,8 @@ contains
   end subroutine shoc_init_for_main_bfb_c
 
 
-  subroutine shoc_main_c(shcol,nlev,nlevi,dtime,nadv,host_dx, host_dy, thv,  &
+  subroutine shoc_main_c(shcol,nlev,nlevi,dtime,lambda_low,lambda_high,lambda_slope, &
+     lambda_thresh,nadv,host_dx, host_dy, thv,  &
      zt_grid, zi_grid, pres, presi, pdel, wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &
      wtracer_sfc, num_qtracers, w_field, inv_exner, phis, host_dse, tke, thetal,  &
      qw, u_wind, v_wind, qtracers, wthv_sec, tkh, tk, shoc_ql, shoc_cldfrac, &
@@ -83,6 +84,7 @@ contains
 
     integer(kind=c_int), value, intent(in) :: shcol, nlev, nlevi, num_qtracers, nadv
     real(kind=c_real), value, intent(in) :: dtime
+    real(kind=c_real), value, intent(in) :: lambda_low, lambda_high, lambda_slope, lambda_thresh
     real(kind=c_real), intent(in), dimension(shcol) :: host_dx, host_dy
     real(kind=c_real), intent(in), dimension(shcol, nlev) :: zt_grid
     real(kind=c_real), intent(in), dimension(shcol, nlevi) :: zi_grid
@@ -109,7 +111,8 @@ contains
 
     real(kind=c_real), intent(out) :: elapsed_s
 
-    call shoc_main(shcol, nlev, nlevi, dtime, nadv, host_dx, host_dy, thv,   &
+    call shoc_main(shcol, nlev, nlevi, dtime, lambda_low, lambda_high, lambda_slope, &
+     lambda_thresh, nadv, host_dx, host_dy, thv,   &
      zt_grid, zi_grid, pres, presi, pdel, wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, &
      wtracer_sfc, num_qtracers, w_field, inv_exner, phis, host_dse, tke, thetal, &
      qw, u_wind, v_wind, qtracers, wthv_sec, tkh, tk, shoc_ql, shoc_cldfrac, &
@@ -291,7 +294,9 @@ contains
 
   end subroutine check_tke_c
 
-  subroutine shoc_tke_c(shcol, nlev, nlevi, dtime, wthv_sec, shoc_mix, dz_zi, &
+  subroutine shoc_tke_c(shcol, nlev, nlevi, dtime, &
+                        lambda_low, lambda_high, lambda_slope, lambda_thresh, &
+                        wthv_sec, shoc_mix, dz_zi, &
                         dz_zt, pres, tabs, u_wind, v_wind, brunt, zt_grid, &
                         zi_grid, pblh, tke, tk, tkh, isotropy) bind(C)
     use shoc, only: shoc_tke
@@ -300,6 +305,10 @@ contains
     integer(kind=c_int), intent(in), value :: nlev
     integer(kind=c_int), intent(in), value :: nlevi
     real(kind=c_real), intent(in), value :: dtime
+    real(kind=c_real), intent(in), value :: lambda_low
+    real(kind=c_real), intent(in), value :: lambda_high
+    real(kind=c_real), intent(in), value :: lambda_slope
+    real(kind=c_real), intent(in), value :: lambda_thresh
     real(kind=c_real), intent(in) :: wthv_sec(shcol,nlev)
     real(kind=c_real), intent(in) :: shoc_mix(shcol,nlev)
     real(kind=c_real), intent(in) :: dz_zi(shcol,nlevi)
@@ -318,7 +327,9 @@ contains
     real(kind=c_real), intent(inout) :: tkh(shcol,nlev)
     real(kind=c_real), intent(out) :: isotropy(shcol,nlev)
 
-    call shoc_tke(shcol, nlev, nlevi, dtime, wthv_sec, shoc_mix, dz_zi, &
+    call shoc_tke(shcol, nlev, nlevi, dtime, &
+         lambda_low, lambda_high, lambda_slope, lambda_thresh, &
+         wthv_sec, shoc_mix, dz_zi, &
          dz_zt, pres, tabs, u_wind, v_wind, brunt, zt_grid, &
          zi_grid, pblh, tke, tk, tkh, isotropy)
 
