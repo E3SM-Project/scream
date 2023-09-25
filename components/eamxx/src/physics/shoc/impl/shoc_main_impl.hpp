@@ -537,7 +537,8 @@ Int Functions<S,D>::shoc_main(
   const SHOCInput&         shoc_input,          // Input
   const SHOCInputOutput&   shoc_input_output,   // Input/Output
   const SHOCOutput&        shoc_output,         // Output
-  const SHOCHistoryOutput& shoc_history_output  // Output (diagnostic)
+  const SHOCHistoryOutput& shoc_history_output, // Output (diagnostic)
+  const SHOCParams&        shoc_tunable_params  // Runtime options for SHOC
 #ifdef SCREAM_SMALL_KERNELS
   , const SHOCTemporaries& shoc_temporaries     // Temporaries for small kernels
 #endif

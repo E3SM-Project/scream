@@ -179,6 +179,14 @@ struct Functions
     view_2d<Spack>  isotropy;
   };
 
+  struct SHOCParams {
+    SHOCParams() = default;
+    Scalar lambda_low; 
+    Scalar lambda_high;
+    Scalar lambda_slope;
+    Scalar lambda_thresh;
+  };
+
 #ifdef SCREAM_SMALL_KERNELS
   struct SHOCTemporaries {
     SHOCTemporaries() = default;
@@ -949,7 +957,8 @@ struct Functions
     const SHOCInput&         shoc_input,           // Input
     const SHOCInputOutput&   shoc_input_output,    // Input/Output
     const SHOCOutput&        shoc_output,          // Output
-    const SHOCHistoryOutput& shoc_history_output   // Output (diagnostic)
+    const SHOCHistoryOutput& shoc_history_output,  // Output (diagnostic)
+    const SHOCParams&        shoc_tunable_params   // Runtime options for SHOC
 #ifdef SCREAM_SMALL_KERNELS
     , const SHOCTemporaries& shoc_temporaries      // Temporaries for small kernels
 #endif

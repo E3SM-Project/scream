@@ -231,18 +231,17 @@ void SHOCMacrophysics::init_buffers(const ATMBufferManager &buffer_manager)
 void SHOCMacrophysics::initialize_impl (const RunType run_type)
 {
   // Set tunable parameters, note the defaults are set by ParameterList.get()
-  m_lambda_low    = m_params.get<Real>("lambda_low",0.001);
-  m_lambda_high   = m_params.get<Real>("lambda_high",0.04);
-  m_lambda_slope  = m_params.get<Real>("lambda_slope",2.65);
-  m_lambda_thresh = m_params.get<Real>("lambda_thresh",0.02);
-  m_maxiso        = m_params.get<Real>("maxiso",20000);
+  tunable_params.lambda_low    = m_params.get<Real>("lambda_low",0.001);
+  tunable_params.lambda_high   = m_params.get<Real>("lambda_high",0.04);
+  tunable_params.lambda_slope  = m_params.get<Real>("lambda_slope",2.65);
+  tunable_params.lambda_thresh = m_params.get<Real>("lambda_thresh",0.02);
   this->log(LogLevel::debug,
 		  "[SHOC::initialize] Setting runtime parameters:\n"
-                  "  - lambda_low    = " + std::to_string(m_lambda_low   ) + "\n"
-                  "  - lambda_high   = " + std::to_string(m_lambda_high  ) + "\n" 
-                  "  - lambda_slope  = " + std::to_string(m_lambda_slope ) + "\n" 
-                  "  - lambda_thresh = " + std::to_string(m_lambda_thresh) + "\n"
-                  "  - maxiso        = " + std::to_string(m_maxiso       ) + "\n");
+                  "  - lambda_low    = " + std::to_string(tunable_params.lambda_low   ) + "\n"
+                  "  - lambda_high   = " + std::to_string(tunable_params.lambda_high  ) + "\n" 
+                  "  - lambda_slope  = " + std::to_string(tunable_params.lambda_slope ) + "\n" 
+                  "  - lambda_thresh = " + std::to_string(tunable_params.lambda_thresh) + "\n"
+		 );
 		  
   // Initialize all of the structures that are passed to shoc_main in run_impl.
   // Note: Some variables in the structures are not stored in the field manager.  For these
@@ -471,7 +470,7 @@ void SHOCMacrophysics::run_impl (const double dt)
 
   // Run shoc main
   SHF::shoc_main(m_num_cols, m_num_levs, m_num_levs+1, m_npbl, m_nadv, m_num_tracers, dt,
-                 workspace_mgr,input,input_output,output,history_output
+                 workspace_mgr,input,input_output,output,history_output,tunable_params
 #ifdef SCREAM_SMALL_KERNELS
                  , temporaries
 #endif
