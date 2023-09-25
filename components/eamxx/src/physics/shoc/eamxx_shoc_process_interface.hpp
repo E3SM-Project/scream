@@ -520,6 +520,13 @@ protected:
 #ifdef SCREAM_SMALL_KERNELS
   SHF::SHOCTemporaries temporaries;
 #endif
+  
+  // Tunable Parameters
+  Real m_lambda_low; 
+  Real m_lambda_high;
+  Real m_lambda_slope;
+  Real m_lambda_thresh;
+  Real m_maxiso;
 
   // Structures which compute pre/post process
   SHOCPreprocess shoc_preprocess;

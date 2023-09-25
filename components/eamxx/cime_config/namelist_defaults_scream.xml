@@ -209,6 +209,11 @@ be lost if SCREAM_HACK_XML is not enabled.
     <shoc inherit="atm_proc_base">
       <enable_column_conservation_checks>false</enable_column_conservation_checks>
       <check_flux_state_consistency>false</check_flux_state_consistency>
+      <lambda_low type="real" doc=""/>
+      <lambda_high type="real" doc=""/>
+      <lambda_slope type="real" doc=""/>
+      <lambda_thresh type="real" doc=""/>
+      <maxiso type="real" doc=""/>
     </shoc>
 
     <!-- CLD fraction -->

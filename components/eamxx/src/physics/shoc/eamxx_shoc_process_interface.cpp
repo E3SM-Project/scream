@@ -230,6 +230,20 @@ void SHOCMacrophysics::init_buffers(const ATMBufferManager &buffer_manager)
 // =========================================================================================
 void SHOCMacrophysics::initialize_impl (const RunType run_type)
 {
+  // Set tunable parameters, note the defaults are set by ParameterList.get()
+  m_lambda_low    = m_params.get<Real>("lambda_low",0.001);
+  m_lambda_high   = m_params.get<Real>("lambda_high",0.04);
+  m_lambda_slope  = m_params.get<Real>("lambda_slope",2.65);
+  m_lambda_thresh = m_params.get<Real>("lambda_thresh",0.02);
+  m_maxiso        = m_params.get<Real>("maxiso",20000);
+  this->log(LogLevel::debug,
+		  "[SHOC::initialize] Setting runtime parameters:\n"
+                  "  - lambda_low    = " + std::to_string(m_lambda_low   ) + "\n"
+                  "  - lambda_high   = " + std::to_string(m_lambda_high  ) + "\n" 
+                  "  - lambda_slope  = " + std::to_string(m_lambda_slope ) + "\n" 
+                  "  - lambda_thresh = " + std::to_string(m_lambda_thresh) + "\n"
+                  "  - maxiso        = " + std::to_string(m_maxiso       ) + "\n");
+		  
   // Initialize all of the structures that are passed to shoc_main in run_impl.
   // Note: Some variables in the structures are not stored in the field manager.  For these
   //       variables a local view is constructed.
