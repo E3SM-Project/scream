@@ -366,11 +366,15 @@ contains
 
   end subroutine compute_shr_prod_c
 
-  subroutine isotropic_ts_c(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy) bind (C)
+  subroutine isotropic_ts_c(nlev, shcol, brunt_int, lambda_low, lambda_high, lambda_slope, lambda_thresh, tke, a_diss, brunt, isotropy) bind (C)
     use shoc, only: isotropic_ts
 
     integer(kind=c_int), intent(in), value :: nlev
     integer(kind=c_int), intent(in), value :: shcol
+    real(kind=c_real), intent(in) :: lambda_low
+    real(kind=c_real), intent(in) :: lambda_high
+    real(kind=c_real), intent(in) :: lambda_slope
+    real(kind=c_real), intent(in) :: lambda_thresh
     real(kind=c_real), intent(in) :: brunt_int(shcol)
     real(kind=c_real), intent(in) :: tke(shcol,nlev)
     real(kind=c_real), intent(in) :: a_diss(shcol,nlev)
@@ -378,7 +382,7 @@ contains
 
     real(kind=c_real), intent(out) :: isotropy(shcol,nlev)
 
-    call isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
+    call isotropic_ts(nlev, shcol, brunt_int, lambda_low, lambda_high, lambda_slope, lambda_thresh, tke, a_diss, brunt, isotropy)
 
   end subroutine isotropic_ts_c
 

@@ -98,7 +98,8 @@ void integ_column_stability_c(Int nlev, Int shcol, Real *dz_zt, Real *pres,
 void compute_shr_prod_c(Int nlevi, Int nlev, Int shcol, Real *dz_zi,
                         Real *u_wind, Real *v_wind, Real *sterm);
 
-void isotropic_ts_c(Int nlev, Int shcol, Real *brunt_int, Real *tke,
+void isotropic_ts_c(Int nlev, Int shcol, Real *brunt_int, Real lambda_low, Real lambda_high,
+		    Real lambda_slope, Real lambda_thresh, Real *tke,
                     Real *a_diss, Real *brunt, Real *isotropy);
 
 void adv_sgs_tke_c(Int nlev, Int shcol, Real dtime, Real *shoc_mix,
@@ -456,7 +457,7 @@ void isotropic_ts(IsotropicTsData& d)
 {
   shoc_init(d.nlev, true);
   d.transpose<ekat::TransposeDirection::c2f>();
-  isotropic_ts_c(d.nlev, d.shcol, d.brunt_int, d.tke, d.a_diss, d.brunt, d.isotropy);
+  isotropic_ts_c(d.nlev, d.shcol, d.brunt_int, d.lambda_low, d.lambda_high, d.lambda_slope, d.lambda_thresh, d.tke, d.a_diss, d.brunt, d.isotropy);
   d.transpose<ekat::TransposeDirection::f2c>();
 }
 
@@ -2598,7 +2599,8 @@ void integ_column_stability_f(Int nlev, Int shcol, Real *dz_zt,
   ScreamDeepCopy::copy_to_host({brunt_int}, shcol, inout_views);
 }
 
-void isotropic_ts_f(Int nlev, Int shcol, Real* brunt_int, Real* tke,
+void isotropic_ts_f(Int nlev, Int shcol, Real* brunt_int, Real lambda_low,
+		    Real lambda_high, Real lambda_slope, Real lambda_thresh, Real* tke,
                     Real* a_diss, Real* brunt, Real* isotropy)
 {
   using SHF = Functions<Real, DefaultDevice>;
@@ -2646,7 +2648,7 @@ void isotropic_ts_f(Int nlev, Int shcol, Real* brunt_int, Real* tke,
       //outputs
       const auto isotropy_s = ekat::subview(isotropy_d, i); //output
 
-      SHF::isotropic_ts(team, nlev, brunt_int_s, tke_s, a_diss_s, brunt_s, isotropy_s);
+      SHF::isotropic_ts(team, nlev, brunt_int_s, lambda_low, lambda_high, lambda_slope, lambda_thresh, tke_s, a_diss_s, brunt_s, isotropy_s);
     });
 
   // Sync back to host

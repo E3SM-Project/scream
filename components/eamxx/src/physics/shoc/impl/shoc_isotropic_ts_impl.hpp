@@ -18,6 +18,10 @@ void Functions<S,D>
   const MemberType&            team,
   const Int&                   nlev,
   const Scalar&                brunt_int,
+  const Scalar&                lambda_low,
+  const Scalar&                lambda_high,
+  const Scalar&                lambda_slope,
+  const Scalar&                lambda_thresh,
   const uview_1d<const Spack>& tke,
   const uview_1d<const Spack>& a_diss,
   const uview_1d<const Spack>& brunt,
@@ -28,10 +32,6 @@ void Functions<S,D>
   static constexpr  Scalar ggr = C::gravit;
 
   //Declare constants
-  static constexpr Scalar lambda_low   = 0.001;
-  static constexpr Scalar lambda_high  = 0.04;
-  static constexpr Scalar lambda_slope = 2.65;
-  static constexpr Scalar lambda_thresh= 0.02;
   static constexpr Scalar maxiso       = 20000; // Return to isotropic timescale [s]
 
   const Int nlev_pack = ekat::npack<Spack>(nlev);

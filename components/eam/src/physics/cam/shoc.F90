@@ -3115,7 +3115,7 @@ subroutine shoc_tke(&
        sterm_zt, tk, tke, a_diss)
 
   !Compute isotropic time scale [s]
-  call isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
+  call isotropic_ts(nlev, shcol, brunt_int, lambda_low, lambda_high, lambda_slope, lambda_thresh, tke, a_diss, brunt, isotropy)
 
   !Compute eddy diffusivity for heat and momentum
   call eddy_diffusivities(nlev, shcol, pblh, zt_grid, tabs, &
@@ -3315,7 +3315,7 @@ subroutine adv_sgs_tke(nlev, shcol, dtime, shoc_mix, wthv_sec, &
 
 end subroutine adv_sgs_tke
 
-subroutine isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
+subroutine isotropic_ts(nlev, shcol, brunt_int, lambda_low, lambda_high, lambda_slope, lambda_thresh, tke, a_diss, brunt, isotropy)
   !------------------------------------------------------------
   ! Compute the return to isotropic timescale as per
   ! Canuto et al. 2004.  This is used to define the
@@ -3331,6 +3331,7 @@ subroutine isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
 
   !intent-ins
   integer, intent(in) :: nlev, shcol
+  real(rtype), intent(in) :: lambda_low, lambda_high, lambda_slope, lambda_thresh
 
   !column integrated stability
   real(rtype), intent(in) :: brunt_int(shcol)
@@ -3354,7 +3355,7 @@ subroutine isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
   if (use_cxx) then
-     call isotropic_ts_f(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
+     call isotropic_ts_f(nlev, shcol, brunt_int, lambda_low, lambda_high, lambda_slope, lambda_thresh, tke, a_diss, brunt, isotropy)
      return
   endif
 #endif

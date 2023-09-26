@@ -352,6 +352,7 @@ struct ComputeShrProdData : public PhysicsTestData {
 struct IsotropicTsData : public PhysicsTestData {
   // Inputs
   Int shcol, nlev;
+  Real lambda_low, lambda_high, lambda_slope, lambda_thresh;
   Real *brunt_int, *tke, *a_diss, *brunt;
 
   // Outputs
@@ -1216,8 +1217,8 @@ void shoc_assumed_pdf_f(Int shcol, Int nlev, Int nlevi, Real* thetal, Real* qw, 
 void compute_tmpi_f(Int nlevi, Int shcol, Real dtime, Real *rho_zi, Real *dz_zi, Real *tmpi);
 void integ_column_stability_f(Int nlev, Int shcol, Real *dz_zt,
                               Real *pres, Real *brunt, Real *brunt_int);
-void isotropic_ts_f(Int nlev, Int shcol, Real* brunt_int, Real* tke,
-                    Real* a_diss, Real* brunt, Real* isotropy);
+void isotropic_ts_f(Int nlev, Int shcol, Real* brunt_int, Real lambda_low, Real lambda_high, Real lambda_slope, Real lambda_thresh,
+		    Real* tke, Real* a_diss, Real* brunt, Real* isotropy);
 void dp_inverse_f(Int nlev, Int shcol, Real *rho_zt, Real *dz_zt, Real *rdp_zt);
 
 int shoc_init_f(Int nlev, Real* pref_mid, Int nbot_shoc, Int ntop_shoc);

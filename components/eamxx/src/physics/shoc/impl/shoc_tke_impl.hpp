@@ -68,7 +68,7 @@ void Functions<S,D>::shoc_tke(
   adv_sgs_tke(team,nlev,dtime,shoc_mix,wthv_sec,sterm_zt,tk,tke,a_diss);
 
   // Compute isotropic time scale [s]
-  isotropic_ts(team,nlev,brunt_int,tke,a_diss,brunt,isotropy);
+  isotropic_ts(team,nlev,brunt_int,lambda_low,lambda_high,lambda_slope,lambda_thresh,tke,a_diss,brunt,isotropy);
 
   // Compute eddy diffusivity for heat and momentum
   eddy_diffusivities(team,nlev,pblh,zt_grid,tabs,shoc_mix,sterm_zt,isotropy,tke,tkh,tk);

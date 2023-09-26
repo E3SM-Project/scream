@@ -211,7 +211,8 @@ struct UnitWrap::UnitTest<D>::TestShocIsotropicTs {
     // Get data from cxx
     for (auto& d : cxx_data) {
       d.transpose<ekat::TransposeDirection::c2f>(); // _f expects data in fortran layout
-      isotropic_ts_f(d.nlev, d.shcol, d.brunt_int, d.tke, d.a_diss, d.brunt, d.isotropy);
+      isotropic_ts_f(d.nlev, d.shcol, d.brunt_int, d.lambda_low, d.lambda_high, d.lambda_slope, d.lambda_thresh, 
+		     d.tke, d.a_diss, d.brunt, d.isotropy);
       d.transpose<ekat::TransposeDirection::f2c>(); // go back to C layout
     }
 
