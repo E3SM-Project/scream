@@ -168,7 +168,6 @@ set_pressure_levels(const std::string& map_file)
   std::iota(dofs_offsets.begin(),dofs_offsets.end(),0);
   const std::string decomp_tag = "VR::spl,nlev=" + std::to_string(m_num_remap_levs) + ",file-idx=" + std::to_string(file2idx[map_file]);
   scorpio::register_variable(map_file, "p_levs", "p_levs", {"nlevs"}, "real", decomp_tag);
->>>>>>> aefd3977dc (EAMxx: ensure decomp tags are unique)
   scorpio::set_dof(map_file,"p_levs",m_num_remap_levs,dofs_offsets.data());
   scorpio::set_decomp(map_file);
   scorpio::grid_read_data_array(map_file,"p_levs",-1,remap_pres_scal.data(),remap_pres_scal.size());
