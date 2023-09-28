@@ -408,7 +408,7 @@ public:
     uview_1d<Real> wprtp_sfc;
     uview_1d<Real> upwp_sfc;
     uview_1d<Real> vpwp_sfc;
-    uview_1d<Real> surf_evap_input;
+    uview_1d<Real> modified_surf_evap;
 #ifdef SCREAM_SMALL_KERNELS
     uview_1d<Real> se_b;
     uview_1d<Real> ke_b;

@@ -160,7 +160,7 @@ void SHOCMacrophysics::init_buffers(const ATMBufferManager &buffer_manager)
   using scalar_view_t = decltype(m_buffer.cell_length);
   scalar_view_t* _1d_scalar_view_ptrs[Buffer::num_1d_scalar_ncol] =
     {&m_buffer.cell_length, &m_buffer.wpthlp_sfc, &m_buffer.wprtp_sfc,
-     &m_buffer.upwp_sfc, &m_buffer.vpwp_sfc, &m_buffer.surf_evap_input
+     &m_buffer.upwp_sfc, &m_buffer.vpwp_sfc, &m_buffer.modified_surf_evap
 #ifdef SCREAM_SMALL_KERNELS
      , &m_buffer.se_b, &m_buffer.ke_b, &m_buffer.wv_b, &m_buffer.wl_b
      , &m_buffer.se_a, &m_buffer.ke_a, &m_buffer.wv_a, &m_buffer.wl_a
@@ -253,29 +253,29 @@ void SHOCMacrophysics::initialize_impl (const RunType run_type)
   const auto& phis           = get_field_in("phis").get_view<const Real*>();
 
   // Alias local variables from temporary buffer
-  auto z_mid           = m_buffer.z_mid;
-  auto z_int           = m_buffer.z_int;
-  auto cell_length     = m_buffer.cell_length;
-  auto wpthlp_sfc      = m_buffer.wpthlp_sfc;
-  auto wprtp_sfc       = m_buffer.wprtp_sfc;
-  auto upwp_sfc        = m_buffer.upwp_sfc;
-  auto vpwp_sfc        = m_buffer.vpwp_sfc;
-  auto rrho            = m_buffer.rrho;
-  auto rrho_i          = m_buffer.rrho_i;
-  auto thv             = m_buffer.thv;
-  auto dz              = m_buffer.dz;
-  auto zt_grid         = m_buffer.zt_grid;
-  auto zi_grid         = m_buffer.zi_grid;
-  auto wtracer_sfc     = m_buffer.wtracer_sfc;
-  auto wm_zt           = m_buffer.wm_zt;
-  auto inv_exner       = m_buffer.inv_exner;
-  auto thlm            = m_buffer.thlm;
-  auto qw              = m_buffer.qw;
-  auto dse             = m_buffer.dse;
-  auto tke_copy        = m_buffer.tke_copy;
-  auto qc_copy         = m_buffer.qc_copy;
-  auto shoc_ql2        = m_buffer.shoc_ql2;
-  auto surf_evap_input = m_buffer.surf_evap_input;
+  auto z_mid              = m_buffer.z_mid;
+  auto z_int              = m_buffer.z_int;
+  auto cell_length        = m_buffer.cell_length;
+  auto wpthlp_sfc         = m_buffer.wpthlp_sfc;
+  auto wprtp_sfc          = m_buffer.wprtp_sfc;
+  auto upwp_sfc           = m_buffer.upwp_sfc;
+  auto vpwp_sfc           = m_buffer.vpwp_sfc;
+  auto rrho               = m_buffer.rrho;
+  auto rrho_i             = m_buffer.rrho_i;
+  auto thv                = m_buffer.thv;
+  auto dz                 = m_buffer.dz;
+  auto zt_grid            = m_buffer.zt_grid;
+  auto zi_grid            = m_buffer.zi_grid;
+  auto wtracer_sfc        = m_buffer.wtracer_sfc;
+  auto wm_zt              = m_buffer.wm_zt;
+  auto inv_exner          = m_buffer.inv_exner;
+  auto thlm               = m_buffer.thlm;
+  auto qw                 = m_buffer.qw;
+  auto dse                = m_buffer.dse;
+  auto tke_copy           = m_buffer.tke_copy;
+  auto qc_copy            = m_buffer.qc_copy;
+  auto shoc_ql2           = m_buffer.shoc_ql2;
+  auto modified_surf_evap = m_buffer.modified_surf_evap;
 
   // For now, set z_int(i,nlevs) = z_surf = 0
   const Real z_surf = 0.0;
@@ -290,7 +290,7 @@ void SHOCMacrophysics::initialize_impl (const RunType run_type)
   }
 
   shoc_preprocess.set_variables(m_num_cols,m_num_levs,m_num_tracers,z_surf,m_cell_area,m_cell_lat,
-                                T_mid,p_mid,p_int,pseudo_density,omega,phis,surf_sens_flux,surf_evap_input,
+                                T_mid,p_mid,p_int,pseudo_density,omega,phis,surf_sens_flux,modified_surf_evap,
                                 surf_mom_flux,qtracers,qv,qc,qc_copy,tke,tke_copy,z_mid,z_int,cell_length,
                                 dse,rrho,rrho_i,thv,dz,zt_grid,zi_grid,wpthlp_sfc,wprtp_sfc,upwp_sfc,vpwp_sfc,
                                 wtracer_sfc,wm_zt,inv_exner,thlm,qw);
@@ -436,8 +436,8 @@ void SHOCMacrophysics::run_impl (const double dt)
   // The global surf_evap field should not change between iterations, but
   // within an iteration, if the param check_flux_state_consistency=true,
   // surf_evap used for shoc preprocessor may need to be updated. The local
-  // surf_evap_input view is used for input in preprocessor for both param cases.
-  Kokkos::deep_copy(m_buffer.surf_evap_input,
+  // modified_surf_evap view is used for input in preprocessor for both param cases.
+  Kokkos::deep_copy(m_buffer.modified_surf_evap,
                     get_field_in("surf_evap").get_view<const Real*>());
   if (m_params.get<bool>("check_flux_state_consistency", false)) {
     check_flux_state_consistency(dt);
@@ -508,15 +508,15 @@ void SHOCMacrophysics::check_flux_state_consistency(const double dt)
   using PC = scream::physics::Constants<Real>;
   const Real gravit = PC::gravit;
 
-  const auto& pseudo_density  = get_field_in ("pseudo_density").get_view<const Spack**>();
-  const auto& surf_evap_input = m_buffer.surf_evap_input; // Use/update the local surf_evap_input view
-  const auto& qv              = get_field_out("qv").get_view<Spack**>();
+  const auto& pseudo_density     = get_field_in ("pseudo_density").get_view<const Spack**>();
+  const auto& modified_surf_evap = m_buffer.modified_surf_evap; // Use/update the local modified_surf_evap view
+  const auto& qv                 = get_field_out("qv").get_view<Spack**>();
 
   const auto nlevs           = m_num_levs;
-  const auto nlev_m_1_packs  = ekat::npack<Spack>(nlevs-1);
+  const auto nlev_packs      = ekat::npack<Spack>(nlevs);
   const auto last_pack_idx   = (nlevs-1)/Spack::n;
   const auto last_pack_entry = (nlevs-1)%Spack::n;
-  const auto policy          = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nlev_m_1_packs);
+  const auto policy          = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nlev_packs);
   Kokkos::parallel_for("check_flux_state_consistency",
                        policy,
                        KOKKOS_LAMBDA (const KT::MemberType& team) {
@@ -525,35 +525,36 @@ void SHOCMacrophysics::check_flux_state_consistency(const double dt)
     const auto& pseudo_density_i = ekat::subview(pseudo_density, i);
     const auto& qv_i             = ekat::subview(qv, i);
 
-    // Define lambda to calculate column vapor mass
-    auto column_vapor_mass = [&](const int k) {
+    // Define lambda to get column vapor mass on level pack k
+    auto column_vapor_mass_on_level = [&](const int k) {
       return qv_i(k)*pseudo_density_i(k);
     };
 
     // Define surface evaporative mass
-    auto surf_evap_mass = surf_evap_input(i)*dt*gravit;
+    auto surf_evap_mass = modified_surf_evap(i)*dt*gravit;
 
     // Check if the negative surface latent heat flux can exhaust
     // the moisture in the lowest model level. If so, apply fixer.
-    const auto excess_mass = surf_evap_mass + column_vapor_mass(last_pack_idx)[last_pack_entry];
+    const auto excess_mass = surf_evap_mass + column_vapor_mass_on_level(last_pack_idx)[last_pack_entry];
     if (excess_mass < 0) {
       // Calculate the total column vapor mass
-      Real total_column_vap_mass = ekat::ExeSpaceUtils<KT::ExeSpace>::view_reduction(team, 0, nlevs, column_vapor_mass);
+      Real total_column_vap_mass = ekat::ExeSpaceUtils<KT::ExeSpace>::view_reduction(team, 0, nlevs, column_vapor_mass_on_level);
       EKAT_KERNEL_ASSERT_MSG(total_column_vap_mass >= surf_evap_mass,
                             "Error! Total mass of column vapor should be greater "
                             "than mass of surf_evap.\n");
 
       // Redistribute excess mass
-      Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlev_m_1_packs), [&](const int& k) {
+      Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlev_packs), [&](const int& k) {
+        // Define mask for accessing all but surface level
         const auto range_pack = ekat::range<IntSmallPack>(k*Spack::n);
         const Smask index_above_sfc = range_pack < nlevs-1;
 
-        const auto adjust = std::abs(surf_evap_mass)*column_vapor_mass(k)/total_column_vap_mass;
-        qv_i(k).set(index_above_sfc, (column_vapor_mass(k) - adjust)/pseudo_density_i(k));
+        const auto adjust = std::abs(surf_evap_mass)*column_vapor_mass_on_level(k)/total_column_vap_mass;
+        qv_i(k).set(index_above_sfc, (column_vapor_mass_on_level(k) - adjust)/pseudo_density_i(k));
       });
 
-      // Set surf_evap_input to exactly exhaust the moisture at the bottom layer
-      surf_evap_input(i) = -1.0*column_vapor_mass(last_pack_idx)[last_pack_entry]/(dt*gravit);
+      // Set modified_surf_evap to exactly exhaust the moisture at the bottom layer
+      modified_surf_evap(i) = -1.0*column_vapor_mass_on_level(last_pack_idx)[last_pack_entry]/(dt*gravit);
     }
   });
 }
