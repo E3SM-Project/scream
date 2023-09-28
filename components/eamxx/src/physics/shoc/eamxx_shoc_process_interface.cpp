@@ -234,22 +234,23 @@ void SHOCMacrophysics::initialize_impl (const RunType run_type)
   // Initialize all of the structures that are passed to shoc_main in run_impl.
   // Note: Some variables in the structures are not stored in the field manager.  For these
   //       variables a local view is constructed.
-  const auto& T_mid               = get_field_out("T_mid").get_view<Spack**>();
-  const auto& p_mid               = get_field_in("p_mid").get_view<const Spack**>();
-  const auto& p_int               = get_field_in("p_int").get_view<const Spack**>();
-  const auto& pseudo_density      = get_field_in("pseudo_density").get_view<const Spack**>();
-  const auto& omega               = get_field_in("omega").get_view<const Spack**>();
-  const auto& surf_sens_flux      = get_field_in("surf_sens_flux").get_view<const Real*>();
-  const auto& surf_mom_flux       = get_field_in("surf_mom_flux").get_view<const Real**>();
-  const auto& qtracers            = get_group_out("tracers").m_bundle->get_view<Spack***>();
-  const auto& qc                  = get_field_out("qc").get_view<Spack**>();
-  const auto& qv                  = get_field_out("qv").get_view<Spack**>();
-  const auto& tke                 = get_field_out("tke").get_view<Spack**>();
-  const auto& cldfrac_liq         = get_field_out("cldfrac_liq").get_view<Spack**>();
-  const auto& sgs_buoy_flux       = get_field_out("sgs_buoy_flux").get_view<Spack**>();
-  const auto& tk                  = get_field_out("eddy_diff_mom").get_view<Spack**>();
-  const auto& inv_qc_relvar       = get_field_out("inv_qc_relvar").get_view<Spack**>();
-  const auto& phis                = get_field_in("phis").get_view<const Real*>();
+  const auto& T_mid          = get_field_out("T_mid").get_view<Spack**>();
+  const auto& p_mid          = get_field_in("p_mid").get_view<const Spack**>();
+  const auto& p_int          = get_field_in("p_int").get_view<const Spack**>();
+  const auto& pseudo_density = get_field_in("pseudo_density").get_view<const Spack**>();
+  const auto& omega          = get_field_in("omega").get_view<const Spack**>();
+  const auto& surf_sens_flux = get_field_in("surf_sens_flux").get_view<const Real*>();
+  const auto& surf_evap      = get_field_in("surf_evap").get_view<const Real*>();
+  const auto& surf_mom_flux  = get_field_in("surf_mom_flux").get_view<const Real**>();
+  const auto& qtracers       = get_group_out("tracers").m_bundle->get_view<Spack***>();
+  const auto& qc             = get_field_out("qc").get_view<Spack**>();
+  const auto& qv             = get_field_out("qv").get_view<Spack**>();
+  const auto& tke            = get_field_out("tke").get_view<Spack**>();
+  const auto& cldfrac_liq    = get_field_out("cldfrac_liq").get_view<Spack**>();
+  const auto& sgs_buoy_flux  = get_field_out("sgs_buoy_flux").get_view<Spack**>();
+  const auto& tk             = get_field_out("eddy_diff_mom").get_view<Spack**>();
+  const auto& inv_qc_relvar  = get_field_out("inv_qc_relvar").get_view<Spack**>();
+  const auto& phis           = get_field_in("phis").get_view<const Real*>();
 
   // Alias local variables from temporary buffer
   auto z_mid           = m_buffer.z_mid;
@@ -377,7 +378,7 @@ void SHOCMacrophysics::initialize_impl (const RunType run_type)
     const auto& water_flux = get_field_out("water_flux").get_view<Real*>();
     const auto& ice_flux   = get_field_out("ice_flux").get_view<Real*>();
     const auto& heat_flux  = get_field_out("heat_flux").get_view<Real*>();
-    shoc_postprocess.set_mass_and_energy_fluxes (surf_evap_input, surf_sens_flux,
+    shoc_postprocess.set_mass_and_energy_fluxes (surf_evap, surf_sens_flux,
                                                  vapor_flux, water_flux,
                                                  ice_flux, heat_flux);
   }
