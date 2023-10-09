@@ -530,18 +530,27 @@ void SHOCMacrophysics::check_flux_state_consistency(const double dt)
       return qv_i(k)*pseudo_density_i(k);
     };
 
+    // Define column_vapor_mass on surface
+    const auto column_vapor_mass_sfc = column_vapor_mass_on_level(last_pack_idx)[last_pack_entry];
+
     // Define surface evaporative mass
-    auto surf_evap_mass = modified_surf_evap(i)*dt*gravit;
+    const auto surf_evap_mass = modified_surf_evap(i)*dt*gravit;
 
     // Check if the negative surface latent heat flux can exhaust
     // the moisture in the lowest model level. If so, apply fixer.
-    const auto excess_mass = surf_evap_mass + column_vapor_mass_on_level(last_pack_idx)[last_pack_entry];
+    const auto excess_mass = surf_evap_mass + column_vapor_mass_sfc;
     if (excess_mass < 0) {
       // Calculate the total column vapor mass
       Real total_column_vap_mass = ekat::ExeSpaceUtils<KT::ExeSpace>::view_reduction(team, 0, nlevs, column_vapor_mass_on_level);
-      EKAT_KERNEL_ASSERT_MSG(total_column_vap_mass >= surf_evap_mass,
+      EKAT_KERNEL_ASSERT_MSG(total_column_vap_mass >= std::abs(surf_evap_mass),
                             "Error! Total mass of column vapor should be greater "
-                            "than mass of surf_evap.\n");
+                            "than the magnitude of  mass of surf_evap.\n");
+
+      // Set modified_surf_evap to exactly exhaust the moisture at the bottom layer
+      modified_surf_evap(i) = -1.0*column_vapor_mass_sfc/(dt*gravit);
+
+      // Set total_column_vap_mass to only be from levels 0:nlev-2 (exclude sfc value)
+      total_column_vap_mass -= column_vapor_mass_sfc;
 
       // Redistribute excess mass
       Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlev_packs), [&](const int& k) {
@@ -549,12 +558,9 @@ void SHOCMacrophysics::check_flux_state_consistency(const double dt)
         const auto range_pack = ekat::range<IntSmallPack>(k*Spack::n);
         const Smask index_above_sfc = range_pack < nlevs-1;
 
-        const auto adjust = std::abs(surf_evap_mass)*column_vapor_mass_on_level(k)/total_column_vap_mass;
-        qv_i(k).set(index_above_sfc, (column_vapor_mass_on_level(k) - adjust)/pseudo_density_i(k));
+        const auto adjust = excess_mass*column_vapor_mass_on_level(k)/total_column_vap_mass;
+        qv_i(k).set(index_above_sfc, (column_vapor_mass_on_level(k) + adjust)/pseudo_density_i(k));
       });
-
-      // Set modified_surf_evap to exactly exhaust the moisture at the bottom layer
-      modified_surf_evap(i) = -1.0*column_vapor_mass_on_level(last_pack_idx)[last_pack_entry]/(dt*gravit);
     }
   });
 }
