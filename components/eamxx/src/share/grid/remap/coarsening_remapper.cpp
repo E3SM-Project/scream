@@ -2,6 +2,7 @@
 
 #include "share/grid/point_grid.hpp"
 #include "share/io/scorpio_input.hpp"
+#include "share/util/scream_timing.hpp"
 
 #include <ekat/kokkos/ekat_kokkos_utils.hpp>
 #include <ekat/ekat_pack_utils.hpp>
@@ -359,6 +360,7 @@ void CoarseningRemapper::do_registration_ends ()
 
 void CoarseningRemapper::do_remap_fwd ()
 {
+  start_timer("coarsen::total");
   // Fire the recv requests right away, so that if some other ranks
   // is done packing before us, we can start receiving their data
   if (not m_recv_req.empty()) {
@@ -377,6 +379,7 @@ void CoarseningRemapper::do_remap_fwd ()
   };
 
   // Loop over each field
+  start_timer("coarsen::mat-vec");
   for (int i=0; i<m_num_fields; ++i) {
     // First, perform the local mat-vec. Recall that in these y=Ax products,
     // x is the src field, and y is the overlapped tgt field.
@@ -397,12 +400,15 @@ void CoarseningRemapper::do_remap_fwd ()
       local_mat_vec<1>(f_src,f_ov_tgt,mask_ptr);
     }
   }
+  stop_timer("coarsen::mat-vec");
 
+  start_timer("coarsen::mpi");
   // Pack, then fire off the sends
   pack_and_send ();
 
   // Wait for all data to be received, then unpack
   recv_and_unpack ();
+  stop_timer("coarsen::mpi");
 
   // Wait for all sends to be completed
   if (not m_send_req.empty()) {
@@ -428,6 +434,7 @@ void CoarseningRemapper::do_remap_fwd ()
       }
     }
   }
+  stop_timer("coarsen::total");
 }
 
 template<int PackSize>

@@ -2,6 +2,7 @@
 
 #include "share/grid/point_grid.hpp"
 #include "share/io/scorpio_input.hpp"
+#include "share/util/scream_timing.hpp"
 
 #include <ekat/kokkos/ekat_kokkos_utils.hpp>
 #include <ekat/ekat_pack_utils.hpp>
@@ -194,6 +195,7 @@ void RefiningRemapper::do_registration_ends ()
 
 void RefiningRemapper::do_remap_fwd ()
 {
+  start_timer("refine::total");
   // Start RMA epoch on each field
   for (int i=0; i<m_num_fields; ++i) {
     check_mpi_call(MPI_Win_post(m_mpi_group,0,m_mpi_win[i]),
@@ -202,6 +204,7 @@ void RefiningRemapper::do_remap_fwd ()
                    "MPI_Win_start for field: " + m_src_fields[i].name());
   }
 
+  start_timer("refine::mpi");
   // Loop over fields, and grab data
   constexpr HostOrDevice MpiDev = MpiOnDev ? Device : Host;
   const auto& dt = ekat::get_mpi_type<Real>();
@@ -219,6 +222,7 @@ void RefiningRemapper::do_remap_fwd ()
                      "MPI_Get for field: " + m_ov_src_fields[i].name());
     }
   }
+  stop_timer("refine::mpi");
 
   // Close access RMA epoch on each field (exposure is still open)
   for (int i=0; i<m_num_fields; ++i) {
@@ -233,6 +237,7 @@ void RefiningRemapper::do_remap_fwd ()
   };
 
   // Loop over each field, perform mat-vec
+  start_timer("refine::mat-vec");
   constexpr auto COL = ShortFieldTagsNames::COL;
   for (int i=0; i<m_num_fields; ++i) {
     auto& f_tgt = m_tgt_fields[i];
@@ -255,12 +260,14 @@ void RefiningRemapper::do_remap_fwd ()
       local_mat_vec<1>(f_ov_src,f_tgt);
     }
   }
+  stop_timer("refine::mat-vec");
 
   // Close exposure RMA epoch on each field
   for (int i=0; i<m_num_fields; ++i) {
     check_mpi_call(MPI_Win_wait(m_mpi_win[i]),
                    "MPI_Win_post for field: " + m_src_fields[i].name());
   }
+  stop_timer("refine::total");
 }
 
 template<int PackSize>
