@@ -512,6 +512,10 @@ void SHOCMacrophysics::check_flux_state_consistency(const double dt)
   const auto& modified_surf_evap = m_buffer.modified_surf_evap; // Use/update the local modified_surf_evap view
   const auto& qv                 = get_field_out("qv").get_view<Spack**>();
 
+  // TODO: Remove before PR
+  view_1d column_info("column-info", 2);
+  Kokkos::deep_copy(column_info, 0.0);
+
   const auto nlevs           = m_num_levs;
   const auto nlev_packs      = ekat::npack<Spack>(nlevs);
   const auto last_pack_idx   = (nlevs-1)/Spack::n;
@@ -540,6 +544,9 @@ void SHOCMacrophysics::check_flux_state_consistency(const double dt)
     // the moisture in the lowest model level. If so, apply fixer.
     const auto excess_mass = surf_evap_mass + column_vapor_mass_sfc;
     if (excess_mass < 0) {
+      // TODO: Remove before PR
+      column_info(0) += 1;
+
       // Calculate the total column vapor mass
       Real total_column_vap_mass = ekat::ExeSpaceUtils<KT::ExeSpace>::view_reduction(team, 0, nlevs, column_vapor_mass_on_level);
       EKAT_KERNEL_ASSERT_MSG(total_column_vap_mass >= std::abs(surf_evap_mass),
@@ -559,10 +566,30 @@ void SHOCMacrophysics::check_flux_state_consistency(const double dt)
         const Smask index_above_sfc = range_pack < nlevs-1;
 
         const auto adjust = excess_mass*column_vapor_mass_on_level(k)/total_column_vap_mass;
+
+        // TODO: Remove before PR
+        for (int p=0; p<Spack::n && k*Spack::n+p<nlevs-1; ++p) {
+          column_info(1) += adjust[p];
+        }
+
         qv_i(k).set(index_above_sfc, (column_vapor_mass_on_level(k) + adjust)/pseudo_density_i(k));
       });
     }
   });
+
+  // TODO: Remove before PR
+  Kokkos::fence();
+  auto column_info_h = Kokkos::create_mirror_view_and_copy(HostDevice(), column_info);
+  auto cols_changed = column_info_h(0);
+  auto adjustment   = column_info_h(1);
+
+  m_comm.all_reduce(&cols_changed, 1, MPI_SUM);
+  m_comm.all_reduce(&adjustment, 1, MPI_SUM);
+  m_comm.barrier();
+
+  if (cols_changed > 0 && m_comm.am_i_root()) {
+    printf("FIXER INFO: Total columns update=%f, Avg adjustment factor=%f\n", cols_changed, (adjustment/cols_changed));
+  }
 }
 // =========================================================================================
 } // namespace scream
