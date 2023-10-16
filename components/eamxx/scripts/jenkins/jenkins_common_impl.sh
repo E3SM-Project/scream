@@ -8,11 +8,14 @@ skip_testing=0
 test_scripts=0
 test_v0=0
 test_v1=1
-test_SA=1
+test_SA=${SCREAM_TEST_STANDALONE:-1}
+test_cov=${SCREAM_TEST_COVERAGE:-0}
+test_mem=${SCREAM_TEST_MEMCHECK:-0}
 skip_mappy=0
 skip_weaver=0
 skip_blake=0
 is_at_run=0
+
 if [ ${#labels[@]} -gt 0 ]; then
   # We do have some labels. Look for some supported ones.
   for label in "${labels[@]}"
@@ -100,34 +103,33 @@ if [ $skip_testing -eq 0 ]; then
         SA_FAILURES_DETAILS+="$errors"
       fi
     fi
+  fi
 
-    # Add memcheck and coverage tests for nightlies on specific machines
-    if [[ $is_at_run == 0 ]]; then
-      if [[ "$SCREAM_MACHINE" == "mappy" ]]; then
-        ./scripts/gather-all-data "./scripts/test-all-scream -t cov ${TAS_ARGS}" -l -m $SCREAM_MACHINE
-        if [[ $? != 0 ]]; then
-          fails=$fails+1;
-          cov_fail=1
-        fi
+  # Add memcheck and coverage tests for nightlies on specific machines
+  if [[ $test_cov == 1 ]]; then
+    ./scripts/gather-all-data "./scripts/test-all-scream -t cov ${TAS_ARGS}" -l -m $SCREAM_MACHINE
+    if [[ $? != 0 ]]; then
+      fails=$fails+1;
+      cov_fail=1
+    fi
+  fi
+
+  if [[ $test_mem == 1 ]]; then
+    # Add a memcheck test for mappy (or compute-sanitizer for weaver) for nightlies
+    if [[ "$SCREAM_MACHINE" == "mappy" ]]; then
+      ./scripts/gather-all-data "./scripts/test-all-scream -t mem ${TAS_ARGS}" -l -m $SCREAM_MACHINE
+      if [[ $? != 0 ]]; then
+        fails=$fails+1;
+        memcheck_fail=1
       fi
+    fi
 
-      # Add a memcheck test for mappy for nightlies
-      if [[ "$SCREAM_MACHINE" == "mappy" ]]; then
-        ./scripts/gather-all-data "./scripts/test-all-scream -t mem ${TAS_ARGS}" -l -m $SCREAM_MACHINE
-        if [[ $? != 0 ]]; then
-          fails=$fails+1;
-          memcheck_fail=1
-        fi
+    if [[ "$SCREAM_MACHINE" == "weaver" ]]; then
+      ./scripts/gather-all-data "./scripts/test-all-scream -t csm -t csr -t csi -t css ${TAS_ARGS}" -l -m $SCREAM_MACHINE
+      if [[ $? != 0 ]]; then
+        fails=$fails+1;
+        memcheck_fail=1
       fi
-
-      if [[ "$SCREAM_MACHINE" == "weaver" ]]; then
-        ./scripts/gather-all-data "./scripts/test-all-scream -t csm -t csr -t csi -t css ${TAS_ARGS}" -l -m $SCREAM_MACHINE
-        if [[ $? != 0 ]]; then
-          fails=$fails+1;
-          memcheck_fail=1
-        fi
-      fi
-
     fi
   else
     echo "SCREAM Stand-Alone tests were skipped, since the Github label 'AT: Skip Stand-Alone Testing' was found.\n"
