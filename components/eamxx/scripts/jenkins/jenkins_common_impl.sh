@@ -10,7 +10,11 @@ test_v0=0
 test_v1=1
 test_SA=${SCREAM_TEST_STANDALONE:-1}
 test_cov=${SCREAM_TEST_COVERAGE:-0}
-test_mem=${SCREAM_TEST_MEMCHECK:-0}
+test_mem=${SCREAM_TEST_VALGRIND:-0}
+test_csm=${SCREAM_TEST_SANITIZER_MEMCHECK:-0}
+test_csi=${SCREAM_TEST_SANITIZER_INITCHECK:-0}
+test_csr=${SCREAM_TEST_SANITIZER_RACECHECK:-0}
+test_css=${SCREAM_TEST_SANITIZER_SYNCCHECK:-0}
 skip_mappy=0
 skip_weaver=0
 skip_blake=0
@@ -49,6 +53,10 @@ if [ $skip_testing -eq 0 ]; then
   cov_fail=0
   scripts_fail=0
   memcheck_fail=0
+  csi_fail=0
+  csm_fail=0
+  csr_fail=0
+  css_fail=0
   cd $JENKINS_SCRIPT_DIR/../..
 
   source scripts/jenkins/${NODE_NAME}_setup
@@ -103,6 +111,12 @@ if [ $skip_testing -eq 0 ]; then
         SA_FAILURES_DETAILS+="$errors"
       fi
     fi
+  else
+    if [[ $is_at_run == 1 ]]; then
+      echo "SCREAM Stand-Alone tests were skipped, since the Github label 'AT: Skip Stand-Alone Testing' was found.\n"
+    else
+      echo "SCREAM Stand-Alone tests were skipped, since the env var SCREAM_TEST_STANDALONE was set to 0.\n"
+    fi
   fi
 
   # Add memcheck and coverage tests for nightlies on specific machines
@@ -123,16 +137,40 @@ if [ $skip_testing -eq 0 ]; then
         memcheck_fail=1
       fi
     fi
+  fi
 
-    if [[ "$SCREAM_MACHINE" == "weaver" ]]; then
-      ./scripts/gather-all-data "./scripts/test-all-scream -t csm -t csr -t csi -t css ${TAS_ARGS}" -l -m $SCREAM_MACHINE
+  if [[ "$SCREAM_MACHINE" == "weaver" ]]; then
+    if [[ $test_csi == 1 ]]; then
+      ./scripts/gather-all-data "./scripts/test-all-scream -t csi ${TAS_ARGS}" -l -m $SCREAM_MACHINE
       if [[ $? != 0 ]]; then
         fails=$fails+1;
-        memcheck_fail=1
+        csi_fail=1
       fi
     fi
-  else
-    echo "SCREAM Stand-Alone tests were skipped, since the Github label 'AT: Skip Stand-Alone Testing' was found.\n"
+
+    if [[ $test_csm == 1 ]]; then
+      ./scripts/gather-all-data "./scripts/test-all-scream -t csm ${TAS_ARGS}" -l -m $SCREAM_MACHINE
+      if [[ $? != 0 ]]; then
+        fails=$fails+1;
+        csm_fail=1
+      fi
+    fi
+
+    if [[ $test_csr == 1 ]]; then
+      ./scripts/gather-all-data "./scripts/test-all-scream -t csr ${TAS_ARGS}" -l -m $SCREAM_MACHINE
+      if [[ $? != 0 ]]; then
+        fails=$fails+1;
+        csr_fail=1
+      fi
+    fi
+
+    if [[ $test_css == 1 ]]; then
+      ./scripts/gather-all-data "./scripts/test-all-scream -t css ${TAS_ARGS}" -l -m $SCREAM_MACHINE
+      if [[ $? != 0 ]]; then
+        fails=$fails+1;
+        css_fail=1
+      fi
+    fi
   fi
 
   # Run expensive tests on mappy only
@@ -231,6 +269,18 @@ if [ $skip_testing -eq 0 ]; then
     fi
     if [[ $memcheck_fail == 1 ]]; then
       echo "  SCREAM MEM CHECK TESTING FAILED!"
+    fi
+    if [[ $csi_fail == 1 ]]; then
+      echo "  SCREAM COMPUTE SANITIZER (INITCHECK) TESTING FAILED!"
+    fi
+    if [[ $csm_fail == 1 ]]; then
+      echo "  SCREAM COMPUTE SANITIZER (MEMCHECK) TESTING FAILED!"
+    fi
+    if [[ $csr_fail == 1 ]]; then
+      echo "  SCREAM COMPUTE SANITIZER (RACECHECK) TESTING FAILED!"
+    fi
+    if [[ $css_fail == 1 ]]; then
+      echo "  SCREAM COMPUTE SANITIZER (SYNCCHECK) TESTING FAILED!"
     fi
     if [[ $cov_fail == 1 ]]; then
       echo "  SCREAM COVERAGE BUILD FAILED!"
