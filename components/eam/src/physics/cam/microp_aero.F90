@@ -52,7 +52,7 @@ implicit none
 private
 save
 
-public :: microp_aero_init, microp_aero_readnl, microp_aero_register
+public :: microp_aero_init, microp_aero_register
 
 ! Private module data
 
@@ -336,60 +336,6 @@ subroutine microp_aero_init
    call hetfrz_classnuc_cam_init(mincld)
 
 end subroutine microp_aero_init
-
-!=========================================================================================
-
-subroutine microp_aero_readnl(nlfile)
-
-   use namelist_utils,  only: find_group_name
-   use units,           only: getunit, freeunit
-   use mpishorthand
-
-   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
-
-   ! Namelist variables
-   real(r8) :: microp_aero_bulk_scale = 2._r8  ! prescribed aerosol bulk sulfur scale factor
-   real(r8) :: microp_aero_wsubmin  = 0.2_r8
-   integer  :: microp_aero_wsub_scheme = 1     ! updraft velocity parameterization option for ice nucleation
- 
-   ! Local variables
-   integer :: unitn, ierr
-   character(len=*), parameter :: subname = 'microp_aero_readnl'
-
-   namelist /microp_aero_nl/ microp_aero_bulk_scale, microp_aero_wsub_scheme,microp_aero_wsubmin
-
-   !-----------------------------------------------------------------------------
-
-   if (masterproc) then
-      unitn = getunit()
-      open( unitn, file=trim(nlfile), status='old' )
-      call find_group_name(unitn, 'microp_aero_nl', status=ierr)
-      if (ierr == 0) then
-         read(unitn, microp_aero_nl, iostat=ierr)
-         if (ierr /= 0) then
-            call endrun(subname // ':: ERROR reading namelist')
-         end if
-      end if
-      close(unitn)
-      call freeunit(unitn)
-   end if
-
-#ifdef SPMD
-   ! Broadcast namelist variable
-   call mpibcast(microp_aero_bulk_scale, 1, mpir8, 0, mpicom)
-   call mpibcast(microp_aero_wsub_scheme, 1, mpiint, 0, mpicom)
-   call mpibcast(microp_aero_wsubmin,     1, mpir8, 0, mpicom)
-#endif
-
-   ! set local variables
-   bulk_scale = microp_aero_bulk_scale
-   icenul_wsub_scheme = microp_aero_wsub_scheme
-   wsubmin = microp_aero_wsubmin
-
-   call nucleate_ice_cam_readnl(nlfile)
-   call hetfrz_classnuc_cam_readnl(nlfile)
-
-end subroutine microp_aero_readnl
 
 
 end module microp_aero

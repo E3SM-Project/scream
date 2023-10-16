@@ -235,7 +235,6 @@ contains
    use cam3_ozone_data,     only: cam3_ozone_data_readnl
    use macrop_driver,       only: macrop_driver_readnl
    use microp_driver,       only: microp_driver_readnl
-   use microp_aero,         only: microp_aero_readnl
    use subcol,              only: subcol_readnl
    use cloud_fraction,      only: cldfrc_readnl
    use cldfrc2m,            only: cldfrc2m_readnl
@@ -495,7 +494,6 @@ contains
    call cam3_ozone_data_readnl(nlfilename)
    call macrop_driver_readnl(nlfilename)
    call microp_driver_readnl(nlfilename)
-   call microp_aero_readnl(nlfilename)
    call clubb_readnl(nlfilename)
    call shoc_readnl(nlfilename)
    call subcol_readnl(nlfilename)
