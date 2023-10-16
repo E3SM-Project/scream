@@ -2054,7 +2054,6 @@ contains
 
     use stratiform,      only: stratiform_tend
     use microp_driver,   only: microp_driver_tend
-    use microp_aero,     only: microp_aero_run
     use macrop_driver,   only: macrop_driver_tend
     use physics_types,   only: physics_state, physics_tend, physics_ptend, &
          physics_ptend_init, physics_ptend_sum, physics_state_check, physics_ptend_scale
@@ -2643,21 +2642,15 @@ contains
           call physics_ptend_scale(ptend, 1._r8/cld_macmic_num_steps, ncol)
           call physics_update(state, ptend, ztodt, tend)
 
-          call microp_aero_run(state, ptend_aero, cld_macmic_ztodt, pbuf, lcldo)
           call microp_driver_tend(state, ptend, cld_macmic_ztodt, pbuf)
 
-          call physics_ptend_sum(ptend_aero, ptend, ncol)
-          call physics_ptend_dealloc(ptend_aero)
           call physics_ptend_scale(ptend, 1._r8/cld_macmic_num_steps, ncol)
           call physics_update (state, ptend, ztodt, tend)
-
 
           prec_sed_macmic(:ncol) = prec_sed_macmic(:ncol) + prec_sed(:ncol)
           snow_sed_macmic(:ncol) = snow_sed_macmic(:ncol) + snow_sed(:ncol)
           prec_pcw_macmic(:ncol) = prec_pcw_macmic(:ncol) + prec_pcw(:ncol)
           snow_pcw_macmic(:ncol) = snow_pcw_macmic(:ncol) + snow_pcw(:ncol)
-
-
        end do ! end substepping over macrophysics/microphysics
 
        prec_sed(:ncol) = prec_sed_macmic(:ncol)/cld_macmic_num_steps
