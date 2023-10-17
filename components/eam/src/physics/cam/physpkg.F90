@@ -754,7 +754,6 @@ contains
     use stratiform,         only: stratiform_init
     use wv_saturation,      only: wv_sat_init
     use microp_driver,      only: microp_driver_init
-    use microp_aero,        only: microp_aero_init
     use macrop_driver,      only: macrop_driver_init
     use conv_water,         only: conv_water_init
     use tracers,            only: tracers_init
@@ -958,7 +957,7 @@ contains
        call stratiform_init()
     elseif( microp_scheme == 'MG' .or. microp_scheme == 'P3' ) then 
        if (.not. do_clubb_sgs .and. .not. do_shoc_sgs) call macrop_driver_init(pbuf2d)
-       call microp_aero_init()
+       !call microp_aero_init()
        call microp_driver_init(pbuf2d)
        call conv_water_init
     end if
