@@ -40,8 +40,7 @@ use nucleate_ice_cam, only: use_preexisting_ice, nucleate_ice_cam_readnl, nuclea
 use ndrop,            only: ndrop_init, dropmixnuc
 use ndrop_bam,        only: ndrop_bam_init, ndrop_bam_run, ndrop_bam_ccn
 
-use hetfrz_classnuc_cam, only: hetfrz_classnuc_cam_readnl, hetfrz_classnuc_cam_register, hetfrz_classnuc_cam_init, &
-                               hetfrz_classnuc_cam_save_cbaero, hetfrz_classnuc_cam_calc
+use hetfrz_classnuc_cam, only: hetfrz_classnuc_cam_readnl, hetfrz_classnuc_cam_register
 
 use cam_history,      only: addfld, add_default, outfld
 use cam_logfile,      only: iulog
@@ -56,7 +55,7 @@ public ::  microp_aero_register
 
 ! Private module data
 
-integer :: npccn_idx, rndst_idx, nacon_idx
+integer :: npccn_idx
 
 contains
 !=========================================================================================
@@ -74,11 +73,8 @@ subroutine microp_aero_register
    use physics_buffer, only: pbuf_add_field, dtype_r8
 
    call pbuf_add_field('NPCCN',      'physpkg',dtype_r8,(/pcols,pver/), npccn_idx)
-
-   call pbuf_add_field('RNDST',      'physpkg',dtype_r8,(/pcols,pver,4/), rndst_idx)
-   call pbuf_add_field('NACON',      'physpkg',dtype_r8,(/pcols,pver,4/), nacon_idx)
- 
    call nucleate_ice_cam_register()
+
 end subroutine microp_aero_register
 
 end module microp_aero
