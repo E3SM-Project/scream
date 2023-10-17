@@ -79,7 +79,6 @@ subroutine microp_aero_register
    call pbuf_add_field('NACON',      'physpkg',dtype_r8,(/pcols,pver,4/), nacon_idx)
  
    call nucleate_ice_cam_register()
-   call hetfrz_classnuc_cam_register()
 end subroutine microp_aero_register
 
 end module microp_aero
