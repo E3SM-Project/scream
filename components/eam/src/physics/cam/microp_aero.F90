@@ -56,75 +56,7 @@ public ::  microp_aero_register
 
 ! Private module data
 
-character(len=16)   :: eddy_scheme
-logical             :: micro_do_icesupersat
-
-!!   icenul_wsub_scheme = 1 : f(TKE) as default
-!!                        2 : Mean updraft calculated from Gausssian PDF, with stddev=f(TKE)
-integer             :: icenul_wsub_scheme = 1
- 
-! contact freezing due to dust
-! dust number mean radius (m), Zender et al JGR 2003 assuming number mode radius of 0.6 micron, sigma=2
-real(r8), parameter :: rn_dst1 = 0.258e-6_r8
-real(r8), parameter :: rn_dst2 = 0.717e-6_r8
-real(r8), parameter :: rn_dst3 = 1.576e-6_r8
-real(r8), parameter :: rn_dst4 = 3.026e-6_r8
-
-real(r8) :: bulk_scale    ! prescribed aerosol bulk sulfur scale factor
-
-! smallest mixing ratio considered in microphysics
-real(r8), parameter :: qsmall = 1.e-18_r8
-
-! minimum allowed cloud fraction
-real(r8), parameter :: mincld = 0.0001_r8
-
-! indices in state%q and pbuf structures
-integer :: cldliq_idx = -1
-integer :: cldice_idx = -1
-integer :: numliq_idx = -1
-integer :: numice_idx = -1
-integer :: kvh_idx = -1
-integer :: tke_idx = -1
-integer :: wp2_idx = -1
-integer :: ast_idx = -1
-integer :: alst_idx = -1
-integer :: aist_idx = -1
-
-integer :: cldo_idx = -1
-integer :: dgnumwet_idx = -1
-
-! Bulk aerosols
-character(len=20), allocatable :: aername(:)
-real(r8), allocatable :: num_to_mass_aer(:)
-
-integer :: naer_all      ! number of aerosols affecting climate
-integer :: idxsul   = -1 ! index in aerosol list for sulfate
-integer :: idxdst2  = -1 ! index in aerosol list for dust2
-integer :: idxdst3  = -1 ! index in aerosol list for dust3
-integer :: idxdst4  = -1 ! index in aerosol list for dust4
-
-! modal aerosols
-logical :: clim_modal_aero
-
-integer :: mode_accum_idx  = -1  ! index of accumulation mode
-integer :: mode_aitken_idx = -1  ! index of aitken mode
-integer :: mode_coarse_idx = -1  ! index of coarse mode
-integer :: mode_coarse_dst_idx = -1  ! index of coarse dust mode
-integer :: mode_coarse_slt_idx = -1  ! index of coarse sea salt mode
-integer :: coarse_dust_idx = -1  ! index of dust in coarse mode
-integer :: coarse_nacl_idx = -1  ! index of nacl in coarse mode
-integer :: mode_fine_dst_idx = -1   ! index of dust in fine dust mode
-integer :: mode_pcarbon_idx  = -1  ! index of dust in accum mode
-integer :: accum_dust_idx    = -1  ! index of dust in accum mode
-logical :: dem_in            = .false.           ! use DeMott IN
-
 integer :: npccn_idx, rndst_idx, nacon_idx
-
-logical  :: separate_dust = .false.
-logical  :: liqcf_fix
-real(r8), parameter :: unset_r8   = huge(1.0_r8)
-real(r8) :: wsubmin = unset_r8 !PMA sets a much lower lower bound
-
 
 contains
 !=========================================================================================
@@ -148,7 +80,6 @@ subroutine microp_aero_register
  
    call nucleate_ice_cam_register()
    call hetfrz_classnuc_cam_register()
-
 end subroutine microp_aero_register
 
 end module microp_aero
