@@ -186,7 +186,6 @@ module clubb_intr
     cmeliq_idx, &       ! cmeliq_idx index in physics buffer
     relvar_idx, &       ! relative cloud water variance
     accre_enhan_idx, &  ! optional accretion enhancement factor for MG
-    naai_idx, &         ! ice number concentration
     prer_evap_idx, &    ! rain evaporation rate
     qrl_idx, &          ! longwave cooling rate
     radf_idx
@@ -1469,7 +1468,6 @@ end subroutine clubb_init_cnst
    type(pdf_parameter), pointer :: pdf_params    ! PDF parameters (thermo. levs.) [units vary]
    type(pdf_parameter), pointer :: pdf_params_zm ! PDF parameters on momentum levs. [units vary]
 
-   real(r8), pointer, dimension(:,:) :: naai
    real(r8), pointer, dimension(:,:) :: prer_evap
    real(r8), pointer, dimension(:,:) :: qrl
    real(r8), pointer, dimension(:,:) :: radf_clubb
@@ -1621,11 +1619,7 @@ end subroutine clubb_init_cnst
    call co2_cycle_set_cnst_type(cnst_type_loc, 'wet')
    call set_dry_to_wet(state1, cnst_type_loc)
 
-   if (micro_do_icesupersat) then
-     naai_idx      = pbuf_get_index('NAAI')
-     call pbuf_get_field(pbuf, naai_idx, naai)
-     call physics_ptend_init(ptend_all, state%psetcols, 'clubb_ice2')
-   endif
+   
 
    !  Determine number of columns and which chunk computation is to be performed on
 
@@ -1720,55 +1714,7 @@ end subroutine clubb_init_cnst
                            !  from moments since it has not been added yet
    endif
 
-   if (micro_do_icesupersat) then
-
-     ! -------------------------------------- !
-     ! Ice Saturation Adjustment Computation  !
-     ! -------------------------------------- !
-
-     lq2(:)  = .FALSE.
-     lq2(1)  = .TRUE.
-     lq2(ixcldice) = .TRUE.
-     lq2(ixnumice) = .TRUE.
-
-     latsub = latvap + latice
-
-     call physics_ptend_init(ptend_loc, state%psetcols, 'iceadj', ls=.true., lq=lq2 )
-
-     stend(:ncol,:)=0._r8
-     qvtend(:ncol,:)=0._r8
-     qitend(:ncol,:)=0._r8
-     initend(:ncol,:)=0._r8
-
-     call t_startf('ice_macro_tend')
-     call ice_macro_tend(naai(:ncol,top_lev:pver),state1%t(:ncol,top_lev:pver), &
-        state1%pmid(:ncol,top_lev:pver),state1%q(:ncol,top_lev:pver,1),state1%q(:ncol,top_lev:pver,ixcldice),&
-        state1%q(:ncol,top_lev:pver,ixnumice),latsub,hdtime,&
-        stend(:ncol,top_lev:pver),qvtend(:ncol,top_lev:pver),qitend(:ncol,top_lev:pver),&
-        initend(:ncol,top_lev:pver))
-     call t_stopf('ice_macro_tend')
-
-     ! update local copy of state with the tendencies
-     ptend_loc%q(:ncol,top_lev:pver,1)=qvtend(:ncol,top_lev:pver)
-     ptend_loc%q(:ncol,top_lev:pver,ixcldice)=qitend(:ncol,top_lev:pver)
-     ptend_loc%q(:ncol,top_lev:pver,ixnumice)=initend(:ncol,top_lev:pver)
-     ptend_loc%s(:ncol,top_lev:pver)=stend(:ncol,top_lev:pver)
-
-    ! Add the ice tendency to the output tendency
-     call physics_ptend_sum(ptend_loc, ptend_all, ncol)
-
-    ! ptend_loc is reset to zero by this call
-     call physics_update(state1, ptend_loc, hdtime)
-
-    !Write output for tendencies:
-    !        oufld: QVTENDICE,QITENDICE,NITENDICE
-     call outfld( 'TTENDICE',  stend/cpair, pcols, lchnk )
-     call outfld( 'QVTENDICE', qvtend, pcols, lchnk )
-     call outfld( 'QITENDICE', qitend, pcols, lchnk )
-     call outfld( 'NITENDICE', initend, pcols, lchnk )
-
-   endif
-
+   
    call cnd_diag_checkpoint(diag, 'ICEMAC'//char_macmic_it, state1, pbuf, cam_in, cam_out)
 
    !  Determine CLUBB time step and make it sub-step friendly
