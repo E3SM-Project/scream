@@ -33,7 +33,6 @@ module macrop_driver
   public :: macrop_driver_register
   public :: macrop_driver_init
   public :: macrop_driver_tend
-  public :: ice_macro_tend
 
   logical, public :: do_cldice             ! .true., park macrophysics is prognosing cldice
   logical, public :: do_cldliq             ! .true., park macrophysics is prognosing cldliq
@@ -86,7 +85,6 @@ module macrop_driver
     fice_idx,     &  
     cmeliq_idx,   &  
     shfrc_idx,    &
-    naai_idx,     &
     dlfzm_idx,    & ! index of ZM detrainment of convective cloud water mixing ratio.
     difzm_idx,    & ! index of ZM detrainment of convective cloud ice mixing ratio.
     dsfzm_idx,    & ! index of ZM detrainment of convective snow mixing ratio.
@@ -336,9 +334,6 @@ end subroutine macrop_driver_readnl
     dnifzm_idx = pbuf_get_index('DNIFZM', err)
     dnsfzm_idx = pbuf_get_index('DNSFZM', err)
 
-    if (micro_do_icesupersat) then 
-       naai_idx      = pbuf_get_index('NAAI')
-    endif
 
     ! Init pbuf fields.  Note that the fields CLD, CONCLD, QCWAT, LCWAT, 
     ! ICCWAT, and TCWAT are initialized in phys_inidat.
@@ -471,8 +466,6 @@ end subroutine macrop_driver_readnl
 
   real(r8), pointer, dimension(:,:) :: fice_ql      ! Cloud ice/water partitioning ratio.
 
-  real(r8), pointer, dimension(:,:) :: naai         ! Number concentration of activated ice nuclei
-
   ! ZM microphysics
   real(r8), pointer :: dlfzm(:,:)  ! ZM detrainment of convective cloud water mixing ratio.
   real(r8), pointer :: difzm(:,:)  ! ZM detrainment of convective cloud ice mixing ratio.
@@ -593,10 +586,6 @@ end subroutine macrop_driver_readnl
   real(r8) :: cldsice(pcols,pver)
 
   ! ======================================================================
-
-  if (micro_do_icesupersat) then 
-     call pbuf_get_field(pbuf, naai_idx, naai)
-  endif
 
   lchnk = state%lchnk
   ncol  = state%ncol
@@ -837,12 +826,7 @@ end subroutine macrop_driver_readnl
       qitend(:ncol,:)=0._r8
       initend(:ncol,:)=0._r8
 
-      call ice_macro_tend(naai(:ncol,top_lev:pver),state%t(:ncol,top_lev:pver), &
-           state%pmid(:ncol,top_lev:pver),state%q(:ncol,top_lev:pver,1),state%q(:ncol,top_lev:pver,ixcldice),&
-           state%q(:ncol,top_lev:pver,ixnumice),latsub,dtime,&
-           stend(:ncol,top_lev:pver),qvtend(:ncol,top_lev:pver),qitend(:ncol,top_lev:pver),&
-           initend(:ncol,top_lev:pver))
-
+      
       ! update local copy of state with the tendencies
       ptend_loc%q(:ncol,top_lev:pver,1)=qvtend(:ncol,top_lev:pver)
       ptend_loc%q(:ncol,top_lev:pver,ixcldice)=qitend(:ncol,top_lev:pver)  
@@ -1159,69 +1143,5 @@ end subroutine macrop_driver_tend
 
 ! Saturation adjustment for ice
 ! Add ice mass if supersaturated
-elemental subroutine ice_macro_tend(naai,t,p,qv,qi,ni,xxls,deltat,stend,qvtend,qitend,nitend) 
-
-  use wv_sat_methods, only: wv_sat_qsat_ice
-
-  real(r8), intent(in)  :: naai   !Activated number of ice nuclei 
-  real(r8), intent(in)  :: t      !temperature (k)
-  real(r8), intent(in)  :: p      !pressure (pa0
-  real(r8), intent(in)  :: qv     !water vapor mixing ratio
-  real(r8), intent(in)  :: qi     !ice mixing ratio
-  real(r8), intent(in)  :: ni     !ice number concentration
-  real(r8), intent(in)  :: xxls   !latent heat of sublimation
-  real(r8), intent(in)  :: deltat !timestep
-  real(r8), intent(out) :: stend  ! 'temperature' tendency 
-  real(r8), intent(out) :: qvtend !vapor tendency
-  real(r8), intent(out) :: qitend !ice mass tendency
-  real(r8), intent(out) :: nitend !ice number tendency  
- 
-  real(r8) :: ESI
-  real(r8) :: QSI
-  real(r8) :: tau
-  logical  :: tau_constant
-
-  tau_constant = .true.
-
-  stend = 0._r8
-  qvtend = 0._r8
-  qitend = 0._r8
-  nitend = 0._r8
-
-  ! calculate qsati from t,p,q
-
-  call wv_sat_qsat_ice(t, p, ESI, QSI)
-
-  if (naai.gt.1.e-18_r8.and.qv.gt.QSI) then
-
-     !optional timescale on condensation
-     !tau in sections. Try 300. or tau = f(T): 300s  t> 268, 1800s for t<238
-     !     
-     if (.not. tau_constant) then
-        if( t.gt. 268.15_r8 ) then
-           tau = 300.0_r8
-        elseif(t.lt.238.15_r8 ) then
-           tau = 1800._r8
-        else
-           tau = 300._r8 + (1800._r8 - 300._r8) * ( 268.15_r8 - t ) / 30._r8
-        endif
-     else
-         tau = 300._r8
-     end if
-
-     qitend = (qv-QSI)/deltat !* exp(-tau/deltat)
-     qvtend = 0._r8 - qitend
-     stend  = qitend * xxls    ! moist static energy tend...[J/kg/s] !
-
-     ! kg(h2o)/kg(air)/s * J/kg(h2o)  = J/kg(air)/s (=W/kg)
-     ! if ice exists (more than 1 L-1) and there is condensation, do not add to number (= growth), else, add 10um ice
-
-     if (ni.lt.1.e3_r8.and.(qi+qitend*deltat).gt.1e-18_r8) then
-        nitend = nitend + 3._r8 * qitend/(4._r8*3.14_r8* 10.e-6_r8**3._r8*997._r8)
-     endif
-
-  endif
-
-end subroutine ice_macro_tend
 
 end module macrop_driver
