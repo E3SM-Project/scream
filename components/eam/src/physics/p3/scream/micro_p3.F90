@@ -42,6 +42,7 @@ module micro_p3
 
    ! get real kind from utils
    use physics_utils, only: rtype,rtype8,btype
+   use cam_abortutils, only: endrun
 
    ! physical and mathematical constants
    use micro_p3_utils, only: rho_1000mb,rho_600mb,ar,br,f1r,f2r,rho_h2o,kr,kc,aimm,mi0,nccnst,  &
@@ -2607,6 +2608,8 @@ subroutine ice_nucleation(t_atm,inv_rho,ni,ni_activated,qv_supersat_i,inv_dt,do_
             ni_nucleat_tend = N_nuc
          endif
       else
+      write(102,*)'niac:', ni_activated
+      call endrun('BALLI')
       ! Ice nucleation predicted by aerosol scheme
          ni_nucleat_tend = max(0._rtype, (ni_activated - ni)*inv_dt)
          qinuc = ni_nucleat_tend * mi0

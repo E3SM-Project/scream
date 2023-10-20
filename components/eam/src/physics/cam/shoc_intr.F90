@@ -494,7 +494,6 @@ end function shoc_implements_cnst
     use ref_pres,       only: top_lev => trop_cloud_top_lev
     use time_manager,   only: is_first_step
     use wv_saturation,  only: qsat
-    use micro_mg_cam,   only: micro_mg_version
     use cldfrc2m,                  only: aist_vector
     use trb_mtn_stress,            only: compute_tms
     use shoc,           only: shoc_main

@@ -1112,7 +1112,6 @@ end subroutine clubb_init_cnst
    use time_manager,   only: is_first_step, is_first_restart_step, get_nstep
    use cam_abortutils, only: endrun
    use wv_saturation,  only: qsat
-   use micro_mg_cam,   only: micro_mg_version
 
    use conditional_diag,      only: cnd_diag_t
    use conditional_diag_main, only: cnd_diag_checkpoint
