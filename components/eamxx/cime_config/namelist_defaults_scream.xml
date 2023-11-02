@@ -254,7 +254,7 @@ tweaking their $case/namelist_scream.xml file.
     </rrtmgp>
 
     <mac_aero_mic inherit="atm_proc_group">
-      <atm_procs_list>(shoc,cldFraction,spa,p3)</atm_procs_list>
+      <atm_procs_list>(tms,shoc,cldFraction,spa,p3)</atm_procs_list>
       <atm_procs_list COMPSET=".*SCREAM.*noAero">(shoc,cldFraction,p3)</atm_procs_list>
       <number_of_subcycles hgrid="ne4np4">24</number_of_subcycles>
       <number_of_subcycles hgrid="ne30np4">6</number_of_subcycles>
@@ -263,7 +263,10 @@ tweaking their $case/namelist_scream.xml file.
       <number_of_subcycles hgrid="ne512np4">1</number_of_subcycles>
       <number_of_subcycles hgrid="ne1024np4">1</number_of_subcycles>
       <number_of_subcycles hgrid="ne0np4_conus_x4v1_lowcon">5</number_of_subcycles>
-    </mac_aero_mic>
+    </mac_aero_mic>i
+
+    <!-- Turbulent Mountain Stress -->
+    <tms inherit="atm_proc_base"/>
 
     <physics inherit="atm_proc_group">
       <atm_procs_list>(mac_aero_mic,rrtmgp)</atm_procs_list>

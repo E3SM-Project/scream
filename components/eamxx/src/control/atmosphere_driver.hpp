@@ -88,6 +88,10 @@ public:
   // them setup internal SurfaceCoupling data.
   void setup_surface_coupling_processes() const;
 
+  // If TMS process exists, creates link to SHOC for applying
+  // tms' surface drag coefficient.
+  void setup_shoc_tms_links();
+
   // Zero out precipitation flux
   void set_precipitation_fields_to_zero();
 

@@ -38,6 +38,7 @@ set (SCREAM_LIBS
      cld_fraction
      spa
      diagnostics
+     tms
 )
 
 # Create atm lib
