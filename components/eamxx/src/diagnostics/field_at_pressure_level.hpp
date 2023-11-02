@@ -49,7 +49,7 @@ protected:
   Field               m_mask_field;
   Real                m_pressure_level;
   int                 m_num_levs;
-  Real                m_mask_val;
+  float               m_mask_val;
 
 }; // class FieldAtPressureLevel
 

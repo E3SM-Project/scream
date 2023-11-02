@@ -38,7 +38,10 @@ FieldAtPressureLevel (const ekat::Comm& comm, const ekat::ParameterList& params)
   m_p_tgt = view_1d<Pack1>("",1);
   Kokkos::deep_copy(m_p_tgt, m_pressure_level);
 
-  m_mask_val = m_params.get<double>("mask_value",Real(std::numeric_limits<float>::max()/10.0));
+  m_mask_val = constants::DefaultFillValue<float>().value;
+  if (m_params.isParameter("mask_value")) {
+    m_mask_val = static_cast<float>(m_params.get<double>("mask_value"));
+  }
 
   m_diag_name = m_field_name + "_at_" + location;
 }

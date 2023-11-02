@@ -1258,8 +1258,10 @@ create_diagnostic (const std::string& diag_field_name) {
       auto units_start = tokens[1].find_first_not_of("0123456789.");
       auto units = tokens[1].substr(units_start);
       if (units=="m") {
+        m_track_avg_cnt = true;
         diag_name = "FieldAtHeight";
       } else if (units=="mb" or units=="Pa" or units=="hPa") {
+        m_track_avg_cnt = true;
         diag_name = "FieldAtPressureLevel";
       } else {
         EKAT_ERROR_MSG ("Error! Invalid units x for 'field_at_Nx' diagnostic.\n");
