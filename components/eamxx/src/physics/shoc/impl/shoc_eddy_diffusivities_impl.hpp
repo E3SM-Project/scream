@@ -65,7 +65,7 @@ void Functions<S,D>::eddy_diffusivities(
     // use modified coefficients of tkh and tk that are primarily based on shear
     // production and SHOC length scale, to promote mixing within the PBL and to a
     // height slighty above to ensure smooth transition.
-    const Smask condition = (zt_grid(k) < pblh+pbl_trans) && (z_over_L > 0);
+    const Smask condition = (zt_grid(k) < 0.0) ; //pblh+pbl_trans) && (z_over_L > 0);
     tkh(k).set(condition, Ckh_s*ekat::square(shoc_mix(k))*ekat::sqrt(sterm_zt(k)));
     tk(k).set(condition,  Ckm_s*ekat::square(shoc_mix(k))*ekat::sqrt(sterm_zt(k)));
 
