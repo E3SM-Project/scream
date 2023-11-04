@@ -80,7 +80,7 @@ module micro_p3
   real(rtype), protected, dimension(150) :: mu_r_table_vals
 
   ! lookup table values for rain number- and mass-weighted fallspeeds and ventilation parameters
-  real(rtype), protected, dimension(300,10) :: vn_table_vals,vm_table_vals,revap_table_vals
+  real(rtype), protected, dimension(9000,10) :: vn_table_vals,vm_table_vals,revap_table_vals
 
   type realptr
      real(rtype), dimension(:), pointer :: p
@@ -191,7 +191,7 @@ contains
     ! This can be called after p3_init_b.
     implicit none
     real(rtype), dimension(150), intent(out) :: mu_r_user
-    real(rtype), dimension(300,10), intent(out) :: vn_user, vm_user, revap_user
+    real(rtype), dimension(9000,10), intent(out) :: vn_user, vm_user, revap_user
     mu_r_user(:) = mu_r_table_vals(:)
     revap_user(:,:) = revap_table_vals(:,:)
     vn_user(:,:) = vn_table_vals(:,:)
@@ -205,7 +205,7 @@ contains
     ! This can be called instead of p3_init_b.
     implicit none
     real(rtype), dimension(150), intent(in) :: mu_r_user
-    real(rtype), dimension(300,10), intent(in) :: vn_user, vm_user, revap_user
+    real(rtype), dimension(9000,10), intent(in) :: vn_user, vm_user, revap_user
     mu_r_table_vals(:) = mu_r_user(:)
     revap_table_vals(:,:) = revap_user(:,:)
     vn_table_vals(:,:) = vn_user(:,:)
@@ -279,13 +279,9 @@ contains
        mu_r = mu_r_constant
 
        ! loop over number-weighted mean size
-       meansize_loop: do jj = 1,300
+       meansize_loop: do jj = 1,9000
 
-          if (jj.le.20) then
-             dm = (real(jj)*10._rtype-5._rtype)*1.e-6_rtype      ! mean size [m]
-          elseif (jj.gt.20) then
-             dm = (real(jj-20)*30._rtype+195._rtype)*1.e-6_rtype ! mean size [m]
-          endif
+          dm = real(jj, rtype) * 1.e-6_rtype
 
           lamr = (mu_r+1._rtype)/dm
 
@@ -1720,7 +1716,7 @@ contains
   !PMC removed find_lookupTable_indices_2 because it was used for multi-category
 
   !======================================================================================!
-  subroutine find_lookupTable_indices_3(dumii,dumjj,dum1,rdumii,rdumjj,inv_dum3,mu_r,lamr)
+  subroutine find_lookupTable_indices_3(dumii,dumjj,dum1,rdumii,rdumjj,mu_r,lamr)
 
     !------------------------------------------------------------------------------------------!
     ! Finds indices in rain lookup table (3)
@@ -1730,30 +1726,15 @@ contains
 
     ! arguments:
     integer, intent(out) :: dumii,dumjj
-    real(rtype),    intent(out) :: dum1,rdumii,rdumjj,inv_dum3
+    real(rtype),    intent(out) :: dum1,rdumii,rdumjj
     real(rtype),    intent(in)  :: mu_r,lamr
 
     !------------------------------------------------------------------------------------------!
 
     ! find location in scaled mean size space
     dum1 = (mu_r+1._rtype)/lamr
-    if (dum1.le.195.e-6_rtype) then
-       inv_dum3  = 0.1_rtype
-       rdumii = (dum1*1.e6_rtype+5._rtype)*inv_dum3
-       rdumii = max(rdumii, 1._rtype)
-       rdumii = min(rdumii,20._rtype)
-       dumii  = int(rdumii)
-       dumii  = max(dumii, 1)
-       dumii  = min(dumii,20)
-    elseif (dum1.gt.195.e-6_rtype) then
-       inv_dum3  = thrd*0.1_rtype            !i.e. 1/30
-       rdumii = (dum1*1.e+6_rtype-195._rtype)*inv_dum3 + 20._rtype
-       rdumii = max(rdumii, 20._rtype)
-       rdumii = min(rdumii,300._rtype)
-       dumii  = int(rdumii)
-       dumii  = max(dumii, 20)
-       dumii  = min(dumii,299)
-    endif
+    rdumii = min(max(dum1 * 1.e6_rtype, 1._rtype), 20._rtype)
+    dumii = min(max(int(rdumii), 1), 20)
 
     ! find location in mu_r space
     rdumjj = mu_r+1._rtype
@@ -2376,10 +2357,10 @@ epsr,epsc)
 
    integer     :: dumii, dumjj
    real(rtype) :: rdumii, rdumjj
-   real(rtype) :: dum, dum1, dum2, inv_dum3
+   real(rtype) :: dum, dum1, dum2
 
    if (qr_incld.ge.qsmall) then
-      call find_lookupTable_indices_3(dumii,dumjj,dum1,rdumii,rdumjj,inv_dum3,mu_r,lamr)
+      call find_lookupTable_indices_3(dumii,dumjj,dum1,rdumii,rdumjj,mu_r,lamr)
       !interpolate value at mu_r
       dum1 = revap_table_vals(dumii,dumjj)+(rdumii-real(dumii))*                            &
              (revap_table_vals(dumii+1,dumjj)-revap_table_vals(dumii,dumjj))
@@ -3877,14 +3858,14 @@ subroutine compute_rain_fall_velocity(qr_incld, rhofacr, nr_incld, mu_r, lamr, V
    real(rtype), intent(out) :: V_qr
    real(rtype), intent(out) :: V_nr
 
-   real(rtype) :: tmp1, tmp2, dum1, dum2, inv_dum3, rdumii, rdumjj
+   real(rtype) :: tmp1, tmp2, dum1, dum2, rdumii, rdumjj
    integer :: dumii, dumjj
 
    !Compute Vq, Vn:
 
    call get_rain_dsd2(qr_incld,nr_incld,mu_r,lamr,tmp1,tmp2)
 
-   call find_lookupTable_indices_3(dumii,dumjj,dum1,rdumii,rdumjj,inv_dum3,mu_r,lamr)
+   call find_lookupTable_indices_3(dumii,dumjj,dum1,rdumii,rdumjj,mu_r,lamr)
 
    !mass-weighted fall speed:
 

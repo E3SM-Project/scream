@@ -26,11 +26,11 @@ contains
   subroutine init_tables_from_f90_c(vn_table_vals_c, vm_table_vals_c, revap_table_vals_c, mu_table_c) bind(C)
     use micro_p3, only: p3_get_tables
 
-    real(kind=c_real), intent(inout), dimension(300,10) :: vn_table_vals_c, vm_table_vals_c, revap_table_vals_c
+    real(kind=c_real), intent(inout), dimension(9000,10) :: vn_table_vals_c, vm_table_vals_c, revap_table_vals_c
     real(kind=c_real), intent(inout), dimension(150)    :: mu_table_c
 
     real(kind=c_real), dimension(150), target :: mu_table_f
-    real(kind=c_real), dimension(300,10), target :: vn_table_vals_f, vm_table_vals_f, revap_table_vals_f
+    real(kind=c_real), dimension(9000,10), target :: vn_table_vals_f, vm_table_vals_f, revap_table_vals_f
 
     call p3_get_tables(mu_table_f, revap_table_vals_f, vn_table_vals_f, vm_table_vals_f)
     vn_table_vals_c(:,:)    = vn_table_vals_f(:,:)
@@ -54,7 +54,7 @@ contains
     logical(kind=c_bool), intent(in) :: write_tables
 
     real(kind=c_real), dimension(150), target :: mu_r_table_vals
-    real(kind=c_real), dimension(300,10), target :: vn_table_vals, vm_table_vals, revap_table_vals
+    real(kind=c_real), dimension(9000,10), target :: vn_table_vals, vm_table_vals, revap_table_vals
 
     character(len=256), pointer :: lookup_file_dir
     character(kind=c_char, len=256) :: mu_r_filename, revap_filename, vn_filename, vm_filename
@@ -70,9 +70,9 @@ contains
     ok = .false.
 
     call append_precision(mu_r_filename, SCREAM_DATA_DIR//"/tables/mu_r_table_vals.dat")
-    call append_precision(revap_filename, SCREAM_DATA_DIR//"/tables/revap_table_vals.dat")
-    call append_precision(vn_filename, SCREAM_DATA_DIR//"/tables/vn_table_vals.dat")
-    call append_precision(vm_filename, SCREAM_DATA_DIR//"/tables/vm_table_vals.dat")
+    call append_precision(revap_filename, SCREAM_DATA_DIR//"/tables/revap_table_vals_res1micron.dat")
+    call append_precision(vn_filename, SCREAM_DATA_DIR//"/tables/vn_table_vals_res1micron.dat")
+    call append_precision(vm_filename, SCREAM_DATA_DIR//"/tables/vm_table_vals_res1micron.dat")
 
     if (write_tables) then
        call p3_init_b()

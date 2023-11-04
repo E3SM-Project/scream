@@ -102,7 +102,7 @@ struct Constants
   static constexpr Scalar stebol        = 5.67e-8; // Stefan-Boltzmann's constant (W/m^2/K^4)
 
   // Table dimension constants
-  static constexpr int VTABLE_DIM0    = 300;
+  static constexpr int VTABLE_DIM0    = 9000;
   static constexpr int VTABLE_DIM1    = 10;
   static constexpr int MU_R_TABLE_DIM = 150;
 
