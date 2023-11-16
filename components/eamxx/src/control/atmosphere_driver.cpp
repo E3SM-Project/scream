@@ -226,13 +226,14 @@ void AtmosphereDriver::create_grids()
 
   m_atm_logger->debug("  [EAMxx] Grids created.");
 
-  // If TMS process is enabled, SHOC needs to know to request tms' surface drag coefficient
-  // as a required field during the set_grid() call below, but SHOC does not have knowledge
-  // of other processes. The driver needs propgate this information to SHOC.
-  if(m_atm_process_group->has_process("tms") &&
-     m_atm_process_group->has_process("shoc")) {
-    setup_shoc_tms_links();
-  }
+//ASD  // If TMS process is enabled, SHOC needs to know to request tms' surface drag coefficient
+//ASD  // as a required field during the set_grid() call below, but SHOC does not have knowledge
+//ASD  // of other processes. The driver needs propgate this information to SHOC.
+//ASD  if(m_atm_process_group->has_process("tms") &&
+//ASD     m_atm_process_group->has_process("shoc")) {
+//ASD    setup_shoc_tms_links();
+//ASD    m_atm_logger->info("  [EAMxx] TMS links set in SHOC.");
+//ASD  }
 
   // Set the grids in the processes. Do this by passing the grids manager.
   // Each process will grab what they need
@@ -316,18 +317,18 @@ void AtmosphereDriver::setup_surface_coupling_processes () const
   }
 }
 
-void AtmosphereDriver::setup_shoc_tms_links ()
-{
-  EKAT_REQUIRE_MSG(m_atm_process_group->has_process("tms"),
-                   "Error! Attempting to setup link between "
-                   "SHOC and TMS, but TMS is not defined.\n");
-  EKAT_REQUIRE_MSG(m_atm_process_group->has_process("shoc"),
-                   "Error! Attempting to setup link between "
-                   "SHOC and TMS, but SHOC is not defined.\n");
-
-  auto shoc_process = m_atm_process_group->get_process_nonconst("shoc");
-  shoc_process->get_params().set<bool>("apply_tms", true);
-}
+//ASDvoid AtmosphereDriver::setup_shoc_tms_links ()
+//ASD{
+//ASD  EKAT_REQUIRE_MSG(m_atm_process_group->has_process("tms"),
+//ASD                   "Error! Attempting to setup link between "
+//ASD                   "SHOC and TMS, but TMS is not defined.\n");
+//ASD  EKAT_REQUIRE_MSG(m_atm_process_group->has_process("shoc"),
+//ASD                   "Error! Attempting to setup link between "
+//ASD                   "SHOC and TMS, but SHOC is not defined.\n");
+//ASD
+//ASD  auto shoc_process = m_atm_process_group->get_process_nonconst("shoc");
+//ASD  shoc_process->get_params().set<bool>("apply_tms", true);
+//ASD}
 
 void AtmosphereDriver::set_precipitation_fields_to_zero ()
 {

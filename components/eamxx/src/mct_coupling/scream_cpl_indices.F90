@@ -87,6 +87,8 @@ module scream_cpl_indices
     import_field_names(12) = 'surf_mom_flux'
     import_field_names(13) = 'surf_sens_flux'
     import_field_names(14) = 'surf_evap'
+    import_field_names(15) = 'ocnfrac'
+    import_field_names(16) = 'landfrac'
 
     ! CPL indices
     import_cpl_indices(1)  = mct_avect_indexra(x2a,'Sx_avsdr')
@@ -103,6 +105,8 @@ module scream_cpl_indices
     import_cpl_indices(12) = mct_avect_indexra(x2a,'Faxx_tauy')
     import_cpl_indices(13) = mct_avect_indexra(x2a,'Faxx_sen')
     import_cpl_indices(14) = mct_avect_indexra(x2a,'Faxx_evap')
+    import_cpl_indices(15) = mct_avect_indexra(x2a,'Sf_ofrac')
+    import_cpl_indices(16) = mct_avect_indexra(x2a,'Sf_lfrac')
 
     ! Vector components
     import_vector_components(11) = 0

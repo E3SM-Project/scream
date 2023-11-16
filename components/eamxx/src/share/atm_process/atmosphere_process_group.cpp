@@ -141,6 +141,41 @@ AtmosphereProcessGroup (const ekat::Comm& comm, const ekat::ParameterList& param
   }
 }
 
+
+std::shared_ptr<AtmosphereProcessGroup::atm_proc_type>
+AtmosphereProcessGroup::get_process_nonconst (const std::string& name) const {
+  EKAT_REQUIRE_MSG(has_process(name), "Error! Process "+name+" requested from group "+this->name()+
+                                      " but is not constained in this group.\n");
+
+  std::shared_ptr<atm_proc_type> return_process;
+  for (auto& process: m_atm_processes) {
+    if (process->type() == AtmosphereProcessType::Group) {
+      const auto* group = dynamic_cast<const AtmosphereProcessGroup*>(process.get());
+      return group->get_process_nonconst(name);
+    } else if (process->name() == name) {
+        return_process = process;
+        break;
+    }
+  }
+  return return_process;
+}
+
+bool AtmosphereProcessGroup::has_process(const std::string& name) const {
+  for (auto& process: m_atm_processes) {
+    if (process->type() == AtmosphereProcessType::Group) {
+      const auto* group = dynamic_cast<const AtmosphereProcessGroup*>(process.get());
+      if (group->has_process(name)) {
+        return true;
+      }
+    } else {
+      if (process->name() == name) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void AtmosphereProcessGroup::set_grids (const std::shared_ptr<const GridsManager> grids_manager) {
 
   // The atm process group (APG) simply 'concatenates' required/computed

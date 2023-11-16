@@ -524,6 +524,9 @@ protected:
 
   void initialize_impl (const RunType run_type);
 
+  // Apply TMS drag coeff to shoc_main inputs (if necessary)
+  void apply_turbulent_mountain_stress ();
+
 protected:
 
   void run_impl        (const double dt);

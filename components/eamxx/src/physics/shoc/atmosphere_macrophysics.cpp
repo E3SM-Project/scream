@@ -71,6 +71,7 @@ void SHOCMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids
 
   add_field<Updated> ("T_mid",            scalar3d_layout_mid, K,       grid_name, ps);
   add_field<Updated> ("qv",               scalar3d_layout_mid, Qunit,   grid_name, "tracers", ps);
+  add_field<Required>("surf_drag_coeff_tms", scalar2d_layout_col,  kg/s/m2, grid_name);
 
   // Input variables
   add_field<Required>("p_mid",          scalar3d_layout_mid, Pa,    grid_name, ps);
@@ -457,6 +458,8 @@ void SHOCMacrophysics::run_impl (const double dt)
                        shoc_preprocess);
   Kokkos::fence();
 
+  apply_turbulent_mountain_stress();
+
   // For now set the host timestep to the shoc timestep. This forces
   // number of SHOC timesteps (nadv) to be 1.
   // TODO: input parameter?
@@ -484,6 +487,26 @@ void SHOCMacrophysics::run_impl (const double dt)
 void SHOCMacrophysics::finalize_impl()
 {
   // Do nothing
+}
+// =========================================================================================
+void SHOCMacrophysics::apply_turbulent_mountain_stress()
+{
+  auto surf_drag_coeff_tms = get_field_in("surf_drag_coeff_tms").get_view<const Real*>();
+  auto horiz_winds         = get_field_in("horiz_winds").get_view<const Spack***>();
+
+  auto rrho_i   = m_buffer.rrho_i;
+  auto upwp_sfc = m_buffer.upwp_sfc;
+  auto vpwp_sfc = m_buffer.vpwp_sfc;
+
+  const int nlev_v  = (m_num_levs-1)/Spack::n;
+  const int nlev_p  = (m_num_levs-1)%Spack::n;
+  const int nlevi_v = m_num_levs/Spack::n;
+  const int nlevi_p = m_num_levs%Spack::n;
+
+  Kokkos::parallel_for("apply_tms", KT::RangePolicy(0, m_num_cols), KOKKOS_LAMBDA (const int i) {
+    upwp_sfc(i) -= surf_drag_coeff_tms(i)*horiz_winds(i,0,nlev_v)[nlev_p]/rrho_i(i,nlevi_v)[nlevi_p];
+    vpwp_sfc(i) -= surf_drag_coeff_tms(i)*horiz_winds(i,1,nlev_v)[nlev_p]/rrho_i(i,nlevi_v)[nlevi_p];
+  });
 }
 // =========================================================================================
 
