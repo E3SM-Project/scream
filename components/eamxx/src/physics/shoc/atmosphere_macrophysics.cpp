@@ -491,6 +491,10 @@ void SHOCMacrophysics::finalize_impl()
 // =========================================================================================
 void SHOCMacrophysics::apply_turbulent_mountain_stress()
 {
+  if (m_is_first_step) {
+    printf("[EAMxx] SHOC run - We are applying turbulent mountain stress (TMS).  Will suppress further msgs of this sort\n");
+    m_is_first_step = false;
+  }
   auto surf_drag_coeff_tms = get_field_in("surf_drag_coeff_tms").get_view<const Real*>();
   auto horiz_winds         = get_field_in("horiz_winds").get_view<const Spack***>();
 

@@ -574,6 +574,9 @@ protected:
   ekat::WorkspaceManager<Spack, KT::Device> workspace_mgr;
 
   std::shared_ptr<const AbstractGrid>   m_grid;
+
+  // Just to make sure we are using TMS in this branch
+  bool m_is_first_step = true;
 }; // class SHOCMacrophysics
 
 } // namespace scream
