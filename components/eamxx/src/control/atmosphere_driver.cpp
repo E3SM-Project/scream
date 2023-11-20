@@ -156,6 +156,7 @@ init_scorpio(const int atm_id)
 void AtmosphereDriver::
 init_time_stamps (const util::TimeStamp& run_t0, const util::TimeStamp& case_t0)
 {
+  m_atm_logger->info("  [EAMxx] Version: Process Impacts Tests - Cloud Tuning");
   m_atm_logger->info("  [EAMxx] Run  start time stamp: " + run_t0.to_string());
   m_atm_logger->info("  [EAMxx] Case start time stamp: " + case_t0.to_string());
 
