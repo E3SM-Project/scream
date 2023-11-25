@@ -1,8 +1,6 @@
-from utils import expect, run_cmd_no_fail, ensure_psutil
+from utils import expect, run_cmd_no_fail
 
 import os, sys, pathlib
-ensure_psutil()
-import psutil
 
 # MACHINE -> (env_setup,                      # list of shell commands to set up scream-approved env
 #             compilers,                      # list of compilers [CXX, F90, C]
@@ -161,23 +159,13 @@ def get_mach_baseline_root_dir(machine):
     return MACHINE_METADATA[machine][3]
 
 ###############################################################################
-def logical_cores_per_physical_core():
-###############################################################################
-    return psutil.cpu_count() // psutil.cpu_count(logical=False)
-
-###############################################################################
-def get_available_cpu_count(logical=True):
+def get_available_cpu_count():
 ###############################################################################
     """
-    Get number of CPUs available to this process and its children. logical=True
-    will include hyperthreads, logical=False will return only physical cores
+    Get number of logical CPUs available to this process and its children, i.e.,
+    return number of CPUs available including hyperthreads.
     """
-    affinity_len = len(psutil.Process().cpu_affinity())
-    if not logical:
-        hyperthread_ratio = logical_cores_per_physical_core()
-        return int(affinity_len / hyperthread_ratio)
-    else:
-        return affinity_len
+    return len(os.sched_getaffinity(0))
 
 ###############################################################################
 def get_mach_compilation_resources():
