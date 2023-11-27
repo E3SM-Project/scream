@@ -503,7 +503,10 @@ end function bfb_expm1
       !    prescribe that value
 
           if (do_prescribed_CCN) then
-             nc(k) = max(nc(k),nccn_prescribed(k))
+             ! nccn_prescribed is in #/cm3, so needs to be converted
+             ! *1e6: #/cm3 --> #/m3
+             ! *inv_rho: #/m3 --> #/kg 
+             nc(k) = max(nc(k),nccn_prescribed(k)*1.0e6_rtype*inv_rho(k))
           else if (do_predict_nc) then
              nc(k) = max(nc(k) + nc_nuceat_tend(k) * dt,0.0_rtype)
           else

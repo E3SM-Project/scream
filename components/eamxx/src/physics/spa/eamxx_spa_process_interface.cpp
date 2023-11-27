@@ -32,6 +32,9 @@ void SPA::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   Q.set_string("kg/kg");
   auto nondim = Units::nondimensional();
 
+  // Define cc (cubic centimeter) units
+  auto cc = ( centi * m ) * ( centi * m ) * ( centi * m )
+
   m_grid = grids_manager->get_grid("Physics");
   const auto& grid_name = m_grid->name();
   m_num_cols = m_grid->get_num_local_dofs(); // Number of columns on this rank
@@ -54,7 +57,7 @@ void SPA::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   add_field<Required>("p_mid"      , scalar3d_layout_mid, Pa,     grid_name, ps);
 
   // Set of fields used strictly as output
-  add_field<Computed>("nccn",   scalar3d_layout_mid,    1/kg,   grid_name,ps);
+  add_field<Computed>("nccn",   scalar3d_layout_mid,    1/cc,   grid_name,ps);
   add_field<Computed>("aero_g_sw",      scalar3d_swband_layout, nondim, grid_name,ps);
   add_field<Computed>("aero_ssa_sw",    scalar3d_swband_layout, nondim, grid_name,ps);
   add_field<Computed>("aero_tau_sw",    scalar3d_swband_layout, nondim, grid_name,ps);

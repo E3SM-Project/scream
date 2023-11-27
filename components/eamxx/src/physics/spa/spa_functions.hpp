@@ -108,10 +108,10 @@ struct SPAFunctions
     int nlwbands;
 
     view_2d<Spack> CCN3;        // CCN concentration at S=0.1: units = #/cm3, dimensions = (ncols,nlevs)
-    view_3d<Spack> AER_G_SW;    // AER_G_SW:   units = #/cm3, dimensions = (ncols,nswbands,nlevs)
-    view_3d<Spack> AER_SSA_SW;  // AER_SSA_SW: units = #/cm3, dimensions = (ncols,nswbands,nlevs)
-    view_3d<Spack> AER_TAU_SW;  // AER_TAU_SW: units = #/cm3, dimensions = (ncols,nswbands,nlevs)
-    view_3d<Spack> AER_TAU_LW;  // AER_TAU_LW: units = #/cm3, dimensions = (ncols,nlwbands,nlevs)
+    view_3d<Spack> AER_G_SW;    // AER_G_SW:   units = 1, dimensions = (ncols,nswbands,nlevs)
+    view_3d<Spack> AER_SSA_SW;  // AER_SSA_SW: units = 1, dimensions = (ncols,nswbands,nlevs)
+    view_3d<Spack> AER_TAU_SW;  // AER_TAU_SW: units = 1, dimensions = (ncols,nswbands,nlevs)
+    view_3d<Spack> AER_TAU_LW;  // AER_TAU_LW: units = 1, dimensions = (ncols,nlwbands,nlevs)
   }; // SPAData
 
   struct SPAInput {
