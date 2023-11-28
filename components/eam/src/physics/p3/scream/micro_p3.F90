@@ -410,8 +410,14 @@ contains
       !    prescribe that value
 
           if (do_prescribed_CCN) then
-             !nccn_prescribed is an in-cloud value so make it grid average in this assignment
-             nc(k) = max(nc(k),nccn_prescribed(k)/inv_cld_frac_l(k))
+             ! nccn_prescribed is in #/cm3, so needs to be converted
+             ! *1e6: #/cm3 --> #/m3
+             ! *inv_rho: #/m3 --> #/kg 
+             ! /inv_cld_frac_l: to guard against unrealistiically inflating nc inside P3 ---
+             !                  CCN is in-grid, but realistically it is not related to 
+             !                  "in-cloud" properties, thus to retain its value everywhere,
+             !                  multiply here by the cloud fraction to avoid inflating it inside P3
+             nc(k) = max(nc(k),nccn_prescribed(k)*1.0e6_rtype*inv_rho(k)/inv_cld_frac_l(k))
           else if (do_predict_nc) then
              nc(k) = max(nc(k) + nc_nuceat_tend(k) * dt,0.0_rtype)
           else
