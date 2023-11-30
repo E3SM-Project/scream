@@ -82,8 +82,8 @@ VerticalRemapper (const grid_ptr_type& src_grid,
 
 
   // Set the LEV and ILEV vertical profiles for interpolation from
-  register_vertical_source_field(lev_prof,"mid");
-  register_vertical_source_field(ilev_prof,"int");
+  register_vertical_source_field(lev_prof);
+  register_vertical_source_field(ilev_prof);
 
   // Gather the pressure level data for vertical remapping
   set_pressure_levels(map_file);
@@ -176,33 +176,18 @@ set_pressure_levels(const std::string& map_file)
 }
 
 void VerticalRemapper::
-register_vertical_source_field(const Field& src, const std::string& mode)
+register_vertical_source_field(const Field& src)
 {
   using namespace ShortFieldTagsNames;
-  EKAT_REQUIRE_MSG(mode=="mid" || mode=="int","Error: VerticalRemapper::register_vertical_source_field,"
-    "mode arg must be 'mid' or 'int'\n");
 
-  auto src_fid = src.get_header().get_identifier();
-  if (mode=="mid") {
-    auto layout = src_fid.get_layout();
-    auto name   = src_fid.name();
-    EKAT_REQUIRE_MSG(ekat::contains(std::vector<FieldTag>{LEV},layout.tags().back()),
-      "Error::VerticalRemapper::register_vertical_source_field,\n"
-      "mode = 'mid' expects a layour ending with LEV tag.\n"
-      " - field name  : " + name + "\n"
-      " - field layout: " + to_string(layout) + "\n");
-    EKAT_REQUIRE_MSG(src.is_allocated(), "Error! LEV source field is not yet allocated.\n");
+  EKAT_REQUIRE_MSG(src.is_allocated(),
+      "Error! Vertical source field is not yet allocated.\n");
+
+  const auto& layout = src.get_header().get_identifier().get_layout();
+  if (layout.tags().back()==LEV) {
     m_src_mid = src;
     m_mid_set = true; 
-   } else {  // mode=="int"
-    auto layout = src_fid.get_layout();
-    auto name   = src_fid.name();
-    EKAT_REQUIRE_MSG(ekat::contains(std::vector<FieldTag>{ILEV},layout.tags().back()),
-      "Error::VerticalRemapper::register_vertical_source_field,\n"
-      "mode = 'int' expects a layour ending with ILEV tag.\n"
-      " - field name  : " + name + "\n"
-      " - field layout: " + to_string(layout) + "\n");
-    EKAT_REQUIRE_MSG(src.is_allocated(), "Error! ILEV source field is not yet allocated.\n");
+   } else {
     m_src_int = src;
     m_int_set = true; 
   }
