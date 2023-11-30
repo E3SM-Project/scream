@@ -27,6 +27,8 @@ FieldLayout::FieldLayout (const std::vector<FieldTag>& tags,
   for (int idim=0; idim<m_rank; ++idim) {
     set_dimension(idim,dims[idim]);
   }
+
+  compute_type ();
 }
 
 bool FieldLayout::is_vector_layout () const {
@@ -86,7 +88,7 @@ void FieldLayout::set_dimension (const int idim, const int dimension) {
   Kokkos::deep_copy(m_extents,extents_h);
 }
 
-LayoutType FieldLayout::type () const {
+void FieldLayout::compute_type () {
   using namespace ShortFieldTagsNames;
 
   using ekat::erase;
@@ -113,33 +115,30 @@ LayoutType FieldLayout::type () const {
     // Remove the column tag
     erase(tags,COL);
   } else if (tags.size()==0) {
-    return LayoutType::Scalar0D;
+    m_type = LayoutType::Scalar0D; return;
   } else if (tags.size()==1 and tags[0]==CMP) {
-    return LayoutType::Vector0D;
+    m_type = LayoutType::Vector0D; return;
   } else if (tags.size()==1 and nvlevs==1) {
-    return LayoutType::Scalar1D;
+    m_type = LayoutType::Scalar1D; return;
   } else if (tags.size()==2 and ncomps==1 and nvlevs==1) {
-    return LayoutType::Vector1D;
+    m_type = LayoutType::Vector1D; return;
   } else {
     // Not a supported layout.
-    return LayoutType::Invalid;
+    m_type = LayoutType::Invalid; return;
   }
-
-  // Start from undefined/invalid
-  LayoutType result = LayoutType::Invalid;
 
   // Get the size of what's left
   const auto size = tags.size();
   switch (size) {
     case 0:
-      result = LayoutType::Scalar2D;
+      m_type = LayoutType::Scalar2D;
       break;
     case 1:
       // The only tag left should be 'CMP', 'TL', or 'LEV'/'ILEV'
       if (tags[0]==CMP || tags[0]==TL) {
-        result = LayoutType::Vector2D;
+        m_type = LayoutType::Vector2D;
       } else if (tags[0]==LEV || tags[0]==ILEV) {
-        result = LayoutType::Scalar3D;
+        m_type = LayoutType::Scalar3D;
       }
       break;
     case 2:
@@ -147,9 +146,9 @@ LayoutType FieldLayout::type () const {
       //  1) <CMP|TL,LEV|ILEV>
       //  2) <TL,CMP>
       if ( (tags[1]==LEV || tags[1]==ILEV) && (tags[0]==CMP || tags[0]==TL)) {
-        result = LayoutType::Vector3D;
+        m_type = LayoutType::Vector3D;
       } else if (tags[0]==TL && tags[1]==CMP ) {
-        result = LayoutType::Tensor2D;
+        m_type = LayoutType::Tensor2D;
       }
       break;
     case 3:
@@ -157,11 +156,12 @@ LayoutType FieldLayout::type () const {
       //  1) <TL,  CMP, LEV|ILEV>
       if ( tags[0]==TL && tags[1]==CMP &&
           (tags[2]==LEV || tags[2]==ILEV)) {
-        result = LayoutType::Tensor3D;
+        m_type = LayoutType::Tensor3D;
       }
+    default:
+      // If nothing worked, this type is not recognized
+      m_type = LayoutType::Invalid;
   }
-
-  return result;
 }
 
 std::string to_string (const FieldLayout& layout)

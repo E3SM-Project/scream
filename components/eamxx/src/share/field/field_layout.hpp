@@ -76,7 +76,7 @@ public:
 
   // ----- Getters ----- //
 
-  LayoutType type () const;
+  LayoutType type () const { return m_type; }
 
   // Name and layout informations
   const std::vector<FieldTag>& tags () const { return m_tags; }
@@ -111,11 +111,14 @@ public:
   void set_dimension  (const int idim, const int dimension);
 
 protected:
+  void compute_type ();
 
   int                   m_rank;
   std::vector<FieldTag> m_tags;
   std::vector<int>      m_dims;
   extents_type          m_extents;
+
+  LayoutType            m_type;
 };
 
 bool operator== (const FieldLayout& fl1, const FieldLayout& fl2);
