@@ -104,13 +104,13 @@ create_src_layout (const FieldLayout& tgt_layout) const
       src = m_src_grid->get_2d_scalar_layout();
       break;
     case LayoutType::Vector2D:
-      src = m_src_grid->get_2d_vector_layout(CMP,vec_dim);
+      src = m_src_grid->get_2d_vector_layout(vec_dim);
       break;
     case LayoutType::Scalar3D:
       src = m_src_grid->get_3d_scalar_layout(midpoints);
       break;
     case LayoutType::Vector3D:
-      src = m_src_grid->get_3d_vector_layout(midpoints,CMP,vec_dim);
+      src = m_src_grid->get_3d_vector_layout(midpoints,vec_dim);
       break;
     default:
       EKAT_ERROR_MSG ("Layout not supported by VerticalRemapper: " + e2str(lt) + "\n");
@@ -130,13 +130,13 @@ create_tgt_layout (const FieldLayout& src_layout) const
       tgt = m_tgt_grid->get_2d_scalar_layout();
       break;
     case LayoutType::Vector2D:
-      tgt = m_tgt_grid->get_2d_vector_layout(CMP,vec_dim);
+      tgt = m_tgt_grid->get_2d_vector_layout(vec_dim);
       break;
     case LayoutType::Scalar3D:
       tgt = m_tgt_grid->get_3d_scalar_layout(midpoints);
       break;
     case LayoutType::Vector3D:
-      tgt = m_tgt_grid->get_3d_vector_layout(midpoints,CMP,vec_dim);
+      tgt = m_tgt_grid->get_3d_vector_layout(midpoints,vec_dim);
       break;
     default:
       EKAT_ERROR_MSG ("Layout not supported by VerticalRemapper: " + e2str(lt) + "\n");
