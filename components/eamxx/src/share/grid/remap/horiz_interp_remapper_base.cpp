@@ -119,7 +119,7 @@ create_layout (const FieldLayout& fl_in,
                const grid_ptr_type& grid) const
 {
   using namespace ShortFieldTagsNames;
-  const auto type = get_layout_type(fl_in.tags());
+  const auto type = fl_in.type();
         auto fl_out = FieldLayout::invalid();
   const bool midpoints = fl_in.has_tag(LEV);
   const bool is3d = fl_in.has_tag(LEV) or fl_in.has_tag(ILEV);

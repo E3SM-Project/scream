@@ -107,7 +107,7 @@ create_layout (const FieldLayout& fl_in,
   //       between midpoints and interfaces: we're simply asking for a quantity
   //       at a given set of pressure levels. So we choose to have fl_out
   //       to *always* have LEV as vertical tag.
-  const auto lt = get_layout_type(fl_in.tags());
+  const auto lt = fl_in.type();
   auto fl_out = FieldLayout::invalid();
   switch (lt) {
     case LayoutType::Scalar0D: [[ fallthrough ]];
@@ -134,8 +134,8 @@ create_layout (const FieldLayout& fl_in,
       // NOTE: this also include Tensor3D. We don't really have any atm proc
       //       that needs to handle a tensor3d quantity, so no need to add it
       EKAT_ERROR_MSG (
-          "Layout not supported by VerticalRemapper.\n"
-          " - input layout: " + to_string(fl_in) + "\n");
+        "[VerticalRemapper] Error! Layout not supported by VerticalRemapper.\n"
+        " - input layout: " + to_string(fl_in) + "\n");
   }
   return fl_out;
 }
