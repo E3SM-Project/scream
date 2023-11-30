@@ -95,7 +95,7 @@ FieldLayout VerticalRemapper::
 create_src_layout (const FieldLayout& tgt_layout) const
 {
   using namespace ShortFieldTagsNames;
-  const auto lt = get_layout_type(tgt_layout.tags());
+  const auto lt = tgt_layout.type();
   auto src = FieldLayout::invalid();
   const bool midpoints = tgt_layout.has_tag(LEV);
   const int vec_dim = tgt_layout.is_vector_layout() ? tgt_layout.dim(CMP) : -1;
@@ -121,7 +121,7 @@ FieldLayout VerticalRemapper::
 create_tgt_layout (const FieldLayout& src_layout) const
 {
   using namespace ShortFieldTagsNames;
-  const auto lt = get_layout_type(src_layout.tags());
+  const auto lt = src_layout.type();
   auto tgt = FieldLayout::invalid();
   const bool midpoints = true; //src_layout.has_tag(LEV);
   const int vec_dim = src_layout.is_vector_layout() ? src_layout.dim(CMP) : -1;

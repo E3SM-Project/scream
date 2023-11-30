@@ -839,10 +839,8 @@ void AtmosphereOutput::register_views()
 
     // Now create and store a dev view to track the averaging count for this layout (if we are tracking)
     // We don't need to track average counts for files that are not tracking the time dim
-    const auto tags = layout.tags();
-    auto lt = get_layout_type(tags);
     if (m_add_time_dim && m_track_avg_cnt) {
-      std::string avg_cnt_name = "avg_count_" + e2str(lt);
+      std::string avg_cnt_name = "avg_count_" + e2str(layout.type());
       for (int ii=0; ii<layout.rank(); ++ii) {
         auto tag_name = m_io_grid->get_dim_name(layout.tag(ii));
         avg_cnt_name += "_" + tag_name;

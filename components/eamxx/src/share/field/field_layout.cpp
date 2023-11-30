@@ -30,21 +30,21 @@ FieldLayout::FieldLayout (const std::vector<FieldTag>& tags,
 }
 
 bool FieldLayout::is_vector_layout () const {
-  const auto lt = get_layout_type (m_tags);
+  const auto lt = type();
   return lt==LayoutType::Vector2D || lt==LayoutType::Vector3D;
 }
 
 int FieldLayout::get_vector_dim () const {
   EKAT_REQUIRE_MSG (is_vector_layout(),
       "Error! 'get_vector_dim' available only for vector layouts.\n"
-      "       Current layout: " + e2str(get_layout_type(m_tags)) + "\n");
+      "       Current layout: " + e2str(type()) + "\n");
 
   using namespace ShortFieldTagsNames;
   int idim = -1;
   if (has_tag(CMP)) {
     idim = std::distance(m_tags.begin(),ekat::find(m_tags,CMP));
   } else {
-    EKAT_ERROR_MSG ("Error! Unrecognized layout for a '" + e2str(get_layout_type(m_tags)) + "' quantity.\n");
+    EKAT_ERROR_MSG ("Error! Unrecognized layout for a '" + e2str(type()) + "' quantity.\n");
   }
   return idim;
 }
@@ -86,21 +86,19 @@ void FieldLayout::set_dimension (const int idim, const int dimension) {
   Kokkos::deep_copy(m_extents,extents_h);
 }
 
-LayoutType get_layout_type (const std::vector<FieldTag>& field_tags) {
-  using ekat::erase;
-  using ekat::count;
+LayoutType FieldLayout::type () const {
   using namespace ShortFieldTagsNames;
 
-  auto tags = field_tags;
+  using ekat::erase;
+  using ekat::count;
+
+  auto tags = this->tags();
 
   const int n_element = count(tags,EL);
   const int n_column  = count(tags,COL);
   const int ngp       = count(tags,GP);
   const int nvlevs    = count(tags,LEV) + count(tags,ILEV);
   const int ncomps    = count(tags,CMP);
-
-  // Start from undefined/invalid
-  LayoutType result = LayoutType::Invalid;
 
   if (n_element==1 && ngp==2 && n_column==0) {
     // A Dynamics layout
@@ -124,8 +122,11 @@ LayoutType get_layout_type (const std::vector<FieldTag>& field_tags) {
     return LayoutType::Vector1D;
   } else {
     // Not a supported layout.
-    return result;
+    return LayoutType::Invalid;
   }
+
+  // Start from undefined/invalid
+  LayoutType result = LayoutType::Invalid;
 
   // Get the size of what's left
   const auto size = tags.size();

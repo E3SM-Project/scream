@@ -37,9 +37,8 @@ public:
   FieldLayout create_src_layout (const FieldLayout& tgt) const override {
     using namespace ShortFieldTagsNames;
 
-    auto type = get_layout_type(tgt.tags());
     FieldLayout src = {{}};
-    switch (type) {
+    switch (tgt.type()) {
       case LayoutType::Scalar2D:
         src = this->m_src_grid->get_2d_scalar_layout();
         break;
@@ -61,9 +60,8 @@ public:
   FieldLayout create_tgt_layout (const FieldLayout& src) const override {
     using namespace ShortFieldTagsNames;
 
-    auto type = get_layout_type(src.tags());
     FieldLayout tgt = {{}};
-    switch (type) {
+    switch (src.type()) {
       case LayoutType::Scalar2D:
         tgt = this->m_tgt_grid->get_2d_scalar_layout();
         break;
