@@ -67,6 +67,9 @@ public:
   FieldLayout (const std::vector<FieldTag>& tags);
   FieldLayout (const std::vector<FieldTag>& tags,
                const std::vector<int>& dims);
+  FieldLayout (const std::vector<FieldTag>& tags,
+               const std::vector<std::string>& names,
+               const std::vector<int>& dims);
 
   // Assignment (defaulted)
   FieldLayout& operator= (const FieldLayout&) = default;
@@ -79,8 +82,10 @@ public:
   LayoutType type () const { return m_type; }
 
   // Name and layout informations
+  const std::vector<std::string>& names () const { return m_names; }
   const std::vector<FieldTag>& tags () const { return m_tags; }
   FieldTag tag  (const int idim) const;
+  const std::string& name (const int idim) const;
   bool has_tag (const FieldTag t) const { return ekat::contains(m_tags,t); }
   bool has_tags (const std::vector<FieldTag>& tags) const;
 
@@ -110,15 +115,20 @@ public:
 
   void set_dimension  (const int idim, const int dimension);
 
+  // Change the name of a dimension
+  void rename_dim (const int idim, const std::string& n);
+  void rename_dim (const FieldTag tag, const std::string& n);
+
 protected:
   void compute_type ();
 
-  int                   m_rank;
-  std::vector<FieldTag> m_tags;
-  std::vector<int>      m_dims;
-  extents_type          m_extents;
+  int                       m_rank;
+  std::vector<FieldTag>     m_tags;
+  std::vector<std::string>  m_names;
+  std::vector<int>          m_dims;
+  extents_type              m_extents;
 
-  LayoutType            m_type;
+  LayoutType                m_type;
 };
 
 bool operator== (const FieldLayout& fl1, const FieldLayout& fl2);
@@ -134,14 +144,14 @@ inline int FieldLayout::dim (const FieldTag t) const {
 
   // Check only one tag (no ambiguity)
   EKAT_REQUIRE_MSG(ekat::count(m_tags,t)==1,
-                     "Error! Tag '" + e2str(t) + "' appears multiple times.\n"
-                     "       You must inspect tags() and dims() manually.\n");
+      "Error! Tag '" + e2str(t) + "' appears multiple times.\n"
+      "       You must inspect tags() and dims() manually.\n");
 
   return m_dims[std::distance(m_tags.begin(),it)];
 }
 
 inline int FieldLayout::dim (const int idim) const {
-  ekat::error::runtime_check(idim>=0 && idim<m_rank, "Error! Index out of bounds.", -1);
+  EKAT_REQUIRE_MSG (idim>=0 && idim<m_rank, "Error! Index out of bounds.");
   return m_dims[idim];
 }
 
@@ -156,9 +166,15 @@ inline long long FieldLayout::size () const {
 }
 
 inline FieldTag FieldLayout::tag (const int idim) const { 
-  ekat::error::runtime_check(idim>=0 && idim<m_rank, "Error! Index out of bounds.", -1);
+  EKAT_REQUIRE_MSG (idim>=0 && idim<m_rank, "Error! Index out of bounds.");
   return m_tags[idim];
 } 
+
+inline const std::string& FieldLayout::name (const int idim) const
+{
+  EKAT_REQUIRE_MSG (idim>=0 && idim<m_rank, "Error! Index out of bounds.");
+  return m_names[idim];
+}
 
 inline bool FieldLayout::has_tags (const std::vector<FieldTag>& tags) const {
   bool b = true;

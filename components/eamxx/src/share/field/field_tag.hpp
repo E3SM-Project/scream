@@ -122,6 +122,15 @@ inline std::string e2str (const FieldTag ft) {
   return name;
 }
 
+inline std::vector<std::string> evec2str (const std::vector<FieldTag>& tags) {
+  std::vector<std::string> names;
+  names.reserve(tags.size());
+  for (auto t : tags) {
+    names.push_back(e2str(t));
+  }
+  return names;
+}
+
 // Allow to stream FieldTag values as strings.
 inline std::ostream& operator<< (std::ostream& out, const FieldTag t) {
   out << e2str(t);
