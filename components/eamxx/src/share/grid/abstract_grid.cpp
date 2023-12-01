@@ -74,6 +74,80 @@ get_vertical_layout (const bool midpoints) const
 
 }
 
+FieldLayout
+AbstractGrid::get_vertical_layout_mid () const
+{
+  return get_vertical_layout (true);
+}
+
+FieldLayout
+AbstractGrid::get_vertical_layout_int () const
+{
+  return get_vertical_layout (false);
+}
+
+FieldLayout
+AbstractGrid::get_2d_vector_layout (const int vector_dim) const
+{
+  using namespace ShortFieldTagsNames;
+  return get_2d_vector_layout(vector_dim,e2str(CMP));
+}
+
+FieldLayout
+AbstractGrid::get_2d_tensor_layout (const std::vector<int>& cmp_dims) const
+{
+  using namespace ShortFieldTagsNames;
+  std::vector<std::string> names (cmp_dims.size(),e2str(CMP));
+  return get_2d_vector_layout(vector_dim,names)
+}
+
+FieldLayout
+AbstractGrid::get_3d_scalar_layout_mid () const
+{
+  return get_3d_scalar_layout(true);
+}
+
+FieldLayout
+AbstractGrid::get_3d_scalar_layout_int () const {
+  return get_3d_scalar_layout(false);
+}
+
+FieldLayout
+AbstractGrid::get_3d_vector_layout (const bool midpoints, const int vector_dim) const
+{
+  using namespace ShortFieldTagsNames;
+  return get_3d_vector_layout(midpoints,vector_dim,e2str(CMP));
+}
+
+FieldLayout
+AbstractGrid::get_3d_vector_layout_mid (const int vector_dim) const
+{
+  using namespace ShortFieldTagsNames;
+  return get_3d_vector_layout(true,vector_dim,e2str(CMP));
+}
+
+FieldLayout
+AbstractGrid::get_3d_vector_layout_int (const int vector_dim) const
+{
+  using namespace ShortFieldTagsNames;
+  return get_3d_vector_layout(false,vector_dim,e2str(CMP));
+}
+
+FieldLayout
+AbstractGrid::get_3d_tensor_layout_mid (const std::vector<int>& cmp_dims) const
+{
+  using namespace ShortFieldTagsNames;
+  std::vector<std::string> names (cmp_dims.size(),e2str(CMP));
+  return get_3d_tensor_layout(true,cmp_dims,names);
+}
+
+FieldLayout
+AbstractGrid::get_3d_tensor_layout_int (const std::vector<int>& cmp_dims) const
+  using namespace ShortFieldTagsNames;
+  std::vector<std::string> names (cmp_dims.size(),e2str(CMP));
+  return get_3d_tensor_layout(false,cmp_dims,names);
+}
+
 bool AbstractGrid::is_unique () const {
   auto compute_is_unique = [&]() {
     // Get a copy of gids on host. CAREFUL: do not use the stored dofs,

@@ -73,12 +73,28 @@ public:
   //       for a vector 3d field on a Point grid it will be (ncols,vector_dim,nlevs)
   FieldLayout get_vertical_layout (const bool midpoints) const;
   virtual FieldLayout get_2d_scalar_layout () const = 0;
-  virtual FieldLayout get_2d_vector_layout (const int vector_dim) const = 0;
-  virtual FieldLayout get_2d_tensor_layout (const std::vector<int>& cmp_dims) const = 0;
+  virtual FieldLayout get_2d_vector_layout (const int vector_dim, const std::string& vec_dim_name) const = 0;
+  virtual FieldLayout get_2d_tensor_layout (const std::vector<int>& cmp_dims,
+                                            const std::vector<std::string>& cmp_dims_names) const = 0;
   virtual FieldLayout get_3d_scalar_layout (const bool midpoints) const = 0;
-  virtual FieldLayout get_3d_vector_layout (const bool midpoints, const int vector_dim) const = 0;
+  virtual FieldLayout get_3d_vector_layout (const bool midpoints, const int vector_dim,
+                                            const std::string& vec_dim_name) const = 0;
   virtual FieldLayout get_3d_tensor_layout (const bool midpoints,
-                                            const std::vector<int>& cmp_dims) const = 0;
+                                            const std::vector<int>& cmp_dims,
+                                            const std::vector<std::string>& cmp_dims_names) const = 0;
+
+  // Some shortcut versions of the above ones
+  FieldLayout get_vertical_layout_mid () const;
+  FieldLayout get_vertical_layout_int () const;
+  FieldLayout get_2d_vector_layout (const int vector_dim) const;
+  FieldLayout get_2d_tensor_layout (const std::vector<int>& cmp_dims) const;
+
+  FieldLayout get_3d_scalar_layout_mid () const;
+  FieldLayout get_3d_scalar_layout_int () const;
+  FieldLayout get_3d_vector_layout_mid (const int vector_dim) const;
+  FieldLayout get_3d_vector_layout_int (const int vector_dim) const;
+  FieldLayout get_3d_tensor_layout_mid (const std::vector<int>& cmp_dims) const;
+  FieldLayout get_3d_tensor_layout_int (const std::vector<int>& cmp_dims) const;
 
   int get_num_vertical_levels () const { return m_num_vert_levs; }
 
