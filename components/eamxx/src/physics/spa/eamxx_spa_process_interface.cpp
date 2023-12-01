@@ -42,23 +42,23 @@ void SPA::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   // Define the different field layouts that will be used for this process
 
   // Layout for 3D (2d horiz X 1d vertical) variable defined at mid-level and interfaces 
-  FieldLayout scalar3d_layout_mid { {COL,LEV}, {m_num_cols, m_num_levs} };
-  FieldLayout scalar2d_layout     { {COL},     {m_num_cols} };
-  FieldLayout scalar1d_layout_mid { {LEV},     {m_num_levs} };
+  FieldLayout scalar3d_mid = m_grid->get_3d_scalar_layout_mid();
+  FieldLayout scalar2d     = m_grid->get_2d_scalar_layout();
+  FieldLayout scalar1d_mid = m_grid->get_vertical_layout_mid();
   // Use VAR field tag for gases for now; consider adding a tag?
-  FieldLayout scalar3d_swband_layout { {COL,SWBND, LEV}, {m_num_cols, m_nswbands, m_num_levs} }; 
-  FieldLayout scalar3d_lwband_layout { {COL,LWBND, LEV}, {m_num_cols, m_nlwbands, m_num_levs} }; 
+  FieldLayout scalar3d_swband = m_grid->get_3d_vector_layout_mid(m_nswbands,"SWBND");
+  FieldLayout scalar3d_lwband = m_grid->get_3d_vector_layout_mid(m_nlwbands,"LWBND");
 
   // Set of fields used strictly as input
   constexpr int ps = Pack::n;
-  add_field<Required>("p_mid"      , scalar3d_layout_mid, Pa,     grid_name, ps);
+  add_field<Required>("p_mid"      , scalar3d_mid, Pa,     grid_name, ps);
 
   // Set of fields used strictly as output
-  add_field<Computed>("nccn",   scalar3d_layout_mid,    1/kg,   grid_name,ps);
-  add_field<Computed>("aero_g_sw",      scalar3d_swband_layout, nondim, grid_name,ps);
-  add_field<Computed>("aero_ssa_sw",    scalar3d_swband_layout, nondim, grid_name,ps);
-  add_field<Computed>("aero_tau_sw",    scalar3d_swband_layout, nondim, grid_name,ps);
-  add_field<Computed>("aero_tau_lw",    scalar3d_lwband_layout, nondim, grid_name,ps);
+  add_field<Computed>("nccn",        scalar3d_mid,    1/kg,   grid_name,ps);
+  add_field<Computed>("aero_g_sw",   scalar3d_swband, nondim, grid_name,ps);
+  add_field<Computed>("aero_ssa_sw", scalar3d_swband, nondim, grid_name,ps);
+  add_field<Computed>("aero_tau_sw", scalar3d_swband, nondim, grid_name,ps);
+  add_field<Computed>("aero_tau_lw", scalar3d_lwband, nondim, grid_name,ps);
 
   // Init output data structure
   SPAData_out.init(m_num_cols,m_num_levs,m_nswbands,m_nlwbands,false);

@@ -33,14 +33,6 @@ enum class FieldTag {
   GaussPoint,
   Component,
   TimeLevel,
-  // Added for RRTMGP, TODO: Revisit this approach, is there a better way than adding more field tags?
-  Gases,
-  ShortWaveBand,
-  ShortWaveGpoint,
-  LongWaveBand,
-  LongWaveGpoint,
-  IsccpTau,
-  IsccpPrs
 };
 
 // If using tags a lot, consider adding 'using namespace ShortFieldTagsNames'
@@ -56,14 +48,6 @@ namespace ShortFieldTagsNames {
   constexpr auto LEV  = FieldTag::LevelMidPoint;
   constexpr auto ILEV = FieldTag::LevelInterface;
   constexpr auto CMP  = FieldTag::Component;
-  // Added for rrtmgp - see TODO item above
-  constexpr auto NGAS = FieldTag::Gases;
-  constexpr auto SWBND = FieldTag::ShortWaveBand;
-  constexpr auto LWBND = FieldTag::LongWaveBand;
-  constexpr auto SWGPT = FieldTag::ShortWaveGpoint;
-  constexpr auto LWGPT = FieldTag::LongWaveGpoint;
-  constexpr auto ISCCPTAU = FieldTag::IsccpTau;
-  constexpr auto ISCCPPRS = FieldTag::IsccpPrs;
 }
 
 inline std::string e2str (const FieldTag ft) {
@@ -93,28 +77,6 @@ inline std::string e2str (const FieldTag ft) {
       break;
     case FieldTag::Component:
       name = "dim";
-      break;
-    // Added for rrtmgp - see TODO item above
-    case FieldTag::Gases:
-      name = "ngas";
-      break;
-    case FieldTag::ShortWaveBand:
-      name = "swband";
-      break;
-    case FieldTag::ShortWaveGpoint:
-      name = "swgpt";
-      break;
-    case FieldTag::LongWaveBand:
-      name = "lwband";
-      break;
-    case FieldTag::LongWaveGpoint:
-      name = "lwgpt";
-      break;
-    case FieldTag::IsccpTau:
-      name = "ISCCPTAU";
-      break;
-    case FieldTag::IsccpPrs:
-      name = "ISCCPPRS";
       break;
     default:
       EKAT_ERROR_MSG("Error! Unrecognized field tag.");
