@@ -258,14 +258,14 @@ be lost if SCREAM_HACK_XML is not enabled.
       <spa_remap_file hgrid="ne4np4.pg2">${DIN_LOC_ROOT}/atm/scream/maps/map_ne30pg2_to_ne4pg2_20231201.nc</spa_remap_file>
       <spa_remap_file hgrid="ne30np4">${DIN_LOC_ROOT}/atm/scream/maps/map_ne30pg2_to_ne30np4_20231201.nc</spa_remap_file>
       <spa_remap_file hgrid="ne30np4.pg2">none</spa_remap_file>
-      <spa_remap_file hgrid="ne120np4">${DIN_LOC_ROOT}/atm/scream/mapsmap_ne30pg2_to_ne120np4_20231201.nc</spa_remap_file>
+      <spa_remap_file hgrid="ne120np4">${DIN_LOC_ROOT}/atm/scream/maps/map_ne30pg2_to_ne120np4_20231201.nc</spa_remap_file>
       <spa_remap_file hgrid="ne512np4">${DIN_LOC_ROOT}/atm/scream/maps/map_ne30pg2_to_ne512np4_20231201.nc</spa_remap_file>
       <spa_remap_file hgrid="ne120np4.pg2">${DIN_LOC_ROOT}/atm/scream/maps/map_ne30pg2_to_ne120pg2_20231201.nc</spa_remap_file>
       <spa_remap_file hgrid="ne256np4.pg2">${DIN_LOC_ROOT}/atm/scream/maps/map_ne30pg2_to_ne256pg2_20231201.nc</spa_remap_file>
       <spa_remap_file hgrid="ne512np4.pg2">${DIN_LOC_ROOT}/atm/scream/maps/map_ne30pg2_to_ne512pg2_20231201.nc</spa_remap_file>
       <spa_remap_file hgrid="ne1024np4.pg2">${DIN_LOC_ROOT}/atm/scream/maps/map_ne30pg2_to_ne1024pg2_20231201.nc</spa_remap_file>
 
-      <spa_data_file type="file">${DIN_LOC_ROOT}/atm/scream/init/spa_eamv3_pd_ne30pg2_L72_20231201.nc.</spa_data_file>
+      <spa_data_file type="file">${DIN_LOC_ROOT}/atm/scream/init/spa_eamv3_pd_ne30pg2_L72_20231201.nc</spa_data_file>
     </spa>
 
     <!-- Radiation -->
