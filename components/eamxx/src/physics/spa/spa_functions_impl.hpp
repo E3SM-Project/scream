@@ -432,9 +432,7 @@ void SPAFunctions<S,D>
   spa_data_in_params.set("Skip_Grid_Checks",true);  // We need to skip grid checks because multiple ranks may want the same column of source data.
   
   // Retrieve number of cols on spa_data_file.
-  scorpio::register_file(spa_data_file_name,scorpio::Read);
   int num_global_cols = scorpio::get_dimlen(spa_data_file_name,"ncol");
-  scorpio::eam_pio_closefile(spa_data_file_name);
 
   // Construct the grid needed for input:
   auto grid = std::make_shared<PointGrid>("grid",num_local_cols,num_global_cols,source_data_nlevs,comm);
@@ -447,6 +445,12 @@ void SPAFunctions<S,D>
       "ERROR update_spa_data_from_file: Number of SW bands in simulation doesn't match the SPA data file");
   EKAT_REQUIRE_MSG(nlwbands==scorpio::get_dimlen(spa_data_file_name,"lwband"),
       "ERROR update_spa_data_from_file: Number of LW bands in simulation doesn't match the SPA data file");
+
+  // Check that the units of CCN3 are #/cm3
+  auto ccn3_units_tmp = scorpio::get_any_attribute(spa_data_file_name,"CCN3","units");
+  auto ccn3_units = ekat::any_cast<std::string>(ccn3_units_tmp);
+  EKAT_REQUIRE_MSG(ccn3_units.find("#/cm3") != std::string::npos,
+      "ERROR update_spa_data_from_file: CCN3 units in SPA data file are not #/cm3");
 
   // Constuct views to read source data in from file
   typename view_1d<Real>::HostMirror hyam_v_h("hyam",source_data_nlevs);

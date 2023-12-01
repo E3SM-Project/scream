@@ -7,6 +7,7 @@
 
 #include "ekat/ekat_assert.hpp"
 #include "ekat/util/ekat_units.hpp"
+#include "ekat/util/ekat_scaling_factor.hpp"
 
 #include <array>
 
@@ -24,6 +25,7 @@ SPA::SPA (const ekat::Comm& comm, const ekat::ParameterList& params)
 void SPA::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
 {
   using namespace ekat::units;
+  using namespace ekat::prefixes;
   using namespace ShortFieldTagsNames;
 
   // The units of mixing ratio Q are technically non-dimensional.
@@ -33,7 +35,7 @@ void SPA::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   auto nondim = Units::nondimensional();
 
   // Define cc (cubic centimeter) units
-  auto cc = ( centi * m ) * ( centi * m ) * ( centi * m )
+  auto cc = ( centi * m ) * ( centi * m ) * ( centi * m );
 
   m_grid = grids_manager->get_grid("Physics");
   const auto& grid_name = m_grid->name();
