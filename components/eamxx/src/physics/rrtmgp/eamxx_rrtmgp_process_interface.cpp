@@ -79,10 +79,10 @@ void RRTMGPRadiation::set_grids(const std::shared_ptr<const GridsManager> grids_
   FieldLayout scalar2d = m_grid->get_2d_scalar_layout();
   FieldLayout scalar3d_mid = m_grid->get_3d_scalar_layout_mid();
   FieldLayout scalar3d_int = m_grid->get_3d_scalar_layout_int();
-  FieldLayout scalar3d_swband = m_grid->get_3d_vector_layout_mid(m_nswbands,"SWBND");
-  FieldLayout scalar3d_lwband = m_grid->get_3d_vector_layout_mid(m_nlwbands,"LWBND");
-  FieldLayout scalar3d_swgpts = m_grid->get_3d_vector_layout_mid(m_nswgpts,"SWGPT");
-  FieldLayout scalar3d_lwgpts = m_grid->get_3d_vector_layout_mid(m_nlwgpts,"LWGPT");
+  FieldLayout scalar3d_swband = m_grid->get_3d_vector_layout_mid(m_nswbands,"swband");
+  FieldLayout scalar3d_lwband = m_grid->get_3d_vector_layout_mid(m_nlwbands,"lwband");
+  FieldLayout scalar3d_swgpts = m_grid->get_3d_vector_layout_mid(m_nswgpts,"swgpt");
+  FieldLayout scalar3d_lwgpts = m_grid->get_3d_vector_layout_mid(m_nlwgpts,"lwgpt");
 
   // Set required (input) fields here
   add_field<Required>("p_mid" , scalar3d_mid, Pa, grid_name);
