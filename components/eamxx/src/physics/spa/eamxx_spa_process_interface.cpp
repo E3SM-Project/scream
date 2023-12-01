@@ -46,8 +46,8 @@ void SPA::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   FieldLayout scalar2d     = m_grid->get_2d_scalar_layout();
   FieldLayout scalar1d_mid = m_grid->get_vertical_layout_mid();
   // Use VAR field tag for gases for now; consider adding a tag?
-  FieldLayout scalar3d_swband = m_grid->get_3d_vector_layout_mid(m_nswbands,"SWBND");
-  FieldLayout scalar3d_lwband = m_grid->get_3d_vector_layout_mid(m_nlwbands,"LWBND");
+  FieldLayout scalar3d_swband = m_grid->get_3d_vector_layout_mid(m_nswbands,"swband");
+  FieldLayout scalar3d_lwband = m_grid->get_3d_vector_layout_mid(m_nlwbands,"lwband");
 
   // Set of fields used strictly as input
   constexpr int ps = Pack::n;

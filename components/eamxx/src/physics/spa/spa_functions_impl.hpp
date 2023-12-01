@@ -469,8 +469,8 @@ void SPAFunctions<S,D>
   FieldLayout scalar1d = grid->get_vertical_layout_mid();
   FieldLayout scalar2d_mid = grid->get_2d_scalar_layout();
   FieldLayout scalar3d_mid = grid->get_3d_scalar_layout_mid();
-  FieldLayout scalar3d_swband = grid->get_3d_vector_layout_mid(nswbands,"SWBND");
-  FieldLayout scalar3d_lwband = grid->get_3d_vector_layout_mid(nlwbands,"LWBND");
+  FieldLayout scalar3d_swband = grid->get_3d_vector_layout_mid(nswbands,"swband");
+  FieldLayout scalar3d_lwband = grid->get_3d_vector_layout_mid(nlwbands,"lwband");
 
   std::map<std::string,view_1d_host<Real>> host_views;
   std::map<std::string,FieldLayout>  layouts;
