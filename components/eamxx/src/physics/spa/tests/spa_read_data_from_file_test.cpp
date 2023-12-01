@@ -37,8 +37,8 @@ TEST_CASE("spa_read_data","spa")
   using gid_type = SPAFunc::gid_type;
   constexpr Real tol  = std::numeric_limits<Real>::epsilon()*1000;
 
-  std::string spa_data_file  = SCREAM_DATA_DIR "/init/spa_data_for_testing.nc";
-  std::string spa_remap_file = SCREAM_DATA_DIR "/init/spa_data_for_testing.nc";
+  std::string spa_data_file  = SCREAM_DATA_DIR "/init/spa_data_for_testing_20231130.nc";
+  std::string spa_remap_file = SCREAM_DATA_DIR "/init/spa_data_for_testing_20231130.nc";
   int max_time = 3;
   int ncols    = 48;
   int ncols_src = 20;
