@@ -511,7 +511,7 @@ end function bfb_expm1
              !    be uniform throughout the whole cell, so it doesn't make sense to
              !    squeeze all CCN into the in-cloud region. Thus we preemptively
              !    multiply by cld_frac_l here so when it gets ingested, division by
-            nc(k) = max(nc(k),nccn_prescribed(k)*1.0e6_rtype*inv_rho(k)/inv_cld_frac_l(k))
+             nc(k) = max(nc(k),nccn_prescribed(k)*1.0e6_rtype*inv_rho(k)/inv_cld_frac_l(k))
           else if (do_predict_nc) then
              nc(k) = max(nc(k) + nc_nuceat_tend(k) * dt,0.0_rtype)
           else

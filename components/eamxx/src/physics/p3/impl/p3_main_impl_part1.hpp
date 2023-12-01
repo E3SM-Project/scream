@@ -131,17 +131,16 @@ void Functions<S,D>
       // prescribe that value
 
       if (do_prescribed_CCN) {
-        // nccn_prescribed is in #/cm3, so needs to be converted
-        // *1e6: #/cm3 --> #/m3
-        // *inv_rho: #/m3 --> #/kg
-        // /inv_cld_frac_l: nc is divided by cld_frac_l when it enters
-        //    microphysics to convert it from cell-average to in-cloud. CCN should
-        //    be uniform throughout the whole cell, so it doesn't make sense to
-        //    squeeze all CCN into the in-cloud region. Thus we preemptively
-        //    multiply by cld_frac_l here so when it gets ingested, division by
-        //    cld_frac_l doesn't yield wrong answers
-        nc(k).set(not_drymass, max(nc(k), nccn_prescribed(k) * 1e6 *
-                                              inv_rho(k) / inv_cld_frac_l(k)));
+         // nccn_prescribed is in #/cm3, so needs to be converted
+         // *1e6: #/cm3 --> #/m3
+         // *inv_rho: #/m3 --> #/kg
+         // /inv_cld_frac_l: nc is divided by cld_frac_l when it enters
+         //    microphysics to convert it from cell-average to in-cloud. CCN
+         //    should be uniform throughout the whole cell, so it doesn't make
+         //    sense to squeeze all CCN into the in-cloud region. Thus we
+         //    preemptively multiply by cld_frac_l here so when it gets ingested,
+         //    division by cld_frac_l doesn't yield wrong answers
+         nc(k).set(not_drymass, max(nc(k), nccn_prescribed(k)*1e6*inv_rho(k)/inv_cld_frac_l(k)));
       } else if (predictNc) {
          nc(k).set(not_drymass, max(nc(k) + nc_nuceat_tend(k) * dt, 0.0));
       } else {
