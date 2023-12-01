@@ -777,7 +777,7 @@ void AtmosphereOutput::register_dimensions(const std::string& name)
     // check tag against m_dims map.  If not in there, then add it.
     const auto& tags = layout.tags();
     const auto& dims = layout.dims();
-    auto tag_name = m_io_grid->get_dim_name(tags[i]);
+    auto tag_name = m_io_grid->get_dim_name(layout,i);
     if (tags[i]==CMP) {
       tag_name += std::to_string(dims[i]);
     }
@@ -842,7 +842,7 @@ void AtmosphereOutput::register_views()
     if (m_add_time_dim && m_track_avg_cnt) {
       std::string avg_cnt_name = "avg_count_" + e2str(layout.type());
       for (int ii=0; ii<layout.rank(); ++ii) {
-        auto tag_name = m_io_grid->get_dim_name(layout.tag(ii));
+        auto tag_name = m_io_grid->get_dim_name(layout,ii);
         avg_cnt_name += "_" + tag_name;
       }
       if (std::find(m_avg_cnt_names.begin(),m_avg_cnt_names.end(),avg_cnt_name)==m_avg_cnt_names.end()) {
@@ -910,7 +910,7 @@ register_variables(const std::string& filename,
     std::vector<int> range(layout.rank());
     std::iota(range.begin(),range.end(),0);
     auto tag_and_dim = [&](int i) {
-      return m_io_grid->get_dim_name(layout.tag(i)) +
+      return m_io_grid->get_dim_name(layout,i) +
              std::to_string(layout.dim(i));
     };
 
@@ -925,7 +925,7 @@ register_variables(const std::string& filename,
   auto set_vec_of_dims = [&](const FieldLayout& layout) {
     std::vector<std::string> vec_of_dims;
     for (int i=0; i<layout.rank(); ++i) {
-      auto tag_name = m_io_grid->get_dim_name(layout.tag(i));
+      auto tag_name = m_io_grid->get_dim_name(layout,i);
       if (layout.tag(i)==CMP) {
         tag_name += std::to_string(layout.dim(i));
       }
