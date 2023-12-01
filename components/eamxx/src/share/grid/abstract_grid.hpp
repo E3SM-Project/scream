@@ -73,9 +73,29 @@ public:
   //       for a vector 3d field on a Point grid it will be (ncols,vector_dim,nlevs)
   FieldLayout get_vertical_layout (const bool midpoints) const;
   virtual FieldLayout get_2d_scalar_layout () const = 0;
-  virtual FieldLayout get_2d_vector_layout (const int vector_dim) const = 0;
+  virtual FieldLayout get_2d_vector_layout (const int vector_dim, const std::string& vec_dim_name) const = 0;
   virtual FieldLayout get_3d_scalar_layout (const bool midpoints) const = 0;
-  virtual FieldLayout get_3d_vector_layout (const bool midpoints, const int vector_dim) const = 0;
+  virtual FieldLayout get_3d_vector_layout (const bool midpoints, const int vector_dim, const std::string& vec_dim_name) const = 0;
+
+  // Some shortcut versions of the above ones
+  FieldLayout get_vertical_layout_mid () const { return get_vertical_layout (true); }
+  FieldLayout get_vertical_layout_int () const { return get_vertical_layout (false); }
+  FieldLayout get_2d_vector_layout (const int vector_dim) const {
+    return get_2d_vector_layout(vector_dim,e2str(FieldTag::Component));
+  }
+  FieldLayout get_3d_scalar_layout_mid () const { return get_3d_scalar_layout(true); }
+  FieldLayout get_3d_scalar_layout_int () const { return get_3d_scalar_layout(false); }
+
+  FieldLayout get_3d_vector_layout (const bool midpoints, const int vector_dim) const {
+    return get_3d_vector_layout(midpoints,vector_dim,e2str(FieldTag::Component));
+  }
+  FieldLayout get_3d_vector_layout_mid (const int vector_dim, const std::string& vec_dim_name = e2str(FieldTag::Component)) const {
+    return get_3d_vector_layout(true,vector_dim,vec_dim_name);
+  }
+  FieldLayout get_3d_vector_layout_int (const int vector_dim, const std::string& vec_dim_name = e2str(FieldTag::Component)) const {
+    return get_3d_vector_layout(true,vector_dim,vec_dim_name);
+  }
+
 
   int get_num_vertical_levels () const { return m_num_vert_levs; }
 

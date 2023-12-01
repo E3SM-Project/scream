@@ -21,9 +21,9 @@ public:
 
   // Native layout of a dof. This is the natural way to index a dof in the grid.
   FieldLayout get_2d_scalar_layout () const override;
-  FieldLayout get_2d_vector_layout (const int vector_dim) const override;
+  FieldLayout get_2d_vector_layout (const int vector_dim, const std::string& vec_dim_name) const override;
   FieldLayout get_3d_scalar_layout (const bool midpoints) const override;
-  FieldLayout get_3d_vector_layout (const bool midpoints, const int vector_dim) const override;
+  FieldLayout get_3d_vector_layout (const bool midpoints, const int vector_dim, const std::string& vec_dim_name) const override;
 
   FieldTag get_partitioned_dim_tag () const override {
     return FieldTag::Element;
