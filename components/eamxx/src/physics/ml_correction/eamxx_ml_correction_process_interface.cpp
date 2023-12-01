@@ -34,13 +34,13 @@ void MLCorrection::set_grids(
 
   // Layout for 3D (2d horiz X 1d vertical) variable defined at mid-level and
   // interfaces
-  FieldLayout scalar2d_layout{ {COL}, {m_num_cols}};
-  FieldLayout scalar3d_layout_mid{{COL, LEV}, {m_num_cols, m_num_levs}};
-  FieldLayout horiz_wind_layout { {COL,CMP,LEV}, {m_num_cols,2,m_num_levs} };
+  FieldLayout scalar2d     = m_grid->get_2d_scalar_layout();
+  FieldLayout scalar3d_mid = m_grid->get_3d_scalar_layout_mid();
+  FieldLayout vector3d_mid = m_grid->get_3d_vector_layout_mid(2);
   if (not m_ML_correction_unit_test) {
     const auto m2 = m*m;
     const auto s2 = s*s;
-    add_field<Required>("phis", scalar2d_layout, m2/s2, grid_name, ps);
+    add_field<Required>("phis", scalar2d, m2/s2, grid_name, ps);
     m_lat  = m_grid->get_geometry_data("lat");
     m_lon  = m_grid->get_geometry_data("lon");      
   }
@@ -51,9 +51,9 @@ void MLCorrection::set_grids(
    * is adapting the infrastructure to allow for a generic "add_field" call
    * to be used here which we can then setup using the m_fields_ml_output_variables variable
    */
-  add_field<Updated>("T_mid", scalar3d_layout_mid, K, grid_name, ps);
-  add_field<Updated>("qv",    scalar3d_layout_mid, Q, grid_name, "tracers", ps);
-  add_field<Updated>("horiz_winds",   horiz_wind_layout,   m/s,     grid_name, ps);
+  add_field<Updated>("T_mid",       scalar3d_mid, K,   grid_name, ps);
+  add_field<Updated>("qv",          scalar3d_mid, Q,   grid_name, "tracers", ps);
+  add_field<Updated>("horiz_winds", vector3d_mid, m/s, grid_name, ps);
   /* ----------------------- WARNING --------------------------------*/
   add_group<Updated>("tracers", grid_name, 1, Bundling::Required);
 }

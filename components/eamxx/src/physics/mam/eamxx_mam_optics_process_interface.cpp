@@ -36,21 +36,21 @@ void MAMOptics::set_grids(const std::shared_ptr<const GridsManager> grids_manage
   nlwbands_ = 16;                           // number of longwave bands
 
   // Define the different field layouts that will be used for this process
-  using namespace ShortFieldTagsNames;
 
   // Define aerosol optics fields computed by this process.
   auto nondim = Units::nondimensional();
-  FieldLayout scalar3d_swband_layout { {COL, SWBND, LEV}, {ncol_, nswbands_, nlev_} };
-  FieldLayout scalar3d_lwband_layout { {COL, LWBND, LEV}, {ncol_, nlwbands_, nlev_} };
+  FieldLayout scalar3d_swband = grid_->get_3d_vector_layout_mid(nswbands_, "swband");
+  FieldLayout scalar3d_lwband = grid_->get_3d_vector_layout_mid(nlwbands_, "lwband");
+  FieldLayout scalar3d_mid    = grid_->get_3d_scalar_layout_mid();
 
   // shortwave aerosol scattering asymmetry parameter [-]
-  add_field<Computed>("aero_g_sw",   scalar3d_swband_layout, nondim, grid_name);
+  add_field<Computed>("aero_g_sw",   scalar3d_swband, nondim, grid_name);
   // shortwave aerosol single-scattering albedo [-]
-  add_field<Computed>("aero_ssa_sw", scalar3d_swband_layout, nondim, grid_name);
+  add_field<Computed>("aero_ssa_sw", scalar3d_swband, nondim, grid_name);
   // shortwave aerosol optical depth [-]
-  add_field<Computed>("aero_tau_sw", scalar3d_swband_layout, nondim, grid_name);
+  add_field<Computed>("aero_tau_sw", scalar3d_swband, nondim, grid_name);
   // longwave aerosol optical depth [-]
-  add_field<Computed>("aero_tau_lw", scalar3d_lwband_layout, nondim, grid_name);
+  add_field<Computed>("aero_tau_lw", scalar3d_lwband, nondim, grid_name);
 
   // FIXME: this field doesn't belong here, but this is a convenient place to
   // FIXME: put it for now.
@@ -58,8 +58,7 @@ void MAMOptics::set_grids(const std::shared_ptr<const GridsManager> grids_manage
   using Spack      = ekat::Pack<Real,SCREAM_SMALL_PACK_SIZE>;
   using Pack       = ekat::Pack<Real,Spack::n>;
   constexpr int ps = Pack::n;
-  FieldLayout scalar3d_layout_mid { {COL, LEV}, {ncol_, nlev_} };
-  add_field<Computed>("nccn", scalar3d_layout_mid, 1/kg, grid_name, ps);
+  add_field<Computed>("nccn", scalar3d_mid, 1/kg, grid_name, ps);
 }
 
 void MAMOptics::initialize_impl(const RunType run_type) {
