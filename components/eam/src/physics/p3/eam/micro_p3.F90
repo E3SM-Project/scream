@@ -506,11 +506,12 @@ end function bfb_expm1
              ! nccn_prescribed is in #/cm3, so needs to be converted
              ! *1e6: #/cm3 --> #/m3
              ! *inv_rho: #/m3 --> #/kg
-             ! /inv_cld_frac_l: to guard against unrealistiically inflating nc inside P3 ---
-             !                  CCN is in-grid, but realistically it is not related to 
-             !                  "in-cloud" properties, thus to retain its value everywhere,
-             !                  multiply here by the cloud fraction to avoid inflating it inside P3
-             nc(k) = max(nc(k),nccn_prescribed(k)*1.0e6_rtype*inv_rho(k)/inv_cld_frac_l(k))
+             ! /inv_cld_frac_l: nc is divided by cld_frac_l when it enters
+             !    microphysics to convert it from cell-average to in-cloud. CCN should
+             !    be uniform throughout the whole cell, so it doesn't make sense to
+             !    squeeze all CCN into the in-cloud region. Thus we preemptively
+             !    multiply by cld_frac_l here so when it gets ingested, division by
+            nc(k) = max(nc(k),nccn_prescribed(k)*1.0e6_rtype*inv_rho(k)/inv_cld_frac_l(k))
           else if (do_predict_nc) then
              nc(k) = max(nc(k) + nc_nuceat_tend(k) * dt,0.0_rtype)
           else
