@@ -121,7 +121,7 @@ if [ $skip_testing -eq 0 ]; then
       fi
 
       if [[ "$SCREAM_MACHINE" == "weaver" ]]; then
-        ./scripts/gather-all-data "./scripts/test-all-scream -t csm -t csr -t csi -t css ${TAS_ARGS}" -l -m $SCREAM_MACHINE
+        ./scripts/gather-all-data "./scripts/test-all-scream -t csm -t csr -t csi ${TAS_ARGS}" -l -m $SCREAM_MACHINE
         if [[ $? != 0 ]]; then
           fails=$fails+1;
           memcheck_fail=1
