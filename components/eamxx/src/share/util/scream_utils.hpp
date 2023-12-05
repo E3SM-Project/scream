@@ -7,6 +7,7 @@
 #include <ekat/kokkos/ekat_kokkos_types.hpp>
 #include <ekat/mpi/ekat_comm.hpp>
 
+#include <iostream>
 #include <iterator>
 #include <list>
 #include <algorithm>
