@@ -524,12 +524,6 @@ ResetFlags()
 SetCommonFlags()
 SetProfilingFlags(PROFILER ${EKAT_PROFILING_TOOL} COVERAGE ${EKAT_ENABLE_COVERAGE})
 
-include(EkatMpiUtils)
-# We should avoid cxx bindings in mpi; they are already deprecated,
-# and can cause headaches at link time, cause they require -lmpi_cxx
-# (for openpmi; -lmpicxx for mpich) flag.
-DisableMpiCxxBindings()
-
 if (SCREAM_DOUBLE_PRECISION)
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
     set(SCREAM_Fortran_FLAGS -real-size 64)
