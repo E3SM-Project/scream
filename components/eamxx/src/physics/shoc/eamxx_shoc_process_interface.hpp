@@ -372,7 +372,7 @@ public:
     } // set_variables
 
     void set_mass_and_energy_fluxes (const view_1d_const& surf_evap_, const view_1d_const surf_sens_flux_,
-				     const view_1d& vapor_flux_, const view_1d& water_flux_,
+				                             const view_1d& vapor_flux_, const view_1d& water_flux_,
                                      const view_1d& ice_flux_, const view_1d& heat_flux_)
     {
       compute_mass_and_energy_fluxes = true;
@@ -389,9 +389,9 @@ public:
   // Structure for storing local variables initialized using the ATMBufferManager
   struct Buffer {
 #ifndef SCREAM_SMALL_KERNELS
-    static constexpr int num_1d_scalar_ncol = 5;
+    static constexpr int num_1d_scalar_ncol = 6;
 #else
-    static constexpr int num_1d_scalar_ncol = 18;
+    static constexpr int num_1d_scalar_ncol = 19;
 #endif
     static constexpr int num_1d_scalar_nlev = 1;
 #ifndef SCREAM_SMALL_KERNELS
@@ -408,6 +408,7 @@ public:
     uview_1d<Real> wprtp_sfc;
     uview_1d<Real> upwp_sfc;
     uview_1d<Real> vpwp_sfc;
+    uview_1d<Real> modified_surf_evap;
 #ifdef SCREAM_SMALL_KERNELS
     uview_1d<Real> se_b;
     uview_1d<Real> ke_b;
@@ -504,7 +505,7 @@ protected:
   Int m_npbl;
   Int m_nadv;
   Int m_num_tracers;
-  Int hdtime;
+  Int m_hdtime;
 
   KokkosTypes<DefaultDevice>::view_1d<const Real> m_cell_area;
   KokkosTypes<DefaultDevice>::view_1d<const Real> m_cell_lat;
