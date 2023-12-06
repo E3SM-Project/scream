@@ -15,12 +15,12 @@
         use shr_kind_mod, only: r8 => shr_kind_r8
         implicit none
 !
-        integer,  parameter :: ntile = 33         ! number of tiles in USGS GTOPO30 dataset
-        integer,  parameter :: im = 43200         ! total grids in x direction of 30-sec global dataset
-        integer,  parameter :: jm = 21600         ! total grids in y direction of 30-sec global dataset
-        real(r8), parameter :: dx = 1.0/120.0     ! space interval for 30-sec data (in degree)
+        integer,  parameter :: ntile = 5640         ! number of tiles in USGS GTOPO30 dataset
+        integer,  parameter :: im = 172800         ! total grids in x direction of 30-sec global dataset
+        integer,  parameter :: jm = 86400         ! total grids in y direction of 30-sec global dataset
+        real(r8), parameter :: dx = 1.0/480.0     ! space interval for 30-sec data (in degree)
 
-        character (len=7)  :: nmtile(ntile)     ! name of each tile
+        character (len=7)  :: nmtile     ! name of each tile
         integer :: ncols,nrows                  ! number of columns and rows for 30-sec tile
         integer :: nodata                       ! integer for ocean point
         real(r8):: ulxmap       ! longitude at the center of the upper-left corner cell in the 30-sec tile
@@ -45,43 +45,6 @@
         !
         ! Initialize each tile name
         !
-        nmtile(1) = 'W180N90'
-        nmtile(2) = 'W140N90'
-        nmtile(3) = 'W100N90'
-        nmtile(4) = 'W060N90'
-        nmtile(5) = 'W020N90'
-        nmtile(6) = 'E020N90'
-        nmtile(7) = 'E060N90'
-        nmtile(8) = 'E100N90'
-        nmtile(9) = 'E140N90'
-
-        nmtile(10) = 'W180N40'
-        nmtile(11) = 'W140N40'
-        nmtile(12) = 'W100N40'
-        nmtile(13) = 'W060N40'
-        nmtile(14) = 'W020N40'
-        nmtile(15) = 'E020N40'
-        nmtile(16) = 'E060N40'
-        nmtile(17) = 'E100N40'
-        nmtile(18) = 'E140N40'
-
-        nmtile(19) = 'W180S10'
-        nmtile(20) = 'W140S10'
-        nmtile(21) = 'W100S10'
-        nmtile(22) = 'W060S10'
-        nmtile(23) = 'W020S10'
-        nmtile(24) = 'E020S10'
-        nmtile(25) = 'E060S10'
-        nmtile(26) = 'E100S10'
-        nmtile(27) = 'E140S10'
- 
-        nmtile(28) = 'W180S60'
-        nmtile(29) = 'W120S60'
-        nmtile(30) = 'W060S60'
-        nmtile(31) = 'W000S60'
-        nmtile(32) = 'E060S60'
-        nmtile(33) = 'E120S60'
-
 
         allocate ( land_fraction(im,jm),stat=alloc_error )
         if( alloc_error /= 0 ) then
@@ -103,6 +66,7 @@
         end do
 
         do n = 1,ntile
+        nmtile(1) = 'mn75_12N150E'
 !
 ! Read header for each tile
 !

@@ -1,0 +1,8 @@
+&input
+srfFileName = '/p/lustre2/zhang73/grids2/1x1d.nc'
+landFileName = '/usr/gdata/climdat/ccsm3data/inputdata/atm/cam/chem/trop_mozart/dvel/regrid_vegetation.nc'
+soilwFileName = '/usr/gdata/climdat/ccsm3data/inputdata/atm/cam/chem/trop_mozart/dvel/clim_soilw.nc'
+atmFileName = '/p/lustre2/zhang73/grids2/CAne32x128Altamont100mv2/CAne32x128_Altamont100m_v2_pg2_scrip.nc'
+srf2atmFmapname = '/p/lustre2/zhang73/grids2/CAne32x128Altamont100mv2/map_1x1_to_CAne32x128Altamont100mv2pg2_mono.20231115.nc'
+outputFileName = '/p/lustre2/zhang73/grids2/CAne32x128Altamont100mv2/atmsrf_CAne32x128Altamont100mv2pg2_20231115.nc'
+/

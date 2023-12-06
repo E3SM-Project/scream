@@ -1,0 +1,2 @@
+#! /bin/csh -f
+set CSMDATA = /usr/gdata/climdat/ccsm3data/inputdata

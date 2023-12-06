@@ -1,0 +1,17 @@
+outgrid = /p/lustre2/zhang73/GitTmp/SourceCode/squadgen-v1.1/CAne32x128_Altamont100m_v2_pg2_scrip.nc
+ingrid = /usr/gdata/climdat/ccsm3data/inputdata/lnd/clm2/mappingdata/grids/SCRIPgrid_0.5x0.5_AVHRR_c110228.nc
+ingrid = /usr/gdata/climdat/ccsm3data/inputdata/lnd/clm2/mappingdata/grids/SCRIPgrid_0.5x0.5_MODIS_c110228.nc
+ingrid = /usr/gdata/climdat/ccsm3data/inputdata/lnd/clm2/mappingdata/grids/SCRIPgrid_3minx3min_LandScan2004_c120517.nc
+ingrid = /usr/gdata/climdat/ccsm3data/inputdata/lnd/clm2/mappingdata/grids/SCRIPgrid_3minx3min_MODIS_c110915.nc
+ingrid = /usr/gdata/climdat/ccsm3data/inputdata/lnd/clm2/mappingdata/grids/SCRIPgrid_3x3_USGS_c120912.nc
+ingrid = /usr/gdata/climdat/ccsm3data/inputdata/lnd/clm2/mappingdata/grids/SCRIPgrid_5x5min_nomask_c110530.nc
+ingrid = /usr/gdata/climdat/ccsm3data/inputdata/lnd/clm2/mappingdata/grids/SCRIPgrid_5x5min_IGBP-GSDP_c110228.nc
+ingrid = /usr/gdata/climdat/ccsm3data/inputdata/lnd/clm2/mappingdata/grids/SCRIPgrid_5x5min_ISRIC-WISE_c111114.nc
+ingrid = /usr/gdata/climdat/ccsm3data/inputdata/lnd/clm2/mappingdata/grids/SCRIPgrid_10x10min_nomask_c110228.nc
+ingrid = /usr/gdata/climdat/ccsm3data/inputdata/lnd/clm2/mappingdata/grids/SCRIPgrid_10x10min_IGBPmergeICESatGIS_c110818.nc
+ingrid = /usr/gdata/climdat/ccsm3data/inputdata/lnd/clm2/mappingdata/grids/SCRIPgrid_3minx3min_GLOBE-Gardner_c120922.nc
+ingrid = /usr/gdata/climdat/ccsm3data/inputdata/lnd/clm2/mappingdata/grids/SCRIPgrid_3minx3min_GLOBE-Gardner-mergeGIS_c120922.nc
+ingrid = /usr/gdata/climdat/ccsm3data/inputdata/lnd/clm2/mappingdata/grids/SCRIPgrid_0.9x1.25_GRDC_c130307.nc
+ingrid = /usr/gdata/climdat/ccsm3data/inputdata/lnd/clm2/mappingdata/grids/SCRIPgrid_360x720_cruncep_c120830.nc
+ingrid = /usr/gdata/climdat/ccsm3data/inputdata/lnd/clm2/mappingdata/grids/UGRID_1km-merge-10min_HYDRO1K-merge-nomask_c130402.nc
+ingrid = /usr/gdata/climdat/ccsm3data/inputdata/lnd/clm2/mappingdata/grids/SCRIPgrid_0.5x0.5_GSDTG2000_c161010.nc

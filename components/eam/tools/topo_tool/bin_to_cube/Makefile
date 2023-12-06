@@ -10,7 +10,8 @@ RM = rm
 # setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:/usr/local/netcdf-4.1.3-gcc-4.4.4-13-lf9581/lib
 #
 
-FC = gfortran
+#FC = gfortran
+FC = ifort
 #DEBUG=TRUE
 
 FFLAGS := $(shell nf-config --flibs)
@@ -25,6 +26,7 @@ endif
 ifeq ($(INC_NETCDF),$(null))
 INC_NETCDF := /usr/local/include
 endif
+FFLAGS := -I$(INC_NETCDF)
 
 # Determine platform 
 UNAMES := $(shell uname -s)

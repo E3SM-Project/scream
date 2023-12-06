@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<file id="env_mach_specific.xml" version="2.0">
+  <header>
+    These variables control the machine dependent environment including
+    the paths to compilers and libraries external to cime such as netcdf,
+    environment variables for use in the running job should also be set	here.
+    </header>
+  <group id="compliant_values">
+    <entry id="run_exe" value="${EXEROOT}/e3sm.exe ">
+      <type>char</type>
+      <desc>executable name</desc>
+    </entry>
+    <entry id="run_misc_suffix" value=" &gt;&gt; e3sm.log.$LID 2&gt;&amp;1 ">
+      <type>char</type>
+      <desc>redirect for job output</desc>
+    </entry>
+  </group>
+  <module_system type="module">
+    <init_path lang="python">/usr/share/lmod/lmod/init/env_modules_python.py</init_path>
+    <init_path lang="perl">/usr/share/lmod/lmod/init/perl</init_path>
+    <init_path lang="sh">/usr/share/lmod/lmod/init/sh</init_path>
+    <init_path lang="csh">/usr/share/lmod/lmod/init/csh</init_path>
+    <cmd_path lang="csh">module</cmd_path>
+    <cmd_path lang="sh">module</cmd_path>
+    <cmd_path lang="python">/usr/share/lmod/lmod/libexec/lmod python</cmd_path>
+    <cmd_path lang="perl">/usr/share/lmod/lmod/libexec/lmod perl</cmd_path>
+    <modules compiler="intel">
+      <command name="load">python/3.9.12</command>
+      <command name="load">git</command>
+      <command name="load">mkl/2022.1.0</command>
+      <command name="load">intel-classic/2021.6.0-magic</command>
+      <command name="load">mvapich2/2.3.7</command>
+      <command name="load">cmake/3.19.2</command>
+      <command name="load">netcdf-fortran-parallel/4.6.0</command>
+      <command name="load">netcdf-c-parallel/4.9.0</command>
+      <command name="load">parallel-netcdf/1.12.3</command>
+    </modules>
+  </module_system>
+  <environment_variables compiler="intel">
+    <env name="NETCDFROOT">/usr/tce/packages/netcdf-fortran/netcdf-fortran-4.6.0-mvapich2-2.3.7-intel-classic-2021.6.0/</env>
+    <env name="NETCDF_PATH">/usr/tce/packages/netcdf-fortran/netcdf-fortran-4.6.0-mvapich2-2.3.7-intel-classic-2021.6.0/</env>
+    <env name="PNETCDFROOT">/usr/tce/packages/parallel-netcdf/parallel-netcdf-1.12.3-mvapich2-2.3.7-intel-classic-2021.6.0/</env>
+  </environment_variables>
+  <mpirun mpilib="mpi-serial">
+    <executable/>
+  </mpirun>
+  <mpirun mpilib="default">
+    <executable>srun</executable>
+  </mpirun>
+</file>

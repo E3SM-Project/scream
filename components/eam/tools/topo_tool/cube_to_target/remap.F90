@@ -124,14 +124,17 @@ MODULE remap
     !
     !**********************
     !
+!WRITE(*,*) "1 MAXVAL(weights_eul_index(1:jsegment,1)) , jsegment :",MAXVAL(weights_eul_index(1:jsegment,1)),jsegment
     call compute_inner_line_integrals_lat_nonconvex(r_cross_lat,cross_lat_eul_index,&
          jcross_lat,jsegment,jmax_segments,xgno,jx_min, jx_max, jy_min, jy_max,&
          weights,weights_eul_index,&
          nreconstruction,ngauss,gauss_weights,abscissae)
+!WRITE(*,*) "2 MAXVAL(weights_eul_index(1:jsegment,1)) , jsegment :",MAXVAL(weights_eul_index(1:jsegment,1)),jsegment
     !
     ! collect line-segment that reside in the same Eulerian cell
     !
     if (jsegment>0) then
+        WRITE(*,*) "here1"  
       call collect(weights,weights_eul_index,nreconstruction,jcollect,jsegment,jmax_segments)
       !
       ! DBG
@@ -190,6 +193,8 @@ MODULE remap
     imax = MAXVAL(weights_eul_index(1:jsegment,1))
     jmin = MINVAL(weights_eul_index(1:jsegment,2))
     jmax = MAXVAL(weights_eul_index(1:jsegment,2))
+!WRITE(*,*) "imin,imax,jmin,jmax,jsegment:",imin,imax,jmin,jmax,jsegment
+!STOP
 
     ltmp = .FALSE.
 
@@ -205,6 +210,7 @@ MODULE remap
                 h = k
              endif
           enddo
+        !WRITE(*,*) "j,i,h,jcollect,jsegment,ltmp: ",j,i,h,jcollect,jsegment,ltmp !(zhang73)
           if (ltmp) then
              weights_eul_index_out(jcollect,:) = weights_eul_index(h,:)
              jcollect = jcollect+1
@@ -258,8 +264,11 @@ MODULE remap
     real (kind=real_kind), dimension(2)  :: xseg, yseg
 5   FORMAT(10e14.6)
     
+!WRITE(*,*) "jmax_segments = ",jmax_segments
+!STOP
     
     if (jcross_lat>0) then
+!WRITE(*,*) "4 Range(cross_lat_eul_index(1:jcross_lat,2)), jcross_lat :",MINVAL(cross_lat_eul_index(1:jcross_lat,2)),", ",MAXVAL(cross_lat_eul_index(1:jcross_lat,2)), jcross_lat
       do i=MINVAL(cross_lat_eul_index(1:jcross_lat,2)),MAXVAL(cross_lat_eul_index(1:jcross_lat,2))
         !
         ! find "first" crossing with Eulerian cell i
@@ -283,6 +292,7 @@ MODULE remap
               imin   = cross_lat_eul_index(j,1)
               imax   = cross_lat_eul_index(k,1)
             endif
+!WRITE(*,*) "imin,imax=",imin,imax
             do h=imin,imax
               if (h==imax) then
                 rend_tmp = rend
@@ -323,6 +333,7 @@ MODULE remap
                 weights_eul_index(jsegment,2) = i-1
                 weights(jsegment,1:nreconstruction) = weights_tmp
               endif
+!WRITE(*,*) "4.2 h,j,i-1, weights_eul_index(jsegment,1), MAX , jsegment:",h,j,i-1,weights_eul_index(jsegment,1),MAXVAL(weights_eul_index(1:jsegment,1)),jsegment
               !
               ! prepare for next iteration
               !
@@ -404,7 +415,7 @@ MODULE remap
         !
         do k=1,jcross_lat
           if (cross_lat_eul_index(k,2)==i) then
-            !            WRITE(*,*) "other crossings with latitude",i ," is ",k!xxxx
+            !            WRITE(*,*) "other crossings with latitude",i ," is ",k," jcross_lat=",jcross_lat !xxxx
             r_cross_lat_seg        (count,:) = r_cross_lat        (k,:)
             cross_lat_eul_index_seg(count,:) = cross_lat_eul_index(k,:)
             
@@ -470,10 +481,11 @@ MODULE remap
             WRITE(*,*) "from ",r_cross_lat_seg(h+1,1),r_cross_lat_seg(h+1,2)
             WRITE(*,*) "to ",r_cross_lat_seg(h+2,1),r_cross_lat_seg(h+2,2)
           END IF
-          
           call compute_inner_line_integrals_lat(r_cross_lat_seg2,cross_lat_eul_index_seg2,&
                2,jsegment,jmax_segments,xgno,jx_min,jx_max,jy_min, jy_max,weights,weights_eul_index,&
                nreconstruction,ngauss,gauss_weights,abscissae)!phl add jx_min etc.
+!WRITE(*,*) "3.2 MAXVAL(weights_eul_index(1:jsegment,1)) , jsegment :",MAXVAL(weights_eul_index(1:jsegment,1)),jsegment
+!WRITE(*,*) "i,h=",i,h
         end do
         
       enddo
@@ -564,23 +576,23 @@ MODULE remap
     xcell(0) = xcell(nvertex); xcell(nvertex+1)=xcell(1); xcell(nvertex+2)=xcell(2);
     ycell(0) = ycell(nvertex); ycell(nvertex+1)=ycell(1); ycell(nvertex+2)=ycell(2);
     
-!    IF (ldbgr) THEN
-!      WRITE(*,*) "from side_integral: cell vertices"
-!      DO iter=1,nvertex
-!        WRITE(*,*) "x(iter),y(iter)",iter, xcell(iter),ycell(iter)
-!      END DO
-!    END IF
+    IF (ldbgr) THEN
+      WRITE(*,*) "from side_integral: cell vertices"
+      DO iter=1,nvertex
+        WRITE(*,*) "x(iter),y(iter)",iter, xcell(iter),ycell(iter)
+      END DO
+    END IF
     
     IF (MAXVAL(xcell).LE.xgno(jx_min).OR.MINVAL(xcell).GE.xgno(jx_max).OR.&
          MAXVAL(ycell).LE.ygno(jy_min).OR.MINVAL(ycell).GE.ygno(jy_max)) THEN
       
-!      IF (ldbgr)  WRITE(*,*) "entire cell off panel"
+      IF (ldbgr)  WRITE(*,*) "entire cell off panel"
     ELSE             
       jx_eul = jx
       jy_eul = jy
       CALL which_eul_cell(xcell(1:3),jx_eul,xgno)
       CALL which_eul_cell(ycell(1:3),jy_eul,ygno)
-!      IF (ldbgr) WRITE(*,*) "x(1),y(1) in cell",jx_eul,jy_eul
+      IF (ldbgr) WRITE(*,*) "x(1),y(1) in cell",jx_eul,jy_eul
      
       side_count = 1
       DO WHILE (side_count<nvertex+1)
@@ -588,15 +600,15 @@ MODULE remap
         iter = 0
         lcontinue = .TRUE.
         x(0:3) = xcell(side_count-1:side_count+2); y(0:3) = ycell(side_count-1:side_count+2); 
-!        IF (ldbgr) WRITE(*,*) "+++++++++++++++++++++++++++++++++++++++"
-!        IF (ldbgr) WRITE(*,*) "side",side_count
+        IF (ldbgr) WRITE(*,*) "+++++++++++++++++++++++++++++++++++++++"
+        IF (ldbgr) WRITE(*,*) "side",side_count
         DO while (lcontinue)
-!          IF (ldbgr) WRITE(*,*) "iter",iter
-!          IF (ldbgr) WRITE(*,*) "x,y(1)",x(1),y(1)
-!          IF (ldbgr) WRITE(*,*) "x,y(2)",x(2),y(2)
-!          IF (ldbgr) WRITE(*,*) "jx_eul,jy_eul",jx_eul,jy_eul
-!          IF (ldbgr) WRITE(*,*) "xgno",xgno(jx_eul),xgno(jx_eul+1)
-!          IF (ldbgr) WRITE(*,*) "ygno",ygno(jy_eul),ygno(jy_eul+1)          
+          IF (ldbgr) WRITE(*,*) "iter",iter
+          IF (ldbgr) WRITE(*,*) "x,y(1)",x(1),y(1)
+          IF (ldbgr) WRITE(*,*) "x,y(2)",x(2),y(2)
+          IF (ldbgr) WRITE(*,*) "jx_eul,jy_eul",jx_eul,jy_eul
+          IF (ldbgr) WRITE(*,*) "xgno",xgno(jx_eul),xgno(jx_eul+1)
+          IF (ldbgr) WRITE(*,*) "ygno",ygno(jy_eul),ygno(jy_eul+1)          
           iter = iter+1
           IF (iter>1000) THEN
             WRITE(*,*) "search not converging",iter
@@ -604,7 +616,7 @@ MODULE remap
           END IF
           lsame_cell_x = (x(2).GE.xgno(jx_eul).AND.x(2).LE.xgno(jx_eul+1))
           lsame_cell_y = (y(2).GE.ygno(jy_eul).AND.y(2).LE.ygno(jy_eul+1))
-!          IF (ldbgr) WRITE(*,*) "lsame_cell_x,lsame_cell_y=",lsame_cell_x,lsame_cell_y
+          IF (ldbgr) WRITE(*,*) "lsame_cell_x,lsame_cell_y=",lsame_cell_x,lsame_cell_y
           IF (lsame_cell_x.AND.lsame_cell_y) THEN
             !
             !****************************
@@ -613,7 +625,7 @@ MODULE remap
             !
             !****************************
             !
-!            IF (ldbgr) WRITE(*,*) "same cell integral",jx_eul,jy_eul
+            IF (ldbgr) WRITE(*,*) "same cell integral",jx_eul,jy_eul
             xseg(1) = x(1); yseg(1) = y(1); xseg(2) = x(2); yseg(2) = y(2)
             jx_eul_tmp = jx_eul; jy_eul_tmp = jy_eul; 
             lcontinue = .FALSE.
@@ -624,13 +636,13 @@ MODULE remap
               !
               ! cross longitude jx_eul+1
               !
-!              IF (ldbgr) WRITE(*,*) "cross longitude",jx_eul+1
+              IF (ldbgr) WRITE(*,*) "cross longitude",jx_eul+1
               jx_eul=jx_eul+1
             ELSE IF (x(2).EQ.xgno(jx_eul  ).AND.x(3)<xgno(jx_eul)) THEN
               !
               ! cross longitude jx_eul
               !
-!              IF (ldbgr) WRITE(*,*) "cross longitude",jx_eul
+              IF (ldbgr) WRITE(*,*) "cross longitude",jx_eul
               jx_eul=jx_eul-1
             END IF
             IF (y(2).EQ.ygno(jy_eul+1).AND.y(3)>ygno(jy_eul+1)) THEN
@@ -639,7 +651,7 @@ MODULE remap
               !
               jcross_lat = jcross_lat + 1
               jy_eul     = jy_eul     + 1
-!              IF (ldbgr) WRITE(*,*) "cross latitude",jy_eul
+              IF (ldbgr) WRITE(*,*) "cross latitude",jy_eul
               cross_lat_eul_index(jcross_lat,1) = jx_eul
               cross_lat_eul_index(jcross_lat,2) = jy_eul
               r_cross_lat(jcross_lat,1) = x(2)
@@ -648,7 +660,7 @@ MODULE remap
               !
               ! register crossing with latitude: line-segments point Southward
               !
-!              IF (ldbgr) WRITE(*,*) "cross latitude",jy_eul
+              IF (ldbgr) WRITE(*,*) "cross latitude",jy_eul
               jcross_lat = jcross_lat+1
               cross_lat_eul_index(jcross_lat,1) = jx_eul
               cross_lat_eul_index(jcross_lat,2) = jy_eul
@@ -667,7 +679,7 @@ MODULE remap
             !****************************
             !
             IF (lsame_cell_x) THEN
-!              IF (ldbgr) WRITE(*,*) "same cell x"
+              IF (ldbgr) WRITE(*,*) "same cell x"
               ysgn1 = (1+INT(SIGN(1.0D0,y(2)-y(1))))/2 !"1" if y(2)>y(1) else "0"
               ysgn2 = INT(SIGN(1.0D0,y(2)-y(1)))       !"1" if y(2)>y(1) else "-1"
               !
@@ -682,7 +694,7 @@ MODULE remap
                 !
                 ! line segment is parallel to longitude (infinite slope)
                 !
-!                IF (ldbgr) WRITE(*,*) "line segment parallel to longitude"
+                IF (ldbgr) WRITE(*,*) "line segment parallel to longitude"
                 xcross = x(1)
               ELSE
                 slope  = (y(2)-y(1))/(x(2)-x(1))
@@ -693,7 +705,7 @@ MODULE remap
                 xcross = MIN(MAX(xcross,xgno(jx_eul)),xgno(jx_eul+1))
 
                 
-!                IF (ldbgr) WRITE(*,*) "cross latitude"
+                IF (ldbgr) WRITE(*,*) "cross latitude"
                 !
                 ! debugging
                 !
@@ -723,7 +735,7 @@ MODULE remap
               r_cross_lat(jcross_lat,1) = xcross
               r_cross_lat(jcross_lat,2) = yeul
             ELSE IF (lsame_cell_y) THEN
-!              IF (ldbgr) WRITE(*,*) "same cell y"
+              IF (ldbgr) WRITE(*,*) "same cell y"
               !
               !*******************************************************************************
               !
@@ -734,10 +746,10 @@ MODULE remap
               xsgn1 = (1+INT(SIGN(1.0D0,x(2)-x(1))))/2 !"1" if x(2)>x(1) else "0"
               xsgn2 = INT(SIGN(1.0D0,x(2)-x(1))) !"1" if x(2)>x(1) else "-1"
               xeul   = xgno(jx_eul+xsgn1)
-!              IF (ldbgr) WRITE(*,*) " crossing longitude",jx_eul+xsgn1
+              IF (ldbgr) WRITE(*,*) " crossing longitude",jx_eul+xsgn1
               IF (ABS(x(2)-x(1))<fuzzy_width) THEN
                 ycross = 0.5*(y(2)-y(1))
-                !                IF (ldbgr) WRITE(*,*) "fuzzy crossing"
+                                IF (ldbgr) WRITE(*,*) "fuzzy crossing"
               ELSE
                 slope  = (y(2)-y(1))/(x(2)-x(1))
                 ycross = y_cross_eul_lon(x(1),y(1),xeul,slope)
@@ -764,7 +776,7 @@ MODULE remap
               !
               x(0) = x(1); y(0) = y(1); x(1) = xeul; y(1) = ycross; jx_eul = jx_eul+xsgn2
             ELSE
-!              IF (ldbgr) WRITE(*,*) "not same cell x; not same cell y"
+              IF (ldbgr) WRITE(*,*) "not same cell x; not same cell y"
               !
               !*******************************************************************************
               !
@@ -791,7 +803,7 @@ MODULE remap
                 !
                 ! cross latitude
                 !
-!                IF (ldbgr) WRITE(*,*) "crossing latitude",jy_eul+ysgn1
+                IF (ldbgr) WRITE(*,*) "crossing latitude",jy_eul+ysgn1
                 xseg(1) = x(1); yseg(1) = y(1); xseg(2) = xcross; yseg(2) = yeul
                 jx_eul_tmp = jx_eul; jy_eul_tmp = jy_eul; 
                 !
@@ -814,7 +826,7 @@ MODULE remap
                 !
                 ! cross longitude
                 !
-!                IF (ldbgr) WRITE(*,*) "crossing longitude",jx_eul+xsgn1
+                IF (ldbgr) WRITE(*,*) "crossing longitude",jx_eul+xsgn1
                 xseg(1) = x(1); yseg(1) = y(1); xseg(2) = xeul; yseg(2) = ycross
                 jx_eul_tmp = jx_eul; jy_eul_tmp = jy_eul; 
                 !
@@ -856,7 +868,7 @@ MODULE remap
               slope    = (yseg(2)-yseg(1))/(xseg(2)-xseg(1))
             end if
           ELSE
-!            IF (ldbgr) WRITE(*,*) "segment outside of panel"
+            IF (ldbgr) WRITE(*,*) "segment outside of panel"
           END IF         
         END DO
         side_count = side_count+1

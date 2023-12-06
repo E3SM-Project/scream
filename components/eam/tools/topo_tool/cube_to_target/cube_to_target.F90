@@ -276,8 +276,8 @@ program convterr
   !
   !****************************************************
   !
-  jall = ncube*ncube*12*10 !anticipated number of weights (cab be tweaked)
-  jmax_segments = 100000   !can be tweaked
+  jall = ncube*ncube*12*10*100000 !anticipated number of weights (cab be tweaked)
+  jmax_segments = 100000*2   !can be tweaked
   
   allocate (weights_all(jall,nreconstruction),stat=alloc_error )
   allocate (weights_eul_index_all(jall,3),stat=alloc_error )
@@ -436,7 +436,7 @@ program convterr
       do i=1,ncorner
         write(*,*) target_corner_lon(i,count),target_corner_lat(i,count)
       end do
-      STOP
+      !STOP !(zhang73)
     else 
       
     end if
@@ -1598,7 +1598,7 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
   integer , allocatable, dimension(:,:) :: weights_eul_index
   
   
-  LOGICAL:: ldbg = .FAlSE.
+  LOGICAL:: ldbg = .False.
   
   INTEGER :: jall_anticipated
   
@@ -1623,6 +1623,7 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
   tmp = 0.0
   jall = 1
   DO i=1,ntarget
+  !DO i=1773,ntarget (zhang73)
     if (mod(i,1000) == 0) WRITE(*,*) "cell",i,"  ",100.0*DBLE(i)/DBLE(ntarget),"% done"
     !
     !---------------------------------------------------          
@@ -1634,7 +1635,8 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
     CALL remove_duplicates_latlon(ncorner,target_corner_lon(:,i),target_corner_lat(:,i),&
          ncorner_this_cell,lon,lat,1.0E-10,ldbg)
     
-    IF (ldbg) THEN
+    !IF (ldbg) THEN
+    WRITE(*,*) "i, ntarget",i, ntarget !(zhang73)
       WRITE(*,*) "number of vertices ",ncorner_this_cell
       WRITE(*,*) "vertices locations lon,",lon(1:ncorner_this_cell)*rad2deg
       WRITE(*,*) "vertices locations lat,",lat(1:ncorner_this_cell)*rad2deg
@@ -1642,7 +1644,7 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
         WRITE(*,*) lon(j)*rad2deg, lat(j)*rad2deg
       END DO
       WRITE(*,*) "  "
-    END IF
+    !END IF
     !
     !---------------------------------------------------
     !
@@ -1652,7 +1654,8 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
     !
     DO j=1,ncorner_this_cell
       CALL CubedSphereABPFromRLL(lon(j), lat(j), alpha, beta, ipanel_tmp(j), .TRUE.)
-      IF (ldbg) WRITE(*,*) "ipanel for corner ",j," is ",ipanel_tmp(j)
+      !IF (ldbg) WRITE(*,*) "ipanel for corner ",j," is ",ipanel_tmp(j)
+      WRITE(*,*) "ipanel for corner ",j," is ",ipanel_tmp(j)
     END DO
     ipanel_tmp(ncorner_this_cell+1) = ipanel_tmp(1)
     ! make sure to include possible overlap areas not on the face the vertices are located
@@ -1671,6 +1674,7 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
     !
     CALL remove_duplicates_integer(ncorner_this_cell+1,ipanel_tmp(1:ncorner_this_cell+1),&
          k,ipanel_array(1:ncorner_this_cell+1))
+    WRITE(*,*) "after remove_duplicates_integer"
     !
     !---------------------------------------------------
     !
@@ -1698,11 +1702,13 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
       jx = MAX(MIN(jx,ncube+1),0)
       jy = MAX(MIN(jy,ncube+1),0)
       
+      WRITE(*,*) "ip = ",ip
       CALL compute_weights_cell(xcell(0:ncorner_this_cell+1),ycell(0:ncorner_this_cell+1),&
            jx,jy,nreconstruction,xgno,ygno,&
            1, ncube+1, 1,ncube+1, tmp,&
            ngauss,gauss_weights,abscissae,weights,weights_eul_index,jcollect,jmax_segments,&
            ncube,0,ncorner_this_cell,ldbg)
+    WRITE(*,*) "compute_weights_cell"
       
       weights_all(jall:jall+jcollect-1,1:nreconstruction)  = weights(1:jcollect,1:nreconstruction)
       
@@ -1716,7 +1722,8 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
         WRITE(*,*) "increase jall"
         STOP
       END IF
-      IF (ldbg) WRITE(*,*) "jcollect",jcollect
+      !IF (ldbg) WRITE(*,*) "jcollect",jcollect
+      WRITE(*,*) "jcollect",jcollect !(zhang73)
     END DO
   END DO
   jall = jall-1

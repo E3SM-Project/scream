@@ -882,6 +882,7 @@ CONTAINS
        call t_startf(trim(lstr)//'_readcdf')
        if (my_task == master_task) then
           call shr_ncread_varDimSizes(trim(fileName),trim(sfldName),nx,ny,nz)
+          write(logunit,F01) "data sizes 1 ",nx,ny,nz,gsize,trim(sfldName),trim(fileName)
           if (gsize == nx*ny) then
              d3dflag = .false.
              allocate(data2d(nx,ny))
@@ -889,7 +890,7 @@ CONTAINS
              d3dflag = .true.
              allocate(data3d(nx,ny,nz))
           else
-             write(logunit,F01) "ERROR in data sizes ",nx,ny,nz,gsize
+             write(logunit,F01) "ERROR in data sizes 1 ",nx,ny,nz,gsize,trim(sfldName),trim(fileName)
              call shr_sys_abort(subname//"ERROR in data sizes")
           endif
           call mct_aVect_init(avG,av,gsize)
@@ -962,9 +963,10 @@ CONTAINS
        if (ndims >= 1) rcode = pio_inq_dimlen(pioid, dimid(1), nx)
        if (ndims >= 2) rcode = pio_inq_dimlen(pioid, dimid(2), ny)
        if (ndims >= 3) rcode = pio_inq_dimlen(pioid, dimid(3), nz)
+          write(logunit,F01) "data sizes 2 ",nx,ny,nz,gsize,trim(sfldName),trim(fileName),ndims
        deallocate(dimid)
        if (gsize /= nx*ny .and. gsize /= nx*ny*nz) then
-          write(logunit,F01) "ERROR in data sizes ",nx,ny,nz,gsize
+          write(logunit,F01) "ERROR in data sizes 2 ",nx,ny,nz,gsize,trim(sfldName),trim(fileName),ndims
           call shr_sys_abort(subname//"ERROR in data sizes")
        endif
 
@@ -1147,10 +1149,11 @@ CONTAINS
           if (ndims >= 1) rcode = pio_inq_dimlen(pioid, dimid(1), nx)
           if (ndims >= 2) rcode = pio_inq_dimlen(pioid, dimid(2), ny)
           if (ndims >= 3) rcode = pio_inq_dimlen(pioid, dimid(3), nz)
+          write(logunit,F01) "data sizes 3 ",nx,ny,nz,gsize,trim(sfldName),trim(fileName),ndims
           deallocate(dimid)
 
           if (gsize /= nx*ny) then
-             write(logunit,F01) "ERROR in data sizes ",nx,ny,nz,gsize
+             write(logunit,F01) "ERROR in data sizes 3 ",nx,ny,nz,gsize,trim(sfldName),trim(fileName),ndims
              call shr_sys_abort(subname//"ERROR in data sizes")
           endif
 

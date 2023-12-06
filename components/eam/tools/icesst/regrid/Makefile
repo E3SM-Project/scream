@@ -38,6 +38,11 @@ ifeq ($(UNAMES),Linux)
     endif
   endif
 endif
+#--zhang73
+FC = ifort
+FFLAGS := $(shell nf-config --flibs)
+LDFLAGS := $(shell nf-config --flibs)
+FFLAGS := -I$(INC_NETCDF) 
 
 #------------------------------------------------------------------------
 # SGI

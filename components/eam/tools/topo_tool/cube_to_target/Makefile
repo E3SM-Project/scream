@@ -9,9 +9,12 @@ RM = rm
 # environment variable, and we should not need to do anything here. If this
 # is the case, skip setting FC, but if FC is null then set to a default.
 ifeq ($(FC),$(null))
-    FC = gfortran
+#    FC = gfortran
 endif
 DEBUG = FALSE
+FC = ifort
+FFLAGS := $(shell nf-config --flibs)
+LDFLAGS := $(shell nf-config --flibs)
 
 # Check for the NetCDF library and include directories 
 ifeq ($(LIB_NETCDF),$(null))
@@ -21,11 +24,12 @@ endif
 ifeq ($(INC_NETCDF),$(null))
     INC_NETCDF := /usr/local/include
 endif
+FFLAGS := -I$(INC_NETCDF)
 
 # Set default compile and link flags
-FFLAGS  = -L$(LIB_NETCDF) -I$(INC_NETCDF)
+#FFLAGS  = -L$(LIB_NETCDF) -I$(INC_NETCDF)
 #LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff -lcurl -lhdf5 -lhdf5_hl -mcmodel=medium 
-LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff -lcurl
+#LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff -lcurl
 
 # Determine platform 
 UNAMES := $(shell uname -s)
