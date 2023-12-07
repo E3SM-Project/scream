@@ -108,7 +108,6 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
 
   using namespace ShortFieldTagsNames;
   using namespace ekat::units;
-  using FL  = FieldLayout;
 
   constexpr int NGP = HOMMEXX_NP;
   constexpr int NTL = HOMMEXX_NUM_TIME_LEVELS;
@@ -119,7 +118,6 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
   auto Q = kg/kg;
   Q.set_string("kg/kg");
 
-  const int ncols = m_phys_grid->get_num_local_dofs();
   const int nelem = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
   const int nlev_mid = m_dyn_grid->get_num_vertical_levels();
   const int nlev_int = nlev_mid+1;

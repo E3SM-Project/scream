@@ -2,6 +2,17 @@
 
 #include <ekat/util/ekat_string_utils.hpp>
 
+namespace {
+inline std::vector<std::string> tags2str (const std::vector<scream::FieldTag>& tags) {
+  std::vector<std::string> names;
+  names.reserve(tags.size());
+  for (auto t : tags) {
+    names.push_back(scream::e2str(t));
+  }
+  return names;
+}
+} // namespace
+
 namespace scream
 {
 
@@ -19,7 +30,7 @@ FieldLayout::FieldLayout (const std::vector<FieldTag>& tags)
 
 FieldLayout::FieldLayout (const std::vector<FieldTag>& tags,
                           const std::vector<int>& dims)
- : FieldLayout (tags,evec2str(tags),dims)
+ : FieldLayout (tags,tags2str(tags),dims)
 {
   // Nothing to do here
 }
@@ -189,6 +200,7 @@ void FieldLayout::compute_type () {
           (tags[2]==LEV || tags[2]==ILEV)) {
         m_type = LayoutType::Tensor3D;
       }
+      break;
     default:
       // If nothing worked, this type is not recognized
       m_type = LayoutType::Invalid;
