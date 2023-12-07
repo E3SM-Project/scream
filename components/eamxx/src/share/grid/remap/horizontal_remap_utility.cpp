@@ -47,6 +47,7 @@ void HorizontalMap::set_remap_segments_from_file(const std::string& remap_filena
   }
 
   start_timer("EAMxx::HorizontalMap::set_remap_segments_from_file");
+  start_timer("NDK-EAMxx::HorizontalMap::ss00");
   // Open remap file and determine the amount of data to be read
   scorpio::register_file(remap_filename,scorpio::Read);
   const auto remap_size = scorpio::get_dimlen(remap_filename,"n_s"); // Note, here we assume a standard format of col, row, S
@@ -77,18 +78,28 @@ void HorizontalMap::set_remap_segments_from_file(const std::string& remap_filena
     }
     EKAT_REQUIRE_MSG(chunk_check==remap_size,"ERROR: HorizontalMap " + m_name +" get_remap_indices - Something went wrong distributing remap data among the MPI ranks");
   }
+  stop_timer("NDK-EAMxx::HorizontalMap::ss00");
+  start_timer("NDK-EAMxx::HorizontalMap::ss01");
   // Using scream input routines, read remap data from file by chunk
   view_1d<int>  tgt_col("row",my_chunk); 
   auto tgt_col_h = Kokkos::create_mirror_view(tgt_col);
+  stop_timer("NDK-EAMxx::HorizontalMap::ss01");
+  start_timer("NDK-EAMxx::HorizontalMap::ss02");
   std::vector<std::string> vec_of_dims = {"n_s"};
   std::string i_decomp = "HR::srsff,phase1,dt=int,n_s=" + std::to_string(my_chunk) + ",file-idx=" + std::to_string(file2idx[remap_filename]);
   scorpio::register_variable(remap_filename, "row", "row", vec_of_dims, "int", i_decomp);
   std::vector<int64_t> var_dof(my_chunk);
   std::iota(var_dof.begin(),var_dof.end(),my_start);
+  stop_timer("NDK-EAMxx::HorizontalMap::ss02");
+  start_timer("NDK-EAMxx::HorizontalMap::ss03");  
   scorpio::set_dof(remap_filename,"row",var_dof.size(),var_dof.data());
   scorpio::set_decomp(remap_filename);
+  stop_timer("NDK-EAMxx::HorizontalMap::ss03");
+  start_timer("NDK-EAMxx::HorizontalMap::ss04");  
   scorpio::grid_read_data_array(remap_filename,"row",0,tgt_col_h.data(),tgt_col_h.size()); 
   scorpio::eam_pio_closefile(remap_filename);
+  stop_timer("NDK-EAMxx::HorizontalMap::ss04");
+  start_timer("NDK-EAMxx::HorizontalMap::ss05");  
   // Step 2: Now that we have the data distributed among all ranks we organize the data
   //         into sets of target column, start location in data and length of data.
   //         At the same time, determine the min_dof for remap column indices.
@@ -109,6 +120,8 @@ void HorizontalMap::set_remap_segments_from_file(const std::string& remap_filena
       chunk_len.push_back(1);
     }
   }
+  stop_timer("NDK-EAMxx::HorizontalMap::ss05");
+  start_timer("NDK-EAMxx::HorizontalMap::ss06");
   // Pass chunk information among all ranks so they can be consolidated.
   int  num_chunks          = chunk_dof.size();
   std::vector<int> num_chunks_per_rank(num_ranks), chunk_displacement(num_ranks);
@@ -126,6 +139,8 @@ void HorizontalMap::set_remap_segments_from_file(const std::string& remap_filena
   MPI_Allgatherv(chunk_dof.data(),  chunk_dof.size(),MPI_INT,buff_dof.data(),num_chunks_per_rank.data(),chunk_displacement.data(),MPI_INT,m_comm.mpi_comm());
   MPI_Allgatherv(chunk_start.data(),chunk_dof.size(),MPI_INT,buff_sta.data(),num_chunks_per_rank.data(),chunk_displacement.data(),MPI_INT,m_comm.mpi_comm());
   MPI_Allgatherv(chunk_len.data(),  chunk_dof.size(),MPI_INT,buff_len.data(),num_chunks_per_rank.data(),chunk_displacement.data(),MPI_INT,m_comm.mpi_comm());
+  stop_timer("NDK-EAMxx::HorizontalMap::ss06");
+  start_timer("NDK-EAMxx::HorizontalMap::ss07");  
   // Step 3: Now that all of the ranks are aware of all of the "sets" of source -> target mappings we
   //         construct and add segments for just the DOF's this rank cares about.
   std::vector<int> seg_dof, seg_start, seg_length;
@@ -145,6 +160,8 @@ void HorizontalMap::set_remap_segments_from_file(const std::string& remap_filena
       } 
     }
   }
+  stop_timer("NDK-EAMxx::HorizontalMap::ss07");
+  start_timer("NDK-EAMxx::HorizontalMap::ss08");
   // Now that we know which parts of the remap file this rank cares about we can construct segments
   view_1d<int>  col("col",var_dof.size()); 
   view_1d<Real> S("S",var_dof.size()); 
@@ -162,6 +179,8 @@ void HorizontalMap::set_remap_segments_from_file(const std::string& remap_filena
   scorpio::grid_read_data_array(remap_filename,"col",0,col_h.data(),col_h.size()); 
   scorpio::grid_read_data_array(remap_filename,"S",0,S_h.data(),S_h.size()); 
   scorpio::eam_pio_closefile(remap_filename);
+  stop_timer("NDK-EAMxx::HorizontalMap::ss08");
+  start_timer("NDK-EAMxx::HorizontalMap::ss09");
   Kokkos::deep_copy(col,col_h);
   Kokkos::deep_copy(S,S_h);
   // Construct segments based on data just read from file
@@ -178,6 +197,7 @@ void HorizontalMap::set_remap_segments_from_file(const std::string& remap_filena
     HorizontalMapSegment seg(seg_dof[ii]-global_remap_min_dof,seglength,source_dofs,weights);
     add_remap_segment(seg);
   }
+  stop_timer("NDK-EAMxx::HorizontalMap::ss09");
   stop_timer("EAMxx::HorizontalMap::set_remap_segments_from_file");
 }
 /*-----------------------------------------------------------------------------------------------*/

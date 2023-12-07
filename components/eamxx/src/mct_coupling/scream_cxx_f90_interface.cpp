@@ -21,6 +21,8 @@
 #include "ekat/ekat_pack.hpp"
 #include "ekat/ekat_assert.hpp"
 
+#include "share/util/scream_timing.hpp"
+
 // Anonymous namespace, for some utility functions
 namespace {
 
@@ -213,13 +215,20 @@ void scream_init_atm (const char* caseid,
     // Get the ad, then complete initialization
     auto& ad = get_ad_nonconst();
 
+    start_timer("NDK-scream_init_atm-00");
     // Set provenance info in the driver (will be added to the output files)
     ad.set_provenance_data (caseid,hostname,username);
-
+    stop_timer("NDK-scream_init_atm-00");
+    start_timer("NDK-scream_init_atm-01");    
     // Init all fields, atm processes, and output streams
     ad.initialize_fields ();
+    stop_timer("NDK-scream_init_atm-01");
+    start_timer("NDK-scream_init_atm-02");    
     ad.initialize_atm_procs ();
+    stop_timer("NDK-scream_init_atm-02");
+    start_timer("NDK-scream_init_atm-03");        
     ad.initialize_output_managers ();
+    stop_timer("NDK-scream_init_atm-03");
   });
 }
 

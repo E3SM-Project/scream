@@ -8,6 +8,7 @@
 #include "ekat/ekat_assert.hpp"
 #include "ekat/util/ekat_units.hpp"
 
+#include "share/util/scream_timing.hpp"
 #include <array>
 
 namespace scream
@@ -202,6 +203,7 @@ void P3Microphysics::init_buffers(const ATMBufferManager &buffer_manager)
 // =========================================================================================
 void P3Microphysics::initialize_impl (const RunType /* run_type */)
 {
+  start_timer("NDK-p3init00");
   // Set property checks for fields in this process
   add_invariant_check<FieldWithinIntervalCheck>(get_field_out("T_mid"),m_grid,100.0,500.0,false);
   add_invariant_check<FieldWithinIntervalCheck>(get_field_out("qv"),m_grid,1e-13,0.2,true);
@@ -220,11 +222,13 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   add_postcondition_check<FieldLowerBoundCheck>(get_field_out("precip_ice_surf_mass"),m_grid,0.0,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("eff_radius_qc"),m_grid,0.0,1.0e2,false);
   add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("eff_radius_qi"),m_grid,0.0,5.0e3,false);
-
+  stop_timer("NDK-p3init00");
+  start_timer("NDK-p3init01");  
   // Initialize p3
   p3::p3_init(/* write_tables = */ false,
               this->get_comm().am_i_root());
-
+  stop_timer("NDK-p3init01");
+  start_timer("NDK-p3init02");  
   // Initialize all of the structures that are passed to p3_main in run_impl.
   // Note: Some variables in the structures are not stored in the field manager.  For these
   //       variables a local view is constructed.
@@ -327,16 +331,22 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
     const auto& heat_flux  = get_field_out("heat_flux").get_view<Real*>();
     p3_postproc.set_mass_and_energy_fluxes(vapor_flux, water_flux, ice_flux, heat_flux);
   }
-
+  stop_timer("NDK-p3init02");
+  start_timer("NDK-p3init03");  
   // Load tables
   P3F::init_kokkos_ice_lookup_tables(lookup_tables.ice_table_vals, lookup_tables.collect_table_vals);
+  stop_timer("NDK-p3init03");
+  start_timer("NDK-p3init04");  
   P3F::init_kokkos_tables(lookup_tables.vn_table_vals, lookup_tables.vm_table_vals,
                           lookup_tables.revap_table_vals, lookup_tables.mu_r_table_vals,
                           lookup_tables.dnu_table_vals);
-
+  stop_timer("NDK-p3init04");
+  start_timer("NDK-p3init05");  
   // Setup WSM for internal local variables
   const auto policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nk_pack);
   workspace_mgr.setup(m_buffer.wsm_data, nk_pack_p1, 52, policy);
+  stop_timer("NDK-p3init05");
+
 }
 
 // =========================================================================================

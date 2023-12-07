@@ -67,7 +67,8 @@ CONTAINS
     use seq_comm_mct,       only: seq_comm_inst, seq_comm_name, seq_comm_suffix
     use shr_file_mod,       only: shr_file_getunit, shr_file_setIO
     use shr_sys_mod,        only: shr_sys_abort
-
+    use perf_mod     ,only: t_startf, t_stopf
+    
     ! !INPUT/OUTPUT PARAMETERS:
     type(ESMF_Clock)            , intent(inout) :: EClock
     type(seq_cdata)             , intent(inout) :: cdata
@@ -96,7 +97,8 @@ CONTAINS
     logical (kind=c_bool) :: restarted_run
 
     !-------------------------------------------------------------------------------
-
+    call t_startf('NDK-mct00')
+    
     ! Grab some data from the cdata structure (coming from the coupler)
     call seq_cdata_setptrs(cdata, &
          id=ATM_ID, &
@@ -108,9 +110,11 @@ CONTAINS
                               username=username, case_name=caseid, hostname=hostname)
     call seq_infodata_PutData(infodata, atm_aero=.true.)
     call seq_infodata_PutData(infodata, atm_prognostic=.true.)
-
+    call t_stopf('NDK-mct00')
+    
     if (phase > 1) RETURN
 
+    call t_startf('NDK-mct01')
     ! Determine instance information
     inst_name   = seq_comm_name(ATM_ID)
     inst_index  = seq_comm_inst(ATM_ID)
@@ -140,7 +144,8 @@ CONTAINS
       print *,'[eamxx] ERROR broadcasting atm.log file name'
       call mpi_abort(mpicom_atm,ierr,mpi_ierr)
     end if
-
+    call t_stopf('NDK-mct01')
+    call t_startf('NDK-mct02')
     !----------------------------------------------------------------------------
     ! Initialize atm
     !----------------------------------------------------------------------------
@@ -157,14 +162,17 @@ CONTAINS
                           INT(case_start_ymd,kind=C_INT), INT(case_start_tod,kind=C_INT), &
                           calendar_c)
 
-
+    call t_stopf('NDK-mct02')
+    call t_startf('NDK-mct03')
     ! Init MCT gsMap
     call atm_Set_gsMap_mct (mpicom_atm, ATM_ID, gsMap_atm)
     lsize = mct_gsMap_lsize(gsMap_atm, mpicom_atm)
-
+    call t_stopf('NDK-mct03')
+    call t_startf('NDK-mct04')
     ! Init MCT domain structure
     call atm_domain_mct (lsize, gsMap_atm, dom_atm)
-
+    call t_stopf('NDK-mct04')
+    call t_startf('NDK-mct05')
     ! Init import/export mct attribute vectors
     call mct_aVect_init(x2a, rList=seq_flds_x2a_fields, lsize=lsize)
     call mct_aVect_init(a2x, rList=seq_flds_a2x_fields, lsize=lsize)
@@ -178,10 +186,12 @@ CONTAINS
       print *, "[eamxx] ERROR! Unsupported starttype: "//trim(run_type)
       call mpi_abort(mpicom_atm,ierr,mpi_ierr)
     endif
-
+    call t_stopf('NDK-mct05')
+    call t_startf('NDK-mct06')
     ! Init surface coupling stuff in the AD
     call scream_set_cpl_indices (x2a, a2x)
-
+    call t_stopf('NDK-mct06')
+    call t_startf('NDK-mct07')
     call scream_setup_surface_coupling (c_loc(import_field_names), c_loc(import_cpl_indices), &
                                         c_loc(x2a%rAttr), c_loc(import_vector_components), &
                                         c_loc(import_constant_multiple), c_loc(do_import_during_init), &
@@ -190,11 +200,13 @@ CONTAINS
                                         c_loc(a2x%rAttr), c_loc(export_vector_components), &
                                         c_loc(export_constant_multiple), c_loc(do_export_during_init), &
                                         num_cpl_exports, num_scream_exports, export_field_size)
-
+    call t_stopf('NDK-mct07')
+    call t_startf('NDK-mct08')
     call string_f2c(trim(caseid),caseid_c)
     call string_f2c(trim(username),username_c)
     call string_f2c(trim(hostname),hostname_c)
     call scream_init_atm (caseid_c,hostname_c,username_c)
+    call t_stopf('NDK-mct08')
 
   end subroutine atm_init_mct
 

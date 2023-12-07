@@ -155,6 +155,7 @@ contains
     real (kind=real_kind) :: max_deltaerr_g, max_reserr_g
 
     call t_startf('prim_printstate')
+    call t_startf('NDK-PPS00')
     if (hybrid%masterthread) then 
        if (Time_at(tl%nstep) <= 3600) then
           write(iulog,*) "nstep=",tl%nstep," time=",Time_at(tl%nstep)," [s]"
@@ -195,7 +196,8 @@ contains
     time2 = time 
     time1 = time - dt
 
-
+    call t_stopf('NDK-PPS00')
+    call t_startf('NDK-PPS01')
     npts = np
     do q=1,qsize
        do ie=nets,nete
@@ -216,7 +218,8 @@ contains
        call wrap_repro_sum(nvars=1, comm=hybrid%par%comm)
        qvsum_p(q) = global_shared_sum(1)
     enddo
-
+    call t_stopf('NDK-PPS01')
+    call t_startf('NDK-PPS02')    
 
     ! compute TS min/max
     do ie=nets,nete
@@ -227,7 +230,8 @@ contains
     TSmin_p = ParallelMin(psmin_local,hybrid)
     TSmax_p = ParallelMax(psmax_local,hybrid)
 
-
+    call t_stopf('NDK-PPS02')
+    call t_startf('NDK-PPS03')    
 
 
     !
@@ -299,6 +303,9 @@ contains
 
     end do
 
+    call t_stopf('NDK-PPS03')
+    call t_startf('NDK-PPS04')    
+
     which = 'u'
     call findExtremumWithLevel(elem,umax_local,which,'max',n0,hybrid,hvcoord,nets,nete,.false.)
     call findExtremumWithLevel(elem,umin_local,which,'min',n0,hybrid,hvcoord,nets,nete,.false.)
@@ -352,6 +359,8 @@ contains
 
     psmin_p = ParallelMin(psmin_local,hybrid)
     psmax_p = ParallelMax(psmax_local,hybrid)
+    call t_stopf('NDK-PPS04')
+    call t_startf('NDK-PPS05')    
 
     call wrap_repro_sum(nvars=12, comm=hybrid%par%comm)
     usum_p = global_shared_sum(1)
@@ -385,6 +394,9 @@ contains
     enddo
     Mass2 = global_integral(elem, tmp(:,:,nets:nete),hybrid,npts,nets,nete)
     Mass = Mass2*scale
+    
+    call t_stopf('NDK-PPS05')
+    call t_startf('NDK-PPS06')    
 
     if(hybrid%masterthread) then
        write(iulog,109) "u     = ",umin_local(1)," (",nint(umin_local(2)),")",&
@@ -432,6 +444,8 @@ contains
        write(iulog,'(a,E23.15,a,E23.15,a)') "      M = ",Mass,' kg/m^2',Mass2,'mb     '
 
     end if
+    call t_stopf('NDK-PPS06')
+    call t_startf('NDK-PPS07')    
  
 100 format (A10,3(E23.15))
 102 format (A4,I3,A3,3(E24.16))
@@ -468,6 +482,7 @@ contains
        end if
     endif
 
+    call t_stopf('NDK-PPS07')
 
     if (tl%nstep < tl%nstep0) then
        call t_stopf('prim_printstate')

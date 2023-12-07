@@ -750,10 +750,11 @@ initialize_fields ()
   m_atm_logger->info("[EAMxx] initialize_fields ...");
   start_timer("EAMxx::init");
   start_timer("EAMxx::initialize_fields");
-
+  start_timer("NDK-EAMxx::initialize_fields-s00");
   // See the [rrtmgp active gases] note in share/util/eamxx_fv_phys_rrtmgp_active_gases_workaround.hpp
   if (fvphyshack) fv_phys_rrtmgp_active_gases_set_restart(m_case_t0 < m_run_t0);
-
+  stop_timer("NDK-EAMxx::initialize_fields-s00");
+  start_timer("NDK-EAMxx::initialize_fields-s01");  
   // See if we need to print a DAG. We do this first, cause if any input
   // field is missing from the initial condition file, an error will be thrown.
   // By printing the DAG first, we give the user the possibility of seeing
@@ -765,6 +766,8 @@ initialize_fields ()
 
   auto& driver_options_pl = m_atm_params.sublist("driver_options");
   const int verb_lvl = driver_options_pl.get<int>("atmosphere_dag_verbosity_level",-1);
+  stop_timer("NDK-EAMxx::initialize_fields-s01");
+  start_timer("NDK-EAMxx::initialize_fields-s02");  
   if (verb_lvl>0) {
     // Check the atm DAG for missing stuff
     AtmProcDAG dag;
@@ -775,14 +778,16 @@ initialize_fields ()
     // Write a dot file for visualization
     dag.write_dag("scream_atm_dag.dot",std::max(verb_lvl,0));
   }
-
+  stop_timer("NDK-EAMxx::initialize_fields-s02");
+  start_timer("NDK-EAMxx::initialize_fields-s03");  
   // Initialize fields
   if (m_case_t0<m_run_t0) {
     restart_model ();
   } else {
     set_initial_conditions ();
   }
-
+  stop_timer("NDK-EAMxx::initialize_fields-s03");
+  start_timer("NDK-EAMxx::initialize_fields-s04");  
   // Now that IC have been read, add U/V subfields of horiz_winds,
   // as well as U/V component of surf_mom_flux
   // NOTE: if you add them _before_ the IC read, set_initial_conditions
@@ -827,6 +832,7 @@ initialize_fields ()
 
   // Zero out accumulated fields
   reset_accummulated_fields();
+  stop_timer("NDK-EAMxx::initialize_fields-s04");
 
 #ifdef SCREAM_HAS_MEMORY_USAGE
   long long my_mem_usage = get_mem_usage(MB);
@@ -1395,7 +1401,6 @@ initialize (const ekat::Comm& atm_comm,
   create_atm_processes ();
 
   create_grids ();
-
   create_fields ();
 
   initialize_fields ();
@@ -1403,6 +1408,7 @@ initialize (const ekat::Comm& atm_comm,
   initialize_atm_procs ();
 
   initialize_output_managers ();
+
 }
 
 void AtmosphereDriver::run (const int dt) {
