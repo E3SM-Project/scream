@@ -343,12 +343,6 @@ void iop_setinitial_f(Int plev, Int pcnst, Int nelemd, Int np, Int nstep, Real p
   using view_1d =  typename DPF::view_1d<Spack>;
   using view_1ds = typename DPF::view_1d<Scalarp>;
   using sview_1ds = typename DPF::view_1d<Real>;
-  using KT = typename DPF::KT;
-  using ExeSpace = typename KT::ExeSpace;
-  using MemberType = typename DPF::MemberType;
-
-  // Some of the workspaces need plev+1 items
-  const Int plev_pack = ekat::npack<Spack>(plev);
 
   // Set up views
   std::vector<view_1d>  temp_d(8);

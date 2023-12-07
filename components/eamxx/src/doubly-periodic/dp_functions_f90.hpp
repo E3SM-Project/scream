@@ -113,8 +113,8 @@ struct IopSetinitialData : public PhysicsTestData {
         {&qmin},
         {&uobs, &vobs, &numliqobs, &numiceobs, &cldliqobs, &cldiceobs, &tobs, &qobs}
       }),
-    plev(plev_), pcnst(pcnst_), nelemd(nelemd_), np(np_), nstep(nstep_), psobs(psobs_),
-    use_replay(use_replay_), dynproc(dynproc_), have_t(have_t_), have_q(have_q_), have_ps(have_ps_), have_u(have_u_), have_v(have_v_), have_numliq(have_numliq_), have_cldliq(have_cldliq_), have_numice(have_numice_), have_cldice(have_cldice_), scm_zero_non_iop_tracers(scm_zero_non_iop_tracers_), is_first_restart_step(is_first_restart_step_) { }
+    plev(plev_), pcnst(pcnst_), nelemd(nelemd_), np(np_), nstep(nstep_),
+    use_replay(use_replay_), dynproc(dynproc_), have_t(have_t_), have_q(have_q_), have_ps(have_ps_), have_u(have_u_), have_v(have_v_), have_numliq(have_numliq_), have_cldliq(have_cldliq_), have_numice(have_numice_), have_cldice(have_cldice_), scm_zero_non_iop_tracers(scm_zero_non_iop_tracers_), is_first_restart_step(is_first_restart_step_), psobs(psobs_) { }
 
   PTD_STD_DEF(IopSetinitialData, 19, plev, pcnst, nelemd, np, nstep, psobs, use_replay, dynproc, have_t, have_q, have_ps, have_u, have_v, have_numliq, have_cldliq, have_numice, have_cldice, scm_zero_non_iop_tracers, is_first_restart_step);
 
