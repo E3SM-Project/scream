@@ -1,6 +1,6 @@
 # Create tms library
 add_library(tms eamxx_tms_process_interface.cpp)
-target_link_libraries(tms physics_share scream_share)
+target_link_libraries(tms physics_share eamxx_share)
 target_compile_definitions(tms PUBLIC EAMXX_HAS_TMS)
 target_include_directories(tms PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}

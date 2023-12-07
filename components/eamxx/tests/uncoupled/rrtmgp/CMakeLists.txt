@@ -13,7 +13,7 @@ if (NOT SCREAM_BASELINES_ONLY)
                  ${CMAKE_CURRENT_BINARY_DIR}/input_unit.yaml)
   CreateUnitTest(${TEST_BASE_NAME}_unit rrtmgp_standalone_unit.cpp
     LABELS rrtmgp physics driver
-    LIBS scream_rrtmgp rrtmgp scream_control yakl diagnostics rrtmgp_test_utils
+    LIBS scream_rrtmgp rrtmgp scream_control yakl eamxx_diagnostics rrtmgp_test_utils
     EXE_ARGS "--ekat-test-params rrtmgp_inputfile=${SCREAM_DATA_DIR}/init/rrtmgp-allsky.nc,rrtmgp_baseline=${SCREAM_TEST_DATA_DIR}/rrtmgp-allsky-baseline.nc"
   )
   # This test needs the allsky baselines file
@@ -21,7 +21,7 @@ if (NOT SCREAM_BASELINES_ONLY)
 
   ## Create rrtmgp stand alone executable
   CreateUnitTestExec(${TEST_BASE_NAME} "rrtmgp_standalone.cpp"
-    LIBS scream_rrtmgp rrtmgp scream_control yakl diagnostics
+    LIBS scream_rrtmgp rrtmgp scream_control yakl eamxx_diagnostics
   )
 
   # The RRTMGP stand-alone test that runs multi-step

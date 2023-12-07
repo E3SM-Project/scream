@@ -2,7 +2,8 @@
 #include "share/field/field_utils.hpp"
 #include "share/util/scream_array_utils.hpp"
 #include "share/util/scream_bfbhash.hpp"
-#include "ekat/ekat_assert.hpp"
+
+#include <ekat/ekat_assert.hpp>
 
 #include <cstdint>
 

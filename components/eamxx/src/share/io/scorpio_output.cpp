@@ -1,14 +1,14 @@
 #include "share/io/scorpio_output.hpp"
 #include "share/io/scorpio_input.hpp"
 #include "share/util/scream_array_utils.hpp"
-#include "share/grid/remap/coarsening_remapper.hpp"
-#include "share/grid/remap/vertical_remapper.hpp"
+#include "share/remap/coarsening_remapper.hpp"
+#include "share/remap/vertical_remapper.hpp"
 #include "share/util/scream_timing.hpp"
 #include "share/field/field_utils.hpp"
 
-#include "ekat/util/ekat_units.hpp"
-#include "ekat/util/ekat_string_utils.hpp"
-#include "ekat/std_meta/ekat_std_utils.hpp"
+#include <ekat/util/ekat_units.hpp>
+#include <ekat/util/ekat_string_utils.hpp>
+#include <ekat/std_meta/ekat_std_utils.hpp>
 
 #include <numeric>
 #include <fstream>

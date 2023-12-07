@@ -1,20 +1,20 @@
 #ifndef SPA_FUNCTIONS_IMPL_HPP
 #define SPA_FUNCTIONS_IMPL_HPP
 
-#include "share/scream_types.hpp"
-#include "share/io/scream_scorpio_interface.hpp"
+#include "physics/share/physics_constants.hpp"
+#include "share/scorpio_interface/scream_scorpio_interface.hpp"
 #include "share/io/scorpio_input.hpp"
 #include "share/grid/point_grid.hpp"
-#include "physics/share/physics_constants.hpp"
+#include "share/util/scream_timing.hpp"
+#include "share/core/scream_types.hpp"
 
-#include "ekat/kokkos/ekat_subview_utils.hpp"
-#include "ekat/util/ekat_lin_interp.hpp"
-#include "ekat/ekat_pack_utils.hpp"
-#include "ekat/ekat_parse_yaml_file.hpp"
+#include <ekat/kokkos/ekat_subview_utils.hpp>
+#include <ekat/util/ekat_lin_interp.hpp>
+#include <ekat/ekat_pack_utils.hpp>
+#include <ekat/ekat_parse_yaml_file.hpp>
 
 #include <numeric>
 
-#include "share/util/scream_timing.hpp"
 /*-----------------------------------------------------------------
  * The main SPA routines used to convert SPA data into a format that
  * is usable by the rest of the atmosphere processes.

@@ -3,19 +3,11 @@
 // The AD
 #include "control/atmosphere_driver.hpp"
 
-// Dynamics includes
+// Includes to register products inside factories
 #include "dynamics/register_dynamics.hpp"
-
-// Physics includes
 #include "physics/register_physics.hpp"
-#include "diagnostics/register_diagnostics.hpp"
-
-// Surface coupling includes
+#include "share/diagnostics/register_diagnostics.hpp"
 #include "control/register_surface_coupling.hpp"
-#include "control/atmosphere_surface_coupling_importer.hpp"
-
-// EKAT headers
-#include "ekat/kokkos/ekat_kokkos_types.hpp"
 
 TEST_CASE("scream_homme_physics", "scream_homme_physics") {
   using namespace scream;

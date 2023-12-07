@@ -22,7 +22,7 @@
 // find blocks that eventually should be removed in favor of a design that
 // accounts for pg2. Some blocks may turn out to be unnecessary, and I simply
 // didn't realize I could do without the workaround.
-#include "share/util/eamxx_fv_phys_rrtmgp_active_gases_workaround.hpp"
+#include "share/fvphyshack/eamxx_fv_phys_rrtmgp_active_gases_workaround.hpp"
 
 #ifndef SCREAM_CIME_BUILD
 #include <unistd.h>
@@ -78,12 +78,12 @@ namespace control {
  *     also utilize their input fields to perform initialization of some internal data structure.
  *
  * For more info see header comments in the proper files:
+ *  - for grid                 -> src/share/grid/abstract_grid.hpp
  *  - for field                -> src/share/field/field.hpp
- *  - for field manager        -> src/share/field/field_manager.hpp
  *  - for field groups         -> src/share/field/field_group.hpp
  *  - for field/group requests -> src/share/field/field_request.hpp
- *  - for grid                 -> src/share/grid/abstract_grid.hpp
- *  - for grid manager         -> src/share/grid/grids_manager.hpp
+ *  - for field manager        -> src/share/managers/field_manager.hpp
+ *  - for grid manager         -> src/share/managers/grids_manager.hpp
  *  - for atm proc             -> src/share/atm_process/atmosphere_process.hpp
  *  - for atm proc group       -> src/share/atm_process/atmosphere_process_group.hpp
  *  - for scorpio input/output -> src/share/io/scorpio_[input|output].hpp

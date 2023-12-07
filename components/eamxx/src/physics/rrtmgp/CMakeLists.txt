@@ -122,7 +122,7 @@ yakl_process_target(scream_rrtmgp_yakl)
 #       since yakl_process_target already used it
 #       with the "plain" signature
 find_library(NETCDF_C netcdf HINTS ${NetCDF_C_PATH}/lib)
-target_link_libraries(scream_rrtmgp_yakl ${NETCDF_C} rrtmgp scream_share)
+target_link_libraries(scream_rrtmgp_yakl ${NETCDF_C} rrtmgp eamxx_share)
 target_include_directories(scream_rrtmgp_yakl PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(scream_rrtmgp_yakl SYSTEM PUBLIC
@@ -139,7 +139,7 @@ set(SCREAM_RRTMGP_SOURCES
 )
 
 add_library(scream_rrtmgp ${SCREAM_RRTMGP_SOURCES})
-target_link_libraries(scream_rrtmgp PUBLIC scream_share physics_share csm_share scream_rrtmgp_yakl)
+target_link_libraries(scream_rrtmgp PUBLIC eamxx_share physics_share csm_share scream_rrtmgp_yakl)
 set_target_properties(scream_rrtmgp PROPERTIES
   Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules
 )

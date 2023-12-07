@@ -1,7 +1,7 @@
 include (ScreamUtils)
 
 # Create the test
-set (NEED_LIBS zm scream_control scream_share diagnostics)
+set (NEED_LIBS zm scream_control eamxx_share eamxx_diagnostics)
 CreateUnitTest(zm_standalone "zm_standalone.cpp" "${NEED_LIBS}" LABELS "zm;physics;driver"
   MINIMUM_TEST_LEVEL ${SCREAM_TEST_LEVEL_EXPERIMENTAL})
 

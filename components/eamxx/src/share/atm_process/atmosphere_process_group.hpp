@@ -3,9 +3,8 @@
 
 #include "share/atm_process/atmosphere_process.hpp"
 #include "share/property_checks/mass_and_energy_column_conservation_check.hpp"
-#include "control/surface_coupling_utils.hpp"
 
-#include "ekat/ekat_parameter_list.hpp"
+#include <ekat/ekat_parameter_list.hpp>
 
 #include <string>
 #include <list>

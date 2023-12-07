@@ -1,25 +1,24 @@
-#include "scream_config.h"
+#include "dynamics/register_dynamics.hpp"
+#include "physics/register_physics.hpp"
+#include "share/diagnostics/register_diagnostics.hpp"
 
-#include "share/atm_process/atmosphere_process.hpp"
+#include "control/register_surface_coupling.hpp"
 #include "control/atmosphere_driver.hpp"
 #include "control/surface_coupling_utils.hpp"
 
-#include "dynamics/register_dynamics.hpp"
-#include "physics/register_physics.hpp"
-#include "diagnostics/register_diagnostics.hpp"
-#include "control/register_surface_coupling.hpp"
-
 #include "mct_coupling/ScreamContext.hpp"
-#include "share/grid/point_grid.hpp"
-#include "share/scream_session.hpp"
-#include "share/scream_config.hpp"
-#include "share/scream_types.hpp"
 
-#include "ekat/ekat_parse_yaml_file.hpp"
-#include "ekat/logging/ekat_logger.hpp"
-#include "ekat/mpi/ekat_comm.hpp"
-#include "ekat/ekat_pack.hpp"
-#include "ekat/ekat_assert.hpp"
+#include "share/atm_process/atmosphere_process.hpp"
+#include "share/grid/point_grid.hpp"
+#include "share/core/scream_session.hpp"
+#include "share/core/scream_config.hpp"
+#include "share/core/scream_types.hpp"
+
+#include <ekat/ekat_parse_yaml_file.hpp>
+#include <ekat/logging/ekat_logger.hpp>
+#include <ekat/mpi/ekat_comm.hpp>
+#include <ekat/ekat_pack.hpp>
+#include <ekat/ekat_assert.hpp>
 
 // Anonymous namespace, for some utility functions
 namespace {

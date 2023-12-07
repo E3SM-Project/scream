@@ -3,12 +3,12 @@
 #include "control/atmosphere_driver.hpp"
 #include "control/atmosphere_surface_coupling_importer.hpp"
 #include "control/atmosphere_surface_coupling_exporter.hpp"
-#include "diagnostics/register_diagnostics.hpp"
-#include "share/grid/mesh_free_grids_manager.hpp"
-#include "share/field/field_manager.hpp"
+#include "share/diagnostics/register_diagnostics.hpp"
+#include "share/managers/field_manager.hpp"
 #include "share/atm_process/atmosphere_process.hpp"
-#include "share/scream_types.hpp"
-#include "share/util/scream_setup_random_test.hpp"
+#include "share/unit_test_support/mesh_free_grids_manager.hpp"
+#include "share/unit_test_support/scream_setup_random_test.hpp"
+#include "share/core/scream_types.hpp"
 
 #include <ekat/ekat_parse_yaml_file.hpp>
 #include <ekat/util/ekat_test_utils.hpp>

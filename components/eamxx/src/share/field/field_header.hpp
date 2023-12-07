@@ -5,7 +5,7 @@
 #include "share/field/field_tracking.hpp"
 #include "share/field/field_alloc_prop.hpp"
 #include "share/util/scream_family_tracking.hpp"
-#include "share/scream_types.hpp"
+#include "share/core/scream_types.hpp"
 
 #include "share/util/scream_time_stamp.hpp"
 #include "ekat/std_meta/ekat_std_any.hpp"

@@ -1,10 +1,11 @@
-#include "catch2/catch.hpp"
+#include <catch2/catch.hpp>
 
 #include "physics/share/physics_test_data.hpp"
-#include "share/scream_types.hpp"
 #include "physics_unit_tests_common.hpp"
-#include "ekat/kokkos/ekat_kokkos_utils.hpp"
-#include "share/util/scream_setup_random_test.hpp"
+#include "share/unit_test_support/scream_setup_random_test.hpp"
+#include "share/core/scream_types.hpp"
+
+#include <ekat/kokkos/ekat_kokkos_utils.hpp>
 
 namespace scream {
 namespace physics {

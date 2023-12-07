@@ -5,20 +5,20 @@
 #include "share/atm_process/ATMBufferManager.hpp"
 #include "share/atm_process/SCDataManager.hpp"
 #include "share/field/field_identifier.hpp"
-#include "share/field/field_manager.hpp"
+#include "share/managers/field_manager.hpp"
 #include "share/property_checks/property_check.hpp"
 #include "share/field/field_request.hpp"
 #include "share/field/field.hpp"
 #include "share/field/field_group.hpp"
-#include "share/grid/grids_manager.hpp"
+#include "share/managers/grids_manager.hpp"
 
-#include "ekat/mpi/ekat_comm.hpp"
-#include "ekat/ekat_parameter_list.hpp"
-#include "ekat/util/ekat_factory.hpp"
-#include "ekat/util/ekat_string_utils.hpp"
-#include "ekat/std_meta/ekat_std_enable_shared_from_this.hpp"
-#include "ekat/std_meta/ekat_std_any.hpp"
-#include "ekat/logging/ekat_logger.hpp"
+#include <ekat/mpi/ekat_comm.hpp>
+#include <ekat/ekat_parameter_list.hpp>
+#include <ekat/util/ekat_factory.hpp>
+#include <ekat/util/ekat_string_utils.hpp>
+#include <ekat/std_meta/ekat_std_enable_shared_from_this.hpp>
+#include <ekat/std_meta/ekat_std_any.hpp>
+#include <ekat/logging/ekat_logger.hpp>
 
 #include <memory>
 #include <string>
@@ -27,6 +27,11 @@
 
 namespace scream
 {
+
+namespace control {
+class IntensiveObservationPeriod;
+}
+
 /*
  *  The abstract interface of a process of the atmosphere (AP)
  *

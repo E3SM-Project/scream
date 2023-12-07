@@ -3,8 +3,8 @@
 
 #include "share/util/scream_time_stamp.hpp"
 
-#include "ekat/util/ekat_string_utils.hpp"
-#include "ekat/mpi/ekat_comm.hpp"
+#include <ekat/util/ekat_string_utils.hpp>
+#include <ekat/mpi/ekat_comm.hpp>
 
 #include <string>
 

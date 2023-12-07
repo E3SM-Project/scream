@@ -1,11 +1,11 @@
-#include "catch2/catch.hpp"
+#include <catch2/catch.hpp>
 
-#include "share/io/scream_scorpio_interface.hpp"
 #include "physics/spa/spa_functions.hpp"
+#include "share/scorpio_interface/scream_scorpio_interface.hpp"
 
-#include "ekat/ekat_pack.hpp"
-#include "ekat/util/ekat_arch.hpp"
-#include "ekat/kokkos/ekat_kokkos_utils.hpp"
+#include <ekat/ekat_pack.hpp>
+#include <ekat/util/ekat_arch.hpp>
+#include <ekat/kokkos/ekat_kokkos_utils.hpp>
 
 #include <algorithm>
 #include <array>

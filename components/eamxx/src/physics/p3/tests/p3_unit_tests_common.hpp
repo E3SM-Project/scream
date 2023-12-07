@@ -1,7 +1,7 @@
 #ifndef P3_UNIT_TESTS_COMMON_HPP
 #define P3_UNIT_TESTS_COMMON_HPP
 
-#include "share/scream_types.hpp"
+#include "share/core/scream_types.hpp"
 #include "p3_functions.hpp"
 
 namespace scream {

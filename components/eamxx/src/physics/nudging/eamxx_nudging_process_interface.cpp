@@ -1,4 +1,7 @@
 #include "eamxx_nudging_process_interface.hpp"
+
+#include "share/interpolation/scream_vertical_interpolation.hpp"
+#include "share/io/scorpio_input.hpp"
 #include "share/util/scream_universal_constants.hpp"
 
 namespace scream

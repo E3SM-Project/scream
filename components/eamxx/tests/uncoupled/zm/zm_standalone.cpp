@@ -5,7 +5,7 @@
 #include "physics/zm/atmosphere_deep_convection.hpp"
 #include "physics/zm/scream_zm_interface.hpp"
 
-#include "share/grid/mesh_free_grids_manager.hpp"
+#include "share/unit_test_support/mesh_free_grids_manager.hpp"
 #include "share/atm_process/atmosphere_process.hpp"
 
 #include "ekat/ekat_parse_yaml_file.hpp"

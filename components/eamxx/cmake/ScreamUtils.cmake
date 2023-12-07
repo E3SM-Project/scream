@@ -88,15 +88,15 @@ function(CreateUnitTestExec exec_name test_srcs)
 ###############################################################################
   # Call Ekat function, with a couple of extra params
   EkatCreateUnitTestExec("${exec_name}" "${test_srcs}" ${ARGN}
-    EXCLUDE_TEST_SESSION LIBS scream_share scream_test_support)
+    EXCLUDE_TEST_SESSION LIBS eamxx_share scream_test_support)
 endfunction(CreateUnitTestExec)
 
 ###############################################################################
 function(CreateADUnitTestExec exec_name)
 ###############################################################################
   # Call the function above specifying some params
-  CreateUnitTestExec("${exec_name}" "${SCREAM_SRC_DIR}/share/util/eamxx_ad_test.cpp"
-    LIBS scream_control scream_io diagnostics ${ARGN})
+  CreateUnitTestExec("${exec_name}" "${SCREAM_SRC_DIR}/share/unit_test_support/eamxx_ad_test.cpp"
+    LIBS scream_control eamxx_diagnostics ${ARGN})
 endfunction(CreateADUnitTestExec)
 
 ###############################################################################
@@ -188,8 +188,8 @@ function(CreateADUnitTest test_name)
 ###############################################################################
 
   # Call the function above specifying some params
-  CreateUnitTest("${test_name}" "${SCREAM_SRC_DIR}/share/util/eamxx_ad_test.cpp"
-    LABELS driver LIBS scream_control scream_io diagnostics ${ARGN})
+  CreateUnitTest("${test_name}" "${SCREAM_SRC_DIR}/share/unit_test_support/eamxx_ad_test.cpp"
+    LABELS driver LIBS scream_control eamxx_diagnostics ${ARGN})
 endfunction(CreateADUnitTest)
 
 ###############################################################################

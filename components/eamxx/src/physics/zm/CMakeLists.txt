@@ -25,4 +25,4 @@ set_target_properties(zm PROPERTIES
 target_include_directories(zm PUBLIC
   ${CMAKE_CURRENT_BINARY_DIR}/modules
 )
-target_link_libraries(zm physics_share scream_share)
+target_link_libraries(zm physics_share eamxx_share)

@@ -1,7 +1,7 @@
 #ifndef SCREAM_SHOC_F90_HPP
 #define SCREAM_SHOC_F90_HPP
 
-#include "share/scream_types.hpp"
+#include "share/core/scream_types.hpp"
 
 #include <memory>
 #include <vector>

@@ -1,8 +1,8 @@
 #include "share/property_checks/field_nan_check.hpp"
 #include "share/field/field_utils.hpp"
-#include "share/util//scream_array_utils.hpp"
+#include "share/util/scream_array_utils.hpp"
 
-#include "ekat/util/ekat_math_utils.hpp"
+#include <ekat/util/ekat_math_utils.hpp>
 
 namespace scream
 {

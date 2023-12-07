@@ -2,6 +2,8 @@
 #define RRTMGP_UTILS_HPP
 
 #include "physics/share/physics_constants.hpp"
+#include "share/core/scream_types.hpp"
+
 #include "cpp/rrtmgp_const.h"
 #include "YAKL.h"
 #include "YAKL_Bounds_fortran.h"

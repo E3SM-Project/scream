@@ -1,5 +1,5 @@
-#include "share/scream_types.hpp"
-#include "share/scream_session.hpp"
+#include "share/core/scream_types.hpp"
+#include "share/core/scream_session.hpp"
 #include "share/util/scream_utils.hpp"
 
 #include "p3_main_wrap.hpp"

@@ -3,10 +3,12 @@
 
 #include "share/util/scream_universal_constants.hpp"
 
+#include <ekat/ekat_scalar_traits.hpp>
+
 // For KOKKOS_INLINE_FUNCTION
 #include <Kokkos_Core.hpp>
+
 #include <type_traits>
-#include "ekat/ekat_scalar_traits.hpp"
 
 namespace scream {
 

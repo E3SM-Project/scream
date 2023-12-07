@@ -3,10 +3,10 @@
 
 #include "control/surface_coupling_utils.hpp"
 #include "control/intensive_observation_period.hpp"
-#include "share/field/field_manager.hpp"
-#include "share/grid/grids_manager.hpp"
+#include "share/managers/field_manager.hpp"
+#include "share/managers/grids_manager.hpp"
 #include "share/util/scream_time_stamp.hpp"
-#include "share/scream_types.hpp"
+#include "share/core/scream_types.hpp"
 #include "share/io/scream_output_manager.hpp"
 #include "share/io/scorpio_input.hpp"
 #include "share/atm_process/ATMBufferManager.hpp"

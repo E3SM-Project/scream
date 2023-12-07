@@ -15,7 +15,7 @@ endif()
 find_package(Python REQUIRED COMPONENTS Interpreter Development)
 
 CreateUnitTest(ml_correction_standalone "ml_correction_standalone.cpp"
-  LIBS pybind11::pybind11 Python::Python ml_correction scream_control scream_share
+  LIBS pybind11::pybind11 Python::Python ml_correction scream_control eamxx_share
   LABELS ml_correction physics driver)
 
 target_compile_definitions(ml_correction_standalone PRIVATE -DCUSTOM_SYS_PATH="${CMAKE_CURRENT_SOURCE_DIR}")

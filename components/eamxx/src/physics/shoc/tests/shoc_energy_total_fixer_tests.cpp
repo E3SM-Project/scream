@@ -5,7 +5,7 @@
 #include "shoc_functions.hpp"
 #include "shoc_functions_f90.hpp"
 #include "physics/share/physics_constants.hpp"
-#include "share/scream_types.hpp"
+#include "share/core/scream_types.hpp"
 
 #include "ekat/ekat_pack.hpp"
 #include "ekat/util/ekat_arch.hpp"

@@ -1,13 +1,13 @@
 #include "scream_output_manager.hpp"
 
 #include "share/io/scorpio_input.hpp"
-#include "share/io/scream_scorpio_interface.hpp"
+#include "share/scorpio_interface/scream_scorpio_interface.hpp"
 #include "share/util/scream_timing.hpp"
-#include "share/scream_config.hpp"
+#include "share/core/scream_config.hpp"
 
-#include "ekat/ekat_parameter_list.hpp"
-#include "ekat/mpi/ekat_comm.hpp"
-#include "ekat/util/ekat_string_utils.hpp"
+#include <ekat/ekat_parameter_list.hpp>
+#include <ekat/mpi/ekat_comm.hpp>
+#include <ekat/util/ekat_string_utils.hpp>
 
 #include <fstream>
 #include <memory>
