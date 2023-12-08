@@ -2,9 +2,9 @@
 
 #include "share/grid/point_grid.hpp"
 #include "share/scorpio_interface/scream_scorpio_interface.hpp"
-#include "share/interpolation/scream_vertical_interpolation.hpp"
 #include "share/field/field_tag.hpp"
 #include "share/field/field_identifier.hpp"
+#include "share/util/scream_vertical_interpolation.hpp"
 
 #include <ekat/util/ekat_units.hpp>
 #include <ekat/kokkos/ekat_kokkos_utils.hpp>

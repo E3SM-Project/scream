@@ -3,6 +3,7 @@ add_library(eamxx_io
   scorpio_input.cpp
   scorpio_output.cpp
   scream_io_utils.cpp
+  eamxx_time_interpolation.cpp
 )
 target_link_libraries (eamxx_io PUBLIC
   eamxx_scorpio_interface

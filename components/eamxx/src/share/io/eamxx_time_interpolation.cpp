@@ -1,4 +1,4 @@
-#include "share/interpolation/eamxx_time_interpolation.hpp"
+#include "eamxx_time_interpolation.hpp"
 
 namespace scream{
 namespace util {
@@ -6,7 +6,7 @@ namespace util {
 /*-----------------------------------------------------------------------------------------------*/
 // Constructors
 TimeInterpolation::TimeInterpolation(
-  const grid_ptr_type& grid 
+  const grid_ptr_type& grid
 )
 {
   // Given the grid initialize field managers to store interpolation data
@@ -19,7 +19,7 @@ TimeInterpolation::TimeInterpolation(
 }
 /*-----------------------------------------------------------------------------------------------*/
 TimeInterpolation::TimeInterpolation(
-  const grid_ptr_type& grid, 
+  const grid_ptr_type& grid,
   const vos_type& list_of_files
 ) : TimeInterpolation(grid)
 {
@@ -118,10 +118,10 @@ void TimeInterpolation::shift_data()
 /*-----------------------------------------------------------------------------------------------*/
 /* Function which will initialize the TimeStamps.
  * Input:
- *   ts_in - A timestamp to set both time0 and time1 to. 
+ *   ts_in - A timestamp to set both time0 and time1 to.
  *
  * At initialization we assume that only the first timestep of data has been set.  Subsequent
- * timesteps of data are added using update_data and then a call to update_timestamp will 
+ * timesteps of data are added using update_data and then a call to update_timestamp will
  * shift time0 to time1 and update time1.
  */
 void TimeInterpolation::initialize_timestamps(const TimeStamp& ts_in)
@@ -282,8 +282,8 @@ void TimeInterpolation::set_file_data_triplets(const vos_type& list_of_files) {
       }
       auto time = ts_snap.seconds_from(ts_ref);
       // Sanity check that we don't have multiples of the same timesnap
-      EKAT_REQUIRE_MSG(map_of_times_to_vector_idx.count(time)==0,"Error! TimeInterpolation::set_file_data_triplets - The same time step has been encountered more than once in the data files, please check\n"  
-		      << "    TimeStamp: " << ts_snap.to_string() << "\n"  
+      EKAT_REQUIRE_MSG(map_of_times_to_vector_idx.count(time)==0,"Error! TimeInterpolation::set_file_data_triplets - The same time step has been encountered more than once in the data files, please check\n"
+		      << "    TimeStamp: " << ts_snap.to_string() << "\n"
 		      << "     Filename: " << filename << "\n");
       map_of_times_to_vector_idx.emplace(time,running_idx);
       filenames_tmp.push_back(filename);
@@ -347,7 +347,7 @@ void TimeInterpolation::check_and_update_data(const TimeStamp& ts_in)
     // The timestamp is out of bounds, need to load new data.
     // First cycle through the DataFromFileTriplet's to find a timestamp that is greater than this one.
     bool found = false;
-    int step_cnt = 0; // Track how many triplets we passed to find one that worked. 
+    int step_cnt = 0; // Track how many triplets we passed to find one that worked.
     while (m_triplet_idx < static_cast<int>(m_file_data_triplets.size())) {
       ++m_triplet_idx;
       ++step_cnt;

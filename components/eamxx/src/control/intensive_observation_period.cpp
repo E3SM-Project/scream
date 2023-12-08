@@ -2,7 +2,6 @@
 
 #include "share/grid/point_grid.hpp"
 #include "share/io/scorpio_input.hpp"
-#include "share/interpolation/scream_vertical_interpolation.hpp"
 
 #include "ekat/ekat_assert.hpp"
 #include "ekat/util/ekat_lin_interp.hpp"

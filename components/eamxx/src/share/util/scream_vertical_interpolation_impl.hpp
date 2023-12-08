@@ -1,4 +1,4 @@
-#include "share/interpolation/scream_vertical_interpolation.hpp"
+#include "scream_vertical_interpolation.hpp"
 
 namespace scream {
 namespace vinterp {
@@ -18,7 +18,7 @@ view_Nd<Mask<P>,N> allocate_mask(const std::vector<int>& extents)
   }
 }
 
-template<typename T, int P> 
+template<typename T, int P>
 KOKKOS_FUNCTION
 void apply_interpolation_impl_1d(
   const view_1d<const Pack<T,P>>& x_src_col,
@@ -67,10 +67,10 @@ void apply_interpolation_impl_1d(
   team.team_barrier();
 }
 
-/* ---------------------------------------------------------------------- 
+/* ----------------------------------------------------------------------
  * Versions where x_src is a 2-D view and x_tgt is a 2-D view
  * ---------------------------------------------------------------------- */
-template<typename T, int P, int N> 
+template<typename T, int P, int N>
 void perform_checks(
   const view_2d<const Pack<T,P>>&   x_src,
   const view_2d<const Pack<T,P>>&   x_tgt,
@@ -100,7 +100,7 @@ void perform_checks(
 
 }
 
-template<typename T, int P, int N> 
+template<typename T, int P, int N>
 void perform_vertical_interpolation(
   const view_2d<const Pack<T,P>>&   x_src,
   const view_2d<const Pack<T,P>>&   x_tgt,
@@ -120,7 +120,7 @@ void perform_vertical_interpolation(
   apply_interpolation(nlevs_src, nlevs_tgt, msk_val, vert_interp, x_src, x_tgt, input, output, mask);
 }
 
-template<typename T, int P, int N> 
+template<typename T, int P, int N>
 void perform_vertical_interpolation(
   const view_2d<const Pack<T,P>>&   x_src,
   const view_2d<const Pack<T,P>>&   x_tgt,
@@ -146,7 +146,7 @@ void perform_vertical_interpolation(
   apply_interpolation(nlevs_src, nlevs_tgt, msk_val, vert_interp, x_src, x_tgt, input, output, mask);
 }
 
-template<typename T, int P> 
+template<typename T, int P>
 void apply_interpolation(
   const                      int  num_levs_src,
   const                      int  num_levs_tgt,
@@ -163,20 +163,20 @@ void apply_interpolation(
   const auto policy = ESU::get_default_team_policy(d_0, npacks);
   Kokkos::parallel_for("scream_vert_interp_setup_loop", policy,
      	       KOKKOS_LAMBDA(MemberType const& team) {
-        		 
+        		
     const int  icol  = team.league_rank();
     const auto x1   = ekat::subview(x_src,  icol);
     const auto xt   = ekat::subview(x_tgt,  icol);
     const auto in   = ekat::subview(input,  icol);
     const auto out  = ekat::subview(output, icol);
     const auto mask = ekat::subview(mask_out, icol);
-    
+
     apply_interpolation_impl_1d<T,P>(x1,xt,in,out,mask,num_levs_src,num_levs_tgt,icol,mask_val,team,vert_interp);
   });
   Kokkos::fence();
 }
 
-template<typename T, int P> 
+template<typename T, int P>
 void apply_interpolation(
   const                      int  num_levs_src,
   const                      int  num_levs_tgt,
@@ -194,7 +194,7 @@ void apply_interpolation(
   const auto policy = ESU::get_default_team_policy(d_0*num_vars, npacks);
   Kokkos::parallel_for("scream_vert_interp_setup_loop", policy,
      	       KOKKOS_LAMBDA(MemberType const& team) {
-        		 
+
     const int icol  = team.league_rank() / num_vars;
     const int ivar  = team.league_rank() % num_vars;
     const auto x1   = ekat::subview(x_src,  icol);
@@ -205,13 +205,13 @@ void apply_interpolation(
 
     apply_interpolation_impl_1d<T,P>(x1,xt,in,out,mask,num_levs_src,num_levs_tgt,icol,mask_val,team,vert_interp);
   });
-  Kokkos::fence();   
+  Kokkos::fence();
 }
 
-/* ---------------------------------------------------------------------- 
+/* ----------------------------------------------------------------------
  * Versions where x_src is a 2-D view and x_tgt is a single 1-D vertical profile
  * ---------------------------------------------------------------------- */
-template<typename T, int P, int N> 
+template<typename T, int P, int N>
 void perform_checks(
   const view_2d<const Pack<T,P>>&   x_src,
   const view_1d<const Pack<T,P>>&   x_tgt,
@@ -240,7 +240,7 @@ void perform_checks(
 
 }
 
-template<typename T, int P, int N> 
+template<typename T, int P, int N>
 void perform_vertical_interpolation(
   const view_2d<const Pack<T,P>>&   x_src,
   const view_1d<const Pack<T,P>>&   x_tgt,
@@ -260,7 +260,7 @@ void perform_vertical_interpolation(
   apply_interpolation(nlevs_src, nlevs_tgt, msk_val, vert_interp, x_src, x_tgt, input, output, mask);
 }
 
-template<typename T, int P, int N> 
+template<typename T, int P, int N>
 void perform_vertical_interpolation(
   const view_2d<const Pack<T,P>>&   x_src,
   const view_1d<const Pack<T,P>>&   x_tgt,
@@ -286,7 +286,7 @@ void perform_vertical_interpolation(
   apply_interpolation(nlevs_src, nlevs_tgt, msk_val, vert_interp, x_src, x_tgt, input, output, mask);
 }
 
-template<typename T, int P> 
+template<typename T, int P>
 void apply_interpolation(
   const                      int  num_levs_src,
   const                      int  num_levs_tgt,
@@ -303,19 +303,19 @@ void apply_interpolation(
   const auto policy = ESU::get_default_team_policy(d_0, npacks);
   Kokkos::parallel_for("scream_vert_interp_setup_loop", policy,
      	       KOKKOS_LAMBDA(MemberType const& team) {
-        		 
+
     const int  icol  = team.league_rank();
     const auto x1   = ekat::subview(x_src,  icol);
     const auto in   = ekat::subview(input,  icol);
     const auto out  = ekat::subview(output, icol);
     const auto mask = ekat::subview(mask_out, icol);
-    
+
     apply_interpolation_impl_1d<T,P>(x1,x_tgt,in,out,mask,num_levs_src,num_levs_tgt,icol,mask_val,team,vert_interp);
   });
   Kokkos::fence();
 }
 
-template<typename T, int P> 
+template<typename T, int P>
 void apply_interpolation(
   const                      int  num_levs_src,
   const                      int  num_levs_tgt,
@@ -333,7 +333,7 @@ void apply_interpolation(
   const auto policy = ESU::get_default_team_policy(d_0*num_vars, npacks);
   Kokkos::parallel_for("scream_vert_interp_setup_loop", policy,
      	       KOKKOS_LAMBDA(MemberType const& team) {
-        		 
+
     const int icol  = team.league_rank() / num_vars;
     const int ivar  = team.league_rank() % num_vars;
     const auto x1   = ekat::subview(x_src,  icol);
@@ -343,13 +343,13 @@ void apply_interpolation(
 
     apply_interpolation_impl_1d<T,P>(x1,x_tgt,in,out,mask,num_levs_src,num_levs_tgt,team.league_rank(),mask_val,team,vert_interp);
   });
-  Kokkos::fence();   
+  Kokkos::fence();
 }
 
-/* ---------------------------------------------------------------------- 
+/* ----------------------------------------------------------------------
  * Versions where x_src is a 1-D view and x_tgt is a 2-D view
  * ---------------------------------------------------------------------- */
-template<typename T, int P, int N> 
+template<typename T, int P, int N>
 void perform_checks(
   const view_1d<const Pack<T,P>>&   x_src,
   const view_2d<const Pack<T,P>>&   x_tgt,
@@ -378,7 +378,7 @@ void perform_checks(
 
 }
 
-template<typename T, int P, int N> 
+template<typename T, int P, int N>
 void perform_vertical_interpolation(
   const view_1d<const Pack<T,P>>&   x_src,
   const view_2d<const Pack<T,P>>&   x_tgt,
@@ -399,7 +399,7 @@ void perform_vertical_interpolation(
   apply_interpolation(nlevs_src, nlevs_tgt, msk_val, vert_interp, x_src, x_tgt, input, output, mask);
 }
 
-template<typename T, int P, int N> 
+template<typename T, int P, int N>
 void perform_vertical_interpolation(
   const view_1d<const Pack<T,P>>&   x_src,
   const view_2d<const Pack<T,P>>&   x_tgt,
@@ -426,7 +426,7 @@ void perform_vertical_interpolation(
   apply_interpolation(nlevs_src, nlevs_tgt, msk_val, vert_interp, x_src, x_tgt, input, output, mask);
 }
 
-template<typename T, int P> 
+template<typename T, int P>
 void apply_interpolation(
   const                      int  num_levs_src,
   const                      int  num_levs_tgt,
@@ -443,20 +443,20 @@ void apply_interpolation(
   const auto policy = ESU::get_default_team_policy(d_0, npacks);
   Kokkos::parallel_for("scream_vert_interp_setup_loop", policy,
      	       KOKKOS_LAMBDA(MemberType const& team) {
-        		 
+
     const int  icol  = team.league_rank();
     const auto x1   = x_src;
     const auto xt   = ekat::subview(x_tgt,  icol);
     const auto in   = ekat::subview(input,  icol);
     const auto out  = ekat::subview(output, icol);
     const auto mask = ekat::subview(mask_out, icol);
-    
+
     apply_interpolation_impl_1d<T,P>(x1,xt,in,out,mask,num_levs_src,num_levs_tgt,icol,mask_val,team,vert_interp);
   });
   Kokkos::fence();
 }
 
-template<typename T, int P> 
+template<typename T, int P>
 void apply_interpolation(
   const                      int  num_levs_src,
   const                      int  num_levs_tgt,
@@ -474,7 +474,7 @@ void apply_interpolation(
   const auto policy = ESU::get_default_team_policy(d_0*num_vars, npacks);
   Kokkos::parallel_for("scream_vert_interp_setup_loop", policy,
      	       KOKKOS_LAMBDA(MemberType const& team) {
-        		 
+
     const int icol  = team.league_rank() / num_vars;
     const int ivar  = team.league_rank() % num_vars;
     const auto x1   = x_src;
@@ -485,13 +485,13 @@ void apply_interpolation(
 
     apply_interpolation_impl_1d<T,P>(x1,xt,in,out,mask,num_levs_src,num_levs_tgt,icol,mask_val,team,vert_interp);
   });
-  Kokkos::fence();   
+  Kokkos::fence();
 }
 
-/* ---------------------------------------------------------------------- 
+/* ----------------------------------------------------------------------
  * Versions where x_src is a 1-D view and x_tgt is a single 1-D vertical profile
  * ---------------------------------------------------------------------- */
-template<typename T, int P, int N> 
+template<typename T, int P, int N>
 void perform_checks(
   const view_1d<const Pack<T,P>>&   x_src,
   const view_1d<const Pack<T,P>>&   x_tgt,
@@ -516,7 +516,7 @@ void perform_checks(
 
 }
 
-template<typename T, int P, int N> 
+template<typename T, int P, int N>
 void perform_vertical_interpolation(
   const view_1d<const Pack<T,P>>&   x_src,
   const view_1d<const Pack<T,P>>&   x_tgt,
@@ -537,7 +537,7 @@ void perform_vertical_interpolation(
   apply_interpolation(nlevs_src, nlevs_tgt, msk_val, vert_interp, x_src, x_tgt, input, output, mask);
 }
 
-template<typename T, int P, int N> 
+template<typename T, int P, int N>
 void perform_vertical_interpolation(
   const view_1d<const Pack<T,P>>&   x_src,
   const view_1d<const Pack<T,P>>&   x_tgt,
@@ -564,7 +564,7 @@ void perform_vertical_interpolation(
   apply_interpolation(nlevs_src, nlevs_tgt, msk_val, vert_interp, x_src, x_tgt, input, output, mask);
 }
 
-template<typename T, int P> 
+template<typename T, int P>
 void apply_interpolation(
   const                      int  num_levs_src,
   const                      int  num_levs_tgt,
@@ -581,18 +581,18 @@ void apply_interpolation(
   const auto policy = ESU::get_default_team_policy(d_0, npacks);
   Kokkos::parallel_for("scream_vert_interp_setup_loop", policy,
      	       KOKKOS_LAMBDA(MemberType const& team) {
-        		 
+
     const int  icol  = team.league_rank();
     const auto in   = ekat::subview(input,  icol);
     const auto out  = ekat::subview(output, icol);
     const auto mask = ekat::subview(mask_out, icol);
-    
+
     apply_interpolation_impl_1d<T,P>(x_src,x_tgt,in,out,mask,num_levs_src,num_levs_tgt,icol,mask_val,team,vert_interp);
   });
   Kokkos::fence();
 }
 
-template<typename T, int P> 
+template<typename T, int P>
 void apply_interpolation(
   const                      int  num_levs_src,
   const                      int  num_levs_tgt,
@@ -610,7 +610,7 @@ void apply_interpolation(
   const auto policy = ESU::get_default_team_policy(d_0*num_vars, npacks);
   Kokkos::parallel_for("scream_vert_interp_setup_loop", policy,
      	       KOKKOS_LAMBDA(MemberType const& team) {
-        		 
+
     const int icol  = team.league_rank() / num_vars;
     const int ivar  = team.league_rank() % num_vars;
     const auto in   = ekat::subview(input,  icol, ivar);
@@ -619,9 +619,9 @@ void apply_interpolation(
 
     apply_interpolation_impl_1d<T,P>(x_src,x_tgt,in,out,mask,num_levs_src,num_levs_tgt,team.league_rank(),mask_val,team,vert_interp);
   });
-  Kokkos::fence();   
+  Kokkos::fence();
 }
-  
+
 } // namespace vinterp
 } // namespace scream
 

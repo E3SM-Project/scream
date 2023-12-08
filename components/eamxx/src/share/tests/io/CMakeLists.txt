@@ -5,6 +5,11 @@ include(ScreamUtils)
 include (BuildCprnc)
 BuildCprnc()
 
+# Test time interpolation
+CreateUnitTest(time_interpolation "eamxx_time_interpolation_tests.cpp"
+  LABELS io
+  MPI_RANKS 1 ${SCREAM_TEST_MAX_RANKS})
+
 ## Test io utils
 CreateUnitTest(io_utils "io_utils.cpp"
   LABELS io

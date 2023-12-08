@@ -1,5 +1,5 @@
 #include "field_at_pressure_level.hpp"
-#include "share/interpolation/scream_vertical_interpolation.hpp"
+#include "share/util/scream_vertical_interpolation.hpp"
 
 #include <ekat/std_meta/ekat_std_utils.hpp>
 #include <ekat/util/ekat_units.hpp>

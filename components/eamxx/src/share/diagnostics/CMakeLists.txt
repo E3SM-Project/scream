@@ -17,4 +17,4 @@ add_library(eamxx_diagnostics
   virtual_temperature.cpp
   water_path.cpp
 )
-target_link_libraries(eamxx_diagnostics PUBLIC eamxx_atm_process eamxx_interpolation)
+target_link_libraries(eamxx_diagnostics PUBLIC eamxx_atm_process eamxx_utils)

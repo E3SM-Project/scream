@@ -5,7 +5,7 @@
 
 #include "share/atm_process/atmosphere_process.hpp"
 #include "share/util/scream_common_physics_functions.hpp"
-#include "share/interpolation/eamxx_time_interpolation.hpp"
+#include "share/io/eamxx_time_interpolation.hpp"
 #include "share/atm_process/ATMBufferManager.hpp"
 #include "share/atm_process/SCDataManager.hpp"
 

@@ -10,4 +10,7 @@ if (NOT ${SCREAM_BASELINES_ONLY})
 
   # Test common physics functions
   CreateUnitTest(common_physics "common_physics_functions_tests.cpp")
+
+  # Test vertical interpolation
+  CreateUnitTest(vertical_interp "vertical_interp_tests.cpp")
 endif()

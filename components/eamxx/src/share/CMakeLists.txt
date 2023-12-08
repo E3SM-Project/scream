@@ -40,9 +40,6 @@ add_subdirectory (atm_process)
 # IO library
 add_subdirectory(io)
 
-# Interpolation routines (vertical and time)
-add_subdirectory(interpolation)
-
 # Some hacks needed to deal with fv physics grid
 # If/when they are no longer necessary, we can remove them
 add_subdirectory (fvphyshack)
@@ -61,7 +58,6 @@ target_link_libraries (eamxx_share INTERFACE
   eamxx_remap
   eamxx_property_checks
   eamxx_atm_process
-  eamxx_interpolation
   eamxx_io
   eamxx_managers
 )
