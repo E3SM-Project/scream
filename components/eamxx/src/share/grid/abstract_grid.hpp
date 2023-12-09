@@ -66,6 +66,7 @@ public:
   const std::string& name () const { return m_name; }
   const ekat::Comm& get_comm () const { return m_comm; }
   const std::vector<std::string>& aliases () const { return m_aliases; }
+  bool is_valid_alias (const std::string& n) const { return ekat::contains(m_aliases,n); }
   void add_alias (const std::string& alias);
 
   // Native layout of a dof. This is the natural way to index a dof in the grid.
