@@ -6,7 +6,7 @@
 #include "share/field/field_layout.hpp"
 #include "share/field/field.hpp"
 
-#include "ekat/mpi//ekat_comm.hpp"
+#include "ekat/mpi/ekat_comm.hpp"
 
 #include <map>
 #include <list>
@@ -77,6 +77,7 @@ public:
   virtual FieldLayout get_3d_scalar_layout (const bool midpoints) const = 0;
   virtual FieldLayout get_3d_vector_layout (const bool midpoints, const FieldTag vector_tag, const int vector_dim) const = 0;
 
+  FieldLayout get_global_layout (const FieldLayout& local) const;
   int get_num_vertical_levels () const { return m_num_vert_levs; }
 
   // Whether this grid contains unique dof GIDs

@@ -74,6 +74,21 @@ get_vertical_layout (const bool midpoints) const
 
 }
 
+FieldLayout AbstractGrid::
+get_global_layout (const FieldLayout& local) const
+{
+  // If one of the tags is the partitioned dimension, replace extent
+  // with the global size of the partitioned dimension.
+  auto tags = local.tags();
+  auto dims = local.dims();
+  for (int i=0; i<local.rank(); ++i) {
+    if (tags[i]==get_partitioned_dim_tag()) {
+      dims[i] = get_partitioned_dim_global_size();
+    }
+  }
+  return FieldLayout (tags,dims);
+}
+
 bool AbstractGrid::is_unique () const {
   auto compute_is_unique = [&]() {
     // Get a copy of gids on host. CAREFUL: do not use the stored dofs,
