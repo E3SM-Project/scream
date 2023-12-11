@@ -771,7 +771,7 @@ OMP_SIMD
 
   call t_startf('advance_turb_diff')
 
-  call turb_diff_updraft(elem, nt, nets, nete)
+!  call turb_diff_updraft(elem, nt, nets, nete)
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !  turbulent diffusion
