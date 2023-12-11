@@ -9,7 +9,6 @@ MACRO(PREQX_KOKKOS_SETUP)
 
   SET(PREQX_SHARE_DIR       ${HOMME_SOURCE_DIR}/src/preqx/share)
   SET(TARGET_DIR            ${HOMME_SOURCE_DIR}/src/preqx_kokkos)
-  SET(UTILS_SHARE_DIR       ${HOMME_SOURCE_DIR}/utils/csm_share)
   SET(SRC_DIR               ${HOMME_SOURCE_DIR}/src)
   SET(SRC_SHARE_DIR         ${HOMME_SOURCE_DIR}/src/share)
   SET(TRILINOS_ZOLTAN_DIR   ${HOMME_SOURCE_DIR}/src/zoltan)
@@ -20,12 +19,12 @@ MACRO(PREQX_KOKKOS_SETUP)
 
   # Make INCLUDE_DIRS global so the tests can access it
   SET (EXEC_LIB_INCLUDE_DIRS
+    ${TARGET_DIR}/cxx
     ${UTILS_TIMING_DIR}
     ${UTILS_TIMING_SRC_DIR}
     ${PREQX_SHARE_DIR}
-    ${TARGET_DIR}/cxx
     ${SRC_SHARE_DIR}/cxx
-    ${HOMME_BINARY_DIR}/src/share/cxx)
+    ${HOMME_BINARY_DIR}/src/share/cxx
   )
 
   SET (EXEC_INCLUDE_DIRS
@@ -138,9 +137,6 @@ MACRO(PREQX_KOKKOS_SETUP)
     ${SRC_SHARE_F90}
     ${TEST_SRC_F90}
     ${SRC_DIR}/checksum_mod.F90
-    ${SRC_DIR}/repro_sum_mod.F90
-    ${SRC_DIR}/surfaces_mod.F90
-    ${SRC_DIR}/test_mod.F90
     ${SRC_DIR}/common_io_mod.F90
     ${SRC_DIR}/common_movie_mod.F90
     ${SRC_DIR}/interpolate_driver_mod.F90
@@ -149,14 +145,10 @@ MACRO(PREQX_KOKKOS_SETUP)
     ${SRC_DIR}/pio_io_mod.F90
     ${SRC_DIR}/prim_movie_mod.F90
     ${SRC_DIR}/prim_restart_mod.F90
+    ${SRC_DIR}/repro_sum_mod.F90
     ${SRC_DIR}/restart_io_mod.F90
-    ${UTILS_SHARE_DIR}/shr_const_mod.F90
-    ${UTILS_SHARE_DIR}/shr_file_mod.F90
-    ${UTILS_SHARE_DIR}/shr_kind_mod.F90
-    ${UTILS_SHARE_DIR}/shr_mpi_mod.F90
-    ${UTILS_SHARE_DIR}/shr_spfn_mod.F90
-    ${UTILS_SHARE_DIR}/shr_sys_mod.F90
-    ${UTILS_SHARE_DIR}/shr_vmath_mod.F90
+    ${SRC_DIR}/surfaces_mod.F90
+    ${SRC_DIR}/test_mod.F90
   )
 
   SET(PREQX_DEPS_CXX
@@ -192,6 +184,8 @@ MACRO(PREQX_KOKKOS_SETUP)
     ${SRC_SHARE_DIR}/cxx/prim_step.cpp
     ${SRC_SHARE_DIR}/cxx/vertical_remap.cpp
     ${SRC_SHARE_DIR}/cxx/utilities/BfbUtils.cpp
+    ${SRC_SHARE_DIR}/cxx/utilities/InternalDiagnostics.cpp
+    ${SRC_SHARE_DIR}/cxx/utilities/Hash.cpp
   )
 
   IF (HOMME_USE_TRILINOS)
@@ -235,7 +229,7 @@ MACRO(PREQX_KOKKOS_SETUP)
     SET (QSIZE_D 4)
   ENDIF ()
   # for some of matt's old scripts which use preqx_qsize_d
-  IF (PREQX_QSIZE_D)
+  IF (PREQX_QSIZE_D)      
     SET (QSIZE_D ${PREQX_QSIZE_D})
   ENDIF ()
 

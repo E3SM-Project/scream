@@ -91,6 +91,9 @@ module seaice_core_interface
       type (mpas_pool_type), intent(inout) :: packagePool
       type (mpas_io_context_type), intent(inout) :: iocontext
 
+      type (mpas_pool_iterator_type) :: pkgItr
+      logical, pointer :: packageActive
+
       integer :: ierr
 
       ierr = 0
@@ -109,6 +112,23 @@ module seaice_core_interface
 
       ! testing system test
       call setup_packages_other(configPool, packagePool, ierr)
+
+      call mpas_log_write( '')
+      call mpas_log_write( '  **** Summary of sea ice packages ****')
+      call mpas_pool_begin_iteration(packagePool)
+      do while ( mpas_pool_get_next_member(packagePool, pkgItr) )
+
+         if ( pkgItr % memberType == MPAS_POOL_PACKAGE ) then
+            call mpas_pool_get_package(packagePool, pkgItr % memberName, packageActive)
+            if ( packageActive ) then
+               call mpas_log_write( '      ' // trim(pkgItr % memberName) // ' = ON')
+            else
+               call mpas_log_write( '      ' // trim(pkgItr % memberName) // ' = OFF')
+            end if
+         end if
+      end do
+      call mpas_log_write( '  ***********************************')
+      call mpas_log_write( '')
 
    end function seaice_setup_packages!}}}
 
@@ -205,7 +225,7 @@ module seaice_core_interface
 
      ! column physics package packages
      logical, pointer :: &
-          config_use_column_package, &
+          config_use_column_physics, &
           config_use_column_biogeochemistry
 
      logical, pointer :: &
@@ -293,14 +313,14 @@ module seaice_core_interface
      !pkgColumnPackage
      !pkgColumnBiogeochemistry
 
-     call MPAS_pool_get_config(configPool, "config_use_column_package", config_use_column_package)
+     call MPAS_pool_get_config(configPool, "config_use_column_physics", config_use_column_physics)
      call MPAS_pool_get_config(configPool, "config_use_column_biogeochemistry", config_use_column_biogeochemistry)
 
      call MPAS_pool_get_package(packagePool, "pkgColumnPackageActive", pkgColumnPackageActive)
      call MPAS_pool_get_package(packagePool, "pkgColumnBiogeochemistryActive", pkgColumnBiogeochemistryActive)
 
-     pkgColumnPackageActive         = config_use_column_package
-     pkgColumnBiogeochemistryActive = (config_use_column_biogeochemistry .and. config_use_column_package)
+     pkgColumnPackageActive         = config_use_column_physics
+     pkgColumnBiogeochemistryActive = (config_use_column_biogeochemistry .and. config_use_column_physics)
 
      !pkgColumnPackageActive         = .true.
      !pkgColumnBiogeochemistryActive = .true.
@@ -438,7 +458,7 @@ module seaice_core_interface
      pkgColumnTracerEffectiveSnowDensityActive = config_use_effective_snow_density
      pkgColumnTracerSnowGrainRadiusActive = config_use_snow_grain_radius
 
-     if (.not. config_use_column_package) then
+     if (.not. config_use_column_physics) then
         pkgColumnTracerIceAgeActive       = .false.
         pkgColumnTracerFirstYearIceActive = .false.
         pkgColumnTracerLevelIceActive     = .false.
@@ -473,7 +493,7 @@ module seaice_core_interface
         pkgColumnTracerSnowGrainRadiusActive      = .false.
      endif
 
-     if (.not. config_use_column_biogeochemistry .and. config_use_column_package) then
+     if (.not. config_use_column_biogeochemistry .and. config_use_column_physics) then
         pkgTracerBrineActive                = .false.
         pkgTracerMobileFractionActive       = .false.
         pkgTracerSkeletalAlgaeActive        = .false.
@@ -517,7 +537,7 @@ module seaice_core_interface
      ! form drag
      call MPAS_pool_get_config(configPool, "config_use_form_drag", config_use_form_drag)
      call MPAS_pool_get_package(packagePool, "pkgColumnFormDragActive", pkgColumnFormDragActive)
-     pkgColumnFormDragActive = (config_use_column_package .and. config_use_form_drag)
+     pkgColumnFormDragActive = (config_use_column_physics .and. config_use_form_drag)
 
      !pkgColumnFormDragActive = .true.
 

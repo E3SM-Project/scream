@@ -93,6 +93,7 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
     debug_level,   &
     theta_advect_form,   &
     vtheta_thresh,   &
+    dp3d_thresh,   &
     pgrad_correction,    &
     hv_ref_profiles,     &
     hv_theta_correction, &
@@ -101,7 +102,8 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
     vert_remap_u_alg, &
     se_fv_phys_remap_alg, &
     timestep_make_subcycle_parameters_consistent, &
-    horiz_turb_diff
+    horiz_turb_diff, &
+    internal_diagnostics_level
 
 
 !PLANAR setup
@@ -310,13 +312,15 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
       mesh_file,     &               ! Name of mesh file
       theta_advect_form,     &
       vtheta_thresh,         &
+      dp3d_thresh,         &
       pgrad_correction,      &
       hv_ref_profiles,       &
       hv_theta_correction,   &
       hv_theta_thresh,   &
       vert_remap_q_alg, &
       vert_remap_u_alg, &
-      se_fv_phys_remap_alg
+      se_fv_phys_remap_alg, &
+      internal_diagnostics_level
 
 
 #if defined(CAM) || defined(SCREAM)
@@ -448,6 +452,7 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
     semi_lagrange_nearest_point_lev = 256
     disable_diagnostics = .false.
     se_fv_phys_remap_alg = 1
+    internal_diagnostics_level = 0
     planar_slice = .false.
 
     theta_hydrostatic_mode = .true.    ! for preqx, this must be .true.
@@ -750,8 +755,6 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
     call MPI_bcast(statefreq,       1,MPIinteger_t,par%root,par%comm,ierr)
     call MPI_bcast(restartfreq,     1,MPIinteger_t,par%root,par%comm,ierr)
     call MPI_bcast(runtype,         1,MPIinteger_t,par%root,par%comm,ierr)
-    call MPI_bcast(Lx,              1, MPIreal_t,par%root,par%comm,ierr)
-    call MPI_bcast(Ly,              1, MPIreal_t,par%root,par%comm,ierr)
 
 #if !defined(CAM) && !defined(SCREAM)
     if(test_case == "dcmip2012_test4") then
@@ -787,6 +790,7 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
     call MPI_bcast(se_ftype,        1, MPIinteger_t, par%root,par%comm,ierr)
     call MPI_bcast(theta_advect_form,1, MPIinteger_t, par%root,par%comm,ierr)
     call MPI_bcast(vtheta_thresh,    1, MPIreal_t, par%root,par%comm,ierr)
+    call MPI_bcast(dp3d_thresh,    1, MPIreal_t, par%root,par%comm,ierr)
     call MPI_bcast(pgrad_correction,   1, MPIinteger_t, par%root,par%comm,ierr)
     call MPI_bcast(hv_ref_profiles,    1, MPIinteger_t, par%root,par%comm,ierr)
     call MPI_bcast(hv_theta_correction,1, MPIinteger_t, par%root,par%comm,ierr)
@@ -868,6 +872,7 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
     call MPI_bcast(prescribed_wind,1,MPIinteger_t ,par%root,par%comm,ierr)
     call MPI_bcast(moisture,MAX_STRING_LEN,MPIChar_t ,par%root,par%comm,ierr)
     call MPI_bcast(se_fv_phys_remap_alg,1,MPIinteger_t ,par%root,par%comm,ierr)
+    call MPI_bcast(internal_diagnostics_level,1,MPIinteger_t ,par%root,par%comm,ierr)
 
     call MPI_bcast(restartfile,MAX_STRING_LEN,MPIChar_t ,par%root,par%comm,ierr)
     call MPI_bcast(restartdir,MAX_STRING_LEN,MPIChar_t ,par%root,par%comm,ierr)
@@ -1009,9 +1014,6 @@ end if
       scale_factor_inv = 1.0D0
       laplacian_rigid_factor = 0.0D0 !this eliminates the correction to ensure the Laplacian doesn't damp rigid motion
 
-      Sx = 0.0D0
-      Sy = 0.0D0
-
 ! makes the y-direction cells identical in size to the x-dir cells
 ! this is important for hyperviscosity, etc.
 ! Also adjusts Sy so y-dir domain is centered at 0
@@ -1031,7 +1033,7 @@ end if
          call abortmp("Error Lx or Ly = 0")
       endif
 
-   else if (geometry == "sphere") then
+    else if (geometry == "sphere") then
       scale_factor = rearth
       scale_factor_inv = rrearth
       domain_size = 4.0D0*DD_PI
@@ -1178,6 +1180,7 @@ end if
        write(iulog,*)"readnl: tstep_type    = ",tstep_type
        write(iulog,*)"readnl: theta_advect_form = ",theta_advect_form
        write(iulog,*)"readnl: vtheta_thresh     = ",vtheta_thresh
+       write(iulog,*)"readnl: dp3d_thresh     = ",dp3d_thresh
        write(iulog,*)"readnl: pgrad_correction  = ",pgrad_correction
        write(iulog,*)"readnl: hv_ref_profiles   = ",hv_ref_profiles
        write(iulog,*)"readnl: hv_theta_correction= ",hv_theta_correction
@@ -1205,6 +1208,7 @@ end if
 
        write(iulog,*)"readnl: runtype       = ",runtype
        write(iulog,*)"readnl: se_fv_phys_remap_alg = ",se_fv_phys_remap_alg
+       write(iulog,*)"readnl: internal_diagnostics_level = ",internal_diagnostics_level
 
        if(hypervis_scaling /=0)then
           write(iulog,*)"Tensor hyperviscosity:  hypervis_scaling=",hypervis_scaling

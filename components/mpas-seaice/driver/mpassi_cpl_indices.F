@@ -11,6 +11,7 @@ module mpassi_cpl_indices
   ! ice -> drv
 
   integer :: index_i2x_Si_ifrac        ! fractional ice coverage wrt ocean
+  integer :: index_i2x_Si_ithick       ! ice thickness (m)
   integer :: index_i2x_Si_snowh        ! snow height (m)
   integer :: index_i2x_Si_t            ! temperature                     
   integer :: index_i2x_Si_bpress       ! basal pressure                  
@@ -70,7 +71,6 @@ module mpassi_cpl_indices
   integer :: index_x2i_Sa_u            ! bottom atm level zon wind
   integer :: index_x2i_Sa_v            ! bottom atm level mer wind
   integer :: index_x2i_Sa_tbot         ! bottom atm level temp
-  integer :: index_x2i_Sa_pbot         ! bottom atm level pressure
   integer :: index_x2i_Sa_ptem         ! bottom atm level pot temp
   integer :: index_x2i_Sa_shum         ! bottom atm level spec hum
   integer :: index_x2i_Sa_dens         ! bottom atm level air den
@@ -146,6 +146,7 @@ contains
     index_i2x_Si_tref       = mct_avect_indexra(i2x,'Si_tref')
     index_i2x_Si_qref       = mct_avect_indexra(i2x,'Si_qref')
     index_i2x_Si_ifrac      = mct_avect_indexra(i2x,'Si_ifrac')
+    index_i2x_Si_ithick     = mct_avect_indexra(i2x,'Si_ithick')
     index_i2x_Si_avsdr      = mct_avect_indexra(i2x,'Si_avsdr')
     index_i2x_Si_anidr      = mct_avect_indexra(i2x,'Si_anidr')
     index_i2x_Si_avsdf      = mct_avect_indexra(i2x,'Si_avsdf')
@@ -198,7 +199,6 @@ contains
     index_x2i_Sa_v          = mct_avect_indexra(x2i,'Sa_v')
     index_x2i_Sa_tbot       = mct_avect_indexra(x2i,'Sa_tbot')
     index_x2i_Sa_ptem       = mct_avect_indexra(x2i,'Sa_ptem')
-    index_x2i_Sa_pbot       = mct_avect_indexra(x2i,'Sa_pbot')
     index_x2i_Sa_shum       = mct_avect_indexra(x2i,'Sa_shum')
     index_x2i_Sa_dens       = mct_avect_indexra(x2i,'Sa_dens')
     index_x2i_So_dhdx       = mct_avect_indexra(x2i,'So_dhdx')

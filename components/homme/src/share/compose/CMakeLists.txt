@@ -10,6 +10,10 @@ endif ()
 if (COMPOSE_PORT)
   add_definitions(-DCOMPOSE_PORT)
 endif ()
+if (NOT HOMMEXX_MPI_ON_DEVICE)
+  message("compose> MPI on host")
+  add_definitions(-DCOMPOSE_MPI_ON_HOST)
+endif ()
 add_library (${COMPOSE_LIBRARY}
   compose_test.cpp
   compose_homme.cpp
@@ -40,4 +44,5 @@ add_library (${COMPOSE_LIBRARY}
   cedr_caas.cpp
   cedr_qlt.cpp
   cedr_test_randomized.cpp)
-link_to_kokkos(${COMPOSE_LIBRARY})
+
+target_link_libraries(${COMPOSE_LIBRARY} Kokkos::kokkos)

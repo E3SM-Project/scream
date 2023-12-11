@@ -3,8 +3,9 @@ module ice_mushy_physics
   use ice_kinds_mod
   use ice_constants_colpkg, only: c0, c1, c2, c4, c8, c10, c1000, &
       p001, p01, p05, p1, p2, p5, pi, bignum, puny, ice_ref_salinity, &
-      viscosity_dyn, rhow, rhoi, rhos, cp_ocn, cp_ice, Lfresh, gravit, &
-      ksno
+      viscosity_dyn, rhow, rhoi, rhos, cp_ocn, cp_ice, Lfresh, gravit
+  use ice_colpkg_shared, only: ksno
+
 
   implicit none
 
@@ -19,6 +20,7 @@ module ice_mushy_physics
        enthalpy_of_melting, &
        temperature_snow, &
        temperature_mush, &
+       temperature_brine, &
        temperature_mush_liquid_fraction, &
        liquidus_brine_salinity_mush, &
        liquidus_temperature_mush, &
@@ -407,6 +409,20 @@ contains
     zTin = q_melt * zqin * I_liq + (c1 - q_melt) * zTin
 
   end function temperature_mush
+
+!=======================================================================
+
+  function temperature_brine(qbr) result(zTin)
+
+    real(kind=dbl_kind), intent(in) :: &
+         qbr ! enthalpy of brine (fully liquid)
+
+    real(kind=dbl_kind) :: &
+         zTin ! ice layer temperature (C)
+
+    zTin = qbr / (cp_ocn * rhow)
+
+  end function temperature_brine
 
 !=======================================================================
 

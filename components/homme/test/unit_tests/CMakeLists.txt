@@ -11,18 +11,23 @@ macro(cxx_unit_test target_name target_f90_srcs target_cxx_srcs include_dirs con
   #ELSE()
     set(TMP ${USE_MPI_OPTIONS})
     separate_arguments(TMP)
-    ADD_TEST(${target_name}_test ${USE_MPIEXEC} -n ${NUM_CPUS} ${TMP} ./${target_name})
+    if (USE_MPI_RUN_SCRIPT)
+      ADD_TEST(${target_name}_test ${USE_MPI_RUN_SCRIPT} ${NUM_CPUS} ./${target_name})
+    else()
+      ADD_TEST(${target_name}_test ${USE_MPIEXEC} -n ${NUM_CPUS} ${TMP} ./${target_name})
+    endif()
   #ENDIF()
   SET_TESTS_PROPERTIES(${target_name}_test PROPERTIES LABELS "unit")
-  IF(BUILD_HOMME_WITHOUT_PIOLIBRARY)
-    TARGET_COMPILE_DEFINITIONS(${target_name} PUBLIC HOMME_WITHOUT_PIOLIBRARY)
-  ENDIF()
 
-  TARGET_LINK_LIBRARIES(${target_name} timing ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} kokkos)
+  TARGET_LINK_LIBRARIES(${target_name} timing ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+  target_link_libraries(${target_name} Kokkos::kokkos)
   IF (HOMME_USE_MKL)
     TARGET_COMPILE_OPTIONS (${target_name} PUBLIC -mkl)
     TARGET_LINK_LIBRARIES (${target_name} -mkl)
   ENDIF()
+
+  # Link csm_share lib
+  target_link_libraries(${target_name} csm_share)
 
   STRING(TOUPPER "${PERFORMANCE_PROFILE}" PERF_PROF_UPPER)
   IF ("${PERF_PROF_UPPER}" STREQUAL "VTUNE")
@@ -38,6 +43,8 @@ macro(cxx_unit_test target_name target_f90_srcs target_cxx_srcs include_dirs con
     ELSE ()
       TARGET_LINK_LIBRARIES(${target_name} pio)
     ENDIF ()
+  ELSE ()
+    ADD_DEFINITIONS(-DHOMME_WITHOUT_PIOLIBRARY)
   ENDIF ()
 
   IF (NOT "${target_f90_srcs}" EQUAL "")

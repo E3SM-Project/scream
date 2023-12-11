@@ -171,6 +171,7 @@ MODULE seq_infodata_mod
      real(SHR_KIND_R8)       :: eps_oarea       ! ocn area error tolerance
      logical                 :: mct_usealltoall ! flag for mct alltoall
      logical                 :: mct_usevector   ! flag for mct vector
+     integer                 :: nlmaps_verbosity    ! see seq_nlmap_mod
 
      logical                 :: reprosum_use_ddpdd  ! use ddpdd algorithm
      logical                 :: reprosum_allow_infnan ! allow INF and NaN summands
@@ -191,6 +192,7 @@ MODULE seq_infodata_mod
      logical                 :: rof_present     ! does rof component exist
      logical                 :: rofice_present  ! does rof have iceberg coupling on
      logical                 :: rof_prognostic  ! does rof component need input data
+     logical                 :: rofocn_prognostic ! does component need ocn data
      logical                 :: flood_present   ! does rof have flooding on
      logical                 :: ocn_present     ! does component model exist
      logical                 :: ocn_prognostic  ! does component model need input data from driver
@@ -430,6 +432,7 @@ CONTAINS
     logical                :: mct_usevector      ! flag for mct vector
     real(shr_kind_r8)      :: max_cplstep_time   ! abort if cplstep time exceeds this value
     character(SHR_KIND_CL) :: model_doi_url
+    integer(SHR_KIND_IN)   :: nlmaps_verbosity   ! see seq_nlmap_mod
 
     namelist /seq_infodata_inparm/  &
          cime_model, case_desc, case_name, start_type, tchkpt_dir,     &
@@ -469,7 +472,8 @@ CONTAINS
          eps_oarea, esmf_map_flag,                         &
          reprosum_use_ddpdd, reprosum_allow_infnan,        &
          reprosum_diffmax, reprosum_recompute,             &
-         mct_usealltoall, mct_usevector, max_cplstep_time, model_doi_url
+         mct_usealltoall, mct_usevector, max_cplstep_time, model_doi_url, &
+         nlmaps_verbosity
 
     !-------------------------------------------------------------------------------
 
@@ -590,6 +594,7 @@ CONTAINS
        mct_usevector         = .false.
        max_cplstep_time      = 0.0
        model_doi_url        = 'unset'
+       nlmaps_verbosity      = 0
 
        !---------------------------------------------------------------------------
        ! Read in namelist
@@ -724,6 +729,7 @@ CONTAINS
        infodata%reprosum_recompute    = reprosum_recompute
        infodata%mct_usealltoall       = mct_usealltoall
        infodata%mct_usevector         = mct_usevector
+       infodata%nlmaps_verbosity      = nlmaps_verbosity
 
        infodata%info_debug            = info_debug
        infodata%bfbflag               = bfbflag
@@ -747,6 +753,7 @@ CONTAINS
        infodata%atm_prognostic = .false.
        infodata%lnd_prognostic = .false.
        infodata%rof_prognostic = .false.
+       infodata%rofocn_prognostic = .false. 
        infodata%ocn_prognostic = .false.
        infodata%ocnrof_prognostic = .false.
        infodata%ocn_c2_glcshelf = .false.
@@ -988,7 +995,7 @@ CONTAINS
        scm_multcols, scm_nx, scm_ny,                                      &
        atm_present, atm_prognostic,                                       &
        lnd_present, lnd_prognostic,                                       &
-       rof_present, rof_prognostic,                                       &
+       rof_present, rof_prognostic, rofocn_prognostic,                    &
        ocn_present, ocn_prognostic, ocnrof_prognostic, ocn_c2_glcshelf,   &
        ice_present, ice_prognostic,                                       &
        glc_present, glc_prognostic,                                       &
@@ -1026,7 +1033,7 @@ CONTAINS
        reprosum_use_ddpdd, reprosum_allow_infnan,                         &
        reprosum_diffmax, reprosum_recompute,                              &
        mct_usealltoall, mct_usevector, max_cplstep_time, model_doi_url,   &
-       glc_valid_input)
+       glc_valid_input, nlmaps_verbosity)
 
 
     implicit none
@@ -1143,6 +1150,7 @@ CONTAINS
     logical,                optional, intent(OUT) :: reprosum_recompute      ! recompute if tolerance exceeded
     logical,                optional, intent(OUT) :: mct_usealltoall         ! flag for mct alltoall
     logical,                optional, intent(OUT) :: mct_usevector           ! flag for mct vector
+    integer(SHR_KIND_IN),   optional, intent(OUT) :: nlmaps_verbosity
 
     integer(SHR_KIND_IN),   optional, intent(OUT) :: info_debug
     logical,                optional, intent(OUT) :: bfbflag
@@ -1156,6 +1164,7 @@ CONTAINS
     logical,                optional, intent(OUT) :: rof_present
     logical,                optional, intent(OUT) :: rofice_present
     logical,                optional, intent(OUT) :: rof_prognostic
+    logical,                optional, intent(OUT) :: rofocn_prognostic
     logical,                optional, intent(OUT) :: flood_present
     logical,                optional, intent(OUT) :: ocn_present
     logical,                optional, intent(OUT) :: ocn_prognostic
@@ -1326,6 +1335,7 @@ CONTAINS
     if ( present(reprosum_recompute)) reprosum_recompute = infodata%reprosum_recompute
     if ( present(mct_usealltoall)) mct_usealltoall = infodata%mct_usealltoall
     if ( present(mct_usevector)  ) mct_usevector  = infodata%mct_usevector
+    if ( present(nlmaps_verbosity)) nlmaps_verbosity = infodata%nlmaps_verbosity
 
     if ( present(info_debug)     ) info_debug     = infodata%info_debug
     if ( present(bfbflag)        ) bfbflag        = infodata%bfbflag
@@ -1339,6 +1349,7 @@ CONTAINS
     if ( present(rof_present)    ) rof_present    = infodata%rof_present
     if ( present(rofice_present) ) rofice_present = infodata%rofice_present
     if ( present(rof_prognostic) ) rof_prognostic = infodata%rof_prognostic
+    if ( present(rofocn_prognostic) ) rofocn_prognostic = infodata%rofocn_prognostic
     if ( present(flood_present)  ) flood_present  = infodata%flood_present
     if ( present(ocn_present)    ) ocn_present    = infodata%ocn_present
     if ( present(ocn_prognostic) ) ocn_prognostic = infodata%ocn_prognostic
@@ -1535,7 +1546,7 @@ CONTAINS
        scm_multcols, scm_nx, scm_ny,                                      &
        atm_present, atm_prognostic,                                       &
        lnd_present, lnd_prognostic,                                       &
-       rof_present, rof_prognostic,                                       &
+       rof_present, rof_prognostic, rofocn_prognostic,                    &
        ocn_present, ocn_prognostic, ocnrof_prognostic, ocn_c2_glcshelf,   &
        ice_present, ice_prognostic,                                       &
        glc_present, glc_prognostic,                                       &
@@ -1573,7 +1584,7 @@ CONTAINS
        eps_agrid, eps_aarea, eps_omask, eps_ogrid, eps_oarea,             &
        reprosum_use_ddpdd, reprosum_allow_infnan,                         &
        reprosum_diffmax, reprosum_recompute,                              &
-       mct_usealltoall, mct_usevector, glc_valid_input)
+       mct_usealltoall, mct_usevector, glc_valid_input, nlmaps_verbosity)
 
 
     implicit none
@@ -1689,6 +1700,7 @@ CONTAINS
     logical,                optional, intent(IN)    :: reprosum_recompute ! recompute if tolerance exceeded
     logical,                optional, intent(IN)    :: mct_usealltoall    ! flag for mct alltoall
     logical,                optional, intent(IN)    :: mct_usevector      ! flag for mct vector
+    integer(SHR_KIND_IN),   optional, intent(IN)    :: nlmaps_verbosity
 
     integer(SHR_KIND_IN),   optional, intent(IN)    :: info_debug
     logical,                optional, intent(IN)    :: bfbflag
@@ -1702,6 +1714,7 @@ CONTAINS
     logical,                optional, intent(IN)    :: rof_present
     logical,                optional, intent(IN)    :: rofice_present
     logical,                optional, intent(IN)    :: rof_prognostic
+    logical,                optional, intent(IN)    :: rofocn_prognostic
     logical,                optional, intent(IN)    :: flood_present
     logical,                optional, intent(IN)    :: ocn_present
     logical,                optional, intent(IN)    :: ocn_prognostic
@@ -1871,6 +1884,7 @@ CONTAINS
     if ( present(reprosum_recompute)) infodata%reprosum_recompute = reprosum_recompute
     if ( present(mct_usealltoall)) infodata%mct_usealltoall = mct_usealltoall
     if ( present(mct_usevector)  ) infodata%mct_usevector  = mct_usevector
+    if ( present(nlmaps_verbosity)) infodata%nlmaps_verbosity = nlmaps_verbosity
 
     if ( present(info_debug)     ) infodata%info_debug     = info_debug
     if ( present(bfbflag)        ) infodata%bfbflag        = bfbflag
@@ -1884,6 +1898,7 @@ CONTAINS
     if ( present(rof_present)    ) infodata%rof_present    = rof_present
     if ( present(rofice_present) ) infodata%rofice_present = rofice_present
     if ( present(rof_prognostic) ) infodata%rof_prognostic = rof_prognostic
+    if ( present(rofocn_prognostic) ) infodata%rofocn_prognostic = rofocn_prognostic
     if ( present(flood_present)  ) infodata%flood_present  = flood_present
     if ( present(ocn_present)    ) infodata%ocn_present    = ocn_present
     if ( present(ocn_prognostic) ) infodata%ocn_prognostic = ocn_prognostic
@@ -2176,6 +2191,7 @@ CONTAINS
     call shr_mpi_bcast(infodata%reprosum_recompute,      mpicom)
     call shr_mpi_bcast(infodata%mct_usealltoall,         mpicom)
     call shr_mpi_bcast(infodata%mct_usevector,           mpicom)
+    call shr_mpi_bcast(infodata%nlmaps_verbosity,        mpicom)
 
     call shr_mpi_bcast(infodata%info_debug,              mpicom)
     call shr_mpi_bcast(infodata%bfbflag,                 mpicom)
@@ -2189,6 +2205,7 @@ CONTAINS
     call shr_mpi_bcast(infodata%rof_present,             mpicom)
     call shr_mpi_bcast(infodata%rofice_present,          mpicom)
     call shr_mpi_bcast(infodata%rof_prognostic,          mpicom)
+    call shr_mpi_bcast(infodata%rofocn_prognostic,       mpicom)
     call shr_mpi_bcast(infodata%flood_present,           mpicom)
     call shr_mpi_bcast(infodata%ocn_present,             mpicom)
     call shr_mpi_bcast(infodata%ocn_prognostic,          mpicom)
@@ -2465,6 +2482,7 @@ CONTAINS
        call shr_mpi_bcast(infodata%rof_present,        mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%rofice_present,     mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%rof_prognostic,     mpicom, pebcast=cmppe)
+       call shr_mpi_bcast(infodata%rofocn_prognostic,  mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%rof_nx,             mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%rof_ny,             mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%flood_present,      mpicom, pebcast=cmppe)
@@ -2549,6 +2567,7 @@ CONTAINS
        call shr_mpi_bcast(infodata%rof_present,        mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%rofice_present,     mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%rof_prognostic,     mpicom, pebcast=cplpe)
+       call shr_mpi_bcast(infodata%rofocn_prognostic,  mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%flood_present,      mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%ocn_present,        mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%ocn_prognostic,     mpicom, pebcast=cplpe)
@@ -2883,6 +2902,8 @@ CONTAINS
     write(logunit,F0L) subname,'mct_usealltoall          = ', infodata%mct_usealltoall
     write(logunit,F0L) subname,'mct_usevector            = ', infodata%mct_usevector
 
+    write(logunit,F0I) subname,'nlmaps_verbosity         = ', infodata%nlmaps_verbosity
+
     write(logunit,F0S) subname,'info_debug               = ', infodata%info_debug
     write(logunit,F0L) subname,'bfbflag                  = ', infodata%bfbflag
     write(logunit,F0L) subname,'esmf_map_flag            = ', infodata%esmf_map_flag
@@ -2896,6 +2917,7 @@ CONTAINS
     write(logunit,F0L) subname,'rof_present              = ', infodata%rof_present
     write(logunit,F0L) subname,'rofice_present           = ', infodata%rofice_present
     write(logunit,F0L) subname,'rof_prognostic           = ', infodata%rof_prognostic
+    write(logunit,F0L) subname,'rofocn_prognostic        = ', infodata%rofocn_prognostic
     write(logunit,F0L) subname,'flood_present            = ', infodata%flood_present
     write(logunit,F0L) subname,'ocn_present              = ', infodata%ocn_present
     write(logunit,F0L) subname,'ocn_prognostic           = ', infodata%ocn_prognostic

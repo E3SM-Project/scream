@@ -53,6 +53,8 @@ module controlMod
   use elm_varctl              , only: add_temperature, add_co2
   use elm_varctl              , only: const_climate_hist
   use elm_varctl              , only: use_top_solar_rad
+  use elm_varctl              , only: snow_shape, snicar_atm_type, use_dust_snow_internal_mixing
+
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -113,7 +115,7 @@ contains
     ! Initialize CLM run control information
     
     ! !USES:
-    use clm_time_manager          , only : set_timemgr_init, get_timemgr_defaults
+    use elm_time_manager          , only : set_timemgr_init, get_timemgr_defaults
     use fileutils                 , only : getavu, relavu
     use shr_string_mod            , only : shr_string_getParentDir
     use elm_interface_pflotranMod , only : elm_pf_readnl
@@ -223,7 +225,8 @@ contains
     namelist /elm_inparm/  &
          clump_pproc, wrtdia, &
          create_crop_landunit, nsegspc, co2_ppmv, override_nsrest, &
-         albice, more_vertlayers, subgridflag, irrigate, tw_irr, extra_gw_irr, firrig_data, all_active
+         albice, more_vertlayers, subgridflag, irrigate, tw_irr, extra_gw_irr, firrig_data, all_active, &
+         mpi_sync_nstep_freq
     ! Urban options
 
     namelist /elm_inparm/  &
@@ -255,7 +258,8 @@ contains
           use_fates_fixed_biogeog,                      &
           use_fates_nocomp,                             &
           use_fates_sp,                                 &
-          fates_parteh_mode
+          fates_parteh_mode,                            &
+          use_fates_tree_damage
 
     namelist /elm_inparm / use_betr
 
@@ -312,7 +316,10 @@ contains
 
     namelist /elm_mosart/ &
          lnd_rof_coupling_nstep
-    
+		 
+    namelist /elm_inparm/ &
+         snow_shape, snicar_atm_type, use_dust_snow_internal_mixing 
+
     ! ----------------------------------------------------------------------
     ! Default values
     ! ----------------------------------------------------------------------
@@ -771,7 +778,7 @@ contains
     call mpi_bcast (fates_inventory_ctrl_filename, len(fates_inventory_ctrl_filename), &
           MPI_CHARACTER, 0, mpicom, ier)
     call mpi_bcast (fates_parteh_mode, 1, MPI_INTEGER, 0, mpicom, ier)
-
+    call mpi_bcast (use_fates_tree_damage, 1, MPI_LOGICAL, 0, mpicom, ier)
 
     call mpi_bcast (use_betr, 1, MPI_LOGICAL, 0, mpicom, ier)
 
@@ -927,6 +934,13 @@ contains
     call mpi_bcast (use_lnd_rof_two_way   , 1, MPI_LOGICAL, 0, mpicom, ier)
     call mpi_bcast (lnd_rof_coupling_nstep, 1, MPI_INTEGER, 0, mpicom, ier)
 
+    !SNICAR-AD
+    call mpi_bcast (snow_shape, len(snow_shape), MPI_CHARACTER, 0, mpicom, ier)
+    call mpi_bcast (snicar_atm_type, len(snicar_atm_type), MPI_CHARACTER, 0, mpicom, ier)
+    call mpi_bcast (use_dust_snow_internal_mixing, 1, MPI_LOGICAL, 0, mpicom, ier)
+	
+    call mpi_bcast (mpi_sync_nstep_freq, 1, MPI_INTEGER, 0, mpicom, ier)
+
   end subroutine control_spmd
 
   !------------------------------------------------------------------------
@@ -971,6 +985,9 @@ contains
     write(iulog,*) '    two-way irrigation = ', tw_irr
     write(iulog,*) '    use_snicar_frc = ', use_snicar_frc
     write(iulog,*) '    use_snicar_ad = ', use_snicar_ad
+    write(iulog,*) '    snow_shape = ', snow_shape
+    write(iulog,*) '    snicar_atm_type = ', snicar_atm_type
+    write(iulog,*) '    use_dust_snow_internal_mixing = ', use_dust_snow_internal_mixing
     write(iulog,*) '    use_vancouver = ', use_vancouver
     write(iulog,*) '    use_mexicocity = ', use_mexicocity
     write(iulog,*) '    use_noio = ', use_noio
@@ -1157,6 +1174,7 @@ contains
        write(iulog, *) '    use_fates_logging = ', use_fates_logging
        write(iulog, *) '    fates_paramfile = ', fates_paramfile
        write(iulog, *) '    use_fates_planthydro = ', use_fates_planthydro
+       write(iulog, *) '    use_fates_tree_damage = ', use_fates_tree_damage
        write(iulog, *) '    use_fates_cohort_age_tracking = ',use_fates_cohort_age_tracking
        write(iulog, *) '    fates_parteh_mode = ', fates_parteh_mode
        write(iulog, *) '    use_fates_ed_st3 = ',use_fates_ed_st3
@@ -1180,6 +1198,7 @@ contains
     ! land river two way coupling
     write(iulog,*) '    use_lnd_rof_two_way    = ', use_lnd_rof_two_way
     write(iulog,*) '    lnd_rof_coupling_nstep = ', lnd_rof_coupling_nstep
+    write(iulog,*) '    mpi_sync_nstep_freq    = ', mpi_sync_nstep_freq
 
   end subroutine control_print
 

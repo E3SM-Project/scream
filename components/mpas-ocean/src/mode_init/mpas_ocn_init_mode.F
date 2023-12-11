@@ -3,7 +3,7 @@
 !
 ! Unless noted otherwise source code is licensed under the BSD license.
 ! Additional copyright and license information can be found in the LICENSE file
-! distributed with this code, or at http://mpas-dev.github.com/license.html
+! distributed with this code, or at http://mpas-dev.github.io/license.html
 !
 !|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 !
@@ -63,6 +63,8 @@ module ocn_init_mode
    use ocn_init_mixed_layer_eddy
    use ocn_init_transport_tests
    use ocn_init_test_sht
+
+   use ocn_init_parabolic_bowl
 
    implicit none
    private
@@ -267,8 +269,14 @@ module ocn_init_mode
       type (mpas_pool_type), pointer :: forcingPool
 
       type (MPAS_timeInterval_type) :: timeStep
+      real (kind=RKIND), dimension(:,:), pointer :: normalVelocity
 
       ierr = 0
+
+      ! Initialize normalVelocity to zero for cases that do not specify it.
+      call mpas_pool_get_subpool(domain % blocklist % structs, 'state', statePool)
+      call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocity, 1)
+      normalVelocity(:,:) = 0.0_RKIND
 
       ! Eventually, dt should be domain specific
       timeStep = mpas_get_clock_timestep(domain % clock, ierr=ierr)
@@ -301,6 +309,7 @@ module ocn_init_mode
       call ocn_init_setup_mixed_layer_eddy(domain, ierr)
       call ocn_init_setup_transport_tests(domain, ierr)
       call ocn_init_setup_test_sht(domain, ierr)
+      call ocn_init_setup_parabolic_bowl(domain, iErr)
       !call ocn_init_setup_TEMPLATE(domain, ierr)
 
       call mpas_log_write( ' Completed setup of: ' // trim(config_init_configuration))
@@ -417,6 +426,10 @@ module ocn_init_mode
       iErr = ior(iErr, err_tmp)
       call ocn_init_validate_transport_tests(configPool, packagePool, iocontext, iErr=err_tmp)
       iErr = ior(iErr, err_tmp)
+ 
+      call ocn_init_validate_parabolic_bowl(configPool, packagePool, iocontext, iErr=err_tmp)
+      iErr = ior(iErr, err_tmp)
+
       ! call ocn_init_validate_TEMPLATE(configPool, packagePool, iocontext, iErr=err_tmp)
       ! iErr = ior(iErr, err_tmp)
    end subroutine ocn_init_mode_validate_configuration!}}}

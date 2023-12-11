@@ -285,14 +285,14 @@ contains
 !-------------------------------------------------------------------------------------
     ! constants:
     elm_idata%bgc%ndecomp_pools          = ndecomp_pools
-    elm_idata%bgc%decomp_pool_name(:)    = decomp_pool_name(:)
-    elm_idata%bgc%floating_cn_ratio(:)   = floating_cn_ratio(:)
-    elm_idata%bgc%floating_cp_ratio(:)   = floating_cp_ratio(:)
+    elm_idata%bgc%decomp_pool_name(1:ndecomp_pools)    = decomp_pool_name(1:ndecomp_pools)
+    elm_idata%bgc%floating_cn_ratio(1:ndecomp_pools)   = floating_cn_ratio(1:ndecomp_pools)
+    elm_idata%bgc%floating_cp_ratio(1:ndecomp_pools)   = floating_cp_ratio(1:ndecomp_pools)
 
-    elm_idata%bgc%initial_cn_ratio(:)    = initial_cn_ratio(:)
-    elm_idata%bgc%initial_cp_ratio(:)    = initial_cp_ratio(:)
-    elm_idata%bgc%decomp_k_pools(:)      = decomp_k_pools(1:ndecomp_pools)
-    elm_idata%bgc%adfactor_kd_pools(:)   = adfactor_kd_pools(1:ndecomp_pools)
+    elm_idata%bgc%initial_cn_ratio(0:ndecomp_pools)    = initial_cn_ratio(0:ndecomp_pools)
+    elm_idata%bgc%initial_cp_ratio(0:ndecomp_pools)    = initial_cp_ratio(0:ndecomp_pools)
+    elm_idata%bgc%decomp_k_pools(1:ndecomp_pools)      = decomp_k_pools(1:ndecomp_pools)
+    elm_idata%bgc%adfactor_kd_pools(1:ndecomp_pools)   = adfactor_kd_pools(1:ndecomp_pools)
 
     do fc = 1, num_soilc
         c = filter_soilc(fc)
@@ -338,7 +338,7 @@ contains
   !  get soil temperature/saturation from CLM to soil BGC module
   !
   ! !USES:
-    use clm_time_manager    , only : get_nstep
+    use elm_time_manager    , only : get_nstep
     use shr_const_mod       , only : SHR_CONST_G
 
 
@@ -418,7 +418,7 @@ contains
   !  get soil temperature/saturation from CLM to soil BGC module
   !
   ! !USES:
-    use clm_time_manager    , only : get_nstep
+    use elm_time_manager    , only : get_nstep
     use shr_const_mod       , only : SHR_CONST_G
 
 
@@ -602,7 +602,7 @@ contains
   ! get clm bgc flux variables: external inputs to bgc state variables (pools)
   !
   ! !USES:
-    use clm_time_manager      , only : get_curr_date
+    use elm_time_manager      , only : get_curr_date
     use elm_varctl            , only : spinup_state
     use CNDecompCascadeConType, only : decomp_cascade_con
 
@@ -925,7 +925,7 @@ contains
            nitrogenstate_vars, phosphorusstate_vars)
 
     use CNDecompCascadeConType, only : decomp_cascade_con
-    use clm_time_manager, only : get_step_size
+    use elm_time_manager, only : get_step_size
 
     implicit none
 
@@ -1360,7 +1360,7 @@ contains
 
     ! USES:
     use SoilLittDecompMod          , only: SoilLittDecompAlloc
-    use clm_time_manager           , only: get_step_size
+    use elm_time_manager           , only: get_step_size
 
     ! ARGUMENTS:
     type(bounds_type)                   , intent(in)    :: bounds

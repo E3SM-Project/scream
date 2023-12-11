@@ -45,10 +45,10 @@
       use ice_constants_colpkg, only: c0, c1, c1p5, c2, c3, c4, c10, &
           p01, p1, p15, p25, p5, p75, puny, &
           albocn, Timelt, snowpatch, awtvdr, awtidr, awtvdf, awtidf, &
-          kappav, hs_min, rhofresh, rhos, nspint, nspint_5bd, snwlvlfac
+          kappav, hs_min, rhofresh, rhos, nspint, nspint_5bd
       use ice_colpkg_shared, only: hi_ssl, hs_ssl, modal_aero, max_aero
       use ice_colpkg_shared, only: hi_ssl, hs_ssl, modal_aero, rsnw_fall, &
-          rsnw_tmax
+          rsnw_tmax, snwlvlfac
       use ice_warnings, only: add_warning
 
       implicit none
@@ -59,6 +59,9 @@
       real (kind=dbl_kind), parameter :: &
          hpmin  = 0.005_dbl_kind, & ! minimum allowed melt pond depth (m)
          hp0    = 0.200_dbl_kind    ! pond depth below which transition to bare ice
+
+      real (kind=dbl_kind), parameter :: &
+         exp_argmax = c10    ! maximum argument of exponential
 
       real (kind=dbl_kind) :: &
          exp_min                    ! minimum exponential value
@@ -926,15 +929,10 @@
       logical (kind=log_kind) :: &
          linitonly       ! local initonly value
 
-      real (kind=dbl_kind), parameter :: & 
-         argmax = c10    ! maximum argument of exponential
-
       linitonly = .false.
       if (present(initonly)) then
          linitonly = initonly
       endif
-
-      exp_min = exp(-argmax)
 
       ! cosine of the zenith angle
          call compute_coszen (tlat,          tlon, &
@@ -984,7 +982,7 @@
                apeffn(n) = fpn ! for history
             elseif (tr_pond_lvl) then
                hsnlvl = hsn ! initialize
-               if (trim(snwredist) == '30percentsw') then
+               if (trim(snwredist) == '30percent') then
                   hsnlvl = hsn / (c1 + snwlvlfac*(c1-alvln(n)))
                   ! snow volume over level ice
                   alvl = aicen(n) * alvln(n)
@@ -2397,13 +2395,13 @@
                 
                  ! get grain size index:
                  ! works for 25 < snw_rds < 1625 um:
-                 if (tmp_gs < 125) then
-                   tmp1 = tmp_gs/50
+                 if (tmp_gs < 125.0_dbl_kind) then
+                   tmp1 = tmp_gs/50.0_dbl_kind
                    k_bcini(k) = nint(tmp1)
-                 elseif (tmp_gs < 175) then
+                 elseif (tmp_gs < 175.0_dbl_kind) then
                    k_bcini(k) = 2
                  else
-                   tmp1 = (tmp_gs/250)+2
+                   tmp1 = (tmp_gs/250.0_dbl_kind)+c2
                    k_bcini(k) = nint(tmp1)
                  endif
               else                  ! use the largest snow grain size for ice
@@ -3347,7 +3345,10 @@
          tdr      , & ! tdir for gaussian integration
          smr      , & ! accumulator for rdif gaussian integration
          smt          ! accumulator for tdif gaussian integration
- 
+
+      real (kind=dbl_kind) :: &
+         exp_min                    ! minimum exponential value
+
       ! Delta-Eddington solution expressions
       alpha(w,uu,gg,e) = p75*w*uu*((c1 + gg*(c1-w))/(c1 - e*e*uu*uu))
       agamm(w,uu,gg,e) = p5*w*((c1 + c3*gg*(c1-w)*uu*uu)/(c1-e*e*uu*uu))
@@ -3385,7 +3386,7 @@
       ! value below the fresnel level, i.e. the cosine solar zenith 
       ! angle below the fresnel level for the refracted solar beam:
       mu0nij = sqrt(c1-((c1-mu0**2)/(refindx*refindx)))
- 
+
       ! compute level of fresnel refraction
       ! if ponded sea ice, fresnel level is the top of the pond.
       kfrsnl = 0
@@ -3434,7 +3435,9 @@
             ! non-refracted beam instead
             if( srftyp < 2 .and. k < kfrsnl ) mu0n = mu0
 
-            extins = max(exp_min, exp(-lm*ts))
+            !extins = max(exp_min, exp(-lm*ts))
+            exp_min = min(exp_argmax,lm*ts)
+            extins = exp(-exp_min)
             ne = n(ue,extins)
 
             ! first calculation of rdif, tdif using Delta-Eddington formulas
@@ -3443,7 +3446,9 @@
             tdif_a(k) = c4*ue/ne
 
             ! evaluate rdir,tdir for direct beam
-            trnlay(k) = max(exp_min, exp(-ts/mu0n))
+            !trnlay(k) = max(exp_min, exp(-ts/mu0n))
+            exp_min = min(exp_argmax,ts/mu0n)
+            trnlay(k) = exp(-exp_min)
             alp = alpha(ws,mu0n,gs,lm)
             gam = agamm(ws,mu0n,gs,lm)
             apg = alp + gam
@@ -3464,7 +3469,9 @@
                mu  = gauspt(ng)
                gwt = gauswt(ng)
                swt = swt + mu*gwt
-               trn = max(exp_min, exp(-ts/mu))
+               !trn = max(exp_min, exp(-ts/mu))
+               exp_min = min(exp_argmax,ts/mu)
+               trn = exp(-exp_min)
                alp = alpha(ws,mu,gs,lm)
                gam = agamm(ws,mu,gs,lm)
                apg = alp + gam
@@ -3665,7 +3672,6 @@
 
       real (kind=dbl_kind), parameter :: &
          ! units for the following are 1.e-6 m (micro-meters)
-         rsnw_fresh    =  100._dbl_kind, & ! freshly-fallen snow grain radius 
          rsnw_nonmelt  =  500._dbl_kind, & ! nonmelt snow grain radius
          rsnw_sig      =  250._dbl_kind    ! assumed sigma for snow grain radius
 
@@ -3696,7 +3702,7 @@
         ! the sign is negative so that if R_snw is 1, then the
         ! snow grain radius is reduced and thus albedo increased.
         rsnw_nm = rsnw_nonmelt - R_snw*rsnw_sig
-        rsnw_nm = max(rsnw_nm, rsnw_fresh)
+        rsnw_nm = max(rsnw_nm, rsnw_fall)
         rsnw_nm = min(rsnw_nm, rsnw_mlt) 
       
         do ks = 1, nslyr
@@ -3704,7 +3710,7 @@
            rhosnw(ks) = rhos
            ! snow grain radius between rsnw_nonmelt and rsnw_mlt
            rsnw(ks) = rsnw_nm + (rsnw_mlt-rsnw_nm)*fT
-           rsnw(ks) = max(rsnw(ks), rsnw_fresh)
+           rsnw(ks) = max(rsnw(ks), rsnw_fall)
            rsnw(ks) = min(rsnw(ks), rsnw_mlt)
         enddo        ! ks
 
@@ -4649,13 +4655,13 @@
 
                  ! get grain size index:
                  ! works for 25 < snw_rds < 1625 um:
-                 if (tmp_gs < 125) then
-                   tmp1 = tmp_gs/50
+                 if (tmp_gs < 125._dbl_kind) then
+                   tmp1 = tmp_gs/50._dbl_kind
                    k_bcini(k) = nint(tmp1)
-                 elseif (tmp_gs < 175) then
+                 elseif (tmp_gs < 175._dbl_kind) then
                    k_bcini(k) = 2
                  else
-                   tmp1 = (tmp_gs/250)+2
+                   tmp1 = (tmp_gs/250._dbl_kind) + c2
                    k_bcini(k) = nint(tmp1)
                  endif
               else                  ! use the largest snow grain size for ice
@@ -4777,12 +4783,12 @@
                   nr = ceiling(rsnw(ksnow)) - 30 + 1
                   delr = (rsnw(ksnow) - floor(rsnw(ksnow))) / &
                          (ceiling(rsnw(ksnow)) - floor(rsnw(ksnow)))
-                  ks = ext_cff_mss_ice_drc(ns,nr-1)*(delr) + &
-                       ext_cff_mss_ice_drc(ns,nr)*(c1-delr)
-                  ws = ss_alb_ice_drc(ns,nr-1)*(delr) + &
-                       ss_alb_ice_drc(ns,nr)*(c1-delr)
-                  gs = asm_prm_ice_drc(ns,nr-1)*(delr) + &
-                       asm_prm_ice_drc(ns,nr)*(c1-delr)
+                  ks = ext_cff_mss_ice_drc(ns,nr-1)*(c1-delr) + &
+                       ext_cff_mss_ice_drc(ns,nr)*delr
+                  ws = ss_alb_ice_drc(ns,nr-1)*(c1-delr) + &
+                       ss_alb_ice_drc(ns,nr)* delr
+                  gs = asm_prm_ice_drc(ns,nr-1)*(c1-delr) + &
+                       asm_prm_ice_drc(ns,nr)*delr
               endif
               ! ks = Qs*((rhosnw(ksnow)/rhoi)*3._dbl_kind / &
               !      (4._dbl_kind*rsnw(ksnow)*1.0e-6_dbl_kind))

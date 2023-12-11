@@ -4,6 +4,9 @@
  * See the file 'COPYRIGHT' in the HOMMEXX/src/share/cxx directory
  *******************************************************************************/
 
+#include "Config.hpp"
+#ifdef HOMME_ENABLE_COMPOSE
+
 #include "ComposeTransportImpl.hpp"
 #include "PhysicalConstants.hpp"
 
@@ -445,9 +448,9 @@ void ComposeTransportImpl::calc_trajectory (const int np1, const Real dt) {
     const int packn = this->packn;
     const int num_phys_lev = this->num_phys_lev;
     const auto m_sphere_cart = geo.m_sphere_cart;
-    //todo get scale_factor into PhysicalConstants
-    const auto scale_factor = m_data.geometry_type == 1 ? 1 : geo.m_rearth;
+    const auto scale_factor = geo.m_scale_factor;
     const auto m_dep_pts = m_data.dep_pts;
+    const auto is_sphere = m_data.geometry_type == 0;
     const auto calc_departure_point = KOKKOS_LAMBDA (const MT& team) {
       KernelVariables kv(team, tu_ne);
       const auto ie = kv.ie;
@@ -463,7 +466,7 @@ void ComposeTransportImpl::calc_trajectory (const int np1, const Real dt) {
                                  vec_sphere2cart(1,d,i,j)*vstar(1,i,j,k));
           dp[d] = sphere_cart(i,j,d) - dt*vel_cart/scale_factor;
         }
-        const auto r2 = square(dp[0]) + square(dp[1]) + square(dp[2]);
+        const auto r2 = is_sphere ? square(dp[0]) + square(dp[1]) + square(dp[2]) : 1;
         // Pack -> scalar storage.
         const auto os = packn*k;
         for (int s = 0; s < packn; ++s) {
@@ -471,7 +474,7 @@ void ComposeTransportImpl::calc_trajectory (const int np1, const Real dt) {
           if (num_phys_lev % packn != 0 && // compile out this conditional when possible
               oss >= num_phys_lev) break;
           // No vec call for sqrt.
-          const auto r = std::sqrt(r2[s]);
+          const auto r = is_sphere ? std::sqrt(r2[s]) : 1;
           for (int d = 0; d < 3; ++d)
             dep_pts(oss,i,j,d) = dp[d][s]/r;
         }
@@ -685,3 +688,5 @@ test_trajectory (Real t0, Real t1, const bool independent_time_steps) {
 }
 
 } // namespace Homme
+
+#endif // HOMME_ENABLE_COMPOSE

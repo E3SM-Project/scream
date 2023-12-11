@@ -26,7 +26,8 @@ module rof_comp_mct
                                 nsrStartup, nsrContinue, nsrBranch, & 
                                 inst_index, inst_suffix, inst_name, RtmVarSet, &
                                 wrmflag, heatflag, data_bgc_fluxes_to_ocean_flag, &
-                                inundflag, use_lnd_rof_two_way
+                                inundflag, use_lnd_rof_two_way, use_ocn_rof_two_way, &
+                                sediflag
   use RtmSpmd          , only : masterproc, mpicom_rof, npes, iam, RtmSpmdInit, ROFID
   use RtmMod           , only : Rtmini, Rtmrun
   use RtmTimeManager   , only : timemgr_setup, get_curr_date, get_step_size
@@ -42,9 +43,11 @@ module rof_comp_mct
                                 index_x2r_Sa_tbot, index_x2r_Sa_pbot, &
                                 index_x2r_Sa_u   , index_x2r_Sa_v   , &
                                 index_x2r_Sa_shum, &
+                                index_x2r_So_ssh,  &
                                 index_x2r_Faxa_lwdn , &
                                 index_x2r_Faxa_swvdr, index_x2r_Faxa_swvdf, &
                                 index_x2r_Faxa_swndr, index_x2r_Faxa_swndf, &
+                                index_x2r_Flrl_rofdto, index_x2r_Flrl_rofmud, &
                                 index_r2x_Forr_rofl, index_r2x_Forr_rofi, &
                                 index_r2x_Flrr_flood, &
                                 index_r2x_Forr_rofDIN, index_r2x_Forr_rofDIP, &
@@ -107,6 +110,7 @@ contains
     ! !LOCAL VARIABLES:
     logical :: rof_prognostic                        ! flag
     logical :: flood_present                         ! flag
+    logical :: rofocn_prognostic                     ! ocn rof two way coupling flag
     integer :: mpicom_loc                            ! mpi communicator
     type(mct_gsMap),         pointer :: gsMap_rof    ! runoff model MCT GS map
     type(mct_gGrid),         pointer :: dom_r        ! runoff model domain
@@ -248,7 +252,8 @@ contains
                    hostname_in=hostname, username_in=username)
 
     use_lnd_rof_two_way = lnd_rof_two_way
-    
+    use_ocn_rof_two_way = ocn_rof_two_way
+
     ! Read namelist, grid and surface data
     call Rtmini(rtm_active=rof_prognostic,flood_active=flood_present)
 
@@ -280,7 +285,7 @@ contains
 
     ! Fill in infodata
     call seq_infodata_PutData( infodata, rof_present=rof_prognostic, rof_nx = rtmlon, rof_ny = rtmlat, &
-         rof_prognostic=rof_prognostic)
+         rof_prognostic=rof_prognostic, rofocn_prognostic=use_ocn_rof_two_way)
     call seq_infodata_PutData( infodata, flood_present=flood_present)
 
     ! Reset shr logging to original values
@@ -572,7 +577,7 @@ contains
     type(mct_aVect), intent(inout) :: x2r_r         
     !
     ! LOCAL VARIABLES
-    integer :: n2, n, nt, begr, endr, nliq, nfrz
+    integer :: n2, n, nt, begr, endr, nliq, nfrz, nmud, nsan
     real(R8) :: tmp1, tmp2
     real(R8) :: shum
     character(len=32), parameter :: sub = 'rof_import_mct'
@@ -582,6 +587,8 @@ contains
 
     nliq = 0
     nfrz = 0
+    nmud = 0
+    nsan = 0
     do nt = 1,nt_rtm
        if (trim(rtm_tracers(nt)) == 'LIQ') then
           nliq = nt
@@ -589,9 +596,27 @@ contains
        if (trim(rtm_tracers(nt)) == 'ICE') then
           nfrz = nt
        endif
+       if (trim(rtm_tracers(nt)) == 'MUD') then
+          nmud = nt
+       endif
+       if (trim(rtm_tracers(nt)) == 'SAN') then
+          nsan = nt
+       endif
     enddo
-    if (nliq == 0 .or. nfrz == 0) then
-       write(iulog,*) trim(sub),': ERROR in rtm_tracers LIQ ICE ',nliq,nfrz,rtm_tracers
+    if (nliq == 0) then
+       write(iulog,*) trim(sub),': ERROR in rtm_tracers LIQ',nliq,rtm_tracers
+       call shr_sys_abort()
+    endif
+    if (nfrz == 0) then
+       write(iulog,*) trim(sub),': ERROR in rtm_tracers ICE',nfrz,rtm_tracers
+       call shr_sys_abort()
+    endif
+    if (nmud == 0) then
+       write(iulog,*) trim(sub),': ERROR in rtm_tracers MUD',nmud,rtm_tracers
+       call shr_sys_abort()
+    endif
+    if (nsan == 0) then
+       write(iulog,*) trim(sub),': ERROR in rtm_tracers SAN',nsan,rtm_tracers
        call shr_sys_abort()
     endif
 
@@ -619,6 +644,10 @@ contains
        rtmCTL%qdto(n,nfrz) = 0.0_r8
        rtmCTL%qdem(n,nfrz) = 0.0_r8
 
+       if (index_x2r_So_ssh>0) then
+          rtmCTL%ssh(n)       = x2r_r%rAttr(index_x2r_So_ssh,n2)
+       end if
+
        if(heatflag) then
           rtmCTL%Tqsur(n) = x2r_r%rAttr(index_x2r_Flrl_Tqsur,n2)
           rtmCTL%Tqsub(n) = x2r_r%rAttr(index_x2r_Flrl_Tqsub,n2)
@@ -638,11 +667,22 @@ contains
           THeat%coszen(n)    = x2r_r%rAttr(index_x2r_coszen_str,n2)
        end if
 
+       rtmCTL%qsur(n,nmud) = 0.0_r8
+       rtmCTL%qsur(n,nsan) = 0.0_r8
+
        if (index_x2r_Flrl_inundinf > 0) then
           rtmCTL%inundinf(n) = x2r_r%rAttr(index_x2r_Flrl_inundinf,n2) * (rtmCTL%area(n)*0.001_r8)
        endif
 
     enddo
+
+    if(sediflag) then
+        do n = begr,endr
+           n2 = n - begr + 1
+           rtmCTL%qsur(n,nmud) = x2r_r%rAttr(index_x2r_Flrl_rofmud,n2) * (rtmCTL%area(n)) ! kg/m2/s --> kg/s for sediment
+           rtmCTL%qsur(n,nsan) = 0.0_r8
+        enddo
+    end if
 
   end subroutine rof_import_mct
 

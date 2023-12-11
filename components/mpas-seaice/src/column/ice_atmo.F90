@@ -18,13 +18,17 @@
            c16, c20, p001, p01, p2, p4, p5, p75, puny, &
            cp_wv, cp_air, iceruf, zref, qqqice, TTTice, qqqocn, TTTocn, &
            Lsub, Lvap, vonkar, Tffresh, zvir, gravit, &
-           pih, dragio, rhoi, rhos, rhow
+           pih, rhoi, rhos, rhow
+      use ice_colpkg_shared, only: dragio
 
       implicit none
       save
 
       private
       public :: atmo_boundary_layer, atmo_boundary_const, neutral_drag_coeffs
+
+      real(kind=dbl_kind), public :: &
+           latentHeatActive = c1
 
 !=======================================================================
 
@@ -57,7 +61,7 @@
                                       Cdn_atm,            &
                                       Cdn_atm_ratio_n,    &
                                       uvel,     vvel,     &
-                                      Uref                )     
+                                      Uref)
 
       character (len=3), intent(in) :: &
          sfctype      ! ice or ocean
@@ -259,7 +263,7 @@
 
       ustar_prev = c2 * ustar
 
-      k = 0
+      k = 1
       do while (abs(ustar - ustar_prev)/ustar > 0 .and. k <= natmiter)
 
          ustar_prev = ustar
@@ -346,7 +350,7 @@
       !------------------------------------------------------------
 
       shcoef = rhoa * ustar * cp * rh + c1
-      lhcoef = rhoa * ustar * Lheat  * re
+      lhcoef = rhoa * ustar * Lheat * re * latentHeatActive
 
       !------------------------------------------------------------
       ! Compute diagnostics: 2m ref T, Q, U
@@ -387,7 +391,7 @@
                                       Qa,                 &
                                       delt,     delq,     &
                                       lhcoef,   shcoef,   &
-                                      Cdn_atm)  
+                                      Cdn_atm)
 
       character (len=3), intent(in) :: &
          sfctype      ! ice or ocean
@@ -417,7 +421,7 @@
          shcoef   , & ! transfer coefficient for sensible heat
          lhcoef       ! transfer coefficient for latent heat
 
-       ! local variables
+      ! local variables
 
       real (kind=dbl_kind) :: &
          TsfK, & ! surface temperature in Kelvin (K)
@@ -477,7 +481,7 @@
       !------------------------------------------------------------
 
       shcoef = (1.20e-3_dbl_kind)*cp_air*rhoa*wind
-      lhcoef = (1.50e-3_dbl_kind)*Lheat *rhoa*wind
+      lhcoef = (1.50e-3_dbl_kind)*Lheat *rhoa*wind*latentHeatActive
 
       end subroutine atmo_boundary_const
 

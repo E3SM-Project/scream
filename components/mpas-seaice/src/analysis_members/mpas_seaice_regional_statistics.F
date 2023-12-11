@@ -505,6 +505,7 @@ contains
 
           ! get the stream id
           streamID = "regionalStatistics_"//trim(reduction % reductionName)
+          !call mpas_log_write("init_runtime_regional_statistics: streams: "//trim(streamID))
 
           ! test stream exists
           if (MPAS_stream_mgr_stream_exists(domain % streamManager, trim(streamID))) then
@@ -513,6 +514,8 @@ contains
              call MPAS_stream_mgr_begin_iteration(domain % streamManager, trim(streamID), ierr=ierrField)
              streamLoop: do while (MPAS_stream_mgr_get_next_field(&
                   domain % streamManager, trim(streamID), inputFieldName, isActive))
+
+                !call mpas_log_write("init_runtime_regional_statistics: fields: "//trim(inputFieldName))
 
                 ! check the input field is of the correct type - must be real(nCells), single time level
                 call MPAS_pool_get_field_info(block % allFields, trim(inputFieldName), inputFieldInfo)
@@ -524,11 +527,15 @@ contains
                         MPAS_LOG_CRIT)
                 endif
 
+                !call mpas_log_write("init_runtime_regional_statistics: field active: $l, nDims: $i ", intArgs=(/inputFieldInfo % nDims/), logicArgs=(/inputFieldInfo % isActive/))
+
                 ! check if field is active
                 if (inputFieldInfo % isActive) then
 
                    ! set the output fieldname
                    outputFieldName = "regionalStatistics_"//trim(inputFieldName)//"_"//trim(reduction % reductionName)
+
+                   !call mpas_log_write("init_runtime_regional_statistics: outputFieldName: "//trim(outputFieldName))
 
                    ! select array rank
                    if (inputFieldInfo % nDims == 1) then
@@ -749,7 +756,8 @@ contains
     outputField % array = 0.0_RKIND
 
     ! fieldname
-    outputField % fieldName = trim(fieldName)
+    outputField % fieldName       = trim(fieldName)
+    outputField % outputFieldName = trim(fieldName)
 
     ! I/O layer
     outputField % dimNames(1)      = "nRegions"
@@ -811,7 +819,8 @@ contains
     outputField % array = 0.0_RKIND
 
     ! fieldname
-    outputField % fieldName = trim(fieldName)
+    outputField % fieldName       = trim(fieldName)
+    outputField % outputFieldName = trim(fieldName)
 
     ! I/O layer
     outputField % dimNames(1)      = inputField % dimNames(1)
@@ -954,13 +963,13 @@ contains
       use seaice_mesh, only: &
            seaice_interpolate_vertex_to_cell
 
-      use ice_constants_colpkg, only: &
-           awtvdr, &
-           awtidr, &
-           awtvdf, &
-           awtidf, &
-           rhoi, &
-           rhos
+      use seaice_constants, only: &
+           seaiceAlbedoWtVisibleDirect, &
+           seaiceAlbedoWtNearIRDirect, &
+           seaiceAlbedoWtVisibleDiffuse, &
+           seaiceAlbedoWtNearIRDiffuse, &
+           seaiceDensityIce, &
+           seaiceDensitySnow
 
       type(domain_type), intent(inout) :: &
           domain
@@ -1129,13 +1138,13 @@ contains
                   ! kinetic energy
                   iSum = (iRegion-1) * nSums + 5
                   globalSumsIn(iSum) = globalSumsIn(iSum) + 0.5_RKIND * areaCell(iCell) * &
-                       (snowVolumeCell(iCell) * rhos + iceVolumeCell(iCell) * rhoi) * &
+                       (snowVolumeCell(iCell) * seaiceDensitySnow + iceVolumeCell(iCell) * seaiceDensityIce) * &
                        (uVelocityCell(iCell)**2 + vVelocityCell(iCell)**2)
 
                   ! total mass (for RMS ice speed)
                   iSum = (iRegion-1) * nSums + 6
                   globalSumsIn(iSum) = globalSumsIn(iSum) + areaCell(iCell) * &
-                       (snowVolumeCell(iCell) * rhos + iceVolumeCell(iCell) * rhoi)
+                       (snowVolumeCell(iCell) * seaiceDensitySnow + iceVolumeCell(iCell) * seaiceDensityIce)
 
                   ! average albedo
                   if (solarZenithAngleCosine(iCell) > 0.0_RKIND) then
@@ -1143,10 +1152,10 @@ contains
                      iSum = (iRegion-1) * nSums + 7
                      globalSumsIn(iSum) = globalSumsIn(iSum) + &
                           areaCell(iCell) * &
-                          (awtvdr * albedoVisibleDirectCell(iCell) + &
-                           awtidr * albedoIRDirectCell(iCell) + &
-                           awtvdf * albedoVisibleDiffuseCell(iCell) + &
-                           awtidf * albedoIRDiffuseCell(iCell))
+                          (seaiceAlbedoWtVisibleDirect * albedoVisibleDirectCell(iCell) + &
+                           seaiceAlbedoWtNearIRDirect * albedoIRDirectCell(iCell) + &
+                           seaiceAlbedoWtVisibleDiffuse * albedoVisibleDiffuseCell(iCell) + &
+                           seaiceAlbedoWtNearIRDiffuse * albedoIRDiffuseCell(iCell))
 
                      iSum = (iRegion-1) * nSums + 8
                      globalSumsIn(iSum) = globalSumsIn(iSum) + &
@@ -1299,6 +1308,8 @@ contains
        ! get the stream id
        streamID = "regionalStatistics_"//trim(reduction % reductionName)
 
+       !call mpas_log_write("runtime_regional_statistics: streamID: "//trim(streamID)//", $l", logicArgs=(/MPAS_stream_mgr_stream_exists(domain % streamManager, trim(streamID))/))
+
        ! test stream exists
        if (MPAS_stream_mgr_stream_exists(domain % streamManager, trim(streamID))) then
 
@@ -1306,12 +1317,16 @@ contains
           call MPAS_stream_mgr_begin_iteration(domain % streamManager, trim(streamID), ierr=ierrField)
           streamLoop: do while (MPAS_stream_mgr_get_next_field(domain % streamManager, trim(streamID), inputFieldName, isActive))
 
+             !call mpas_log_write("runtime_regional_statistics: inputFieldName: "//trim(inputFieldName))
+
              ! check the input field is active
              call MPAS_pool_get_field_info(domain % blocklist % allFields, trim(inputFieldName), inputFieldInfo)
              if (inputFieldInfo % isActive) then
 
                 ! set the output fieldname
                 outputFieldName = "regionalStatistics_"//trim(inputFieldName)//"_"//trim(reduction % reductionName)
+
+                !call mpas_log_write("runtime_regional_statistics: outputFieldName: "//trim(outputFieldName))
 
                 if (inputFieldInfo % nDims == 1) then
 

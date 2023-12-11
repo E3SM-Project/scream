@@ -459,7 +459,7 @@ template <typename ES> void QLT<ES>
     // If QLT is enforcing global mass conservation, set root's r2l Qm value to
     // the l2r Qm_prev's sum; otherwise, copy the l2r Qm value to the r2l one.
     const Int os = (problem_type & ProblemType::conserve ?
-                    o.md_.get_problem_type_l2r_bulk_size(problem_type) - 1 :
+                    MetaData::get_problem_type_l2r_bulk_size(problem_type) - 1 :
                     (problem_type & ProblemType::nonnegative ? 0 : 1));
     r2l_data(n.offset*r2lndps + r2lbdi) = l2r_data(n.offset*l2rndps + l2rbdi + os);
     if ((problem_type & ProblemType::consistent) &&
@@ -807,8 +807,8 @@ template class cedr::qlt::QLT<Kokkos::Serial>;
 #ifdef KOKKOS_ENABLE_OPENMP
 template class cedr::qlt::QLT<Kokkos::OpenMP>;
 #endif
-#ifdef KOKKOS_ENABLE_CUDA
-template class cedr::qlt::QLT<Kokkos::Cuda>;
+#ifdef CEDR_ENABLE_GPU
+template class cedr::qlt::QLT<CedrGpuExeSpace>;
 #endif
 #ifdef KOKKOS_ENABLE_THREADS
 template class cedr::qlt::QLT<Kokkos::Threads>;

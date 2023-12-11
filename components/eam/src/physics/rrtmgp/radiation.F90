@@ -16,7 +16,7 @@ module radiation
    use ppgrid,           only: pcols, pver, pverp, begchunk, endchunk
    use cam_abortutils,   only: endrun
    use cam_history_support, only: add_hist_coord
-   use scamMod,          only: scm_crm_mode, single_column
+   use iop_data_mod,     only: single_column
    use rad_constituents, only: N_DIAG
    use radconstants,     only: nswbands, nlwbands, &
       get_band_index_sw, get_band_index_lw, test_get_band_index, &
@@ -677,21 +677,29 @@ contains
                         'Downwelling solar flux at surface', &
                         sampling_seq='rad_lwsw', flag_xyfill=.true.)
             call addfld('FUS'//diag(icall),  (/ 'ilev' /),  'A',  'W/m2', &
-                        'Shortwave upward flux')
+                        'Shortwave upward flux', &
+                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
             call addfld('FDS'//diag(icall),  (/ 'ilev' /),  'A',  'W/m2', &
-                        'Shortwave downward flux')
+                        'Shortwave downward flux', &
+                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
             call addfld('FDS_DIR'//diag(icall),  (/ 'ilev' /),  'A',  'W/m2', &
-                        'Shortwave direct-beam downward flux')
+                        'Shortwave direct-beam downward flux', &
+                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
             call addfld('FNS'//diag(icall),  (/ 'ilev' /),  'A',  'W/m2', &
-                        'Shortwave net flux')
+                        'Shortwave net flux', &
+                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
             call addfld('FUSC'//diag(icall),  (/ 'ilev' /), 'A',  'W/m2', &
-                        'Shortwave clear-sky upward flux')
+                        'Shortwave clear-sky upward flux', &
+                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
             call addfld('FDSC'//diag(icall),  (/ 'ilev' /), 'A',  'W/m2', &
-                        'Shortwave clear-sky downward flux')
+                        'Shortwave clear-sky downward flux', &
+                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
             call addfld('FDSC_DIR'//diag(icall),  (/ 'ilev' /), 'A',  'W/m2', &
-                        'Shortwave clear-sky direct-beam downward flux')
+                        'Shortwave clear-sky direct-beam downward flux', &
+                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
             call addfld('FNSC'//diag(icall),  (/ 'ilev' /), 'A',  'W/m2', &
-                        'Shortwave clear-sky net flux')
+                        'Shortwave clear-sky net flux', &
+                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
             call addfld('FSNIRTOA'//diag(icall), horiz_only, 'A', 'W/m2', &
                         'Net near-infrared flux (Nimbus-7 WFOV) at top of atmosphere', &
                         sampling_seq='rad_lwsw', flag_xyfill=.true.)
@@ -728,13 +736,6 @@ contains
       call addfld('COSZRS', horiz_only, 'A', 'None', &
                   'Cosine of solar zenith angle', &
                   sampling_seq='rad_lwsw', flag_xyfill=.true.)
-
-      if (single_column .and. scm_crm_mode) then
-         call add_default ('FUS     ', 1, ' ')
-         call add_default ('FUSC    ', 1, ' ')
-         call add_default ('FDS     ', 1, ' ')
-         call add_default ('FDSC    ', 1, ' ')
-      end if
 
       ! Longwave radiation
       do icall = 0,N_DIAG
@@ -813,14 +814,6 @@ contains
       end do
 
       call addfld('EMIS', (/ 'lev' /), 'A', '1', 'Cloud longwave (10.5 micron) emissivity')
-
-      ! Add default fields for single column mode
-      if (single_column.and.scm_crm_mode) then
-         call add_default ('FUL     ', 1, ' ')
-         call add_default ('FULC    ', 1, ' ')
-         call add_default ('FDL     ', 1, ' ')
-         call add_default ('FDLC    ', 1, ' ')
-      endif
 
       ! HIRS/MSU diagnostic brightness temperatures
       if (dohirs) then
@@ -1258,7 +1251,7 @@ contains
          ! Check temperatures to make sure they are within the bounds of the
          ! absorption coefficient look-up tables. If out of bounds, clip
          ! values to min/max specified
-         call t_startf('rrtmgp_check_temperatures')
+         call t_startf('rad_rrtmgp_check_temperatures')
          call handle_error(clip_values( &
             tmid(1:ncol,1:nlev_rad), get_min_temperature(), get_max_temperature(), &
             trim(subname) // ' tmid' &
@@ -1267,7 +1260,7 @@ contains
             tint(1:ncol,1:nlev_rad+1), get_min_temperature(), get_max_temperature(), &
             trim(subname) // ' tint' &
          ), fatal=.false., warn=rrtmgp_enable_temperature_warnings)
-         call t_stopf('rrtmgp_check_temperatures')
+         call t_stopf('rad_rrtmgp_check_temperatures')
       end if
 
       ! Do shortwave stuff...
@@ -1921,7 +1914,7 @@ contains
       gas_vmr_rad(:,1:ncol,ktop:kbot) = gas_vmr(:,1:ncol,:)
 
       ! Do longwave radiative transfer calculations
-      call t_startf('rrtmgp_run_lw')
+      call t_startf('rad_rrtmgp_run_lw')
       call rrtmgp_run_lw( &
          size(active_gases), ncol, nlev_rad, &
          gas_vmr_rad(:,1:ncol,:), &
@@ -1933,7 +1926,7 @@ contains
          fluxes_clrsky%flux_up    , fluxes_clrsky%flux_dn    , fluxes_clrsky%flux_net    , &
          fluxes_clrsky%bnd_flux_up, fluxes_clrsky%bnd_flux_dn, fluxes_clrsky%bnd_flux_net  &
          )
-      call t_stopf('rrtmgp_run_lw')
+      call t_stopf('rad_rrtmgp_run_lw')
 
       ! Calculate heating rates
       call calculate_heating_rate(  &
