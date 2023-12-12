@@ -9,10 +9,8 @@
       
       
       
-        <link rel="prev" href="../grid/">
+        <link rel="prev" href="../aerocom_cldtop/">
       
-      
-        <link rel="next" href="../managers/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -20,7 +18,7 @@
     
     
       
-        <title>Atmosphere Processes - The C++ E3SM Atmosphere Model (EAMxx)</title>
+        <title>Extra radiation calls - The C++ E3SM Atmosphere Model (EAMxx)</title>
       
     
     
@@ -72,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#atmospheric-processes" class="md-skip">
+        <a href="#clean-and-clean-clear-sky-diagnostics" class="md-skip">
           Skip to content
         </a>
       
@@ -108,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Atmosphere Processes
+              Extra radiation calls
             
           </span>
         </div>
@@ -420,8 +418,6 @@
       
   
   
-    
-  
   
   
     
@@ -432,12 +428,12 @@
       
       
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
@@ -451,7 +447,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Developer Guide
@@ -465,7 +461,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+      <a href="../../developer/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -507,7 +503,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../style_guide/" class="md-nav__link">
+      <a href="../../developer/style_guide/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -528,7 +524,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../kokkos_ekat/" class="md-nav__link">
+      <a href="../../developer/kokkos_ekat/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -549,7 +545,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../source_tree/" class="md-nav__link">
+      <a href="../../developer/source_tree/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -567,21 +563,19 @@
                 
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
         
           
           <label class="md-nav__link" for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
@@ -595,7 +589,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_6">
             <span class="md-nav__icon md-icon"></span>
             Important Data Structures
@@ -609,7 +603,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../field/" class="md-nav__link">
+      <a href="../../developer/field/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -630,7 +624,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../grid/" class="md-nav__link">
+      <a href="../../developer/grid/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -648,19 +642,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../developer/processes/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -669,7 +654,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -682,7 +666,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../managers/" class="md-nav__link">
+      <a href="../../developer/managers/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -711,7 +695,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../io/" class="md-nav__link">
+      <a href="../../developer/io/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -769,7 +753,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../standalone_testing/" class="md-nav__link">
+      <a href="../../developer/standalone_testing/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -790,7 +774,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cime_testing/" class="md-nav__link">
+      <a href="../../developer/cime_testing/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -811,7 +795,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ci_nightly/" class="md-nav__link">
+      <a href="../../developer/ci_nightly/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -844,8 +828,10 @@
       
   
   
+    
   
   
+  
     
     
     
@@ -854,12 +840,12 @@
       
       
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
@@ -873,7 +859,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             Technical Guide
@@ -887,7 +873,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical/aerocom_cldtop/" class="md-nav__link">
+      <a href="../aerocom_cldtop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -905,10 +891,19 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../technical/clean_clear_sky/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -917,6 +912,7 @@
   
 
       </a>
+      
     </li>
   
 
@@ -962,21 +958,15 @@
                   
 
 
-<h1 id="atmospheric-processes">Atmospheric Processes</h1>
-<p>In EAMxx, the <code>AtmosphereProcess</code> (AP) is a class representing a portion of the atmosphere timestep algorithm.
-In simple terms, an AP is an object that given certain input fields performs some calculations to compute
-some output fields.</p>
-<p>TODO: describe init sequcene (e.g., the process of requesting fields), base class main
-      interfaces/capabilities (e.g., subcycling), class expectations (e.g., must update fields on physics grid)</p>
-<p>Here is a list of currently implemented atmosphere processes.
-TODO: add links to papers/github-repos, and a SMALL description
-* p3: Microphysics, blah blah
-* SHOC: Macrophysics/Turbulence, blah
-* rrtmgp: Radiation, blah
-* spa: prescribed aerosols, blah blah
-* surface coupling: blah
-* mam: prognostic aerosols, blah blah
-* nudging: This process is responsible for nudging the model simulation given a set of files with a target nudged state.</p>
+<h1 id="clean-and-clean-clear-sky-diagnostics">Clean- and clean-clear-sky diagnostics</h1>
+<p>In order to decompose the aerosol effective radiative forcing, additional diagnostic radiation calls are needed.
+These extra diagnostics are optionally added to the main radiation call. The extra diagnostics are:</p>
+<ul>
+<li>Clean-clear-sky fluxes: the fluxes that would be present if there were neither aerosols nor clouds, and are calculated by adding an additional radiation call at the very beginning of the logic before the optics class is endowed with aerosol and cloud properties.</li>
+<li>Clean-sky fluxes: the fluxes that would be present if there were no aerosols, and are calculated by adding an additional radiation call after substantiating an additional optics class, but not endowing it with aerosol properties.</li>
+</ul>
+<p>It was necessary to add an additional optics class because the original optics class is endowed with aerosols before clouds (in order to calculate the clear-sky fluxes).
+The extra calls are controlled by runtime flags <code>extra_clnclrsky_diag</code> and <code>extra_clnsky_diag</code> (they take either <code>true</code> or <code>false</code> as their values).</p>
 
 
 
