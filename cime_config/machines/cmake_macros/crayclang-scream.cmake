@@ -26,8 +26,10 @@ string(APPEND LDFLAGS " -Wl,--allow-multiple-definition -ldl ")
 set(SUPPORTS_CXX "TRUE")
 set(CXX_LINKER "FORTRAN")
 set(MPICC "cc")
-set(MPICXX "CC")
+set(MPICXX "hipcc")
 set(MPIFC "ftn")
 set(SCC "cc")
-set(SCXX "CC")
+set(SCXX "hipcc")
 set(SFC "ftn")
+
+

@@ -32,7 +32,7 @@ if (DEFINED ENV{HDF5_ROOT})
   if (DEFINED ENV{HDF5_USE_STATIC_LIBRARIES})
     set(HDF5_USE_STATIC_LIBRARIES On)
   endif()
-  find_package(HDF5 REQUIRED COMPONENTS C HL)
+  #find_package(HDF5 REQUIRED COMPONENTS C HL)
 endif()
 
 # Not all machines/PIO installations use ADIOS but, for now,
