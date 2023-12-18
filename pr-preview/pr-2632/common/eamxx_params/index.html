@@ -12,7 +12,7 @@
         <link rel="prev" href="../../user/model_input/">
       
       
-        <link rel="next" href="../../developer/">
+        <link rel="next" href="../../user/coarse_nudging/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -416,6 +416,27 @@
 
       </a>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/coarse_nudging/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Coarse nudging
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -1347,6 +1368,16 @@
 <li>nudging::source_pressure_file:  <ul>
 <li>description: If STATIC_1D_VERTICAL_PROFILE, this is an optional arg to point to a file with the source pressure levels defined.       Default is to look for p_levs in the first nudging_filename file  </li>
 <li>type: string  </li>
+</ul>
+</li>
+<li>nudging::nudging_refine_remap_mapfile:  <ul>
+<li>description: Refine-remapping mapfile from the source nudging dataset to the physics grid  </li>
+<li>type: string  </li>
+</ul>
+</li>
+<li>nudging::nudging_refine_remap_vert_cutoff:  <ul>
+<li>description: A vertical cutoff to go with refine-remap logic (in units of p_mid) where the nudging is turned off above it (closer to the surface)  </li>
+<li>type: real  </li>
 </ul>
 </li>
 <li>nudging::number_of_subcycles:  <ul>
