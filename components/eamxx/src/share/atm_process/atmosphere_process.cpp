@@ -401,7 +401,7 @@ void AtmosphereProcess::run_property_check (const prop_check_ptr&       property
       "  - Atmosphere process name: " + name() + "\n"
       "  - Property check name: " + property_check->name() + "\n"
       "  - Atmosphere process MPI Rank: " + std::to_string(m_comm.rank()) + "\n"
-      "  - Message: " + res_and_msg.msg + "\n");
+      "  - Message: " + res_and_msg.msg);
   } else {
     // Ugh, the test failed badly, with no chance to repair it.
     if (check_fail_handling==CheckFailHandling::Warning) {
