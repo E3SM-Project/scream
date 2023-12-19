@@ -7,9 +7,10 @@
 #include "cpp/rrtmgp_const.h"
 
 #include "physics/share/physics_constants.hpp"
+#include "share/core/scream_types.hpp"
 
-#include "ekat/mpi/ekat_comm.hpp"
-#include "ekat/logging/ekat_logger.hpp"
+#include <ekat/mpi/ekat_comm.hpp>
+#include <ekat/logging/ekat_logger.hpp>
 
 namespace scream {
   void yakl_init ();

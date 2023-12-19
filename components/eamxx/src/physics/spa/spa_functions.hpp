@@ -2,14 +2,14 @@
 #define SPA_FUNCTIONS_HPP
 
 #include "share/grid/abstract_grid.hpp"
-#include "share/grid/remap/horizontal_remap_utility.hpp"
-#include "share/scream_types.hpp"
+#include "share/remap/horizontal_remap_utility.hpp"
 #include "share/util/scream_time_stamp.hpp"
+#include "share/core/scream_types.hpp"
 
-#include "ekat/ekat_pack_kokkos.hpp"
-#include "ekat/ekat_pack_utils.hpp"
-#include "ekat/ekat_workspace.hpp"
-#include "ekat/mpi/ekat_comm.hpp"
+#include <ekat/ekat_pack_kokkos.hpp>
+#include <ekat/ekat_pack_utils.hpp>
+#include <ekat/ekat_workspace.hpp>
+#include <ekat/mpi/ekat_comm.hpp>
 
 namespace scream {
 namespace spa {

@@ -2,8 +2,8 @@
 #include "physics/rrtmgp/mo_garand_atmos_io.h"
 #include "physics/rrtmgp/rrtmgp_test_utils.hpp"
 
-#include "share/scream_types.hpp"
-#include "share/scream_session.hpp"
+#include "share/core/scream_types.hpp"
+#include "share/core/scream_session.hpp"
 
 #include "cpp/rrtmgp/mo_gas_concentrations.h"
 

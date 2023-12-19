@@ -1,11 +1,11 @@
 #ifndef SCREAM_PHYSICS_DYNAMICS_REMAPPER_HPP
 #define SCREAM_PHYSICS_DYNAMICS_REMAPPER_HPP
 
-#include "share/scream_config.hpp"
+#include "share/core/scream_config.hpp"
 
-#include "share/grid/remap/abstract_remapper.hpp"
+#include "share/remap/abstract_remapper.hpp"
 
-#include "ekat/ekat_pack.hpp"
+#include <ekat/ekat_pack.hpp>
 
 namespace Homme {
 class BoundaryExchange;

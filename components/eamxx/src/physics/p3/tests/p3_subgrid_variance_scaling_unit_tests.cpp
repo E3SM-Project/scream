@@ -1,6 +1,6 @@
 #include "catch2/catch.hpp"
 
-#include "share/scream_types.hpp"
+#include "share/core/scream_types.hpp"
 #include "ekat/ekat_pack.hpp"
 #include "p3_functions.hpp"
 #include "p3_functions_f90.hpp"

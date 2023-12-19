@@ -3,7 +3,7 @@
 
 #include "share/field/field_header.hpp"
 #include "share/util/scream_combine_ops.hpp"
-#include "share/scream_types.hpp"
+#include "share/core/scream_types.hpp"
 
 #include "ekat/std_meta/ekat_std_type_traits.hpp"
 #include "ekat/kokkos/ekat_subview_utils.hpp"

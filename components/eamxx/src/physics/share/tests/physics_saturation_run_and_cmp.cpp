@@ -4,8 +4,8 @@
 #include "physics/share/physics_saturation_impl.hpp"
 #include "physics_unit_tests_common.hpp"
 
-#include "share/scream_types.hpp"
-#include "share/scream_session.hpp"
+#include "share/core/scream_types.hpp"
+#include "share/core/scream_session.hpp"
 #include "share/util/scream_utils.hpp"
 
 #include "ekat/ekat_pack.hpp"

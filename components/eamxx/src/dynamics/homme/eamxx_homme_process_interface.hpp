@@ -2,10 +2,10 @@
 #define SCREAM_HOMME_DYNAMICS_HPP
 
 #include "share/atm_process/atmosphere_process.hpp"
-#include "share/grid/remap/abstract_remapper.hpp"
+#include "share/remap/abstract_remapper.hpp"
 
-#include "ekat/ekat_parameter_list.hpp"
-#include "ekat/ekat_pack.hpp"
+#include <ekat/ekat_parameter_list.hpp>
+#include <ekat/ekat_pack.hpp>
 
 #include <string>
 

@@ -1,5 +1,4 @@
 #include "share/field/field.hpp"
-#include "share/util/scream_utils.hpp"
 
 namespace scream
 {

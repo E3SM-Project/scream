@@ -1,6 +1,7 @@
 #include <catch2/catch.hpp>
-#include "share/io/scream_output_manager.hpp"
-#include "share/io/scream_scorpio_interface.hpp"
+
+#include "share/scorpio_interface/scream_scorpio_interface.hpp"
+#include "share/core/scream_types.hpp"
 
 namespace {
 

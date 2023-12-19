@@ -1,16 +1,17 @@
 #ifndef SCREAM_SCORPIO_OUTPUT_HPP
 #define SCREAM_SCORPIO_OUTPUT_HPP
 
-#include "share/io/scream_scorpio_interface.hpp"
+#include "share/scorpio_interface/scream_scorpio_interface.hpp"
 #include "share/io/scream_io_utils.hpp"
-#include "share/field/field_manager.hpp"
+#include "share/managers/field_manager.hpp"
 #include "share/grid/abstract_grid.hpp"
-#include "share/grid/grids_manager.hpp"
-#include "share/util//scream_time_stamp.hpp"
+#include "share/remap/abstract_remapper.hpp"
+#include "share/managers/grids_manager.hpp"
+#include "share/util/scream_time_stamp.hpp"
 #include "share/atm_process/atmosphere_diagnostic.hpp"
 
-#include "ekat/ekat_parameter_list.hpp"
-#include "ekat/mpi/ekat_comm.hpp"
+#include <ekat/ekat_parameter_list.hpp>
+#include <ekat/mpi/ekat_comm.hpp>
 /*  The AtmosphereOutput class handles an output stream in SCREAM.
  *  Typical usage is to register an AtmosphereOutput object with the OutputManager (see scream_output_manager.hpp
  *

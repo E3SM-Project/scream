@@ -1,14 +1,14 @@
-#include "catch2/catch.hpp"
+#include <catch2/catch.hpp>
 
-#include "share/io/scream_scorpio_interface.hpp"
+#include "share/scorpio_interface/scream_scorpio_interface.hpp"
 #include "physics/spa/spa_functions.hpp"
-#include "share/util/scream_setup_random_test.hpp"
+#include "share/unit_test_support/scream_setup_random_test.hpp"
 #include "share/util/scream_time_stamp.hpp"
 
-#include "ekat/kokkos/ekat_kokkos_utils.hpp"
-#include "ekat/util/ekat_arch.hpp"
-#include "ekat/util/ekat_test_utils.hpp"
-#include "ekat/ekat_pack.hpp"
+#include <ekat/kokkos/ekat_kokkos_utils.hpp>
+#include <ekat/util/ekat_arch.hpp>
+#include <ekat/util/ekat_test_utils.hpp>
+#include <ekat/ekat_pack.hpp>
 
 #include <random>
 

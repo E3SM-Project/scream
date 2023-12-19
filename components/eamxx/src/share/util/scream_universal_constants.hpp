@@ -2,6 +2,7 @@
 #define SCREAM_UNIVERSAL_CONSTANTS_HPP
 
 #include <limits>
+#include <type_traits>
 
 namespace scream {
 

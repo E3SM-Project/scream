@@ -9,16 +9,16 @@
 #include "GllFvRemap.hpp"
 
 // Scream includes
-#include "share/field/field_manager.hpp"
-#include "share/util/eamxx_fv_phys_rrtmgp_active_gases_workaround.hpp"
+#include "share/managers/field_manager.hpp"
+#include "share/fvphyshack/eamxx_fv_phys_rrtmgp_active_gases_workaround.hpp"
 #include "dynamics/homme/homme_dimensions.hpp"
 
 // Ekat includes
-#include "ekat/ekat_assert.hpp"
-#include "ekat/kokkos/ekat_subview_utils.hpp"
-#include "ekat/ekat_pack.hpp"
-#include "ekat/ekat_pack_kokkos.hpp"
-#include "ekat/ekat_pack_utils.hpp"
+#include <ekat/ekat_assert.hpp>
+#include <ekat/kokkos/ekat_subview_utils.hpp>
+#include <ekat/ekat_pack.hpp>
+#include <ekat/ekat_pack_kokkos.hpp>
+#include <ekat/ekat_pack_utils.hpp>
 
 extern "C" void gfr_init_hxx();
 

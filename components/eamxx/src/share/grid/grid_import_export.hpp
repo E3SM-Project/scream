@@ -2,10 +2,11 @@
 #define EAMXX_GRID_IMPORT_EXPORT_HPP
 
 #include "share/grid/abstract_grid.hpp"
-#include "share/scream_types.hpp"       // For KokkosTypes
+#include "share/core/scream_types.hpp"  // For KokkosTypes
 #include "share/util/scream_utils.hpp"  // For check_mpi_call
 
 #include <ekat/mpi/ekat_comm.hpp>
+
 #include <mpi.h> // We do some direct MPI calls
 #include <memory>
 #include <map>

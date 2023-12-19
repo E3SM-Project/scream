@@ -5,7 +5,7 @@
 #include "share/grid/abstract_grid.hpp"
 #include "share/field/field.hpp"
 
-#include "ekat/util/ekat_math_utils.hpp"
+#include <ekat/util/ekat_math_utils.hpp>
 
 namespace scream
 {

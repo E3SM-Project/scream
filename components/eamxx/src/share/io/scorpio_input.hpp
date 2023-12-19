@@ -1,13 +1,13 @@
 #ifndef SCREAM_SCORPIO_INPUT_HPP
 #define SCREAM_SCORPIO_INPUT_HPP
 
-#include "share/io/scream_scorpio_interface.hpp"
-#include "share/field/field_manager.hpp"
+#include "share/scorpio_interface/scream_scorpio_interface.hpp"
+#include "share/managers/field_manager.hpp"
 #include "share/grid/abstract_grid.hpp"
-#include "share/grid/grids_manager.hpp"
+#include "share/managers/grids_manager.hpp"
 
-#include "ekat/ekat_parameter_list.hpp"
-#include "ekat/logging/ekat_logger.hpp"
+#include <ekat/ekat_parameter_list.hpp>
+#include <ekat/logging/ekat_logger.hpp>
 
 /*  The AtmosphereInput class handles all input streams to SCREAM.
  *  It is important to note that there does not exist an InputManager,

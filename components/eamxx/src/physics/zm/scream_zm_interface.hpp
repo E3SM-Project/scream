@@ -5,7 +5,7 @@
 //#include "ekat/util/scream_utils.hpp"
 #include "ekat/util/ekat_file_utils.hpp"
 
-#include "share/scream_types.hpp"
+#include "share/core/scream_types.hpp"
 
 // Put everything into a scream namespace
 

@@ -1,18 +1,18 @@
 #ifndef SCREAM_OUTPUT_MANAGER_HPP
 #define SCREAM_OUTPUT_MANAGER_HPP
 
+#include "share/scorpio_interface/scream_scorpio_interface.hpp"
 #include "share/io/scorpio_output.hpp"
-#include "share/io/scream_scorpio_interface.hpp"
 #include "share/io/scream_io_utils.hpp"
 
-#include "share/field/field_manager.hpp"
-#include "share/grid/grids_manager.hpp"
+#include "share/managers/field_manager.hpp"
+#include "share/managers/grids_manager.hpp"
 #include "share/util/scream_time_stamp.hpp"
 
-#include "ekat/logging/ekat_logger.hpp"
-#include "ekat/mpi/ekat_comm.hpp"
-#include "ekat/ekat_parameter_list.hpp"
-#include "ekat/ekat_parse_yaml_file.hpp"
+#include <ekat/logging/ekat_logger.hpp>
+#include <ekat/mpi/ekat_comm.hpp>
+#include <ekat/ekat_parameter_list.hpp>
+#include <ekat/ekat_parse_yaml_file.hpp>
 
 namespace scream
 {

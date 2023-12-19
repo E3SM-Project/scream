@@ -1,8 +1,8 @@
 #ifndef SCREAM_IOP_HPP
 #define SCREAM_IOP_HPP
 
-#include "share/scream_types.hpp"
-#include "share/field/field_manager.hpp"
+#include "share/core/scream_types.hpp"
+#include "share/managers/field_manager.hpp"
 #include "share/grid/abstract_grid.hpp"
 #include "share/util/scream_time_stamp.hpp"
 

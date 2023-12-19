@@ -126,7 +126,7 @@ foreach (SHOC_LIB IN LISTS SHOC_LIBS)
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/impl
   )
-  target_link_libraries(${SHOC_LIB} physics_share scream_share)
+  target_link_libraries(${SHOC_LIB} physics_share eamxx_share)
 endforeach()
 
 if (NOT SCREAM_LIB_ONLY)

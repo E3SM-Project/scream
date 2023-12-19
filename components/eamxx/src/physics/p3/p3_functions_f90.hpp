@@ -3,7 +3,7 @@
 
 #include "physics/p3/p3_functions.hpp"
 #include "physics/share/physics_test_data.hpp"
-#include "share/scream_types.hpp"
+#include "share/core/scream_types.hpp"
 
 #include <array>
 #include <utility>

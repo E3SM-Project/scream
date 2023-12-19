@@ -10,9 +10,9 @@
 #include "share/io/scream_output_manager.hpp"
 
 #include "share/field/field_utils.hpp"
-#include "share/field/field_manager.hpp"
-#include "share/grid/grids_manager.hpp"
-#include "share/util/scream_setup_random_test.hpp"
+#include "share/managers/field_manager.hpp"
+#include "share/managers/grids_manager.hpp"
+#include "share/unit_test_support/scream_setup_random_test.hpp"
 #include "share/util/scream_time_stamp.hpp"
 
 #include "ekat/util/ekat_units.hpp"

@@ -29,7 +29,7 @@ set(ATM_SRC
 )
 
 set (SCREAM_LIBS
-     scream_share
+     eamxx_share
      scream_control
      ${dynLibName}
      p3
@@ -39,7 +39,7 @@ set (SCREAM_LIBS
      cld_fraction
      spa
      nudging
-     diagnostics
+     eamxx_diagnostics
      tms
 )
 if (SCREAM_ENABLE_ML_CORRECTION)

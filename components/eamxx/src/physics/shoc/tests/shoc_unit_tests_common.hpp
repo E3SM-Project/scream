@@ -2,7 +2,7 @@
 #define SHOC_UNIT_TESTS_COMMON_HPP
 
 #include "shoc_functions.hpp"
-#include "share/scream_types.hpp"
+#include "share/core/scream_types.hpp"
 #include "ekat/kokkos/ekat_kokkos_utils.hpp"
 
 namespace scream {

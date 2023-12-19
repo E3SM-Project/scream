@@ -53,7 +53,7 @@ target_include_directories(dp PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/impl
 )
-target_link_libraries(dp PUBLIC physics_share scream_share ${dynLibName})
+target_link_libraries(dp PUBLIC physics_share eamxx_share ${dynLibName})
 
 #if (NOT SCREAM_LIB_ONLY)
 #  add_subdirectory(tests)

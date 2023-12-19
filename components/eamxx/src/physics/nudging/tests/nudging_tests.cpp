@@ -1,23 +1,20 @@
-#include "catch2/catch.hpp"
+#include <catch2/catch.hpp>
+
 #include "physics/nudging/eamxx_nudging_process_interface.hpp"
-#include "share/grid/mesh_free_grids_manager.hpp"
 
+#include "share/unit_test_support/mesh_free_grids_manager.hpp"
+#include "share/unit_test_support/mesh_free_grids_manager.hpp"
 #include "share/io/scream_output_manager.hpp"
-#include "share/io/scorpio_output.hpp"
-#include "share/io/scorpio_input.hpp"
-#include "share/io/scream_scorpio_interface.hpp"
-
-#include "share/grid/mesh_free_grids_manager.hpp"
+#include "share/scorpio_interface/scream_scorpio_interface.hpp"
+#include "share/managers/field_manager.hpp"
 #include "share/grid/point_grid.hpp"
 
 #include "share/field/field_identifier.hpp"
 #include "share/field/field_header.hpp"
 #include "share/field/field.hpp"
-#include "share/field/field_manager.hpp"
 
 #include "share/util/scream_time_stamp.hpp"
-#include "share/scream_types.hpp"
-#include "scream_config.h"
+#include "share/core/scream_types.hpp"
 
 using namespace scream;
 

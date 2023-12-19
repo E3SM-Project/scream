@@ -29,6 +29,10 @@ macro (CreateScorpioTargets)
     #       that, so we need another way. Including the src tree folder works.
     target_include_directories(pioc INTERFACE ${SCREAM_BASE_DIR}/../../externals/scorpio/src/clib)
 
+    # Add also gptl itself, since eamxx_utils need to link against it (wihout scorpio)
+    add_library (gptl INTERFACE)
+    target_link_libraries (gptl INTERFACE spio)
+
   else ()
     # Not a CIME build. We'll add scorpio as a subdir
 

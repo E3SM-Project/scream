@@ -1,10 +1,10 @@
 #ifndef SCREAM_BFBHASH_HPP
 #define SCREAM_BFBHASH_HPP
 
-#include <cstdint>
-
 #include <ekat/kokkos/ekat_kokkos_types.hpp>
 #include <ekat/mpi/ekat_comm.hpp>
+
+#include <cstdint>
 
 namespace scream {
 namespace bfbhash {

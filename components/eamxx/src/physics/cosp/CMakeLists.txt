@@ -50,6 +50,6 @@ add_library(cosp ${EXTERNAL_SRC})
 
 # Build interface code
 add_library(eamxx_cosp ${COSP_SRCS})
-target_link_libraries(eamxx_cosp physics_share scream_share cosp)
+target_link_libraries(eamxx_cosp physics_share eamxx_share cosp)
 target_compile_options(eamxx_cosp PUBLIC)
 target_compile_definitions(eamxx_cosp PUBLIC EAMXX_HAS_COSP)

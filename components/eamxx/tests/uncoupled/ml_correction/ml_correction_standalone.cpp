@@ -2,7 +2,7 @@
 
 #include "control/atmosphere_driver.hpp"
 #include "physics/register_physics.hpp"
-#include "share/grid/mesh_free_grids_manager.hpp"
+#include "share/unit_test_support/mesh_free_grids_manager.hpp"
 
 #include <ekat/ekat_parse_yaml_file.hpp>
 

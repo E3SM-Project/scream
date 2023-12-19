@@ -2,13 +2,13 @@
 #include "shoc_functions_f90.hpp"
 #include "shoc_ic_cases.hpp"
 
-#include "share/scream_types.hpp"
-#include "share/scream_session.hpp"
 #include "share/util/scream_utils.hpp"
+#include "share/core/scream_session.hpp"
+#include "share/core/scream_types.hpp"
 
-#include "ekat/util/ekat_file_utils.hpp"
-#include "ekat/util/ekat_test_utils.hpp"
-#include "ekat/ekat_assert.hpp"
+#include <ekat/util/ekat_file_utils.hpp>
+#include <ekat/util/ekat_test_utils.hpp>
+#include <ekat/ekat_assert.hpp>
 
 #include <vector>
 
