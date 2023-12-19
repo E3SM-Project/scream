@@ -69,8 +69,19 @@ void AtmosphereProcess::initialize (const TimeStamp& t0, const RunType run_type)
   if (this->type()!=AtmosphereProcessType::Group) {
     start_timer (m_timer_prefix + this->name() + "::init");
   }
-  set_fields_and_groups_pointers();
   m_time_stamp = t0;
+
+  // Usually m_all_fields_set=true by now, since the AD does call 'all_fields_set'
+  // before calling 'initialize'. However, in unit tests, we may have some
+  // corner case where we call 'initialize' without having called 'all_fields_set'.
+  // So, for extra safety, check whether we need to call it.
+  // NOTE: 'all_fields_set' calls 'set_fields_and_groups_pointers', which MUST
+  //       be called before 'initialize_impl', to ensure the get field/group in/out
+  //       methods work correctly.
+  if (not m_all_fields_set) {
+    all_fields_set();
+  }
+
   initialize_impl(run_type);
 
   // Create all start-of-step fields needed for tendencies calculation
@@ -359,6 +370,14 @@ void AtmosphereProcess::set_computed_group (const FieldGroup& group) {
   }
 
   set_computed_group_impl(group);
+}
+
+void AtmosphereProcess::all_fields_set ()
+{
+  set_fields_and_groups_pointers();
+  all_fields_set_impl();
+
+  m_all_fields_set = true;
 }
 
 void AtmosphereProcess::run_property_check (const prop_check_ptr&       property_check,

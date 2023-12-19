@@ -622,6 +622,9 @@ void AtmosphereDriver::create_fields()
     m_atm_process_group->set_required_field(fm->get_field(fid).get_const());
   }
 
+  // Tell all atm procs that we are done setting fields from the FieldManager's
+  m_atm_process_group->all_fields_set();
+
   // Now that all processes have all the required/computed fields/groups, they
   // have also created any possible internal field (if needed). Notice that some
   // atm proc might have created internal fields already during the set_grids

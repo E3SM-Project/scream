@@ -253,6 +253,63 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
   m_ic_remapper = grids_manager->create_remapper(m_cgll_grid,m_dyn_grid);
 }
 
+void HommeDynamics::all_fields_set_impl ()
+{
+  const auto& dgn = m_dyn_grid->name();
+  const auto& pgn = m_phys_grid->name();
+
+  // Use common/shorter names for tracers.
+  alias_group_in  ("tracers",pgn,"Q");
+  alias_group_out ("tracers",pgn,"Q");
+
+  // Grab handles of some Homme data structure
+  const auto& c       = Homme::Context::singleton();
+  const auto& params  = c.get<Homme::SimulationParams>();
+
+  // Complete Homme prim_init1_xyz sequence
+  prim_complete_init1_phase_f90 ();
+
+  // ------ Sanity checks ------- //
+
+  // Nobody should claim to be a provider for dp.
+  // WARNING! If the assumption on 'pseudo_density' ceases to be true, you have to revisit
+  //          how you restart homme. In particular, p_mid is restarted from pseudo_density,
+  //          as it is read from restart file. If other procs update it, the restarted value
+  //          might no longer match the end-of-homme-step value, which is what you need
+  //          to compute p_mid. Hence, if this assumption goes away, you need to restart
+  //          p_mid by first remapping the restarted dp3d_dyn back to ref grid, and using
+  //          that value to compute p_mid. Or, perhaps easier, write p_mid to restart file.
+  EKAT_REQUIRE_MSG (
+      get_field_out("pseudo_density",pgn).get_header().get_tracking().get_providers().size()==1,
+      "Error! Someone other than Dynamics is trying to update the pseudo_density.\n");
+
+  // The groups 'tracers' and 'tracers_mass_dyn' should contain the same fields
+  EKAT_REQUIRE_MSG(not get_group_out("Q",pgn).m_info->empty(),
+    "Error! There should be at least one tracer (qv) in the tracers group.\n");
+
+  // Create remaining internal fields
+  constexpr int NGP  = HOMMEXX_NP;
+  const int nelem = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
+  const int ncols = m_phys_grid->get_num_local_dofs();
+  const int nlevs = m_dyn_grid->get_num_vertical_levels();
+  assert(nlevs == m_dyn_grid->get_num_vertical_levels());
+  assert(nlevs == m_cgll_grid->get_num_vertical_levels());
+  assert(nlevs == m_phys_grid->get_num_vertical_levels());
+  const int qsize = params.qsize;
+
+  using namespace ShortFieldTagsNames;
+  create_helper_field("FQ_dyn",{EL,CMP,GP,GP,LEV},{nelem,qsize,NGP,NGP,nlevs},dgn);
+  create_helper_field("FT_dyn",{EL,    GP,GP,LEV},{nelem,      NGP,NGP,nlevs},dgn);
+  create_helper_field("FM_dyn",{EL,CMP,GP,GP,LEV},{nelem,    3,NGP,NGP,nlevs},dgn);
+  create_helper_field("Q_dyn" ,{EL,CMP,GP,GP,LEV},{nelem,qsize,NGP,NGP,nlevs},dgn);
+
+  // Tendencies for temperature and momentum computed on physics grid
+  create_helper_field("FT_phys",{COL,LEV},    {ncols,  nlevs},pgn);
+  create_helper_field("FM_phys",{COL,CMP,LEV},{ncols,2,nlevs},pgn);
+
+  init_homme_views ();
+}
+
 size_t HommeDynamics::requested_buffer_size_in_bytes() const
 {
   using namespace Homme;
@@ -325,57 +382,7 @@ void HommeDynamics::init_buffers(const ATMBufferManager &buffer_manager)
 
 void HommeDynamics::initialize_impl (const RunType run_type)
 {
-  const auto& dgn = m_dyn_grid->name();
   const auto& pgn = m_phys_grid->name();
-
-  // Use common/shorter names for tracers.
-  alias_group_in  ("tracers",pgn,"Q");
-  alias_group_out ("tracers",pgn,"Q");
-
-  // Grab handles of some Homme data structure
-  const auto& c       = Homme::Context::singleton();
-  const auto& params  = c.get<Homme::SimulationParams>();
-
-  // Complete Homme prim_init1_xyz sequence
-  prim_complete_init1_phase_f90 ();
-
-  // ------ Sanity checks ------- //
-
-  // Nobody should claim to be a provider for dp.
-  // WARNING! If the assumption on 'pseudo_density' ceases to be true, you have to revisit
-  //          how you restart homme. In particular, p_mid is restarted from pseudo_density,
-  //          as it is read from restart file. If other procs update it, the restarted value
-  //          might no longer match the end-of-homme-step value, which is what you need
-  //          to compute p_mid. Hence, if this assumption goes away, you need to restart
-  //          p_mid by first remapping the restarted dp3d_dyn back to ref grid, and using
-  //          that value to compute p_mid. Or, perhaps easier, write p_mid to restart file.
-  EKAT_REQUIRE_MSG (
-      get_field_out("pseudo_density",pgn).get_header().get_tracking().get_providers().size()==1,
-      "Error! Someone other than Dynamics is trying to update the pseudo_density.\n");
-
-  // The groups 'tracers' and 'tracers_mass_dyn' should contain the same fields
-  EKAT_REQUIRE_MSG(not get_group_out("Q",pgn).m_info->empty(),
-    "Error! There should be at least one tracer (qv) in the tracers group.\n");
-
-  // Create remaining internal fields
-  constexpr int NGP  = HOMMEXX_NP;
-  const int nelem = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
-  const int ncols = m_phys_grid->get_num_local_dofs();
-  const int nlevs = m_dyn_grid->get_num_vertical_levels();
-  assert(nlevs == m_dyn_grid->get_num_vertical_levels());
-  assert(nlevs == m_cgll_grid->get_num_vertical_levels());
-  assert(nlevs == m_phys_grid->get_num_vertical_levels());
-  const int qsize = params.qsize;
-
-  using namespace ShortFieldTagsNames;
-  create_helper_field("FQ_dyn",{EL,CMP,GP,GP,LEV},{nelem,qsize,NGP,NGP,nlevs},dgn);
-  create_helper_field("FT_dyn",{EL,    GP,GP,LEV},{nelem,      NGP,NGP,nlevs},dgn);
-  create_helper_field("FM_dyn",{EL,CMP,GP,GP,LEV},{nelem,    3,NGP,NGP,nlevs},dgn);
-  create_helper_field("Q_dyn" ,{EL,CMP,GP,GP,LEV},{nelem,qsize,NGP,NGP,nlevs},dgn);
-
-  // Tendencies for temperature and momentum computed on physics grid
-  create_helper_field("FT_phys",{COL,LEV},    {ncols,  nlevs},pgn);
-  create_helper_field("FM_phys",{COL,CMP,LEV},{ncols,2,nlevs},pgn);
 
   // Unfortunately, Homme *does* use FM_z even in hydrostatic mode (missing ifdef).
   // Later, it computes diags on w, so if FM_w contains NaN's, repro sum in Homme
@@ -415,9 +422,6 @@ void HommeDynamics::initialize_impl (const RunType run_type)
     m_p2d_remapper->registration_ends();
     m_d2p_remapper->registration_ends();
   }
-
-  // Sets the scream views into the hommexx internal data structures
-  init_homme_views ();
 
   // Import I.C. from the ref grid to the dyn grid.
   if (run_type==RunType::Initial) {
