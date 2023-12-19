@@ -1,4 +1,5 @@
 #include "control/atmosphere_driver.hpp"
+#include "control/eamxx_default_model_init.hpp"
 #include "control/atmosphere_surface_coupling_importer.hpp"
 #include "control/atmosphere_surface_coupling_exporter.hpp"
 
@@ -11,6 +12,7 @@
 #include "share/util/scream_timing.hpp"
 #include "share/util/scream_utils.hpp"
 #include "share/io/scream_io_utils.hpp"
+#include "share/eamxx_model_init.hpp"
 #include "share/property_checks/mass_and_energy_column_conservation_check.hpp"
 
 #include "ekat/ekat_assert.hpp"
@@ -163,8 +165,6 @@ init_time_stamps (const util::TimeStamp& run_t0, const util::TimeStamp& case_t0)
   m_run_t0 = m_current_ts = run_t0;
   m_case_t0 = case_t0;
 }
-
-
 
 void AtmosphereDriver::
 setup_intensive_observation_period ()
@@ -984,305 +984,43 @@ void AtmosphereDriver::set_initial_conditions ()
 {
   m_atm_logger->info("  [EAMxx] set_initial_conditions ...");
 
-  auto& ic_pl = m_atm_params.sublist("initial_conditions");
+  // Collect all fields that are input to EAMxx
+  // Note: we cannot simply grab m_atm_process_group->get_fields_in(),
+  // since the fields would be read-only. We must get them from their
+  // field manager, so that they are writable.
+  std::map<std::string,Field> eamxx_inputs;
 
-  // Check which fields need to have an initial condition.
-  std::map<std::string,std::vector<std::string>> ic_fields_names;
-  std::vector<FieldIdentifier> ic_fields_to_copy;
-  std::map<std::string,std::vector<std::string>> fields_inited;
-
-  // Check which fields should be loaded from the topography file
-  std::map<std::string,std::vector<std::string>> topography_file_fields_names;
-  std::map<std::string,std::vector<std::string>> topography_eamxx_fields_names;
-
-  // Helper lambda, to reduce code duplication
-  auto process_ic_field = [&](const Field& f) {
+  auto add_field = [&] (const Field& f) {
     const auto& fid = f.get_header().get_identifier();
-    const auto& fname = fid.name();
-    const auto& grid_name = fid.get_grid_name();
-
-    if (ic_pl.isParameter(fname)) {
-      // This is the case that the user provided an initialization
-      // for this field in the parameter file.
-      if (ic_pl.isType<double>(fname) or ic_pl.isType<std::vector<double>>(fname)) {
-        // Initial condition is a constant
-        initialize_constant_field(fid, ic_pl);
-
-        // Note: f is const, so we can't modify the tracking. So get the same field from the fm
-        auto f_nonconst = m_field_mgrs.at(grid_name)->get_field(fid.name());
-        f_nonconst.get_header().get_tracking().update_time_stamp(m_current_ts);
-      } else if (ic_pl.isType<std::string>(fname)) {
-        // Initial condition is a string
-        ic_fields_to_copy.push_back(fid);
-      } else {
-        EKAT_ERROR_MSG ("ERROR: invalid assignment for variable " + fname + ", only scalar "
-                        "double or string, or vector double arguments are allowed");
-      }
-      fields_inited[grid_name].push_back(fname);
-    } else if (fname == "phis" or fname == "sgh30") {
-      // Both phis and sgh30 need to be loaded from the topography file
-      auto& this_grid_topo_file_fnames = topography_file_fields_names[grid_name];
-      auto& this_grid_topo_eamxx_fnames = topography_eamxx_fields_names[grid_name];
-
-      if (fname == "phis") {
-        // The eamxx field "phis" corresponds to the name
-        // "PHIS_d" on the GLL and Point grids and "PHIS"
-        // on the PG2 grid in the topography file.
-        if (grid_name == "Physics PG2") {
-          this_grid_topo_file_fnames.push_back("PHIS");
-        } else if (grid_name == "Physics GLL" ||
-                   grid_name == "Point Grid") {
-          this_grid_topo_file_fnames.push_back("PHIS_d");
-        } else {
-          EKAT_ERROR_MSG ("Error! Requesting phis on an unknown grid: " + grid_name + ".\n");
-        }
-        this_grid_topo_eamxx_fnames.push_back(fname);
-	fields_inited[grid_name].push_back(fname);
-      } else if (fname == "sgh30") {
-        // The eamxx field "sgh30" is called "SGH30" in the
-        // topography file and is only available on the PG2 grid.
-        EKAT_ASSERT_MSG(grid_name == "Physics PG2",
-                        "Error! Requesting sgh30 field on " + grid_name +
-                        " topo file only has sgh30 for Physics PG2.\n");
-        topography_file_fields_names[grid_name].push_back("SGH30");
-        topography_eamxx_fields_names[grid_name].push_back(fname);
-	fields_inited[grid_name].push_back(fname);
-      }
-    } else if (not (fvphyshack and grid_name == "Physics PG2")) {
-      // The IC file is written for the GLL grid, so we only load
-      // fields from there. Any other input fields on the PG2 grid
-      // will be properly computed in the dynamics interface.
-      auto& this_grid_ic_fnames = ic_fields_names[grid_name];
-      auto c = f.get_header().get_children();
-      if (c.size()==0) {
-        // If this field is the parent of other subfields, we only read from file the subfields.
-        if (not ekat::contains(this_grid_ic_fnames,fname)) {
-          this_grid_ic_fnames.push_back(fname);
-	  fields_inited[grid_name].push_back(fname);
-        }
-      } else if (fvphyshack and grid_name == "Physics GLL") {
-        // [CGLL ICs in pg2] I tried doing something like this in
-        // HommeDynamics::set_grids, but I couldn't find the means to get the
-        // list of fields. I think the issue is that you can't access group
-        // objects until some registration period ends. So instead do it here,
-        // where the list is definitely available.
-        for (const auto& e : c) {
-          const auto f = e.lock();
-          const auto& fid = f->get_identifier();
-          const auto& fname = fid.name();
-          if (ic_pl.isParameter(fname) and ic_pl.isType<double>(fname)) {
-            initialize_constant_field(fid, ic_pl);
-          } else {
-            this_grid_ic_fnames.push_back(fname);
-          }
-	  fields_inited[grid_name].push_back(fname);
-        }
-      }
-    }
+    const auto& gname = fid.get_grid_name();
+    const auto& fm = get_field_mgr(gname);
+    eamxx_inputs[fid.name()] = fm->get_field(fid.name());
   };
 
-  // First the individual input fields...
-  m_atm_logger->debug("    [EAMxx] Processing input fields ...");
   for (const auto& f : m_atm_process_group->get_fields_in()) {
-    process_ic_field (f);
+    add_field(f);
   }
-  m_atm_logger->debug("    [EAMxx] Processing input fields ... done!");
-
-  // ...then the input groups
-  m_atm_logger->debug("    [EAMxx] Processing input groups ...");
   for (const auto& g : m_atm_process_group->get_groups_in()) {
-    if (g.m_bundle) {
-      process_ic_field(*g.m_bundle);
-    }
-    for (auto it : g.m_fields) {
-      process_ic_field(*it.second);
-    }
-  }
-  m_atm_logger->debug("    [EAMxx] Processing input groups ... done!");
-
-  // Some fields might be the subfield of a group's bundled field. In that case,
-  // we only need to init one: either the bundled field, or all the individual subfields.
-  // So loop over the fields that appear to require loading from file, and remove
-  // them from the list if they are the subfield of a bundled field already inited
-  // (perhaps via initialize_constant_field, or copied from another field).
-  for (auto& it1 : ic_fields_names) {
-    const auto& grid_name =  it1.first;
-    auto fm = m_field_mgrs.at(grid_name);
-
-    // Note: every time we erase an entry in the vector, all iterators are
-    //       invalidated, so we need to re-start the for loop.
-    bool run_again = true;
-    while (run_again) {
-      run_again = false;
-      auto& names = it1.second;
-      for (auto it2=names.begin(); it2!=names.end(); ++it2) {
-        const auto& fname = *it2;
-        auto f = fm->get_field(fname);
-        auto p = f.get_header().get_parent().lock();
-        if (p) {
-          const auto& pname = p->get_identifier().name();
-          if (ekat::contains(fields_inited[grid_name],pname)) {
-            // The parent is already inited. No need to init this field as well.
-            names.erase(it2);
-            run_again = true;
-            break;
-          }
-        }
-      }
+    for (const auto& it : g.m_fields) {
+      add_field(*it.second);
     }
   }
 
-  if (m_intensive_observation_period) {
-    // For runs with IOP, call to setup io grids and lat
-    // lon information needed for reading from file
-    for (const auto& it : m_field_mgrs) {
-      const auto& grid_name = it.first;
-      if (ic_fields_names[grid_name].size() > 0) {
-        const auto& file_name = grid_name == "Physics GLL"
-                                ?
-                                ic_pl.get<std::string>("Filename")
-                                :
-                                ic_pl.get<std::string>("topography_filename");
-        m_intensive_observation_period->setup_io_info(file_name, it.second->get_grid());
-      }
-    }
-  }
+  // The default model init is used a lot in testing,
+  // and does not inject any additional eamxx lib dependency,
+  // so we can safely register it here.
+  register_default_model_init();
 
-  // If a filename is specified, use it to load inputs on all grids
-  if (ic_pl.isParameter("Filename")) {
-    // Now loop over all grids, and load from file the needed fields on each grid (if any).
-    const auto& file_name = ic_pl.get<std::string>("Filename");
-    m_atm_logger->info("    [EAMxx] IC filename: " + file_name);
-    for (const auto& it : m_field_mgrs) {
-      const auto& grid_name = it.first;
-      if (not m_intensive_observation_period) {
-        read_fields_from_file (ic_fields_names[grid_name],it.second->get_grid(),file_name,m_current_ts);
-      } else {
-        // For IOP enabled, we load from file and copy data from the closest
-        // lat/lon column to every other column
-        m_intensive_observation_period->read_fields_from_file_for_iop(file_name,
-                                                                      ic_fields_names[grid_name],
-                                                                      m_current_ts,
-                                                                      it.second);
-      }
-    }
-  }
+  auto& ic_pl = m_atm_params.sublist("initial_conditions");
 
-  // If there were any fields that needed to be copied per the input yaml file, now we copy them.
-  m_atm_logger->debug("    [EAMxx] Processing fields to copy ...");
-  for (const auto& tgt_fid : ic_fields_to_copy) {
-    const auto& tgt_fname = tgt_fid.name();
-    const auto& gname = tgt_fid.get_grid_name();
+  // Note: in order for this to work, you MUST have registered
+  //       the "fvphys" ModelInit in the factory.
+  //       Currently, this is done in register_dynamics
+  std::string init_type = fvphyshack ? "fvphys" : "default";
+  auto& init_factory = ModelInitFactory::instance();
+  auto model_init = init_factory.create(init_type,eamxx_inputs,m_grids_manager,ic_pl,m_current_ts);
 
-    const auto& src_fname = ic_pl.get<std::string>(tgt_fname);
-
-    auto fm = get_field_mgr(gname);
-
-    // The field must exist in the fm on the input field's grid
-    EKAT_REQUIRE_MSG (fm->has_field(src_fname),
-        "Error! Source field for initial condition not found in the field manager.\n"
-        "       Grid name:     " + gname + "\n"
-        "       Field to init: " + tgt_fname + "\n"
-        "       Source field:  " + src_fname + " (NOT FOUND)\n");
-
-    // Get the two fields, and copy src to tgt
-    auto f_tgt = fm->get_field(tgt_fname);
-    auto f_src = fm->get_field(src_fname);
-    f_tgt.deep_copy(f_src);
-
-    // Set the initial time stamp
-    f_tgt.get_header().get_tracking().update_time_stamp(m_current_ts);
-  }
-  m_atm_logger->debug("    [EAMxx] Processing fields to copy ... done!");
-
-  // It is possible to have a bundled group G1=(f1,f2,f3),
-  // where the IC are read from file for f1, f2, and f3. In that case,
-  // the time stamp for the bundled G1 has not be inited, but the data
-  // is valid (all entries have been inited). Let's fix that.
-  m_atm_logger->debug("    [EAMxx] Processing subfields ...");
-  for (const auto& g : m_atm_process_group->get_groups_in()) {
-    if (g.m_bundle) {
-      auto& track = g.m_bundle->get_header().get_tracking();
-      if (not track.get_time_stamp().is_valid()) {
-        // The bundled field has not been inited. Check if all the subfields
-        // have been inited. If so, init the timestamp of the bundled field too.
-        const auto& children = track.get_children();
-        bool all_inited = children.size()>0; // If no children, then something is off, so mark as not good
-        for (auto wp : children) {
-          auto sp = wp.lock();
-          if (not sp->get_time_stamp().is_valid()) {
-            all_inited = false;
-            break;
-          }
-        }
-        if (all_inited) {
-          track.update_time_stamp(m_current_ts);
-        }
-      }
-    }
-  }
-  m_atm_logger->debug("    [EAMxx] Processing subfields ... done!");
-
-  // Load topography from file if topography file is given.
-  if (ic_pl.isParameter("topography_filename")) {
-    m_atm_logger->info("    [EAMxx] Reading topography from file ...");
-    const auto& file_name = ic_pl.get<std::string>("topography_filename");
-    m_atm_logger->info("        filename: " + file_name);
-    for (const auto& it : m_field_mgrs) {
-      const auto& grid_name = it.first;
-      if (not m_intensive_observation_period) {
-        // Topography files always use "ncol_d" for the GLL grid value of ncol.
-        // To ensure we read in the correct value, we must change the name for that dimension
-        auto io_grid = it.second->get_grid();
-        if (grid_name=="Physics GLL") {
-          using namespace ShortFieldTagsNames;
-          auto grid = io_grid->clone(io_grid->name(),true);
-          grid->reset_field_tag_name(COL,"ncol_d");
-          io_grid = grid;
-        }
-        read_fields_from_file (topography_file_fields_names[grid_name],
-                               topography_eamxx_fields_names[grid_name],
-                               io_grid,file_name,m_current_ts);
-      } else {
-        // For IOP enabled, we load from file and copy data from the closest
-        // lat/lon column to every other column
-        m_intensive_observation_period->read_fields_from_file_for_iop(file_name,
-                                                                      topography_file_fields_names[grid_name],
-                                                                      topography_eamxx_fields_names[grid_name],
-                                                                      m_current_ts,
-                                                                      it.second);
-      }
-    }
-    // Store in provenance list, for later usage in output file metadata
-    m_atm_params.sublist("provenance").set("topography_file",file_name);
-    m_atm_logger->debug("    [EAMxx] Processing topography from file ... done!");
-  } else {
-    // Ensure that, if no topography_filename is given, no
-    // processes is asking for topography data (assuming a
-    // separate IC param entry isn't given for the field).
-    for (const auto& it : m_field_mgrs) {
-      const auto& grid_name = it.first;
-      EKAT_REQUIRE_MSG(topography_file_fields_names[grid_name].size()==0,
-                      "Error! Topography data was requested in the FM, but no "
-                      "topography_filename or entry matching the field name "
-                      "was given in IC parameters.\n");
-    }
-
-    m_atm_params.sublist("provenance").set<std::string>("topography_file","NONE");
-  }
-
-  if (m_intensive_observation_period) {
-    // Load IOP data file data for initial time stamp
-    m_intensive_observation_period->read_iop_file_data(m_current_ts);
-
-    // Now that ICs are processed, set appropriate fields using IOP file data.
-    // Since ICs are loaded on GLL grid, we set those fields only and dynamics
-    // will take care of the rest (for PG2 case).
-    if (m_field_mgrs.count("Physics GLL") > 0) {
-      const auto& fm = m_field_mgrs.at("Physics GLL");
-      m_intensive_observation_period->set_fields_from_iop_data(fm);
-    }
-  }
+  model_init->set_initial_conditions(m_atm_logger);
 
   // Compute IC perturbations of GLL fields (if requested)
   using vos = std::vector<std::string>;
