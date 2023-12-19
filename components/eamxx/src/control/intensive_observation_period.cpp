@@ -397,21 +397,16 @@ setup_io_info(const std::string& file_name,
 
 void IntensiveObservationPeriod::
 read_fields_from_file_for_iop (const std::string& file_name,
-                               const vos& field_names_nc,
-                               const vos& field_names_eamxx,
-                               const util::TimeStamp& initial_ts,
-                               const field_mgr_ptr field_mgr)
+                               const std::vector<Field>& ic_fields,
+                               const util::TimeStamp& initial_ts)
 {
-  const auto dummy_units = ekat::units::Units::nondimensional();
-
-  EKAT_REQUIRE_MSG(field_names_nc.size()==field_names_eamxx.size(),
-                  "Error! Field name arrays must have same size.\n");
-
-  if (field_names_nc.size()==0) {
+  if (ic_fields.size()==0) {
     return;
   }
 
-  const auto& grid_name = field_mgr->get_grid()->name();
+  const auto dummy_units = ekat::units::Units::nondimensional();
+
+  const auto& grid_name = ic_fields[0].get_header().get_identifier().get_grid_name();
   EKAT_REQUIRE_MSG(m_io_grids.count(grid_name) > 0,
                    "Error! Attempting to read IOP initial conditions on "
                    +grid_name+" grid, but m_io_grid entry has not been created.\n");
@@ -431,24 +426,17 @@ read_fields_from_file_for_iop (const std::string& file_name,
 
   // Create vector of fields with correct dimensions to read from file
   std::vector<Field> io_fields;
-  for (size_t i=0; i<field_names_nc.size(); ++i) {
-    const auto& nc_name    = field_names_nc[i];
-    const auto& eamxx_name = field_names_eamxx[i];
-    const auto& fm_field = eamxx_name!=nc_name
-                           ?
-                           field_mgr->get_field(eamxx_name).alias(nc_name)
-                           :
-                           field_mgr->get_field(eamxx_name);
-    auto fm_fid = fm_field.get_header().get_identifier();
-    EKAT_REQUIRE_MSG(fm_fid.get_layout().tag(0)==FieldTag::Column,
-                     "Error! IOP inputs read from IC/topo file must have Column "
-                     "as first dim tag.\n");
+  for (const auto& f : ic_fields) {
+    const auto& fid = f.get_header().get_identifier();
+    EKAT_REQUIRE_MSG(fid.get_layout().tag(0)==FieldTag::Column,
+        "Error! IOP inputs read from IC/topo file must have Column "
+        "as first dim tag.\n");
 
     // Set first dimension to match input file
-    auto dims = fm_fid.get_layout().dims();
+    auto dims = fid.get_layout().dims();
     dims[0] = io_grid->get_num_local_dofs();
-    FieldLayout io_fl(fm_fid.get_layout().tags(), dims);
-    FieldIdentifier io_fid(fm_fid.name(), io_fl, fm_fid.get_units(), io_grid->name());
+    FieldLayout io_fl(fid.get_layout().tags(), dims);
+    FieldIdentifier io_fid(fid.name(), io_fl, fid.get_units(), io_grid->name());
     Field io_field(io_fid);
     io_field.allocate_view();
     io_fields.push_back(io_field);
@@ -460,11 +448,10 @@ read_fields_from_file_for_iop (const std::string& file_name,
   file_reader.finalize();
 
   // For each field, broadcast data from closest lat/lon column to all processors
-  // and copy data into each field's column in the field manager.
+  // and copy data into each field's column in input fields
   for (size_t i=0; i<io_fields.size(); ++i) {
     const auto& io_field = io_fields[i];
-    const auto& fname = field_names_eamxx[i];
-    auto& fm_field = field_mgr->get_field(fname);
+    const auto& ic_field = ic_fields[i];
 
     // Create a temporary field to store the data from the
     // single column of the closest lat/lon pair
@@ -486,16 +473,13 @@ read_fields_from_file_for_iop (const std::string& file_name,
     m_comm.broadcast(col_data.get_internal_view_data<Real,Host>(), col_size, mpi_rank_with_col);
 
     // Copy column data to all columns in field manager field
-    const auto ncols = fm_field.get_header().get_identifier().get_layout().dim(0);
+    const auto ncols = ic_field.get_header().get_identifier().get_layout().dim(0);
     for (auto icol=0; icol<ncols; ++icol) {
-      fm_field.subfield(0,icol).deep_copy<Host>(col_data);
+      ic_field.subfield(0,icol).deep_copy<Host>(col_data);
     }
 
     // Sync fields to device
-    fm_field.sync_to_dev();
-
-    // Set the initial time stamp on FM fields
-    fm_field.get_header().get_tracking().update_time_stamp(initial_ts);
+    ic_field.sync_to_dev();
   }
 }
 
@@ -706,27 +690,38 @@ read_iop_file_data (const util::TimeStamp& current_ts)
 }
 
 void IntensiveObservationPeriod::
-set_fields_from_iop_data(const field_mgr_ptr field_mgr)
+set_fields_from_iop_data(std::map<std::string,Field>& eamxx_inputs)
 {
-  if (m_params.get<bool>("zero_non_iop_tracers") && field_mgr->has_group("tracers")) {
-    // Zero out all tracers before setting iop tracers (if requested)
-    field_mgr->get_field_group("tracers").m_bundle->deep_copy(0);
+  if (m_params.get<bool>("zero_non_iop_tracers")) {
+    // Zero out fields that belong to the tracers group before setting iop tracers (if requested)
+    for (auto& it : eamxx_inputs) {
+            auto& f = it.second;
+      const auto& groups = f.get_header().get_tracking().get_groups_info();
+      for (auto wp : groups) {
+        if (wp.lock()->m_group_name=="tracers") {
+          f.deep_copy(0);
+          break;
+        }
+      }
+    }
   }
 
-  EKAT_REQUIRE_MSG(field_mgr->get_grid()->name() == "Physics GLL",
-                   "Error! Attempting to set non-GLL fields using "
-                   "data from the IOP file.\n");
-
   // Find which fields need to be written
-  const bool set_ps            = field_mgr->has_field("ps") && has_iop_field("Ps");
-  const bool set_T_mid         = field_mgr->has_field("T_mid") && has_iop_field("T");
-  const bool set_horiz_winds_u = field_mgr->has_field("horiz_winds") && has_iop_field("u");
-  const bool set_horiz_winds_v = field_mgr->has_field("horiz_winds") && has_iop_field("v");
-  const bool set_qv            = field_mgr->has_field("qv") && has_iop_field("q");
-  const bool set_nc            = field_mgr->has_field("nc") && has_iop_field("NUMLIQ");
-  const bool set_qc            = field_mgr->has_field("qc") && has_iop_field("CLDLIQ");
-  const bool set_qi            = field_mgr->has_field("qi") && has_iop_field("CLDICE");
-  const bool set_ni            = field_mgr->has_field("ni") && has_iop_field("NUMICE");
+  const bool set_ps            = eamxx_inputs.count("ps")>0 && has_iop_field("Ps");
+  const bool set_T_mid         = eamxx_inputs.count("T_mid")>0 && has_iop_field("T");
+  const bool set_horiz_winds_u = eamxx_inputs.count("horiz_winds")>0 && has_iop_field("u");
+  const bool set_horiz_winds_v = eamxx_inputs.count("horiz_winds")>0 && has_iop_field("v");
+  const bool set_qv            = eamxx_inputs.count("qv")>0 && has_iop_field("q");
+  const bool set_nc            = eamxx_inputs.count("nc")>0 && has_iop_field("NUMLIQ");
+  const bool set_qc            = eamxx_inputs.count("qc")>0 && has_iop_field("CLDLIQ");
+  const bool set_qi            = eamxx_inputs.count("qi")>0 && has_iop_field("CLDICE");
+  const bool set_ni            = eamxx_inputs.count("ni")>0 && has_iop_field("NUMICE");
+
+  EKAT_REQUIRE_MSG (set_ps and set_qv and set_T_mid,
+      "Error! IOP should *always* set ps, T_mid, and qv.\n"
+      " - set ps: " + std::to_string(set_ps) + "\n"
+      " - set T : " + std::to_string(set_T_mid) + "\n"
+      " - set qv: " + std::to_string(set_qv) + "\n");
 
   // Create views/scalars for these field's data
   view_1d<Real> ps;
@@ -736,67 +731,66 @@ set_fields_from_iop_data(const field_mgr_ptr field_mgr)
   Real ps_iop;
   view_1d<Real> t_iop, u_iop, v_iop, qv_iop, nc_iop, qc_iop, qi_iop, ni_iop;
 
-  if (set_ps) {
-    ps = field_mgr->get_field("ps").get_view<Real*>();
-    get_iop_field("Ps").sync_to_host();
-    ps_iop = get_iop_field("Ps").get_view<Real, Host>()();
-  }
-  if (set_T_mid) {
-    T_mid = field_mgr->get_field("T_mid").get_view<Real**>();
-    t_iop = get_iop_field("T").get_view<Real*>();
-  }
+  // ps is always present
+  ps = eamxx_inputs.at("ps").get_view<Real*>();
+  get_iop_field("Ps").sync_to_host();
+  ps_iop = get_iop_field("Ps").get_view<Real, Host>()();
+
+  // T_mid is always present
+  auto T_mid_f = eamxx_inputs.at("T_mid");
+  T_mid   = T_mid_f.get_view<Real**>();
+  t_iop = get_iop_field("T").get_view<Real*>();
+
+  // qv is always present
+  auto qv_f = eamxx_inputs.at("qv");
+  qv = qv_f.get_view<Real**>();
+  qv_iop = get_iop_field("q").get_view<Real*>();
+
   if (set_horiz_winds_u || set_horiz_winds_v) {
-    horiz_winds = field_mgr->get_field("horiz_winds").get_view<Real***>();
+    horiz_winds = eamxx_inputs.at("horiz_winds").get_view<Real***>();
     if (set_horiz_winds_u) u_iop = get_iop_field("u").get_view<Real*>();
     if (set_horiz_winds_v) v_iop = get_iop_field("v").get_view<Real*>();
   }
-  if (set_qv) {
-    qv = field_mgr->get_field("qv").get_view<Real**>();
-    qv_iop = get_iop_field("q").get_view<Real*>();
-  }
   if (set_nc) {
-    nc = field_mgr->get_field("nc").get_view<Real**>();
+    nc = eamxx_inputs.at("nc").get_view<Real**>();
     nc_iop = get_iop_field("NUMLIQ").get_view<Real*>();
   }
   if (set_qc) {
-    qc = field_mgr->get_field("qc").get_view<Real**>();
+    qc = eamxx_inputs.at("qc").get_view<Real**>();
     qc_iop = get_iop_field("CLDLIQ").get_view<Real*>();
   }
   if (set_qi) {
-    qi = field_mgr->get_field("qi").get_view<Real**>();
+    qi = eamxx_inputs.at("qi").get_view<Real**>();
     qi_iop = get_iop_field("CLDICE").get_view<Real*>();
   }
   if (set_ni) {
-    ni = field_mgr->get_field("ni").get_view<Real**>();
+    ni = eamxx_inputs.at("ni").get_view<Real**>();
     ni_iop = get_iop_field("NUMICE").get_view<Real*>();
   }
 
+  // Grab ncols/nlevs from T_mid layout
+  const int ncols = eamxx_inputs.at("T_mid").get_header().get_identifier().get_layout().dim(0);
+  const int nlevs = eamxx_inputs.at("T_mid").get_header().get_identifier().get_layout().dim(1);
+
   // Check if t_iop has any 0 entires near the top of the model
   // and correct t_iop and q_iop accordingly.
-  correct_temperature_and_water_vapor(field_mgr);
+  correct_temperature_and_water_vapor(T_mid_f,qv_f);
 
   // Loop over all columns and copy IOP field values to FM views
-  const auto ncols = field_mgr->get_grid()->get_num_local_dofs();
-  const auto nlevs = field_mgr->get_grid()->get_num_vertical_levels();
   const auto policy = ESU::get_default_team_policy(ncols, nlevs);
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const KT::MemberType& team) {
     const auto icol = team.league_rank();
 
-    if (set_ps) {
-      ps(icol) = ps_iop;
-    }
+    ps(icol) = ps_iop;
     Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlevs), [&] (const int ilev) {
-      if (set_T_mid) {
-        T_mid(icol, ilev) = t_iop(ilev);
-      }
+      T_mid(icol, ilev) = t_iop(ilev);
+      qv(icol, ilev) = qv_iop(ilev);
+
       if (set_horiz_winds_u) {
         horiz_winds(icol, 0, ilev) = u_iop(ilev);
       }
       if (set_horiz_winds_v) {
         horiz_winds(icol, 1, ilev) = v_iop(ilev);
-      }
-      if (set_qv) {
-        qv(icol, ilev) = qv_iop(ilev);
       }
       if (set_nc) {
         nc(icol, ilev) = nc_iop(ilev);
@@ -815,11 +809,12 @@ set_fields_from_iop_data(const field_mgr_ptr field_mgr)
 }
 
 void IntensiveObservationPeriod::
-correct_temperature_and_water_vapor(const field_mgr_ptr field_mgr)
+correct_temperature_and_water_vapor(const Field& T_mid, const Field& qv)
 {
+  const int nlevs = T_mid.get_header().get_identifier().get_layout().dim(1);
+
   // Find the first valid level index for t_iop, i.e., first non-zero entry
   int first_valid_idx;
-  const auto nlevs = field_mgr->get_grid()->get_num_vertical_levels();
   auto t_iop = get_iop_field("T").get_view<Real*>();
   Kokkos::parallel_reduce(nlevs, KOKKOS_LAMBDA (const int ilev, int& lmin) {
     if (t_iop(ilev) > 0 && ilev < lmin) lmin = ilev;
@@ -828,17 +823,13 @@ correct_temperature_and_water_vapor(const field_mgr_ptr field_mgr)
   // If first_valid_idx>0, we must correct IOP fields T and q corresponding to
   // levels 0,...,first_valid_idx-1
   if (first_valid_idx > 0) {
-    // If we have values of T and q to correct, we must have both T_mid and qv as FM fields
-    EKAT_REQUIRE_MSG(field_mgr->has_field("T_mid"), "Error! IOP requires FM to define T_mid.\n");
-    EKAT_REQUIRE_MSG(field_mgr->has_field("qv"),    "Error! IOP requires FM to define qv.\n");
-
     // Replace values of T and q where t_iop contains zeros
-    auto T_mid = field_mgr->get_field("T_mid").get_view<const Real**>();
-    auto qv   = field_mgr->get_field("qv").get_view<const Real**>();
-    auto q_iop = get_iop_field("q").get_view<Real*>();
+    auto T_mid_view = T_mid.get_view<const Real**>();
+    auto qv_view    = qv.get_view<const Real**>();
+    auto q_iop      = get_iop_field("q").get_view<Real*>();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, first_valid_idx), KOKKOS_LAMBDA (const int ilev) {
-      t_iop(ilev) = T_mid(0, ilev);
-      q_iop(ilev) = qv(0, ilev);
+      t_iop(ilev) = T_mid_view(0, ilev);
+      q_iop(ilev) = qv_view(0, ilev);
     });
   }
 }
