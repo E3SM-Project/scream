@@ -1,4 +1,5 @@
 #include "eamxx_default_model_init.hpp"
+#include "intensive_observation_period.hpp"
 
 #include "share/io/scorpio_input.hpp"
 
@@ -42,10 +43,26 @@ read_ic_file (const std::shared_ptr<ekat::logger::LoggerBase>& logger)
   }
   auto grid = m_gm->get_grid("Physics");
 
-  AtmosphereInput ic_reader (filename,grid,ic_fields);
-  ic_reader.set_logger(logger);
-  ic_reader.read_variables();
-  ic_reader.finalize();
+  auto iop = m_params.get<std::shared_ptr<control::IntensiveObservationPeriod>>("iop");
+
+  if (iop==nullptr) {
+    AtmosphereInput ic_reader (filename,grid,ic_fields);
+    ic_reader.set_logger(logger);
+    ic_reader.read_variables();
+    ic_reader.finalize();
+  } else {
+    // Setup io grid
+    iop->setup_io_info(filename,grid);
+
+    // Copy data to the closest lat/lon col in the io data to every other col
+    iop->read_fields_from_file_for_iop (filename,
+                                          ic_fields,
+                                          m_run_t0);
+
+    // Overwrite IC data with data from iop file
+    iop->read_iop_file_data(m_run_t0);
+    iop->set_fields_from_iop_data(m_eamxx_inputs);
+  }
 
   // Update time stamp of ic fields
   for (auto& f : ic_fields) {
@@ -62,13 +79,6 @@ read_topo_file (const std::shared_ptr<ekat::logger::LoggerBase>& logger)
   const auto& filename = m_params.get<std::string>("topography_filename");
   logger->info("    [EAMxx] Reading topography file ...");
   logger->info("        filename: " + filename);
-
-  auto phys_grid = m_gm->get_grid("Physics");
-  auto ic_grid   = phys_grid->clone("Physics",true);
-  ic_grid->reset_field_tag_name(COL,"ncol_d");
-  for (auto n : phys_grid->aliases()) {
-    ic_grid->add_alias(n);
-  }
 
   // Store topo fields as std::vector. Alias name, to match what's in the file
   std::vector<Field> fields;
@@ -87,12 +97,26 @@ read_topo_file (const std::shared_ptr<ekat::logger::LoggerBase>& logger)
     }
   }
 
-  // Load fields
-  const auto& filename = m_params.get<std::string>("topography_filename");
-  AtmosphereInput ic_reader (filename,ic_grid,fields);
-  ic_reader.set_logger(logger);
-  ic_reader.read_variables();
-  ic_reader.finalize();
+  auto phys_grid = m_gm->get_grid("Physics");
+  auto iop = m_params.get<std::shared_ptr<control::IntensiveObservationPeriod>>("iop");
+  if (iop==nullptr) {
+    // The topo file stores colum dim as ncol for PG2 and ncol_d for GLL.
+    // So create a shallow clone of the gll grid, with different name for COL tag
+    auto io_grid   = phys_grid->clone("Physics",true);
+    io_grid->reset_field_tag_name(COL,"ncol_d");
+    for (auto n : phys_grid->aliases()) {
+      io_grid->add_alias(n);
+    }
+
+    // Load fields
+    AtmosphereInput ic_reader (filename,io_grid,fields);
+    ic_reader.set_logger(logger);
+    ic_reader.read_variables();
+    ic_reader.finalize();
+  } else {
+    iop->setup_io_info(filename,phys_grid);
+    iop->read_fields_from_file_for_iop (filename,fields,m_run_t0);
+  }
 
   // Update time stamp of ic fields
   for (auto& f : fields) {
