@@ -993,6 +993,96 @@
       <mask>oRRS18to6v3</mask>
     </model_grid>
 
+    <model_grid alias="CAx128Shilohv1pg2_CAx128Shilohv1pg2">
+      <grid name="atm">ne0np4_CAx128Shilohv1.pg2</grid>
+      <grid name="lnd">ne0np4_CAx128Shilohv1.pg2</grid>
+      <grid name="ocnice">ne0np4_CAx128Shilohv1.pg2</grid>
+      <grid name="rof">r0125</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>oRRS18to6v3</mask>
+    </model_grid>
+
+    <model_grid alias="CAx128Shilohv2pg2_CAx128Shilohv2pg2">
+      <grid name="atm">ne0np4_CAx128Shilohv2.pg2</grid>
+      <grid name="lnd">ne0np4_CAx128Shilohv2.pg2</grid>
+      <grid name="ocnice">ne0np4_CAx128Shilohv2.pg2</grid>
+      <grid name="rof">r0125</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>oRRS18to6v3</mask>
+    </model_grid>
+
+    <model_grid alias="CAx32Shilohv1pg2_CAx32Shilohv1pg2">
+      <grid name="atm">ne0np4_CAx32Shilohv1.pg2</grid>
+      <grid name="lnd">ne0np4_CAx32Shilohv1.pg2</grid>
+      <grid name="ocnice">ne0np4_CAx32Shilohv1.pg2</grid>
+      <grid name="rof">r0125</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>oRRS18to6v3</mask>
+    </model_grid>
+
+    <model_grid alias="CAx128Altamont100mv2_CAx128Altamont100mv2">
+      <grid name="atm">ne0np4_CAx128Altamont100mv2.pg2</grid>
+      <grid name="lnd">ne0np4_CAx128Altamont100mv2.pg2</grid>
+      <grid name="ocnice">ne0np4_CAx128Altamont100mv2.pg2</grid>
+      <grid name="rof">r0125</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>oRRS18to6v3</mask>
+    </model_grid>
+
+    <model_grid alias="BJ2023ne128x8v2pg2_BJ2023ne128x8v2pg2">
+      <grid name="atm">ne0np4_BJ2023ne128x8v2.pg2</grid>
+      <grid name="lnd">ne0np4_BJ2023ne128x8v2.pg2</grid>
+      <grid name="ocnice">ne0np4_BJ2023ne128x8v2.pg2</grid>
+      <grid name="rof">r0125</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>oRRS18to6v3</mask>
+    </model_grid>
+
+    <model_grid alias="BJ2023ne128x16v2pg2_BJ2023ne128x16v2pg2">
+      <grid name="atm">ne0np4_BJ2023ne128x16v2.pg2</grid>
+      <grid name="lnd">ne0np4_BJ2023ne128x16v2.pg2</grid>
+      <grid name="ocnice">ne0np4_BJ2023ne128x16v2.pg2</grid>
+      <grid name="rof">r0125</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>oRRS18to6v3</mask>
+    </model_grid>
+
+    <model_grid alias="BJ2023ne128x8v3pg2_BJ2023ne128x8v3pg2">
+      <grid name="atm">ne0np4_BJ2023ne128x8v3.pg2</grid>
+      <grid name="lnd">ne0np4_BJ2023ne128x8v3.pg2</grid>
+      <grid name="ocnice">ne0np4_BJ2023ne128x8v3.pg2</grid>
+      <grid name="rof">r0125</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>oRRS18to6v3</mask>
+    </model_grid>
+
+    <model_grid alias="BJ2023ne128x32v4pg2_BJ2023ne128x32v4pg2">
+      <grid name="atm">ne0np4_BJ2023ne128x32v4.pg2</grid>
+      <grid name="lnd">ne0np4_BJ2023ne128x32v4.pg2</grid>
+      <grid name="ocnice">ne0np4_BJ2023ne128x32v4.pg2</grid>
+      <grid name="rof">r0125</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>oRRS18to6v3</mask>
+    </model_grid>
+
+    <model_grid alias="BJne128x4x32v5pg2_BJne128x4x32v5pg2">
+      <grid name="atm">ne0np4_BJne128x4x32v5.pg2</grid>
+      <grid name="lnd">ne0np4_BJne128x4x32v5.pg2</grid>
+      <grid name="ocnice">ne0np4_BJne128x4x32v5.pg2</grid>
+      <grid name="rof">r0125</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>oRRS18to6v3</mask>
+    </model_grid>
+
     <model_grid alias="northamericax4v1_r0125_oRRS15to5">
       <grid name="atm">ne0np4_northamericax4v1</grid>
       <grid name="lnd">r0125</grid>
@@ -2909,6 +2999,78 @@
       <desc>1-deg with 3 km over California (version 3; very large refined area over Pacific and US west coast) pg2:</desc>
     </domain>
 
+    <domain name="ne0np4_CAx128Shilohv1.pg2">
+      <nx>737856</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.CAne32x128Shilohv1pg2_oRRS18to6v3.230718.nc</file>
+      <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.CAne32x128Shilohv1pg2_oRRS18to6v3.230718.nc</file>
+      <desc>1-deg with 0.8 km over California overlaid by a 100m mesh over Shiloh (version 1) pg2:</desc>
+    </domain>
+
+    <domain name="ne0np4_CAx128Shilohv2.pg2">
+      <nx>694128</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.CAne32x128Shilohv2pg2_oRRS18to6v3.230902.nc</file>
+      <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.CAne32x128Shilohv2pg2_oRRS18to6v3.230902.nc</file>
+      <desc>1-deg with 0.8 km over California overlaid by a 100m mesh over Shiloh (version 2) pg2:</desc>
+    </domain>
+
+    <domain name="ne0np4_CAx32Shilohv1.pg2">
+      <nx>106224</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.CAne32x32Shilohv1pg2_oRRS18to6v3.230905.nc</file>
+      <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.CAne32x32Shilohv1pg2_oRRS18to6v3.230905.nc</file>
+      <desc>1-deg with 3 km over California overlaid by a 800m mesh over Shiloh (version 1) pg2:</desc>
+    </domain>
+
+    <domain name="ne0np4_CAx128Altamont100mv2.pg2">
+      <nx>1333296</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.CAne32x128Altamont100mv2pg2_oRRS18to6v3.231107.nc</file>
+      <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.CAne32x128Altamont100mv2pg2_oRRS18to6v3.231107.nc</file>
+      <desc>1-deg with 0.8 km over California overlaid by a 100m mesh over Altamont (version 2) pg2:</desc>
+    </domain>
+
+    <domain name="ne0np4_BJ2023ne128x8v2.pg2">
+      <nx>1092720</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.BJ2023ne128x8v2pg2_oRRS18to6v3.230902.nc</file>
+      <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.BJ2023ne128x8v2pg2_oRRS18to6v3.230902.nc</file>
+      <desc>0.25-deg with 3 km over Beijing (version 2) pg2:</desc>
+    </domain>
+
+    <domain name="ne0np4_BJ2023ne128x16v2.pg2">
+      <nx>3100080</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.BJ2023ne128x16v2pg2_oRRS18to6v3.230905.nc</file>
+      <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.BJ2023ne128x16v2pg2_oRRS18to6v3.230905.nc</file>
+      <desc>0.25-deg with 1.6 km over Beijing (version 2) pg2:</desc>
+    </domain>
+
+    <domain name="ne0np4_BJ2023ne128x8v3.pg2">
+      <nx>1526592</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.BJ2023ne128x8v3pg2_oRRS18to6v3.230909.nc</file>
+      <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.BJ2023ne128x8v3pg2_oRRS18to6v3.230909.nc</file>
+      <desc>0.25-deg with 3 km over Beijing (version 3) pg2:</desc>
+    </domain>
+
+    <domain name="ne0np4_BJ2023ne128x32v4.pg2">
+      <nx>1100160</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.BJ2023ne128x32v4pg2_oRRS18to6v3.230913.nc</file>
+      <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.BJ2023ne128x32v4pg2_oRRS18to6v3.230913.nc</file>
+      <desc>0.25-deg with 800 m over Beijing (version 4) pg2:</desc>
+    </domain>
+
+    <domain name="ne0np4_BJne128x4x32v5.pg2">
+      <nx>1742016</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.BJne128x4x32v5pg2_oRRS18to6v3.230921.nc</file>
+      <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.BJne128x4x32v5pg2_oRRS18to6v3.230921.nc</file>
+      <desc>0.25-deg with 800 m overlaid by 3 km over Beijing (version 5) pg2:</desc>
+    </domain>
+
     <domain name="ne0np4_arm_x8v3_lowcon">
       <nx>92558</nx>
       <ny>1</ny>
@@ -3846,6 +4008,70 @@
      <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/CAx32v3pg2/map_CAne32x32v3pg2_to_r0125_mono.20221214.nc</map>
      <map name="LND2ROF_FMAPNAME">cpl/gridmaps/CAx32v3pg2/map_CAne32x32v3pg2_to_r0125_mono.20221214.nc</map>
      <map name="ROF2LND_FMAPNAME">cpl/gridmaps/CAx32v3pg2/map_r0125_to_CAne32x32v3pg2_mono.20221214.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne0np4_CAx128Shilohv1.pg2" rof_grid="r0125">
+     <map name="ATM2ROF_FMAPNAME">cpl/gridmaps/CAx128Shilohv1pg2/map_CAne32x128Shilohv1pg2_to_r0125_mono.20220718.nc</map>
+     <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/CAx128Shilohv1pg2/map_CAne32x128Shilohv1pg2_to_r0125_mono.20220718.nc</map>
+     <map name="LND2ROF_FMAPNAME">cpl/gridmaps/CAx128Shilohv1pg2/map_CAne32x128Shilohv1pg2_to_r0125_mono.20220718.nc</map>
+     <map name="ROF2LND_FMAPNAME">cpl/gridmaps/CAx128Shilohv1pg2/map_r0125_to_CAne32x128Shilohv1pg2_mono.20220718.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne0np4_CAx128Shilohv2.pg2" rof_grid="r0125">
+     <map name="ATM2ROF_FMAPNAME">cpl/gridmaps/CAx128Shilohv2pg2/map_CAne32x128Shilohv2pg2_to_r0125_mono.20230901.nc</map>
+     <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/CAx128Shilohv2pg2/map_CAne32x128Shilohv2pg2_to_r0125_mono.20230901.nc</map>
+     <map name="LND2ROF_FMAPNAME">cpl/gridmaps/CAx128Shilohv2pg2/map_CAne32x128Shilohv2pg2_to_r0125_mono.20230901.nc</map>
+     <map name="ROF2LND_FMAPNAME">cpl/gridmaps/CAx128Shilohv2pg2/map_r0125_to_CAne32x128Shilohv2pg2_mono.20230901.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne0np4_CAx32Shilohv1.pg2" rof_grid="r0125">
+     <map name="ATM2ROF_FMAPNAME">cpl/gridmaps/CAx32Shilohv1pg2/map_CAne32x32Shilohv1pg2_to_r0125_mono.20230904.nc</map>
+     <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/CAx32Shilohv1pg2/map_CAne32x32Shilohv1pg2_to_r0125_mono.20230904.nc</map>
+     <map name="LND2ROF_FMAPNAME">cpl/gridmaps/CAx32Shilohv1pg2/map_CAne32x32Shilohv1pg2_to_r0125_mono.20230904.nc</map>
+     <map name="ROF2LND_FMAPNAME">cpl/gridmaps/CAx32Shilohv1pg2/map_r0125_to_CAne32x32Shilohv1pg2_mono.20230904.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne0np4_CAx128Altamont100mv2.pg2" rof_grid="r0125">
+     <map name="ATM2ROF_FMAPNAME">cpl/gridmaps/CAx128Altamont100mv2pg2/map_CAne32x128Altamont100mv2pg2_to_r0125_mono.20231107.nc</map>
+     <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/CAx128Altamont100mv2pg2/map_CAne32x128Altamont100mv2pg2_to_r0125_mono.20231107.nc</map>
+     <map name="LND2ROF_FMAPNAME">cpl/gridmaps/CAx128Altamont100mv2pg2/map_CAne32x128Altamont100mv2pg2_to_r0125_mono.20231107.nc</map>
+     <map name="ROF2LND_FMAPNAME">cpl/gridmaps/CAx128Altamont100mv2pg2/map_r0125_to_CAne32x128Altamont100mv2pg2_mono.20231107.nc</map>
+    </gridmap>
+
+
+    <gridmap atm_grid="ne0np4_BJ2023ne128x8v2.pg2" rof_grid="r0125">
+     <map name="ATM2ROF_FMAPNAME">cpl/gridmaps/BJ2023ne128x8v2pg2/map_BJ2023ne128x8v2pg2_to_r0125_mono.20230901.nc</map>
+     <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/BJ2023ne128x8v2pg2/map_BJ2023ne128x8v2pg2_to_r0125_mono.20230901.nc</map>
+     <map name="LND2ROF_FMAPNAME">cpl/gridmaps/BJ2023ne128x8v2pg2/map_BJ2023ne128x8v2pg2_to_r0125_mono.20230901.nc</map>
+     <map name="ROF2LND_FMAPNAME">cpl/gridmaps/BJ2023ne128x8v2pg2/map_r0125_to_BJ2023ne128x8v2pg2_mono.20230901.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne0np4_BJ2023ne128x16v2.pg2" rof_grid="r0125">
+     <map name="ATM2ROF_FMAPNAME">cpl/gridmaps/BJ2023ne128x16v2pg2/map_BJ2023ne128x16v2pg2_to_r0125_mono.20230905.nc</map>
+     <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/BJ2023ne128x16v2pg2/map_BJ2023ne128x16v2pg2_to_r0125_mono.20230905.nc</map>
+     <map name="LND2ROF_FMAPNAME">cpl/gridmaps/BJ2023ne128x16v2pg2/map_BJ2023ne128x16v2pg2_to_r0125_mono.20230905.nc</map>
+     <map name="ROF2LND_FMAPNAME">cpl/gridmaps/BJ2023ne128x16v2pg2/map_r0125_to_BJ2023ne128x16v2pg2_mono.20230905.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne0np4_BJ2023ne128x8v3.pg2" rof_grid="r0125">
+     <map name="ATM2ROF_FMAPNAME">cpl/gridmaps/BJ2023ne128x8v3pg2/map_BJ2023ne128x8v3pg2_to_r0125_mono.20230909.nc</map>
+     <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/BJ2023ne128x8v3pg2/map_BJ2023ne128x8v3pg2_to_r0125_mono.20230909.nc</map>
+     <map name="LND2ROF_FMAPNAME">cpl/gridmaps/BJ2023ne128x8v3pg2/map_BJ2023ne128x8v3pg2_to_r0125_mono.20230909.nc</map>
+     <map name="ROF2LND_FMAPNAME">cpl/gridmaps/BJ2023ne128x8v3pg2/map_r0125_to_BJ2023ne128x8v3pg2_mono.20230909.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne0np4_BJ2023ne128x32v4.pg2" rof_grid="r0125">
+     <map name="ATM2ROF_FMAPNAME">cpl/gridmaps/BJ2023ne128x32v4pg2/map_BJ2023ne128x32v4pg2_to_r0125_mono.20230913.nc</map>
+     <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/BJ2023ne128x32v4pg2/map_BJ2023ne128x32v4pg2_to_r0125_mono.20230913.nc</map>
+     <map name="LND2ROF_FMAPNAME">cpl/gridmaps/BJ2023ne128x32v4pg2/map_BJ2023ne128x32v4pg2_to_r0125_mono.20230913.nc</map>
+     <map name="ROF2LND_FMAPNAME">cpl/gridmaps/BJ2023ne128x32v4pg2/map_r0125_to_BJ2023ne128x32v4pg2_mono.20230913.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne0np4_BJne128x4x32v5.pg2" rof_grid="r0125">
+     <map name="ATM2ROF_FMAPNAME">cpl/gridmaps/BJne128x4x32v5pg2/map_BJne128x4x32v5pg2_to_r0125_mono.20230920.nc</map>
+     <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/BJne128x4x32v5pg2/map_BJne128x4x32v5pg2_to_r0125_mono.20230920.nc</map>
+     <map name="LND2ROF_FMAPNAME">cpl/gridmaps/BJne128x4x32v5pg2/map_BJne128x4x32v5pg2_to_r0125_mono.20230920.nc</map>
+     <map name="ROF2LND_FMAPNAME">cpl/gridmaps/BJne128x4x32v5pg2/map_r0125_to_BJne128x4x32v5pg2_mono.20230920.nc</map>
     </gridmap>
 
     <gridmap atm_grid="T62" ocn_grid="gx3v7">

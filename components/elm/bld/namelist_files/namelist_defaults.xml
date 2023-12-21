@@ -268,6 +268,30 @@ lnd/clm2/surfdata_map/surfdata_ne0_CAx32_v2.pg2_simyr2010_c221206.nc</fsurdat>
 <fsurdat hgrid="ne0np4_CAx32v3.pg2"   sim_year="2010" use_crop=".false." >
 lnd/clm2/surfdata_map/surfdata_ne0_CAx32_v3.pg2_simyr2010_c221215.nc</fsurdat>
 
+<!-- CAx128Shilohv1.pg2 -->
+<fsurdat hgrid="ne0np4_CAx128Shilohv1.pg2"   sim_year="2015" use_crop=".false." >
+lnd/clm2/surfdata_map/surfdata_CAne32x128Shilohv1pg2_rcp8.5_simyr2015_c230724.nc</fsurdat>
+
+<!-- CAx128Shilohv2.pg2 -->
+<fsurdat hgrid="ne0np4_CAx128Shilohv2.pg2"   sim_year="2015" use_crop=".false." >
+lnd/clm2/surfdata_map/surfdata_CAne32x128Shilohv2pg2_rcp8.5_simyr2015_c230902.nc</fsurdat>
+
+<!-- CAx32Shilohv1.pg2 -->
+<fsurdat hgrid="ne0np4_CAx32Shilohv1.pg2"   sim_year="2015" use_crop=".false." >
+lnd/clm2/surfdata_map/surfdata_CAne32x32Shilohv1pg2_rcp8.5_simyr2015_c230905.nc</fsurdat>
+
+<!-- BJ2023ne128x8v2.pg2 -->
+<fsurdat hgrid="ne0np4_BJ2023ne128x8v2.pg2"   sim_year="2015" use_crop=".false." >
+lnd/clm2/surfdata_map/surfdata_BJ2023ne128x8v2pg2_rcp8.5_simyr2015_c230902.nc</fsurdat>
+
+<!-- BJ2023ne128x16v2.pg2 -->
+<fsurdat hgrid="ne0np4_BJ2023ne128x16v2.pg2"   sim_year="2015" use_crop=".false." >
+lnd/clm2/surfdata_map/surfdata_BJ2023ne128x16v2pg2_rcp8.5_simyr2015_c230906.nc</fsurdat>
+
+<!-- BJ2023ne128x8v3.pg2 -->
+<fsurdat hgrid="ne0np4_BJ2023ne128x8v3.pg2"   sim_year="2015" use_crop=".false." >
+lnd/clm2/surfdata_map/surfdata_BJ2023ne128x8v3pg2_rcp8.5_simyr2015_c230909.nc</fsurdat>
+
 <!-- f10 resolution -->
 
 <finidat hgrid="10x15"    maxpft="25"  mask="USGS" use_cn=".true." use_cndv=".false." ic_ymd="00010101" more_vertlayers=".false." use_vertsoilc=".true."
@@ -347,6 +371,8 @@ lnd/clm2/surfdata_map/surfdata_10x15_simyr2000_c130927.nc</fsurdat>
 
 <fsurdat hgrid="ne30np4"     sim_year="2000" >
 lnd/clm2/surfdata_map/surfdata_ne30np4_simyr2000_c190730.nc</fsurdat>
+<fsurdat hgrid="ne30np4.pg2" sim_year="2000" >
+lnd/clm2/surfdata_map/surfdata_ne30pg2_simyr2000_c210402.nc</fsurdat>
 <!--add surfdata_simyr2015 for ne30pg2 & FSSP585-SCREAM-HR (zhang73) -->
 <fsurdat hgrid="ne30np4.pg2" sim_year="2015" >
 lnd/clm2/surfdata_map/surfdata_ne30np4.pg2_SSP5_RCP85_simyr2015_c220420.nc </fsurdat>
@@ -545,6 +571,18 @@ lnd/clm2/surfdata_map/surfdata_twpx4v1_simyr2000_c170706.nc</fsurdat>
 <!-- add landuse with sim_year_range 2015-2100 (zhang73) -->
 <flanduse_timeseries hgrid="ne0np4_CAx32v1.pg2"    sim_year_range="2015-2100"
  use_crop=".false." >lnd/clm2/surfdata_map/landuse.timeseries_ne0_CAx32.pg2_rcp8.5_simyr2015-2100_c220712.nc</flanduse_timeseries>
+<flanduse_timeseries hgrid="ne0np4_CAx128Shilohv1.pg2"    sim_year_range="2015-2100"
+ use_crop=".false." >lnd/clm2/surfdata_map/landuse_timeseries_CAne32x128Shilohv1pg2_rcp8.5_simyr2015-2023_LUTv07082020_c230724.nc</flanduse_timeseries>
+<flanduse_timeseries hgrid="ne0np4_CAx128Shilohv2.pg2"    sim_year_range="2015-2100"
+ use_crop=".false." >lnd/clm2/surfdata_map/landuse_timeseries_CAne32x128Shilohv2pg2_rcp8.5_simyr2015-2023_LUTv07082020_c230902.nc</flanduse_timeseries>
+<flanduse_timeseries hgrid="ne0np4_CAx32Shilohv1.pg2"    sim_year_range="2015-2100"
+ use_crop=".false." >lnd/clm2/surfdata_map/landuse_timeseries_CAne32x32Shilohv1pg2_rcp8.5_simyr2015-2023_LUTv07082020_c230905.nc</flanduse_timeseries>
+<flanduse_timeseries hgrid="ne0np4_BJ2023ne128x8v2.pg2"    sim_year_range="2015-2100"
+ use_crop=".false." >lnd/clm2/surfdata_map/landuse_timeseries_BJ2023ne128x8v2pg2_rcp8.5_simyr2015-2023_LUTv07082020_c230902.nc</flanduse_timeseries>
+<flanduse_timeseries hgrid="ne0np4_BJ2023ne128x16v2.pg2"    sim_year_range="2015-2100"
+ use_crop=".false." >lnd/clm2/surfdata_map/landuse_timeseries_BJ2023ne128x16v2pg2_rcp8.5_simyr2015-2023_LUTv07082020_c230906.nc</flanduse_timeseries>
+<flanduse_timeseries hgrid="ne0np4_BJ2023ne128x8v3.pg2"    sim_year_range="2015-2100"
+ use_crop=".false." >lnd/clm2/surfdata_map/landuse_timeseries_BJ2023ne128x8v3pg2_rcp8.5_simyr2015-2023_LUTv07082020_c230909.nc</flanduse_timeseries>
 
 <flanduse_timeseries hgrid="360x720cru"    rcp="8.5" sim_year_range="1850-2100"
  use_crop=".false." >lnd/clm2/surfdata_map/surfdata.pftdyn_360x720cru_rcp8.5_simyr1850-2100_c130524.nc</flanduse_timeseries>

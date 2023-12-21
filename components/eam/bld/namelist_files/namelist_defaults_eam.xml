@@ -117,6 +117,10 @@
 <ncdata dyn="se" hgrid="ne0np4_CAx128v1"  nlev="128"                    >atm/cam/inic/homme/HICCUP.atm_era5.2015-01-01.ne0np4_CAx128v1_highorder.L128.nc</ncdata>
 <ncdata dyn="se" hgrid="ne0np4_CAx32v2"  nlev="128"                     >atm/cam/inic/homme/HICCUP.atm_era5.2021-10-24.CA_ne32_x32_v2.L128.nc</ncdata>
 <ncdata dyn="se" hgrid="ne0np4_CAx32v3"  nlev="128"                     >atm/cam/inic/homme/HICCUP.atm_era5.2021-10-24.CA_ne32_x32_v3.L128.nc</ncdata>
+<ncdata dyn="se" hgrid="ne0np4_CAx128Shilohv1"  nlev="128"                    >atm/cam/inic/homme/HICCUP.atm_era5.2015-10-01.ne0np4_CAne32x128Shilohv1_highorder.L128.nc</ncdata>
+<ncdata dyn="se" hgrid="ne0np4_CAx128Shilohv2"  nlev="128"                    >atm/cam/inic/homme/HICCUP.atm_era5.2016-10-01.ne0np4_CAne32x128Shilohv2_highorder.L128.nc</ncdata>
+<ncdata dyn="se" hgrid="ne0np4_CAx32Shilohv1"  nlev="128"                    >atm/cam/inic/homme/HICCUP.atm_era5.2016-10-01.ne0np4_CAne32x32Shilohv1_highorder.L128.nc</ncdata>
+<ncdata dyn="se" hgrid="ne0np4_BJ2023ne128x8v2"  nlev="128"                    >atm/cam/inic/homme/HICCUP.atm_era5.2023-07-29.ne0np4_BJ2023ne128x8v2_highorder.L128.nc</ncdata>
 
 <!-- Worked, and used to generate the inic below for northamerica:  ncdata dyn="se" hgrid="ne0np4_northamericax4v1" nlev="72"    >/global/cscratch1/sd/wlin/northamericax4v1/ifs_oper_T1279_2016080100_mod_subset_to_e3sm_northamericax4v1_topoadj_L72.nc</ncdata-->
 <ncdata dyn="se" hgrid="ne0np4_northamericax4v1" nlev="72"    >atm/cam/inic/homme/cami_0001-01-01_northamericax4v1_c190709.nc</ncdata>
@@ -169,6 +173,15 @@
 <bnd_topo hgrid="ne0np4_CAx128v1"  >atm/cam/topo/USGS-gtopo30_CA_ne32_x128_v1_pg2_16xdel2.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4_CAx32v2"  >atm/cam/topo/USGS-gtopo30_CA_ne32_x32_v2_pg2_16xdel2.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4_CAx32v3"  >atm/cam/topo/USGS-gtopo30_CA_ne32_x32_v3_pg2_16xdel2.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4_CAx128Shilohv1"  >atm/cam/topo/USGS-gtopo30_CAne32x128Shilohv1np4pg2_x6t.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4_CAx128Shilohv2"  >atm/cam/topo/USGS-gtopo30_CAne32x128Shilohv2np4pg2_x6t.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4_CAx32Shilohv1"  >atm/cam/topo/USGS-gtopo30_CAne32x32Shilohv1np4pg2_x6t.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4_CAx128Altamont100mv2"  >atm/cam/topo/GMTED2010_15_CAne32x128Altamont100mv2topo15np4pg2_x6t.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4_BJ2023ne128x8v2"  >atm/cam/topo/USGS-gtopo30_BJ2023ne128x8v2np4pg2_x6t.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4_BJ2023ne128x16v2"  >atm/cam/topo/USGS-gtopo30_BJ2023ne128x16v2np4pg2_x6t.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4_BJ2023ne128x8v3"  >atm/cam/topo/USGS-gtopo30_BJ2023ne128x8v3np4pg2_x6t.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4_BJ2023ne128x32v4"  >atm/cam/topo/USGS-gtopo30_BJ2023ne128x32v4np4pg2_x6t.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4_BJne128x4x32v5"  >atm/cam/topo/USGS-gtopo30_BJne128x4x32v5np4pg2_x6t.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4_arm_x8v3_lowcon"  >atm/cam/inic/homme/USGS-gtopo30_arm_x8v3_lowcon_tensor12xconsistentSGH.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4_conus_x4v1_lowcon"        >atm/cam/topo/USGS_conusx4v1-tensor12x_consistentSGH_c150924.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4_conus_x4v1_lowcon" npg="2">atm/cam/topo/USGS_conusx4v1pg2_12x_consistentSGH_20200609.nc</bnd_topo>
@@ -739,6 +752,15 @@
 <drydep_srf_file hgrid="ne0np4_CAx128v1">atm/cam/chem/trop_mam/atmsrf_CAx128v1_pg2_20221101.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4_CAx32v2">atm/cam/chem/trop_mam/atmsrf_CAx32v2_pg2_20221201.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4_CAx32v3">atm/cam/chem/trop_mam/atmsrf_CAx32v3_pg2_20221214.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4_CAx128Shilohv1">atm/cam/chem/trop_mam/atmsrf_CAne32x128Shilohv1pg2_20230723.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4_CAx128Shilohv2">atm/cam/chem/trop_mam/atmsrf_CAne32x128Shilohv2pg2_20230902.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4_CAx32Shilohv1">atm/cam/chem/trop_mam/atmsrf_CAne32x32Shilohv1pg2_20230905.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4_CAx128Altamont100mv2">atm/cam/chem/trop_mam/atmsrf_CAne32x128Altamont100mv2pg2_20231115.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4_BJ2023ne128x8v2">atm/cam/chem/trop_mam/atmsrf_BJ2023ne128x8v2pg2_20230902.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4_BJ2023ne128x16v2">atm/cam/chem/trop_mam/atmsrf_BJ2023ne128x16v2pg2_20230905.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4_BJ2023ne128x8v3">atm/cam/chem/trop_mam/atmsrf_BJ2023ne128x8v3pg2_20230909.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4_BJ2023ne128x32v4">atm/cam/chem/trop_mam/atmsrf_BJ2023ne128x32v4pg2_20230913.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4_BJne128x4x32v5">atm/cam/chem/trop_mam/atmsrf_BJne128x4x32v5pg2_20230921.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4_arm_x8v3_lowcon">atm/cam/chem/trop_mam/atmsrf_armx8v3.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4_conus_x4v1_lowcon" >atm/cam/chem/trop_mam/atmsrf_conusx4v1.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne0np4_conus_x4v1_lowcon" npg="2" >atm/cam/chem/trop_mam/atmsrf_conusx4v1pg2_20020609.nc</drydep_srf_file>
@@ -1362,6 +1384,15 @@
 <se_ne hgrid="ne0np4_CAx128v1"> 0 </se_ne>
 <se_ne hgrid="ne0np4_CAx32v2"> 0 </se_ne>
 <se_ne hgrid="ne0np4_CAx32v3"> 0 </se_ne>
+<se_ne hgrid="ne0np4_CAx128Shilohv1"> 0 </se_ne>
+<se_ne hgrid="ne0np4_CAx128Shilohv2"> 0 </se_ne>
+<se_ne hgrid="ne0np4_CAx32Shilohv1"> 0 </se_ne>
+<se_ne hgrid="ne0np4_CAx128Altamont100mv2"> 0 </se_ne>
+<se_ne hgrid="ne0np4_BJ2023ne128x8v2"> 0 </se_ne>
+<se_ne hgrid="ne0np4_BJ2023ne128x16v2"> 0 </se_ne>
+<se_ne hgrid="ne0np4_BJ2023ne128x8v3"> 0 </se_ne>
+<se_ne hgrid="ne0np4_BJ2023ne128x32v4"> 0 </se_ne>
+<se_ne hgrid="ne0np4_BJne128x4x32v5"> 0 </se_ne>
 <se_ne hgrid="ne0np4_arm_x8v3_lowcon"  > 0 </se_ne>
 <se_ne hgrid="ne0np4_conus_x4v1_lowcon"  > 0 </se_ne>
 <se_ne hgrid="ne0np4_northamericax4v1"  > 0 </se_ne>
@@ -1376,6 +1407,15 @@
 <mesh_file hgrid="ne0np4_CAx128v1"  >atm/cam/inic/homme/CA_ne32_x128_v1.g</mesh_file>
 <mesh_file hgrid="ne0np4_CAx32v2"  >atm/cam/inic/homme/CA_ne32_x32_v2.g</mesh_file>
 <mesh_file hgrid="ne0np4_CAx32v3"  >atm/cam/inic/homme/CA_ne32_x32_v3.g</mesh_file>
+<mesh_file hgrid="ne0np4_CAx128Shilohv1"  >atm/cam/inic/homme/CAne32x128_Shiloh_v1.g</mesh_file>
+<mesh_file hgrid="ne0np4_CAx128Shilohv2"  >atm/cam/inic/homme/CAne32x128_Shiloh_v2.g</mesh_file>
+<mesh_file hgrid="ne0np4_CAx32Shilohv1"  >atm/cam/inic/homme/CAne32x32_Shiloh_v1.g</mesh_file>
+<mesh_file hgrid="ne0np4_CAx128Altamont100mv2"  >atm/cam/inic/homme/CAne32x128_Altamont100m_v2.g</mesh_file>
+<mesh_file hgrid="ne0np4_BJ2023ne128x8v2"  >atm/cam/inic/homme/BJ2023ne128x8_v2.g</mesh_file>
+<mesh_file hgrid="ne0np4_BJ2023ne128x16v2"  >atm/cam/inic/homme/BJ2023ne128x16_v2.g</mesh_file>
+<mesh_file hgrid="ne0np4_BJ2023ne128x8v3"  >atm/cam/inic/homme/BJ2023ne128x8_v3.g</mesh_file>
+<mesh_file hgrid="ne0np4_BJ2023ne128x32v4"  >atm/cam/inic/homme/BJ2023ne128x32_v4.g</mesh_file>
+<mesh_file hgrid="ne0np4_BJne128x4x32v5"  >atm/cam/inic/homme/BJ2023ne128x32_800mov3km_v5.g</mesh_file>
 <mesh_file hgrid="ne0np4_arm_x8v3_lowcon"  >atm/cam/inic/homme/arm_x8v3_lowcon.g</mesh_file>
 <mesh_file hgrid="ne0np4_conus_x4v1_lowcon"  >atm/cam/inic/homme/conusx4v1.g</mesh_file>
 <mesh_file hgrid="ne0np4_northamericax4v1"  >atm/cam/inic/homme/northamericax4v1.g</mesh_file>
@@ -1400,6 +1440,15 @@
 <nu_top dyn_target="theta-l" hgrid="ne0np4_CAx128v1"> 2.5e3 </nu_top>
 <nu_top dyn_target="theta-l" hgrid="ne0np4_CAx32v2"> 1e4 </nu_top>
 <nu_top dyn_target="theta-l" hgrid="ne0np4_CAx32v3"> 1e4 </nu_top>
+<nu_top dyn_target="theta-l" hgrid="ne0np4_CAx128Shilohv1"> 333.334 </nu_top>
+<nu_top dyn_target="theta-l" hgrid="ne0np4_CAx128Shilohv2"> 333.334 </nu_top>
+<nu_top dyn_target="theta-l" hgrid="ne0np4_CAx32Shilohv1"> 2.5e3 </nu_top>
+<nu_top dyn_target="theta-l" hgrid="ne0np4_CAx128Altamont100mv2"> 333.334 </nu_top>
+<nu_top dyn_target="theta-l" hgrid="ne0np4_BJ2023ne128x8v2"> 1e4 </nu_top>
+<nu_top dyn_target="theta-l" hgrid="ne0np4_BJ2023ne128x16v2"> 5e3 </nu_top>
+<nu_top dyn_target="theta-l" hgrid="ne0np4_BJ2023ne128x8v3"> 1e4 </nu_top>
+<nu_top dyn_target="theta-l" hgrid="ne0np4_BJ2023ne128x32v4"> 2.5e3 </nu_top>
+<nu_top dyn_target="theta-l" hgrid="ne0np4_BJne128x4x32v5"> 2.5e3 </nu_top>
 <nu_top dyn_target="theta-l" hgrid="ne0np4_northamericax4v1"> 1e5 </nu_top>
 <nu_top dyn_target="theta-l" hgrid="ne0np4_antarcticax4v1"> 1e5 </nu_top>
 <nu_top dyn_target="theta-l" hgrid="ne0np4_arcticx4v1"    > 1e5 </nu_top>
@@ -1463,6 +1512,42 @@
 <se_tstep dyn_target="theta-l" hgrid="ne0np4_CAx32v3"> 4.68750 </se_tstep>
 <dt_tracer_factor dyn_target="theta-l" hgrid="ne0np4_CAx32v3"> 8 </dt_tracer_factor>
 <hypervis_subcycle_q dyn_target="theta-l" hgrid="ne0np4_CAx32v3"> 8 </hypervis_subcycle_q>
+
+<se_tstep dyn_target="theta-l" hgrid="ne0np4_CAx128Shilohv1"> 0.25d0 </se_tstep>
+<dt_tracer_factor dyn_target="theta-l" hgrid="ne0np4_CAx128Shilohv1"> 8 </dt_tracer_factor>
+<hypervis_subcycle_q dyn_target="theta-l" hgrid="ne0np4_CAx128Shilohv1"> 8 </hypervis_subcycle_q>
+
+<se_tstep dyn_target="theta-l" hgrid="ne0np4_CAx128Shilohv2"> 0.25d0 </se_tstep>
+<dt_tracer_factor dyn_target="theta-l" hgrid="ne0np4_CAx128Shilohv2"> 8 </dt_tracer_factor>
+<hypervis_subcycle_q dyn_target="theta-l" hgrid="ne0np4_CAx128Shilohv2"> 8 </hypervis_subcycle_q>
+
+<se_tstep dyn_target="theta-l" hgrid="ne0np4_CAx32Shilohv1"> 2.34375 </se_tstep>
+<dt_tracer_factor dyn_target="theta-l" hgrid="ne0np4_CAx32Shilohv1"> 8 </dt_tracer_factor>
+<hypervis_subcycle_q dyn_target="theta-l" hgrid="ne0np4_CAx32Shilohv1"> 8 </hypervis_subcycle_q>
+
+<se_tstep dyn_target="theta-l" hgrid="ne0np4_CAx128Altamont100mv2"> 0.25d0 </se_tstep>
+<dt_tracer_factor dyn_target="theta-l" hgrid="ne0np4_CAx128Altamont100mv2"> 8 </dt_tracer_factor>
+<hypervis_subcycle_q dyn_target="theta-l" hgrid="ne0np4_CAx128Altamont100mv2"> 8 </hypervis_subcycle_q>
+
+<se_tstep dyn_target="theta-l" hgrid="ne0np4_BJ2023ne128x8v2"> 9.375 </se_tstep>
+<dt_tracer_factor dyn_target="theta-l" hgrid="ne0np4_BJ2023ne128x8v2"> 8 </dt_tracer_factor>
+<hypervis_subcycle_q dyn_target="theta-l" hgrid="ne0np4_BJ2023ne128x8v2"> 8 </hypervis_subcycle_q>
+
+<se_tstep dyn_target="theta-l" hgrid="ne0np4_BJ2023ne128x16v2"> 4.68750 </se_tstep>
+<dt_tracer_factor dyn_target="theta-l" hgrid="ne0np4_BJ2023ne128x16v2"> 8 </dt_tracer_factor>
+<hypervis_subcycle_q dyn_target="theta-l" hgrid="ne0np4_BJ2023ne128x16v2"> 8 </hypervis_subcycle_q>
+
+<se_tstep dyn_target="theta-l" hgrid="ne0np4_BJ2023ne128x8v3"> 9.375 </se_tstep>
+<dt_tracer_factor dyn_target="theta-l" hgrid="ne0np4_BJ2023ne128x8v3"> 8 </dt_tracer_factor>
+<hypervis_subcycle_q dyn_target="theta-l" hgrid="ne0np4_BJ2023ne128x8v3"> 8 </hypervis_subcycle_q>
+
+<se_tstep dyn_target="theta-l" hgrid="ne0np4_BJ2023ne128x32v4"> 2.34375 </se_tstep>
+<dt_tracer_factor dyn_target="theta-l" hgrid="ne0np4_BJ2023ne128x32v4"> 8 </dt_tracer_factor>
+<hypervis_subcycle_q dyn_target="theta-l" hgrid="ne0np4_BJ2023ne128x32v4"> 8 </hypervis_subcycle_q>
+
+<se_tstep dyn_target="theta-l" hgrid="ne0np4_BJne128x4x32v5"> 2.34375 </se_tstep>
+<dt_tracer_factor dyn_target="theta-l" hgrid="ne0np4_BJne128x4x32v5"> 8 </dt_tracer_factor>
+<hypervis_subcycle_q dyn_target="theta-l" hgrid="ne0np4_BJne128x4x32v5"> 8 </hypervis_subcycle_q>
 
 <dt_remap_factor     dyn_target="theta-l" hgrid="ne16np4"> 3    </dt_remap_factor>
 <dt_tracer_factor    dyn_target="theta-l" hgrid="ne16np4"> 3    </dt_tracer_factor>

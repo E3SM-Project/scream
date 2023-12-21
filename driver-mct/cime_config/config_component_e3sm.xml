@@ -396,6 +396,15 @@
       <value compset=".+" grid="a%ne0np4_CAx128v1">1152</value>
       <value compset=".+" grid="a%ne0np4_CAx32v2">1152</value>
       <value compset=".+" grid="a%ne0np4_CAx32v3">1152</value>
+      <value compset=".+" grid="a%ne0np4_CAx128Shilohv1">8640</value>
+      <value compset=".+" grid="a%ne0np4_CAx128Shilohv2">8640</value>
+      <value compset=".+" grid="a%ne0np4_CAx32Shilohv1">1152</value>
+      <value compset=".+" grid="a%ne0np4_CAx128Altamont100mv">8640</value>
+      <value compset=".+" grid="a%ne0np4_BJ2023ne128x8v2">1152</value>
+      <value compset=".+" grid="a%ne0np4_BJ2023ne128x16v2">1152</value>
+      <value compset=".+" grid="a%ne0np4_BJ2023ne128x8v3">1152</value>
+      <value compset=".+" grid="a%ne0np4_BJ2023ne128x32v4">1152</value>
+      <value compset=".+" grid="a%ne0np4_BJne128x4x32v5">1152</value>
       <value compset=".+" grid="a%ne0np4_northamericax4v1" >48</value>
       <value compset=".+" grid="a%ne0np4_antarcticax4v1" >48</value>
       <value compset=".+" grid="a%ne0np4_svalbard_x8v1" >144</value>
