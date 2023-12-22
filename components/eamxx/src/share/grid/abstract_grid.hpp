@@ -145,6 +145,16 @@ public:
     return get_owners(gids_v);
   }
 
+  void get_remote_pids_and_lids (const gid_view_h& gids,
+                                 std::vector<int>& pids,
+                                 std::vector<int>& lids) const;
+  void get_remote_pids_and_lids (const std::vector<gid_type>& gids,
+                                 std::vector<int>& pids,
+                                 std::vector<int>& lids) const {
+    gid_view_h gids_v(gids.data(),gids.size());
+    get_remote_pids_and_lids(gids_v,pids,lids);
+  }
+
   // Derived classes can override these methods to verify that the
   // dofs have been set to something that satisfies any requirement of the grid type.
   virtual bool check_valid_dofs()        const { return true; }
@@ -161,6 +171,10 @@ public:
   // NOTE: we'd need setter/getter for this, so we might as well make it public
   std::string m_short_name = "";
 
+  int get_unique_grid_id () const { return m_unique_grid_id; }
+
+  std::map<gid_type,int> get_gid2lid_map () const;
+
 protected:
 
   void copy_data (const AbstractGrid& src, const bool shallow = true);
@@ -174,6 +188,8 @@ private:
   // The grid name and type
   GridType     m_type;
   std::string  m_name;
+
+  int m_unique_grid_id;
 
   std::vector<std::string> m_aliases;
 

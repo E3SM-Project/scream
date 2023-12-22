@@ -7,22 +7,22 @@
 #include "physics/rrtmgp/rrtmgp_test_utils.hpp"
 #include "physics/rrtmgp/scream_rrtmgp_interface.hpp"
 #include "physics/rrtmgp/eamxx_rrtmgp_process_interface.hpp"
-#include "mo_gas_concentrations.h"
-#include "mo_garand_atmos_io.h"
-#include "YAKL.h"
-
+#include "physics/register_physics.hpp"
 #include "physics/share/physics_constants.hpp"
 
 // scream share headers
-#include "diagnostics/register_diagnostics.hpp"
-#include "share/atm_process/atmosphere_process.hpp"
 #include "share/grid/mesh_free_grids_manager.hpp"
 #include "share/util/scream_common_physics_functions.hpp"
 
 // EKAT headers
-#include "ekat/ekat_parse_yaml_file.hpp"
-#include "ekat/kokkos/ekat_kokkos_utils.hpp"
-#include "ekat/util/ekat_test_utils.hpp"
+#include <ekat/ekat_parse_yaml_file.hpp>
+#include <ekat/kokkos/ekat_kokkos_utils.hpp>
+#include <ekat/util/ekat_test_utils.hpp>
+
+// RRTMGP and YAKL
+#include <mo_gas_concentrations.h>
+#include <mo_garand_atmos_io.h>
+#include <YAKL.h>
 
 // System headers
 #include <iostream>
@@ -73,11 +73,8 @@ namespace scream {
         ekat::Comm atm_comm (MPI_COMM_WORLD);
 
         // Need to register products in the factory *before* we create any atm process or grids manager.
-        auto& proc_factory = AtmosphereProcessFactory::instance();
-        auto& gm_factory = GridsManagerFactory::instance();
-        proc_factory.register_product("RRTMGP",&create_atmosphere_process<RRTMGPRadiation>);
-        gm_factory.register_product("Mesh Free",&create_mesh_free_grids_manager);
-        register_diagnostics();
+        register_physics ();
+        register_mesh_free_grids_manager();
 
         // Create the driver
         AtmosphereDriver ad;
@@ -213,6 +210,7 @@ namespace scream {
         // NOTE: test problem provides lwp/iwp in g/m2, not kg/m2! Factor of 1e3 here!
         using physconst = scream::physics::Constants<double>;
         auto qc = real2d("qc", ncol, nlay);
+        auto nc = real2d("nc", ncol, nlay);
         auto qi = real2d("qi", ncol, nlay);
         yakl::fortran::parallel_for(yakl::fortran::SimpleBounds<2>(nlay, ncol), YAKL_LAMBDA(int ilay, int icol) {
             qc(icol,ilay) = 1e-3 * lwp(icol,ilay) * cld(icol,ilay) * physconst::gravit / p_del(icol,ilay);
@@ -244,6 +242,7 @@ namespace scream {
         auto d_sfc_alb_dif_nir = field_mgr.get_field("sfc_alb_dif_nir").get_view<Real*>();
         auto d_surf_lw_flux_up = field_mgr.get_field("surf_lw_flux_up").get_view<Real*>();
         auto d_qc = field_mgr.get_field("qc").get_view<Real**>();
+        auto d_nc = field_mgr.get_field("nc").get_view<Real**>();
         auto d_qi = field_mgr.get_field("qi").get_view<Real**>();
         auto d_rel = field_mgr.get_field("eff_radius_qc").get_view<Real**>();
         auto d_rei = field_mgr.get_field("eff_radius_qi").get_view<Real**>();
@@ -281,6 +280,7 @@ namespace scream {
               d_tmid(i,k) = t_lay(i+1,k+1);
               d_pdel(i,k) = p_del(i+1,k+1);
               d_qc(i,k)   = qc(i+1,k+1);
+              d_nc(i,k)   = nc(i+1,k+1);
               d_qi(i,k)   = qi(i+1,k+1);
               d_rel(i,k)  = rel(i+1,k+1);
               d_rei(i,k)  = rei(i+1,k+1);
@@ -391,6 +391,7 @@ namespace scream {
         rei.deallocate();
         cld.deallocate();
         qc.deallocate();
+        nc.deallocate();
         qi.deallocate();
         mu0.deallocate();
         gas_vmr.deallocate();
@@ -414,8 +415,5 @@ namespace scream {
         // RRTMGPRadiation::finalize_impl after RRTMGP has had the
         // opportunity to deallocate all it's arrays.
         ad.finalize();
-
-        // If we got this far, we were able to run the code through the AD
-        REQUIRE(true);
     }
 }

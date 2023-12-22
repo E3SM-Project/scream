@@ -1,5 +1,7 @@
 #include "share/property_checks/mass_and_energy_column_conservation_check.hpp"
 #include "physics/share/physics_constants.hpp"
+#include "share/field/field_utils.hpp"
+
 #include <iomanip>
 
 namespace scream
@@ -217,14 +219,16 @@ PropertyCheck::ResultAndMsg MassAndEnergyColumnConservationCheck::check() const
   res_and_msg.result = CheckResult::Fail;
 
   // We output relative errors with lat/lon information (if available)
-  using gid_t = AbstractGrid::gid_type;
-  auto gids = m_grid->get_dofs_gids().get_view<const gid_t*,Host>();
+  using gid_type = AbstractGrid::gid_type;
+  auto gids = m_grid->get_dofs_gids().get_view<const gid_type*,Host>();
   typename Field::view_host_t<const Real*> lat, lon;
   const bool has_latlon = m_grid->has_geometry_data("lat") && m_grid->has_geometry_data("lon");
   if (has_latlon) {
     lat = m_grid->get_geometry_data("lat").get_view<const Real*, Host>();
     lon = m_grid->get_geometry_data("lon").get_view<const Real*, Host>();
   }
+  const bool has_additional_col_info = not additional_data_fields().empty();
+  using namespace ShortFieldTagsNames;
 
   std::stringstream msg;
   msg << "Check failed.\n"
@@ -236,6 +240,15 @@ PropertyCheck::ResultAndMsg MassAndEnergyColumnConservationCheck::check() const
     if (has_latlon) {
       msg << "    - (lat, lon): (" << lat(maxloc_mass.loc) << ", " << lon(maxloc_mass.loc) << ")\n";
     }
+    if (has_additional_col_info) {
+      msg << "    - additional data (w/ local column index):\n";
+      for (auto& f : additional_data_fields()) {
+        f.sync_to_host();
+        msg << "\n";
+        print_field_hyperslab(f, {COL}, {maxloc_mass.loc}, msg);
+      }
+      msg << "\n    END OF ADDITIONAL DATA\n";
+    }
     res_and_msg.fail_loc_indices.resize(1,maxloc_mass.loc);
     res_and_msg.fail_loc_tags = m_fields.at("phis").get_header().get_identifier().get_layout().tags();
   }
@@ -245,6 +258,15 @@ PropertyCheck::ResultAndMsg MassAndEnergyColumnConservationCheck::check() const
         << "    - global dof: " << gids(maxloc_energy.loc) << "\n";
     if (has_latlon) {
       msg << "    - (lat, lon): (" << lat(maxloc_energy.loc) << ", " << lon(maxloc_energy.loc) << ")\n";
+    }
+    if (has_additional_col_info) {
+      msg << "    - additional data (w/ local column index):\n";
+      for (auto& f : additional_data_fields()) {
+        f.sync_to_host();
+        msg << "\n";
+        print_field_hyperslab(f, {COL}, {maxloc_energy.loc}, msg);
+      }
+      msg << "\n    END OF ADDITIONAL DATA\n";
     }
     res_and_msg.fail_loc_indices.resize(1,maxloc_energy.loc);
     res_and_msg.fail_loc_tags = m_fields.at("phis").get_header().get_identifier().get_layout().tags();

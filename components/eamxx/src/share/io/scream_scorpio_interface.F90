@@ -47,9 +47,6 @@ module scream_scorpio_interface
                           pio_noerr, pio_global, &
                           PIO_int, PIO_real, PIO_double, PIO_float=>PIO_real
   use pio_kinds,    only: PIO_OFFSET_KIND
-  use pio_nf,       only: PIO_enddef, PIO_inq_dimid, PIO_inq_dimlen, PIO_inq_varid, &
-                          PIO_inquire, PIO_inquire_variable
-  use pionfatt_mod, only: PIO_put_att   => put_att
 
   use mpi, only: mpi_abort, mpi_comm_size, mpi_comm_rank
 
@@ -60,6 +57,7 @@ module scream_scorpio_interface
   public :: &
             lookup_pio_atm_file,         & ! Checks if a pio file is present
             eam_pio_closefile,           & ! Close a specfic pio file.
+            eam_pio_flush_file,          & ! Flushes I/O buffers to file
             eam_pio_enddef,              & ! Ends define mode phase, enters data mode phase
             eam_pio_redef,               & ! Pause data mode phase, re-enter define mode phase
             eam_init_pio_subsystem,      & ! Gather pio specific data from the component coupler
@@ -67,7 +65,12 @@ module scream_scorpio_interface
             eam_pio_finalize,            & ! Run any final PIO commands
             register_file,               & ! Creates/opens a pio input/output file
             register_variable,           & ! Register a variable with a particular pio output file
-            set_variable_metadata,       & ! Sets a variable metadata (always char data)
+            set_variable_metadata_char,  & ! Sets a variable metadata (char data)
+            set_variable_metadata_float, & ! Sets a variable metadata (float data)
+            set_variable_metadata_double,& ! Sets a variable metadata (double data)
+            get_variable_metadata_char,  & ! Gets a variable metadata (char data)
+            get_variable_metadata_float, & ! Gets a variable metadata (float data)
+            get_variable_metadata_double,& ! Gets a variable metadata (double data)
             register_dimension,          & ! Register a dimension with a particular pio output file
             set_decomp,                  & ! Set the pio decomposition for all variables in file.
             set_dof,                     & ! Set the pio dof decomposition for specific variable in file.
@@ -208,6 +211,7 @@ contains
   ! of a new PIO file.  Once this routine is called it is not possible
   ! to add new dimensions or variables to the file.
   subroutine eam_pio_enddef(filename)
+    use pio, only: PIO_enddef
 
     character(len=*), intent(in) :: filename
 
@@ -238,7 +242,7 @@ contains
   ! of a new PIO file.  Once this routine is called it is not possible
   ! to add new dimensions or variables to the file.
   subroutine eam_pio_redef(filename)
-    use pio_nf, only: pio_redef
+    use pio, only: pio_redef
 
     character(len=*), intent(in) :: filename
 
@@ -277,7 +281,7 @@ contains
   !       that the specs match the ones in the file during the C++ wrapper functions
   subroutine register_dimension(filename,shortname,longname,length,is_partitioned)
     use pio_types, only: pio_unlimited
-    use pio_nf,    only: PIO_def_dim
+    use pio,    only: PIO_def_dim
 
     character(len=*), intent(in)        :: filename   ! Name of file to register the dimension on.
     character(len=*), intent(in)        :: shortname,longname ! Short- and long- names for this dimension, short: brief identifier and name for netCDF output, long: longer descriptor sentence to be included as meta-data in file.
@@ -363,7 +367,7 @@ contains
   subroutine register_variable(filename,shortname,longname,units, &
                                numdims,var_dimensions,            &
                                dtype,nc_dtype,pio_decomp_tag)
-    use pio_nf, only: PIO_def_var
+    use pio, only: PIO_def_var, PIO_inq_dimid, PIO_inq_dimlen, PIO_inq_varid, PIO_put_att
 
     character(len=256), intent(in)  :: filename                 ! Name of the file to register this variable with
     character(len=256), intent(in)  :: shortname,longname       ! short and long names for the variable.  Short: variable name in file, Long: more descriptive name
@@ -453,8 +457,207 @@ contains
 
   end subroutine register_variable
 !=====================================================================!
-  subroutine set_variable_metadata(filename, varname, metaname, metaval)
-    use pionfatt_mod, only: PIO_put_att => put_att
+  subroutine set_variable_metadata_float(filename, varname, metaname, metaval)
+    use pio, only: PIO_put_att
+
+    character(len=256), intent(in) :: filename
+    character(len=256), intent(in) :: varname
+    character(len=256), intent(in) :: metaname
+    real(kind=c_float), intent(in) :: metaval
+
+    ! Local variables
+    type(pio_atm_file_t),pointer :: pio_file
+    type(hist_var_t),    pointer :: var
+    integer                      :: ierr
+    logical                      :: found
+
+    type(hist_var_list_t), pointer :: curr
+
+    ! Find the pointer for this file
+    call lookup_pio_atm_file(trim(filename),pio_file,found)
+    if (.not.found ) then
+      call errorHandle("PIO ERROR: error setting metadata for variable "//trim(varname)//" in file "//trim(filename)//".\n PIO file not found or not open.",-999)
+    endif
+
+    ! Find the variable in the file
+    curr => pio_file%var_list_top
+
+    found = .false.
+    do while (associated(curr))
+      if (associated(curr%var)) then
+        if (trim(curr%var%name)==trim(varname) .and. curr%var%is_set) then
+          found = .true.
+          var => curr%var
+          exit
+        endif
+      endif
+      curr => curr%next
+    end do
+    if (.not.found ) then
+      call errorHandle("PIO ERROR: error setting metadata for variable "//trim(varname)//" in file "//trim(filename)//".\n Variable not found.",-999)
+    endif
+
+    ierr = PIO_put_att(pio_file%pioFileDesc, var%piovar, metaname, metaval)
+    if (ierr .ne. 0) then
+      call errorHandle("Error setting attribute '" // trim(metaname) &
+                       // "' on variable '" // trim(varname) &
+                       // "' in pio file " // trim(filename) // ".", -999)
+    endif
+
+  end subroutine set_variable_metadata_float
+!=====================================================================!
+  subroutine set_variable_metadata_double(filename, varname, metaname, metaval)
+    use pio, only: PIO_put_att
+
+    character(len=256), intent(in) :: filename
+    character(len=256), intent(in) :: varname
+    character(len=256), intent(in) :: metaname
+    real(kind=c_double), intent(in) :: metaval
+
+    ! Local variables
+    type(pio_atm_file_t),pointer :: pio_file
+    type(hist_var_t),    pointer :: var
+    integer                      :: ierr
+    logical                      :: found
+
+    type(hist_var_list_t), pointer :: curr
+
+    ! Find the pointer for this file
+    call lookup_pio_atm_file(trim(filename),pio_file,found)
+    if (.not.found ) then
+      call errorHandle("PIO ERROR: error setting metadata for variable "//trim(varname)//" in file "//trim(filename)//".\n PIO file not found or not open.",-999)
+    endif
+
+    ! Find the variable in the file
+    curr => pio_file%var_list_top
+
+    found = .false.
+    do while (associated(curr))
+      if (associated(curr%var)) then
+        if (trim(curr%var%name)==trim(varname) .and. curr%var%is_set) then
+          found = .true.
+          var => curr%var
+          exit
+        endif
+      endif
+      curr => curr%next
+    end do
+    if (.not.found ) then
+      call errorHandle("PIO ERROR: error setting metadata for variable "//trim(varname)//" in file "//trim(filename)//".\n Variable not found.",-999)
+    endif
+
+    ierr = PIO_put_att(pio_file%pioFileDesc, var%piovar, metaname, metaval)
+    if (ierr .ne. 0) then
+      call errorHandle("Error setting attribute '" // trim(metaname) &
+                       // "' on variable '" // trim(varname) &
+                       // "' in pio file " // trim(filename) // ".", -999)
+    endif
+
+  end subroutine set_variable_metadata_double
+!=====================================================================!
+  function get_variable_metadata_float(filename, varname, metaname) result(metaval)
+    use pio, only: PIO_get_att
+
+    character(len=256), intent(in) :: filename
+    character(len=256), intent(in) :: varname
+    character(len=256), intent(in) :: metaname
+    real(kind=c_float)             :: metaval
+    
+
+    ! Local variables
+    type(pio_atm_file_t),pointer :: pio_file
+    type(hist_var_t),    pointer :: var
+    integer                      :: ierr
+    logical                      :: found
+
+    type(hist_var_list_t), pointer :: curr
+
+    ! Find the pointer for this file
+    call lookup_pio_atm_file(trim(filename),pio_file,found)
+    if (.not.found ) then
+      call errorHandle("PIO ERROR: PIO file not open.\nError getting metadata for variable "//trim(varname)//" in file "//trim(filename)//".",-999)
+    endif
+
+    ! Find the variable in the file
+    curr => pio_file%var_list_top
+
+    found = .false.
+    do while (associated(curr))
+      if (associated(curr%var)) then
+        if (trim(curr%var%name)==trim(varname) .and. curr%var%is_set) then
+          found = .true.
+          var => curr%var
+          exit
+        endif
+      endif
+      curr => curr%next
+    end do
+    if (.not.found ) then
+      call errorHandle("PIO ERROR: PIO file not open.\nError getting metadata for variable "//trim(varname)//" in file "//trim(filename)//".",-999)
+    endif
+
+    ! TODO: Maybe we shouldn't throw an error when the metadata isn't there, maybe we provide an output like ierr as an integer?
+    ! That way we can query for a metadata and on the EAMxx side decide what to do if the metadata is missing.
+    ierr = PIO_get_att(pio_file%pioFileDesc, var%piovar, metaname, metaval)
+    if (ierr .ne. 0) then
+      call errorHandle("Error getting attribute '" // trim(metaname) &
+                       // "' on variable '" // trim(varname) &
+                       // "' in pio file " // trim(filename) // ".", -999)
+    endif
+
+  end function get_variable_metadata_float
+!=====================================================================!
+  function get_variable_metadata_double(filename, varname, metaname) result(metaval)
+    use pio, only: PIO_get_att
+
+    character(len=256), intent(in) :: filename
+    character(len=256), intent(in) :: varname
+    character(len=256), intent(in) :: metaname
+    real(kind=c_double)            :: metaval
+
+    ! Local variables
+    type(pio_atm_file_t),pointer :: pio_file
+    type(hist_var_t),    pointer :: var
+    integer                      :: ierr
+    logical                      :: found
+
+    type(hist_var_list_t), pointer :: curr
+
+    ! Find the pointer for this file
+    call lookup_pio_atm_file(trim(filename),pio_file,found)
+    if (.not.found ) then
+      call errorHandle("PIO ERROR: PIO file not open.\nError getting metadata for variable "//trim(varname)//" in file "//trim(filename)//".",-999)
+    endif
+
+    ! Find the variable in the file
+    curr => pio_file%var_list_top
+
+    found = .false.
+    do while (associated(curr))
+      if (associated(curr%var)) then
+        if (trim(curr%var%name)==trim(varname) .and. curr%var%is_set) then
+          found = .true.
+          var => curr%var
+          exit
+        endif
+      endif
+      curr => curr%next
+    end do
+    if (.not.found ) then
+      call errorHandle("PIO ERROR: PIO file not open.\nError getting metadata for variable "//trim(varname)//" in file "//trim(filename)//".",-999)
+    endif
+
+    ierr = PIO_get_att(pio_file%pioFileDesc, var%piovar, metaname, metaval)
+    if (ierr .ne. 0) then
+      call errorHandle("Error getting attribute '" // trim(metaname) &
+                       // "' on variable '" // trim(varname) &
+                       // "' in pio file " // trim(filename) // ".", -999)
+    endif
+
+  end function get_variable_metadata_double
+!=====================================================================!
+  subroutine set_variable_metadata_char(filename, varname, metaname, metaval)
+    use pio, only: PIO_put_att
 
     character(len=256), intent(in) :: filename
     character(len=256), intent(in) :: varname
@@ -500,7 +703,57 @@ contains
                        // "' in pio file " // trim(filename) // ".", -999)
     endif
 
-  end subroutine set_variable_metadata
+  end subroutine set_variable_metadata_char
+!=====================================================================!
+  function get_variable_metadata_char(filename, varname, metaname) result(metaval)
+    use pio, only: PIO_get_att
+
+    character(len=256), intent(in) :: filename
+    character(len=256), intent(in) :: varname
+    character(len=256), intent(in) :: metaname
+    character(len=256)             :: metaval
+
+    ! Local variables
+    type(pio_atm_file_t),pointer :: pio_file
+    type(hist_var_t),    pointer :: var
+    integer                      :: ierr
+    logical                      :: found
+
+    type(hist_var_list_t), pointer :: curr
+
+    ! Find the pointer for this file
+    call lookup_pio_atm_file(trim(filename),pio_file,found)
+    if (.not.found ) then
+      call errorHandle("PIO ERROR: PIO file not open.\nError getting metadata for variable "//trim(varname)//" in file "//trim(filename)//".",-999)
+    endif
+
+    ! Find the variable in the file
+    curr => pio_file%var_list_top
+
+    found = .false.
+    do while (associated(curr))
+      if (associated(curr%var)) then
+        if (trim(curr%var%name)==trim(varname) .and. curr%var%is_set) then
+          found = .true.
+          var => curr%var
+          exit
+        endif
+      endif
+      curr => curr%next
+    end do
+    if (.not.found ) then
+      call errorHandle("PIO ERROR: PIO file not open.\nError getting metadata for variable "//trim(varname)//" in file "//trim(filename)//".",-999)
+    endif
+
+    ! TODO: Maybe we shouldn't throw an error when the metadata isn't there, maybe we provide an output like ierr as an integer?
+    ! That way we can query for a metadata and on the EAMxx side decide what to do if the metadata is missing.
+    ierr = PIO_get_att(pio_file%pioFileDesc, var%piovar, metaname, metaval)
+    if (ierr .ne. 0) then
+      call errorHandle("Error getting attribute '" // trim(metaname) &
+                       // "' on variable '" // trim(varname) &
+                       // "' in pio file " // trim(filename) // ".", -999)
+    endif
+  end function get_variable_metadata_char
 !=====================================================================!
   ! Update the time dimension for a specific PIO file.  This is needed when
   ! reading or writing multiple time levels.  Unlimited dimensions are treated
@@ -509,7 +762,7 @@ contains
   ! scream decides to allow for other "unlimited" dimensions to be used our
   ! input/output than this routine will need to be adjusted.
   subroutine eam_update_time(filename,time)
-    use pionfput_mod, only: PIO_put_var   => put_var
+    use pio, only: PIO_put_var
 
     character(len=*), intent(in) :: filename       ! PIO filename
     real(c_double), intent(in)   :: time
@@ -528,6 +781,7 @@ contains
 !=====================================================================!
   ! Assign institutions to header metadata for a specific pio output file.
   subroutine eam_pio_createHeader(File)
+    use pio, only: PIO_put_att
 
     type(file_desc_t), intent(in) :: File             ! Pio file Handle
     integer                       :: retval
@@ -559,7 +813,7 @@ contains
                             shr_pio_getiotype, shr_pio_getioformat
 #else
     use pio_types,  only: pio_rearr_subset, PIO_iotype_netcdf, PIO_64BIT_DATA
-    use piolib_mod, only: pio_init
+    use pio, only: pio_init
 
     integer :: ierr, stride, atm_rank, atm_size, num_aggregator
 #endif
@@ -616,7 +870,7 @@ contains
 !=====================================================================!
   ! Create a pio netCDF file with the appropriate name.
   subroutine eam_pio_createfile(File,fname)
-    use piolib_mod, only: pio_createfile
+    use pio, only: pio_createfile
     use pio_types,  only: pio_clobber
 
     type(file_desc_t), intent(inout) :: File             ! Pio file Handle
@@ -633,7 +887,7 @@ contains
 !=====================================================================!
   ! Open an already existing netCDF file.
   subroutine eam_pio_openfile(pio_file,fname)
-    use piolib_mod, only: pio_openfile
+    use pio, only: pio_openfile
     use pio_types,  only: pio_write, pio_nowrite
 
     type(pio_atm_file_t), pointer, intent(in) :: pio_file     ! Pointer to pio file struct associated with this filename
@@ -659,7 +913,7 @@ contains
   ! Close a netCDF file.  To be done as a last step after all input or output
   ! for that file has been finished.
   subroutine eam_pio_closefile(fname)
-    use piolib_mod, only: PIO_syncfile, PIO_closefile
+    use pio, only: PIO_syncfile, PIO_closefile
 
     character(len=*),  intent(in)    :: fname            ! Pio file name
     !--
@@ -686,12 +940,14 @@ contains
         do while (associated(curr_var_list))
           var => curr_var_list%var  ! The actual variable pointer
           if (associated(var)) then
-            ! Remove this variable as a customer of the associated iodesc
-            var%iodesc_list%num_customers = var%iodesc_list%num_customers - 1
-            ! Dellocate select memory from this variable.  Note we can't just
-            ! deallocate the whole var structure because this would also
-            ! deallocate the iodesc_list.
-            call deallocate_hist_var_t(var)
+            if (associated(var%iodesc_list)) then
+              ! Remove this variable as a customer of the associated iodesc
+              var%iodesc_list%num_customers = var%iodesc_list%num_customers - 1
+              ! Dellocate select memory from this variable.  Note we can't just
+              ! deallocate the whole var structure because this would also
+              ! deallocate the iodesc_list.
+              call deallocate_hist_var_t(var)
+            end if ! associated(var%iodesc_list)
           end if ! associated(var)
           curr_var_list => curr_var_list%next  ! Move on to the next variable
         end do ! associated(curr_var_list)
@@ -728,6 +984,29 @@ contains
     !call free_decomp()
 
   end subroutine eam_pio_closefile
+!=====================================================================!
+  ! Flushes IO buffers to file
+  subroutine eam_pio_flush_file(fname)
+    use pio, only: PIO_syncfile
+
+    character(len=*),  intent(in)    :: fname            ! Pio file name
+    !--
+    type(pio_atm_file_t),pointer     :: pio_atm_file
+    logical                          :: found
+
+    ! Find the pointer for this file
+    call lookup_pio_atm_file(trim(fname),pio_atm_file,found)
+
+    if (found) then
+      if ( is_write(pio_atm_file%purpose) ) then
+        call PIO_syncfile(pio_atm_file%pioFileDesc)
+      else
+        call errorHandle("PIO ERROR: unable to flush file: "//trim(fname)//", is not open in write mode",-999)
+      endif
+    else
+      call errorHandle("PIO ERROR: unable to flush file: "//trim(fname)//", was not found",-999)
+    end if
+  end subroutine eam_pio_flush_file
 !=====================================================================!
   ! Helper function to debug list of decomps
   subroutine print_decomp()
@@ -781,7 +1060,7 @@ contains
   ! trying to keep decomps persistent so they can be reused.  Thus, calling
   ! this routine is optional.
   subroutine free_decomp()
-    use piolib_mod, only: PIO_freedecomp
+    use pio, only: PIO_freedecomp
     type(iodesc_list_t),   pointer :: iodesc_ptr, next
 
     ! Free all decompositions from PIO
@@ -816,7 +1095,7 @@ contains
   ! Finalize a PIO session within scream.  Close all open files and deallocate
   ! the pio_subsystem session.
   subroutine eam_pio_finalize()
-    use piolib_mod, only: PIO_finalize, pio_freedecomp
+    use pio, only: PIO_finalize, pio_freedecomp
     ! May not be needed, possibly handled by PIO directly.
 
 #if !defined(SCREAM_CIME_BUILD)
@@ -868,7 +1147,7 @@ contains
     integer :: ierr
 
     if (retVal .ne. PIO_NOERR) then
-      write(*,'(I8,2x,A200)') retVal,trim(errMsg)
+      write(*,'(I8,2x,A512)') retVal,trim(errMsg)
       ! Kill run
       call eam_pio_finalize()
       call finalize_scream_session()
@@ -880,7 +1159,7 @@ contains
  ! Determine the unique pio_decomposition for this output grid, if it hasn't
  ! been defined create a new one.
   subroutine get_decomp(tag,dtype,dimension_len,compdof,iodesc_list)
-    use piolib_mod, only: pio_initdecomp
+    use pio, only: pio_initdecomp
     ! TODO: CAM code creates the decomp tag for the user.  Theoretically it is
     ! unique because it is based on dimensions and datatype.  But the tag ends
     ! up not being very descriptive.  The todo item is to revisit how tags are
@@ -1083,6 +1362,7 @@ contains
 !=====================================================================!
   ! Create a new pio file pointer based on filename.
   subroutine get_pio_atm_file(filename,pio_file,purpose)
+    use pio, only: PIO_inq_dimid, PIO_inq_dimlen
 
     character(len=*),intent(in)   :: filename     ! Name of file to be found
     type(pio_atm_file_t), pointer :: pio_file     ! Pointer to pio_atm_output structure associated with this filename
@@ -1163,8 +1443,7 @@ contains
   ! If the input arg time_index is not provided, then it is assumed the user wants
   ! the last time entry. If time_index is present, it MUST be valid
   function read_time_at_index(filename,time_index) result(val)
-    use pio,          only: PIO_get_var
-    use pio_nf,       only: PIO_inq_varid
+    use pio,          only: PIO_get_var, PIO_inq_varid, PIO_inq_dimid, PIO_inq_dimlen
 
     character(len=*), intent(in)   :: filename
     integer, intent(in), optional  :: time_index
@@ -1220,10 +1499,8 @@ contains
   !
   !---------------------------------------------------------------------------
   subroutine grid_write_darray_float(filename, varname, buf, buf_size)
-    use pionfput_mod, only: PIO_put_var   => put_var
-    use piolib_mod, only: PIO_setframe
+    use pio, only: PIO_put_var, PIO_setframe, PIO_write_darray
     use pio_types, only: PIO_max_var_dims
-    use piodarray,  only: PIO_write_darray
 
     ! Dummy arguments
     character(len=*),    intent(in) :: filename       ! PIO filename
@@ -1269,10 +1546,8 @@ contains
     call errorHandle( 'eam_grid_write_darray_float: Error writing variable '//trim(varname),ierr)
   end subroutine grid_write_darray_float
   subroutine grid_write_darray_double(filename, varname, buf, buf_size)
-    use pionfput_mod, only: PIO_put_var   => put_var
+    use pio, only: PIO_put_var, PIO_setframe, PIO_write_darray
     use pio_types, only: PIO_max_var_dims
-    use piolib_mod, only: PIO_setframe
-    use piodarray,  only: PIO_write_darray
 
     ! Dummy arguments
     character(len=*),    intent(in) :: filename       ! PIO filename
@@ -1318,10 +1593,8 @@ contains
     call errorHandle( 'eam_grid_write_darray_double: Error writing variable '//trim(varname),ierr)
   end subroutine grid_write_darray_double
   subroutine grid_write_darray_int(filename, varname, buf, buf_size)
-    use pionfput_mod, only: PIO_put_var   => put_var
-    use piolib_mod, only: PIO_setframe
+    use pio, only: PIO_put_var, PIO_setframe, PIO_write_darray
     use pio_types, only: PIO_max_var_dims
-    use piodarray,  only: PIO_write_darray
 
     ! Dummy arguments
     character(len=*),    intent(in) :: filename       ! PIO filename
@@ -1384,8 +1657,7 @@ contains
   !
   !---------------------------------------------------------------------------
   subroutine grid_read_darray_double(filename, varname, buf, buf_size, time_index)
-    use piolib_mod, only: PIO_setframe
-    use piodarray,  only: PIO_read_darray
+    use pio, only: PIO_setframe, PIO_read_darray
 
     ! Dummy arguments
     character(len=*),     intent(in) :: filename       ! PIO filename
@@ -1420,8 +1692,7 @@ contains
     call errorHandle( 'eam_grid_read_darray_double: Error reading variable '//trim(varname),ierr)
   end subroutine grid_read_darray_double
   subroutine grid_read_darray_float(filename, varname, buf, buf_size, time_index)
-    use piolib_mod, only: PIO_setframe
-    use piodarray,  only: PIO_read_darray
+    use pio, only: PIO_setframe, PIO_read_darray
 
     ! Dummy arguments
     character(len=*),     intent(in) :: filename       ! PIO filename
@@ -1456,8 +1727,7 @@ contains
     call errorHandle( 'eam_grid_read_darray_float: Error reading variable '//trim(varname),ierr)
   end subroutine grid_read_darray_float
   subroutine grid_read_darray_int(filename, varname, buf, buf_size, time_index)
-    use piolib_mod, only: PIO_setframe
-    use piodarray,  only: PIO_read_darray
+    use pio, only: PIO_setframe, PIO_read_darray
 
     ! Dummy arguments
     character(len=*),     intent(in) :: filename       ! PIO filename

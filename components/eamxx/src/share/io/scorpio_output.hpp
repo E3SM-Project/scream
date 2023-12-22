@@ -137,7 +137,8 @@ public:
   void restart (const std::string& filename);
   void init();
   void reset_dev_views();
-  void setup_output_file (const std::string& filename, const std::string& fp_precision);
+  void update_avg_cnt_view(const Field&, view_1d_dev& dev_view);
+  void setup_output_file (const std::string& filename, const std::string& fp_precision, const scorpio::FileMode mode);
   void run (const std::string& filename,
             const bool output_step, const bool checkpoint_step,
             const int nsteps_since_last_output,
@@ -149,6 +150,11 @@ public:
     return m_io_grid;
   }
 
+  // Option to add a logger
+  void set_logger(const std::shared_ptr<ekat::logger::LoggerBase>& atm_logger) {
+      m_atm_logger = atm_logger;
+  }
+
 protected:
   // Internal functions
   void set_grid (const std::shared_ptr<const AbstractGrid>& grid);
@@ -158,14 +164,18 @@ protected:
   std::shared_ptr<const fm_type> get_field_manager (const std::string& mode) const;
 
   void register_dimensions(const std::string& name);
-  void register_variables(const std::string& filename, const std::string& fp_precision);
+  void register_variables(const std::string& filename, const std::string& fp_precision, const scorpio::FileMode mode);
   void set_degrees_of_freedom(const std::string& filename);
   std::vector<scorpio::offset_t> get_var_dof_offsets (const FieldLayout& layout);
   void register_views();
-  Field get_field(const std::string& name, const std::string mode) const;
+  Field get_field(const std::string& name, const std::string& mode) const;
   void compute_diagnostic (const std::string& name, const bool allow_invalid_fields = false);
   void set_diagnostics();
-  void create_diagnostic (const std::string& diag_name);
+  std::shared_ptr<AtmosphereDiagnostic>
+  create_diagnostic (const std::string& diag_name);
+
+  // Tracking the averaging of any filled values:
+  void set_avg_cnt_tracking(const std::string& name, const std::string& avg_cnt_suffix, const FieldLayout& layout);
 
   // --- Internal variables --- //
   ekat::Comm                          m_comm;
@@ -182,10 +192,12 @@ protected:
 
   // How to combine multiple snapshots in the output: Instant, Max, Min, Average
   OutputAvgType     m_avg_type;
+  Real              m_avg_coeff_threshold = 0.5; // % of unfilled values required to not just assign value as FillValue
 
   // Internal maps to the output fields, how the columns are distributed, the file dimensions and the global ids.
   std::vector<std::string>                              m_fields_names;
-  std::map<std::string,std::string>                     m_fields_alt_name;
+  std::vector<std::string>                              m_avg_cnt_names;
+  std::map<std::string,std::string>                     m_field_to_avg_cnt_map;
   std::map<std::string,FieldLayout>                     m_layouts;
   std::map<std::string,int>                             m_dofs;
   std::map<std::string,std::pair<int,bool>>             m_dims;
@@ -198,13 +210,19 @@ protected:
   //   NetCDF: Numeric conversion not representable
   // Also, by default, don't pick max float, to avoid any overflow if the value
   // is used inside other calculation and/or remap.
-  float m_fill_value = DEFAULT_FILL_VALUE;
+  float m_fill_value = constants::DefaultFillValue<float>().value;
 
   // Local views of each field to be used for "averaging" output and writing to file.
   std::map<std::string,view_1d_host>    m_host_views_1d;
   std::map<std::string,view_1d_dev>     m_dev_views_1d;
+  std::map<std::string,view_1d_dev>     m_local_tmp_avg_cnt_views_1d;
+  std::map<std::string,view_1d_dev>     m_avg_coeff_views_1d;
 
   bool m_add_time_dim;
+  bool m_track_avg_cnt = false;
+
+  // The logger to be used throughout the ATM to log message
+  std::shared_ptr<ekat::logger::LoggerBase> m_atm_logger;
 };
 
 } //namespace scream

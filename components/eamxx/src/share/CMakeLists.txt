@@ -18,10 +18,13 @@ set(SHARE_SRC
   field/field_manager.cpp
   grid/abstract_grid.cpp
   grid/grids_manager.cpp
+  grid/grid_import_export.cpp
   grid/se_grid.cpp
   grid/point_grid.cpp
   grid/remap/abstract_remapper.cpp
   grid/remap/coarsening_remapper.cpp
+  grid/remap/horiz_interp_remapper_base.cpp
+  grid/remap/refining_remapper_p2p.cpp
   grid/remap/vertical_remapper.cpp
   grid/remap/horizontal_remap_utility.cpp
   property_checks/property_check.cpp
@@ -37,6 +40,13 @@ set(SHARE_SRC
   util/eamxx_time_interpolation.cpp
 )
 
+if (EAMXX_ENABLE_EXPERIMENTAL_CODE)
+  list (APPEND
+    SHARE_SRC
+    grid/remap/refining_remapper_rma.cpp
+  )
+endif()
+
 add_library(scream_share ${SHARE_SRC})
 set_target_properties(scream_share PROPERTIES
   Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules
@@ -44,9 +54,10 @@ set_target_properties(scream_share PROPERTIES
 target_include_directories(scream_share PUBLIC
   ${SCREAM_SRC_DIR}
   ${SCREAM_BIN_DIR}/src
+  ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}/modules
 )
-target_link_libraries(scream_share PUBLIC ekat gptl)
+target_link_libraries(scream_share PUBLIC ekat pioc)
 target_compile_options(scream_share PUBLIC
   $<$<COMPILE_LANGUAGE:Fortran>:${SCREAM_Fortran_FLAGS}>
 )

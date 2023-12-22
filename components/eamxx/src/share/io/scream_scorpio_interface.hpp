@@ -31,10 +31,12 @@ namespace scorpio {
   void eam_pio_finalize();
   /* Close a file currently open in scorpio */
   void eam_pio_closefile(const std::string& filename);
+  void eam_flush_file(const std::string& filename);
   /* Register a new file to be used for input/output with the scorpio module */
   void register_file(const std::string& filename, const FileMode mode);
   /* Sets the IO decompostion for all variables in a particular filename.  Required after all variables have been registered.  Called once per file. */
   int get_dimlen(const std::string& filename, const std::string& dimname);
+  bool has_dim(const std::string& filename, const std::string& dimname);
   bool has_variable (const std::string& filename, const std::string& varname);
   void set_decomp(const std::string& filename);
   /* Sets the degrees-of-freedom for a particular variable in a particular file.  Called once for each variable, for each file. */
@@ -49,6 +51,11 @@ namespace scorpio {
                          const std::vector<std::string>& var_dimensions,
                          const std::string& dtype, const std::string& pio_decomp_tag);
   void set_variable_metadata (const std::string& filename, const std::string& varname, const std::string& meta_name, const std::string& meta_val);
+  void set_variable_metadata (const std::string& filename, const std::string& varname, const std::string& meta_name, const float meta_val);
+  void set_variable_metadata (const std::string& filename, const std::string& varname, const std::string& meta_name, const double meta_val);
+  void get_variable_metadata (const std::string& filename, const std::string& varname, const std::string& meta_name, float& meta_val);
+  void get_variable_metadata (const std::string& filename, const std::string& varname, const std::string& meta_name, double& meta_val);
+  void get_variable_metadata (const std::string& filename, const std::string& varname, const std::string& meta_name, std::string& meta_val);
   /* Register a variable with a file.  Called during the file setup, for an input stream. */
   ekat::any get_any_attribute (const std::string& filename, const std::string& att_name);
   ekat::any get_any_attribute (const std::string& filename, const std::string& var_name, const std::string& att_name);
@@ -100,9 +107,12 @@ extern "C" {
   bool is_enddef_c2f(const char*&& filename);
   double read_time_at_index_c2f(const char*&& filename, const int& time_index);
   double read_curr_time_c2f(const char*&& filename);
+  /* Query a netCDF file for the metadata associated w/ a variable */
+  float get_variable_metadata_float_c2f (const char*&& filename, const char*&& varname, const char*&& meta_name);
+  double get_variable_metadata_double_c2f (const char*&& filename, const char*&& varname, const char*&& meta_name);
 } // extern "C"
 
 } // namespace scorpio
 } // namespace scream
 
-#endif // define SCREAM_SCORPIO_INTERFACE_HPP 
+#endif // define SCREAM_SCORPIO_INTERFACE_HPP

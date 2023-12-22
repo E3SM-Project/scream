@@ -102,7 +102,7 @@ public:
         // to tracer group in postprocessing.
         // TODO: remove *_copy views once SHOC can request a subset of tracers.
         tke_copy(i,k) = tke(i,k);
-        qc_copy(i,k)  = qc(i,k); 
+        qc_copy(i,k)  = qc(i,k);
 
         qw(i,k) = qv(i,k) + qc(i,k);
 
@@ -147,18 +147,13 @@ public:
       SHF::linear_interp(team,zt_grid_s,zi_grid_s,rrho_s,rrho_i_s,nlev,nlev+1,0);
       team.team_barrier();
 
-      // For now, we are considering dy=dx. Here, we
-      // will need to compute dx/dy instead of cell_length
-      // if we have dy!=dx.
-      cell_length(i) = PF::calculate_dx_from_area(area(i),lat(i));
-
       const auto exner_int = PF::exner_function(p_int(i,nlevi_v)[nlevi_p]);
       const auto inv_exner_int_surf = 1/exner_int;
 
       wpthlp_sfc(i) = (surf_sens_flux(i)/(cpair*rrho_i(i,nlevi_v)[nlevi_p]))*inv_exner_int_surf;
       wprtp_sfc(i)  = surf_evap(i)/rrho_i(i,nlevi_v)[nlevi_p];
-      upwp_sfc(i)   = surf_mom_flux(i,0)/rrho_i(i,nlevi_v)[nlevi_p];
-      vpwp_sfc(i)   = surf_mom_flux(i,1)/rrho_i(i,nlevi_v)[nlevi_p];
+      upwp_sfc(i) = surf_mom_flux(i,0)/rrho_i(i,nlevi_v)[nlevi_p];
+      vpwp_sfc(i) = surf_mom_flux(i,1)/rrho_i(i,nlevi_v)[nlevi_p];
 
       const int num_qtracer_packs = ekat::npack<Spack>(num_qtracers);
       Kokkos::parallel_for(Kokkos::TeamVectorRange(team, num_qtracer_packs), [&] (const Int& q) {
@@ -169,48 +164,44 @@ public:
     // Local variables
     int ncol, nlev, num_qtracers;
     Real z_surf;
-    view_1d_const        area;
-    view_1d_const        lat;
-    view_2d_const        T_mid;
-    view_2d_const        p_mid;
-    view_2d_const        p_int;
-    view_2d_const        pseudo_density;
-    view_2d_const        omega;
-    view_1d_const        phis;
-    view_1d_const        surf_sens_flux;
-    view_1d_const        surf_evap;
-    sview_2d_const       surf_mom_flux;
-    view_3d              qtracers;
-    view_2d              qv;
-    view_2d_const        qc;
-    view_2d              qc_copy;
-    view_2d              z_mid;
-    view_2d              z_int;
-    view_1d              cell_length;
-    view_2d              shoc_s;
-    view_2d              tke;
-    view_2d              tke_copy;
-    view_2d              rrho;
-    view_2d              rrho_i;
-    view_2d              thv;
-    view_2d              dz;
-    view_2d              zt_grid;
-    view_2d              zi_grid;
-    view_1d              wpthlp_sfc;
-    view_1d              wprtp_sfc;
-    view_1d              upwp_sfc;
-    view_1d              vpwp_sfc;
-    view_2d              wtracer_sfc;
-    view_2d              wm_zt;
-    view_2d              inv_exner;
-    view_2d              thlm;
-    view_2d              qw;
-    view_2d              cloud_frac;
+    view_2d_const  T_mid;
+    view_2d_const  p_mid;
+    view_2d_const  p_int;
+    view_2d_const  pseudo_density;
+    view_2d_const  omega;
+    view_1d_const  phis;
+    view_1d_const  surf_sens_flux;
+    view_1d_const  surf_evap;
+    sview_2d_const surf_mom_flux;
+    view_3d        qtracers;
+    view_2d        qv;
+    view_2d_const  qc;
+    view_2d        qc_copy;
+    view_2d        z_mid;
+    view_2d        z_int;
+    view_2d        shoc_s;
+    view_2d        tke;
+    view_2d        tke_copy;
+    view_2d        rrho;
+    view_2d        rrho_i;
+    view_2d        thv;
+    view_2d        dz;
+    view_2d        zt_grid;
+    view_2d        zi_grid;
+    view_1d        wpthlp_sfc;
+    view_1d        wprtp_sfc;
+    view_1d        upwp_sfc;
+    view_1d        vpwp_sfc;
+    view_2d        wtracer_sfc;
+    view_2d        wm_zt;
+    view_2d        inv_exner;
+    view_2d        thlm;
+    view_2d        qw;
+    view_2d        cloud_frac;
 
     // Assigning local variables
     void set_variables(const int ncol_, const int nlev_, const int num_qtracers_,
                        const Real z_surf_,
-                       const view_1d_const& area_, const view_1d_const& lat_,
                        const view_2d_const& T_mid_, const view_2d_const& p_mid_, const view_2d_const& p_int_, const view_2d_const& pseudo_density_,
                        const view_2d_const& omega_,
                        const view_1d_const& phis_, const view_1d_const& surf_sens_flux_, const view_1d_const& surf_evap_,
@@ -219,7 +210,6 @@ public:
                        const view_2d& qv_, const view_2d_const& qc_, const view_2d& qc_copy_,
                        const view_2d& tke_, const view_2d& tke_copy_,
                        const view_2d& z_mid_, const view_2d& z_int_,
-                       const view_1d& cell_length_,
                        const view_2d& dse_, const view_2d& rrho_, const view_2d& rrho_i_,
                        const view_2d& thv_, const view_2d& dz_,const view_2d& zt_grid_,const view_2d& zi_grid_, const view_1d& wpthlp_sfc_,
                        const view_1d& wprtp_sfc_,const view_1d& upwp_sfc_,const view_1d& vpwp_sfc_, const view_2d& wtracer_sfc_,
@@ -230,8 +220,6 @@ public:
       num_qtracers = num_qtracers_;
       z_surf = z_surf_;
       // IN
-      area = area_;
-      lat  = lat_;
       T_mid = T_mid_;
       p_mid = p_mid_;
       p_int = p_int_;
@@ -251,7 +239,6 @@ public:
       tke_copy = tke_copy_;
       z_mid = z_mid_;
       z_int = z_int_;
-      cell_length = cell_length_;
       rrho = rrho_;
       rrho_i = rrho_i_;
       thv = thv_;
@@ -294,7 +281,7 @@ public:
 
         cldfrac_liq(i,k) = ekat::min(cldfrac_liq(i,k), 1);
 
-        //P3 uses inv_qc_relvar, P3 is using dry mmrs, but 
+        //P3 uses inv_qc_relvar, P3 is using dry mmrs, but
         //wet<->dry conversion is a constant factor that cancels out in mean(qc)^2/mean(qc'*qc').
         inv_qc_relvar(i,k) = 1;
         const auto condition = (qc(i,k) != 0 && qc2(i,k) != 0);
@@ -389,21 +376,20 @@ public:
   // Structure for storing local variables initialized using the ATMBufferManager
   struct Buffer {
 #ifndef SCREAM_SMALL_KERNELS
-    static constexpr int num_1d_scalar_ncol = 5;
+    static constexpr int num_1d_scalar_ncol = 4;
 #else
-    static constexpr int num_1d_scalar_ncol = 18;
+    static constexpr int num_1d_scalar_ncol = 17;
 #endif
     static constexpr int num_1d_scalar_nlev = 1;
 #ifndef SCREAM_SMALL_KERNELS
     static constexpr int num_2d_vector_mid  = 18;
     static constexpr int num_2d_vector_int  = 12;
 #else
-    static constexpr int num_2d_vector_mid  = 22;
+    static constexpr int num_2d_vector_mid  = 23;
     static constexpr int num_2d_vector_int  = 13;
 #endif
     static constexpr int num_2d_vector_tr   = 1;
 
-    uview_1d<Real> cell_length;
     uview_1d<Real> wpthlp_sfc;
     uview_1d<Real> wprtp_sfc;
     uview_1d<Real> upwp_sfc;
@@ -460,6 +446,7 @@ public:
 #ifdef SCREAM_SMALL_KERNELS
     uview_2d<Spack> rho_zt;
     uview_2d<Spack> shoc_qv;
+    uview_2d<Spack> tabs;
     uview_2d<Spack> dz_zt;
     uview_2d<Spack> dz_zi;
     uview_2d<Spack> tkh;
@@ -474,6 +461,12 @@ protected:
 #endif
 
   void initialize_impl (const RunType run_type);
+
+  // Update flux (if necessary)
+  void check_flux_state_consistency(const double dt);
+
+  // Apply TMS drag coeff to shoc_main inputs (if necessary)
+  void apply_turbulent_mountain_stress ();
 
 protected:
 
@@ -499,9 +492,6 @@ protected:
   Int m_num_tracers;
   Int hdtime;
 
-  KokkosTypes<DefaultDevice>::view_1d<const Real> m_cell_area;
-  KokkosTypes<DefaultDevice>::view_1d<const Real> m_cell_lat;
-
   // Struct which contains local variables
   Buffer m_buffer;
 
@@ -510,6 +500,7 @@ protected:
   SHF::SHOCInputOutput input_output;
   SHF::SHOCOutput output;
   SHF::SHOCHistoryOutput history_output;
+  SHF::SHOCRuntime runtime_options;
 #ifdef SCREAM_SMALL_KERNELS
   SHF::SHOCTemporaries temporaries;
 #endif

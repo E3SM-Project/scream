@@ -19,7 +19,7 @@ module PhosphorusStateUpdate1Mod
   use elm_varctl             , only : use_pflotran, pf_cmode
   use elm_varctl             , only : nu_com
   ! forest fertilization experiment
-  use clm_time_manager       , only : get_curr_date
+  use elm_time_manager       , only : get_curr_date
   use CNStateType            , only : fert_type , fert_continue, fert_dose, fert_start, fert_end
   use elm_varctl             , only : forest_fert_exp
   use elm_varctl             , only : NFIX_PTASE_plant
@@ -162,6 +162,19 @@ contains
                end do
             end do
          end if
+
+        ! P fertilization for crops
+      if ( crop_prog )then
+         do j = 1, nlevdecomp
+
+            ! column loop
+            do fc = 1,num_soilc
+               c = filter_soilc(fc)
+                  ! P fertilization
+                  col_ps%solutionp_vr(c,j) = col_ps%solutionp_vr(c,j) + col_pf%fert_p_to_sminp(c)*dt * ndep_prof(c,j)
+            end do
+         end do
+      end if
 
       ! decomposition fluxes
       do k = 1, ndecomp_cascade_transitions

@@ -107,7 +107,8 @@ init (const ekat::ParameterList& params,
   for (const auto& it : m_layouts) {
     m_fields_names.push_back(it.first);
     EKAT_REQUIRE_MSG (m_host_views_1d.count(it.first)==1,
-        "Error! Input layouts and views maps do not store the same keys.\n");
+        "Error! Input layouts and views maps do not store the same keys.\n"
+	"    layout = " + it.first);
   }
 
   // Init scorpio internal structures
@@ -190,11 +191,6 @@ set_grid (const std::shared_ptr<const AbstractGrid>& grid)
         "   - num global dofs: " + std::to_string(grid->get_num_global_dofs()) + "\n");
   }
 
-  EKAT_REQUIRE_MSG(grid->get_comm().size()<=grid->get_num_global_dofs(),
-      "Error! PIO interface requires the size of the IO MPI group to be\n"
-      "       no greater than the global number of columns.\n"
-      "       Consider decreasing the size of IO MPI group.\n");
-
   // The grid is good. Store it.
   m_io_grid = grid;
 }
@@ -206,6 +202,10 @@ set_grid (const std::shared_ptr<const AbstractGrid>& grid)
 //       running eam_update_timesnap.
 void AtmosphereInput::read_variables (const int time_index)
 {
+  auto func_start = std::chrono::steady_clock::now();
+  if (m_atm_logger) {
+    m_atm_logger->info("[EAMxx::scorpio_input] Reading variables from file:\n\t " + m_filename + " ...\n");
+  }
   EKAT_REQUIRE_MSG (m_inited_with_views || m_inited_with_fields,
       "Error! Scorpio structures not inited yet. Did you forget to call 'init(..)'?\n");
 
@@ -318,6 +318,11 @@ void AtmosphereInput::read_variables (const int time_index)
       f.sync_to_dev();
     }
   }
+  auto func_finish = std::chrono::steady_clock::now();
+  if (m_atm_logger) {
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(func_finish - func_start)/1000.0;
+    m_atm_logger->info("[EAMxx::scorpio_input] Reading variables from file:\n\t " + m_filename + " ... done! (Elapsed time = " + std::to_string(duration.count()) +" seconds)\n");
+  }
 } 
 
 /* ---------------------------------------------------------- */
@@ -408,21 +413,18 @@ AtmosphereInput::get_vec_of_dims(const FieldLayout& layout)
 std::string AtmosphereInput::
 get_io_decomp(const FieldLayout& layout)
 {
-  // Given a vector of dimensions names, create a unique decomp string to register with I/O
-  // Note: We are hard-coding for only REAL input here.
-  // TODO: would be to allow for other dtypes
-  std::string io_decomp_tag = (std::string("Real-") + m_io_grid->name() + "-" +
-                               std::to_string(m_io_grid->get_num_global_dofs()));
-  auto dims_names = get_vec_of_dims(layout);
-  for (size_t i=0; i<dims_names.size(); ++i) {
-    io_decomp_tag += "-" + dims_names[i];
-    // If tag==CMP, we already attached the length to the tag name
-    if (layout.tag(i)!=ShortFieldTagsNames::CMP) {
-      io_decomp_tag += "_" + std::to_string(layout.dim(i));
-    }
-  }
+  std::string decomp_tag = "dt=real,grid-idx=" + std::to_string(m_io_grid->get_unique_grid_id()) + ",layout=";
 
-  return io_decomp_tag;
+  std::vector<int> range(layout.rank());
+  std::iota(range.begin(),range.end(),0);
+  auto tag_and_dim = [&](int i) {
+    return m_io_grid->get_dim_name(layout.tag(i)) +
+           std::to_string(layout.dim(i));
+  };
+
+  decomp_tag += ekat::join (range, tag_and_dim,"-");
+
+  return decomp_tag;
 }
 
 /* ---------------------------------------------------------- */
@@ -440,6 +442,11 @@ void AtmosphereInput::set_degrees_of_freedom()
 std::vector<scorpio::offset_t>
 AtmosphereInput::get_var_dof_offsets(const FieldLayout& layout)
 {
+  // It may be that this MPI ranks owns no chunk of the field
+  if (layout.size()==0) {
+    return {};
+  }
+
   std::vector<scorpio::offset_t> var_dof(layout.size());
 
   // Gather the offsets of the dofs of this variable w.r.t. the *global* array.

@@ -12,9 +12,9 @@ module elm_initializeMod
   use elm_varctl       , only : nsrest, nsrStartup, nsrContinue, nsrBranch
   use elm_varctl       , only : create_glacier_mec_landunit, iulog
   use elm_varctl       , only : use_lch4, use_cn, use_voc, use_c13, use_c14
-  use elm_varctl       , only : use_fates, use_betr, use_fates_sp
+  use elm_varctl       , only : use_fates, use_betr, use_fates_sp, use_fan
   use elm_varsur       , only : wt_lunit, urban_valid, wt_nat_patch, wt_cft, wt_glc_mec, topo_glc_mec,firrig,f_surf,f_grd 
-  use elm_varsur       , only : fert_cft
+  use elm_varsur       , only : fert_cft, fert_p_cft
   use elm_varsur       , only : wt_tunit, elv_tunit, slp_tunit,asp_tunit,num_tunit_per_grd
   use perf_mod         , only : t_startf, t_stopf
   !use readParamsMod    , only : readParameters
@@ -78,13 +78,14 @@ contains
     use surfrdMod                 , only: surfrd_get_grid_conn, surfrd_topounit_data
     use elm_varctl                , only: lateral_connectivity, domain_decomp_type
     use decompInitMod             , only: decompInit_lnd_using_gp, decompInit_ghosts
+    use decompInitMod             , only: decompInit_lnd_simple
     use domainLateralMod          , only: ldomain_lateral, domainlateral_init
     use SoilTemperatureMod        , only: init_soil_temperature
     use ExternalModelInterfaceMod , only: EMI_Determine_Active_EMs
     use dynSubgridControlMod      , only: dynSubgridControl_init
     use filterMod                 , only: allocFilters
     use reweightMod               , only: reweight_wrapup
-    use topounit_varcon           , only: max_topounits, has_topounit, topounit_varcon_init    
+    use topounit_varcon           , only: max_topounits, has_topounit, topounit_varcon_init
     use elm_varctl                , only: use_top_solar_rad
     !
     ! !LOCAL VARIABLES:
@@ -191,7 +192,10 @@ contains
        deallocate(amask)
     case ("graph_partitioning")
        call decompInit_lnd_using_gp(ni, nj, cellsOnCell, nCells_loc, maxEdges, amask)
-    case default
+    case ("simple")
+      call decompInit_lnd_simple(ni, nj, amask)
+      deallocate(amask)
+   case default
        call endrun(msg='ERROR elm_initializeMod: '//&
             'Unsupported domain_decomp_type = ' // trim(domain_decomp_type))
     end select
@@ -267,6 +271,7 @@ contains
     allocate (wt_nat_patch (begg:endg,1:max_topounits, surfpft_lb:surfpft_ub ))
     allocate (wt_cft       (begg:endg,1:max_topounits, cft_lb:cft_ub       ))
     allocate (fert_cft     (begg:endg,1:max_topounits, cft_lb:cft_ub       ))
+    allocate (fert_p_cft   (begg:endg,1:max_topounits, cft_lb:cft_ub       ))
     if (create_glacier_mec_landunit) then
        allocate (wt_glc_mec  (begg:endg,1:max_topounits, maxpatch_glcmec))
        allocate (topo_glc_mec(begg:endg,1:max_topounits, maxpatch_glcmec))
@@ -459,9 +464,9 @@ contains
     use elm_varctl            , only : finidat, finidat_interp_source, finidat_interp_dest, fsurdat
     use elm_varctl            , only : use_century_decomp, single_column, scmlat, scmlon, use_cn
     use elm_varorb            , only : eccen, mvelpp, lambm0, obliqr
-    use clm_time_manager      , only : get_step_size, get_curr_calday
-    use clm_time_manager      , only : get_curr_date, get_nstep, advance_timestep
-    use clm_time_manager      , only : timemgr_init, timemgr_restart_io, timemgr_restart
+    use elm_time_manager      , only : get_step_size, get_curr_calday
+    use elm_time_manager      , only : get_curr_date, get_nstep, advance_timestep
+    use elm_time_manager      , only : timemgr_init, timemgr_restart_io, timemgr_restart
     use controlMod            , only : nlfilename
     use decompMod             , only : get_proc_clumps, get_proc_bounds, get_clump_bounds, bounds_type
     use domainMod             , only : ldomain
@@ -498,10 +503,11 @@ contains
     use elm_varctl                          , only : fates_spitfire_mode
     use elm_interface_pflotranMod           , only : elm_pf_interface_init !, elm_pf_set_restart_stamp
     use tracer_varcon         , only : is_active_betr_bgc
-    use clm_time_manager      , only : is_restart
+    use elm_time_manager      , only : is_restart
     use ELMbetrNLMod          , only : betr_namelist_buffer
     use ELMFatesInterfaceMod  , only: ELMFatesTimesteps
     use FATESFireFactoryMod   , only : scalar_lightning
+    use FanStreamMod          , only : fanstream_init, fanstream_interp
     !
     ! !ARGUMENTS
     implicit none
@@ -884,6 +890,12 @@ contains
        call ndep_init(bounds_proc, NLFilename)
        call ndep_interp(bounds_proc, atm2lnd_vars)
        call t_stopf('init_ndep')
+       if ( use_fan ) then
+          call t_startf('init_fandep')
+          call fanstream_init(bounds_proc, NLFilename)
+          call fanstream_interp(bounds_proc, atm2lnd_vars)
+          call t_stopf('init_fandep')
+       end if
     end if
 
     ! ------------------------------------------------------------------------

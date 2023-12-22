@@ -108,16 +108,18 @@ contains
 
     character(len=256)            :: filename
     character(len=256)            :: varname
-    integer(kind=pio_offset_kind) :: dof_vec_f90(dof_len)
     integer                       :: ii
+    integer(kind=pio_offset_kind), allocatable :: dof_vec_f90(:)
 
     call convert_c_string(filename_in,filename)
     call convert_c_string(varname_in,varname)
     ! Need to add 1 to the dof_vec because C++ starts indices at 0 not 1:
+    allocate(dof_vec_f90(dof_len))
     do ii = 1,dof_len
       dof_vec_f90(ii) = dof_vec(ii) + 1
     end do
     call set_dof(trim(filename),trim(varname),dof_len,dof_vec_f90)
+    deallocate(dof_vec_f90)
   end subroutine set_dof_c2f
 !=====================================================================!
   subroutine eam_pio_closefile_c2f(filename_in) bind(c)
@@ -129,6 +131,16 @@ contains
     call eam_pio_closefile(trim(filename))
 
   end subroutine eam_pio_closefile_c2f
+!=====================================================================!
+  subroutine eam_pio_flush_file_c2f(filename_in) bind(c)
+    use scream_scorpio_interface, only : eam_pio_flush_file
+    type(c_ptr), intent(in) :: filename_in
+    character(len=256)      :: filename
+
+    call convert_c_string(filename_in,filename)
+    call eam_pio_flush_file(trim(filename))
+
+  end subroutine eam_pio_flush_file_c2f
 !=====================================================================!
   subroutine pio_update_time_c2f(filename_in,time) bind(c)
     use scream_scorpio_interface, only : eam_update_time
@@ -176,8 +188,8 @@ contains
 
   end subroutine register_variable_c2f
 !=====================================================================!
-  subroutine set_variable_metadata_c2f(filename_in, varname_in, metaname_in, metaval_in) bind(c)
-    use scream_scorpio_interface, only : set_variable_metadata
+  subroutine set_variable_metadata_char_c2f(filename_in, varname_in, metaname_in, metaval_in) bind(c)
+    use scream_scorpio_interface, only : set_variable_metadata_char
     type(c_ptr), intent(in)                :: filename_in
     type(c_ptr), intent(in)                :: varname_in
     type(c_ptr), intent(in)                :: metaname_in
@@ -193,9 +205,118 @@ contains
     call convert_c_string(metaname_in,metaname)
     call convert_c_string(metaval_in,metaval)
 
-    call set_variable_metadata(filename,varname,metaname,metaval)
+    call set_variable_metadata_char(filename,varname,metaname,metaval)
 
-  end subroutine set_variable_metadata_c2f
+  end subroutine set_variable_metadata_char_c2f
+!=====================================================================!
+  subroutine set_variable_metadata_float_c2f(filename_in, varname_in, metaname_in, metaval_in) bind(c)
+    use scream_scorpio_interface, only : set_variable_metadata_float
+    type(c_ptr), intent(in)                :: filename_in
+    type(c_ptr), intent(in)                :: varname_in
+    type(c_ptr), intent(in)                :: metaname_in
+    real(kind=c_float), value, intent(in)  :: metaval_in
+
+    character(len=256) :: filename
+    character(len=256) :: varname
+    character(len=256) :: metaname
+
+    call convert_c_string(filename_in,filename)
+    call convert_c_string(varname_in,varname)
+    call convert_c_string(metaname_in,metaname)
+
+    call set_variable_metadata_float(filename,varname,metaname,metaval_in)
+
+  end subroutine set_variable_metadata_float_c2f
+!=====================================================================!
+  subroutine set_variable_metadata_double_c2f(filename_in, varname_in, metaname_in, metaval_in) bind(c)
+    use scream_scorpio_interface, only : set_variable_metadata_double
+    type(c_ptr), intent(in)                :: filename_in
+    type(c_ptr), intent(in)                :: varname_in
+    type(c_ptr), intent(in)                :: metaname_in
+    real(kind=c_double), value, intent(in) :: metaval_in
+
+    character(len=256) :: filename
+    character(len=256) :: varname
+    character(len=256) :: metaname
+
+    call convert_c_string(filename_in,filename)
+    call convert_c_string(varname_in,varname)
+    call convert_c_string(metaname_in,metaname)
+
+    call set_variable_metadata_double(filename,varname,metaname,metaval_in)
+
+  end subroutine set_variable_metadata_double_c2f
+!=====================================================================!
+  function get_variable_metadata_float_c2f(filename_in, varname_in, metaname_in) result(metaval_out) bind(c)
+    use scream_scorpio_interface, only : get_variable_metadata_float
+    type(c_ptr), intent(in)                :: filename_in
+    type(c_ptr), intent(in)                :: varname_in
+    type(c_ptr), intent(in)                :: metaname_in
+    real(kind=c_float)                     :: metaval_out
+
+    character(len=256) :: filename
+    character(len=256) :: varname
+    character(len=256) :: metaname
+
+    call convert_c_string(filename_in,filename)
+    call convert_c_string(varname_in,varname)
+    call convert_c_string(metaname_in,metaname)
+
+    metaval_out = get_variable_metadata_float(filename,varname,metaname)
+
+  end function get_variable_metadata_float_c2f
+!=====================================================================!
+  function get_variable_metadata_double_c2f(filename_in, varname_in, metaname_in) result(metaval_out) bind(c)
+    use scream_scorpio_interface, only : get_variable_metadata_double
+    type(c_ptr), intent(in)                :: filename_in
+    type(c_ptr), intent(in)                :: varname_in
+    type(c_ptr), intent(in)                :: metaname_in
+    real(kind=c_double)                    :: metaval_out
+
+    character(len=256) :: filename
+    character(len=256) :: varname
+    character(len=256) :: metaname
+
+    call convert_c_string(filename_in,filename)
+    call convert_c_string(varname_in,varname)
+    call convert_c_string(metaname_in,metaname)
+
+    metaval_out = get_variable_metadata_double(filename,varname,metaname)
+
+  end function get_variable_metadata_double_c2f
+!=====================================================================!
+  subroutine get_variable_metadata_char_c2f(filename_in, varname_in, metaname_in, metaval_out) bind(c)
+    use scream_scorpio_interface, only : get_variable_metadata_char
+    use iso_c_binding, only: C_NULL_CHAR, c_char, c_f_pointer
+    type(c_ptr), intent(in) :: filename_in
+    type(c_ptr), intent(in) :: varname_in
+    type(c_ptr), intent(in) :: metaname_in
+    type(c_ptr), intent(in) :: metaval_out
+
+    character(len=256) :: filename
+    character(len=256) :: varname
+    character(len=256) :: metaname
+    character(len=256) :: metaval
+    character(len=256, kind=c_char), pointer :: temp_string
+    integer :: slen
+
+    call c_f_pointer(metaval_out,temp_string)
+
+    call convert_c_string(filename_in,filename)
+    call convert_c_string(varname_in,varname)
+    call convert_c_string(metaname_in,metaname)
+
+    metaval = get_variable_metadata_char(filename,varname,metaname)
+
+    slen = len(trim(metaval))
+    ! If string is 255 or less, add terminating char. If not, it's still
+    ! ok (the C++ string will have length=max_length=256)
+    if (slen .le. 255) then
+      temp_string = trim(metaval) // C_NULL_CHAR
+    else
+      temp_string = metaval
+    endif
+  end subroutine get_variable_metadata_char_c2f
 !=====================================================================!
   subroutine register_dimension_c2f(filename_in, shortname_in, longname_in, length, partitioned) bind(c)
     use scream_scorpio_interface, only : register_dimension

@@ -9,11 +9,38 @@ import xml.etree.ElementTree as ET # pylint: disable=unused-import
 
 # Add path to cime_config folder
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "cime_config"))
-from eamxx_buildnml_impl import check_value, is_array_type
+from eamxx_buildnml_impl import check_value, is_array_type, get_child, find_node
+from eamxx_buildnml_impl import gen_atm_proc_group
 from utils import expect, run_cmd_no_fail
 
 ATMCHANGE_SEP = "-ATMCHANGE_SEP-"
+ATMCHANGE_ALL = "__ALL__"
 ATMCHANGE_BUFF_XML_NAME = "SCREAM_ATMCHANGE_BUFFER"
+
+###############################################################################
+def apply_atm_procs_list_changes_from_buffer(case, xml):
+###############################################################################
+    atmchg_buffer = case.get_value(ATMCHANGE_BUFF_XML_NAME)
+    if atmchg_buffer:
+        atmchgs, atmchgs_all = unbuffer_changes(case)
+
+        expect (len(atmchgs)==len(atmchgs_all),"Failed to unbuffer changes from SCREAM_ATMCHANGE_BUFFER")
+        for chg, to_all in zip(atmchgs,atmchgs_all):
+            if "atm_procs_list" in chg:
+                expect (not to_all, "Makes no sense to change 'atm_procs_list' for all groups")
+                atm_config_chg_impl(xml, chg, all_matches=False)
+
+###############################################################################
+def apply_non_atm_procs_list_changes_from_buffer(case, xml):
+###############################################################################
+    atmchg_buffer = case.get_value(ATMCHANGE_BUFF_XML_NAME)
+    if atmchg_buffer:
+        atmchgs, atmchgs_all = unbuffer_changes(case)
+
+        expect (len(atmchgs)==len(atmchgs_all),"Failed to unbuffer changes from SCREAM_ATMCHANGE_BUFFER")
+        for chg, to_all in zip(atmchgs,atmchgs_all):
+            if "atm_procs_list" not in chg:
+                atm_config_chg_impl(xml, chg, all_matches=to_all)
 
 ###############################################################################
 def buffer_changes(changes, all_matches=False):
@@ -23,9 +50,12 @@ def buffer_changes(changes, all_matches=False):
     are what goes to atm_config_chg_impl.
     """
     # Commas confuse xmlchange and so need to be escaped.
-    changes_str = ATMCHANGE_SEP.join(changes).replace(",",r"\,")
     if all_matches:
-        changes_str += f"{ATMCHANGE_SEP}--all"
+        changes_temp = [c + ATMCHANGE_ALL for c in changes]
+        changes_str = ATMCHANGE_SEP.join(changes_temp).replace(",",r"\,")
+    else:
+        #  changes_str += f"{ATMCHANGE_SEP}--all"
+        changes_str = ATMCHANGE_SEP.join(changes).replace(",",r"\,")
 
     run_cmd_no_fail(f"./xmlchange --append {ATMCHANGE_BUFF_XML_NAME}='{changes_str}{ATMCHANGE_SEP}'")
 
@@ -36,27 +66,15 @@ def unbuffer_changes(case):
     From a case, get a list of raw changes. Returns (changes, all_matches_flag)
     """
     atmchg_buffer = case.get_value(ATMCHANGE_BUFF_XML_NAME)
-    atmchgs = [item.replace(r"\,", ",").strip() for item in atmchg_buffer.split(ATMCHANGE_SEP) if item.strip()]
-    all_matches = "--all" in atmchgs
-    if all_matches:
-        atmchgs.remove("--all")
+    atmchgs = []
+    atmchgs_all = []
+    for item in atmchg_buffer.split(ATMCHANGE_SEP):
+        if item.strip():
+            atmchgs_all.append(ATMCHANGE_ALL in item)
+            atmchgs.append(item.replace(ATMCHANGE_ALL,"").replace(r"\,", ",").strip())
 
-    return atmchgs, all_matches
+    return atmchgs, atmchgs_all
 
-###############################################################################
-def apply_buffer(case):
-###############################################################################
-    """
-    From a case, retrieve the buffered changes and re-apply them via atmchange
-    """
-    atmchg_buffer = case.get_value(ATMCHANGE_BUFF_XML_NAME)
-    caseroot      = case.get_value("CASEROOT")
-    if atmchg_buffer:
-        atmchgs, all_matches = unbuffer_changes(case)
-        # Put single quotes around changes to avoid shell processing syntax
-        atmchg_args = " ".join([f"'{item.strip()}'" for item in atmchgs])
-
-        run_cmd_no_fail("{}/atmchange {} {} --no-buffer".format(caseroot, atmchg_args, "--all" if all_matches else ""))
 
 ###############################################################################
 def reset_buffer():
@@ -115,11 +133,104 @@ def get_xml_nodes(xml_root, name):
     return result
 
 ###############################################################################
-def apply_change(node, new_value, append_this):
+def modify_ap_list(xml_root, group, ap_list_str, append_this):
+###############################################################################
+    """
+    Modify the atm_procs_list entry of this XML node (which is an atm proc group).
+    This routine can only be used to add an atm proc group OR to remove some
+    atm procs.
+    >>> xml = '''
+    ... <root>
+    ...     <atmosphere_processes_defaults>
+    ...         <atm_proc_group>
+    ...             <atm_procs_list type="array(string)"/>
+    ...         </atm_proc_group>
+    ...         <p1>
+    ...             <my_param>1</my_param>
+    ...         </p1>
+    ...         <p2>
+    ...             <my_param>2</my_param>
+    ...         </p2>
+    ...     </atmosphere_processes_defaults>
+    ... </root>
+    ... '''
+    >>> from eamxx_buildnml_impl import has_child
+    >>> import xml.etree.ElementTree as ET
+    >>> tree = ET.fromstring(xml)
+    >>> node = ET.Element("my_group")
+    >>> node.append(ET.Element("atm_procs_list"))
+    >>> get_child(node,"atm_procs_list").text = ""
+    >>> modify_ap_list(tree,node,"p1,p2",False)
+    True
+    >>> get_child(node,"atm_procs_list").text
+    'p1,p2'
+    >>> modify_ap_list(tree,node,"p1",True)
+    True
+    >>> get_child(node,"atm_procs_list").text
+    'p1,p2,p1'
+    >>> modify_ap_list(tree,node,"p1,p3",False)
+    Traceback (most recent call last):
+    ValueError: ERROR: Unrecognized atm proc name 'p3'. To declare a new group, prepend and append '_' to the name.
+    >>> modify_ap_list(tree,node,"p1,_my_group_",False)
+    True
+    >>> get_child(node,"atm_procs_list").text
+    'p1,_my_group_'
+    >>> defaults = get_child(tree,'atmosphere_processes_defaults')
+    >>> has_child(defaults,'_my_group_')
+    True
+    """
+    curr_apl = get_child(group,"atm_procs_list")
+    if curr_apl.text==ap_list_str:
+        return False
+
+    ap_list = ap_list_str.split(",")
+    expect (len(ap_list)==len(set(ap_list)),
+            "Input list of atm procs contains repetitions")
+
+    # If we're here b/c of a manual call of atmchange from command line, this will be None,
+    # since we don't have this node in the genereated XML file. But in that case, we don't
+    # have to actually add the new nodes, we can simply just modify the atm_procs_list entry
+    # If, however, we're calling this from buildnml, then what we are passed in is the XML
+    # tree from namelists_defaults_scream.xml, so this section *will* be present. And we
+    # need to add the new atm procs group as children, so that buildnml knows how to build
+    # them
+    ap_defaults = find_node(xml_root,"atmosphere_processes_defaults")
+    if ap_defaults is not None:
+
+        # Figure out which aps in the list are new groups and which ones already
+        # exist in the defaults
+        add_aps = [n for n in ap_list if n not in curr_apl.text.split(',')]
+        new_aps = [n for n in add_aps if find_node(ap_defaults,n) is None]
+
+        for ap in new_aps:
+            expect (ap[0]=="_" and ap[-1]=="_" and len(ap)>2, exc_type=ValueError,
+                    error_msg=f"Unrecognized atm proc name '{ap}'. To declare a new group, prepend and append '_' to the name.")
+            group = gen_atm_proc_group("", ap_defaults)
+            group.tag = ap
+            
+            ap_defaults.append(group)
+
+    # Update the 'atm_procs_list' in this node
+    if append_this:
+        curr_apl.text = ','.join(curr_apl.text.split(",")+ap_list)
+    else:
+        curr_apl.text = ','.join(ap_list)
+    return True
+
+###############################################################################
+def apply_change(xml_root, node, new_value, append_this):
 ###############################################################################
     any_change = False
 
+    # User can change the list of atm procs in a group doing ./atmchange group_name=a,b,c
+    # If we detect that this node is an atm proc group, don't modify the text, but do something els
+    if node.tag=="atm_procs_list":
+        parent_map = create_parent_map(xml_root)
+        group = get_parents(node,parent_map)[-1]
+        return modify_ap_list (xml_root,group,new_value,append_this)
+
     if append_this:
+
         expect ("type" in node.attrib.keys(),
                 f"Error! Missing type information for {node.tag}")
         type_ = node.attrib["type"]
@@ -167,7 +278,7 @@ def parse_change(change):
     return node_name,new_value,append_this
 
 ###############################################################################
-def atm_config_chg_impl(xml_root, change, all_matches=False, missing_ok=False):
+def atm_config_chg_impl(xml_root, change, all_matches=False):
 ###############################################################################
     """
     >>> xml = '''
@@ -195,7 +306,7 @@ def atm_config_chg_impl(xml_root, change, all_matches=False, missing_ok=False):
     >>> ################ INVALID TYPE #######################
     >>> atm_config_chg_impl(tree,'prop2=two')
     Traceback (most recent call last):
-    ValueError: Could not use 'two' as type 'integer'
+    ValueError: Could not refine 'two' as type 'integer'
     >>> ################ INVALID VALUE #######################
     >>> atm_config_chg_impl(tree,'prop2=3')
     Traceback (most recent call last):
@@ -243,8 +354,7 @@ def atm_config_chg_impl(xml_root, change, all_matches=False, missing_ok=False):
     node_name, new_value, append_this = parse_change(change)
     matches = get_xml_nodes(xml_root, node_name)
 
-    if not missing_ok:
-        expect(len(matches) > 0, f"{node_name} did not match any items")
+    expect(len(matches) > 0, f"{node_name} did not match any items")
 
     if len(matches) > 1 and not all_matches:
         parent_map = create_parent_map(xml_root)
@@ -258,7 +368,7 @@ def atm_config_chg_impl(xml_root, change, all_matches=False, missing_ok=False):
 
     any_change = False
     for node in matches:
-        any_change |= apply_change(node, new_value, append_this)
+        any_change |= apply_change(xml_root, node, new_value, append_this)
 
     return any_change
 

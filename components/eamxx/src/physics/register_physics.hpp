@@ -3,8 +3,7 @@
 
 #include "share/atm_process/atmosphere_process.hpp"
 
-// Only include headers/register processes which
-// have been built.
+// Only include headers and register processes for libs that have been linked in
 
 #ifdef EAMXX_HAS_P3
 #include "physics/p3/eamxx_p3_process_interface.hpp"
@@ -26,6 +25,16 @@
 #endif
 #ifdef EAMXX_HAS_MAM
 #include "physics/mam/eamxx_mam_microphysics_process_interface.hpp"
+#include "physics/mam/eamxx_mam_optics_process_interface.hpp"
+#endif
+#ifdef EAMXX_HAS_COSP
+#include "physics/cosp/eamxx_cosp.hpp"
+#endif
+#ifdef EAMXX_HAS_TMS
+#include "physics/tms/eamxx_tms_process_interface.hpp"
+#endif
+#ifdef EAMXX_HAS_ML_CORRECTION
+#include "physics/ml_correction/eamxx_ml_correction_process_interface.hpp"
 #endif
 
 namespace scream {
@@ -51,8 +60,21 @@ inline void register_physics () {
   proc_factory.register_product("Nudging",&create_atmosphere_process<Nudging>);
 #endif
 #ifdef EAMXX_HAS_MAM
-  proc_factory.register_product("MAMMicrophysics",&create_atmosphere_process<MAMMicrophysics>);
+  proc_factory.register_product("mam4_micro",&create_atmosphere_process<MAMMicrophysics>);
+  proc_factory.register_product("mam4_optics",&create_atmosphere_process<MAMOptics>);
 #endif
+#ifdef EAMXX_HAS_COSP
+  proc_factory.register_product("Cosp",&create_atmosphere_process<Cosp>);
+#endif
+#ifdef EAMXX_HAS_TMS
+  proc_factory.register_product("tms",&create_atmosphere_process<TurbulentMountainStress>);
+#endif
+#ifdef EAMXX_HAS_ML_CORRECTION
+  proc_factory.register_product("MLCorrection",&create_atmosphere_process<MLCorrection>);
+#endif
+
+  // If no physics was enabled, silence compile warning about unused var
+  (void) proc_factory;
 }
 
 } // namespace scream

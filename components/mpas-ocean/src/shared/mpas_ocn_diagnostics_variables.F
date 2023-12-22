@@ -56,6 +56,7 @@ module ocn_diagnostics_variables
    real (kind=RKIND), dimension(:,:), pointer :: salineContractCoeff
    real (kind=RKIND), dimension(:,:), pointer :: BruntVaisalaFreqTop
    real (kind=RKIND), dimension(:,:), pointer :: tangentialVelocity
+   real (kind=RKIND), dimension(:,:), pointer :: layerThickEdgeDrag
    real (kind=RKIND), dimension(:,:), pointer :: layerThickEdgeFlux
    real (kind=RKIND), dimension(:,:), pointer :: layerThickEdgeMean
    real (kind=RKIND), dimension(:,:), pointer :: kineticEnergyCell
@@ -120,13 +121,12 @@ module ocn_diagnostics_variables
    real (kind=RKIND), dimension(:,:), pointer :: velocityZonal
 
    real(kind=RKIND), dimension(:,:), pointer :: gmKappaScaling
-   real(kind=RKIND), dimension(:,:), pointer :: RediKappaScaling
    real(kind=RKIND), dimension(:,:), pointer :: RediKappaSfcTaper
    real(kind=RKIND), dimension(:,:), pointer :: k33
    real(kind=RKIND), dimension(:,:), pointer :: gradDensityEddy
    real(kind=RKIND), dimension(:), pointer   :: gmBolusKappa
    real(kind=RKIND), dimension(:), pointer   :: cGMphaseSpeed
-   real(kind=RKIND), dimension(:,:,:), pointer :: slopeTriadUp, slopeTriadDown
+   real(kind=RKIND), dimension(:,:,:), pointer :: limiterUp, limiterDown, slopeTriadUp, slopeTriadDown
 
    integer, dimension(:), pointer :: indMLD
    real(kind=RKIND), dimension(:), pointer :: dThreshMLD
@@ -201,6 +201,9 @@ module ocn_diagnostics_variables
    real (kind=RKIND), dimension(:), pointer :: SIvec_w0,SIvec_w1 ,SIvec_wh0,SIvec_wh1,SIvec_y0
    real (kind=RKIND), dimension(:), pointer :: SIvec_z0,SIvec_z1 ,SIvec_zh0,SIvec_zh1
 
+   ! Split-explicit AB2 Array Pointers
+   real (kind=RKIND), dimension(:,:), pointer :: normalVelocityTendOld, CoriolisTermOld
+
    !--------------------------------------------------------------------
    !
    ! Public member functions
@@ -264,8 +267,6 @@ contains
       if (config_use_GM.or.config_use_Redi) then
          call mpas_pool_get_array(diagnosticsPool, 'RediKappa', &
                    RediKappa)
-         call mpas_pool_get_array(diagnosticsPool, 'RediKappaScaling', &
-                   RediKappaScaling)
          call mpas_pool_get_array(diagnosticsPool, 'RediKappaSfcTaper', &
                    RediKappaSfcTaper)
          call mpas_pool_get_array(diagnosticsPool, 'rediLimiterCount', &
@@ -419,6 +420,10 @@ contains
                    slopeTriadUp)
          call mpas_pool_get_array(diagnosticsPool, 'slopeTriadDown', &
                    slopeTriadDown)
+         call mpas_pool_get_array(diagnosticsPool, 'limiterUp', &
+                   limiterUp)
+         call mpas_pool_get_array(diagnosticsPool, 'limiterDown', &
+                   limiterDown)
 
          ! GM-related fields
          call mpas_pool_get_array(diagnosticsPool, 'cGMphaseSpeed', &
@@ -458,6 +463,8 @@ contains
          call mpas_pool_get_array(diagnosticsPool, 'vertMLEBolusVelocityTop', &
                    vertMLEBolusVelocityTop)
 
+         call mpas_pool_get_array(diagnosticsPool, 'layerThicknessEdgeDrag', &
+                   layerThickEdgeDrag)
          call mpas_pool_get_array(diagnosticsPool, 'layerThicknessEdgeFlux', &
                    layerThickEdgeFlux)
          call mpas_pool_get_array(diagnosticsPool, 'layerThicknessEdgeMean', &
@@ -666,6 +673,11 @@ contains
          call mpas_pool_get_array(diagnosticsPool, 'SIvec_zh1', SIvec_zh1)
       end if
 
+      if (trim(config_time_integrator) == 'split_explicit_ab2') then
+         call mpas_pool_get_array(diagnosticsPool, 'normalVelocityTendOld', normalVelocityTendOld)
+         call mpas_pool_get_array(diagnosticsPool, 'CoriolisTermOld', CoriolisTermOld)
+      end if
+
       ! Copy diagnostic variables to accelerator
       if ( trim(config_land_ice_flux_mode) /= 'off' ) then
          !$acc enter data create(                                 &
@@ -716,15 +728,18 @@ contains
          !$acc                   SSHGradient,                     &
          !$acc                   circulation,                     &
          !$acc                   slopeTriadUp,                    &
+         !$acc                   limiterUp,                       &
          !$acc                   gradSSHZonal,                    &
          !$acc                   cGMphaseSpeed,                   &
          !$acc                   velocityZonal,                   &
          !$acc                   GMStreamFuncX,                   &
          !$acc                   GMStreamFuncY,                   &
          !$acc                   GMStreamFuncZ,                   &
+         !$acc                   layerThickEdgeDrag,              &
          !$acc                   layerThickEdgeFlux,              &
          !$acc                   layerThickEdgeMean,              &
          !$acc                   slopeTriadDown,                  &
+         !$acc                   limiterDown,                     &
          !$acc                   normRelVortEdge,                 &
          !$acc                   surfaceVelocity,                 &
          !$acc                   vertVelocityTop,                 &
@@ -788,7 +803,6 @@ contains
          !$acc                   RediKappa,         &
          !$acc                   gmBolusKappa,      &
          !$acc                   gmKappaScaling,    &
-         !$acc                   RediKappaScaling,  &
          !$acc                   rediLimiterCount,  &
          !$acc                   RediKappaSfcTaper, &
          !$acc                   RediHorizontalTaper,  &
@@ -847,6 +861,12 @@ contains
          !$acc                   SIvec_zh0,             &
          !$acc                   SIvec_zh1,             &
          !$acc                   barotropicCoriolisTerm &
+         !$acc                   )
+      end if
+      if ( trim(config_time_integrator) == 'split_explicit_ab2' ) then
+         !$acc enter data create(                       &
+         !$acc                   normalVelocityTendOld, &
+         !$acc                   CoriolisTermOld
          !$acc                   )
       end if
 
@@ -957,12 +977,15 @@ contains
          !$acc                   SSHGradient,                     &
          !$acc                   circulation,                     &
          !$acc                   slopeTriadUp,                    &
+         !$acc                   limiterUp,                       &
+         !$acc                   limiterDown,                     &
          !$acc                   gradSSHZonal,                    &
          !$acc                   cGMphaseSpeed,                   &
          !$acc                   velocityZonal,                   &
          !$acc                   GMStreamFuncX,                   &
          !$acc                   GMStreamFuncY,                   &
          !$acc                   GMStreamFuncZ,                   &
+         !$acc                   layerThickEdgeDrag,              &
          !$acc                   layerThickEdgeFlux,              &
          !$acc                   layerThickEdgeMean,              &
          !$acc                   slopeTriadDown,                  &
@@ -1029,7 +1052,6 @@ contains
          !$acc                   RediKappa,         &
          !$acc                   gmBolusKappa,      &
          !$acc                   gmKappaScaling,    &
-         !$acc                   RediKappaScaling,  &
          !$acc                   rediLimiterCount,  &
          !$acc                   RediKappaSfcTaper, &
          !$acc                   RediHorizontalTaper,  &
@@ -1089,6 +1111,12 @@ contains
          !$acc                   SIvec_zh1,             &
          !$acc                   barotropicCoriolisTerm &
          !$acc                   )
+      end if
+      if ( trim(config_time_integrator) == 'split_explicit_ab2' ) then
+         !$acc exit data delete(                       &
+         !$acc                  normalVelocityTendOld, &
+         !$acc                  CoriolisTermOld
+         !$acc                  )
       end if
 
       !$acc exit data delete(                                          &
@@ -1156,12 +1184,15 @@ contains
                  SSHGradient,                     &
                  circulation,                     &
                  slopeTriadUp,                    &
+                 limiterUp,                       &
+                 limiterDown,                     &
                  gradSSHZonal,                    &
                  cGMphaseSpeed,                   &
                  velocityZonal,                   &
                  GMStreamFuncX,                   &
                  GMStreamFuncY,                   &
                  GMStreamFuncZ,                   &
+                 layerThickEdgeDrag,              &
                  layerThickEdgeFlux,              &
                  layerThickEdgeMean,              &
                  slopeTriadDown,                  &
@@ -1224,7 +1255,6 @@ contains
          nullify(RediKappa,         &
                  gmBolusKappa,      &
                  gmKappaScaling,    &
-                 RediKappaScaling,  &
                  rediLimiterCount,  &
                  RediKappaSfcTaper, &
                  RediHorizontalTaper, &
