@@ -641,7 +641,7 @@ void RRTMGPRadiation::run_impl (const double dt) {
           std::string name_transient = name + "_transient";
           auto value_transient = get_field_out(name_transient).get_view<Real**>();
           if (name == "co2vmr") {
-            Kokkos::deep_copy(value_transient, m_co2vmr);
+            Kokkos::deep_copy(m_co2vmr, value_transient);
           } else {
             // Not supported; warn and ignore
             std::cout << "WARNING: Ignoring time varying input field " << name << std::endl;
