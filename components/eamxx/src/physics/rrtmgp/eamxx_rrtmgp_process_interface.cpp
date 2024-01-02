@@ -78,6 +78,7 @@ void RRTMGPRadiation::set_grids(const std::shared_ptr<const GridsManager> grids_
   // Set up dimension layouts
   m_nswgpts = m_params.get<int>("nswgpts",112);
   m_nlwgpts = m_params.get<int>("nlwgpts",128);
+  FieldLayout scalar0d_layout     { {}, {} };
   FieldLayout scalar2d_layout     { {COL   }, {m_ncol    } };
   FieldLayout scalar3d_layout_mid { {COL,LEV}, {m_ncol,m_nlay} };
   FieldLayout scalar3d_layout_int { {COL,ILEV}, {m_ncol,m_nlay+1} };
@@ -382,6 +383,34 @@ void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
   // Determine whether or not we are using a fixed solar zenith angle (positive value)
   m_fixed_solar_zenith_angle = m_params.get<double>("Fixed Solar Zenith Angle", -9999);
 
+  // Not sure what to do about this
+  constexpr int ps = SCREAM_PACK_SIZE;
+
+  // Get time-varying input fields
+  m_time_varying_input_fields_datafile = m_params.get<std::vector<ci_string>>("time_varying_input_fields_datafile", "some_file");
+  m_time_varying_input_fields = m_params.get<std::vector<ci_string>>("time_varying_input_fields", "some_fields");
+
+  // Initialize the time interpolator
+  m_time_interp = util::TimeInterpolation(m_grid, m_time_varying_input_fields_datafile);
+
+  // To create helper fields for to interpolate their values
+  for (auto name : m_time_varying_input_fields) {
+    // Helper fields that will temporarily store the input values
+    std::string name_transient = name + "_transient";
+    Field field_transient;
+    if (name == "co2vmr") {
+      auto field_transient = create_helper_field(name_transient, scalar0d_layout_mid, m_grid, ps);
+    } else {
+      // Not supported, ignore
+      std::cout << "Skipping time-varying input field: " << name << std::endl;
+      // For O3, we can do the following, but more work is needed downstream
+      // auto field = create_helper_field(name, scalar3d_layout_mid, m_grid, ps);
+    }
+    // Add the fields to the time interpolator
+    m_time_interp.add_field(field_transient.alias(name_transient), true);
+  }
+  m_time_interp.initialize_data_from_files();
+
   // Get prescribed surface values of greenhouse gases
   m_co2vmr     = m_params.get<double>("co2vmr", 388.717e-6);
   m_n2ovmr     = m_params.get<double>("n2ovmr", 323.141e-9);
@@ -431,11 +460,11 @@ void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
   // VMR of n2 and co is currently prescribed as a constant value, read from file
   if (has_computed_field("n2_volume_mix_ratio",m_grid->name())) {
     auto n2_vmr = get_field_out("n2_volume_mix_ratio").get_view<Real**>();
-    Kokkos::deep_copy(n2_vmr, m_params.get<double>("n2vmr", 0.7906));
+    Kokkos::deep_copy(n2_vmr, m_n2vmr);
   }
   if (has_computed_field("co_volume_mix_ratio",m_grid->name())) {
     auto co_vmr = get_field_out("co_volume_mix_ratio").get_view<Real**>();
-    Kokkos::deep_copy(co_vmr, m_params.get<double>("covmr", 1.0e-7));
+    Kokkos::deep_copy(co_vmr, m_covmr);
   }
 }
 
@@ -546,6 +575,9 @@ void RRTMGPRadiation::run_impl (const double dt) {
   auto update_rad = scream::rrtmgp::radiation_do(m_rad_freq_in_steps, ts.get_num_steps());
 
   if (update_rad) {
+    // Perform time interpolation if needed
+    m_time_interp.perform_time_interpolation(ts);
+
     // On each chunk, we internally "reset" the GasConcs object to subview the concs 3d array
     // with the correct ncol dimension. So let's keep a copy of the original (ref-counted)
     // array, to restore at the end inside the m_gast_concs object.
@@ -603,6 +635,18 @@ void RRTMGPRadiation::run_impl (const double dt) {
         });
         Kokkos::fence();
       } else {
+        // For time varying inputs, we should read them from the interpolator
+        // The interpolator creates helper fields with _transient suffix
+        for (auto name : m_time_varying_input_fields) {
+          std::string name_transient = name + "_transient";
+          auto value_transient = get_field_out(name_transient).get_view<Real**>();
+          if (name == "co2vmr") {
+            Kokkos::deep_copy(value_transient, m_co2vmr);
+          } else {
+            // Not supported; warn and ignore
+            std::cout << "WARNING: Ignoring time varying input field " << name << std::endl;
+          }
+        }
         // This gives (dry) mass mixing ratios
         scream::physics::trcmix(
           name, m_nlay, m_lat.get_view<const Real*>(), d_pmid, d_vmr,
@@ -1109,12 +1153,43 @@ void RRTMGPRadiation::run_impl (const double dt) {
   }
 
 }
+
+// =========================================================================================
+// This is a copy of a the helper field functionality from nduging... 
+// We should abstract this out of these places to somewhere more shared... 
+// TODO: Ask Luca what he prefers to do
+Field RRTMGPRadiation::create_helper_field(const std::string &name,
+                                           const FieldLayout &layout,
+                                           const std::string &grid_name,
+                                           const int ps) {
+  using namespace ekat::units;
+  // For helper fields we don't bother w/ units, so we set them to
+  // non-dimensional
+  FieldIdentifier id(name, layout, Units::nondimensional(), grid_name);
+
+  // Create the field. Init with NaN's, so we spot instances of uninited memory
+  // usage
+  Field f(id);
+  if(ps >= 0) {
+    f.get_header().get_alloc_properties().request_allocation(ps);
+  } else {
+    f.get_header().get_alloc_properties().request_allocation();
+  }
+  f.allocate_view();
+  f.deep_copy(ekat::ScalarTraits<Real>::invalid());
+
+  m_helper_fields[name] = f;
+  return m_helper_fields[name];
+}
+
 // =========================================================================================
 
 void RRTMGPRadiation::finalize_impl  () {
   m_gas_concs.reset();
   rrtmgp::rrtmgp_finalize();
 
+  // Finalzie time interpolator
+  m_time_interp.finalize();
   // Finalize YAKL
   yakl_finalize();
 }

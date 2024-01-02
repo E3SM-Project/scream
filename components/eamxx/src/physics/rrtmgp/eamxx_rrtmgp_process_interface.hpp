@@ -6,6 +6,7 @@
 #include "share/atm_process/atmosphere_process.hpp"
 #include "ekat/ekat_parameter_list.hpp"
 #include "ekat/util/ekat_string_utils.hpp"
+#include "share/util/eamxx_time_interpolation.hpp"
 #include <string>
 
 namespace scream {
@@ -89,6 +90,13 @@ public:
   std::vector<ci_string>   m_gas_names;
   view_1d_real             m_gas_mol_weights;
   GasConcs                 m_gas_concs;
+
+  // The time interpolation object 
+  util::TimeInterpolation m_time_interp;
+  // The time varying input fields
+  std::vector<ci_string> m_time_varying_input_fields;
+  // The time varying input fields datafile(s)
+  std::vector<ci_string> m_time_varying_input_fields_datafile;
 
   // Prescribed greenhouse gas surface concentrations in moles / moles air
   Real m_co2vmr;
