@@ -91,12 +91,14 @@ public:
   view_1d_real             m_gas_mol_weights;
   GasConcs                 m_gas_concs;
 
-  // The time interpolation object 
+  // The time interpolation object
   util::TimeInterpolation m_time_interp;
   // The time varying input fields
-  std::vector<ci_string> m_time_varying_input_fields;
+  std::vector<std::string> m_time_varying_input_fields;
   // The time varying input fields datafile(s)
-  std::vector<ci_string> m_time_varying_input_fields_datafile;
+  std::vector<std::string> m_time_varying_input_fields_datafile;
+  // Some helper fields.
+  std::map<std::string, Field> m_helper_fields;
 
   // Prescribed greenhouse gas surface concentrations in moles / moles air
   Real m_co2vmr;
@@ -221,6 +223,10 @@ protected:
   void init_buffers(const ATMBufferManager &buffer_manager);
 
   std::shared_ptr<const AbstractGrid>   m_grid;
+
+  // Creates an helper field, not to be shared with the AD's FieldManager
+  Field create_helper_field(const std::string &name, const FieldLayout &layout,
+                            const std::string &grid_name, const int ps = 0);
 
   // Struct which contains local variables
   Buffer m_buffer;

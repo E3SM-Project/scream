@@ -387,24 +387,30 @@ void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
   constexpr int ps = SCREAM_PACK_SIZE;
 
   // Get time-varying input fields
-  m_time_varying_input_fields_datafile = m_params.get<std::vector<ci_string>>("time_varying_input_fields_datafile", "some_file");
-  m_time_varying_input_fields = m_params.get<std::vector<ci_string>>("time_varying_input_fields", "some_fields");
+  m_time_varying_input_fields_datafile = m_params.get<std::vector<std::string>>(
+      "time_varying_input_fields_datafile");
+  m_time_varying_input_fields =
+      m_params.get<std::vector<std::string>>("time_varying_input_fields");
 
   // Initialize the time interpolator
-  m_time_interp = util::TimeInterpolation(m_grid, m_time_varying_input_fields_datafile);
+  m_time_interp =
+      util::TimeInterpolation(m_grid, m_time_varying_input_fields_datafile);
 
   // To create helper fields for to interpolate their values
-  for (auto name : m_time_varying_input_fields) {
+  for(auto name : m_time_varying_input_fields) {
     // Helper fields that will temporarily store the input values
     std::string name_transient = name + "_transient";
     Field field_transient;
-    if (name == "co2vmr") {
-      auto field_transient = create_helper_field(name_transient, scalar0d_layout_mid, m_grid, ps);
+    if(name == "co2vmr") {
+      FieldLayout scalar0d_layout{{}, {}};
+      auto field_transient = create_helper_field(
+          name_transient, scalar0d_layout, m_grid->name(), ps);
     } else {
       // Not supported, ignore
       std::cout << "Skipping time-varying input field: " << name << std::endl;
       // For O3, we can do the following, but more work is needed downstream
-      // auto field = create_helper_field(name, scalar3d_layout_mid, m_grid, ps);
+      // auto field = create_helper_field(name, scalar3d_layout_mid, m_grid,
+      // ps);
     }
     // Add the fields to the time interpolator
     m_time_interp.add_field(field_transient.alias(name_transient), true);
@@ -637,14 +643,15 @@ void RRTMGPRadiation::run_impl (const double dt) {
       } else {
         // For time varying inputs, we should read them from the interpolator
         // The interpolator creates helper fields with _transient suffix
-        for (auto name : m_time_varying_input_fields) {
+        for(auto name : m_time_varying_input_fields) {
           std::string name_transient = name + "_transient";
-          auto value_transient = get_field_out(name_transient).get_view<Real**>();
-          if (name == "co2vmr") {
+          auto value_transient = get_field_out(name_transient).get_view<Real>();
+          if(name == "co2vmr") {
             Kokkos::deep_copy(m_co2vmr, value_transient);
           } else {
             // Not supported; warn and ignore
-            std::cout << "WARNING: Ignoring time varying input field " << name << std::endl;
+            std::cout << "WARNING: Ignoring time varying input field " << name
+                      << std::endl;
           }
         }
         // This gives (dry) mass mixing ratios
@@ -1155,8 +1162,8 @@ void RRTMGPRadiation::run_impl (const double dt) {
 }
 
 // =========================================================================================
-// This is a copy of a the helper field functionality from nduging... 
-// We should abstract this out of these places to somewhere more shared... 
+// This is a copy of a the helper field functionality from nduging...
+// We should abstract this out of these places to somewhere more shared...
 // TODO: Ask Luca what he prefers to do
 Field RRTMGPRadiation::create_helper_field(const std::string &name,
                                            const FieldLayout &layout,
