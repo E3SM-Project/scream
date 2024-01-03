@@ -311,11 +311,13 @@ be lost if SCREAM_HACK_XML is not enabled.
         type="array(string)"
         doc="List of time-varying active gases that will be read from file(s) below"
       >
+        nolistgiven
       </time_varying_active_gases_list>
       <time_varying_active_gases_file
         type="array(string)"
         doc="Input data files to be read for time-varying active gases above"
       >
+        nofilegiven
       </time_varying_active_gases_file>
       <!-- Orbital parameters for solar zenith angle and TSI scaling. For F2010 compsets, -->
       <!-- we set a fixed year for these parameters, but for other compsets we set to a   -->

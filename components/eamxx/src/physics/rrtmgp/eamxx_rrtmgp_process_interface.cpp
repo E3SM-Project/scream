@@ -389,12 +389,12 @@ void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
   // TODO: Harden this impl; get the EKAT msg/warn stuff and use it here to avoid bad logic at the outset
   // TODO: Maybe also move this to the very top?
   m_time_varying_active_gases_list =
-      m_params.get<std::vector<std::string>>("time_varying_active_gases_list", {"no-list-given"});
+      m_params.get<std::vector<std::string>>("time_varying_active_gases_list", {"nolistgiven"});
   m_time_varying_active_gases_file =
-      m_params.get<std::vector<std::string>>("time_varying_active_gases_file", {"no-file-given"});
+      m_params.get<std::vector<std::string>>("time_varying_active_gases_file", {"nofilegiven"});
 
   // Initialize the time interpolator
-  if (m_time_varying_active_gases_file[0] != "no-file-given") {
+  if (m_time_varying_active_gases_file[0] != "nofilegiven") {
     m_time_interp =
         util::TimeInterpolation(m_grid, m_time_varying_active_gases_file);
 
@@ -406,7 +406,7 @@ void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
       if (name == "co2vmr") {
         FieldLayout scalar0d_layout{{}, {}};
         Field field_transient = create_helper_field(
-            name_transient, scalar0d_layout, m_grid->name(), ps);
+            name_transient, scalar0d_layout, m_grid->name());
       } else {
         // Not supported, ignore
         // TODO: get a proper logger/warner here (EKAT msg?) 
@@ -584,11 +584,12 @@ void RRTMGPRadiation::run_impl (const double dt) {
   auto ts = timestamp();
   auto update_rad = scream::rrtmgp::radiation_do(m_rad_freq_in_steps, ts.get_num_steps());
 
+  if (m_time_varying_active_gases_file[0] != "nofilegiven") {
+    // Perform time interpolation
+    m_time_interp.perform_time_interpolation(ts);
+  }
+
   if (update_rad) {
-    if (m_time_varying_active_gases_file[0] != "no-file-given") {
-      // Perform time interpolation
-      m_time_interp.perform_time_interpolation(ts);
-    }
     // On each chunk, we internally "reset" the GasConcs object to subview the concs 3d array
     // with the correct ncol dimension. So let's keep a copy of the original (ref-counted)
     // array, to restore at the end inside the m_gast_concs object.
@@ -646,7 +647,7 @@ void RRTMGPRadiation::run_impl (const double dt) {
         });
         Kokkos::fence();
       } else {
-        if (m_time_varying_active_gases_file[0] != "no-file-given") {
+        if (m_time_varying_active_gases_file[0] != "nofilegiven") {
           // For time varying inputs, we should read them from the interpolator
           // The interpolator creates helper fields with _transient suffix
           for (std::string name : m_time_varying_active_gases_list) {
@@ -1207,8 +1208,10 @@ void RRTMGPRadiation::finalize_impl  () {
   m_gas_concs.reset();
   rrtmgp::rrtmgp_finalize();
 
-  // Finalzie time interpolator
-  m_time_interp.finalize();
+  // Finalize time interpolator
+  if (m_time_varying_active_gases_file[0] != "nofilegiven") {
+    m_time_interp.finalize();
+  }
   // Finalize YAKL
   yakl_finalize();
 }
