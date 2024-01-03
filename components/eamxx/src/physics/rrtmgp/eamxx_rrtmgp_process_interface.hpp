@@ -93,11 +93,11 @@ public:
 
   // The time interpolation object
   util::TimeInterpolation m_time_interp;
-  // The time varying input fields
-  std::vector<std::string> m_time_varying_input_fields;
-  // The time varying input fields datafile(s)
-  std::vector<std::string> m_time_varying_input_fields_datafile;
-  // Some helper fields.
+  // The list of time varying input fields
+  std::vector<std::string> m_time_varying_active_gases_list;
+  // The data of time varying input fields, read from datafiles
+  std::vector<std::string> m_time_varying_active_gases_file;
+  // Some helper fields
   std::map<std::string, Field> m_helper_fields;
 
   // Prescribed greenhouse gas surface concentrations in moles / moles air
@@ -225,6 +225,8 @@ protected:
   std::shared_ptr<const AbstractGrid>   m_grid;
 
   // Creates an helper field, not to be shared with the AD's FieldManager
+  // Add it to protected like done in nudging, but we should just remove this
+  // when we take it away to the share/util or wherever
   Field create_helper_field(const std::string &name, const FieldLayout &layout,
                             const std::string &grid_name, const int ps = 0);
 
