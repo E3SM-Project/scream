@@ -307,6 +307,16 @@ be lost if SCREAM_HACK_XML is not enabled.
       <f12vmr      > 531.2820e-12 </f12vmr>
       <n2vmr       > 0.7906       </n2vmr>
       <covmr       > 1.0e-7       </covmr>
+      <time_varying_active_gases_list
+        type="array(string)"
+        doc="List of time-varying active gases that will be read from file(s) below"
+      >
+      </time_varying_active_gases_list>
+      <time_varying_active_gases_file
+        type="array(string)"
+        doc="Input data files to be read for time-varying active gases above"
+      >
+      </time_varying_active_gases_file>
       <!-- Orbital parameters for solar zenith angle and TSI scaling. For F2010 compsets, -->
       <!-- we set a fixed year for these parameters, but for other compsets we set to a   -->
       <!-- negative value to force the code to get simulated year from the timestamp.     -->

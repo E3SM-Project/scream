@@ -408,6 +408,7 @@ void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
       // Not supported, ignore
       std::cout << "Skipping time-varying input field: " << name << std::endl;
       // For O3, we can do the following, but more work is needed downstream
+      // TODO: Add time-varying O3 when/if desired
       // auto field = create_helper_field(name, scalar3d_layout_mid, m_grid,
       // ps);
     }
@@ -580,7 +581,7 @@ void RRTMGPRadiation::run_impl (const double dt) {
   auto update_rad = scream::rrtmgp::radiation_do(m_rad_freq_in_steps, ts.get_num_steps());
 
   if (update_rad) {
-    // Perform time interpolation if needed
+    // Perform time interpolation
     m_time_interp.perform_time_interpolation(ts);
 
     // On each chunk, we internally "reset" the GasConcs object to subview the concs 3d array
