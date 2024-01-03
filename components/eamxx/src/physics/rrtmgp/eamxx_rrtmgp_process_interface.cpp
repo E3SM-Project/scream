@@ -78,7 +78,6 @@ void RRTMGPRadiation::set_grids(const std::shared_ptr<const GridsManager> grids_
   // Set up dimension layouts
   m_nswgpts = m_params.get<int>("nswgpts",112);
   m_nlwgpts = m_params.get<int>("nlwgpts",128);
-  FieldLayout scalar0d_layout     { {}, {} };
   FieldLayout scalar2d_layout     { {COL   }, {m_ncol    } };
   FieldLayout scalar3d_layout_mid { {COL,LEV}, {m_ncol,m_nlay} };
   FieldLayout scalar3d_layout_int { {COL,ILEV}, {m_ncol,m_nlay+1} };
@@ -397,13 +396,13 @@ void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
       util::TimeInterpolation(m_grid, m_time_varying_input_fields_datafile);
 
   // To create helper fields for to interpolate their values
-  for(auto name : m_time_varying_input_fields) {
+  for(std::string name : m_time_varying_input_fields) {
     // Helper fields that will temporarily store the input values
     std::string name_transient = name + "_transient";
     Field field_transient;
     if(name == "co2vmr") {
       FieldLayout scalar0d_layout{{}, {}};
-      auto field_transient = create_helper_field(
+      Field field_transient = create_helper_field(
           name_transient, scalar0d_layout, m_grid->name(), ps);
     } else {
       // Not supported, ignore
@@ -643,7 +642,7 @@ void RRTMGPRadiation::run_impl (const double dt) {
       } else {
         // For time varying inputs, we should read them from the interpolator
         // The interpolator creates helper fields with _transient suffix
-        for(auto name : m_time_varying_input_fields) {
+        for(std::string name : m_time_varying_input_fields) {
           std::string name_transient = name + "_transient";
           auto value_transient = get_field_out(name_transient).get_view<Real>();
           if(name == "co2vmr") {
