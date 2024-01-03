@@ -386,38 +386,41 @@ void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
   constexpr int ps = SCREAM_PACK_SIZE;
 
   // Get time-varying input fields and their associated file(s)
+  // TODO: Harden this impl; get the EKAT msg/warn stuff and use it here to avoid bad logic at the outset
+  // TODO: Maybe also move this to the very top?
   m_time_varying_active_gases_list =
-      m_params.get<std::vector<std::string>>("time_varying_active_gases_list");
+      m_params.get<std::vector<std::string>>("time_varying_active_gases_list", {"no-list-given"});
   m_time_varying_active_gases_file =
-      m_params.get<std::vector<std::string>>("time_varying_active_gases_file");
+      m_params.get<std::vector<std::string>>("time_varying_active_gases_file", {"no-file-given"});
 
   // Initialize the time interpolator
-  m_time_interp =
-      util::TimeInterpolation(m_grid, m_time_varying_active_gases_file);
+  if (m_time_varying_active_gases_file[0] != "no-file-given") {
+    m_time_interp =
+        util::TimeInterpolation(m_grid, m_time_varying_active_gases_file);
 
-  // To create helper fields for to interpolate their values
-  for (std::string name : m_time_varying_active_gases_list) {
-    // Helper fields that will temporarily store the input values
-    std::string name_transient = name + "_transient";
-    Field field_transient;
-    if (name == "co2vmr") {
-      FieldLayout scalar0d_layout{{}, {}};
-      Field field_transient = create_helper_field(
-          name_transient, scalar0d_layout, m_grid->name(), ps);
-    } else {
-      // Not supported, ignore
-      // TODO: get a proper logger/warner here (EKAT msg?) 
-      std::cout << "Skipping time-varying input field: " << name << std::endl;
-      // TODO: Add time-varying O3 when/if desired
-      // For O3, we can do the following, but more work is needed downstream
-      // auto field = create_helper_field(name, scalar3d_layout_mid, m_grid,
-      // ps);
+    // To create helper fields for to interpolate their values
+    for (std::string name : m_time_varying_active_gases_list) {
+      // Helper fields that will temporarily store the input values
+      std::string name_transient = name + "_transient";
+      Field field_transient;
+      if (name == "co2vmr") {
+        FieldLayout scalar0d_layout{{}, {}};
+        Field field_transient = create_helper_field(
+            name_transient, scalar0d_layout, m_grid->name(), ps);
+      } else {
+        // Not supported, ignore
+        // TODO: get a proper logger/warner here (EKAT msg?) 
+        std::cout << "Skipping time-varying input field: " << name << std::endl;
+        // TODO: Add time-varying O3 when/if desired
+        // For O3, we can do the following, but more work is needed downstream
+        // auto field = create_helper_field(name, scalar3d_layout_mid, m_grid,
+        // ps);
+      }
+      // Add the fields to the time interpolator
+      m_time_interp.add_field(field_transient.alias(name_transient), true);
     }
-    // Add the fields to the time interpolator
-    m_time_interp.add_field(field_transient.alias(name_transient), true);
+    m_time_interp.initialize_data_from_files();
   }
-  m_time_interp.initialize_data_from_files();
-
   // Get prescribed surface values of greenhouse gases
   m_co2vmr     = m_params.get<double>("co2vmr", 388.717e-6);
   m_n2ovmr     = m_params.get<double>("n2ovmr", 323.141e-9);
@@ -582,9 +585,10 @@ void RRTMGPRadiation::run_impl (const double dt) {
   auto update_rad = scream::rrtmgp::radiation_do(m_rad_freq_in_steps, ts.get_num_steps());
 
   if (update_rad) {
-    // Perform time interpolation
-    m_time_interp.perform_time_interpolation(ts);
-
+    if (m_time_varying_active_gases_file[0] != "no-file-given") {
+      // Perform time interpolation
+      m_time_interp.perform_time_interpolation(ts);
+    }
     // On each chunk, we internally "reset" the GasConcs object to subview the concs 3d array
     // with the correct ncol dimension. So let's keep a copy of the original (ref-counted)
     // array, to restore at the end inside the m_gast_concs object.
@@ -642,22 +646,24 @@ void RRTMGPRadiation::run_impl (const double dt) {
         });
         Kokkos::fence();
       } else {
-        // For time varying inputs, we should read them from the interpolator
-        // The interpolator creates helper fields with _transient suffix
-        for (std::string name : m_time_varying_active_gases_list) {
-          std::string name_transient = name + "_transient";
-          auto value_transient = get_field_out(name_transient).get_view<Real>();
-          if (name == "co2vmr") {
-            // TODO: Check if this is a valid way to do this
-            // TODO: In particular, do we need to get an index out of the view?
-            // TODO: Also, I don't like overwriting m_co2vmr
-            // TODO: So, is there a better way to handle this?
-            Kokkos::deep_copy(m_co2vmr, value_transient);
-          } else {
-            // Not supported; warn and ignore
-            // TODO: get a proper logger/warner here (EKAT msg?) 
-            std::cout << "WARNING: Ignoring time varying input field " << name
-                      << std::endl;
+        if (m_time_varying_active_gases_file[0] != "no-file-given") {
+          // For time varying inputs, we should read them from the interpolator
+          // The interpolator creates helper fields with _transient suffix
+          for (std::string name : m_time_varying_active_gases_list) {
+            std::string name_transient = name + "_transient";
+            auto value_transient = get_field_out(name_transient).get_view<Real>();
+            if (name == "co2vmr") {
+              // TODO: Check if this is a valid way to do this
+              // TODO: In particular, do we need to get an index out of the view?
+              // TODO: Also, I don't like overwriting m_co2vmr
+              // TODO: So, is there a better way to handle this?
+              Kokkos::deep_copy(m_co2vmr, value_transient);
+            } else {
+              // Not supported; warn and ignore
+              // TODO: get a proper logger/warner here (EKAT msg?) 
+              std::cout << "WARNING: Ignoring time varying input field " << name
+                        << std::endl;
+            }
           }
         }
         // This gives (dry) mass mixing ratios
@@ -1183,7 +1189,7 @@ Field RRTMGPRadiation::create_helper_field(const std::string &name,
   // Create the field. Init with NaN's, so we spot instances of uninited memory
   // usage
   Field f(id);
-  if(ps >= 0) {
+  if (ps >= 0) {
     f.get_header().get_alloc_properties().request_allocation(ps);
   } else {
     f.get_header().get_alloc_properties().request_allocation();
