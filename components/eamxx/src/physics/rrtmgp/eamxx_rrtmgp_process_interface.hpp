@@ -99,6 +99,10 @@ public:
   std::vector<std::string> m_time_varying_active_gases_file;
   // Some helper fields
   std::map<std::string, Field> m_helper_fields;
+  // EAM-to-EAMxx translation
+  std::map<std::string, std::string> m_eam_to_eamxx_active_gases;
+  // Boolean to convert O3
+  bool m_transient_ozone;
 
   // Prescribed greenhouse gas surface concentrations in moles / moles air
   Real m_co2vmr;

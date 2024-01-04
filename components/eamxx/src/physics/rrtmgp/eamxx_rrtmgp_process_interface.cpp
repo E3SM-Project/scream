@@ -367,6 +367,20 @@ void RRTMGPRadiation::init_buffers(const ATMBufferManager &buffer_manager)
 void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
   using PC = scream::physics::Constants<Real>;
 
+  m_transient_ozone = false;
+  // Set EAM-to-EAMxx translation for active gases
+  m_eam_to_eamxx_active_gases["co2"] = "CO2";
+  m_eam_to_eamxx_active_gases["n2o"] = "N2O";
+  m_eam_to_eamxx_active_gases["ch4"] = "CH4";
+  m_eam_to_eamxx_active_gases["f11"] = "f11";
+  m_eam_to_eamxx_active_gases["f12"] = "f12";
+  // TODO: add n2 and co, but idk what these are in EAM (as outputs)
+  // For now, assume they're the same as active_gases
+  m_eam_to_eamxx_active_gases["n2"] = "n2";
+  m_eam_to_eamxx_active_gases["co"] = "co";
+  // For O3, it is just O3
+  m_eam_to_eamxx_active_gases["o3"] = "O3";
+
   // Determine rad timestep, specified as number of atm steps
   m_rad_freq_in_steps = m_params.get<Int>("rad_frequency", 1);
 
@@ -403,21 +417,24 @@ void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
       // Helper fields that will temporarily store the input values
       std::string name_transient = name + "_transient";
       Field field_transient;
-      if (name == "co2vmr") {
+      if (name == "co2" || name == "n2o" || name == "ch4" || name == "f11" || name == "f12") {
+        // These are all scalar (0d) time-varying
         FieldLayout scalar0d_layout{{}, {}};
-        Field field_transient = create_helper_field(
-            name_transient, scalar0d_layout, m_grid->name());
+        field_transient = create_helper_field(
+            name_transient, scalar0d_layout, m_grid->name(), ps);
+      } else if (name =="o3") {
+        // TODO: add O3 later because we need to decide about remapping it from ne30pg2 to target
+        // field_transient = create_helper_field(name, scalar3d_layout_mid, m_grid->name(), ps);
+        // m_transient_ozone = true;
+        std::cout << "Skipping time-varying input field: " << name << std::endl;
       } else {
         // Not supported, ignore
         // TODO: get a proper logger/warner here (EKAT msg?) 
         std::cout << "Skipping time-varying input field: " << name << std::endl;
-        // TODO: Add time-varying O3 when/if desired
-        // For O3, we can do the following, but more work is needed downstream
-        // auto field = create_helper_field(name, scalar3d_layout_mid, m_grid,
-        // ps);
       }
       // Add the fields to the time interpolator
-      m_time_interp.add_field(field_transient.alias(name_transient), true);
+      // Note to add them as their original name in EAM, so use translation layer
+      m_time_interp.add_field(field_transient.alias(m_eam_to_eamxx_active_gases[name]), true);
     }
     m_time_interp.initialize_data_from_files();
   }
@@ -652,13 +669,23 @@ void RRTMGPRadiation::run_impl (const double dt) {
           // The interpolator creates helper fields with _transient suffix
           for (std::string name : m_time_varying_active_gases_list) {
             std::string name_transient = name + "_transient";
-            auto value_transient = get_field_out(name_transient).get_view<Real>();
-            if (name == "co2vmr") {
-              // TODO: Check if this is a valid way to do this
-              // TODO: In particular, do we need to get an index out of the view?
-              // TODO: Also, I don't like overwriting m_co2vmr
-              // TODO: So, is there a better way to handle this?
-              Kokkos::deep_copy(m_co2vmr, value_transient);
+            if (name == "co2" || name == "n2o" || name == "ch4" || name == "f11" || name == "f12") {
+              auto value_transient = get_field_out(name_transient).get_view<Real>();
+              if (name == "co2") {
+                // TODO: Check if this is a valid way to do this
+                // TODO: In particular, do we need to get an index out of the view?
+                // TODO: Also, I don't like overwriting m_co2vmr
+                // TODO: So, is there a better way to handle this?
+                Kokkos::deep_copy(m_co2vmr, value_transient);
+              } else if (name == "n2o") {
+                Kokkos::deep_copy(m_n2ovmr, value_transient);
+              } else if (name == "ch4") {
+                Kokkos::deep_copy(m_ch4vmr, value_transient);
+              } else if (name == "f11") {
+                Kokkos::deep_copy(m_f11vmr, value_transient);
+              } else if (name == "f12") {
+                Kokkos::deep_copy(m_f12vmr, value_transient);
+              }
             } else {
               // Not supported; warn and ignore
               // TODO: get a proper logger/warner here (EKAT msg?) 
@@ -891,7 +918,13 @@ void RRTMGPRadiation::run_impl (const double dt) {
 
         // 'o3' is marked as 'Required' rather than 'Computed', so we need to get the proper field
         auto f = name=="o3" ? get_field_in(full_name) : get_field_out(full_name);
-        auto d_vmr = f.get_view<const Real**>();
+        auto d_vmr = f.get_view<Real**>();
+
+        if (name == "o3" && m_transient_ozone) {
+          auto transient_o3 = get_field_out("o3_transient").get_view<Real**>();
+          // deep copy to d_vmr
+          Kokkos::deep_copy(d_vmr, transient_o3);
+        }
 
         // Copy to YAKL
         const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(ncol, m_nlay);
