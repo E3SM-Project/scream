@@ -101,7 +101,7 @@ public:
   std::map<std::string, Field> m_helper_fields;
   // EAM-to-EAMxx translation
   std::map<std::string, std::string> m_eam_to_eamxx_active_gases;
-  // Boolean to convert O3
+  // Boolean to use transient O3 from file
   bool m_transient_ozone;
 
   // Prescribed greenhouse gas surface concentrations in moles / moles air
@@ -233,6 +233,9 @@ protected:
   // when we take it away to the share/util or wherever
   Field create_helper_field(const std::string &name, const FieldLayout &layout,
                             const std::string &grid_name, const int ps = 0);
+
+  // Retrieve a helper field
+  Field get_helper_field (const std::string& name) const { return m_helper_fields.at(name); }
 
   // Struct which contains local variables
   Buffer m_buffer;

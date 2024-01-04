@@ -37,6 +37,9 @@ RRTMGPRadiation (const ekat::Comm& comm, const ekat::ParameterList& params)
   }
 
   m_ngas = m_gas_names.size();
+
+  m_transient_ozone = false;
+
 }
 
 void RRTMGPRadiation::set_grids(const std::shared_ptr<const GridsManager> grids_manager) {
@@ -105,9 +108,13 @@ void RRTMGPRadiation::set_grids(const std::shared_ptr<const GridsManager> grids_
   // Set of required gas concentration fields
   for (auto& it : m_gas_names) {
     // Add gas VOLUME mixing ratios (moles of gas / moles of air; what actually gets input to RRTMGP)
-    if (it == "o3") {
-      // o3 is read from file, or computed by chemistry
-      add_field<Required>(it + "_volume_mix_ratio", scalar3d_layout_mid, molmol, grid_name);
+    if (it == "o3" && !m_transient_ozone) {
+      if (!m_transient_ozone) {
+        // o3 is read from file, or computed by chemistry
+        add_field<Required>(it + "_volume_mix_ratio", scalar3d_layout_mid, molmol, grid_name);
+      }
+      // unless m_transient_ozone is true, then o3 is read from file transiently
+      // We don't need to do anything then (the time interpolator will create a helper field for it)
     } else {
       // the rest are computed by RRTMGP from prescribed surface values
       // NOTE: this may change at some point
@@ -367,7 +374,6 @@ void RRTMGPRadiation::init_buffers(const ATMBufferManager &buffer_manager)
 void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
   using PC = scream::physics::Constants<Real>;
 
-  m_transient_ozone = false;
   // Set EAM-to-EAMxx translation for active gases
   m_eam_to_eamxx_active_gases["co2"] = "CO2";
   m_eam_to_eamxx_active_gases["n2o"] = "N2O";
@@ -670,7 +676,7 @@ void RRTMGPRadiation::run_impl (const double dt) {
           for (std::string name : m_time_varying_active_gases_list) {
             std::string name_transient = name + "_transient";
             if (name == "co2" || name == "n2o" || name == "ch4" || name == "f11" || name == "f12") {
-              auto value_transient = get_field_out(name_transient).get_view<Real>();
+              auto value_transient = get_helper_field(name_transient).get_view<Real>();
               if (name == "co2") {
                 // TODO: Check if this is a valid way to do this
                 // TODO: In particular, do we need to get an index out of the view?
@@ -686,6 +692,11 @@ void RRTMGPRadiation::run_impl (const double dt) {
               } else if (name == "f12") {
                 Kokkos::deep_copy(m_f12vmr, value_transient);
               }
+            } else if (name=="o3") {
+              // Not applicable
+              // The user shouldn't give us n2 or co here anyway,
+              // but for for o3, it is handled separately later with
+              // an additional flag m_transient_ozone
             } else {
               // Not supported; warn and ignore
               // TODO: get a proper logger/warner here (EKAT msg?) 
@@ -916,8 +927,17 @@ void RRTMGPRadiation::run_impl (const double dt) {
         auto name = m_gas_names[igas];
         auto full_name = (name=="o3" && m_transient_ozone) ? name + "_transient" : name + "_volume_mix_ratio";
 
-        // 'o3' is marked as 'Required' rather than 'Computed', so we need to get the proper field
-        auto f = (name=="o3" && !m_transient_ozone) ? get_field_in(full_name) : get_field_out(full_name);
+        Field f;
+        if (name=="o3" && !m_transient_ozone) {
+          // 'o3' is marked as 'Required' rather than 'Computed', so we need to get the proper field
+          f = get_field_in(full_name);
+        } else if (name=="o3" && m_transient_ozone) {
+          // except when it is read read as a transient value from file
+          f = get_helper_field(full_name);
+        } else {
+          // for everything else, the field is computed
+          f = get_field_out(full_name);
+        }
         auto d_vmr = f.get_view<const Real**>();
 
         // Copy to YAKL
