@@ -914,17 +914,11 @@ void RRTMGPRadiation::run_impl (const double dt) {
       real2d tmp2d = subview_2d(m_buffer.tmp2d);
       for (int igas = 0; igas < m_ngas; igas++) {
         auto name = m_gas_names[igas];
-        auto full_name = name + "_volume_mix_ratio";
+        auto full_name = (name=="o3" && m_transient_ozone) ? name + "_transient" : name + "_volume_mix_ratio";
 
         // 'o3' is marked as 'Required' rather than 'Computed', so we need to get the proper field
-        auto f = name=="o3" ? get_field_in(full_name) : get_field_out(full_name);
-        auto d_vmr = f.get_view<Real**>();
-
-        if (name == "o3" && m_transient_ozone) {
-          auto transient_o3 = get_field_out("o3_transient").get_view<Real**>();
-          // deep copy to d_vmr
-          Kokkos::deep_copy(d_vmr, transient_o3);
-        }
+        auto f = (name=="o3" && !m_transient_ozone) ? get_field_in(full_name) : get_field_out(full_name);
+        auto d_vmr = f.get_view<const Real**>();
 
         // Copy to YAKL
         const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(ncol, m_nlay);
