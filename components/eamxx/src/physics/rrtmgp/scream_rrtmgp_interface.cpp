@@ -32,10 +32,10 @@ namespace scream {
         OpticalProps1scl get_cloud_optics_lw(const int ncol, const int nlay, CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist, real2d &lwp, real2d &iwp, real2d &rel, real2d &rei);
         OpticalProps2str get_subsampled_clouds(
                 const int ncol, const int nlay, const int nbnd, const int ngpt,
-                OpticalProps2str &cloud_optics, GasOpticsRRTMGP &kdist, real2d &cld, real2d &p_lay);
+                OpticalProps2str &cloud_optics, GasOpticsRRTMGP &kdist, real2d &cld, real2d &p_lay, real2d &dz, Real z0, int overlap);
         OpticalProps1scl get_subsampled_clouds(
                 const int ncol, const int nlay, const int nbnd, const int ngpt,
-                OpticalProps1scl &cloud_optics, GasOpticsRRTMGP &kdist, real2d &cld, real2d &p_lay);
+                OpticalProps1scl &cloud_optics, GasOpticsRRTMGP &kdist, real2d &cld, real2d &p_lay, real2d &dz, Real z0, int overlap);
 
         /* 
          * Objects containing k-distribution information need to be initialized
@@ -212,7 +212,8 @@ namespace scream {
  
         void rrtmgp_main(
                 const int ncol, const int nlay,
-                real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev,
+                int overlap, Real overlap_decorrelation,
+                real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev, real2d &dz,
                 GasConcs &gas_concs,
                 real2d &sfc_alb_dir, real2d &sfc_alb_dif, real1d &mu0,
                 real2d &lwp, real2d &iwp, real2d &rel, real2d &rei, real2d &cldfrac,
@@ -331,10 +332,10 @@ namespace scream {
             // This implements the Monte Carlo Independing Column Approximation by mapping only a single 
             // subcolumn (cloud state) to each gpoint.
             auto nswgpts = k_dist_sw.get_ngpt();
-            auto clouds_sw_gpt = get_subsampled_clouds(ncol, nlay, nswbands, nswgpts, clouds_sw, k_dist_sw, cldfrac, p_lay);
+            auto clouds_sw_gpt = get_subsampled_clouds(ncol, nlay, nswbands, nswgpts, clouds_sw, k_dist_sw, cldfrac, p_lay, dz, overlap_decorrelation, overlap);
             // Longwave
             auto nlwgpts = k_dist_lw.get_ngpt();
-            auto clouds_lw_gpt = get_subsampled_clouds(ncol, nlay, nlwbands, nlwgpts, clouds_lw, k_dist_lw, cldfrac, p_lay);
+            auto clouds_lw_gpt = get_subsampled_clouds(ncol, nlay, nlwbands, nlwgpts, clouds_lw, k_dist_lw, cldfrac, p_lay, dz, overlap_decorrelation, overlap);
 
             // Copy cloud properties to outputs (is this needed, or can we just use pointers?)
             // Alternatively, just compute and output a subcolumn cloud mask
@@ -379,7 +380,7 @@ namespace scream {
             
         }
 
-        int3d get_subcolumn_mask(const int ncol, const int nlay, const int ngpt, real2d &cldf, const int overlap_option, int1d &seeds) {
+        int3d get_subcolumn_mask(const int ncol, const int nlay, const int ngpt, real2d &cldf, real2d &dz, const Real z0, const int overlap_option, int1d &seeds) {
             
             // Routine will return subcolumn mask with values of 0 indicating no cloud, 1 indicating cloud
             auto subcolumn_mask = int3d("subcolumn_mask", ncol, nlay, ngpt);
@@ -395,7 +396,7 @@ namespace scream {
             // Apply overlap assumption to set cldx
             if (overlap_option == 0) {  // Dummy mask, always cloudy
                 memset(cldx, 1);
-            } else {  // Default case, maximum-random overlap
+            } else if (overlap_option == 1) {  // Default case, maximum-random overlap
                 // Maximum-random overlap:
                 // Uses essentially the algorithm described in eq (14) in Raisanen et al. 2004,
                 // https://rmets.onlinelibrary.wiley.com/doi/epdf/10.1256/qj.03.99. Also the same
@@ -429,6 +430,43 @@ namespace scream {
                         }
                     }
                 });
+            } else if (overlap_option == 2) {  // Generalized overlap
+                // Uses essentially the algorithm described in eq (9) in Raisanen et al. 2004,
+                // https://rmets.onlinelibrary.wiley.com/doi/epdf/10.1256/qj.03.99. Also the same
+                // algorithm used in RRTMG implementation of maximum-random overlap (see
+                // https://github.com/AER-RC/RRTMG_SW/blob/master/src/mcica_subcol_gen_sw.f90)
+                // Compute overlap parameter "alpha" (eq 7)
+                auto alpha = real2d("alpha", ncol, nlay);
+                memset(alpha, 0.0);
+                parallel_for(SimpleBounds<2>(nlay-1,ncol), YAKL_LAMBDA(int ilay, int icol) {
+                    // Decorrelate layers when a clear layer follow a cloudy
+                    // layer to enforce random correlation between non-adjacent
+                    // blocks of cloudy layers
+                    if (cldf(icol,ilay+1) > 0) {
+                        alpha(icol,ilay+1) = exp(-0.5 * (dz(icol,ilay) + dz(icol,ilay+1))/z0);
+                    } else {
+                        alpha(icol,ilay+1) = 0;
+                    }
+                });
+                // Generate two streams of random numbers
+                auto rnd0 = real3d("rnd0", ncol, nlay, ngpt);
+                parallel_for(SimpleBounds<1>(ncol), YAKL_LAMBDA(int icol) {
+                    yakl::Random rand(seeds(icol));
+                    for (int igpt = 1; igpt <= ngpt; igpt++) {
+                        for (int ilay = 1; ilay <= nlay; ilay++) {
+                            cldx(icol,ilay,igpt) = rand.genFP<Real>();
+                            rnd0(icol,ilay,igpt) = rand.genFP<Real>();
+                        }
+                    }
+                });
+                // Step down columns and apply algorithm from eq (9)
+                parallel_for(SimpleBounds<2>(ngpt,ncol), YAKL_LAMBDA(int igpt, int icol) {
+                    for (int ilay = 2; ilay <= nlay; ilay++) {
+                        if (rnd0(icol,ilay-1,igpt) <= alpha(icol,ilay)) {
+                            cldx(icol,ilay,igpt) = cldx(icol,ilay-1,igpt);
+                        }
+                    }
+                });
             }
 
             // Use cldx array to create subcolumn mask
@@ -445,7 +483,7 @@ namespace scream {
 
         OpticalProps2str get_subsampled_clouds(
                 const int ncol, const int nlay, const int nbnd, const int ngpt,
-                OpticalProps2str &cloud_optics, GasOpticsRRTMGP &kdist, real2d &cld, real2d &p_lay) {
+                OpticalProps2str &cloud_optics, GasOpticsRRTMGP &kdist, real2d &cld, real2d &p_lay, real2d &dz, Real z0, int overlap) {
             // Initialized subsampled optics
             OpticalProps2str subsampled_optics;
             subsampled_optics.init(kdist.get_band_lims_wavenumber(), kdist.get_band_lims_gpoint(), "subsampled_optics");
@@ -464,19 +502,14 @@ namespace scream {
                     cldfrac_rad(icol,ilay) = cld(icol,ilay);
                 } 
             });
-            // Get subcolumn cloud mask; note that get_subcolumn_mask exposes overlap assumption as an option,
-            // but the only currently supported options are 0 (trivial all-or-nothing cloud) or 1 (max-rand),
-            // so overlap has not been exposed as an option beyond this subcolumn. In the future, we should
-            // support generalized overlap as well, with parameters derived from DPSCREAM simulations with very
-            // high resolution.
-            int overlap = 1;
+            // Get subcolumn cloud mask
             // Get unique seeds for each column that are reproducible across different MPI rank layouts;
             // use decimal part of pressure for this, consistent with the implementation in EAM
             auto seeds = int1d("seeds", ncol);
             parallel_for(SimpleBounds<1>(ncol), YAKL_LAMBDA(int icol) {
                 seeds(icol) = 1e9 * (p_lay(icol,nlay) - int(p_lay(icol,nlay)));
             });
-            auto cldmask = get_subcolumn_mask(ncol, nlay, ngpt, cldfrac_rad, overlap, seeds);
+            auto cldmask = get_subcolumn_mask(ncol, nlay, ngpt, cldfrac_rad, dz, z0, overlap, seeds);
             // Assign optical properties to subcolumns (note this implements MCICA)
             auto gpoint_bands = kdist.get_gpoint_bands();
             parallel_for(SimpleBounds<3>(ngpt,nlay,ncol), YAKL_LAMBDA(int igpt, int ilay, int icol) {
@@ -498,7 +531,7 @@ namespace scream {
 
         OpticalProps1scl get_subsampled_clouds(
                 const int ncol, const int nlay, const int nbnd, const int ngpt,
-                OpticalProps1scl &cloud_optics, GasOpticsRRTMGP &kdist, real2d &cld, real2d &p_lay) {
+                OpticalProps1scl &cloud_optics, GasOpticsRRTMGP &kdist, real2d &cld, real2d &p_lay, real2d &dz, Real z0, int overlap) {
             // Initialized subsampled optics
             OpticalProps1scl subsampled_optics;
             subsampled_optics.init(kdist.get_band_lims_wavenumber(), kdist.get_band_lims_gpoint(), "subsampled_optics");
@@ -518,7 +551,6 @@ namespace scream {
                 } 
             });
             // Get subcolumn cloud mask
-            int overlap = 1;
             // Get unique seeds for each column that are reproducible across different MPI rank layouts;
             // use decimal part of pressure for this, consistent with the implementation in EAM; use different
             // seed values for longwave and shortwave
@@ -526,7 +558,7 @@ namespace scream {
             parallel_for(SimpleBounds<1>(ncol), YAKL_LAMBDA(int icol) {
                 seeds(icol) = 1e9 * (p_lay(icol,nlay-1) - int(p_lay(icol,nlay-1)));
             });
-            auto cldmask = get_subcolumn_mask(ncol, nlay, ngpt, cldfrac_rad, overlap, seeds);
+            auto cldmask = get_subcolumn_mask(ncol, nlay, ngpt, cldfrac_rad, dz, z0, overlap, seeds);
             // Assign optical properties to subcolumns (note this implements MCICA)
             auto gpoint_bands = kdist.get_gpoint_bands();
             parallel_for(SimpleBounds<3>(ngpt,nlay,ncol), YAKL_LAMBDA(int igpt, int ilay, int icol) {

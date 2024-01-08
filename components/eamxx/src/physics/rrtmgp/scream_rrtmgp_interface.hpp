@@ -63,7 +63,8 @@ namespace scream {
          */
         extern void rrtmgp_main(
                 const int ncol, const int nlay,
-                real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev,
+                int overlap, Real overlap_decorrelation,
+                real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev, real2d &dz,
                 GasConcs &gas_concs,
                 real2d &sfc_alb_dir, real2d &sfc_alb_dif, real1d &mu0,
                 real2d &lwp, real2d &iwp, real2d &rel, real2d &rei, real2d &cldfrac,
@@ -114,7 +115,7 @@ namespace scream {
         /*
          * Return a subcolumn mask consistent with a specified overlap assumption
          */
-        int3d get_subcolumn_mask(const int ncol, const int nlay, const int ngpt, real2d &cldf, const int overlap_option, int1d &seeds);
+        int3d get_subcolumn_mask(const int ncol, const int nlay, const int ngpt, real2d &cldf, real2d &dz, Real z0, const int overlap_option, int1d &seeds);
         /*
          * Compute cloud area from 3d subcol cloud property
          */

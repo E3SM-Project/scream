@@ -394,6 +394,12 @@ void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
   // Whether or not to do MCICA subcolumn sampling
   m_do_subcol_sampling = m_params.get<bool>("do_subcol_sampling",true);
 
+  // Overlap option
+  m_cloud_overlap_type = m_params.get<int>("cloud_overlap_type", 1);
+
+  // For generalized overlap, need a decorrelation length scale
+  m_cloud_overlap_decorrelation = m_params.get<Real>("cloud_overlap_decorrelation", 2e3);
+
   // Initialize yakl
   yakl_init();
 
@@ -911,7 +917,8 @@ void RRTMGPRadiation::run_impl (const double dt) {
       // Run RRTMGP driver
       rrtmgp::rrtmgp_main(
         ncol, m_nlay,
-        p_lay, t_lay, p_lev, t_lev,
+        m_cloud_overlap_type, m_cloud_overlap_decorrelation,
+        p_lay, t_lay, p_lev, t_lev, z_del,
         m_gas_concs,
         sfc_alb_dir, sfc_alb_dif, mu0,
         lwp, iwp, rel, rei, cldfrac_tot,

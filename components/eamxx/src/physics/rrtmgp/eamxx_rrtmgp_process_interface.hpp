@@ -105,6 +105,12 @@ public:
   // Whether or not to do subcolumn sampling of cloud state for MCICA
   bool m_do_subcol_sampling;
 
+  // Cloud overlap
+  int m_cloud_overlap_type;
+
+  // Decorrelation length scale for generalized overlap
+  Real m_cloud_overlap_decorrelation;
+
   // Structure for storing local variables initialized using the ATMBufferManager
   struct Buffer {
     static constexpr int num_1d_ncol        = 10;

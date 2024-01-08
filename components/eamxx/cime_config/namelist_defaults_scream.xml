@@ -343,6 +343,9 @@ be lost if SCREAM_HACK_XML is not enabled.
       >
         false
       </extra_clnsky_diag>
+      <do_subcol_sampling>true</do_subcol_sampling>
+      <cloud_overlap_type>1</cloud_overlap_type>
+      <cloud_overlap_decorrelation>2e3</cloud_overlap_decorrelation>
     </rrtmgp>
 
     <mac_aero_mic inherit="atm_proc_group">
