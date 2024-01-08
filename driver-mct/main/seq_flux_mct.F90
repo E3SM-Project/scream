@@ -48,6 +48,7 @@ module seq_flux_mct
   real(r8), allocatable ::  wsresp(:) ! atm response to surface stress
   real(r8), allocatable ::  tau_est(:)! estimation of tau in equilibrium with wind
   real(r8), allocatable ::  ugust_atm(:)  ! atm gustiness
+  real(r8), allocatable ::  sstiop(:) ! SST from iop file
   real(r8), allocatable ::  thbot(:)  ! atm potential T
   real(r8), allocatable ::  shum (:)  ! atm specific humidity
   real(r8), allocatable ::  shum_16O (:)  ! atm H2O tracer
@@ -125,6 +126,7 @@ module seq_flux_mct
   integer :: index_a2x_Sa_wsresp
   integer :: index_a2x_Sa_tau_est
   integer :: index_a2x_Sa_ugust
+  integer :: index_a2x_Sa_sstiop
   integer :: index_a2x_Sa_tbot
   integer :: index_a2x_Sa_ptem
   integer :: index_a2x_Sa_shum
@@ -256,6 +258,9 @@ contains
        if(ier/=0) call mct_die(subName,'allocate ugust_atm',ier)
        ugust_atm = 0.0_r8
     end if
+    allocate(sstiop(nloc),stat=ier)
+    if(ier/=0) call mct_die(subName,'allocate sstiop',ier)
+    sstiop = 0.0_r8
     allocate(thbot(nloc),stat=ier)
     if(ier/=0) call mct_die(subName,'allocate thbot',ier)
     thbot = 0.0_r8
@@ -1423,6 +1428,7 @@ contains
        if (atm_gustiness) then
           index_a2x_Sa_ugust = mct_aVect_indexRA(a2x,'Sa_ugust')
        end if
+       index_a2x_Sa_sstiop = mct_aVect_indexRA(a2x,'Sa_sstiop')
        index_a2x_Sa_tbot   = mct_aVect_indexRA(a2x,'Sa_tbot')
        index_a2x_Sa_pslv   = mct_aVect_indexRA(a2x,'Sa_pslv')
        index_a2x_Sa_ptem   = mct_aVect_indexRA(a2x,'Sa_ptem')
@@ -1546,6 +1552,7 @@ contains
              tbot(n) = a2x%rAttr(index_a2x_Sa_tbot,n)
              pslv(n) = a2x%rAttr(index_a2x_Sa_pslv,n)
              tocn(n) = o2x%rAttr(index_o2x_So_t   ,n)
+	     tocn(n) = a2x%rAttr(index_a2x_Sa_sstiop,n)
              uocn(n) = o2x%rAttr(index_o2x_So_u   ,n)
              vocn(n) = o2x%rAttr(index_o2x_So_v   ,n)
              if ( index_o2x_So_roce_16O /= 0 ) roce_16O(n) = o2x%rAttr(index_o2x_So_roce_16O, n)

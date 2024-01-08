@@ -281,6 +281,7 @@ contains
           if (index_a2x_Sa_ugust /= 0) then
              a2x(index_a2x_Sa_ugust  ,ig) = cam_out(c)%ugust(i)
           end if
+          a2x(index_a2x_Sa_sstiop  ,ig) = cam_out(c)%sstiop(i)
           a2x(index_a2x_Sa_tbot   ,ig) = cam_out(c)%tbot(i)   
           a2x(index_a2x_Sa_ptem   ,ig) = cam_out(c)%thbot(i)  
           a2x(index_a2x_Sa_pbot   ,ig) = cam_out(c)%pbot(i)   

@@ -689,6 +689,8 @@ contains
        call metadata_set(attname, longname, stdname, units)
     end if
 
+    call seq_flds_add(a2x_states,"Sa_sstiop")
+
     if (atm_gustiness) then
        ! extra mean wind speed associated with gustiness (m/s)
        call seq_flds_add(a2x_states,"Sa_ugust")
