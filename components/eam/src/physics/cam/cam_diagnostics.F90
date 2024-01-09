@@ -2188,7 +2188,8 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
     call outfld('ASDIF',    cam_in%asdif,     pcols, lchnk)
     call outfld('ALDIR',    cam_in%aldir,     pcols, lchnk)
     call outfld('ALDIF',    cam_in%aldif,     pcols, lchnk)
-    call outfld('SST',      cam_in%sst,       pcols, lchnk)
+!    call outfld('SST',      cam_in%sst,       pcols, lchnk)
+    call outfld('SST',      cam_out%sstiop,   pcols, lchnk)
 
     if (co2_transport()) then
        do m = 1,4

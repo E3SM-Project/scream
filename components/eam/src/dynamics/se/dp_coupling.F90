@@ -37,7 +37,8 @@ CONTAINS
     use time_manager,            only: is_first_step
     use cam_abortutils,          only: endrun
     use gravity_waves_sources,   only: gws_src_fnct
-    use dyn_comp,                only: frontgf_idx, frontga_idx, hvcoord
+    use se_iop_intr_mod,         only: iop_sst_pattern
+    use dyn_comp,                only: frontgf_idx, frontga_idx, sstiop_idx, hvcoord
     use phys_control,            only: use_gw_front
     use dyn_comp,                only: dom_mt
     use gllfvremap_mod,          only: gfr_dyn_to_fv_phys
@@ -77,8 +78,10 @@ CONTAINS
     ! Frontogenesis
     real (kind=real_kind), allocatable :: frontgf(:,:,:)  ! frontogenesis function
     real (kind=real_kind), allocatable :: frontga(:,:,:)  ! frontogenesis angle 
+    real (kind=real_kind), allocatable :: sstiop(:,:)
     real (kind=r8),            pointer :: pbuf_frontgf(:,:)
     real (kind=r8),            pointer :: pbuf_frontga(:,:)
+    real (kind=r8),            pointer :: pbuf_sstiop(:)
     ! Transpose buffers
     real (kind=real_kind), allocatable, dimension(:) :: bbuffer 
     real (kind=real_kind), allocatable, dimension(:) :: cbuffer
@@ -108,6 +111,7 @@ CONTAINS
       tl_f = TimeLevel%n0  ! time split physics (with forward-in-time RK)
 
       if (use_gw_front) call gws_src_fnct(elem, tl_f, nphys, frontgf, frontga)
+      call iop_sst_pattern(elem, nphys, dom_mt, sstiop)
 
       if (fv_nphys > 0) then
         !-----------------------------------------------------------------------
@@ -152,13 +156,14 @@ CONTAINS
         frontgf(:,:,:) = 0._r8
         frontga(:,:,:) = 0._r8
       end if
+      sstiop(:,:) = 0._r8
 
     end if ! par%dynproc
 
     call t_startf('dpcopy')
     if (local_dp_map) then
 
-      !$omp parallel do private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga)
+      !$omp parallel do private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga, pbuf_sstiop)
       do lchnk = begchunk,endchunk
         ncols=get_ncols_p(lchnk)
         call get_gcol_all_p(lchnk,pcols,pgcols)
@@ -169,6 +174,7 @@ CONTAINS
           call pbuf_get_field(pbuf_chnk, frontgf_idx, pbuf_frontgf)
           call pbuf_get_field(pbuf_chnk, frontga_idx, pbuf_frontga)
         end if
+	call pbuf_get_field(pbuf_chnk, sstiop_idx, pbuf_sstiop)
 
         do icol = 1,ncols
           call get_gcol_block_d(pgcols(icol),1,idmb1,idmb2,idmb3)
@@ -186,6 +192,7 @@ CONTAINS
               pbuf_frontga(icol,ilyr) = frontga(ioff,ilyr,ie)
             end if
           end do ! ilyr
+	  pbuf_sstiop(icol) = sstiop(ioff,ie)
 
           do m = 1,pcnst
             do ilyr = 1,pver
@@ -214,9 +221,10 @@ CONTAINS
             ncols = elem(ie)%idxP%NumUniquePts
           end if
           do icol = 1,ncols
-            bbuffer(bpter(icol,0)+2:bpter(icol,0)+tsize-1) = 0.0_r8
+            bbuffer(bpter(icol,0)+3:bpter(icol,0)+tsize-1) = 0.0_r8
             bbuffer(bpter(icol,0))   = ps_tmp(icol,ie)
             bbuffer(bpter(icol,0)+1) = zs_tmp(icol,ie)
+	    bbuffer(bpter(icol,0)+2) = sstiop(icol,ie)
             do ilyr = 1,pver
               bbuffer(bpter(icol,ilyr))   = T_tmp(icol,ilyr,ie)
               bbuffer(bpter(icol,ilyr)+1) = uv_tmp(icol,1,ilyr,ie)
@@ -242,7 +250,7 @@ CONTAINS
       call transpose_block_to_chunk(tsize, bbuffer, cbuffer)
       call t_stopf  ('block_to_chunk')
 
-      !$omp parallel do private (lchnk, ncols, cpter, icol, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga)
+      !$omp parallel do private (lchnk, ncols, cpter, icol, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga, pbuf_sstiop)
       do lchnk = begchunk,endchunk
         ncols = phys_state(lchnk)%ncol
         pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
@@ -250,10 +258,13 @@ CONTAINS
            call pbuf_get_field(pbuf_chnk, frontgf_idx, pbuf_frontgf)
            call pbuf_get_field(pbuf_chnk, frontga_idx, pbuf_frontga)
         end if
+	call pbuf_get_field(pbuf_chnk, sstiop_idx, pbuf_sstiop)
+
         call block_to_chunk_recv_pters(lchnk,pcols,pver+1,tsize,cpter)
         do icol = 1,ncols
           phys_state(lchnk)%ps  (icol) = cbuffer(cpter(icol,0))
           phys_state(lchnk)%phis(icol) = cbuffer(cpter(icol,0)+1)
+	  pbuf_sstiop(icol) = cbuffer(cpter(icol,0)+2)
           do ilyr = 1,pver
             phys_state(lchnk)%t    (icol,ilyr) = cbuffer(cpter(icol,ilyr))
             phys_state(lchnk)%u    (icol,ilyr) = cbuffer(cpter(icol,ilyr)+1)
@@ -263,6 +274,7 @@ CONTAINS
                 pbuf_frontgf(icol,ilyr) = cbuffer(cpter(icol,ilyr)+4)
                 pbuf_frontga(icol,ilyr) = cbuffer(cpter(icol,ilyr)+5)
              end if
+
              do m = 1,pcnst
                 phys_state(lchnk)%q(icol,ilyr,m) = cbuffer(cpter(icol,ilyr)+tsize-pcnst-1+m)
              end do ! m

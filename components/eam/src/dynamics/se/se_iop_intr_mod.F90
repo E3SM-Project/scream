@@ -27,6 +27,7 @@ use eos, only: pnh_and_exner_from_eos
 #endif
 use element_ops, only: get_temperature
 use cam_history, only: outfld
+use hybrid_mod, only     : hybrid_t
 
 implicit none
 
@@ -34,6 +35,7 @@ public iop_setinitial
 public iop_setfield
 public iop_broadcast
 public apply_iop_forcing
+public iop_sst_pattern
 
 !=========================================================================
 contains
@@ -796,5 +798,47 @@ subroutine crm_resolved_turb(elem,hvcoord,hybrid,t1,&
 
 end subroutine crm_resolved_turb
 #endif  // MODEL_THETA_L
+
+subroutine iop_sst_pattern(elem,nphys,dom_mt,sstiop)
+    use dimensions_mod, only  : npsq, nelemd
+    use dof_mod, only         : UniquePoints
+    use domain_mod, only      : domain1d_t
+    use kinds, only           : real_kind
+    use hybrid_mod, only      : hybrid_create
+    use parallel_mod, only    : par
+    use dyn_grid, only        : fv_nphys
+    use thread_mod, only      : omp_get_thread_num, hthreads
+
+    implicit none
+    type (element_t),      intent(inout), dimension(:) :: elem
+    integer,               intent(in   ) :: nphys
+    type (domain1d_t),  pointer     :: dom_mt(:)
+    real (kind=real_kind), intent(out  ) :: sstiop(nphys*nphys,nelemd)
+
+    ! Local variables
+    type (hybrid_t) :: hybrid
+    integer :: nets, nete, ithr, ncols, ie, k
+    real(kind=real_kind), allocatable  ::  sstiop_thr(:,:,:)
+    !---------------------------------------------------------------------------
+    !$OMP PARALLEL NUM_THREADS(hthreads), DEFAULT(SHARED), PRIVATE(ithr,nets,nete,hybrid,ie,ncols,sstiop_thr)
+    ithr = omp_get_thread_num()
+    nets = dom_mt(ithr)%start
+    nete = dom_mt(ithr)%end
+    hybrid = hybrid_create(par,ithr,hthreads)
+    allocate(sstiop_thr(nphys,nphys,nets:nete))
+
+    ! Put SST function here
+    do ie=nets,nete
+      sstiop_thr(:,:,ie) = 310._real_kind
+    enddo
+
+    do ie=nets,nete
+      ncols = elem(ie)%idxP%NumUniquePts
+      call UniquePoints(elem(ie)%idxP, sstiop_thr(:,:,ie), sstiop(1:ncols,ie))
+    enddo
+    deallocate(sstiop_thr)
+    !$OMP END PARALLEL
+
+end subroutine iop_sst_pattern
 
 end module se_iop_intr_mod

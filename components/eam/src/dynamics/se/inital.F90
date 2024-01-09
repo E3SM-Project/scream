@@ -14,7 +14,7 @@ contains
 subroutine cam_initial(dyn_in, dyn_out, NLFileName)
 
    use dyn_comp,             only: dyn_init1, dyn_init2, dyn_import_t, &
-                                   dyn_export_t, frontgf_idx, frontga_idx
+                                   dyn_export_t, frontgf_idx, frontga_idx, sstiop_idx
    use phys_grid,            only: phys_grid_init
    use physpkg,              only: phys_register
    use phys_control,         only: use_gw_front
@@ -52,6 +52,8 @@ subroutine cam_initial(dyn_in, dyn_out, NLFileName)
       call pbuf_add_field("FRONTGA", "global", dtype_r8, (/pcols,pver/), &
            frontga_idx)
    end if
+
+   call pbuf_add_field("SSTIOP", "global", dtype_r8, (/pcols/), sstiop_idx)
 
    ! Initialize ghg surface values before default initial distributions
    ! are set in inidat.

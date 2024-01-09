@@ -70,6 +70,7 @@ Module dyn_comp
   ! Frontogenesis indices
   integer, public :: frontgf_idx = -1
   integer, public :: frontga_idx = -1
+  integer, public :: sstiop_idx = -1
 
 CONTAINS
 

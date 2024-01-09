@@ -722,7 +722,7 @@ subroutine cam_export(state,cam_out,pbuf)
    integer :: ncol
    integer :: prec_dp_idx, snow_dp_idx, prec_sh_idx, snow_sh_idx
    integer :: prec_sed_idx,snow_sed_idx,prec_pcw_idx,snow_pcw_idx
-   integer :: vmag_gust_idx, wsresp_idx, tau_est_idx
+   integer :: vmag_gust_idx, wsresp_idx, tau_est_idx, sstiop_idx
    real(r8) :: umb(pcols), vmb(pcols),vmag(pcols)
    logical :: linearize_pbl_winds ! Send wsresp and tau_est to coupler.
 
@@ -737,6 +737,7 @@ subroutine cam_export(state,cam_out,pbuf)
    real(r8), pointer :: vmag_gust(:)
    real(r8), pointer :: wsresp(:)                  ! First-order response of wind to surface stress
    real(r8), pointer :: tau_est(:)                 ! Estimated stress in equilibrium with ubot/vbot
+   real(r8), pointer :: sstiop(:)                  ! SST field from IOP file or computed
 
    !-----------------------------------------------------------------------
 
@@ -754,6 +755,7 @@ subroutine cam_export(state,cam_out,pbuf)
    prec_pcw_idx = pbuf_get_index('PREC_PCW')
    snow_pcw_idx = pbuf_get_index('SNOW_PCW')
    vmag_gust_idx = pbuf_get_index('vmag_gust')
+   sstiop_idx = pbuf_get_index('SSTIOP')
 
    call pbuf_get_field(pbuf, prec_dp_idx, prec_dp)
    call pbuf_get_field(pbuf, snow_dp_idx, snow_dp)
@@ -764,6 +766,7 @@ subroutine cam_export(state,cam_out,pbuf)
    call pbuf_get_field(pbuf, prec_pcw_idx, prec_pcw)
    call pbuf_get_field(pbuf, snow_pcw_idx, snow_pcw)
    call pbuf_get_field(pbuf, vmag_gust_idx, vmag_gust)
+   call pbuf_get_field(pbuf, sstiop_idx, sstiop)
 
    if (linearize_pbl_winds) then
       wsresp_idx = pbuf_get_index('wsresp')
@@ -782,7 +785,7 @@ subroutine cam_export(state,cam_out,pbuf)
       cam_out%thbot(i) = state%t(i,pver) * state%exner(i,pver)
       cam_out%zbot(i)  = state%zm(i,pver)
       cam_out%pbot(i)  = state%pmid(i,pver)
-      cam_out%sstiop(i) = 310._r8
+      cam_out%sstiop(i) = sstiop(i)
       cam_out%rho(i)   = cam_out%pbot(i)/(rair*cam_out%tbot(i))
       if (linearize_pbl_winds) then
          cam_out%wsresp(i)= max(wsresp(i), 0._r8)
