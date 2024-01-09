@@ -818,26 +818,23 @@ subroutine iop_sst_pattern(elem,nphys,dom_mt,sstiop)
     ! Local variables
     type (hybrid_t) :: hybrid
     integer :: nets, nete, ithr, ncols, ie, k
-    real(kind=real_kind), allocatable  ::  sstiop_thr(:,:,:)
+    real(kind=real_kind) :: sstiop_thr(nphys,nphys,nelemd)
+    real(kind=real_kind), parameter :: pi = 3.14159265358979323_real_kind
+    real(kind=real_kind) :: sst_mean, sst_delta
     !---------------------------------------------------------------------------
-    !$OMP PARALLEL NUM_THREADS(hthreads), DEFAULT(SHARED), PRIVATE(ithr,nets,nete,hybrid,ie,ncols,sstiop_thr)
-    ithr = omp_get_thread_num()
-    nets = dom_mt(ithr)%start
-    nete = dom_mt(ithr)%end
-    hybrid = hybrid_create(par,ithr,hthreads)
-    allocate(sstiop_thr(nphys,nphys,nets:nete))
 
-    ! Put SST function here
-    do ie=nets,nete
-      sstiop_thr(:,:,ie) = 310._real_kind
+    sst_mean = 300._real_kind
+    sst_delta = 1.25_real_kind
+
+    do ie=1,nelemd
+      sstiop_thr(:,:,ie) = sst_mean - (sst_delta/2._real_kind)* &
+        cos((2._real_kind*pi*elem(ie)%spherep(:,:)%lon)/100000._real_kind)
     enddo
 
-    do ie=nets,nete
+    do ie=1,nelemd
       ncols = elem(ie)%idxP%NumUniquePts
       call UniquePoints(elem(ie)%idxP, sstiop_thr(:,:,ie), sstiop(1:ncols,ie))
     enddo
-    deallocate(sstiop_thr)
-    !$OMP END PARALLEL
 
 end subroutine iop_sst_pattern
 

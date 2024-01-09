@@ -105,6 +105,8 @@ CONTAINS
        if (ierr /= 0) call endrun("dp_coupling: Allocate of frontga failed.")
     end if
 
+    allocate(sstiop(nphys_sq,nelemd))
+
     if( par%dynproc) then
 
       elem => dyn_out%elem
@@ -338,7 +340,9 @@ CONTAINS
 
       end if ! fv_nphys > 0
     end if ! write_inithist
-   
+
+    deallocate(sstiop)
+
   end subroutine d_p_coupling
   !=================================================================================================
   !=================================================================================================
