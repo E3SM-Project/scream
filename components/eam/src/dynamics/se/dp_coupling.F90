@@ -38,6 +38,7 @@ CONTAINS
     use cam_abortutils,          only: endrun
     use gravity_waves_sources,   only: gws_src_fnct
     use se_iop_intr_mod,         only: iop_compute_sinusoidal_sst
+    use iop_data_mod,            only: iop_sinusoidal_sst
     use dyn_comp,                only: frontgf_idx, frontga_idx, sstiop_idx, hvcoord
     use phys_control,            only: use_gw_front
     use dyn_comp,                only: dom_mt
@@ -113,7 +114,7 @@ CONTAINS
       tl_f = TimeLevel%n0  ! time split physics (with forward-in-time RK)
 
       if (use_gw_front) call gws_src_fnct(elem, tl_f, nphys, frontgf, frontga)
-      call iop_compute_sinusoidal_sst(elem, nphys, dom_mt, sstiop)
+      if (iop_sinusoidal_sst) call iop_compute_sinusoidal_sst(elem, nphys, dom_mt, sstiop)
 
       if (fv_nphys > 0) then
         !-----------------------------------------------------------------------

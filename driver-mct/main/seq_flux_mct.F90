@@ -10,6 +10,7 @@ module seq_flux_mct
   use seq_flds_mod
   use seq_comm_mct
   use seq_infodata_mod
+  use iop_data_mod,      only: iop_sinusoidal_sst
 
   use component_type_mod
 
@@ -1552,7 +1553,11 @@ contains
              tbot(n) = a2x%rAttr(index_a2x_Sa_tbot,n)
              pslv(n) = a2x%rAttr(index_a2x_Sa_pslv,n)
              tocn(n) = o2x%rAttr(index_o2x_So_t   ,n)
-	     tocn(n) = a2x%rAttr(index_a2x_Sa_sstiop,n)
+	     ! If using a prescribed SST pattern (supported in doubly periodic mode)
+	     !   then overwrite the SST value above.
+	     if (iop_sinusoidal_sst) then
+	         tocn(n) = a2x%rAttr(index_a2x_Sa_sstiop,n)
+             endif
              uocn(n) = o2x%rAttr(index_o2x_So_u   ,n)
              vocn(n) = o2x%rAttr(index_o2x_So_v   ,n)
              if ( index_o2x_So_roce_16O /= 0 ) roce_16O(n) = o2x%rAttr(index_o2x_So_roce_16O, n)
