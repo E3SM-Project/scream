@@ -35,7 +35,7 @@ public iop_setinitial
 public iop_setfield
 public iop_broadcast
 public apply_iop_forcing
-public iop_sst_pattern
+public iop_compute_sinusoidal_sst
 
 !=========================================================================
 contains
@@ -799,7 +799,7 @@ subroutine crm_resolved_turb(elem,hvcoord,hybrid,t1,&
 end subroutine crm_resolved_turb
 #endif  // MODEL_THETA_L
 
-subroutine iop_sst_pattern(elem,nphys,dom_mt,sstiop)
+subroutine iop_compute_sinusoidal_sst(elem,nphys,dom_mt,sstiop)
     use dimensions_mod, only  : npsq, nelemd
     use dof_mod, only         : UniquePoints
     use domain_mod, only      : domain1d_t
@@ -808,6 +808,7 @@ subroutine iop_sst_pattern(elem,nphys,dom_mt,sstiop)
     use parallel_mod, only    : par
     use dyn_grid, only        : fv_nphys
     use thread_mod, only      : omp_get_thread_num, hthreads
+    use physical_constants, only : Lx
 
     implicit none
     type (element_t),      intent(inout), dimension(:) :: elem
@@ -820,22 +821,20 @@ subroutine iop_sst_pattern(elem,nphys,dom_mt,sstiop)
     integer :: nets, nete, ithr, ncols, ie, k
     real(kind=real_kind) :: sstiop_thr(nphys,nphys,nelemd)
     real(kind=real_kind), parameter :: pi = 3.14159265358979323_real_kind
-    real(kind=real_kind) :: sst_mean, sst_delta
     !---------------------------------------------------------------------------
 
-    sst_mean = 300._real_kind
-    sst_delta = 1.25_real_kind
-
+    ! Apply sinusoidal SST pattern that satisfies RCEMIP2 protocol
     do ie=1,nelemd
-      sstiop_thr(:,:,ie) = sst_mean - (sst_delta/2._real_kind)* &
-        cos((2._real_kind*pi*elem(ie)%spherep(:,:)%lon)/100000._real_kind)
+      sstiop_thr(:,:,ie) = iop_sst_mean - (iop_sst_delta/2._real_kind)* &
+        cos((2._real_kind*pi*elem(ie)%spherep(:,:)%lon)/Lx)
     enddo
 
+    ! Put on physics grid
     do ie=1,nelemd
       ncols = elem(ie)%idxP%NumUniquePts
       call UniquePoints(elem(ie)%idxP, sstiop_thr(:,:,ie), sstiop(1:ncols,ie))
     enddo
 
-end subroutine iop_sst_pattern
+end subroutine iop_compute_sinusoidal_sst
 
 end module se_iop_intr_mod

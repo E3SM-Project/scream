@@ -4660,6 +4660,27 @@ Use geostropic winds specified in IOP file to apply coriolis force.
 Default: FALSE
 </entry>
 
+<entry id="iop_sinusoidal_sst" type="logical" category="scam"
+       group="cam_inparm" valid_values="">
+Use sinusoidal SST pattern for doubly periodic runs.  Must also set iop_sst_mean and iop_sst_delta.
+This flag was added specifically for RCEMIP2 large simulations.
+Default: FALSE
+</entry>
+
+<entry id="iop_sst_mean" type="real" category="scam"
+       group="cam_inparm" valid_values="">
+SST mean value used if iop_sinusoidal_sst flag is used.
+This flag was added specifically for RCEMIP2 large simulations.
+Default: -999
+</entry>
+
+<entry id="iop_sst_delta" type="real" category="scam"
+       group="cam_inparm" valid_values="">
+SST delta value used if iop_sinusoidal_sst flag is used.
+This flag was added specifically for RCEMIP2 large simulations.
+Default: -999
+</entry>
+
 <entry id="iop_nudge_tq" type="logical" category="scam"
        group="cam_inparm" valid_values="">
 Use relaxation for temperature and moisture.

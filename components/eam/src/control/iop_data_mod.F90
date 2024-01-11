@@ -121,6 +121,9 @@ module iop_data_mod
   real(r8), public ::      iop_nudge_tq_low    ! lowest level to apply relaxation (hPa)
   real(r8), public ::      iop_nudge_tq_high   ! highest level to apply relaxation (hPa)
   real(r8), public ::      iop_nudge_tscale    ! timescale for relaxation
+  
+  real(r8), public ::      iop_sst_mean ! If using sinusoidal SST this is the mean
+  real(r8), public ::      iop_sst_delta ! If using sinusoidal SST then this is the delta
 
   real(r8), public ::      iop_perturb_high    ! higest level to apply perturbations
                                                ! to temperature profile (doubly periodic mode)
@@ -171,6 +174,7 @@ module iop_data_mod
   logical*4, public ::  scm_iop_srf_prop   ! use the specified surface properties
   logical*4, public ::  iop_dosubsidence ! compute Eulerian LS vertical advection
   logical*4, public ::  iop_coriolis ! use geostropic winds to apply coriolis forcing
+  logical*4, public ::  iop_sinusoidal_sst ! Option to use sinusoidal SSTs for DP mode
   logical*4, public ::  iop_nudge_tq! use relaxation for t and q
   logical*4, public ::  iop_nudge_uv! use relaxation for u and v
   logical*4, public ::  scm_observed_aero ! use observed aerosols in SCM file
@@ -191,7 +195,8 @@ subroutine iop_default_opts( scmlat_out,scmlon_out,iopfile_out, &
         iop_nudge_tq_low_out, iop_nudge_tq_high_out, iop_nudge_tscale_out, &
         scm_observed_aero_out, iop_dosubsidence_out, iop_coriolis_out, &
         scm_multcols_out, dp_crm_out, iop_perturb_high_out, &
-        precip_off_out, scm_zero_non_iop_tracers_out)
+        precip_off_out, scm_zero_non_iop_tracers_out, &
+        iop_sinusoidal_sst_out, iop_sst_mean_out, iop_sst_delta_out)
    !-----------------------------------------------------------------------
    real(r8), intent(out), optional :: scmlat_out,scmlon_out
    character*(max_path_len), intent(out), optional ::  iopfile_out
@@ -209,6 +214,9 @@ subroutine iop_default_opts( scmlat_out,scmlon_out,iopfile_out, &
    real(r8), intent(out), optional ::  iop_nudge_tq_high_out
    real(r8), intent(out), optional ::  iop_nudge_tscale_out
    real(r8), intent(out), optional ::  iop_perturb_high_out
+   logical, intent(out), optional ::   iop_sinusoidal_sst_out
+   real(r8), intent(out), optional ::  iop_sst_mean_out
+   real(r8), intent(out), optional ::  iop_sst_delta_out
    logical, intent(out), optional ::  scm_zero_non_iop_tracers_out
 
    if ( present(scmlat_out) )           scmlat_out     = -999._r8
@@ -228,6 +236,9 @@ subroutine iop_default_opts( scmlat_out,scmlon_out,iopfile_out, &
    if ( present(precip_off_out))        precip_off_out = .false.
    if ( present(scm_multcols_out))      scm_multcols_out = .false.
    if ( present(dp_crm_out))            dp_crm_out = .false.
+   if ( present(iop_sinusoidal_sst_out)) iop_sinusoidal_sst_out = .false.
+   if ( present(iop_sst_mean_out))       iop_sst_mean_out = -999._r8
+   if ( present(iop_sst_delta_out))      iop_sst_delta_out = -999._r8
    if ( present(scm_zero_non_iop_tracers_out) ) scm_zero_non_iop_tracers_out = .false.
 
 end subroutine iop_default_opts
@@ -238,7 +249,8 @@ subroutine iop_setopts( scmlat_in, scmlon_in,iopfile_in,single_column_in, &
                          iop_nudge_tq_low_in, iop_nudge_tq_high_in, iop_nudge_tscale_in, &
                          scm_observed_aero_in, iop_dosubsidence_in, iop_coriolis_in, &
                          scm_multcols_in, dp_crm_in, iop_perturb_high_in, &
-                         precip_off_in, scm_zero_non_iop_tracers_in)
+                         precip_off_in, scm_zero_non_iop_tracers_in, &
+                         iop_sinusoidal_sst_in, iop_sst_mean_in, iop_sst_delta_in)
   !-----------------------------------------------------------------------
   real(r8), intent(in), optional       :: scmlon_in, scmlat_in
   character*(max_path_len), intent(in), optional :: iopfile_in
@@ -257,6 +269,10 @@ subroutine iop_setopts( scmlat_in, scmlon_in,iopfile_in,single_column_in, &
   real(r8), intent(in), optional       :: iop_nudge_tscale_in
   real(r8), intent(in), optional       :: iop_perturb_high_in
   logical, intent(in), optional        :: scm_zero_non_iop_tracers_in
+  logical, intent(in), optional        :: iop_sinusoidal_sst_in
+  real(r8), intent(in), optional       :: iop_sst_mean_in
+  real(r8), intent(in), optional       :: iop_sst_delta_in
+
   integer ncid,latdimid,londimid,latsiz,lonsiz,latid,lonid,ret,i
   integer latidx,lonidx
   real(r8) ioplat,ioplon
@@ -325,6 +341,18 @@ subroutine iop_setopts( scmlat_in, scmlon_in,iopfile_in,single_column_in, &
      iopfile=trim(iopfile_in)
   endif
 
+  if (present (iop_sinusoidal_sst_in)) then
+     iop_sinusoidal_sst=iop_sinusoidal_sst_in
+  endif
+
+  if (present (iop_sst_mean_in)) then
+     iop_sst_mean=iop_sst_mean_in
+  endif
+
+  if (present (iop_sst_delta_in)) then
+     iop_sst_delta=iop_sst_delta_in
+  endif
+
 #ifdef SPMD
   call mpibcast(scm_iop_srf_prop,1,mpilog,0,mpicom)
   call mpibcast(dp_crm,1,mpilog,0,mpicom)
@@ -338,6 +366,9 @@ subroutine iop_setopts( scmlat_in, scmlon_in,iopfile_in,single_column_in, &
   call mpibcast(iop_perturb_high,1,mpir8,0,mpicom)
   call mpibcast(scm_observed_aero,1,mpilog,0,mpicom)
   call mpibcast(precip_off,1,mpilog,0,mpicom)
+  call mpibcast(iop_sinusoidal_sst,1,mpilog,0,mpicom)
+  call mpibcast(iop_sst_mean,1,mpir8,0,mpicom)
+  call mpibcast(iop_sst_delta,1,mpir8,0,mpicom)
 #endif
 
   if( single_column) then

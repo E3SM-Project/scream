@@ -168,11 +168,14 @@ real(r8) :: iop_nudge_tq_low
 real(r8) :: iop_nudge_tq_high
 real(r8) :: iop_nudge_tscale
 real(r8) :: iop_perturb_high
+real(r8) :: iop_sst_mean
+real(r8) :: iop_sst_delta
 integer, parameter :: max_chars = 128
 character(len=max_chars) iopfile
 logical  :: scm_iop_srf_prop
 logical  :: iop_dosubsidence
 logical  :: iop_coriolis
+logical  :: iop_sinusoidal_sst
 logical  :: iop_nudge_tq
 logical  :: iop_nudge_uv
 logical  :: scm_diurnal_avg
@@ -340,7 +343,8 @@ contains
                          iop_nudge_tq_low, iop_nudge_tq_high, iop_nudge_tscale, &
                          scm_observed_aero, precip_off, iop_coriolis, &
                          scm_zero_non_iop_tracers, iop_perturb_high, dp_crm, &
-                         iop_dosubsidence, scm_zero_non_iop_tracers
+                         iop_dosubsidence, scm_zero_non_iop_tracers, &
+                         iop_sinusoidal_sst, iop_sst_mean, iop_sst_delta
 
 !-----------------------------------------------------------------------
 
@@ -381,6 +385,9 @@ contains
         scm_iop_srf_prop_out=scm_iop_srf_prop,&
         iop_dosubsidence_out=iop_dosubsidence, &
         iop_coriolis_out=iop_coriolis, &
+        iop_sinusoidal_sst_out=iop_sinusoidal_sst, &
+        iop_sst_mean_out=iop_sst_mean, &
+        iop_sst_delta_out=iop_sst_delta, &
         iop_nudge_tq_out=iop_nudge_tq, &
         iop_nudge_uv_out=iop_nudge_uv, &
         iop_nudge_tq_low_out=iop_nudge_tq_low, &
@@ -467,6 +474,9 @@ contains
                             scm_iop_srf_prop_in=scm_iop_srf_prop,&
                             iop_dosubsidence_in=iop_dosubsidence,&
                             iop_coriolis_in=iop_coriolis,&
+                            iop_sinusoidal_sst_in=iop_sinusoidal_sst,&
+                            iop_sst_mean_in=iop_sst_mean,&
+                            iop_sst_delta_in=iop_sst_delta,&
                             iop_nudge_tq_in=iop_nudge_tq, &
                             iop_nudge_uv_in=iop_nudge_uv, &
                             iop_nudge_tq_low_in=iop_nudge_tq_low, &
