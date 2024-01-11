@@ -23,7 +23,7 @@ use wv_saturation, only: qsat, qsat_water, svp_ice
 use time_manager,  only: is_first_step
 use physconst,     only: cpair, rair, gravit, latvap, epsilo
 
-use iop_data_mod,  only: single_column, wfld
+use iop_data_mod,  only: single_column, wfld, iop_sinusoidal_sst
 use cam_abortutils,    only: endrun
 
 implicit none
@@ -2188,8 +2188,11 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
     call outfld('ASDIF',    cam_in%asdif,     pcols, lchnk)
     call outfld('ALDIR',    cam_in%aldir,     pcols, lchnk)
     call outfld('ALDIF',    cam_in%aldif,     pcols, lchnk)
-!    call outfld('SST',      cam_in%sst,       pcols, lchnk)
-    call outfld('SST',      cam_out%sstiop,   pcols, lchnk)
+    if (iop_sinusoidal_sst) then
+       call outfld('SST',      cam_out%sstiop,   pcols, lchnk)
+    else
+       call outfld('SST',      cam_in%sst,       pcols, lchnk)
+    endif
 
     if (co2_transport()) then
        do m = 1,4
