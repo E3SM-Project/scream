@@ -19,6 +19,12 @@ DefaultModelInit (const strmap_t<Field>& eamxx_inputs,
 void DefaultModelInit::
 set_initial_conditions (const std::shared_ptr<ekat::logger::LoggerBase>& logger)
 {
+  // For the tracers, we read in individual fields, rather than the field 'tracers'
+  // NOTE: this is an ad-hoc fix for the tracers. PG2 requires to get the tracers
+  //       group when setting the IC, so we had to add it to the eamxx inputs.
+  //       But non-PG2 runs do not need this (and, in fact, won't find it in the file)
+  m_eamxx_inputs.erase("tracers");
+
   set_constant_fields (logger);
   if (m_params.isParameter("Filename") and m_ic_fields.size()>0) {
     read_ic_file (logger);

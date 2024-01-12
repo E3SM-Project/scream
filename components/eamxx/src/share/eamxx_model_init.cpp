@@ -106,6 +106,7 @@ set_constant_fields (const std::shared_ptr<ekat::logger::LoggerBase>& logger)
     }
 
     m_const_fields.insert(f);
+    m_const_fields_values[f.name()] = val_str;
   }
   logger->info("    [EAMxx] Initializing constant fields ... done!");
 }

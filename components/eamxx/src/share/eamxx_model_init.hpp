@@ -62,7 +62,8 @@ protected:
   strmap_t<Field>   m_eamxx_inputs;
 
   // Subset of EAMxx input fields that are const-inited
-  std::set<Field>   m_const_fields;
+  std::set<Field>         m_const_fields;
+  strmap_t<std::string>   m_const_fields_values; // This is needed by fvphys later in the init
 
   // Subset of EAMxx input fields that are topography-related
   // NOTE: when set_constant_fields is called, we remove const fields from these lists

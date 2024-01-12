@@ -30,13 +30,13 @@ public:
   ~HommeDynamics ();
 
   // The type of the subcomponent (dynamics or physics)
-  AtmosphereProcessType type () const { return AtmosphereProcessType::Dynamics; }
+  AtmosphereProcessType type () const override { return AtmosphereProcessType::Dynamics; }
 
   // The name of the subcomponent
-  std::string name () const { return "homme"; }
+  std::string name () const override { return "homme"; }
 
   // Set the grid
-  void set_grids (const std::shared_ptr<const GridsManager> grids_manager);
+  void set_grids (const std::shared_ptr<const GridsManager> grids_manager) override;
 
   void all_fields_set_impl () override;
 
@@ -65,55 +65,35 @@ protected:
   // Copy initial states from n0 timelevel to other timelevels
   void copy_dyn_states_to_all_timelevels ();
 
-  void initialize_impl (const RunType run_type);
-
   // fv_phys refers to the horizontal finite volume (FV) grid for column
   // parameterizations nested inside the horizontal element grid. The grid names
-  // are "Physics PGN", where N in practice is 2. The name of each routine is
-  // fv_phys_X, where X is the name of an existing HommeDynamics routine. If
-  // fv_phys is not being used, each of these routines does an immediate exit,
-  // so it's OK to always call the routine.
-  //   For the finite volume (FV) physics grid, sometimes referred to as
-  // "physgrid", we use the remapper that Homme provides. Store N in pgN; if the
-  // grid is not FV, then this variable is set to -1.
-  int m_phys_grid_pgN;
-  void fv_phys_set_grids();
-  void fv_phys_requested_buffer_size_in_bytes() const;
-  void fv_phys_initialize_impl();
-  void fv_phys_dyn_to_fv_phys(const bool restart = false);
-  void fv_phys_pre_process();
-  void fv_phys_post_process();
-  // See [rrtmgp active gases] in eamxx_homme_fv_phys.cpp.
+  // are "Physics PGN", where N in practice is 2.
+  // These two routines are needed for reading active gases from IC/restart file
+  // with PG2.
   void fv_phys_rrtmgp_active_gases_init(const std::shared_ptr<const GridsManager>& gm);
-  void fv_phys_rrtmgp_active_gases_remap();
+  void fv_phys_rrtmgp_active_gases_remap(const int pgN);
 
   // Rayleigh friction functions
   void rayleigh_friction_init ();
   void rayleigh_friction_apply (const Real dt) const;
 
-public:
-  // Fast boolean function returning whether Physics PGN is being used.
-  bool fv_phys_active() const;
-  struct GllFvRemapTmp;
-  void remap_dyn_to_fv_phys(GllFvRemapTmp* t = nullptr) const;
-  void remap_fv_phys_to_dyn() const;
-
 protected:
-  void run_impl        (const double dt);
-  void finalize_impl   ();
+  void initialize_impl (const RunType run_type) override;
+  void run_impl        (const double dt) override;
+  void finalize_impl   () override;
 
   // We need to store the size of the tracers group as soon as it is available.
   // In particular, we absolutely need to store it *before* the call to
   // requested_buffer_size_in_bytes, where Homme::ForcingFunctor queries
   // Homme::Tracers for qsize.
-  void set_computed_group_impl (const FieldGroup& group);
+  void set_computed_group_impl (const FieldGroup& group) override;
 
   // Computes total number of bytes needed for local variables
-  size_t requested_buffer_size_in_bytes() const;
+  size_t requested_buffer_size_in_bytes() const override;
 
   // Set local variables using memory provided by
   // the ATMBufferManager
-  void init_buffers(const ATMBufferManager &buffer_manager);
+  void init_buffers(const ATMBufferManager &buffer_manager) override;
 
   // Creates an helper field, not to be shared with the AD's FieldManager
   void create_helper_field (const std::string& name,

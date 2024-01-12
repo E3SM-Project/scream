@@ -1,4 +1,5 @@
 #include "eamxx_homme_process_interface.hpp"
+#include "eamxx_homme_fv_phys_helper.hpp"
 
 // HOMMEXX Includes
 #include "Context.hpp"
@@ -47,7 +48,7 @@ namespace scream
 {
 
 HommeDynamics::HommeDynamics (const ekat::Comm& comm, const ekat::ParameterList& params)
-  : AtmosphereProcess(comm, params), m_phys_grid_pgN(-1)
+  : AtmosphereProcess(comm, params)
 {
   // This class needs Homme's context, so register as a user
   HommeContextUser::singleton().add_user();
@@ -74,17 +75,20 @@ HommeDynamics::~HommeDynamics ()
 {
   // This class is done with Homme. Remove from its users list
   HommeContextUser::singleton().remove_user();
+  HommeFvPhysHelper::instance().clean_up();
 }
 
 void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_manager)
 {
+  auto& fv_phys = HommeFvPhysHelper::instance();
+
   // Grab dynamics, physics, and physicsGLL grids
   const auto dgn = "Dynamics";
   m_dyn_grid = grids_manager->get_grid(dgn);
   m_phys_grid = grids_manager->get_grid("Physics");
   m_cgll_grid = grids_manager->get_grid("Physics GLL");
 
-  fv_phys_set_grids();
+  fv_phys.set_grids(m_dyn_grid,m_cgll_grid,m_phys_grid);
 
   // Init prim structures
   // TODO: they should not be inited yet; should we error out if they are?
@@ -182,7 +186,7 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
   add_field<Computed>("omega",         FL({COL,     LEV},{ncols,  nlev_mid}),Pa/s,  pgn,N);
   add_group<Updated>("tracers",pgn,N, Bundling::Required);
 
-  if (fv_phys_active()) {
+  if (fv_phys.fv_phys_active) {
     // [CGLL ICs in pg2] Read CGLL IC data even though our in/out format is
     // pgN. I don't want to read these directly from the netcdf file because
     // doing so may conflict with additional IC mechanisms in the AD, e.g.,
@@ -194,9 +198,10 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
     add_field<Required>("ps",            FL({COL         },{nc           }),Pa,    rgn);
     add_field<Required>("phis",          FL({COL         },{nc           }),m2/s2, rgn);
     add_group<Required>("tracers",rgn,N, Bundling::Required, DerivationType::Import, "tracers", pgn);
-    fv_phys_rrtmgp_active_gases_init(grids_manager);
     // This is needed for the dp_ref init in initialize_homme_state.
     add_field<Computed>("pseudo_density",FL({COL,     LEV},{nc,  nlev_mid}),Pa,    rgn,N);
+
+    fv_phys_rrtmgp_active_gases_init(grids_manager);
   }
 
   // Dynamics grid states
@@ -239,7 +244,7 @@ void HommeDynamics::set_grids (const std::shared_ptr<const GridsManager> grids_m
   add_internal_field (m_helper_fields.at("omega_dyn"));
   add_internal_field (m_helper_fields.at("phis_dyn"));
 
-  if (not fv_phys_active()) {
+  if (not fv_phys.fv_phys_active) {
     // Dynamics backs out tendencies from the states, and passes those to Homme.
     // After Homme completes, we remap the updated state to the ref grid.  Thus,
     // is more convenient to use two different remappers: the pd remapper will
@@ -353,7 +358,7 @@ size_t HommeDynamics::requested_buffer_size_in_bytes() const
     auto& dirk = c.create_if_not_there<DirkFunctor>(num_elems);
     fbm.request_size(dirk.requested_buffer_size());
   }
-  fv_phys_requested_buffer_size_in_bytes();
+  HommeFvPhysHelper::instance().requested_buffer_size_in_bytes();
 
   return fbm.allocated_size()*sizeof(Real);
 }
@@ -383,14 +388,12 @@ void HommeDynamics::init_buffers(const ATMBufferManager &buffer_manager)
 void HommeDynamics::initialize_impl (const RunType run_type)
 {
   const auto& pgn = m_phys_grid->name();
+  auto& fv_phys = HommeFvPhysHelper::instance();
 
   // Unfortunately, Homme *does* use FM_z even in hydrostatic mode (missing ifdef).
   // Later, it computes diags on w, so if FM_w contains NaN's, repro sum in Homme
   // will crap out. To prevent that, set FM_z=0
-
-  if (fv_phys_active()) {
-    fv_phys_initialize_impl();
-  } else {
+  if (not fv_phys.fv_phys_active) {
     // Setup the p2d and d2p remappers
     m_p2d_remapper->registration_begins();
     m_d2p_remapper->registration_begins();
@@ -439,8 +442,10 @@ void HommeDynamics::initialize_impl (const RunType run_type)
   // Complete homme model initialization
   prim_init_model_f90 ();
 
-  if (fv_phys_active()) {
-    fv_phys_dyn_to_fv_phys(run_type != RunType::Initial);
+  if (fv_phys.fv_phys_active) {
+    fv_phys.dyn_to_fv_phys_init(run_type != RunType::Initial,timestamp());
+    update_pressure(m_phys_grid);
+
     // [CGLL ICs in pg2] Remove the CGLL fields from the process. The AD has a
     // separate fvphyshack-based line to remove the whole CGLL FM. The intention
     // is to clear the view memory on the device, but I don't know if these two
@@ -453,7 +458,7 @@ void HommeDynamics::initialize_impl (const RunType run_type)
     for (const auto& f : {"horiz_winds", "T_mid", "ps", "phis", "pseudo_density"})
       remove_field(f, rgn);
     remove_group("tracers", rgn);
-    fv_phys_rrtmgp_active_gases_remap();
+    fv_phys_rrtmgp_active_gases_remap(fv_phys.pgN);
   }
 
   // Set up field property checks
@@ -600,8 +605,9 @@ void HommeDynamics::homme_pre_process (const double dt) {
 
   const auto ftype = params.ftype;
 
-  if (fv_phys_active()) {
-    fv_phys_pre_process();
+  auto& fv_phys = HommeFvPhysHelper::instance();
+  if (fv_phys.fv_phys_active) {
+    fv_phys.remap_fv_phys_to_dyn();
   } else {
     // Remap FT, FM, and Q->FQ
     m_p2d_remapper->remap(true);
@@ -668,8 +674,9 @@ void HommeDynamics::homme_post_process (const double dt) {
     get_internal_field("w_int_dyn").get_header().get_alloc_properties().reset_subview_idx(tl.n0);
   }
 
-  if (fv_phys_active()) {
-    fv_phys_post_process();
+  auto& fv_phys = HommeFvPhysHelper::instance();
+  if (fv_phys.fv_phys_active) {
+    fv_phys.remap_dyn_to_fv_phys();
     // Apply Rayleigh friction to update temperature and horiz_winds
     rayleigh_friction_apply(dt);
 
@@ -1000,7 +1007,7 @@ void HommeDynamics::restart_homme_state () {
     Q_dyn_view(ie,iq,ip,jp,k) = Qdp_dyn_view(ie,iq,ip,jp,k) / dp_dyn_view(ie,ip,jp,k);
   });
 
-  if (fv_phys_active()) {
+  if (HommeFvPhysHelper::instance().fv_phys_active) {
     m_ic_remapper = nullptr;
     return;
   }
@@ -1191,7 +1198,8 @@ void HommeDynamics::initialize_homme_state () {
     f.get_header().get_tracking().update_time_stamp(timestamp());
   }
 
-  if (not fv_phys_active()) {
+  auto& fv_phys = HommeFvPhysHelper::instance();
+  if (not fv_phys.fv_phys_active) {
     // Forcings are computed as some version of "value coming in from AD
     // minus value at the end of last HommeDynamics run".
     // At the first time step, we don't have a value at the end of last
@@ -1221,7 +1229,7 @@ void HommeDynamics::initialize_homme_state () {
     qdp(ie,n0_qdp,iq,ip,jp,k) = q(ie,iq,ip,jp,k) * dp(ie,n0,ip,jp,k);
   });
 
-  if (not fv_phys_active()) {
+  if (not fv_phys.fv_phys_active) {
     // Initialize p_mid/p_int
     update_pressure (m_phys_grid);
   }

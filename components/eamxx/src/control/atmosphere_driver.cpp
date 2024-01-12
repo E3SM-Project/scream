@@ -625,6 +625,13 @@ void AtmosphereDriver::create_fields()
   // Tell all atm procs that we are done setting fields from the FieldManager's
   m_atm_process_group->all_fields_set();
 
+  // Also, now that they have all fields, the atm procs should know how many
+  // temporaries they need, so we can initialize the atm memory buffer
+  m_memory_buffer = std::make_shared<ATMBufferManager>();
+  m_memory_buffer->request_bytes(m_atm_process_group->requested_buffer_size_in_bytes());
+  m_memory_buffer->allocate();
+  m_atm_process_group->init_buffers(*m_memory_buffer);
+
   // Now that all processes have all the required/computed fields/groups, they
   // have also created any possible internal field (if needed). Notice that some
   // atm proc might have created internal fields already during the set_grids
@@ -1001,10 +1008,29 @@ void AtmosphereDriver::set_initial_conditions ()
     add_field(f);
   }
   for (const auto& g : m_atm_process_group->get_groups_in()) {
+    if (g.m_bundle) {
+      add_field (*g.m_bundle);
+    }
     for (const auto& it : g.m_fields) {
       add_field(*it.second);
     }
   }
+  // std::map<std::string,Field>      eamxx_input_fields;
+  // std::map<std::string,FieldGroup> eamxx_input_groups;
+
+  // for (const auto& f : m_atm_process_group->get_fields_in()) {
+  //   const auto& fid = f.get_header().get_identifier();
+  //   const auto& gname = fid.get_grid_name();
+  //   const auto& fm = get_field_mgr(gname);
+  //   eamxx_input_fields[fid.name()] = fm->get_field(fid.name());
+  // }
+  // for (const auto& g : m_atm_process_group->get_groups_in()) {
+  //   const auto& group_name = g.m_info->m_group_name;
+  //   const auto& grid_name  = g.grid_name();
+  //   const auto& fm = get_field_mgr(grid_name);
+
+  //   eamxx_input_groups[group_name] = fm->get_field_group(group_name);
+  // }
 
   // The default model init is used a lot in testing,
   // and does not inject any additional eamxx lib dependency,
@@ -1012,6 +1038,7 @@ void AtmosphereDriver::set_initial_conditions ()
   register_default_model_init();
 
   auto& ic_pl = m_atm_params.sublist("initial_conditions");
+  ic_pl.set("iop",m_intensive_observation_period);
 
   // Note: in order for this to work, you MUST have registered
   //       the "fvphys" ModelInit in the factory.
@@ -1233,12 +1260,6 @@ void AtmosphereDriver::initialize_atm_procs ()
   m_atm_logger->info("[EAMxx] initialize_atm_procs ...");
   start_timer("EAMxx::init");
   start_timer("EAMxx::initialize_atm_procs");
-
-  // Initialize memory buffer for all atm processes
-  m_memory_buffer = std::make_shared<ATMBufferManager>();
-  m_memory_buffer->request_bytes(m_atm_process_group->requested_buffer_size_in_bytes());
-  m_memory_buffer->allocate();
-  m_atm_process_group->init_buffers(*m_memory_buffer);
 
   const bool restarted_run = m_case_t0 < m_run_t0;
 

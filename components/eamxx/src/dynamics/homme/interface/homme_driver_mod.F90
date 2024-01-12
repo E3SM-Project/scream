@@ -182,8 +182,7 @@ contains
 
   subroutine prim_init_model_f90 () bind(c)
     use prim_driver_mod,   only: prim_init_ref_states_views, &
-                                 prim_init_diags_views, prim_init_kokkos_functors, &
-                                 prim_init_state_views
+                                 prim_init_diags_views, prim_init_kokkos_functors
     use prim_state_mod,    only: prim_printstate
     use model_init_mod,    only: model_init2
     use control_mod,       only: disable_diagnostics
