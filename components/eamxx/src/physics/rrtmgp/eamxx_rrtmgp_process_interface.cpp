@@ -425,9 +425,10 @@ void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
       Field field_transient;
       if (name == "co2" || name == "n2o" || name == "ch4" || name == "f11" || name == "f12") {
         // These are all scalar (0d) time-varying
-        FieldLayout scalar0d_layout{{}, {}};
+        FieldLayout scalar0d_layout({}, {});
+        auto phony_grid = m_grid->clone("phony_new_name", true);
         field_transient = create_helper_field(
-            name_transient, scalar0d_layout, m_grid->name(), ps);
+            name_transient, scalar0d_layout, phony_grid->name(), ps);
       } else if (name =="o3") {
         // TODO: add O3 later because we need to decide about remapping it from ne30pg2 to target
         // field_transient = create_helper_field(name, scalar3d_layout_mid, m_grid->name(), ps);
