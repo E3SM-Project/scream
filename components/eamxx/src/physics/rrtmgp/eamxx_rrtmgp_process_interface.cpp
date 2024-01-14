@@ -415,7 +415,7 @@ void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
 
   // Initialize the time interpolator
   if (m_time_varying_active_gases_file[0] != "nofilegiven") {
-    auto phony_grid = m_grid->clone("phony_new_name", true);
+    auto phony_grid = create_point_grid("phony_grid", 0, 0, m_comm);
     m_time_interp =
         util::TimeInterpolation(phony_grid, m_time_varying_active_gases_file);
 
