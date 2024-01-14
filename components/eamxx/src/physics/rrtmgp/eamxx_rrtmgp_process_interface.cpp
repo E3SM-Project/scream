@@ -8,6 +8,7 @@
 #include "share/property_checks/field_within_interval_check.hpp"
 #include "share/util/scream_common_physics_functions.hpp"
 #include "share/util/scream_column_ops.hpp"
+#include "share/grid/point_grid.hpp"
 
 #include "ekat/ekat_assert.hpp"
 
@@ -24,6 +25,7 @@ RRTMGPRadiation::
 RRTMGPRadiation (const ekat::Comm& comm, const ekat::ParameterList& params)
   : AtmosphereProcess(comm, params)
 {
+  m_comm = comm;
   // Gather the active gases from the rrtmgp parameter list and assign to the m_gas_names vector.
   const auto& active_gases = m_params.get<std::vector<std::string>>("active_gases");
   for (auto& it : active_gases) {
@@ -373,6 +375,7 @@ void RRTMGPRadiation::init_buffers(const ATMBufferManager &buffer_manager)
 
 void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
   using PC = scream::physics::Constants<Real>;
+  using namespace ShortFieldTagsNames;
 
   // Set EAM-to-EAMxx translation for active gases
   m_eam_to_eamxx_active_gases["co2"] = "CO2";

@@ -91,6 +91,8 @@ public:
   view_1d_real             m_gas_mol_weights;
   GasConcs                 m_gas_concs;
 
+  // The communicator
+  ekat::Comm m_comm;
   // The time interpolation object
   util::TimeInterpolation m_time_interp;
   // The list of time varying input fields
