@@ -415,8 +415,9 @@ void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
 
   // Initialize the time interpolator
   if (m_time_varying_active_gases_file[0] != "nofilegiven") {
+    auto phony_grid = m_grid->clone("phony_new_name", true);
     m_time_interp =
-        util::TimeInterpolation(m_grid, m_time_varying_active_gases_file);
+        util::TimeInterpolation(phony_grid, m_time_varying_active_gases_file);
 
     // To create helper fields for to interpolate their values
     for (std::string name : m_time_varying_active_gases_list) {
@@ -426,7 +427,6 @@ void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
       if (name == "co2" || name == "n2o" || name == "ch4" || name == "f11" || name == "f12") {
         // These are all scalar (0d) time-varying
         FieldLayout scalar0d_layout({}, {});
-        auto phony_grid = m_grid->clone("phony_new_name", true);
         field_transient = create_helper_field(
             name_transient, scalar0d_layout, phony_grid->name(), ps);
       } else if (name =="o3") {
