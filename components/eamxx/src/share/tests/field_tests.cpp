@@ -147,6 +147,26 @@ TEST_CASE("field", "") {
     REQUIRE(views_are_equal(f1,f2));
   }
 
+  SECTION ("construct_from_view") {
+    // Crate f1 with some padding, to stress test the feature
+    Field f1 (fid);
+    auto& fap1 = f1.get_header().get_alloc_properties();
+    fap1.request_allocation(16);
+    f1.allocate_view();
+    f1.deep_copy(1.0);
+
+    // Get f1 view, and wrap it in another field
+    auto view = f1.get_view<Real**>();
+    Field f2 (fid,view);
+
+    // Check the two are the same
+    REQUIRE (views_are_equal(f1,f2));
+
+    // Modify one field, and check again
+    randomize(f2,engine,pdf);
+    REQUIRE (views_are_equal(f1,f2));
+  }
+
   SECTION ("clone") {
     Field f1 (fid);
     auto& fap1 = f1.get_header().get_alloc_properties();
@@ -338,7 +358,7 @@ TEST_CASE("field", "") {
 
   SECTION ("rank0_field") {
     // Create 0d field
-    FieldIdentifier fid0("f_0d", FieldLayout({}), Units::nondimensional(), "dummy_grid");
+    FieldIdentifier fid0("f_0d", FieldLayout({},{}), Units::nondimensional(), "dummy_grid");
     Field f0(fid0);
     f0.allocate_view();
 
@@ -831,7 +851,17 @@ TEST_CASE ("update") {
     f3.update(f_real,2,0);
     REQUIRE (views_are_equal(f3,f2));
   }
-}
 
+  SECTION ("scale") {
+    Field f1 = f_real.clone();
+    Field f2 = f_real.clone();
+
+    // x=2, x*y = 2*y
+    f1.deep_copy(2.0);
+    f1.scale(f2);
+    f2.scale(2.0);
+    REQUIRE (views_are_equal(f1, f2));
+  }
+}
 
 } // anonymous namespace

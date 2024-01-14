@@ -63,8 +63,6 @@ public:
   // Constructor(s)
   FieldLayout () = delete;
   FieldLayout (const FieldLayout&) = default;
-  FieldLayout (const std::initializer_list<FieldTag>& tags);
-  FieldLayout (const std::vector<FieldTag>& tags);
   FieldLayout (const std::vector<FieldTag>& tags,
                const std::vector<int>& dims);
 
@@ -72,7 +70,7 @@ public:
   FieldLayout& operator= (const FieldLayout&) = default;
 
   // Create invalid layout
-  static FieldLayout invalid () { return FieldLayout({}); }
+  static FieldLayout invalid () { return FieldLayout({FieldTag::Invalid},{0}); }
 
   // ----- Getters ----- //
 
@@ -100,6 +98,7 @@ public:
   // If this is the layout of a vector field, get the idx of the vector dimension
   // Note: throws if is_vector_layout()==false.
   int get_vector_dim () const;
+  FieldTag get_vector_tag () const;
 
   FieldLayout strip_dim (const FieldTag tag) const;
   FieldLayout strip_dim (const int idim) const;
