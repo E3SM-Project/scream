@@ -9,7 +9,8 @@ std::string find_filename_in_rpointer (
     const std::string& filename_prefix,
     const bool model_restart,
     const ekat::Comm& comm,
-    const util::TimeStamp& run_t0)
+    const util::TimeStamp& run_t0,
+    const bool throw_if_not_found)
 {
   std::string filename;
   bool found = false;
@@ -47,7 +48,7 @@ std::string find_filename_in_rpointer (
   comm.broadcast(&ifound,1,0);
   found = bool(ifound);
 
-  if (not found) {
+  if (not found and throw_if_not_found) {
     broadcast_string(content,comm,comm.root_rank());
 
     // If the history restart file is not found, it must be because the last
@@ -65,7 +66,11 @@ std::string find_filename_in_rpointer (
   }
 
   // Have the root rank communicate the nc filename
-  broadcast_string(filename,comm,comm.root_rank());
+  if (found) {
+    broadcast_string(filename,comm,comm.root_rank());
+  } else {
+    filename = "NOTFOUND";
+  }
 
   return filename;
 }

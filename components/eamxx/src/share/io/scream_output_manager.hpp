@@ -129,6 +129,8 @@ protected:
   void setup_file (      IOFileSpecs& filespecs,
                    const IOControl& control);
 
+  void try_restart_output ();
+
   // Manage logging of info to atm.log
   void push_to_logger();
 

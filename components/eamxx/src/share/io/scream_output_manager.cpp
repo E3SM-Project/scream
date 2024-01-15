@@ -199,107 +199,12 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
     }
   }
 
-  // If this is normal output (not the model restart output) and the output specs
-  // require it, we need to restart the output history.
-  // E.g., we might save 30-day avg value for field F, but due to job size
-  // break the run into three 10-day runs. We then need to save the state of
-  // our averaging in a "restart" file (e.g., the current avg).
-  // Note: the user might decide *not* to restart the output, so give the option
-  //       of disabling the restart. Also, the user might want to change the
-  //       filename_prefix, so allow to specify a different filename_prefix for the restart file.
   if (m_is_restarted_run) {
-    // Allow to skip history restart, or to specify a filename_prefix for the restart file
-    // that is different from the filename_prefix of the current output.
-    auto& restart_pl = m_params.sublist("Restart");
-    bool perform_history_restart = restart_pl.get("Perform Restart",true);
-    auto hist_restart_filename_prefix = restart_pl.get("filename_prefix",m_filename_prefix);
-
-    if (m_is_model_restart_output) {
-      // For model restart output, the restart time (which is the start time of this run) is precisely
-      // when the last write happened, so we can quickly init the output control.
-      m_output_control.timestamp_of_last_write = m_run_t0;
-      m_output_control.nsamples_since_last_write = 0;
-    } else if (perform_history_restart) {
-      using namespace scorpio;
-      auto rhist_file = find_filename_in_rpointer(hist_restart_filename_prefix,false,m_io_comm,m_run_t0);
-
-      // From restart file, get the time of last write, as well as the current size of the avg sample
-      m_output_control.timestamp_of_last_write = read_timestamp(rhist_file,"last_write");
-      m_output_control.nsamples_since_last_write = get_attribute<int>(rhist_file,"num_snapshots_since_last_write");
-
-      if (m_avg_type!=OutputAvgType::Instant) {
-        m_time_bnds.resize(2);
-        m_time_bnds[0] = m_output_control.timestamp_of_last_write.days_from(m_case_t0);
-      }
-
-      // If the type/freq of output needs restart data, we need to restart the streams
-      const bool output_every_step       = m_output_control.frequency_units=="nsteps" &&
-                                           m_output_control.frequency==1;
-      const bool has_checkpoint_data     = m_avg_type!=OutputAvgType::Instant && not output_every_step;
-      if (has_checkpoint_data && m_output_control.nsamples_since_last_write>0) {
-        for (auto stream : m_output_streams) {
-          stream->restart(rhist_file);
-        }
-      }
-
-      // We do NOT allow changing output specs across restart. If you do want to change
-      // any of these, you MUST start a new output stream (e.g., setting 'Perform Restart: false')
-      auto old_freq = scorpio::get_attribute<int>(rhist_file,"averaging_frequency");
-      EKAT_REQUIRE_MSG (old_freq == m_output_control.frequency,
-          "Error! Cannot change frequency when performing history restart.\n"
-          "  - old freq: " << old_freq << "\n"
-          "  - new freq: " << m_output_control.frequency << "\n");
-      auto old_freq_units = scorpio::get_attribute<std::string>(rhist_file,"averaging_frequency_units");
-      EKAT_REQUIRE_MSG (old_freq_units == m_output_control.frequency_units,
-          "Error! Cannot change frequency units when performing history restart.\n"
-          "  - old freq units: " << old_freq_units << "\n"
-          "  - new freq units: " << m_output_control.frequency_units << "\n");
-      auto old_avg_type = scorpio::get_attribute<std::string>(rhist_file,"averaging_type");
-      EKAT_REQUIRE_MSG (old_avg_type == e2str(m_avg_type),
-          "Error! Cannot change avg type when performing history restart.\n"
-          "  - old avg type: " << old_avg_type + "\n"
-          "  - new avg type: " << e2str(m_avg_type) << "\n");
-      auto old_max_snaps = scorpio::get_attribute<int>(rhist_file,"max_snapshots_per_file");
-      EKAT_REQUIRE_MSG (old_max_snaps == m_output_file_specs.max_snapshots_in_file,
-          "Error! Cannot change max snapshots per file when performing history restart.\n"
-          "  - old max snaps: " << old_max_snaps << "\n"
-          "  - new max snaps: " << m_output_file_specs.max_snapshots_in_file << "\n"
-          "If you *really* want to change the file capacity, you need to force using a new file, setting\n"
-          "  Restart:\n"
-          "    force_new_file: true\n");
-      std::string fp_precision = m_params.get<std::string>("Floating Point Precision");
-      auto old_fp_precision = scorpio::get_attribute<std::string>(rhist_file,"fp_precision");
-      EKAT_REQUIRE_MSG (old_fp_precision == fp_precision,
-          "Error! Cannot change floating point precision when performing history restart.\n"
-          "  - old fp precision: " << old_fp_precision << "\n"
-          "  - new fp precision: " << fp_precision << "\n");
-
-      // Check if the prev run wrote any output file (it may have not, if the restart was written
-      // before the 1st output step). If there is a file, check if there's still room in it.
-      const auto& last_output_filename = get_attribute<std::string>(rhist_file,"last_output_filename");
-      m_resume_output_file = last_output_filename!="" and not restart_pl.get("force_new_file",false);
-      if (m_resume_output_file) {
-        scorpio::register_file(last_output_filename,scorpio::Read);
-        int num_snaps = scorpio::get_dimlen(last_output_filename,"time");
-
-        // End of checks. Close the file.
-        scorpio::eam_pio_closefile(last_output_filename);
-
-        // If last output was full, we can no longer try to resume the file
-        if (num_snaps<m_output_file_specs.max_snapshots_in_file) {
-          m_output_file_specs.filename = last_output_filename;
-          m_output_file_specs.is_open = true;
-
-          // The setup_file call will not register any new variable (the file is in Append mode,
-          // so all dims/vars must already be in the file). However, it will register decompositions,
-          // since those are a property of the run, not of the file.
-          setup_file(m_output_file_specs,m_output_control);
-        } else {
-          // We can't continue with this file
-          m_resume_output_file = false;
-        }
-      }
-    }
+    // Certain outputs may require to restart the history. 
+    // E.g., we might save 30-day avg value for field F, but due to job size
+    // break the run into three 10-day runs. We then need to save the state of
+    // our averaging in a "restart" file (e.g., the current avg).
+    try_restart_output ();
   }
 
   // If m_time_bnds.size()>0, it was already inited during restart
@@ -735,6 +640,111 @@ setup_file (      IOFileSpecs& filespecs,
 
   m_resume_output_file = false;
 }
+
+void OutputManager::
+try_restart_output ()
+{
+  if (m_is_model_restart_output) {
+    // For model restart output, the restart time (which is the start time of this run) is precisely
+    // when the last write happened, so we can quickly init the output control.
+    m_output_control.timestamp_of_last_write = m_run_t0;
+    m_output_control.nsamples_since_last_write = 0;
+  } else {
+    using namespace scorpio;
+    // Allow to skip history restart, or to specify a filename_prefix for the restart file
+    // that is different from the filename_prefix of the current output.
+    // In order to NOT restart output, the user must:
+    //  1. set 'create_new_stream_if_rhist_not_found: true' in the yaml file
+    //  2. remove the corresponding rhist file from the run dir
+    auto& restart_pl = m_params.sublist("Restart");
+    auto hist_restart_filename_prefix = restart_pl.get("filename_prefix",m_filename_prefix);
+
+    const bool can_start_new_stream = restart_pl.get("create_new_stream_if_rhist_not_found",false);
+    auto rhist_file = find_filename_in_rpointer(hist_restart_filename_prefix,false,m_io_comm,m_run_t0,not can_start_new_stream);
+
+    if (rhist_file=="NOTFOUND") {
+      return;
+    }
+
+    // From restart file, get the time of last write, as well as the current size of the avg sample
+    m_output_control.timestamp_of_last_write = read_timestamp(rhist_file,"last_write");
+    m_output_control.nsamples_since_last_write = get_attribute<int>(rhist_file,"num_snapshots_since_last_write");
+
+    if (m_avg_type!=OutputAvgType::Instant) {
+      m_time_bnds.resize(2);
+      m_time_bnds[0] = m_output_control.timestamp_of_last_write.days_from(m_case_t0);
+    }
+
+    // If the type/freq of output needs restart data, we need to restart the streams
+    const bool output_every_step       = m_output_control.frequency_units=="nsteps" &&
+                                         m_output_control.frequency==1;
+    const bool has_checkpoint_data     = m_avg_type!=OutputAvgType::Instant && not output_every_step;
+    if (has_checkpoint_data && m_output_control.nsamples_since_last_write>0) {
+      for (auto stream : m_output_streams) {
+        stream->restart(rhist_file);
+      }
+    }
+
+    // We do NOT allow changing output specs across restart. If you do want to change
+    // any of these, you MUST start a new output stream (e.g., setting create_new_stream_if_rhist_not_found: true)
+    auto old_freq = scorpio::get_attribute<int>(rhist_file,"averaging_frequency");
+    EKAT_REQUIRE_MSG (old_freq == m_output_control.frequency,
+        "Error! Cannot change frequency when performing history restart.\n"
+        "  - old freq: " << old_freq << "\n"
+        "  - new freq: " << m_output_control.frequency << "\n");
+    auto old_freq_units = scorpio::get_attribute<std::string>(rhist_file,"averaging_frequency_units");
+    EKAT_REQUIRE_MSG (old_freq_units == m_output_control.frequency_units,
+        "Error! Cannot change frequency units when performing history restart.\n"
+        "  - old freq units: " << old_freq_units << "\n"
+        "  - new freq units: " << m_output_control.frequency_units << "\n");
+    auto old_avg_type = scorpio::get_attribute<std::string>(rhist_file,"averaging_type");
+    EKAT_REQUIRE_MSG (old_avg_type == e2str(m_avg_type),
+        "Error! Cannot change avg type when performing history restart.\n"
+        "  - old avg type: " << old_avg_type + "\n"
+        "  - new avg type: " << e2str(m_avg_type) << "\n");
+    auto old_max_snaps = scorpio::get_attribute<int>(rhist_file,"max_snapshots_per_file");
+    EKAT_REQUIRE_MSG (old_max_snaps == m_output_file_specs.max_snapshots_in_file,
+        "Error! Cannot change max snapshots per file when performing history restart.\n"
+        "  - old max snaps: " << old_max_snaps << "\n"
+        "  - new max snaps: " << m_output_file_specs.max_snapshots_in_file << "\n"
+        "If you *really* want to change the file capacity, you need to force using a new file, setting\n"
+        "  Restart:\n"
+        "    force_new_file: true\n");
+    std::string fp_precision = m_params.get<std::string>("Floating Point Precision");
+    auto old_fp_precision = scorpio::get_attribute<std::string>(rhist_file,"fp_precision");
+    EKAT_REQUIRE_MSG (old_fp_precision == fp_precision,
+        "Error! Cannot change floating point precision when performing history restart.\n"
+        "  - old fp precision: " << old_fp_precision << "\n"
+        "  - new fp precision: " << fp_precision << "\n");
+
+    // Check if the prev run wrote any output file (it may have not, if the restart was written
+    // before the 1st output step). If there is a file, check if there's still room in it.
+    const auto& last_output_filename = get_attribute<std::string>(rhist_file,"last_output_filename");
+    m_resume_output_file = last_output_filename!="" and not restart_pl.get("force_new_file",false);
+    if (m_resume_output_file) {
+      scorpio::register_file(last_output_filename,scorpio::Read);
+      int num_snaps = scorpio::get_dimlen(last_output_filename,"time");
+
+      // End of checks. Close the file.
+      scorpio::eam_pio_closefile(last_output_filename);
+
+      // If last output was full, we can no longer try to resume the file
+      if (num_snaps<m_output_file_specs.max_snapshots_in_file) {
+        m_output_file_specs.filename = last_output_filename;
+        m_output_file_specs.is_open = true;
+
+        // The setup_file call will not register any new variable (the file is in Append mode,
+        // so all dims/vars must already be in the file). However, it will register decompositions,
+        // since those are a property of the run, not of the file.
+        setup_file(m_output_file_specs,m_output_control);
+      } else {
+        // We can't continue with this file
+        m_resume_output_file = false;
+      }
+    }
+  }
+}
+
 /*===============================================================================================*/
 void OutputManager::set_file_header(const IOFileSpecs& file_specs)
 {

@@ -135,7 +135,8 @@ std::string find_filename_in_rpointer (
     const std::string& casename,
     const bool model_restart,
     const ekat::Comm& comm,
-    const util::TimeStamp& run_t0);
+    const util::TimeStamp& run_t0,
+    const bool throw_if_not_found = true);
 
 } // namespace scream
 #endif // SCREAM_IO_UTILS_HPP
