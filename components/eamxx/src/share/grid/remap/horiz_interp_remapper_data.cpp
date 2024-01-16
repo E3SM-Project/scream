@@ -40,40 +40,6 @@ get_my_triplets (const std::string& map_file) const
   // 1. Load the map file chunking it evenly across all ranks
   scorpio::register_file(map_file,scorpio::FileMode::Read);
 
-  // 1.1 Create a "helper" grid, with as many dofs as the number
-  //     of triplets in the map file, and divided linearly across ranks
-  const int ngweights = scorpio::get_dimlen(map_file,"n_s");
-  int nlweights = ngweights / comm.size();
-  if (comm.rank() < (ngweights % comm.size())) {
-    nlweights += 1;
-  }
-
-  gid_type offset = nlweights;
-  comm.scan(&offset,1,MPI_SUM);
-  offset -= nlweights; // scan is inclusive, but we need exclusive
-
-  // Create a unique decomp tag, which ensures all refining remappers have
-  // their own decomposition
-  static int tag_counter = 0;
-  const std::string int_decomp_tag  = "RR::gmtg,int,grid-idx=" + std::to_string(tag_counter++);
-  const std::string real_decomp_tag = "RR::gmtg,real,grid-idx=" + std::to_string(tag_counter++);
-
-  // 1.2 Read a chunk of triplets col indices
-  std::vector<gid_type> cols(nlweights);
-  std::vector<gid_type> rows(nlweights);
-  std::vector<Real>  S(nlweights);
-
-  scorpio::register_variable(map_file, "col", "col", {"n_s"}, "int",  int_decomp_tag);
-  scorpio::register_variable(map_file, "row", "row", {"n_s"}, "int",  int_decomp_tag);
-  scorpio::register_variable(map_file, "S",   "S",   {"n_s"}, "real", real_decomp_tag);
-
-  std::vector<scorpio::offset_t> dofs_offsets(nlweights);
-  std::iota(dofs_offsets.begin(),dofs_offsets.end(),offset);
-  scorpio::set_dof(map_file,"col",nlweights,dofs_offsets.data());
-  scorpio::set_dof(map_file,"row",nlweights,dofs_offsets.data());
-  scorpio::set_dof(map_file,"S"  ,nlweights,dofs_offsets.data());
-  scorpio::set_decomp(map_file);
-
   // Figure out if we are reading the right map, that is:
   //  - n_a or n_b matches the fine grid ncols
   //  - the map "direction" (fine->coarse or coarse->fine) matches m_type
@@ -95,11 +61,22 @@ get_my_triplets (const std::string& map_file) const
       " - fine grid ncols: " + std::to_string(ncols_fine) + "\n"
       " - remapper type: " + std::string(type==InterpType::Refine ? "refine" : "coarsen") + "\n");
 
-  scorpio::grid_read_data_array(map_file,"col",-1,cols.data(),nlweights);
-  scorpio::grid_read_data_array(map_file,"row",-1,rows.data(),nlweights);
-  scorpio::grid_read_data_array(map_file,"S"  ,-1,S.data(),nlweights);
+  // 1.1 Read in triplets, by dividing them linearly among ranks
+  static int tag_counter = 0;
+  auto dim_decomp_name = "HR:gmt" + std::to_string(tag_counter++);
+  int nlweights = scorpio::set_dim_decomp(map_file,"n_s",dim_decomp_name);
+  scorpio::set_vars_decomp(map_file,{"col","row","S"},"n_s",dim_decomp_name);
 
-  scorpio::eam_pio_closefile(map_file);
+  // 1.2 Read a chunk of triplets col indices
+  std::vector<gid_type> cols(nlweights);
+  std::vector<gid_type> rows(nlweights);
+  std::vector<Real>  S(nlweights);
+
+  scorpio::read_var(map_file,"col",cols.data());
+  scorpio::read_var(map_file,"row",rows.data());
+  scorpio::read_var(map_file,"S"  ,S.data());
+
+  scorpio::release_file(map_file);
 
   // 1.3 Dofs in grid are likely 0-based, while row/col ids in map file
   // are likely 1-based. To match dofs, we need to offset the row/cols

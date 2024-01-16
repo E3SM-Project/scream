@@ -166,7 +166,7 @@ void TimeInterpolation::initialize_data_from_files()
   // TODO: Should we make it possible to check if FillValue is in the metadata and only assign mask_value if it is?
   float var_fill_value;
   for (auto& name : m_field_names) {
-    scorpio::get_variable_metadata(triplet_curr.filename,name,"_FillValue",var_fill_value);
+    var_fill_value = scorpio::get_attribute<float>(triplet_curr.filename,name,"_FillValue");
     auto& field0 = m_fm_time0->get_field(name);
     field0.get_header().set_extra_data("mask_value",var_fill_value);
     auto& field1 = m_fm_time1->get_field(name);
@@ -253,7 +253,7 @@ void TimeInterpolation::set_file_data_triplets(const vos_type& list_of_files) {
   for (size_t ii=0; ii<list_of_files.size(); ii++) {
     const auto filename = list_of_files[ii];
     // Reference TimeStamp
-    auto ts_file_start = scorpio::read_timestamp(filename,"case_t0");
+    auto ts_file_start = util::str_to_time_stamp(scorpio::get_global_attribute<std::string>(filename,"case_t0"));
     // Gather the units of time
     auto time_units_tmp = scorpio::get_any_attribute(filename,"time","units");
     auto& time_units = ekat::any_cast<std::string>(time_units_tmp);
@@ -276,7 +276,7 @@ void TimeInterpolation::set_file_data_triplets(const vos_type& list_of_files) {
     scorpio::register_file(filename,scorpio::Read);
     const int ntime = scorpio::get_dimlen(filename,"time");
     for (int tt=0; tt<ntime; tt++) {
-      auto time_snap = scorpio::read_time_at_index_c2f(filename.c_str(),tt+1);
+      auto time_snap = scorpio::get_time(filename.c_str(),tt);
       TimeStamp ts_snap = ts_file_start;
       if (time_snap>0) {
         ts_snap += (time_snap*time_mult);
@@ -325,7 +325,7 @@ void TimeInterpolation::read_data()
     // TODO: Should we make it possible to check if FillValue is in the metadata and only assign mask_value if it is?
     float var_fill_value;
     for (auto& name : m_field_names) {
-      scorpio::get_variable_metadata(triplet_curr.filename,name,"_FillValue",var_fill_value);
+      var_fill_value = scorpio::get_attribute<float>(triplet_curr.filename,name,"_FillValue");
       auto& field = m_fm_time1->get_field(name);
       field.get_header().set_extra_data("mask_value",var_fill_value);
     }
