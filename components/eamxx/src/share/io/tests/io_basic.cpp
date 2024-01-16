@@ -257,13 +257,12 @@ void read (const std::string& avg_type, const std::string& freq_units,
   }
 
   // Check that the expected metadata was appropriately set for each variable
-  Real fill_out;
   std::string att_test;
   for (const auto& fn: fnames) {
-    scorpio::get_variable_metadata(filename,fn,"_FillValue",fill_out);
+    auto fill_out = scorpio::get_attribute<float>(filename,fn,"_FillValue");
     REQUIRE(fill_out==constants::DefaultFillValue<float>().value);
 
-    scorpio::get_variable_metadata(filename,fn,"test",att_test);
+    auto att_test = scorpio::get_attribute<std::string>(filename,fn,"test");
     REQUIRE (att_test==fn);
   }
 }
@@ -284,7 +283,7 @@ TEST_CASE ("io_basic") {
   };
 
   ekat::Comm comm(MPI_COMM_WORLD);
-  scorpio::eam_init_pio_subsystem(comm);
+  scorpio::init_pio_subsystem(comm);
 
   auto seed = get_random_test_seed(&comm);
 
@@ -308,7 +307,7 @@ TEST_CASE ("io_basic") {
       print(" PASS\n");
     }
   }
-  scorpio::eam_pio_finalize();
+  scorpio::finalize_pio_subsystem();
 }
 
 } // anonymous namespace

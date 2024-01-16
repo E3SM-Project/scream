@@ -3,6 +3,7 @@
 #include "share/util/scream_array_utils.hpp"
 #include "share/grid/remap/coarsening_remapper.hpp"
 #include "share/grid/remap/vertical_remapper.hpp"
+#include "share/grid/se_grid.hpp"
 #include "share/util/scream_timing.hpp"
 #include "share/field/field_utils.hpp"
 
@@ -613,7 +614,7 @@ run (const std::string& filename,
       auto view_host = m_host_views_1d.at(name);
       Kokkos::deep_copy (view_host,view_dev);
       auto func_start = std::chrono::steady_clock::now();
-      grid_write_data_array(filename,name,view_host.data(),view_host.size());
+      write_var(filename,name,view_host.data());
       auto func_finish = std::chrono::steady_clock::now();
       auto duration_loc = std::chrono::duration_cast<std::chrono::milliseconds>(func_finish - func_start);
       duration_write += duration_loc.count();
@@ -627,7 +628,7 @@ run (const std::string& filename,
       auto view_host = m_host_views_1d.at(name);
       Kokkos::deep_copy (view_host,view_dev);
       auto func_start = std::chrono::steady_clock::now();
-      grid_write_data_array(filename,name,view_host.data(),view_host.size());
+      write_var(filename,name,view_host.data());
       auto func_finish = std::chrono::steady_clock::now();
       auto duration_loc = std::chrono::duration_cast<std::chrono::milliseconds>(func_finish - func_start);
       duration_write += duration_loc.count();
@@ -772,9 +773,9 @@ void AtmosphereOutput::register_dimensions(const std::string& name)
       } else {
         tag_len = layout.dim(i);
       }
-      m_dims[tag_name] = std::make_pair(tag_len,is_partitioned);
+      m_dims[tag_name] = tag_len;
     } else {
-      EKAT_REQUIRE_MSG(m_dims.at(tag_name).first==dims[i] or is_partitioned,
+      EKAT_REQUIRE_MSG(m_dims.at(tag_name)==dims[i] or is_partitioned,
         "Error! Dimension " + tag_name + " on field " + name + " has conflicting lengths. "
         "If same name applies to different dims (e.g. PhysicsGLL and PhysicsPG2 define "
         "\"ncol\" at different lengths), reset tag name for one of the grids.\n");
@@ -940,12 +941,6 @@ register_variables(const std::string& filename,
       }
       vec_of_dims.push_back(tag_name); // Add dimensions string to vector of dims.
     }
-    // TODO: Reverse order of dimensions to match flip between C++ -> F90 -> PIO,
-    // may need to delete this line when switching to fully C++/C implementation.
-    std::reverse(vec_of_dims.begin(),vec_of_dims.end());
-    if (m_add_time_dim) {
-      vec_of_dims.push_back("time");  //TODO: See the above comment on time.
-    }
     return vec_of_dims;
   };
 
@@ -968,8 +963,8 @@ register_variables(const std::string& filename,
     // Currently the field_manager only stores Real variables so it is not an issue,
     // but in the future if non-Real variables are added we will want to accomodate that.
 
-    register_variable(filename, name, name, units, vec_of_dims,
-                      "real",fp_precision, io_decomp_tag);
+    define_var(filename, name, units, vec_of_dims,
+               "real",fp_precision,m_add_time_dim);
 
     // Add any extra attributes for this variable
     if (mode != FileMode::Append ) {
@@ -978,10 +973,10 @@ register_variables(const std::string& filename,
       if (fp_precision=="double" or
           (fp_precision=="real" and std::is_same<Real,double>::value)) {
         double fill_value = m_fill_value;
-        set_variable_metadata(filename, name, "_FillValue",fill_value);
+        set_attribute(filename, name, "_FillValue",fill_value);
       } else {
         float fill_value = m_fill_value;
-        set_variable_metadata(filename, name, "_FillValue",fill_value);
+        set_attribute(filename, name, "_FillValue",fill_value);
       }
 
       // If this is has subfields, add list of its children
@@ -998,20 +993,20 @@ register_variables(const std::string& filename,
         children_list.pop_back();
         children_list.pop_back();
         children_list += " ]";
-        set_variable_metadata(filename,name,"sub_fields",children_list);
+        set_attribute(filename,name,"sub_fields",children_list);
       }
 
       // If tracking average count variables then add the name of the tracking variable for this variable
       if (m_track_avg_cnt) {
         const auto lookup = m_field_to_avg_cnt_map.at(name);
-        set_variable_metadata(filename,name,"averaging_count_tracker",lookup);
+        set_attribute(filename,name,"averaging_count_tracker",lookup);
       }
 
       // Atm procs may have set some request for metadata.
       using stratts_t = std::map<std::string,std::string>;
       const auto& str_atts = field.get_header().get_extra_data<stratts_t>("io: string attributes");
       for (const auto& [att_name,att_val] : str_atts) {
-        set_variable_metadata(filename,name,att_name,att_val);
+        set_attribute(filename,name,att_name,att_val);
       }
     }
   }
@@ -1021,119 +1016,58 @@ register_variables(const std::string& filename,
       const auto layout = m_layouts.at(name);
       auto io_decomp_tag = set_decomp_tag(layout);
       auto vec_of_dims   = set_vec_of_dims(layout);
-      register_variable(filename, name, name, "unitless", vec_of_dims,
-                        "real",fp_precision, io_decomp_tag);
+      define_var(filename, name, "unitless", vec_of_dims,
+                 "real",fp_precision,true);
     }
   }
 } // register_variables
 /* ---------------------------------------------------------- */
-std::vector<scorpio::offset_t>
-AtmosphereOutput::get_var_dof_offsets(const FieldLayout& layout)
-{
-  using namespace ShortFieldTagsNames;
-
-  // Precompute this *before* the early return, since it involves collectives.
-  // If one rank owns zero cols, and returns prematurely, the others will be left waiting.
-  AbstractGrid::gid_type min_gid;
-  if (layout.has_tag(COL) or layout.has_tag(EL)) {
-    min_gid = m_io_grid->get_global_min_dof_gid();
-  }
-
-  // It may be that this MPI rank owns no chunk of the field
-  if (layout.size()==0) {
-    return {};
-  }
-
-  std::vector<scorpio::offset_t> var_dof(layout.size());
-
-  // Gather the offsets of the dofs of this variable w.r.t. the *global* array.
-  // Since we order the global array based on dof gid, and we *assume* (we actually
-  // check this during set_grid) that the grid global gids are in the interval
-  // [gid_0, gid_0+num_global_dofs), the offset is simply given by
-  // (dof_gid-gid_0)*column_size (for partitioned arrays).
-  // NOTE: we allow gid_0!=0, so that we don't have to worry about 1-based numbering
-  //       vs 0-based numbering. The key feature is that the global gids are a
-  //       contiguous array. The starting point doesn't matter.
-  // NOTE: a "dof" in the grid object is not the same as a "dof" in scorpio.
-  //       For a SEGrid 3d vector field with (MPI local) layout (nelem,2,np,np,nlev),
-  //       scorpio sees nelem*2*np*np*nlev dofs, while the SE grid sees nelem*np*np dofs.
-  //       All we need to do in this routine is to compute the offset of all the entries
-  //       of the MPI-local array w.r.t. the global array. So long as the offsets are in
-  //       the same order as the corresponding entry in the data to be read/written, we're good.
-  // NOTE: In the case of regional output this rank may have 0 columns to write, thus, var_dof
-  //       should be empty, we check for this special case and return an empty var_dof.
-  auto dofs_h = m_io_grid->get_dofs_gids().get_view<const AbstractGrid::gid_type*,Host>();
-  if (layout.has_tag(COL)) {
-    const int num_cols = m_io_grid->get_num_local_dofs();
-
-    // Note: col_size might be *larger* than the number of vertical levels, or even smaller.
-    //       E.g., (ncols,2,nlevs), or (ncols,2) respectively.
-    scorpio::offset_t col_size = layout.size() / num_cols;
-
-    for (int icol=0; icol<num_cols; ++icol) {
-      // Get chunk of var_dof to fill
-      auto start = var_dof.begin()+icol*col_size;
-      auto end   = start+col_size;
-
-      // Compute start of the column offset, then fill column adding 1 to each entry
-      auto gid = dofs_h(icol);
-      auto offset = (gid-min_gid)*col_size;
-      std::iota(start,end,offset);
-    }
-  } else if (layout.has_tag(EL)) {
-    auto layout2d = m_io_grid->get_2d_scalar_layout();
-    const int num_my_elems = layout2d.dim(0);
-    const int ngp = layout2d.dim(1);
-    const int num_cols = num_my_elems*ngp*ngp;
-
-    // Note: col_size might be *larger* than the number of vertical levels, or even smaller.
-    //       E.g., (ncols,2,nlevs), or (ncols,2) respectively.
-    scorpio::offset_t col_size = layout.size() / num_cols;
-
-    for (int ie=0,icol=0; ie<num_my_elems; ++ie) {
-      for (int igp=0; igp<ngp; ++igp) {
-        for (int jgp=0; jgp<ngp; ++jgp,++icol) {
-          // Get chunk of var_dof to fill
-          auto start = var_dof.begin()+icol*col_size;
-          auto end   = start+col_size;
-
-          // Compute start of the column offset, then fill column adding 1 to each entry
-          auto gid = dofs_h(icol);
-          auto offset = (gid-min_gid)*col_size;
-          std::iota(start,end,offset);
-    }}}
-  } else {
-    // This field is *not* defined over columns, so it is not partitioned.
-    std::iota(var_dof.begin(),var_dof.end(),0);
-  }
-
-  return var_dof;
-}
-/* ---------------------------------------------------------- */
-void AtmosphereOutput::set_degrees_of_freedom(const std::string& filename)
+void AtmosphereOutput::set_decompositions(const std::string& filename)
 {
   using namespace scorpio;
   using namespace ShortFieldTagsNames;
+  using gid_type = AbstractGrid::gid_type;
 
-  // Cycle through all fields and set dof.
-  for (auto const& name : m_fields_names) {
-    auto field = get_field(name,"io");
-    const auto& fid  = field.get_header().get_identifier();
-    auto var_dof = get_var_dof_offsets(fid.get_layout());
-    set_dof(filename,name,var_dof.size(),var_dof.data());
-  }
-  // Cycle through the average count fields and set degrees of freedom
-  for (auto const& name : m_avg_cnt_names) {
-    const auto layout = m_layouts.at(name);
-    auto var_dof = get_var_dof_offsets(layout);
-    set_dof(filename,name,var_dof.size(),var_dof.data());
-  }
+  // First, set the offsets for the decomposed dim
+  const auto decomp_tag  = m_io_grid->get_partitioned_dim_tag();
+  const auto decomp_name = m_io_grid->name();
+  const int local_dim = m_io_grid->get_partitioned_dim_local_size();
+  const auto decomp_dim = m_io_grid->get_dim_name(decomp_tag);
+  if (decomp_tag==COL) {
+    // For PointGrid, we can use the dofs to compute the offsets on the partition dim
+    std::vector<scorpio::offset_t> offsets(local_dim);
+    auto dofs = m_io_grid->get_dofs_gids().get_view<const gid_type*,Host>();
+    auto min_dof = m_io_grid->get_global_min_dof_gid();
+    for (int idof=0; idof<local_dim; ++idof) {
+      offsets[idof] = dofs[idof] - min_dof;
+    }
+    scorpio::set_dim_decomp(filename,decomp_dim,offsets,decomp_name);
+  } else if (decomp_tag==EL) {
+    auto se_grid = std::dynamic_pointer_cast<const SEGrid>(m_io_grid);
+    auto elem_gids = se_grid->get_elem_gids().get_view<const gid_type*,Host>();
+    auto min_elem_gid = se_grid->get_global_min_elem_gid();
+    std::vector<scorpio::offset_t> el_offsets(local_dim);
+    for (int ie=0; ie<local_dim; ++ie) {
+      el_offsets[ie] = elem_gids[ie] - min_elem_gid;
+    }
+    scorpio::set_dim_decomp(filename,decomp_dim,el_offsets,decomp_name);
+  } else {
+    EKAT_ERROR_MSG ("Error! Unrecognized/unsupported decomposed dimension tag.\n"
+        " - io grid  : " << m_io_grid->name() + "\n"
+        " - field tag: " << e2str(decomp_tag) + "\n");
+  } 
+    
+  // Next, loop over all vars, and if the layout include decomp_tag,
+  // set set the decomposition in PIO. Notice that, for non-decomposed tags,
+  // there is nothing to do, since write_var will just call PIOc_put_var.
+  for (const auto& it : m_layouts) {
+    const auto& varname = it.first;
+    
+    // NOTE: if var is not decomposed, this function doesn't do much
+    scorpio::set_var_decomp(filename,varname,decomp_dim,decomp_name);
+  } 
+}
 
-  /* TODO:
-   * Gather DOF info directly from grid manager
-  */
-} // set_degrees_of_freedom
-/* ---------------------------------------------------------- */
 void AtmosphereOutput::
 setup_output_file(const std::string& filename,
                   const std::string& fp_precision,
@@ -1143,14 +1077,14 @@ setup_output_file(const std::string& filename,
 
   // Register dimensions with netCDF file.
   for (auto it : m_dims) {
-    register_dimension(filename,it.first,it.first,it.second.first,it.second.second);
+    define_dim(filename,it.first,it.second);
   }
 
   // Register variables with netCDF file.  Must come after dimensions are registered.
   register_variables(filename,fp_precision,mode);
 
   // Set the offsets of the local dofs in the global vector.
-  set_degrees_of_freedom(filename);
+  set_decompositions(filename);
 }
 /* ---------------------------------------------------------- */
 // This routine will evaluate the diagnostics stored in this

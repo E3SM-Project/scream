@@ -1,4 +1,5 @@
 #include "share/io/scorpio_input.hpp"
+#include "share/grid/se_grid.hpp"
 
 #include "share/io/scream_scorpio_interface.hpp"
 
@@ -220,7 +221,7 @@ void AtmosphereInput::read_variables (const int time_index)
 
     // Read the data
     auto v1d = m_host_views_1d.at(name);
-    scorpio::grid_read_data_array(m_filename,name,time_index,v1d.data(),v1d.size());
+    scorpio::read_var(m_filename,name,v1d.data(),time_index);
 
     // If we have a field manager, make sure the data is correctly
     // synced to both host and device views of the field.
@@ -335,7 +336,7 @@ void AtmosphereInput::read_variables (const int time_index)
 /* ---------------------------------------------------------- */
 void AtmosphereInput::finalize() 
 {
-  scorpio::eam_pio_closefile(m_filename);
+  scorpio::release_file(m_filename);
 
   m_field_mgr = nullptr;
   m_io_grid   = nullptr;
@@ -354,44 +355,25 @@ void AtmosphereInput::init_scorpio_structures()
 
   // Register variables with netCDF file.
   register_variables();
-  set_degrees_of_freedom();
-
-  // Finish the definition phase for this file.
-  scorpio::set_decomp  (m_filename); 
+  set_decompositions();
 }
 
 /* ---------------------------------------------------------- */
 void AtmosphereInput::register_variables()
 {
-  // Register each variable in IO stream with the SCORPIO interface.
-  // This allows SCORPIO to lookup vars in the nc file with the correct
-  // dof decomposition across different ranks.
-
-  // Cycle through all fields
-  const auto& fp_precision = "real";
+  // Cycle through all fields, and ensure they are in the input file
   for (auto const& name : m_fields_names) {
     // Determine the IO-decomp and construct a vector of dimension ids for this variable:
-    const auto& layout = m_layouts.at(name);
-    auto vec_of_dims   = get_vec_of_dims(layout);
-    auto io_decomp_tag = get_io_decomp(layout);
-
-    for (size_t  i=0; i<vec_of_dims.size(); ++i) {
-      auto partitioned = m_io_grid->get_partitioned_dim_tag()==layout.tags()[i];
-      auto dimlen = partitioned ? m_io_grid->get_partitioned_dim_global_size() : layout.dims()[i];
-      scorpio::register_dimension(m_filename, vec_of_dims[i], vec_of_dims[i], dimlen, partitioned);
-    }
-
-    // TODO: Reverse order of dimensions to match flip between C++ -> F90 -> PIO,
-    // may need to delete this line when switching to full C++/C implementation.
-    std::reverse(vec_of_dims.begin(),vec_of_dims.end());
+    auto vec_of_dims   = get_vec_of_dims(m_layouts.at(name));
 
     // Register the variable
-    // TODO  Need to change dtype to allow for other variables. 
+    // TODO  Need to change dtype to allow for other variables.
     //  Currently the field_manager only stores Real variables so it is not an issue,
     //  but in the future if non-Real variables are added we will want to accomodate that.
-    //TODO: Should be able to simply inquire from the netCDF the dimensions for each variable.
-    scorpio::register_variable(m_filename, name, name,
-                               vec_of_dims, fp_precision, io_decomp_tag);
+    EKAT_REQUIRE_MSG (scorpio::has_variable(m_filename,name,vec_of_dims),
+        "Error! Input file does not store a required variable.\n"
+        " - filename: " + m_filename + "\n"
+        " - varname : " + name + "\n");
   }
 }
 
@@ -435,15 +417,68 @@ get_io_decomp(const FieldLayout& layout)
 }
 
 /* ---------------------------------------------------------- */
-void AtmosphereInput::set_degrees_of_freedom()
+void AtmosphereInput::set_decompositions()
 {
-  // For each field, tell PIO the offset of each DOF to be read.
-  // Here, offset is meant in the *global* array in the nc file.
-  for (auto const& name : m_fields_names) {
-    auto var_dof = get_var_dof_offsets(m_layouts.at(name));
-    scorpio::set_dof(m_filename,name,var_dof.size(),var_dof.data());
+  using namespace ShortFieldTagsNames;
+
+  // First, check if any of the vars is indeed partitioned
+  const auto decomp_tag  = m_io_grid->get_partitioned_dim_tag();
+
+  bool has_decomposed_layouts = false;
+  for (const auto& it : m_layouts) {
+    if (it.second.has_tag(decomp_tag)) {
+      has_decomposed_layouts = true;
+      break;
+    }
   }
-} // set_degrees_of_freedom
+  if (not has_decomposed_layouts) {
+    // If none of the input vars are decomposed on this grid,
+    // then there's nothing to do here
+    return;
+  }
+
+  // Set the decomposition for the partitioned dimension
+  const auto decomp_name = m_io_grid->name();
+  const int local_dim = m_io_grid->get_partitioned_dim_local_size();
+  auto decomp_dim = m_io_grid->get_dim_name(decomp_tag);
+  if (decomp_tag==COL) {
+    // For PointGrid, we can use the dofs to compute the offsets on the partition dim
+    std::vector<scorpio::offset_t> offsets(local_dim);
+    auto dofs = m_io_grid->get_dofs_gids().get_view<const gid_t*,Host>();
+    auto min_dof = m_io_grid->get_global_min_dof_gid();
+    for (int idof=0; idof<local_dim; ++idof) {
+      offsets[idof] = dofs[idof] - min_dof;
+    }
+    scorpio::set_dim_decomp(m_filename,decomp_dim,offsets,decomp_name);
+  } else if (decomp_tag==EL) {
+    // For SEGrid, the dofs are not on the partitioned dim (dofs are nelem*np*np, while
+    // the partitioned dim is just the elements). Here, we need to cast the grid,
+    // so we can access some special members of SEGrid
+    // simply assing an elem gid in a contiguous way across MPI ranks.
+    auto se_grid = std::dynamic_pointer_cast<const SEGrid>(m_io_grid);
+    auto elem_gids = se_grid->get_elem_gids().get_view<const AbstractGrid::gid_type*,Host>();
+    auto min_elem_gid = se_grid->get_global_min_elem_gid();
+    std::vector<scorpio::offset_t> el_offsets(local_dim);
+    for (int ie=0; ie<local_dim; ++ie) {
+      el_offsets[ie] = elem_gids[ie] - min_elem_gid;
+    }
+    scorpio::set_dim_decomp(m_filename,decomp_dim,el_offsets,decomp_name);
+  } else {
+    EKAT_ERROR_MSG ("Error! Unrecognized/unsupported decomposed dimension tag.\n"
+        " - io grid  : " << m_io_grid->name() + "\n"
+        " - field tag: " << e2str(decomp_tag) + "\n");
+  }
+
+  // Next, loop over all vars, and if the layout include decomp_tag,
+  // set set the decomposition in PIO. Notice that, for non-decomposed tags,
+  // there is nothing to do, since read_var will just call PIOc_get_var.
+  for (const auto& it : m_layouts) {
+    const auto& varname = it.first;
+
+    // NOTE: if var is not decomposed, this function doesn't do much
+    scorpio::set_var_decomp(m_filename,varname,decomp_dim,decomp_name);
+  }
+}
 
 /* ---------------------------------------------------------- */
 std::vector<scorpio::offset_t>

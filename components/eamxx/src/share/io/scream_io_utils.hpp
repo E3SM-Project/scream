@@ -65,5 +65,12 @@ std::string find_filename_in_rpointer (
     const ekat::Comm& comm,
     const util::TimeStamp& run_t0);
 
+// Shortcut to write/read to/from YYYYMMDD/HHMMSS attributes in the NC file
+void write_timestamp (const std::string& filename, const std::string& ts_name,
+                      const util::TimeStamp& ts, const bool write_nsteps = false);
+util::TimeStamp read_timestamp (const std::string& filename,
+                                const std::string& ts_name,
+                                const bool read_nsteps = false);
+
 } // namespace scream
 #endif // SCREAM_IO_UTILS_HPP

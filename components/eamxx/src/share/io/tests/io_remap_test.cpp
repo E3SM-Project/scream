@@ -51,11 +51,10 @@ TEST_CASE("io_remap_test","io_remap_test")
   // Setup the global structure
   ekat::Comm io_comm(MPI_COMM_WORLD);  // MPI communicator group used for I/O set as ekat object.
   print ("Starting io_remap_test ...\n",io_comm);
+  scorpio::init_pio_subsystem(io_comm);
 
 
   print (" -> Test Setup ...\n",io_comm);
-  MPI_Fint fcomm = MPI_Comm_c2f(io_comm.mpi_comm());  // MPI communicator group used for I/O.  In our simple test we use MPI_COMM_WORLD, however a subset could be used.
-  scorpio::eam_init_pio_subsystem(fcomm);   // Gather the initial PIO subsystem data creater by component coupler
   const int ncols_src = 64*io_comm.size();
   const int nlevs_src = 2*packsize + 1;
   // Construct a timestamp
@@ -92,13 +91,10 @@ TEST_CASE("io_remap_test","io_remap_test")
     S.push_back(wgt);
     S.push_back(1.0-wgt);
   }
-  std::vector<std::int64_t> dofs_cols (ncols_src_l);
-  std::iota(dofs_cols.begin(),dofs_cols.end(),io_comm.rank()*ncols_src_l);
+
   // For vertical remapping we will prokject onto a set of equally
   // spaced pressure levels from p_top to b_bot that is nearly half
   // the number of source columns.
-  std::vector<std::int64_t> dofs_levs(nlevs_tgt);
-  std::iota(dofs_levs.begin(),dofs_levs.end(),0);
   std::vector<Real> p_tgt;
   for (int ii=0; ii<nlevs_tgt; ++ii) {
     p_tgt.push_back(set_pressure(p_top, p_bot, nlevs_tgt, ii));
@@ -108,29 +104,28 @@ TEST_CASE("io_remap_test","io_remap_test")
   const std::string remap_filename = "remap_weights_np"+std::to_string(io_comm.size())+".nc";
   scorpio::register_file(remap_filename, scorpio::FileMode::Write);
 
-  scorpio::register_dimension(remap_filename,"n_a",  "n_a",    ncols_src, true);
-  scorpio::register_dimension(remap_filename,"n_b",  "n_b",    ncols_tgt, true);
-  scorpio::register_dimension(remap_filename,"n_s",  "n_s",    ncols_src, true);
-  scorpio::register_dimension(remap_filename,"lev",  "lev",    nlevs_tgt, false);
+  scorpio::define_dim(remap_filename,"n_a",ncols_src);
+  scorpio::define_dim(remap_filename,"n_b",ncols_tgt);
+  scorpio::define_dim(remap_filename,"n_s",ncols_src);
+  scorpio::define_dim(remap_filename,"lev",nlevs_tgt);
 
-  scorpio::register_variable(remap_filename,"col","col","none",{"n_s"},"real","int","int-nnz");
-  scorpio::register_variable(remap_filename,"row","row","none",{"n_s"},"real","int","int-nnz");
-  scorpio::register_variable(remap_filename,"S","S","none",{"n_s"},"real","real","Real-nnz");
-  scorpio::register_variable(remap_filename,"p_levs","p_levs","none",{"lev"},"real","real","Real-lev");
+  scorpio::set_dim_decomp(remap_filename,"n_s",ncols_src_l*io_comm.rank(),ncols_src_l,"n_s-linear");
 
-  scorpio::set_dof(remap_filename,"col",dofs_cols.size(),dofs_cols.data());
-  scorpio::set_dof(remap_filename,"row",dofs_cols.size(),dofs_cols.data());
-  scorpio::set_dof(remap_filename,"S",  dofs_cols.size(),dofs_cols.data());
-  scorpio::set_dof(remap_filename,"p_levs",dofs_levs.size(),dofs_levs.data()); 
+  scorpio::define_var(remap_filename,"col",   "no-units",{"n_s"},"real","int");
+  scorpio::define_var(remap_filename,"row",   "no-units",{"n_s"},"real","int");
+  scorpio::define_var(remap_filename,"S",     "no-units",{"n_s"},"real","real");
+  scorpio::define_var(remap_filename,"p_levs","no-units",{"lev"},"real","real");
+
+  scorpio::set_vars_decomp(remap_filename, {"col","row","S"},"n_s","n_s-linear");
   
-  scorpio::eam_pio_enddef(remap_filename);
+  scorpio::enddef(remap_filename);
 
-  scorpio::grid_write_data_array(remap_filename,"row",row.data(),ncols_src);
-  scorpio::grid_write_data_array(remap_filename,"col",col.data(),ncols_src);
-  scorpio::grid_write_data_array(remap_filename,"S",    S.data(),ncols_src);
-  scorpio::grid_write_data_array(remap_filename,"p_levs",p_tgt.data(),nlevs_tgt);
+  scorpio::write_var(remap_filename,"row",row.data());
+  scorpio::write_var(remap_filename,"col",col.data());
+  scorpio::write_var(remap_filename,"S",    S.data());
+  scorpio::write_var(remap_filename,"p_levs",p_tgt.data());
 
-  scorpio::eam_pio_closefile(remap_filename);
+  scorpio::release_file(remap_filename);
   print (" -> Create remap file ... done\n",io_comm);
 
   /*
@@ -293,14 +288,13 @@ TEST_CASE("io_remap_test","io_remap_test")
     // Check the "test" metadata, which should match the field name
     // Note: the FieldAtPressureLevel diag should get the attribute from its input field,
     //       so the valuf for "Y_int"_at_XPa should be "Y_int"
-    std::string att_val;
     const auto& filename = vert_in.get<std::string>("Filename");
     for (auto& fname : fnames) {
-      scorpio::get_variable_metadata(filename,fname,"test",att_val);
+      auto att_val = scorpio::get_attribute<std::string>(filename,fname,"test");
       REQUIRE (att_val==fname);
     }
     std::string f_at_lev_name = "Y_int_at_" + std::to_string(p_ref) + "Pa";
-    scorpio::get_variable_metadata(filename,f_at_lev_name,"test",att_val);
+    auto att_val = scorpio::get_attribute<std::string>(filename,f_at_lev_name,"test");
     REQUIRE (att_val=="Y_int");
 
     test_input.finalize();
@@ -363,14 +357,13 @@ TEST_CASE("io_remap_test","io_remap_test")
     // Check the "test" metadata, which should match the field name
     // Note: the FieldAtPressureLevel diag should get the attribute from its input field,
     //       so the valuf for "Y_int"_at_XPa should be "Y_int"
-    std::string att_val;
     const auto& filename = horiz_in.get<std::string>("Filename");
     for (auto& fname : fnames) {
-      scorpio::get_variable_metadata(filename,fname,"test",att_val);
+      auto att_val = scorpio::get_attribute<std::string>(filename,fname,"test");
       REQUIRE (att_val==fname);
     }
     std::string f_at_lev_name = "Y_int_at_" + std::to_string(p_ref) + "Pa";
-    scorpio::get_variable_metadata(filename,f_at_lev_name,"test",att_val);
+    auto att_val = scorpio::get_attribute<std::string>(filename,f_at_lev_name,"test");
     REQUIRE (att_val=="Y_int");
     test_input.finalize();
 
@@ -449,14 +442,13 @@ TEST_CASE("io_remap_test","io_remap_test")
     // Check the "test" metadata, which should match the field name
     // Note: the FieldAtPressureLevel diag should get the attribute from its input field,
     //       so the valuf for "Y_int"_at_XPa should be "Y_int"
-    std::string att_val;
     const auto& filename = vh_in.get<std::string>("Filename");
     for (auto& fname : fnames) {
-      scorpio::get_variable_metadata(filename,fname,"test",att_val);
+      auto att_val = scorpio::get_attribute<std::string>(filename,fname,"test");
       REQUIRE (att_val==fname);
     }
     std::string f_at_lev_name = "Y_int_at_" + std::to_string(p_ref) + "Pa";
-    scorpio::get_variable_metadata(filename,f_at_lev_name,"test",att_val);
+    auto att_val = scorpio::get_attribute<std::string>(filename,f_at_lev_name,"test");
     REQUIRE (att_val=="Y_int");
     test_input.finalize();
 
@@ -551,7 +543,7 @@ TEST_CASE("io_remap_test","io_remap_test")
   // ------------------------------------------------------------------------------------------------------
   // All Done 
   print (" -> Test Remapped Output ... done\n",io_comm);
-  scorpio::eam_pio_finalize();
+  scorpio::finalize_pio_subsystem();
 
 }
 /*==========================================================================================================*/
