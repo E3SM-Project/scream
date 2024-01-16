@@ -343,6 +343,24 @@ be lost if SCREAM_HACK_XML is not enabled.
       >
         false
       </extra_clnsky_diag>
+      <hardcode_co2_ramp_begin_value
+        type="real"
+        doc="CO2 concentration in ppmv for first year"
+      >
+        0.0
+      </hardcode_co2_ramp_begin_value>
+      <hardcode_co2_ramp_begin_year
+        type="int"
+        doc="The CO2 ramp begins at this year"
+      >
+        0
+      </hardcode_co2_ramp_begin_year>
+      <hardcode_co2_ramp_end_value
+        type="real"
+        doc="CO2 concentration in ppmv for last year"
+      >
+        0.0
+      </hardcode_co2_ramp_end_value>
     </rrtmgp>
 
     <mac_aero_mic inherit="atm_proc_group">

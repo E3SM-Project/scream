@@ -37,6 +37,18 @@ RRTMGPRadiation (const ekat::Comm& comm, const ekat::ParameterList& params)
   }
 
   m_ngas = m_gas_names.size();
+
+  // hardcode a tempoary co2 ramp
+  m_co2_begin_val = m_params.get<double>("hardcode_co2_ramp_1995_value", 0.0);
+  m_co2_begin_year = m_params.get<int>("hardcode_co2_ramp_1995_value", 0);
+  m_co2_end_val = m_params.get<double>("hardcode_co2_ramp_2015_value", 0.0);
+
+  if (m_co2_begin_val > 0.0 && m_co2_end_val > 0.0 && (m_co2_begin_val < m_co2_end_val) && m_co2_begin_year > 0) {
+    m_co2_ramp = true;
+  } else {
+    m_co2_ramp = false;
+  }
+
 }
 
 void RRTMGPRadiation::set_grids(const std::shared_ptr<const GridsManager> grids_manager) {
@@ -603,6 +615,9 @@ void RRTMGPRadiation::run_impl (const double dt) {
         });
         Kokkos::fence();
       } else {
+        if (m_co2_ramp) {
+          m_co2vmr = m_co2_begin_val + (m_co2_begin_val - m_co2_end_val) * (ts.get_year() - m_co2_begin_year);
+        }
         // This gives (dry) mass mixing ratios
         scream::physics::trcmix(
           name, m_nlay, m_lat.get_view<const Real*>(), d_pmid, d_vmr,

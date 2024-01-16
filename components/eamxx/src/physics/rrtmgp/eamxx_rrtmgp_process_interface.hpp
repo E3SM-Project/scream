@@ -99,6 +99,12 @@ public:
   Real m_n2vmr;
   Real m_covmr;
 
+  // Hardocde a temporary co2 ramp
+  Real m_co2_begin_val;
+  Real m_co2_begin_year;
+  Real m_co2_end_val;
+  bool m_co2_ramp;
+
   // Rad frequency in number of steps
   int m_rad_freq_in_steps;
 
