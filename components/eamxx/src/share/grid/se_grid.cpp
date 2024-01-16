@@ -1,6 +1,7 @@
 #include "share/grid/se_grid.hpp"
+#include "share/field/field_utils.hpp"
 
-#include "ekat/kokkos//ekat_subview_utils.hpp"
+#include "ekat/kokkos/ekat_subview_utils.hpp"
 
 namespace scream {
 
@@ -29,6 +30,9 @@ SEGrid (const std::string& grid_name,
   const auto units = ekat::units::Units::nondimensional();
   m_cg_dofs_gids = Field(FieldIdentifier("cg_gids",FieldLayout({CMP},{get_num_local_dofs()}),units,this->name(),DataType::IntType));
   m_cg_dofs_gids.allocate_view();
+
+  m_elem_gids = Field(FieldIdentifier("el_gids",FieldLayout({EL},{m_num_local_elem}),units,this->name(),DataType::IntType));
+  m_elem_gids.allocate_view();
 }
 
 FieldLayout
@@ -111,6 +115,26 @@ SEGrid::get_3d_tensor_layout (const bool midpoints,
   return FieldLayout(tags,dims);
 }
 
+auto SEGrid::
+get_global_min_elem_gid () const
+ -> gid_type
+{
+  if (m_global_min_elem_gid==std::numeric_limits<gid_type>::max()) {
+    m_global_min_elem_gid = field_min<gid_type>(m_elem_gids,&get_comm());
+  }
+  return m_global_min_elem_gid;
+}
+
+auto SEGrid::
+get_global_max_elem_gid () const
+ -> gid_type
+{
+  if (m_global_max_elem_gid==std::numeric_limits<gid_type>::max()) {
+    m_global_max_elem_gid = field_max<gid_type>(m_elem_gids,&get_comm());
+  }
+  return m_global_max_elem_gid;
+}
+
 std::shared_ptr<AbstractGrid> SEGrid::clone (const std::string& clone_name, const bool shallow) const
 {
   auto grid = std::make_shared<SEGrid>(clone_name,m_num_local_elem,m_num_gp,get_num_vertical_levels(),get_comm());
@@ -122,6 +146,13 @@ std::shared_ptr<AbstractGrid> SEGrid::clone (const std::string& clone_name, cons
       grid->m_cg_dofs_gids = m_cg_dofs_gids;
     } else {
       grid->m_cg_dofs_gids = m_cg_dofs_gids.clone();
+    }
+  }
+  if (m_elem_gids.is_allocated()) {
+    if (shallow) {
+      grid->m_elem_gids = m_elem_gids;
+    } else {
+      grid->m_elem_gids = m_elem_gids.clone();
     }
   }
 
