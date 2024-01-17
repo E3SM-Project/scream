@@ -194,6 +194,27 @@ size_t dtype_size (const std::string& dtype) {
 // Note: these utilities are used in this file to retrieve PIO entities,
 //       so that we implement all checks once (rather than in every function)
 
+// Small struct that allows to quickly open a file (in Read mode) if it wasn't open.
+// If the file had to be open, when the struct is deleted, it will release the file.
+struct PeekFile {
+  PeekFile(const std::string& filename_in) {
+    filename = filename_in;
+    was_open = is_file_open(filename);
+    if (not was_open) {
+      register_file(filename,Read);
+    }
+  }
+
+  ~PeekFile () {
+    if (not was_open) {
+      release_file(filename);
+    }
+  }
+private:
+  std::string filename;
+  bool        was_open;
+};
+
 PIOFile& get_file (const std::string& filename,
                    const std::string& context)
 {
@@ -555,6 +576,9 @@ void define_dim (const std::string& filename, const std::string& dimname, const 
 
 bool has_dimension (const std::string& filename, const std::string& dimname, const int length)
 {
+  // If file wasn't open, open it on the fly. See comment in PeekFile class above.
+  PeekFile pf(filename);
+
   const auto& f = get_file(filename,"scorpio::has_dimension");
 
   auto it = f.dims.find(dimname);
@@ -570,6 +594,9 @@ bool has_dimension (const std::string& filename, const std::string& dimname, con
 
 int get_dimlen (const std::string& filename, const std::string& dimname)
 {
+  // If file wasn't open, open it on the fly. See comment in PeekFile class above.
+  PeekFile pf(filename);
+
   EKAT_REQUIRE_MSG (has_dimension(filename,dimname),
       "Error! Could not inquire dimension length. The dimension is not in the file.\n"
       " - filename: " + filename + "\n"
@@ -971,6 +998,9 @@ bool has_variable (const std::string& filename, const std::string& varname,
                    const std::string& units,
                    const std::string& time_dep)
 {
+  // If file wasn't open, open it on the fly. See comment in PeekFile class above.
+  PeekFile pf(filename);
+
   const auto& f = get_file(filename,"scorpio::has_variable");
 
   if (f.vars.count(varname)==0) {

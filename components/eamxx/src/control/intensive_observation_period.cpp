@@ -322,9 +322,7 @@ setup_io_info(const std::string& file_name,
   // Create io grid if doesn't exist
   if (m_io_grids.count(grid_name) == 0) {
     // IO grid needs to have ncol dimension equal to the IC/topo file
-    scorpio::register_file(file_name,scorpio::FileMode::Read);
     const auto nc_file_ncols = scorpio::get_dimlen(file_name, "ncol");
-    scorpio::release_file(file_name);
     const auto nlevs = grid->get_num_vertical_levels();
     m_io_grids[grid_name] = create_point_grid(grid_name,
                                               nc_file_ncols,
