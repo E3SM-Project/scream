@@ -207,6 +207,11 @@ struct PeekFile {
 
   ~PeekFile () {
     if (not was_open) {
+      // Note: this function _could_ throw, but it should not happen (unless someone
+      //       else called release_file twice). That's b/c we either are not the only
+      //       customer (so nothing to be done other than a ref count decrement) or
+      //       the file was open in Read mode, in which case it doesn't need to do
+      //       much in scorpio.
       release_file(filename);
     }
   }
@@ -606,6 +611,36 @@ int get_dimlen (const std::string& filename, const std::string& dimname)
   auto& f = s.files[filename];
 
   return f.dims.at(dimname)->length;
+}
+
+int get_time_len (const std::string& filename)
+{
+  // If file wasn't open, open it on the fly. See comment in PeekFile class above.
+  PeekFile pf(filename);
+
+  auto& s = ScorpioSession::instance();
+  auto& f = s.files[filename];
+
+  EKAT_REQUIRE_MSG (f.time_dim,
+      "Error! Could not inquire time dimension length. The time dimension is not in the file.\n"
+      " - filename: " + filename + "\n");
+
+  return f.time_dim->length;
+}
+
+std::string get_time_name (const std::string& filename)
+{
+  // If file wasn't open, open it on the fly. See comment in PeekFile class above.
+  PeekFile pf(filename);
+
+  auto& s = ScorpioSession::instance();
+  auto& f = s.files[filename];
+
+  EKAT_REQUIRE_MSG (f.time_dim,
+      "Error! Could not inquire time dimension name. The time dimension is not in the file.\n"
+      " - filename: " + filename + "\n");
+
+  return f.time_dim->name;
 }
 
 // =================== Decompositions operations ==================== //

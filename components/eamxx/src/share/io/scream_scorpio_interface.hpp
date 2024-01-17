@@ -49,6 +49,9 @@ bool has_dimension (const std::string& filename, const std::string& dimname, con
 
 int get_dimlen (const std::string& filename, const std::string& dimname);
 
+int get_time_len (const std::string& filename);
+std::string get_time_name (const std::string& filename);
+
 // =================== Decompositions operations ==================== //
 
 // Create a decomposition along a particular dimension
