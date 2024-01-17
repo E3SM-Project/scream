@@ -25,9 +25,11 @@ TEST_CASE("spa_one_to_one_remap","spa")
 {
   // Set up the mpi communicator and init the pio subsystem
   ekat::Comm comm(MPI_COMM_WORLD);
-  scorpio::eam_init_pio_subsystem(comm);
+  scorpio::init_pio_subsystem(comm);
 
   std::string spa_data_file = SCREAM_DATA_DIR "/init/spa_data_for_testing.nc";
+
+  scorpio::register_file(spa_data_file,scorpio::FileMode::Read);
 
   const int ncols_model = scorpio::get_dimlen(spa_data_file,"ncol");
   const int nlevs       = scorpio::get_dimlen(spa_data_file,"lev");
@@ -107,7 +109,8 @@ TEST_CASE("spa_one_to_one_remap","spa")
 
   // All Done
   reader = nullptr;
-  scorpio::eam_pio_finalize();
+  scorpio::release_file(spa_data_file);
+  scorpio::finalize_pio_subsystem();
 } // run_property
 
 // Some helper functions for the require statements:

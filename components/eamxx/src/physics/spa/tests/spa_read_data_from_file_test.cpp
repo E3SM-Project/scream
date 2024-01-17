@@ -26,10 +26,12 @@ TEST_CASE("spa_read_data","spa")
 
   // Set up the mpi communicator and init the pio subsystem
   ekat::Comm comm(MPI_COMM_WORLD);
-  scorpio::eam_init_pio_subsystem(comm);
+  scorpio::init_pio_subsystem(comm);
 
   std::string spa_data_file  = SCREAM_DATA_DIR "/init/spa_data_for_testing.nc";
   std::string spa_remap_file = SCREAM_DATA_DIR "/init/spa_data_for_testing.nc";
+
+  scorpio::register_file(spa_data_file,scorpio::FileMode::Read);
 
   const int ncols_model = 48;
   const int nlevs       = scorpio::get_dimlen(spa_data_file,"lev");
@@ -104,7 +106,9 @@ TEST_CASE("spa_read_data","spa")
 
   // Clean up
   reader = nullptr;
-  scorpio::eam_pio_finalize();
+
+  scorpio::release_file(spa_data_file);
+  scorpio::finalize_pio_subsystem();
 }
 
 // Some helper functions for the require statements:

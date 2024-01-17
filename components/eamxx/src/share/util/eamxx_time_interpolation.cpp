@@ -164,15 +164,28 @@ void TimeInterpolation::initialize_data_from_files()
   m_file_data_atm_input.set_logger(m_logger);
   // Assign the mask value gathered from the FillValue found in the source file.
   // TODO: Should we make it possible to check if FillValue is in the metadata and only assign mask_value if it is?
-  float var_fill_value;
   for (auto& name : m_field_names) {
-    var_fill_value = scorpio::get_attribute<float>(triplet_curr.filename,name,"_FillValue");
-    auto& field0 = m_fm_time0->get_field(name);
-    field0.get_header().set_extra_data("mask_value",var_fill_value);
-    auto& field1 = m_fm_time1->get_field(name);
-    field1.get_header().set_extra_data("mask_value",var_fill_value);
-    auto& field_out = m_interp_fields.at(name);
-    field_out.get_header().set_extra_data("mask_value",var_fill_value);
+
+    if (scorpio::has_attribute(triplet_curr.filename,name,"_FillValue")) {
+      auto fv = scorpio::get_any_attribute(triplet_curr.filename,name,"_FillValue");
+      float var_fill_value;
+      if (fv.isType<float>()) {
+        var_fill_value = ekat::any_cast<float>(fv);
+      } else if (fv.isType<double>()) {
+        var_fill_value = ekat::any_cast<double>(fv);
+      } else {
+        EKAT_ERROR_MSG (
+            "Cannot cast _FillValue to either float or double.\n"
+            " - filename: " + triplet_curr.filename + "\n"
+            " - varname : " + name + "\n");
+      }
+      auto& field0 = m_fm_time0->get_field(name);
+      field0.get_header().set_extra_data("mask_value",var_fill_value);
+      auto& field1 = m_fm_time1->get_field(name);
+      field1.get_header().set_extra_data("mask_value",var_fill_value);
+      auto& field_out = m_interp_fields.at(name);
+      field_out.get_header().set_extra_data("mask_value",var_fill_value);
+    }
   }
   // Read first snap of data and shift to time0
   read_data();

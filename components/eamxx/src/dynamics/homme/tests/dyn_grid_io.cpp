@@ -40,11 +40,8 @@ TEST_CASE("dyn_grid_io")
   constexpr int np  = HOMMEXX_NP;
   constexpr int nlev = HOMMEXX_NUM_PHYSICAL_LEV;
 
-  ekat::Comm comm(MPI_COMM_WORLD);  // MPI communicator group used for I/O set as ekat object.
-
-  // Initialize the pio_subsystem for this test:
-  MPI_Fint fcomm = MPI_Comm_c2f(comm.mpi_comm());
-  scorpio::eam_init_pio_subsystem(fcomm);
+  ekat::Comm comm(MPI_COMM_WORLD);
+  scorpio::init_pio_subsystem(comm);
 
   // Init homme context
   if (!is_parallel_inited_f90()) {
@@ -183,7 +180,7 @@ TEST_CASE("dyn_grid_io")
   }
 
   // Cleanup everything
-  scorpio::eam_pio_finalize();
+  scorpio::finalize_pio_subsystem();
   Homme::Context::finalize_singleton();
   cleanup_test_f90();
 }
