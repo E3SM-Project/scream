@@ -1023,6 +1023,16 @@
       <mask>EC30to60E2r2</mask>
     </model_grid>
 
+    <model_grid alias="ne0np4-saomai-128x8_EC30to60E2r2">
+      <grid name="atm">ne0np4-saomai-128x8.pg2</grid>
+      <grid name="lnd">ne0np4-saomai-128x8.pg2</grid>
+      <grid name="ocnice">EC30to60E2r2</grid>
+      <grid name="rof">r05</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>EC30to60E2r2</mask>
+    </model_grid>
+
     <model_grid alias="arcticx4v1pg2_r0125_oARRM60to10">
       <grid name="atm">ne0np4_arcticx4v1.pg2</grid>
       <grid name="lnd">r0125</grid>
@@ -3041,6 +3051,14 @@
       <desc>1-deg with 1/4-deg over North America (version 1) pg2:</desc>
     </domain>
 
+    <domain name="ne0np4-saomai-128x8.pg2">
+      <nx>862272</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="EC30to60E2r2">/global/cfs/cdirs/m2637/whannah/domain.lnd.ne0np4-saomai-128x8_EC30to60E2r2.240110.nc</file>
+      <file grid="ice|ocn" mask="EC30to60E2r2">/global/cfs/cdirs/m2637/whannah/domain.ocn.ne0np4-saomai-128x8_EC30to60E2r2.240110.nc</file>
+      <desc>RRM w/ pg2:</desc>
+    </domain>
+
     <domain name="ne0np4_arcticx4v1.pg2">
       <nx>97200</nx>
       <ny>1</ny>
@@ -3844,6 +3862,21 @@
     <gridmap atm_grid="ne0np4_northamericax4v1.pg2" rof_grid="r05">
       <map name="ATM2ROF_FMAPNAME">cpl/gridmaps/northamericax4v1np4/map_northamericax4v1pg2_to_r05_mono.220428.nc</map>
       <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/northamericax4v1np4/map_northamericax4v1pg2_to_r05_bilin.220428.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne0np4-saomai-128x8.pg2" rof_grid="r05">    
+      <map name="ATM2ROF_FMAPNAME">/global/cfs/cdirs/m2637/whannah/map_ne0np4-saomai-128x8_to_r05_mono.20240108.nc</map>
+      <map name="ATM2ROF_SMAPNAME">/global/cfs/cdirs/m2637/whannah/map_ne0np4-saomai-128x8_to_r05_mono.20240108.nc</map>
+      <map name="LND2ROF_FMAPNAME">/global/cfs/cdirs/m2637/whannah/map_r05_to_ne0np4-saomai-128x8_mono.20240108.nc</map>
+      <map name="ROF2LND_FMAPNAME">/global/cfs/cdirs/m2637/whannah/map_r05_to_ne0np4-saomai-128x8_mono.20240108.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne0np4-saomai-128x8.pg2" ocn_grid="EC30to60E2r2">
+      <map name="ATM2OCN_FMAPNAME">/global/cfs/cdirs/m2637/whannah/map_ne0np4-saomai-128x8_to_EC30to60E2r2_mono.20240110.nc</map>
+      <map name="ATM2OCN_VMAPNAME">/global/cfs/cdirs/m2637/whannah/map_ne0np4-saomai-128x8_to_EC30to60E2r2_nco_idw.20240110.nc</map>
+      <map name="ATM2OCN_SMAPNAME">/global/cfs/cdirs/m2637/whannah/map_ne0np4-saomai-128x8_to_EC30to60E2r2_nco_idw.20240110.nc</map>
+      <map name="OCN2ATM_FMAPNAME">/global/cfs/cdirs/m2637/whannah/map_EC30to60E2r2_to_ne0np4-saomai-128x8_mono.20240110.nc</map>
+      <map name="OCN2ATM_SMAPNAME">/global/cfs/cdirs/m2637/whannah/map_EC30to60E2r2_to_ne0np4-saomai-128x8_mono.20240110.nc</map>
     </gridmap>
 
     <gridmap atm_grid="ne0np4_arcticx4v1.pg2" ocn_grid="oARRM60to10">

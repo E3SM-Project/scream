@@ -287,6 +287,8 @@ be lost if SCREAM_HACK_XML is not enabled.
       <spa_remap_file hgrid="ne1024np4.pg2">${DIN_LOC_ROOT}/atm/scream/maps/map_ne30np4_to_ne1024pg2_intbilin_20221012.nc</spa_remap_file>
 
       <spa_data_file type="file">${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne30_20220428.nc</spa_data_file>
+
+      <spa_remap_file hgrid="ne0np4-saomai-128x8.pg2">/global/cfs/cdirs/m2637/whannah/map_ne30np4_to_ne0np4-saomai-128x8-pg2_intbilin_20240110.nc</spa_remap_file>
     </spa>
 
     <!-- Radiation -->
@@ -328,6 +330,7 @@ be lost if SCREAM_HACK_XML is not enabled.
       <rad_frequency hgrid="ne512np4">3</rad_frequency>
       <rad_frequency hgrid="ne1024np4">3</rad_frequency>
       <rad_frequency hgrid="ne0np4_conus_x4v1_lowcon">4</rad_frequency>
+      <rad_frequency hgrid="ne0np4-saomai-128x8">3</rad_frequency>
       <do_aerosol_rad type="logical" doc="Flag to turn on/off considering aerosols in radiation calculations">true</do_aerosol_rad>
       <do_aerosol_rad COMPSET=".*SCREAM.*noAero">false</do_aerosol_rad>
       <enable_column_conservation_checks type="logical">false</enable_column_conservation_checks>
@@ -357,6 +360,7 @@ be lost if SCREAM_HACK_XML is not enabled.
       <number_of_subcycles hgrid="ne512np4">2</number_of_subcycles>
       <number_of_subcycles hgrid="ne1024np4">1</number_of_subcycles>
       <number_of_subcycles hgrid="ne0np4_conus_x4v1_lowcon">5</number_of_subcycles>
+      <number_of_subcycles hgrid="ne0np4-saomai-128x8">1</number_of_subcycles>
     </mac_aero_mic>
 
     <cosp inherit="atm_proc_base">
@@ -402,6 +406,7 @@ be lost if SCREAM_HACK_XML is not enabled.
     <Filename hgrid="ne4np4" COMPSET=".*SCREAM%AQUA.*">${DIN_LOC_ROOT}/atm/scream/init/screami_aquaplanet_ne4np4L72_20220823.nc</Filename>
     <Filename hgrid="ne30np4" COMPSET=".*SCREAM%AQUA.*">${DIN_LOC_ROOT}/atm/scream/init/screami_aquaplanet_ne30np4L128_20220823.nc</Filename> <!-- This will need to be updated to the new nccn name -->
     <Filename hgrid="ne0np4_conus_x4v1_lowcon" nlev="72">${DIN_LOC_ROOT}/atm/scream/init/screami_conusx4v1np4L72-topo12x_013023.nc</Filename>
+    <Filename hgrid="ne0np4-saomai-128x8" nlev="128">/global/cfs/cdirs/m2637/whannah/HICCUP.atm_era5.2006-08-09.Saomai_2006_ne128x8_lon130E_lat25N.L128.converted.nc</Filename>
 
     <!-- List of default topography files on specific grids -->
     <topography_filename type="file">UNSET</topography_filename>
@@ -415,6 +420,7 @@ be lost if SCREAM_HACK_XML is not enabled.
     <topography_filename hgrid="ne4np4">${DIN_LOC_ROOT}/atm/cam/topo/USGS-gtopo30_ne4np4pg2_16x_converted.c20200527.nc</topography_filename>
     <!-- Special case with non x6t or 16x topography file -->
     <topography_filename hgrid="ne0np4_conus_x4v1_lowcon">${DIN_LOC_ROOT}/atm/cam/topo/USGS_conusx4v1pg2_12x_consistentSGH_20200609.nc</topography_filename>
+    <topography_filename hgrid="ne0np4-saomai-128x8">/global/cfs/cdirs/m2637/jsgoodni/USGS-gtopo30_Saomai2006ne128x8np4pg2_x6t.nc</topography_filename>
     <!-- For aquaplanet run, unset the topography_filename and set phis=0 -->
     <topography_filename COMPSET=".*SCREAM%AQUA.*">UNSET</topography_filename>
     <phis COMPSET=".*SCREAM%AQUA.*">0.0</phis>
@@ -452,7 +458,10 @@ be lost if SCREAM_HACK_XML is not enabled.
     <qi hgrid="ne256np4|ne1024np4">0.0</qi>
     <nc hgrid="ne256np4|ne1024np4">0.0</nc>
     <ni hgrid="ne256np4|ne1024np4">0.0</ni>
+    <nc hgrid="ne0np4-saomai-128x8">0.0</nc>
+    <ni hgrid="ne0np4-saomai-128x8">0.0</ni>
     <o3_volume_mix_ratio hgrid="ne0np4_conus_x4v1_lowcon">0.0</o3_volume_mix_ratio>
+    <!-- <o3_volume_mix_ratio hgrid="ne0np4-saomai-128x8">0.0</o3_volume_mix_ratio> -->
   </initial_conditions>
 
   <!-- List of yaml files containing I/O output specs -->
@@ -499,6 +508,7 @@ be lost if SCREAM_HACK_XML is not enabled.
     <hv_ref_profiles hgrid="ne120np4">0</hv_ref_profiles>
     <hv_ref_profiles hgrid="ne512np4">0</hv_ref_profiles>
     <hv_ref_profiles hgrid="ne0np4_conus_x4v1_lowcon">0</hv_ref_profiles>
+    <hv_ref_profiles hgrid="ne0np4-saomai-128x8">0</hv_ref_profiles>
     <hv_ref_profiles COMPSET=".*SCREAM%AQUA.*">0</hv_ref_profiles>
     <hypervis_order>2</hypervis_order>
     <hypervis_scaling>3.0</hypervis_scaling>
@@ -514,11 +524,13 @@ be lost if SCREAM_HACK_XML is not enabled.
     <nu_top hgrid="ne512np4">2.0e4</nu_top>
     <nu_top hgrid="ne1024np4">1.0e4</nu_top>
     <nu_top hgrid="ne0np4_conus_x4v1_lowcon">100000.0</nu_top>
+    <nu_top hgrid="ne0np4-saomai-128x8">1.0e4</nu_top>
     <pgrad_correction>1</pgrad_correction>                <!-- Default (rough topography) -->
     <pgrad_correction hgrid="ne4np4">0</pgrad_correction> <!-- Value for smooth topography/aquaplanet -->
     <pgrad_correction hgrid="ne120np4">0</pgrad_correction>
     <pgrad_correction hgrid="ne512np4">0</pgrad_correction>
     <pgrad_correction hgrid="ne0np4_conus_x4v1_lowcon">0</pgrad_correction>
+    <pgrad_correction hgrid="ne0np4-saomai-128x8">0</pgrad_correction>
     <pgrad_correction COMPSET=".*SCREAM%AQUA.*">0</pgrad_correction>
     <se_ftype valid_values="0,2">0</se_ftype>
     <se_geometry>sphere</se_geometry>
@@ -531,6 +543,7 @@ be lost if SCREAM_HACK_XML is not enabled.
     <se_ne hgrid="ne512np4" constraints="ge 2">512</se_ne>
     <se_ne hgrid="ne1024np4" constraints="ge 2">1024</se_ne>
     <se_ne hgrid="ne0np4_conus_x4v1_lowcon">0</se_ne>
+    <se_ne hgrid="ne0np4-saomai-128x8">0</se_ne>
     <se_ne_x>0</se_ne_x>
     <se_ne_y>0</se_ne_y>
     <se_nsplit>-1</se_nsplit>
@@ -544,6 +557,7 @@ be lost if SCREAM_HACK_XML is not enabled.
     <se_tstep hgrid="ne512np4" constraints="gt 0">16.6666666666666</se_tstep>
     <se_tstep hgrid="ne1024np4" constraints="gt 0">8.3333333333333</se_tstep>
     <se_tstep hgrid="ne0np4_conus_x4v1_lowcon" constraints="gt 0">75</se_tstep>
+    <se_tstep hgrid="ne0np4-saomai-128x8" constraints="gt 0">8.3333333333333</se_tstep>
     <statefreq>9999</statefreq>
     <theta_advect_form>1</theta_advect_form>
     <theta_hydrostatic_mode>False</theta_hydrostatic_mode>
@@ -564,6 +578,7 @@ be lost if SCREAM_HACK_XML is not enabled.
     <se_ftype valid_values="0,2" hgrid=".*pg2">2</se_ftype>
     <mesh_file type="file">none</mesh_file>
     <mesh_file hgrid="ne0np4_conus_x4v1_lowcon">${DIN_LOC_ROOT}/atm/cam/inic/homme/conusx4v1.g</mesh_file>
+    <mesh_file hgrid="ne0np4-saomai-128x8">/global/cfs/cdirs/m2637/jsgoodni/Saomai_2006_ne128x8_lon130E_lat25N.g</mesh_file>
   </ctl_nl>
 
 </namelist_defaults>
