@@ -28,7 +28,6 @@ void create_vert_remap() {
   scorpio::enddef(remap_filename);
   scorpio::write_var(remap_filename,"p_levs",p_tgt.data());
   scorpio::release_file(remap_filename);
-  scorpio::finalize_pio_subsystem();
 }
 
 void create_nudging_weights_ncfile(int ntimes, int ncols, int nlevs, const std::string& filename)
@@ -41,26 +40,28 @@ void create_nudging_weights_ncfile(int ntimes, int ncols, int nlevs, const std::
     plev[ilev] = p_top + dp*ilev;
   }  
 
-  Real weights[ntimes][ncols][nlevs];
-  for (auto itime=0; itime<ntimes; ++itime) {
-    for (auto ilev=0; ilev<nlevs; ++ilev) {
-      for (auto icol=0; icol<ncols; ++icol) {
-        if (plev[ilev] <= 1.0e5 && plev[ilev] >= 8.0e4) {
-           weights[itime][icol][ilev] = 1.;
-        } else {
-           weights[itime][icol][ilev] = 0.;
-        }
-      }
-    }
-  }
-
   scorpio::register_file(filename, scorpio::FileMode::Write);
   scorpio::define_dim(filename,"ncol", ncols);
   scorpio::define_dim(filename,"lev",  nlevs);
   scorpio::define_time(filename,"nsteps");
-  scorpio::define_var(filename,"nudging_weights",{"lev", "ncol"},"real",true);
+  scorpio::define_var(filename,"nudging_weights",{"ncol", "lev"},"real",true);
   scorpio::enddef(filename);
-  scorpio::write_var(filename,"nudging_weights",&weights[0][0][0]);
+
+  Real weights[ncols][nlevs];
+  for (auto itime=0; itime<ntimes; ++itime) {
+    for (auto ilev=0; ilev<nlevs; ++ilev) {
+      for (auto icol=0; icol<ncols; ++icol) {
+        if (plev[ilev] <= 1.0e5 && plev[ilev] >= 8.0e4) {
+           weights[icol][ilev] = 1.;
+        } else {
+           weights[icol][ilev] = 0.;
+        }
+      }
+    }
+    scorpio::update_time(filename,itime);
+    scorpio::write_var(filename,"nudging_weights",&weights[0][0]);
+  }
+
   scorpio::release_file(filename);
 }
 
