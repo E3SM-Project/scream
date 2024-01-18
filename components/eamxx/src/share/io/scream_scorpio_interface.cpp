@@ -1142,7 +1142,8 @@ void read_var (const std::string &filename, const std::string &varname, T* buf, 
   const auto& f = get_file(filename,"scorpio::read_var");
         auto& var = get_var(filename,varname,"scorpio::read_var");
 
-  int err, frame;
+  int err;
+  int frame = -1;
   if (var.time_dep) {
     frame = time_index>=0 ? time_index : f.time_dim->length-1;
     EKAT_REQUIRE_MSG (frame<f.time_dim->length,
@@ -1153,6 +1154,19 @@ void read_var (const std::string &filename, const std::string &varname, T* buf, 
         " - time len: " + std::to_string(f.time_dim->length));
     err = PIOc_setframe(f.ncid,var.ncid,frame);
     check_scorpio_noerr (err,f.name,"variable",varname,"read_var","setframe");
+  } else if (time_index>=0) {
+    // This is a bit of a hacky usage. We want to read a time index of a var,
+    // but the time dim is NOT unlimited in the input file. Apparently, SCORPIO
+    // supports this, and some E3SM input files are indeed like this, so we
+    // need to support it here too, hacky as it may be.
+    frame = time_index;
+
+    EKAT_REQUIRE_MSG (frame<var.dims[0]->length,
+        "Error! First dim index out of bounds.\n"
+        " - filename     : " + filename + "\n"
+        " - varname      : " + varname + "\n"
+        " - first dim idx: " + std::to_string(time_index) + "\n"
+        " - first dim len: " + std::to_string(var.dims[0]->length) + "\n");
   }
 
   // The user may be using a different data type than the one that is in the file
@@ -1181,14 +1195,25 @@ void read_var (const std::string &filename, const std::string &varname, T* buf, 
       io_buf = var.buf.data();
     }
 
-    if (var.time_dep) {
+    if (frame>=0) {
       // We need to get the start/count for each dimension
-      int ndims = var.dims.size();
-      std::vector<PIO_Offset> start (ndims+1,0), count(ndims+1); // +1 for time
+      // Note: if the var is time_dep, it means we have an unlimited dim for time.
+      //       In that case, var.dims only stores the non-time dims. HOWEVER, there
+      //       is a corner-case use (by IOP), where the time dim is NOT unlimited.
+      //       In this case, the var is NOT marked as time_dep, and var.dims stores
+      //       ALL dims, including time. So handle carefully the two cases, to avoid
+      //       passing bad start/count arrays to PIOc.
+      int ndims_file     = var.dims.size() + (var.time_dep ? 1 : 0);
+      int non_time_ndims = ndims_file - 1;
+      std::vector<PIO_Offset> start (ndims_file,0), count(ndims_file); // +1 for time
       start[0] = frame;
       count[0] = 1;
-      for (int idim=0; idim<ndims; ++idim) {
-        count[idim+1] = var.dims[idim]->length;
+      for (int idim=0; idim<non_time_ndims; ++idim) {
+        if (var.time_dep) {
+          count[idim+1] = var.dims[idim]->length;
+        } else {
+          count[idim+1] = var.dims[idim+1]->length;
+        }
       }
       err = PIOc_get_vara(f.ncid,var.ncid,start.data(),count.data(),io_buf);
       pioc_func = "get_vara";
@@ -1199,14 +1224,20 @@ void read_var (const std::string &filename, const std::string &varname, T* buf, 
 
     // If we used the var tmp buffer, copy back into the user-provided pointer
     if (var.dtype!=var.nc_dtype) {
+      int buf_size = var.size;
+      if (not var.time_dep) {
+        // If not time dependent, the var size includes the (non-unlimited) time dim length,
+        // but the input buffer does not. So remove that factor.
+        buf_size /= var.dims[0]->length;
+      }
       if (var.nc_dtype=="int") {
-        copy_data(reinterpret_cast<int*>(io_buf),buf,var.size);
+        copy_data(reinterpret_cast<int*>(io_buf),buf,buf_size);
       } else if (var.nc_dtype=="int64") {
-        copy_data(reinterpret_cast<long long*>(io_buf),buf,var.size);
+        copy_data(reinterpret_cast<long long*>(io_buf),buf,buf_size);
       } else if (var.nc_dtype=="float") {
-        copy_data(reinterpret_cast<float*>(io_buf),buf,var.size);
+        copy_data(reinterpret_cast<float*>(io_buf),buf,buf_size);
       } else if (var.nc_dtype=="double") {
-        copy_data(reinterpret_cast<double*>(io_buf),buf,var.size);
+        copy_data(reinterpret_cast<double*>(io_buf),buf,buf_size);
       }
     }
   }

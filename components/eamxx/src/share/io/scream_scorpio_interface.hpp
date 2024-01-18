@@ -174,7 +174,8 @@ std::vector<double> get_all_times (const std::string& filename);
 
 // Read variable into user provided buffer.
 // If time dim is present, read given time slice (time_index=-1 means "read last record).
-// If time dim is not present, time_index must be -1 (error out otherwise)
+// If time dim is not present and time_index>=0, it is interpreted as the index of the
+// first dimension (which is not unlimited).
 // NOTE: ETI in the cpp file for int, float, double.
 template<typename T>
 void read_var (const std::string &filename, const std::string &varname, T* buf, const int time_index = -1);
