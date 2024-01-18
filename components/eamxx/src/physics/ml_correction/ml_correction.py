@@ -137,6 +137,7 @@ def update_fields(
     sfc_alb_dif_vis,
     sfc_flux_sw_net,
     sfc_flux_lw_dn,
+    is_novelty,
     Ncol,
     Nlev,
     num_tracers,
@@ -184,6 +185,7 @@ def update_fields(
         )
         T_mid[:, :] += correction_tq["dQ1"].values * dt
         qv[:, 0, :] += correction_tq["dQ2"].values * dt
+        is_novelty[:] = correction_tq["is_novelty"].values
     if model_uv is not None:
         correction_uv = get_ML_correction_dQu_dQv(
             model_uv, T_mid, qv[:, 0, :], cos_zenith, lat, phis, u, v, dt

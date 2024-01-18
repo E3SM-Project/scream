@@ -31,6 +31,7 @@ void MLCorrection::set_grids(
   m_num_cols = m_grid->get_num_local_dofs();  // Number of columns on this rank
   m_num_levs =
       m_grid->get_num_vertical_levels();  // Number of levels per column
+  auto nondim = m/m;
   // Define the different field layouts that will be used for this process
 
   // Layout for 3D (2d horiz X 1d vertical) variable defined at mid-level and
@@ -43,7 +44,6 @@ void MLCorrection::set_grids(
     const auto m2 = m*m;
     const auto s2 = s*s;
     auto Wm2 = W / m / m;
-    auto nondim = m/m;
     add_field<Required>("phis", scalar2d_layout, m2/s2, grid_name);
     add_field<Updated>("SW_flux_dn", scalar3d_layout_int, Wm2, grid_name, ps);
     add_field<Required>("sfc_alb_dif_vis", scalar2d_layout, nondim, grid_name);
@@ -64,6 +64,8 @@ void MLCorrection::set_grids(
   add_field<Updated>("horiz_winds",   horiz_wind_layout,   m/s,     grid_name, ps);
   /* ----------------------- WARNING --------------------------------*/
   add_group<Updated>("tracers", grid_name, 1, Bundling::Required);
+  // add computed field to output novelty detection results
+  add_field<Computed>("is_novelty", scalar2d_layout, nondim, grid_name);
 }
 
 void MLCorrection::initialize_impl(const RunType /* run_type */) {
@@ -95,6 +97,7 @@ void MLCorrection::run_impl(const double dt) {
   const auto &sfc_flux_lw_dn  = get_field_out("sfc_flux_lw_dn").get_view<Real *, Host>();
   const auto &u               = get_field_out("horiz_winds").get_component(0).get_view<Real **, Host>();
   const auto &v               = get_field_out("horiz_winds").get_component(1).get_view<Real **, Host>();
+  const auto &is_novelty      = get_field_out("is_novelty").get_view<Real *, Host>();
 
   auto h_lat  = m_lat.get_view<const Real*,Host>();
   auto h_lon  = m_lon.get_view<const Real*,Host>();
@@ -130,7 +133,9 @@ void MLCorrection::run_impl(const double dt) {
       pybind11::array_t<Real, pybind11::array::c_style | pybind11::array::forcecast>(
           m_num_cols, sfc_flux_sw_net.data(), pybind11::str{}),   
       pybind11::array_t<Real, pybind11::array::c_style | pybind11::array::forcecast>(
-          m_num_cols, sfc_flux_lw_dn.data(), pybind11::str{}),                                                                                                   
+          m_num_cols, sfc_flux_lw_dn.data(), pybind11::str{}),
+      pybind11::array_t<Real, pybind11::array::c_style | pybind11::array::forcecast>(
+          m_num_cols, is_novelty.data(), pybind11::str{}),                                                                                                                
       m_num_cols, m_num_levs, num_tracers, dt, 
       ML_model_tq, ML_model_uv, ML_model_sfc_fluxes, datetime_str);
   pybind11::gil_scoped_release no_gil;  
