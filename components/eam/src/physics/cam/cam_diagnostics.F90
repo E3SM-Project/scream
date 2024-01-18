@@ -195,6 +195,9 @@ subroutine diag_init()
    call addfld (apcnst(1) ,(/ 'lev' /), 'A','kg/kg',cnst_longname(1)//' (after physics)')
    call addfld ('CAPE', horiz_only, 'A', 'J/kg', 'Convectively available potential energy')
    call addfld ('CIN', horiz_only, 'A', 'J/kg', 'Convective inhibition')
+   call addfld ('THETA',(/ 'lev' /), 'A','K','Potential Temperature')
+   call addfld ('THETAE',(/ 'lev' /), 'A','K','Equivalent Potential Temperature')
+   call addfld ('QSATPATH', horiz_only, 'A', 'kg/m2', 'Saturated water vapor path')
    
    if ( dycore_is('LR') .or. dycore_is('SE') ) then
       call addfld ('TFIX',horiz_only,    'A'     ,'K/s','T fixer (T equivalent of Energy correction)')
@@ -1007,7 +1010,10 @@ end subroutine diag_conv_tend_ini
     real(r8) tem2(pcols,pver) ! temporary workspace
     real(r8) timestep(pcols)  ! used for outfld call
     real(r8) esl(pcols,pver)   ! saturation vapor pressures 
-    real(r8) esi(pcols,pver)   ! 
+    real(r8) esi(pcols,pver)   !
+    real(r8) qsat_path(pcols)
+    real(r8) theta(pcols,pver) ! potential temperature
+    real(r8) thetae(pcols,pver) ! equivalent potential temperature
     real(r8) dlon(pcols)      ! width of grid cell (meters)
     integer  plon             ! number of longitudes
 
@@ -1065,6 +1071,25 @@ end subroutine diag_conv_tend_ini
 !           
 ! Output Z3 on pressure surfaces
 !
+
+! Potential temperature and equivalent potential temperature
+    do k = 1, pver
+       theta(:ncol,k) = state%t(:ncol,k)*(100000._r8/state%pmid(:ncol,k))**cappa
+       thetae(:ncol,k) = (state%t(:ncol,k)*(100000._r8/state%pmid(:ncol,k))**cappa)*exp((latvap*state%q(:ncol,k,1))/(cpair*state%t(:ncol,k)))
+    end do
+
+    call outfld('THETA', theta, pcols, lchnk)
+    call outfld('THETAE', thetae, pcols, lchnk)
+
+    call qsat(state%t(:ncol,:), state%pmid(:ncol,:),tem2(:ncol,:), ftem(:ncol,:))
+
+    qsat_path(:) = 0._r8
+    do k = 1, pver
+      qsat_path(:ncol) = qsat_path(:ncol) + ftem(:ncol,k)*state%pdel(:ncol,k)/gravit
+    end do
+
+    call outfld('QSATPATH', qsat_path, pcols, lchnk)
+
     if (hist_fld_active('Z1000')) then
        call vertinterp(ncol, pcols, pver, state%pmid, 100000._r8, z3, p_surf)
        call outfld('Z1000    ', p_surf, pcols, lchnk)
