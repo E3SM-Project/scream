@@ -16,3 +16,9 @@ if ("${PROJECT_NAME}" STREQUAL "E3SM")
 else()
   set(CMAKE_Fortran_FLAGS "-fallow-argument-mismatch"  CACHE STRING "" FORCE) # only works with gnu v10 and above
 endif()
+
+set(PYTHON_EXECUTABLE "/opt/cray/pe/python/3.9.13.1/bin/python3" CACHE STRING "" FORCE)
+set(PYTHON_LIBRARIES "/opt/cray/pe/python/3.9.13.1/lib/libpython3.9.so.1.0" CACHE STRING "" FORCE)
+option (SCREAM_ENABLE_ML_CORRECTION "Whether to enable ML correction parametrization" ON)
+set(HDF5_DISABLE_VERSION_CHECK 1 CACHE STRING "" FORCE)
+execute_process(COMMAND source /global/cfs/cdirs/e3sm/eamxx-ml/python_venv/3.9.13/screamML/bin/activate)
