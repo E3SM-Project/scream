@@ -371,7 +371,6 @@ read_fields_from_file_for_iop (const std::string& file_name,
                                const field_mgr_ptr field_mgr,
                                const int time_index)
 {
-  scorpio::register_file(file_name,scorpio::FileMode::Read);
   const auto dummy_units = ekat::units::Units::nondimensional();
 
   EKAT_REQUIRE_MSG(field_names_nc.size()==field_names_eamxx.size(),
@@ -381,6 +380,7 @@ read_fields_from_file_for_iop (const std::string& file_name,
     return;
   }
 
+  scorpio::register_file(file_name,scorpio::FileMode::Read);
   const auto& grid_name = field_mgr->get_grid()->name();
   EKAT_REQUIRE_MSG(m_io_grids.count(grid_name) > 0,
                    "Error! Attempting to read IOP initial conditions on "
