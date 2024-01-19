@@ -80,6 +80,9 @@ public:
   void set_required_field (const Field& field);
   void set_required_group (const FieldGroup& group);
 
+  // Propagate the call to stored atm procs
+  void all_fields_set_impl ();
+
   // Gather internal fields from all processes in the group
   // NOTE: this method *must* be called before any attempt to query this atm proc group
   //       for its internal fields, otherwise it will appear as if this atm proc group

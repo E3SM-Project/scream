@@ -76,28 +76,14 @@ public:
   // this function can be called.
   // Input:
   //  - file_name: Name of the file used to load field data (IC or topo file)
-  //  - field_names_nc: Field names used by the input file
-  //  - field_names_eamxx: Field names used by eamxx
+  //  - fields: fields to read in
   //  - initial_ts: Inital timestamp
-  // Input/output
-  //  - field_mgr: Field manager containing fields that need data read from files
   void read_fields_from_file_for_iop(const std::string& file_name,
-                                     const vos& field_names_nc,
-                                     const vos& field_names_eamxx,
-                                     const util::TimeStamp& initial_ts,
-                                     const field_mgr_ptr field_mgr);
-
-  // Version of above, but where nc and eamxx field names are identical
-  void read_fields_from_file_for_iop(const std::string& file_name,
-                                     const vos& field_names,
-                                     const util::TimeStamp& initial_ts,
-                                     const field_mgr_ptr field_mgr)
-  {
-    read_fields_from_file_for_iop(file_name, field_names, field_names, initial_ts, field_mgr);
-  }
+                                     const std::vector<Field>& fields,
+                                     const util::TimeStamp& initial_ts);
 
   // Set fields using data loaded from the iop file
-  void set_fields_from_iop_data(const field_mgr_ptr field_mgr);
+  void set_fields_from_iop_data(std::map<std::string,Field>& eamxx_inputs);
 
   // The IOP file may contain temperature values that are
   // 0 at or above the surface. Correct these values using
@@ -108,7 +94,7 @@ public:
   // Note: We only need to use the first column because during
   //       the loading of ICs, every columns will have the same
   //       data.
-  void correct_temperature_and_water_vapor(const field_mgr_ptr field_mgr);
+  void correct_temperature_and_water_vapor(const Field& T_mid, const Field& qv);
 
   // Store grid spacing for use in SHOC ad interface
   void set_grid_spacing (const Real dx_short) {

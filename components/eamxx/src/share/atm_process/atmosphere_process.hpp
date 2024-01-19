@@ -141,6 +141,12 @@ public:
   virtual void set_required_group (const FieldGroup& group);
   virtual void set_computed_group (const FieldGroup& group);
 
+  // Signal to the atm proc that we're done setting fields in it.
+  // Derived classes *can* use this info to start setting up some
+  // infrastructure. Default behavior is a no-op
+  void all_fields_set ();
+  virtual void all_fields_set_impl () {}
+
   // These methods check that some properties are satisfied before/after
   // the run_impl method is called.
   // For more info on what a property check can be, see content of the
@@ -529,6 +535,7 @@ private:
   strmap_t<strmap_t<Field*>> m_fields_in_pointers;
   strmap_t<strmap_t<Field*>> m_fields_out_pointers;
   strmap_t<strmap_t<Field*>> m_internal_fields_pointers;
+  bool m_all_fields_set = false;
 
   // The list of in/out field/group requests.
   std::set<FieldRequest>   m_required_field_requests;

@@ -6,7 +6,7 @@
 #include "share/field/field_layout.hpp"
 #include "share/field/field.hpp"
 
-#include "ekat/mpi//ekat_comm.hpp"
+#include "ekat/mpi/ekat_comm.hpp"
 
 #include <map>
 #include <list>
@@ -66,6 +66,7 @@ public:
   const std::string& name () const { return m_name; }
   const ekat::Comm& get_comm () const { return m_comm; }
   const std::vector<std::string>& aliases () const { return m_aliases; }
+  bool is_valid_alias (const std::string& n) const { return ekat::contains(m_aliases,n); }
   void add_alias (const std::string& alias);
 
   // Native layout of a dof. This is the natural way to index a dof in the grid.
@@ -77,6 +78,7 @@ public:
   virtual FieldLayout get_3d_scalar_layout (const bool midpoints) const = 0;
   virtual FieldLayout get_3d_vector_layout (const bool midpoints, const FieldTag vector_tag, const int vector_dim) const = 0;
 
+  FieldLayout get_global_layout (const FieldLayout& local) const;
   int get_num_vertical_levels () const { return m_num_vert_levs; }
 
   // Whether this grid contains unique dof GIDs

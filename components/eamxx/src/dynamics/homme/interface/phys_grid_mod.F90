@@ -85,7 +85,6 @@ contains
   end subroutine check_phys_grid_inited
 
   subroutine phys_grids_init (pg_types)
-    use gllfvremap_mod,    only: gfr_init
     use homme_context_mod, only: elem, par
     use dimensions_mod,    only: nelem, nelemd
     !
@@ -155,78 +154,6 @@ contains
       call phys_grid_init (fvN)
     endif
   end subroutine phys_grids_init
-
-  !   integer :: ldofs, ierr, proc, ngcols, ie, gid, offset
-  !   integer, allocatable :: dofs_per_elem (:)
-
-  !   ! Note: in the following, we often use MPI_IN_PLACE,0,MPI_DATATYPE_NULL
-  !   !       for the src array specs in Allgatherv calls. These special values 
-  !   !       inform MPI that src array is aliasing the dst one, so MPI will
-  !   !       grab the src data from the dst array, using the offsets info
-
-  !   if (pgN>0) then
-  !     fv_nphys = pgN
-  !     call gfr_init(par, elem, fv_nphys)
-  !   endif
-
-  !   ! Set this right away, so calls to get_num_[local|global]_columns doesn't crap out
-  !   is_phys_grid_inited = .true.
-
-  !   ! Gather num elems on each rank
-  !   allocate(g_elem_per_rank(par%nprocs))
-  !   call MPI_Allgather(nelemd, 1, MPIinteger_t, g_elem_per_rank, 1, MPIinteger_t, par%comm, ierr)
-
-  !   ! Compute offset of each rank in the g_elem_per_rank array
-  !   ! This allows each rank to know where to fill arrays of size num_global_elements
-  !   allocate(g_elem_offsets(par%nprocs))
-  !   g_elem_offsets = 0
-  !   do proc=2,par%nprocs
-  !     g_elem_offsets(proc) = g_elem_offsets(proc-1) + g_elem_per_rank(proc-1)
-  !   enddo
-
-  !   ! Gather elem GIDs on each rank
-  !   allocate(g_elem_gids(nelem))
-  !   do ie=1,nelemd
-  !     g_elem_gids(g_elem_offsets(par%rank+1)+ie) = elem(ie)%globalID
-  !   enddo
-  !   call MPI_Allgatherv( MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &
-  !                        g_elem_gids, g_elem_per_rank, g_elem_offsets, MPIinteger_t, par%comm, ierr)
-
-  !   ! Gather the number of unique cols on each rank
-  !   allocate(g_dofs_per_rank(par%nprocs))
-  !   call MPI_Allgather(get_num_local_columns(), 1, MPIinteger_t, g_dofs_per_rank, 1, MPIinteger_t, par%comm, ierr)
-
-  !   ! Gather the number of unique cols on each element
-  !   ! NOTE: we use a temp (dofs_per_elem) rather than g_dofs, since in g_dofs we order by
-  !   !       elem GID. But elem GIDs may not be distributed linearly across ranks
-  !   !       (e.g., proc0 may own [1-20,41-60],and proc1 may owns [21-40]), while in order
-  !   !       to use Allgatherv, we need the send buffer to be contiguous. So in dofs_per_elem
-  !   !       we order the data *by rank*. Once the gather is complete, we copy the data from
-  !   !       dofs_per_elem into g_dofs_per_elem, ordering by elem GID instead.
-  !   !
-  !   allocate(dofs_per_elem(nelem))
-  !   do ie=1,nelemd
-  !     dofs_per_elem(g_elem_offsets(par%rank+1)+ie) = elem(ie)%idxP%NumUniquePts
-  !   enddo
-  !   call MPI_Allgatherv( MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &
-  !                        dofs_per_elem, g_elem_per_rank, g_elem_offsets, MPIinteger_t, par%comm, ierr)
-
-  !   allocate(g_dofs_per_elem(nelem))
-  !   do proc=1,par%nprocs
-  !     offset = g_elem_offsets(proc)
-  !     do ie=1,g_elem_per_rank(proc)
-  !       g_dofs_per_elem(g_elem_gids(offset+ie)) = dofs_per_elem(offset+ie)
-  !     enddo
-  !   enddo
-
-  !   ! Compute global dofs
-  !   call compute_global_dofs ()
-
-  !   ! Compute area and lat/lon coords
-  !   call compute_global_coords ()
-  !   call compute_global_area ()
-
-  ! end subroutine phys_grid_init
 
   subroutine cleanup_grid_init_data ()
     !

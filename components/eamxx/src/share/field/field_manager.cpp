@@ -23,10 +23,10 @@ void FieldManager::register_field (const FieldRequest& req)
   const auto& id = req.fid;
 
   // Make sure the grid name from the id matches the name of m_grid
-  EKAT_REQUIRE_MSG(id.get_grid_name()==m_grid->name(),
+  EKAT_REQUIRE_MSG(m_grid->is_valid_alias(id.get_grid_name()),
       "Error! Input field request identifier stores a different grid name than the FM:\n"
-      "         - input id grid name: " + id.get_grid_name() + "\n"
-      "         - stored grid name:   " + m_grid->name() + "\n");
+      " - input id grid name:  " + id.get_grid_name() + "\n"
+      " - stored grid aliases: " + ekat::join(m_grid->aliases(),",") + "\n");
 
   // Get or create the new field
   if (req.incomplete) {

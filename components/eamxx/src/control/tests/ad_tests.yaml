@@ -5,9 +5,10 @@ driver_options:
 
 initial_conditions:
   Filename: should_not_be_neeeded_and_code_will_throw_if_it_tries_to_open_this_nonexistent_file.nc
-  A: 1.0
-  V: [2.0, 3.0]
-  Z: "A"
+  constant_fields:
+    - A = 1
+    - V = (2,3)
+    - Z = 1.0
 
 atmosphere_processes:
   atm_procs_list: [dummy1, dummy2, dummy3]
@@ -16,20 +17,20 @@ atmosphere_processes:
   dummy1:
     Type: Dummy
     Sub Name: A to Group
-    Grid Name: Point Grid
+    Grid Name: Physics
   dummy2:
     Type: Dummy
     Sub Name: Group to Group
-    Grid Name: Point Grid
+    Grid Name: Physics
   dummy3:
     Type: Dummy
     Sub Name: Group to A
-    Grid Name: Point Grid
+    Grid Name: Physics
 
 grids_manager:
   Type: Mesh Free
-  grids_names: ["Point Grid"]
-  Point Grid:
+  grids_names: ["Physics"]
+  Physics:
     type: point_grid
     number_of_global_columns: 24
     number_of_vertical_levels: 3

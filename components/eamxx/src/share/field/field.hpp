@@ -329,6 +329,9 @@ protected:
 inline bool operator== (const Field& lhs, const Field& rhs) {
   return lhs.get_header().get_identifier() == rhs.get_header().get_identifier();
 }
+inline bool operator< (const Field& lhs, const Field& rhs) {
+  return lhs.get_header().get_identifier() < rhs.get_header().get_identifier();
+}
 
 } // namespace scream
 
