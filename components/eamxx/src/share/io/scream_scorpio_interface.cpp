@@ -1095,6 +1095,43 @@ void define_time (const std::string& filename, const std::string& units, const s
   define_var(filename,time_name,units,{},"double","double",true);
 }
 
+void pretend_dim_is_unlimited (const std::string& filename, const std::string& dimname)
+{
+  auto& f = get_file(filename,"scorpio::mark_dim_as_time");
+  EKAT_REQUIRE_MSG (f.mode==Read,
+      "Error! Cannot interpret dimension as 'time' dim. File not in Read mode.\n"
+      " - filename : " + filename + "\n"
+      " - file mode: " + e2str(f.mode) + "\n");
+
+  if (f.time_dim==nullptr) {
+    EKAT_REQUIRE_MSG (has_dimension(filename,dimname),
+        "Error! Cannot interpret dimension as 'time' dim. Dimension not found.\n"
+        " - filename: " + filename + "\n"
+        " - dimname : " + dimname + "\n");
+
+    auto dim = f.dims.at(dimname);
+    f.time_dim = dim;
+
+    // If a var has "time" in its dims (must be the 1st dim!),
+    // remove it. Recall that we only store non-time dims in
+    // the list of var dims.
+    for (auto& it : f.vars) {
+      auto& v = it.second;
+      if (v->dims.size()>0 and v->dims[0]->name==dimname) {
+        v->dims.erase(v->dims.begin());
+        v->size = -1;
+        v->time_dep = true;
+      }
+    }
+  } else {
+    EKAT_REQUIRE_MSG (f.time_dim->name==dimname,
+        "Error! Attempt to change the time dimension.\n"
+        " - filenama    : " + filename + "\n"
+        " - old time dim: " + f.time_dim->name + "\n"
+        " - new time dim: " + dimname + "\n");
+  }
+}
+
 // Update value of time variable, increasing time dim length
 void update_time(const std::string &filename, const double time) {
   const auto& f = get_file(filename,"scorpio::update_time");
@@ -1197,23 +1234,12 @@ void read_var (const std::string &filename, const std::string &varname, T* buf, 
 
     if (frame>=0) {
       // We need to get the start/count for each dimension
-      // Note: if the var is time_dep, it means we have an unlimited dim for time.
-      //       In that case, var.dims only stores the non-time dims. HOWEVER, there
-      //       is a corner-case use (by IOP), where the time dim is NOT unlimited.
-      //       In this case, the var is NOT marked as time_dep, and var.dims stores
-      //       ALL dims, including time. So handle carefully the two cases, to avoid
-      //       passing bad start/count arrays to PIOc.
-      int ndims_file     = var.dims.size() + (var.time_dep ? 1 : 0);
-      int non_time_ndims = ndims_file - 1;
-      std::vector<PIO_Offset> start (ndims_file,0), count(ndims_file); // +1 for time
+      int ndims = var.dims.size();
+      std::vector<PIO_Offset> start (ndims+1,0), count(ndims+1); // +1 for time
       start[0] = frame;
       count[0] = 1;
-      for (int idim=0; idim<non_time_ndims; ++idim) {
-        if (var.time_dep) {
-          count[idim+1] = var.dims[idim]->length;
-        } else {
-          count[idim+1] = var.dims[idim+1]->length;
-        }
+      for (int idim=0; idim<ndims; ++idim) {
+        count[idim+1] = var.dims[idim]->length;
       }
       err = PIOc_get_vara(f.ncid,var.ncid,start.data(),count.data(),io_buf);
       pioc_func = "get_vara";
@@ -1224,20 +1250,14 @@ void read_var (const std::string &filename, const std::string &varname, T* buf, 
 
     // If we used the var tmp buffer, copy back into the user-provided pointer
     if (var.dtype!=var.nc_dtype) {
-      int buf_size = var.size;
-      if (not var.time_dep) {
-        // If not time dependent, the var size includes the (non-unlimited) time dim length,
-        // but the input buffer does not. So remove that factor.
-        buf_size /= var.dims[0]->length;
-      }
       if (var.nc_dtype=="int") {
-        copy_data(reinterpret_cast<int*>(io_buf),buf,buf_size);
+        copy_data(reinterpret_cast<int*>(io_buf),buf,var.size);
       } else if (var.nc_dtype=="int64") {
-        copy_data(reinterpret_cast<long long*>(io_buf),buf,buf_size);
+        copy_data(reinterpret_cast<long long*>(io_buf),buf,var.size);
       } else if (var.nc_dtype=="float") {
-        copy_data(reinterpret_cast<float*>(io_buf),buf,buf_size);
+        copy_data(reinterpret_cast<float*>(io_buf),buf,var.size);
       } else if (var.nc_dtype=="double") {
-        copy_data(reinterpret_cast<double*>(io_buf),buf,buf_size);
+        copy_data(reinterpret_cast<double*>(io_buf),buf,var.size);
       }
     }
   }

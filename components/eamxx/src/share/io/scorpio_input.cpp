@@ -353,6 +353,20 @@ void AtmosphereInput::init_scorpio_structures()
 {
   scorpio::register_file(m_filename,scorpio::Read);
 
+  // Some IC file have time as a FIXED dimension, which throws off
+  // our internal scorpio routines/checks. In fact, if time is not
+  // UNLIMITED, we include it as part of the variable dimensions
+  // when we open the NC file. OTOH, here we register only the
+  // non-time dimensions part of the layout of each var.
+  // To avoid confusion, we tell our scorpio interface to interpret
+  // the dimension "time" as if it was the UNLIMITED time dim.
+  // If this is NOT desired, set "assume_time_is_unlimited" to false
+  // in the input parameter list.
+  if (scorpio::has_dimension(m_filename,"time") and
+      m_params.get("assume_time_is_unlimited",true)) {
+    scorpio::pretend_dim_is_unlimited(m_filename,"time");
+  }
+
   // Register variables with netCDF file.
   register_variables();
   set_decompositions();
@@ -366,14 +380,12 @@ void AtmosphereInput::register_variables()
     // Determine the IO-decomp and construct a vector of dimension ids for this variable:
     auto vec_of_dims   = get_vec_of_dims(m_layouts.at(name));
 
-    // Register the variable
-    // TODO  Need to change dtype to allow for other variables.
-    //  Currently the field_manager only stores Real variables so it is not an issue,
-    //  but in the future if non-Real variables are added we will want to accomodate that.
+    // Check that the variable is in the file.
     EKAT_REQUIRE_MSG (scorpio::has_variable(m_filename,name,vec_of_dims),
         "Error! Input file does not store a required variable.\n"
         " - filename: " + m_filename + "\n"
-        " - varname : " + name + "\n");
+        " - varname : " + name + "\n"
+        " - var dims: " + ekat::join(vec_of_dims,",") + "\n");
   }
 }
 

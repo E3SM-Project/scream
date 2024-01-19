@@ -222,6 +222,7 @@ initialize_iop_file(const util::TimeStamp& run_t0,
   m_time_info.iop_file_begin_time = util::TimeStamp(yr,mo,day,0,0,0);
 
   const auto& tsec_dims = scorpio::get_vardims (iop_file,"tsec");
+  scorpio::pretend_dim_is_unlimited(iop_file,tsec_dims[0]);
   const auto ntimes = scorpio::get_dimlen(iop_file,tsec_dims[0]);
   m_time_info.iop_file_times_in_sec =
     decltype(m_time_info.iop_file_times_in_sec)("iop_file_times", ntimes);
