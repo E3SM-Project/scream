@@ -442,10 +442,12 @@ namespace scream {
                     // Decorrelate layers when a clear layer follow a cloudy
                     // layer to enforce random correlation between non-adjacent
                     // blocks of cloudy layers
-                    if (cldf(icol,ilay+1) > 0) {
-                        alpha(icol,ilay+1) = exp(-0.5 * (dz(icol,ilay) + dz(icol,ilay+1))/z0);
-                    } else {
-                        alpha(icol,ilay+1) = 0;
+                    alpha(icol,ilay+1) = exp(-0.5 * (dz(icol,ilay) + dz(icol,ilay+1))/z0);
+                    if (false) {
+                        Real cldeps = 1e-12;
+                        if (cldf(icol,ilay+1) < cldeps) {
+                            alpha(icol,ilay+1) = 0;
+                        }
                     }
                 });
                 // Generate two streams of random numbers
@@ -464,6 +466,15 @@ namespace scream {
                     for (int ilay = 2; ilay <= nlay; ilay++) {
                         if (rnd0(icol,ilay-1,igpt) <= alpha(icol,ilay)) {
                             cldx(icol,ilay,igpt) = cldx(icol,ilay-1,igpt);
+                        }
+                    }
+                });
+            } else if (overlap_option == 3) {  // Random
+                parallel_for(SimpleBounds<1>(ncol), YAKL_LAMBDA(int icol) {
+                    yakl::Random rand(seeds(icol));
+                    for (int igpt = 1; igpt <= ngpt; igpt++) {
+                        for (int ilay = 1; ilay <= nlay; ilay++) {
+                            cldx(icol,ilay,igpt) = rand.genFP<Real>();
                         }
                     }
                 });
