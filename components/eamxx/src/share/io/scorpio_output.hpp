@@ -200,7 +200,6 @@ protected:
   std::map<std::string,std::string>                     m_field_to_avg_cnt_map;
   std::map<std::string,std::string>                     m_field_to_avg_cnt_suffix;
   std::map<std::string,FieldLayout>                     m_layouts;
-  std::map<std::string,int>                             m_dofs;
   std::map<std::string,int>                             m_dims;
   std::map<std::string,std::shared_ptr<atm_diag_type>>  m_diagnostics;
   std::map<std::string,std::vector<std::string>>        m_diag_depends_on_diags;
