@@ -61,8 +61,8 @@ module cosp_c2f
          Lboxtauisccp        = .false., & ! ISCCP optical epth in each column
          Ltauisccp           = .false., & ! ISCCP mean optical depth
          Lcltisccp           = .true. , & ! ISCCP total cloud fraction
-         Lmeantbisccp        = .false., & ! ISCCP mean all-sky 10.5micron brightness temperature
-         Lmeantbclrisccp     = .false., & ! ISCCP mean clear-sky 10.5micron brightness temperature
+         Lmeantbisccp        = .true. , & ! ISCCP mean all-sky 10.5micron brightness temperature
+         Lmeantbclrisccp     = .true. , & ! ISCCP mean clear-sky 10.5micron brightness temperature
          Lalbisccp           = .false., & ! ISCCP mean cloud albedo         
          LclMISR             = .false., & ! MISR cloud fraction
          Lcltmodis           = .false., & ! MODIS total cloud fraction
@@ -268,14 +268,15 @@ contains
 
   subroutine cosp_c2f_run(npoints, ncolumns, nlevels, ntau, nctp, &
        emsfc_lw, sunlit, skt, T_mid, p_mid, p_int, qv, &
-       cldfrac, reff_qc, reff_qi, dtau067, dtau105, isccp_cldtot, isccp_ctptau &
+       cldfrac, reff_qc, reff_qi, dtau067, dtau105, &
+       isccp_cldtot, isccp_meantb, isccp_meantbclr, isccp_ctptau &
        ) bind(C, name='cosp_c2f_run')
     integer(kind=c_int), value, intent(in) :: npoints, ncolumns, nlevels, ntau, nctp
     real(kind=c_double), value, intent(in) :: emsfc_lw
     real(kind=c_double), intent(in), dimension(npoints) :: sunlit, skt
     real(kind=c_double), intent(in), dimension(npoints,nlevels) :: T_mid, p_mid, qv, cldfrac, reff_qc, reff_qi, dtau067, dtau105
     real(kind=c_double), intent(in), dimension(npoints,nlevels+1) :: p_int
-    real(kind=c_double), intent(inout), dimension(npoints) :: isccp_cldtot
+    real(kind=c_double), intent(inout), dimension(npoints) :: isccp_cldtot, isccp_meantb, isccp_meantbclr
     real(kind=c_double), intent(inout), dimension(npoints,ntau,nctp) :: isccp_ctptau
     ! Takes normal arrays as input and populates COSP derived types
     character(len=256),dimension(100) :: cosp_status
@@ -343,6 +344,8 @@ contains
     ! Translate derived types to output arrays
     isccp_cldtot(:npoints) = cospOUT%isccp_totalcldarea(:npoints)
     isccp_ctptau(:npoints,:,:) = cospOUT%isccp_fq(:npoints,:,:)
+    isccp_meantb(:npoints) = cospOUT%isccp_meantb(:npoints)
+    isccp_meantbclr(:npoints) = cospOUT%isccp_meantbclr(:npoints)
 
   end subroutine cosp_c2f_run
 

@@ -82,6 +82,8 @@ void Cosp::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   add_field<Required>("eff_radius_qi",     scalar3d_layout_mid, micron,      grid_name);
   // Set of fields used strictly as output
   add_field<Computed>("isccp_cldtot", scalar2d_layout, percent, grid_name);
+  add_field<Computed>("isccp_meantb", scalar2d_layout, K, grid_name);
+  add_field<Computed>("isccp_meantbclr", scalar2d_layout, K, grid_name);
   add_field<Computed>("isccp_ctptau", scalar4d_layout_ctptau, percent, grid_name, 1);
   add_field<Computed>("isccp_mask"  , scalar2d_layout, nondim, grid_name);
 
@@ -160,6 +162,8 @@ void Cosp::run_impl (const double dt)
   auto dtau067 = get_field_in("dtau067").get_view<const Real**, Host>();
   auto dtau105 = get_field_in("dtau105").get_view<const Real**, Host>();
   auto isccp_cldtot = get_field_out("isccp_cldtot").get_view<Real*, Host>();
+  auto isccp_meantb = get_field_out("isccp_meantb").get_view<Real*, Host>();
+  auto isccp_meantbclr = get_field_out("isccp_meantbclr").get_view<Real*, Host>();
   auto isccp_ctptau = get_field_out("isccp_ctptau").get_view<Real***, Host>();
   auto isccp_mask   = get_field_out("isccp_mask"  ).get_view<Real*, Host>();  // Copy of sunlit flag with COSP frequency for proper averaging
 
@@ -171,7 +175,7 @@ void Cosp::run_impl (const double dt)
             m_num_cols, m_num_subcols, m_num_levs, m_num_isccptau, m_num_isccpctp,
             emsfc_lw, sunlit, skt, T_mid, p_mid, p_int, qv,
             cldfrac, reff_qc, reff_qi, dtau067, dtau105,
-            isccp_cldtot, isccp_ctptau
+            isccp_cldtot, isccp_meantb, isccp_meantbclr, isccp_ctptau
     );
     // Remask night values to ZERO since our I/O does not know how to handle masked/missing values
     // in temporal averages; this is all host data, so we can just use host loops like its the 1980s
@@ -196,10 +200,14 @@ void Cosp::run_impl (const double dt)
     //
     // TODO: mask this when/if the AD ever supports masked averages
     Kokkos::deep_copy(isccp_cldtot, 0.0);
+    Kokkos::deep_copy(isccp_meantb, 0.0);
+    Kokkos::deep_copy(isccp_meantbclr, 0.0);
     Kokkos::deep_copy(isccp_ctptau, 0.0);
     Kokkos::deep_copy(isccp_mask  , 0.0);
   }
   get_field_out("isccp_cldtot").sync_to_dev();
+  get_field_out("isccp_meantb").sync_to_dev();
+  get_field_out("isccp_meantbclr").sync_to_dev();
   get_field_out("isccp_ctptau").sync_to_dev();
   get_field_out("isccp_mask"  ).sync_to_dev();
 }
