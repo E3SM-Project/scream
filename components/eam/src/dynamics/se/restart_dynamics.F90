@@ -365,7 +365,7 @@ CONTAINS
     use pio, only : file_desc_t, pio_global, pio_double, pio_offset_kind, &
          pio_get_att, pio_inq_dimid, pio_inq_dimlen, pio_initdecomp, pio_inq_varid, &
          pio_read_darray, pio_setframe, file_desc_t, io_desc_t, pio_double
-    use dyn_comp, only : dyn_init1, dyn_init2, frontgf_idx, frontga_idx
+    use dyn_comp, only : dyn_init1, dyn_init2, frontgf_idx, frontga_idx, sstiop_idx
     use phys_grid, only: phys_grid_init
     use physpkg, only: phys_register
     use phys_control, only: use_gw_front
@@ -423,6 +423,8 @@ CONTAINS
        call pbuf_add_field("FRONTGA", "global", dtype_r8, (/pcols,pver/), &
             frontga_idx)
     end if
+
+    call pbuf_add_field("SSTIOP", "global", dtype_r8, (/pcols/), sstiop_idx)
 
    if (par%dynproc) then
     elem=>dyn_in%elem
