@@ -23,6 +23,9 @@
 #ifdef EAMXX_HAS_NUDGING
 #include "physics/nudging/eamxx_nudging_process_interface.hpp"
 #endif
+#ifdef EAMXX_HAS_PRESCRIBED_GASES
+#include "physics/prescribed_gases/eamxx_gases_process_interface.hpp"
+#endif
 #ifdef EAMXX_HAS_MAM
 #include "physics/mam/eamxx_mam_microphysics_process_interface.hpp"
 #include "physics/mam/eamxx_mam_optics_process_interface.hpp"
@@ -58,6 +61,9 @@ inline void register_physics () {
 #endif
 #ifdef EAMXX_HAS_NUDGING
   proc_factory.register_product("Nudging",&create_atmosphere_process<Nudging>);
+#endif
+#ifdef EAMXX_HAS_PRESCRIBED_GASES
+  proc_factory.register_product("PrescribedGases",&create_atmosphere_process<PrescribedGases>);
 #endif
 #ifdef EAMXX_HAS_MAM
   proc_factory.register_product("mam4_micro",&create_atmosphere_process<MAMMicrophysics>);
