@@ -64,12 +64,6 @@ public:
   // The name of the subcomponent
   std::string name () const { return "Nudging"; }
 
-  // Find the full filename list from patterns
-  std::vector<std::string> filename_glob(const std::vector<std::string>& patterns);
-
-  // Use globloc for each filename pattern
-  std::vector<std::string> globloc(const std::string& pattern);
-
   // Set the grid
   void set_grids (const std::shared_ptr<const GridsManager> grids_manager);
 

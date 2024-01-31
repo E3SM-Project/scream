@@ -2,7 +2,7 @@
 #include "share/util/scream_universal_constants.hpp"
 #include "share/grid/remap/refining_remapper_p2p.hpp"
 #include "share/grid/remap/do_nothing_remapper.hpp"
-#include <glob.h>
+#include "share/util/scream_utils.hpp"
 
 
 namespace scream
@@ -30,6 +30,12 @@ Nudging::Nudging (const ekat::Comm& comm, const ekat::ParameterList& params)
     m_static_vertical_pressure_file = m_params.get<std::string>("source_pressure_file",m_datafiles[0]);
   } else if (src_pres_type=="TIME_DEPENDENT_3D_HYBRID") {
     m_src_pres_type = TIME_DEPENDENT_3D_HYBRID;
+    int first_file_levs = scorpio::get_dimlen(m_datafiles[0],"lev");
+    for (const auto& file : m_datafiles) {
+        int current_file_levs = scorpio::get_dimlen(file,"lev");
+        EKAT_REQUIRE_MSG(current_file_levs == first_file_levs,
+                         "Error! Inconsistent 'lev' dimension found in nudging data files.");
+    }
   } else {
     EKAT_ERROR_MSG("ERROR! Nudging::parameter_list - unsupported source_pressure_type provided.  "
                    "Current options are [TIME_DEPENDENT_3D_PROFILE,STATIC_1D_VERTICAL_PROFILE,TIME_DEPENDENT_3D_HYBRID].  Please check");
@@ -42,37 +48,6 @@ Nudging::Nudging (const ekat::Comm& comm, const ekat::ParameterList& params)
   // 1. if m_timescale is <= 0 we will do direct replacement.
   // 2. if m_fields_nudge is empty or =NONE then we will skip nudging altogether.
 }
-
-// =========================================================================================
-std::vector<std::string> Nudging::filename_glob(const std::vector<std::string>& patterns) {
-  std::vector<std::string> all_files;
-  for (const auto& pattern : patterns) {
-      auto files = globloc(pattern);
-      all_files.insert(all_files.end(), files.begin(), files.end());
-  }
-  return all_files;
-}
-
-std::vector<std::string> Nudging::globloc(const std::string& pattern) {
-  // glob struct resides on the stack
-  glob_t glob_result;
-  memset(&glob_result, 0, sizeof(glob_result));
-
-  int return_value = ::glob(pattern.c_str(), GLOB_TILDE, NULL, &glob_result);
-  if (return_value != 0) {
-    globfree(&glob_result);
-    EKAT_REQUIRE_MSG(return_value == 0, "glob() failed with return value " + std::to_string(return_value));
-  }
-
-  std::vector<std::string> filenames;
-  for (size_t i = 0; i < glob_result.gl_pathc; ++i) {
-      filenames.push_back(std::string(glob_result.gl_pathv[i]));
-  }
-
-  globfree(&glob_result);
-  return filenames;
-}
-
 
 // =========================================================================================
 void Nudging::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
@@ -115,9 +90,7 @@ void Nudging::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   /* ----------------------- WARNING --------------------------------*/
 
   //Now need to read in the file
-  if (m_src_pres_type == STATIC_1D_VERTICAL_PROFILE) {
-    m_num_src_levs = scorpio::get_dimlen(m_static_vertical_pressure_file,"lev");
-  } else {
+  if (m_src_pres_type == TIME_DEPENDENT_3D_PROFILE || m_src_pres_type == TIME_DEPENDENT_3D_HYBRID) {
     m_num_src_levs = scorpio::get_dimlen(m_datafiles[0],"lev");
     // HYBRID needs the same vertical grid as model for now to bypass vert_interp
     if (m_src_pres_type == TIME_DEPENDENT_3D_HYBRID) {
@@ -125,6 +98,8 @@ void Nudging::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
                      "Error! TIME_DEPENDENT_3D_HYBRID requires the vertical level to be "
                      << " the same as model vertical level ");
     }
+  } else {
+    m_num_src_levs = scorpio::get_dimlen(m_static_vertical_pressure_file,"lev");
   }
 
   /* Check for consistency between nudging files, map file, and remapper */
@@ -505,45 +480,47 @@ void Nudging::run_impl (const double dt)
     //       surface.
     // Here we change the int_state_view which represents the vertically interpolated fields onto
     // the simulation grid.
-    if (m_src_pres_type != TIME_DEPENDENT_3D_HYBRID) {
-      const int num_levs = m_num_levs;
-      Kokkos::parallel_for("correct_for_masked_values", policy,
-                  KOKKOS_LAMBDA(MemberType const& team) {
-        const int icol = team.league_rank();
-        auto int_mask_view_1d  = ekat::subview(int_mask_view,icol);
-        auto tmp_state_view_1d = ekat::subview(tmp_state_view,icol);
-        Real fill_value;
-        int  fill_idx = -1;
-        // Scan top to surf and backfill all values near TOM that are masked.
-        for (int kk=0; kk<num_levs; ++kk) {
-          const auto ipack = kk / mPack::n;
-          const auto iidx  = kk % mPack::n;
-          // Check if this index is masked
-          if (!int_mask_view_1d(ipack)[iidx]) {
-            fill_value = tmp_state_view_1d(ipack)[iidx];
-            fill_idx = kk;
-            for (int jj=0; jj<fill_idx; ++jj) {
-              const auto jpack = jj / mPack::n;
-              const auto jidx  = jj % mPack::n;
-              tmp_state_view_1d(jpack)[jidx] = fill_value;
-            }
-            break;
-          }
-        }
-        // Now fill the rest, the fill_idx should be non-negative.  If it isn't that means
-        // we have a column that is fully masked
-        for (int kk=fill_idx+1; kk<num_levs; ++kk) {
-          const auto ipack = kk / mPack::n;
-          const auto iidx  = kk % mPack::n;
-          // Check if this index is masked
-          if (!int_mask_view_1d(ipack)[iidx]) {
-            fill_value = tmp_state_view_1d(ipack)[iidx];
-          } else {
-            tmp_state_view_1d(ipack)[iidx] = fill_value;
-          }
-        }
-      });
+    if (m_src_pres_type == TIME_DEPENDENT_3D_HYBRID) {
+      // Nothing left to do
+      return;
     }
+    const int num_levs = m_num_levs;
+    Kokkos::parallel_for("correct_for_masked_values", policy,
+       	       KOKKOS_LAMBDA(MemberType const& team) {
+      const int icol = team.league_rank();
+      auto int_mask_view_1d  = ekat::subview(int_mask_view,icol);
+      auto tmp_state_view_1d = ekat::subview(tmp_state_view,icol);
+      Real fill_value;
+      int  fill_idx = -1;
+      // Scan top to surf and backfill all values near TOM that are masked.
+      for (int kk=0; kk<num_levs; ++kk) {
+        const auto ipack = kk / mPack::n;
+	const auto iidx  = kk % mPack::n;
+        // Check if this index is masked
+	if (!int_mask_view_1d(ipack)[iidx]) {
+	  fill_value = tmp_state_view_1d(ipack)[iidx];
+	  fill_idx = kk;
+	  for (int jj=0; jj<fill_idx; ++jj) {
+            const auto jpack = jj / mPack::n;
+	    const auto jidx  = jj % mPack::n;
+	    tmp_state_view_1d(jpack)[jidx] = fill_value;
+	  }
+	  break;
+	}
+      }
+      // Now fill the rest, the fill_idx should be non-negative.  If it isn't that means
+      // we have a column that is fully masked
+      for (int kk=fill_idx+1; kk<num_levs; ++kk) {
+        const auto ipack = kk / mPack::n;
+	const auto iidx  = kk % mPack::n;
+        // Check if this index is masked
+	if (!int_mask_view_1d(ipack)[iidx]) {
+	  fill_value = tmp_state_view_1d(ipack)[iidx];
+	} else {
+	  tmp_state_view_1d(ipack)[iidx] = fill_value;
+	}
+      }
+    });
 
   }
 
