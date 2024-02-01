@@ -34,6 +34,7 @@ set (SCREAM_LIBS
      ${dynLibName}
      p3
      shoc
+     prescribed_gases
      scream_rrtmgp
      eamxx_cosp
      cld_fraction
