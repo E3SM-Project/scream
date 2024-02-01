@@ -269,7 +269,7 @@ be lost if SCREAM_HACK_XML is not enabled.
     <!-- prescribed_gases -->
     <PrescribedGases inherit="atm_proc_base">
       <prescribed_gases_filename type="array(string)"/>
-      <prescribed_gases_fields type="array(string)" doc="List of fields to be nudged.  Note, syntax of 'A:B' represents prescribed_gases field A with data from field B in files, syntax of 'A' assumes that prescribed_gases file has the same variables name as EAMxx"/>
+      <prescribed_gases_fields type="array(string)" doc="List of prescribed gases to be read from file.  Note, syntax of 'A:B' represents prescribed_gases field A with data from field B in files, syntax of 'A' assumes that prescribed_gases file has the same variables name as EAMxx"/>
       <source_pressure_type type="string" 
           valid_values="TIME_DEPENDENT_3D_PROFILE,STATIC_1D_VERTICAL_PROFILE"
           doc="Flag for how source pressure levels are handled in the prescribed_gases dataset.
