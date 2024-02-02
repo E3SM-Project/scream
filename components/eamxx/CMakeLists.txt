@@ -121,6 +121,7 @@ include(CTest)
 set (EAMXX_ENABLE_GPU FALSE CACHE BOOL "")
 set (CUDA_BUILD FALSE CACHE BOOL "") #needed for yakl if kokkos vars are not visible there?
 set (HIP_BUILD FALSE CACHE BOOL "") #needed for yakl if kokkos vars are not visible there?
+set (SYCL_BUILD FALSE CACHE BOOL "") #needed for yakl if kokkos vars are not visible there?
 
 # Determine if this is a Cuda build.
 if (Kokkos_ENABLE_CUDA)
@@ -130,12 +131,19 @@ if (Kokkos_ENABLE_CUDA)
   set (CUDA_BUILD TRUE CACHE BOOL "" FORCE) #needed for yakl if kokkos vars are not visible there?
 endif ()
 
-# Determine if this is a Cuda build.
+# Determine if this is a HIP build.
 if (Kokkos_ENABLE_HIP)
   # Add CUDA as a language for CUDA builds
   enable_language(HIP)
   set (EAMXX_ENABLE_GPU TRUE CACHE BOOL "" FORCE)
   set (HIP_BUILD TRUE CACHE BOOL "" FORCE) #needed for yakl if kokkos vars are not visible there?
+endif ()
+
+# Determine if this is a sycl build.
+if (Kokkos_ENABLE_SYCL)
+  #enable_language(SYCL)
+  set (EAMXX_ENABLE_GPU TRUE CACHE BOOL "" FORCE)
+  set (SYCL_BUILD TRUE CACHE BOOL "" FORCE) #needed for yakl if kokkos vars are not visible there?
 endif ()
 
 if( NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "[Cc]lang" )
@@ -199,7 +207,7 @@ elseif(MACH)
 endif()
 
 set(DEFAULT_SMALL_KERNELS FALSE)
-if (Kokkos_ENABLE_HIP)
+if (Kokkos_ENABLE_HIP OR Kokkos_ENABLE_SYCL)
   set(DEFAULT_SMALL_KERNELS TRUE)
 endif()
 
@@ -437,6 +445,7 @@ print_var(SCREAM_MACHINE)
 print_var(EAMXX_ENABLE_GPU)
 print_var(CUDA_BUILD)
 print_var(HIP_BUILD)
+print_var(SYCL_BUILD)
 print_var(SCREAM_DOUBLE_PRECISION)
 print_var(SCREAM_MIMIC_GPU)
 print_var(SCREAM_FPE)
