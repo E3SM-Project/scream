@@ -30,7 +30,7 @@ module micro_p3_utils
 
     real(rtype),dimension(16), public :: dnu
 
-    real(rtype), public, parameter :: mu_r_constant = 1.0_rtype
+    real(rtype), public, parameter :: mu_r_constant = 1.0_rtype !default is 1.0_rtype
     real(rtype), public, parameter :: lookup_table_1a_dum1_c =  4.135985029041767d+00 ! 1.0/(0.1*log10(261.7))
 
     real(rtype),public :: T_zerodegc  ! Temperature at zero degree celcius ~K
@@ -161,8 +161,8 @@ module micro_p3_utils
     rin    = 0.1e-6_rtype
     mi0    = 4._rtype*piov3*900._rtype*1.e-18_rtype
 
-    eci    = 0.5_rtype
-    eri    = 1._rtype
+    eci    = 0.5_rtype !default is 0.5
+    eri    = 1.0_rtype  !default is 1.0
     bcn    = 2._rtype
 
     ! mean size for soft lambda_r limiter [microns]

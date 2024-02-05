@@ -116,6 +116,8 @@ subroutine stepon_init(dyn_in, dyn_out )
   ! Forcing from physics
   call addfld ('FU',  (/ 'lev' /), 'A', 'm/s2', 'Zonal wind forcing term',     gridname='GLL')
   call addfld ('FV',  (/ 'lev' /), 'A', 'm/s2', 'Meridional wind forcing term',gridname='GLL')
+  call addfld ('FT',  (/ 'lev' /), 'A', 'K/s', 'Temperature forcing',gridname='GLL')
+ 
   call register_vector_field('FU', 'FV')
   call addfld ('VOR', (/ 'lev' /), 'A', '1/s',  'Relative Vorticity (2D)',     gridname='GLL')
   call addfld ('DIV', (/ 'lev' /), 'A', '1/s',  'Divergence (2D)',             gridname='GLL')
@@ -132,8 +134,13 @@ subroutine stepon_init(dyn_in, dyn_out )
   call addfld ('U&IC', (/'lev'/), 'I','m/s','Zonal wind',      gridname=grid_name)
   call addfld ('V&IC', (/'lev'/), 'I','m/s','Meridional wind', gridname=grid_name)
   call addfld ('T&IC', (/'lev'/), 'I','K',  'Temperature',     gridname=grid_name)
+  call addfld ('T_tend_advective', (/'lev'/), 'I','K/s',  'Temperature advective tendency',     gridname='GLL')
+  
   do m = 1,pcnst   
     call addfld (trim(cnst_name(m))//'&IC',(/'lev'/),'I','kg/kg',cnst_longname(m),gridname=grid_name)
+    call addfld(trim(cnst_name(m))//'_tend_advective',(/'lev'/),'I','kg/kg/s',trim(cnst_name(m))//'_tend_advective',gridname='GLL')
+    call addfld(trim(cnst_name(m))//'_tend_adv_horiz',(/'lev'/),'I','kg/kg/s',trim(cnst_name(m))//'_tend_adv_horiz',gridname='GLL')
+    call addfld(trim(cnst_name(m))//'_tend_adv_vert',(/'lev'/),'I','kg/kg/s',trim(cnst_name(m))//'_tend_adv_vert',gridname='GLL')
   end do
   
   call add_default ('U&IC',0, 'I')
@@ -268,7 +275,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
    real(r8) :: temperature(np,np,nlev)   ! Temperature from dynamics
    integer :: kptr, ie, ic, m, i, j, k, tl_f, tl_fQdp, velcomp
    real(r8) :: rec2dt
-   real(r8) :: dp(np,np,nlev),fq,fq0,qn0, ftmp(npsq,nlev,2)
+   real(r8) :: dp(np,np,nlev),fq,fq0,qn0, ftmp(npsq,nlev,2), ftmp_FT(npsq,nlev)
    real(r8) :: tmp_dyn(np,np,nlev,nelemd)
    real(r8) :: tmp_dyn_i(np,np,nlevp)
    real(r8) :: fmtmp(np,np,nlev)
@@ -473,16 +480,19 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
       enddo
    endif
 
-   if (hist_fld_active('FU') .or. hist_fld_active('FV') ) then
+   if (hist_fld_active('FU') .or. hist_fld_active('FV') .or. hist_fld_active('FT') ) then
       do ie=1,nelemd
          do j=1,np
             do i=1,np
                ftmp(i+(j-1)*np,:,1) = dyn_in%elem(ie)%derived%FM(i,j,1,:)
                ftmp(i+(j-1)*np,:,2) = dyn_in%elem(ie)%derived%FM(i,j,2,:)
+               ftmp_FT(i+(j-1)*np,:) = dyn_in%elem(ie)%derived%FT(i,j,:)
+               
             end do
          end do
          call outfld('FU',ftmp(:,:,1),npsq,ie)
          call outfld('FV',ftmp(:,:,2),npsq,ie)
+         call outfld('FT',ftmp_FT,npsq,ie)
       end do
    endif
    endif
@@ -526,12 +536,15 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    use hycoef,      only: hyam, hybm
    use dimensions_mod, only: nlev, nelemd, np, npsq
    use se_iop_intr_mod, only: iop_setfield, iop_setinitial
-   use dyn_comp, only: TimeLevel
+!   use dyn_comp, only: TimeLevel
+   use dyn_comp,        only: TimeLevel, hvcoord
    use cam_history,     only: outfld   
    use cam_logfile, only: iulog
    use mpishorthand
+   use element_ops,     only: get_temperature !Hassan added
+
    real(r8), intent(in) :: dtime   ! Time-step
-   real(r8) :: ftmp_temp(np,np,nlev,nelemd), ftmp_q(np,np,nlev,pcnst,nelemd)
+   real(r8) :: ftmp_temp(np,np,nlev,nelemd),temperature(np,np,nlev,nelemd) , ftmp_q(np,np,nlev,pcnst,nelemd)
    real(r8) :: out_temp(npsq,nlev), out_q(npsq,nlev), out_u(npsq,nlev), &
                out_v(npsq,nlev), out_psv(npsq)  , out_gridx(np,np), out_gridy(np,np)
    real(r8), parameter :: rad2deg = 180.0 / SHR_CONST_PI
@@ -545,9 +558,14 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
 #if defined (E3SM_SCM_REPLAY)
    real(r8) :: forcing_temp(npsq,nlev), forcing_q(npsq,nlev,pcnst)
 #endif   
-   
+
+   real(r8) :: advective_tendency_q(npsq,nlev,pcnst)
+   real(r8) :: advective_tendency_t(npsq,nlev)
+   real(r8) :: advective_tendency_q_H(npsq,nlev,pcnst)
+   real(r8) :: advective_tendency_q_V(npsq,nlev,pcnst)   
+
    elem => dyn_out%elem
-   
+   tl_f = TimeLevel%n0 
 #if (defined E3SM_SCM_REPLAY)   
 
    tl_f = TimeLevel%n0   ! timelevel which was adjusted by physics
@@ -559,7 +577,16 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    enddo
 
 #endif   
-   
+
+   do ie=1,nelemd
+      ftmp_q(:,:,:,:,ie) = dyn_in%elem(ie)%state%Q(:,:,:,:)
+!      ftmp_temp(:,:,:,ie) = dyn_in%elem(ie)%state%T(:,:,:,tl_f)
+      call get_temperature(dyn_in%elem(ie),ftmp_temp(:,:,:,ie),hvcoord,tl_f)
+      ! Zero out horizontal and vertical advection calculation before calling
+      ! dynamics.
+      elem(ie)%derived%dQ_horiz(:,:,:,:) = 0.
+      elem(ie)%derived%dQ_verti(:,:,:,:) = 0.
+   enddo   
    if (single_column) then
      
      ! Update IOP properties e.g. omega, divT, divQ
@@ -636,6 +663,41 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    enddo
 
 #endif   
+!   call get_temperature(dyn_in%elem(ie),temperature(:,:,:,ie),hvcoord,tl_f)
+
+   do ie=1,nelemd
+      call get_temperature(dyn_in%elem(ie),temperature(:,:,:,ie),hvcoord,tl_f)
+     do k=1,nlev
+       do j=1,np
+         do i=1,np
+
+           ! Note that this calculation will not provide b4b results with 
+           !  an E3SM because the dynamics tendency is not computed in the exact
+           !  same way as an E3SM run, introducing error with roundoff
+             !call get_temperature(dyn_in%elem(ie),temperature(i,j,k,ie),hvcoord,tl_f)
+             
+             !advective_tendency_t(i+(j-1)*np,k) = (dyn_in%elem(ie)%state%T(i,j,k,tl_f) - &
+             !ftmp_temp(i,j,k,ie))/dtime 
+             advective_tendency_t(i+(j-1)*np,k) = (temperature(i,j,k,ie)  - &
+             ftmp_temp(i,j,k,ie))/dtime 
+           do p=1,pcnst
+             advective_tendency_q(i+(j-1)*np,k,p) = (dyn_in%elem(ie)%state%Q(i,j,k,p) - &
+                ftmp_q(i,j,k,p,ie))/dtime
+             advective_tendency_q_H(i+(j-1)*np,k,p) = elem(ie)%derived%dQ_horiz(i,j,k,p)/dtime
+             advective_tendency_q_V(i+(j-1)*np,k,p) = elem(ie)%derived%dQ_verti(i,j,k,p)/dtime
+           enddo
+
+         enddo
+       enddo
+     enddo
+     call outfld('T_tend_advective',advective_tendency_t,npsq,ie)
+     do p=1,pcnst
+       call outfld(trim(cnst_name(p))//'_tend_advective',advective_tendency_q(:,:,p),npsq,ie)
+       call outfld(trim(cnst_name(p))//'_tend_adv_horiz',advective_tendency_q_H(:,:,p),npsq,ie)
+       call outfld(trim(cnst_name(p))//'_tend_adv_vert',advective_tendency_q_V(:,:,p),npsq,ie)
+     enddo
+
+   enddo
 
 end subroutine stepon_run3
 

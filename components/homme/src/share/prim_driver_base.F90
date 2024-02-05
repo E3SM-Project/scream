@@ -1084,6 +1084,14 @@ contains
     integer :: ie,i,j,k,n,q,t,scm_dum
     integer :: n0_qdp,np1_qdp,r,nstep_end,nets_in,nete_in,step_factor
     logical :: compute_diagnostics
+    real(kind=real_kind) :: Q_temp(np,np,nlev) 
+
+   ! Set the reference Q for this sequence of horiz and vert steps:
+    do q=1,qsize
+       do ie = nets,nete
+          elem(ie)%derived%Q_reference(:,:,:,q) = elem(ie)%state%Q(:,:,:,q)
+       end do
+    end do
 
     ! compute timesteps for tracer transport and vertical remap
     dt_q = dt*dt_tracer_factor
@@ -1163,6 +1171,25 @@ contains
 
       if (compute_diagnostics) call run_diagnostics(elem,hvcoord,tl,4,.false.,nets,nete)
 
+
+     ! Record the horizontal advection completed
+
+       do ie = nets,nete
+          !ps_v_local(:,:) = hvcoord%hyai(1)*hvcoord%ps0 +
+          !sum(elem(ie)%state%dp3d(:,:,:,tl%np1),3)
+          !do k=1,nlev
+          !   dp_array(:,:,k) = ( hvcoord%hyai(k+1) - hvcoord%hyai(k)
+          !   )*hvcoord%ps0 + & 
+          !      ( hvcoord%hybi(k+1) - hvcoord%hybi(k))*ps_v_local(:,:)
+          !end do
+          do q=1,qsize
+             !Q_temp(:,:,:)=elem(ie)%state%Qdp(:,:,:,q,np1_qdp)/dp_array(:,:,:)
+             Q_temp(:,:,:)=elem(ie)%state%Qdp(:,:,:,q,np1_qdp)/elem(ie)%state%dp3d(:,:,:,tl%np1)
+             elem(ie)%derived%dQ_horiz(:,:,:,q) = elem(ie)%derived%dQ_horiz(:,:,:,q) + (Q_temp -elem(ie)%derived%Q_reference(:,:,:,q))
+             elem(ie)%derived%Q_reference(:,:,:,q) = Q_temp
+          end do
+       enddo 
+
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !  apply vertical remap
       !  always for tracers
@@ -1177,6 +1204,12 @@ contains
       endif
 
       call vertical_remap(hybrid,elem,hvcoord,dt_remap,tl%np1,np1_qdp,nets_in,nete_in)
+         ! Record vertical advection contribution
+       do q=1,qsize
+         do ie = nets,nete
+           elem(ie)%derived%dQ_verti(:,:,:,q) = elem(ie)%derived%dQ_verti(:,:,:,q) + (elem(ie)%state%Q(:,:,:,q) - elem(ie)%derived%Q_reference(:,:,:,q))
+         end do
+       enddo 
     elseif(prim_step_type == 2) then
       ! This time stepping routine permits the vertical remap time
       ! step to be shorter than the tracer transport time step.

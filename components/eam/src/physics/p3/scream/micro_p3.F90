@@ -720,7 +720,7 @@ contains
       ! contact and immersion freezing droplets
       call cldliq_immersion_freezing(t_atm(k),&
            lamc(k),mu_c(k),cdist1(k),qc_incld(k),inv_qc_relvar(k),&
-           qc2qi_hetero_freeze_tend,nc2ni_immers_freeze_tend)
+            qc2qi_hetero_freeze_tend,nc2ni_immers_freeze_tend)
 
       !............................................................
       ! immersion freezing of rain
@@ -825,8 +825,8 @@ contains
            qr2qv_evap_tend, qrcol, qr2qi_immers_freeze_tend)
 
       ! ice
-      call ice_water_conservation(qi(k), qidep, qinuc, qiberg, qrcol, qccol, qr2qi_immers_freeze_tend, qc2qi_hetero_freeze_tend, &
-           dt, qi2qv_sublim_tend, qi2qr_melt_tend)
+      !call ice_water_conservation(qi(k), qidep, qinuc, qiberg, qrcol, qccol, qr2qi_immers_freeze_tend, qc2qi_hetero_freeze_tend, &
+      !     dt, qi2qv_sublim_tend, qi2qr_melt_tend)
 
       call nc_conservation(nc(k), nc_selfcollect_tend, dt, nc_collect_tend, nc2ni_immers_freeze_tend, &
            nc_accret_tend, nc2nr_autoconv_tend)
@@ -2601,6 +2601,7 @@ subroutine ice_nucleation(t_atm,inv_rho,ni,ni_activated,qv_supersat_i,inv_dt,do_
          dum = 0.005_rtype*bfb_exp(0.304_rtype*(T_zerodegc-t_atm))*1000._rtype*inv_rho   !Cooper (1986)
          dum = min(dum,100.e3_rtype*inv_rho)
          N_nuc = max(0._rtype,(dum-ni)*inv_dt)
+!         N_nuc = 0._rtype
          if (N_nuc.ge.1.e-20_rtype) then
             Q_nuc = max(0._rtype,(dum-ni)*mi0*inv_dt)
             qinuc = Q_nuc
@@ -2688,7 +2689,7 @@ subroutine cloud_rain_accretion(rho,inv_rho,qc_incld,nc_incld,qr_incld,inv_qc_re
         !Khroutdinov and Kogan (2000)
         !print*,'p3_qc_accret_expon = ',p3_qc_accret_expon
         !sbgrd_var_coef = subgrid_variance_scaling(inv_qc_relvar, 1.15_rtype ) !p3_qc_accret_expon
-        sbgrd_var_coef = 1._rtype    ! no subgrid enhancement
+        sbgrd_var_coef = 0.01_rtype    ! no subgrid enhancement
         qc2qr_accret_tend = sbgrd_var_coef*67._rtype*bfb_pow(qc_incld*qr_incld, 1.15_rtype) !p3_qc_accret_expon
         nc_accret_tend = qc2qr_accret_tend*nc_incld/qc_incld
      endif
@@ -2720,6 +2721,7 @@ subroutine rain_self_collection(rho,qr_incld,nr_incld,    &
 
       ! include breakup
       dum1 = 280.e-6_rtype
+!      dum1 = 0.0_rtype
 
       ! use mass-mean diameter (do this by using
       ! the old version of lambda w/o mu dependence)
@@ -4031,7 +4033,7 @@ subroutine ice_sedimentation(kts,kte,ktop,kbot,kdir,    &
                !zitot(i,k) = min(zitot(i,k),table_val_qi_fallspd0)  !adjust Zi if needed to make sure mu_i is in bounds
                !zitot(i,k) = max(zitot(i,k),table_val_qi_fallspd1)
                V_qit(k) = table_val_qi_fallspd*rhofaci(k)     !mass-weighted  fall speed (with density factor)
-               V_nit(k) = table_val_ni_fallspd*rhofaci(k)     !number-weighted    fall speed (with density factor)
+               V_nit(k) = table_val_ni_fallspd*rhofaci(k)     !number-weighted    fall speed (with density factor)!Hassan correction factor
                !==
 
             endif qi_notsmall_i1
