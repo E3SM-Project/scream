@@ -298,7 +298,8 @@ be lost if SCREAM_HACK_XML is not enabled.
       <spa_data_file hgrid="ne4np4">${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne4_20220428.nc</spa_data_file>
       <spa_data_file hgrid="ne4np4.pg2">${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne4pg2_20231222.nc</spa_data_file>
 
-      <spa_remap_file hgrid="ne0np4-saomai-128x8.pg2">/global/cfs/cdirs/m2637/whannah/map_ne30np4_to_ne0np4-saomai-128x8-pg2_intbilin_20240110.nc</spa_remap_file>
+      <!-- <spa_remap_file hgrid="ne0np4-saomai-128x8.pg2">/global/cfs/cdirs/m2637/whannah/map_ne30np4_to_ne0np4-saomai-128x8-pg2_intbilin_20240110.nc</spa_remap_file> -->
+      <spa_remap_file hgrid="ne0np4-saomai-128x8.pg2">/p/lustre1/hannah6/2024-saomai-data/map_ne30np4_to_ne0np4-saomai-128x8-pg2_intbilin_20240110.nc</spa_remap_file>
 
     </spa>
 
@@ -415,7 +416,8 @@ be lost if SCREAM_HACK_XML is not enabled.
     <Filename hgrid="ne1024np4" COMPSET=".*SCREAM%DYAMOND-2_ELM">${DIN_LOC_ROOT}/atm/scream/init/screami_ne1024np4L128_ifs-20200120-topoadjx6t_20221011.nc</Filename>
     <Filename hgrid="ne4np4" COMPSET=".*SCREAM%AQUA.*">${DIN_LOC_ROOT}/atm/scream/init/screami_aquaplanet_ne4np4L72_20220823.nc</Filename>
     <Filename hgrid="ne0np4_conus_x4v1_lowcon" nlev="72">${DIN_LOC_ROOT}/atm/scream/init/screami_conusx4v1np4L72-topo12x_013023.nc</Filename>
-    <Filename hgrid="ne0np4-saomai-128x8" nlev="128">/global/cfs/cdirs/m2637/whannah/HICCUP.atm_era5.2006-08-09.Saomai_2006_ne128x8_lon130E_lat25N.L128.converted.nc</Filename>
+    <!-- <Filename hgrid="ne0np4-saomai-128x8" nlev="128">/global/cfs/cdirs/m2637/whannah/HICCUP.atm_era5.2006-08-09.Saomai_2006_ne128x8_lon130E_lat25N.L128.converted.nc</Filename> -->
+    <Filename hgrid="ne0np4-saomai-128x8" nlev="128">/p/lustre1/hannah6/2024-saomai-data/HICCUP.atm_era5.2006-08-09.Saomai_2006_ne128x8_lon130E_lat25N.L128.converted.nc</Filename>
 
     <!-- List of default topography files on specific grids -->
     <topography_filename type="file">UNSET</topography_filename>
@@ -429,7 +431,8 @@ be lost if SCREAM_HACK_XML is not enabled.
     <topography_filename hgrid="ne4np4">${DIN_LOC_ROOT}/atm/cam/topo/USGS-gtopo30_ne4np4pg2_16x_converted.c20200527.nc</topography_filename>
     <!-- Special case with non x6t or 16x topography file -->
     <topography_filename hgrid="ne0np4_conus_x4v1_lowcon">${DIN_LOC_ROOT}/atm/cam/topo/USGS_conusx4v1pg2_12x_consistentSGH_20200609.nc</topography_filename>
-    <topography_filename hgrid="ne0np4-saomai-128x8">/global/cfs/cdirs/m2637/jsgoodni/USGS-gtopo30_Saomai2006ne128x8np4pg2_x6t.nc</topography_filename>
+    <!-- <topography_filename hgrid="ne0np4-saomai-128x8">/global/cfs/cdirs/m2637/jsgoodni/USGS-gtopo30_Saomai2006ne128x8np4pg2_x6t.nc</topography_filename> -->
+    <topography_filename hgrid="ne0np4-saomai-128x8">/p/lustre1/hannah6/2024-saomai-data/USGS-gtopo30_Saomai2006ne128x8np4pg2_x6t.nc</topography_filename>
     <!-- For aquaplanet run, unset the topography_filename and set phis=0 -->
     <topography_filename COMPSET=".*SCREAM%AQUA.*">UNSET</topography_filename>
     <phis COMPSET=".*SCREAM%AQUA.*">0.0</phis>
@@ -469,6 +472,8 @@ be lost if SCREAM_HACK_XML is not enabled.
     <ni hgrid="ne256np4|ne1024np4">0.0</ni>
     <nc hgrid="ne0np4-saomai-128x8">0.0</nc>
     <ni hgrid="ne0np4-saomai-128x8">0.0</ni>
+    <nc hgrid="ne30np4">0.0</nc>
+    <ni hgrid="ne30np4">0.0</ni>
     <o3_volume_mix_ratio hgrid="ne0np4_conus_x4v1_lowcon">0.0</o3_volume_mix_ratio>
     <!-- <o3_volume_mix_ratio hgrid="ne0np4-saomai-128x8">0.0</o3_volume_mix_ratio> -->
   </initial_conditions>
@@ -587,7 +592,8 @@ be lost if SCREAM_HACK_XML is not enabled.
     <se_ftype valid_values="0,2" hgrid=".*pg2">2</se_ftype>
     <mesh_file type="file">none</mesh_file>
     <mesh_file hgrid="ne0np4_conus_x4v1_lowcon">${DIN_LOC_ROOT}/atm/cam/inic/homme/conusx4v1.g</mesh_file>
-    <mesh_file hgrid="ne0np4-saomai-128x8">/global/cfs/cdirs/m2637/jsgoodni/Saomai_2006_ne128x8_lon130E_lat25N.g</mesh_file>
+    <!-- <mesh_file hgrid="ne0np4-saomai-128x8">/global/cfs/cdirs/m2637/jsgoodni/Saomai_2006_ne128x8_lon130E_lat25N.g</mesh_file> -->
+    <mesh_file hgrid="ne0np4-saomai-128x8">/p/lustre1/hannah6/2024-saomai-data/Saomai_2006_ne128x8_lon130E_lat25N.g</mesh_file>
   </ctl_nl>
 
 </namelist_defaults>
