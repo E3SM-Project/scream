@@ -1,10 +1,8 @@
 #ifndef EAMXX_VERTICAL_REMAPPER_HPP
 #define EAMXX_VERTICAL_REMAPPER_HPP
 
-#include "share/field/field_tag.hpp"
 #include "share/grid/remap/abstract_remapper.hpp"
-
-#include "ekat/ekat_pack.hpp"
+#include "share/util/scream_vertical_interpolation.hpp"
 
 namespace scream
 {
@@ -123,12 +121,6 @@ public:
 protected:
 
   using KT = KokkosTypes<DefaultDevice>;
-  using gid_type = AbstractGrid::gid_type;
-
-  template<int N>
-  using RPack = ekat::Pack<Real,N>;
-
-  using mPack = RPack<SCREAM_PACK_SIZE>;
 
   template<typename T>
   using view_1d = typename KT::template view_1d<T>;
@@ -151,6 +143,8 @@ protected:
   Field                 m_src_int;  // Src vertical profile for ILEV layouts
   bool                  m_mid_set = false;
   bool                  m_int_set = false;
+
+  std::shared_ptr<VerticalInterpolation> m_vert_interp;
 };
 
 } // namespace scream
