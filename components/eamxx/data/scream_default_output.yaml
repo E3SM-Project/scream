@@ -61,6 +61,10 @@ Fields:
       - surf_sens_flux
       # Diagnostics
       - PotentialTemperature
+      # 2D Sliced Ouput
+      - T_mid_at_100m_above_surface
+      - T_mid_at_500hPa
+      - T_mid_at_100m_above_sealevel
   # GLL output for homme states.
   Dynamics:
     Field Names:
