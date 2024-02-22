@@ -205,6 +205,33 @@ def perform_consistency_checks(case, xml):
                     " Please, ensure restart happens on a step when rad is ON\n"
                     " For daily (or less frequent) restart, rad_frequency must divide ATM_NCPL")
 
+    # Likewise, COSP can be supercycled. Restarts cannot fall in the middle
+    # of a rad superstep, and COSP must happen on a rad step; we already check
+    # that rad happens on a restart step, so we just need to check that COSP
+    # happens on a rad step
+    rrtmgp = find_node(xml,"rrtmgp")
+    cosp = find_node(xml,"cosp")
+    if cosp is not None and rrtmgp is not None:
+        rad_freq = int(find_node(rrtmgp,"rad_frequency").text)
+        cosp_freq = int(find_node(cosp,"cosp_frequency").text)
+        atm_ncpl = int(case.get_value("ATM_NCPL"))
+        atm_tstep = 86400 / atm_ncpl
+        rad_tstep = atm_tstep * rad_freq
+
+        cosp_units = find_node(cosp,"cosp_frequency_units").text
+        if cosp_units == "steps":
+            cosp_freq_steps = cosp_freq
+        elif cosp_units == "hours":
+            cosp_freq_steps = cosp_freq * 3600 / atm_tstep
+        else:
+            raise RuntimeError("cosp_frequency_units unsupported")
+
+        # TODO: need to make sure rad_freq and cosp_freq are in same units
+        expect(rad_freq % cosp_freq_steps == 0,
+                "cosp::cosp_frequency incompatible with rad frequency.\n"
+                " Please, ensure cosp happens on a step when rad is ON")
+
+
 ###############################################################################
 def ordered_dump(data, item, Dumper=yaml.SafeDumper, **kwds):
 ###############################################################################
