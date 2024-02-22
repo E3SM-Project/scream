@@ -200,8 +200,6 @@ void Cosp::run_impl (const double dt)
     //
     // TODO: mask this when/if the AD ever supports masked averages
     Kokkos::deep_copy(isccp_cldtot, 0.0);
-    Kokkos::deep_copy(isccp_meantb, 0.0);
-    Kokkos::deep_copy(isccp_meantbclr, 0.0);
     Kokkos::deep_copy(isccp_ctptau, 0.0);
     Kokkos::deep_copy(isccp_mask  , 0.0);
   }
