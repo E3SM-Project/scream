@@ -15,6 +15,10 @@ include(ScreamUtils)
 else()
     message(FATAL_ERROR "pybind11 is missing. Use CMake >= 3.11 or download it")
 endif()
+
+message(STATUS "Python_EXECUTABLE: ${Python_EXECUTABLE}")
+message(STATUS "Python_INCLUDE_DIRS: ${Python_INCLUDE_DIRS}")
+message(STATUS "Python_LIBRARIES: ${Python_LIBRARIES}")
 find_package(Python REQUIRED COMPONENTS Interpreter Development)
 
 add_library(ml_correction ${MLCORRECTION_SRCS})

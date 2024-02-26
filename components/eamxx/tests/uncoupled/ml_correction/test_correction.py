@@ -1,6 +1,8 @@
 import numpy as np
+import cupy as cp
 import h5py
 import xarray as xr
+import cupy_xarray
 import fv3fit
 from scream_run.steppers.machine_learning import (
     MultiModelAdapter,
@@ -17,7 +19,7 @@ def get_ML_model(model_path):
 
 
 def sample_ML_prediction(
-    nz: int, input_data: np.ndarray, ML_model_tq: str, ML_model_uv: str
+    nz: int, input_data: cp.ndarray, ML_model_tq: str, ML_model_uv: str
 ):
     """
     This function is used to generate a sample ML prediction for the given input data.
@@ -25,7 +27,7 @@ def sample_ML_prediction(
     """
     output_variables = ["qv"]
     outputs = {
-        "qv": np.full(nz, 1e-4),
+        "qv": cp.full(nz, 1e-4),
     }
     predictor = fv3fit.testing.ConstantOutputPredictor(
         input_variables=["qv"],
@@ -34,13 +36,28 @@ def sample_ML_prediction(
     predictor.set_outputs(**outputs)
     model = MultiModelAdapter([predictor])
     if len(input_data.shape) < 2:
-        input_data = input_data[np.newaxis, :]
+        input_data = input_data[cp.newaxis, :]
     input_data = xr.Dataset({"qv": xr.DataArray(data=input_data, dims=["ncol", "z"])})
     output = predict(model, input_data, dt=1.0)
-    return output["qv"].values
+    return output["qv"].data
 
 
 def modify_view(data, Ncol, Nlev, model_tq, model_uv):
-    data = np.reshape(data, (-1, Nlev))
-    prediction = sample_ML_prediction(Nlev, data[1, :], model_tq, model_uv)
-    data[1, :] = prediction
+    data_cp = cp.asarray(data)
+    data_np = cp.asnumpy(data_cp)
+    np.testing.assert_array_equal(data_np, data)
+    # raise(ValueError(type(data), type(data_ptr)))
+    data = data.reshape((-1, Nlev))
+    data_cp_rshp = cp.reshape(data_cp, (-1, Nlev))
+    prediction = sample_ML_prediction(Nlev, data_cp_rshp[1, :], model_tq, model_uv)
+    data[1, :] = prediction.get()
+
+
+if __name__ == "__main__":
+    Ncol = 2
+    Nlev = 72
+    model_tq = "NONE"
+    model_uv = "NONE"
+    data = cp.random.rand(Ncol, Nlev)
+    modify_view(data, Ncol, Nlev, model_tq, model_uv)
+    print(data)

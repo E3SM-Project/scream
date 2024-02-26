@@ -1,4 +1,5 @@
-import numpy as np
+# import numpy as np
+import cupy as np
 import xarray as xr
 import datetime
 from vcm import cos_zenith_angle
@@ -166,6 +167,7 @@ def update_fields(
     model_uv: path to the ML model for u and v
     current_time: current time in the format "YYYY-MM-DD HH:MM:SS"
     """
+    raise ValueError("This function should not be called")
     T_mid = np.reshape(T_mid, (-1, Nlev))
     u = np.reshape(u, (-1, Nlev))
     v = np.reshape(v, (-1, Nlev))

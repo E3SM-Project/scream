@@ -10,6 +10,8 @@
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 
+#include <Python.h>
+
 #include <iomanip>
 
 namespace scream {
@@ -69,10 +71,10 @@ TEST_CASE("ml_correction-stand-alone", "") {
   sys.attr("path").attr("insert")(1, CUSTOM_SYS_PATH);
   auto py_correction = py::module::import("test_correction");
   py::object ML_model_tq = py_correction.attr("get_ML_model")(ML_model_tq_path);
-  py::object ML_model_uv = py_correction.attr("get_ML_model")(ML_model_uv_path);  
+  py::object ML_model_uv = py_correction.attr("get_ML_model")(ML_model_uv_path);
   py::object ob1  = py_correction.attr("modify_view")(
       py::array_t<Real, py::array::c_style | py::array::forcecast>(
-          num_cols * num_levs, qv.data(), py::str{}),
+          num_cols * num_levs, py::str{} py::str{}),
       num_cols, num_levs, ML_model_tq, ML_model_uv);
   py::gil_scoped_release no_gil;
   ekat::enable_fpes(fpe_mask);
