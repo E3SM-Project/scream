@@ -61,6 +61,7 @@ TEST_CASE("ml_correction-stand-alone", "") {
     }
   }
   qv_field.sync_to_dev();
+
   Real reference = 1e-4;
   int fpe_mask = ekat::get_enabled_fpes();
   ekat::disable_all_fpes();  // required for importing numpy
@@ -72,14 +73,39 @@ TEST_CASE("ml_correction-stand-alone", "") {
   auto py_correction = py::module::import("test_correction");
   py::object ML_model_tq = py_correction.attr("get_ML_model")(ML_model_tq_path);
   py::object ML_model_uv = py_correction.attr("get_ML_model")(ML_model_uv_path);
+  
+  // CPU Test
   py::object ob1  = py_correction.attr("modify_view")(
       py::array_t<Real, py::array::c_style | py::array::forcecast>(
-          num_cols * num_levs, py::str{} py::str{}),
+          num_cols * num_levs, qv.data(), py::str{}),
       num_cols, num_levs, ML_model_tq, ML_model_uv);
+
+  // GPU Handoff test
+  const auto &qv_dev = qv_field.get_view<Real **, Device>();
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(qv_dev.data());
+  std::string qv_dev_dtype = typeid(qv_dev(0, 0)).name();
+  // std::cout << qv_dev(0, 0) << std::endl;
+
+  // py::object test_gpu_handoff = py_correction.attr("modify_view_gpu")(
+  //     ptr,
+  //     qv_dev_dtype,
+  //     num_cols, num_levs, ML_model_tq, ML_model_uv);
+  
+  // // Testing function for checking pointer and pybind arrays are the same
+  // py::object test_ptr_usage = py_correction.attr("test_ptr")(
+  //   ptr,
+  //   py::array_t<Real, py::array::c_style | py::array::forcecast>(
+  //         num_cols * num_levs, qv.data(), py::str{}),
+  //   num_cols,
+  //   num_levs); // This one should be unchanged
+  
   py::gil_scoped_release no_gil;
   ekat::enable_fpes(fpe_mask);
   REQUIRE(qv(1, 10) == reference);   // This is the one that is modified
-  REQUIRE(qv(0, 10) != reference);  // This one should be unchanged
+  REQUIRE(qv(0, 10) != reference);
+  // REQUIRE(qv_dev(1, 0) == reference);   // This is the one that is modified
+  // REQUIRE(qv_dev(0, 0) != reference);
+  // std::cout << qv_dev(0, 0) << std::endl;
   ad.finalize();
 }
 

@@ -42,11 +42,46 @@ def sample_ML_prediction(
     return output["qv"].data
 
 
+def test_ptr(ptr, data, Ncol, Nlev):
+    # TODO: figure out how to move data in C++ onto a GPU and send it
+    #       and also send original np array to check data against
+    print(f"Pointer received: {ptr}")
+    print(f"Data received: {type(data)}")
+    print(f"Ncol: {Ncol}, Nlev: {Nlev}")
+    data_from_ptr = cp.ndarray(
+        (Ncol, Nlev), 
+        dtype=cp.float64,
+        memptr=cp.cuda.MemoryPointer(
+            cp.cuda.UnownedMemory(ptr, Ncol * Nlev * 8, None), 0
+        )
+    )
+    print(f"Data from pointer device: {data_from_ptr.device}")
+    print(f"Data type from pointer: {data_from_ptr.dtype}")
+    print(f"Data type from host (original): {data.dtype}")
+    print(f"Data from pointer: {data_from_ptr}")
+    print(f"Data from host (original): {data}")
+    pass
+
+
+def modify_view_gpu(ptr, dtype_char, Ncol, Nlev, model_tq, model_uv):
+    # data comes in as 1D Numpy array, a view constructed from C++ memory
+    dtype = cp.dtype(dtype_char)
+    data_from_ptr = cp.ndarray(
+        (Ncol, Nlev), 
+        dtype=dtype,
+        memptr=cp.cuda.MemoryPointer(
+            cp.cuda.UnownedMemory(ptr, Ncol * Nlev * dtype.itemsize, None), 0
+        )
+    )
+    prediction = sample_ML_prediction(Nlev, data_from_ptr[1, :], model_tq, model_uv)
+    data_from_ptr[1, :] = prediction
+
+
 def modify_view(data, Ncol, Nlev, model_tq, model_uv):
+    # data comes in as 1D Numpy array, a view constructed from C++ memory
     data_cp = cp.asarray(data)
     data_np = cp.asnumpy(data_cp)
     np.testing.assert_array_equal(data_np, data)
-    # raise(ValueError(type(data), type(data_ptr)))
     data = data.reshape((-1, Nlev))
     data_cp_rshp = cp.reshape(data_cp, (-1, Nlev))
     prediction = sample_ML_prediction(Nlev, data_cp_rshp[1, :], model_tq, model_uv)
