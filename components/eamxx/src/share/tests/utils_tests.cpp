@@ -5,7 +5,10 @@
 #include "share/util/scream_utils.hpp"
 #include "share/util/scream_time_stamp.hpp"
 #include "share/util/scream_setup_random_test.hpp"
+#include "share/util/scream_backward_view_1d.hpp"
 #include "share/scream_config.hpp"
+
+#include "ekat/util/ekat_test_utils.hpp"
 
 TEST_CASE("contiguous_superset") {
   using namespace scream;
@@ -248,5 +251,29 @@ TEST_CASE ("array_utils") {
       REQUIRE (idx_nd==ind);
       add_one(ind.data(),rank-1,dims.data());
     }
+  }
+}
+
+TEST_CASE("bwd_view") {
+  using namespace scream;
+  using view_1d = typename KokkosTypes<DefaultDevice>::view_1d<Real>;
+  using RPDF = std::uniform_real_distribution<Real>;
+
+  auto engine = setup_random_test ();
+  RPDF pdf(0.01,0.99);
+  const int sz = 20;
+
+  view_1d src("",sz);
+
+  ekat::genRandArray(src,engine,pdf);
+
+  BwdView1d<view_1d> tgt(src);
+
+  auto tgt_h = tgt.host_mirror();
+  auto src_h = Kokkos::create_mirror_view(src);
+  Kokkos::deep_copy(tgt_h,tgt);
+  Kokkos::deep_copy(src_h,src);
+  for (int i=0; i<sz; ++i) {
+    REQUIRE (src_h(i)==tgt_h(sz-i-1));
   }
 }
