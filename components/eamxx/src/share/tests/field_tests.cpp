@@ -17,6 +17,52 @@
 
 namespace {
 
+TEST_CASE("field_layout", "") {
+  using namespace scream;
+  using namespace ShortFieldTagsNames;
+
+  using TVec = std::vector<FieldTag>;
+  using IVec = std::vector<int>;
+
+  FieldLayout fl1 ({COL},{1});
+  FieldLayout fl2 ({COL,CMP},{1,1});
+  FieldLayout fl3 ({COL,SWBND,LWBND},{1,1,1});
+  FieldLayout fl4 ({COL,LEV},{1,1});
+  FieldLayout fl5 ({COL,CMP,LEV},{1,1,1});
+  FieldLayout fl6 ({COL,ISCCPTAU,ISCCPPRS,ILEV},{1,1,1,1});
+
+  REQUIRE (get_layout_type(fl1.tags())==LayoutType::Scalar2D);
+  REQUIRE (get_layout_type(fl2.tags())==LayoutType::Vector2D);
+  REQUIRE (get_layout_type(fl3.tags())==LayoutType::Tensor2D);
+  REQUIRE (get_layout_type(fl4.tags())==LayoutType::Scalar3D);
+  REQUIRE (get_layout_type(fl5.tags())==LayoutType::Vector3D);
+  REQUIRE (get_layout_type(fl6.tags())==LayoutType::Tensor3D);
+
+  REQUIRE (not fl1.is_vector_layout());
+  REQUIRE (    fl2.is_vector_layout());
+  REQUIRE (not fl3.is_vector_layout());
+  REQUIRE (not fl4.is_vector_layout());
+  REQUIRE (    fl5.is_vector_layout());
+  REQUIRE (not fl6.is_vector_layout());
+
+  REQUIRE (not fl1.is_tensor_layout());
+  REQUIRE (not fl2.is_tensor_layout());
+  REQUIRE (    fl3.is_tensor_layout());
+  REQUIRE (not fl4.is_tensor_layout());
+  REQUIRE (not fl5.is_tensor_layout());
+  REQUIRE (    fl6.is_tensor_layout());
+
+  REQUIRE (fl2.get_vector_tag()==CMP);
+  REQUIRE (fl5.get_vector_tag()==CMP);
+  REQUIRE (fl2.get_vector_dim()==1);
+  REQUIRE (fl5.get_vector_dim()==1);
+
+  REQUIRE (fl3.get_tensor_tags()==TVec{SWBND,LWBND});
+  REQUIRE (fl6.get_tensor_tags()==TVec{ISCCPTAU,ISCCPPRS});
+  REQUIRE (fl3.get_tensor_dims()==IVec{1,2});
+  REQUIRE (fl6.get_tensor_dims()==IVec{1,2});
+}
+
 TEST_CASE("field_identifier", "") {
   using namespace scream;
   using namespace ekat::units;
@@ -145,6 +191,26 @@ TEST_CASE("field", "") {
     REQUIRE(f2.get_internal_view_data<Real>()==f1.get_internal_view_data<Real>());
     REQUIRE(f2.is_allocated());
     REQUIRE(views_are_equal(f1,f2));
+  }
+
+  SECTION ("construct_from_view") {
+    // Crate f1 with some padding, to stress test the feature
+    Field f1 (fid);
+    auto& fap1 = f1.get_header().get_alloc_properties();
+    fap1.request_allocation(16);
+    f1.allocate_view();
+    f1.deep_copy(1.0);
+
+    // Get f1 view, and wrap it in another field
+    auto view = f1.get_view<Real**>();
+    Field f2 (fid,view);
+
+    // Check the two are the same
+    REQUIRE (views_are_equal(f1,f2));
+
+    // Modify one field, and check again
+    randomize(f2,engine,pdf);
+    REQUIRE (views_are_equal(f1,f2));
   }
 
   SECTION ("clone") {
@@ -338,7 +404,7 @@ TEST_CASE("field", "") {
 
   SECTION ("rank0_field") {
     // Create 0d field
-    FieldIdentifier fid0("f_0d", FieldLayout({}), Units::nondimensional(), "dummy_grid");
+    FieldIdentifier fid0("f_0d", FieldLayout({},{}), Units::nondimensional(), "dummy_grid");
     Field f0(fid0);
     f0.allocate_view();
 
@@ -831,7 +897,17 @@ TEST_CASE ("update") {
     f3.update(f_real,2,0);
     REQUIRE (views_are_equal(f3,f2));
   }
-}
 
+  SECTION ("scale") {
+    Field f1 = f_real.clone();
+    Field f2 = f_real.clone();
+
+    // x=2, x*y = 2*y
+    f1.deep_copy(2.0);
+    f1.scale(f2);
+    f2.scale(2.0);
+    REQUIRE (views_are_equal(f1, f2));
+  }
+}
 
 } // anonymous namespace

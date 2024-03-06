@@ -56,7 +56,6 @@ TEST_CASE("scream_homme_physics", "scream_homme_physics") {
   ad.init_time_stamps (t0, t0);
   ad.create_atm_processes ();
   ad.create_grids ();
-  ad.setup_intensive_observation_period ();
   ad.create_fields ();
 
   // Setup surface coupler import to be NaNs for fields IOP should overwrite
@@ -82,7 +81,6 @@ TEST_CASE("scream_homme_physics", "scream_homme_physics") {
   ad.setup_surface_coupling_data_manager(SurfaceCouplingTransferType::Import,
                                          4, 4, ncols, import_data.data(), import_names[0], import_cpl_indices.data(),
                                          import_vec_comps.data(), import_constant_multiple.data(), do_import_during_init.data());
-
   ad.initialize_fields ();
   ad.initialize_output_managers ();
   ad.initialize_atm_procs ();

@@ -596,18 +596,17 @@ _TESTS = {
         "tests" : (
             #  "SMS_D_Ln2.ne30_ne30.F2000-SCREAMv1-AQP1", # Uncomment once IC file for ne30 is ready
             "ERS_Ln22.ne30_ne30.F2010-SCREAMv1.scream-internal_diagnostics_level",
-            "PEM_Ln90.ne30pg2_ne30pg2.F2010-SCREAMv1",
+            "PEM_Ln90.ne30pg2_ne30pg2.F2010-SCREAMv1.scream-spa_remap",
             "ERS_Ln90.ne30pg2_ne30pg2.F2010-SCREAMv1.scream-small_kernels",
             "ERP_Ln22.conusx4v1pg2_r05_oECv3.F2010-SCREAMv1-noAero.scream-bfbhash",
             )
     },
 
+    # Used to track performance
     "e3sm_scream_v1_hires" : {
-        "time"  : "03:00:00",
+        "time"  : "01:00:00",
         "tests" : (
-            "SMS_D_Ln12.ne120_r0125_oRRS18to6v3.F2010-SCREAMv1",
-            "SMS_Ln12.ne120_ne120.F2010-SCREAMv1",
-#            "SMS_Ln12.ne120_r0125_oRRS18to6v3.F2000-SCREAMv1-AQP1", add when aquap 120 inputs available
+            "SMS_Ln300.ne30pg2_ne30pg2.F2010-SCREAMv1.scream-perf_test"
             )
     },
 

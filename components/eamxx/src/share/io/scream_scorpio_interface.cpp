@@ -231,6 +231,7 @@ void register_dimension(const std::string &filename, const std::string& shortnam
     EKAT_REQUIRE_MSG (err==PIO_NOERR,
         "Error! Something went wrong querying for the unlimited dimension id.\n"
         " - filename: " + filename + "\n"
+        " - dimension : " + shortname + "\n"
         " - pio error: " + std::to_string(err) + "\n");
     if (length==0) {
       EKAT_REQUIRE_MSG ( unlimid==dimid,
@@ -292,7 +293,8 @@ void register_variable(const std::string &filename, const std::string& shortname
   if (mode==Write) {
     EKAT_REQUIRE_MSG ( units!="" and nc_dtype!="",
         "Error! Missing valid units and/or nc_dtype arguments for file open in Write mode.\n"
-          " - filename: " + filename + "\n");
+        " - filename: " + filename + "\n"
+        " - varname : " + shortname + "\n");
   } else {
     EKAT_REQUIRE_MSG ( has_var,
         "Error! Variable not found in file open in " + mode_str + " mode.\n"
@@ -338,16 +340,26 @@ void register_variable(const std::string &filename, const std::string& shortname
           " - pio error: " + std::to_string(err) + "\n");
     }
 
-
-    if (mode==Read && (dims_from_file[0]=="time" && var_dimensions[0]!="time")) {
-      // For Read operations, we may not consider "time" as a field dimension, so if the
-      // input file has "time", simply disregard it in this check.
-      dims_from_file.erase(dims_from_file.begin());
+    // Here, let's only try to access var_dimensions[0] when we know for sure
+    // that var_dimensions is actually dimensioned (i.e., .size()>0)
+    if (var_dimensions.size()>0) {
+      if (mode==Read && (dims_from_file[0]=="time" && var_dimensions[0]!="time")) {
+        // For Read operations, we may not consider "time" as a field dimension, so if the
+        // input file has "time", simply disregard it in this check.
+        dims_from_file.erase(dims_from_file.begin());
+      }
+    } else {
+      if (mode==Read && (dims_from_file[0]=="time")) {
+        // For Read operations, we may not consider "time" as a field dimension, so if the
+        // input file has "time", simply disregard it in this check.
+        dims_from_file.erase(dims_from_file.begin());
+      }      
     }
     std::reverse(dims_from_file.begin(),dims_from_file.end());
     EKAT_REQUIRE_MSG(var_dimensions==dims_from_file,
         "Error! Input variable dimensions do not match the ones from the file.\n"
         " - filename  : " + filename + "\n"
+        " - varname   : " + shortname + "\n"
         " - input dims: (" + ekat::join(var_dimensions,",") + ")\n"
         " - file dims : (" + ekat::join(dims_from_file,",") + ")\n");
 
@@ -620,11 +632,14 @@ void grid_write_data_array<double>(const std::string &filename, const std::strin
 void write_timestamp (const std::string& filename, const std::string& ts_name, const util::TimeStamp& ts)
 {
   set_attribute(filename,ts_name,ts.to_string());
+  set_attribute(filename,ts_name+"_nsteps",ts.get_num_steps());
 }
 /* ----------------------------------------------------------------- */
 util::TimeStamp read_timestamp (const std::string& filename, const std::string& ts_name)
 {
-  return util::str_to_time_stamp(get_attribute<std::string>(filename,ts_name));
+  auto ts = util::str_to_time_stamp(get_attribute<std::string>(filename,ts_name));
+  ts.set_num_steps(get_attribute<int>(filename,ts_name+"_nsteps"));
+  return ts;
 }
 /* ----------------------------------------------------------------- */
 } // namespace scorpio

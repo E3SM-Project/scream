@@ -19,6 +19,7 @@ CreateUnitTest(create_vert_remap_and_weights "create_vert_remap_and_weights.cpp"
 # Run a test to setup nudging source data:
 set (NUM_STEPS  5)
 set (POSTFIX source_data)
+set (ADD_RANKS false)
 set (ATM_TIME_STEP 300)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/input_source_data.yaml
                ${CMAKE_CURRENT_BINARY_DIR}/input_source_data.yaml)
@@ -35,6 +36,7 @@ CreateUnitTestFromExec (shoc_p3_source shoc_p3_nudging
 set (NUM_STEPS  5)
 set (ATM_TIME_STEP 300)
 set (POSTFIX nudged)
+set (ADD_RANKS true)
 set (VERT_TYPE TIME_DEPENDENT_3D_PROFILE)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/input_nudging.yaml
                ${CMAKE_CURRENT_BINARY_DIR}/input_nudging.yaml)
@@ -55,5 +57,18 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/output.yaml
                ${CMAKE_CURRENT_BINARY_DIR}/output_nudged_remapped.yaml)
 CreateUnitTestFromExec (shoc_p3_nudged_remapped shoc_p3_nudging
       EXE_ARGS "--use-colour no --ekat-test-params ifile=input_nudging_remapped.yaml"
+      FIXTURES_REQUIRED shoc_p3_source_data)
+
+# Run a test with nudging using data read in glob pattern and skip vertical interpolation:
+set (NUM_STEPS  5)
+set (ATM_TIME_STEP 300)
+set (POSTFIX nudged_glob_novert)
+set (VERT_TYPE TIME_DEPENDENT_3D_PROFILE)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/input_nudging_glob_novert.yaml
+               ${CMAKE_CURRENT_BINARY_DIR}/input_nudging_glob_novert.yaml)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/output.yaml
+               ${CMAKE_CURRENT_BINARY_DIR}/output_nudged_glob_novert.yaml)
+CreateUnitTestFromExec (shoc_p3_nudging_glob_novert shoc_p3_nudging
+      EXE_ARGS "--use-colour no --ekat-test-params ifile=input_nudging_glob_novert.yaml"
       FIXTURES_REQUIRED shoc_p3_source_data)
 
