@@ -1735,6 +1735,11 @@
 <li>type: logical  </li>
 </ul>
 </li>
+<li>rrtmgp::do_subcol_sampling:  <ul>
+<li>description: Flag to turn on/off subcolumn sampling of optical properties; if false treat cells as either completely clear or cloudy  </li>
+<li>type: logical  </li>
+</ul>
+</li>
 <li>rrtmgp::number_of_subcycles:  <ul>
 <li>description: how many times to subcycle this atm process  </li>
 <li>type: <strong>MISSING</strong>  </li>
@@ -1821,7 +1826,7 @@
 <h2 id="cosp">cosp</h2>
 <ul>
 <li>cosp::cosp_subcolumns:  <ul>
-<li>description: <strong>MISSING</strong>  </li>
+<li>description: Number of subcolumns to use for COSP simulators; cosp_subcolumns=1 implies no subcolumn sampling  </li>
 <li>type: <strong>MISSING</strong>  </li>
 </ul>
 </li>
