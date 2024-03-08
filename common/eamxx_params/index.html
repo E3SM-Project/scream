@@ -1431,7 +1431,7 @@
 </ul>
 </li>
 <li>nudging::source_pressure_file:  <ul>
-<li>description: If STATIC_1D_VERTICAL_PROFILE, this is an optional arg to point to a file with the source pressure levels defined.       Default is to look for p_levs in the first nudging_filenames_patterns file  </li>
+<li>description: If STATIC_1D_VERTICAL_PROFILE, this is an optional arg to point to a file with the source pressure levels defined.     Default is to look for p_levs in the first nudging_filenames_patterns file  </li>
 <li>type: string  </li>
 </ul>
 </li>
@@ -2117,6 +2117,31 @@
 <li>type: <strong>MISSING</strong>  </li>
 </ul>
 </li>
+<li>initial_conditions::perturbed_fields:  <ul>
+<li>description: IC fields (with level dimension) to apply a random perturbation to based on the parameters below.  </li>
+<li>type: array(string)  </li>
+</ul>
+</li>
+<li>initial_conditions::generate_perturbation_random_seed:  <ul>
+<li>description: Whether or not to generate a random seed for perturbation.  </li>
+<li>type: logical  </li>
+</ul>
+</li>
+<li>initial_conditions::perturbation_random_seed:  <ul>
+<li>description: Random seed used for perturbation. Will be overridded by generate_perturbation_random_seed=true.  </li>
+<li>type: integer  </li>
+</ul>
+</li>
+<li>initial_conditions::perturbation_limit:  <ul>
+<li>description: Defines a range [1-x, 1+x] which perturbation will be taken from.  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::perturbation_minimum_pressure:  <ul>
+<li>description: Minimum pressure (relative to a reference level pressure profile) for which perturbation will be applied.  </li>
+<li>type: real  </li>
+</ul>
+</li>
 </ul>
 <h1 id="atmosphere-driver-parameters">Atmosphere Driver Parameters</h1>
 <ul>
@@ -2159,6 +2184,11 @@
 <li>driver_options::property_check_data_fields:  <ul>
 <li>description: list of additional data fields to output in property checks (only for physics grid)  </li>
 <li>type: array(string)  </li>
+</ul>
+</li>
+<li>driver_options::enable_iop:  <ul>
+<li>description: Enable intensive observation period. Currently the only use case is DP-EAMxx  </li>
+<li>type: logical  </li>
 </ul>
 </li>
 </ul>
@@ -2275,6 +2305,16 @@
 <li>type: <strong>MISSING</strong>  </li>
 </ul>
 </li>
+<li>ctl_nl::se_lx:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: <strong>MISSING</strong>  </li>
+</ul>
+</li>
+<li>ctl_nl::se_ly:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: <strong>MISSING</strong>  </li>
+</ul>
+</li>
 <li>ctl_nl::se_nsplit:  <ul>
 <li>description: <strong>MISSING</strong>  </li>
 <li>type: <strong>MISSING</strong>  </li>
@@ -2292,7 +2332,7 @@
 </li>
 <li>ctl_nl::se_tstep:  <ul>
 <li>description: <strong>MISSING</strong>  </li>
-<li>type: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
 </ul>
 </li>
 <li>ctl_nl::statefreq:  <ul>
