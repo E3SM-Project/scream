@@ -84,12 +84,11 @@ TEST_CASE("ml_correction-stand-alone", "") {
   const auto &qv_dev = qv_field.get_view<Real **, Device>();
   uintptr_t ptr = reinterpret_cast<uintptr_t>(qv_dev.data());
   std::string qv_dev_dtype = typeid(qv_dev(0, 0)).name();
-  // std::cout << qv_dev(0, 0) << std::endl;
 
-  // py::object test_gpu_handoff = py_correction.attr("modify_view_gpu")(
-  //     ptr,
-  //     qv_dev_dtype,
-  //     num_cols, num_levs, ML_model_tq, ML_model_uv);
+  py::object test_gpu_handoff = py_correction.attr("modify_view_gpu")(
+      ptr,
+      qv_dev_dtype,
+      num_cols, num_levs, ML_model_tq, ML_model_uv);
   
   // // Testing function for checking pointer and pybind arrays are the same
   // py::object test_ptr_usage = py_correction.attr("test_ptr")(
@@ -103,9 +102,11 @@ TEST_CASE("ml_correction-stand-alone", "") {
   ekat::enable_fpes(fpe_mask);
   REQUIRE(qv(1, 10) == reference);   // This is the one that is modified
   REQUIRE(qv(0, 10) != reference);
-  // REQUIRE(qv_dev(1, 0) == reference);   // This is the one that is modified
-  // REQUIRE(qv_dev(0, 0) != reference);
-  // std::cout << qv_dev(0, 0) << std::endl;
+  
+  const auto qv_dev_h = Kokkos::create_mirror_view(qv_dev);
+  Kokkos::deep_copy(qv_dev_h, qv_dev);
+  REQUIRE(qv_dev_h(1, 0) == reference);   // This is the one that is modified
+  REQUIRE(qv_dev_h(0, 0) != reference);
   ad.finalize();
 }
 
