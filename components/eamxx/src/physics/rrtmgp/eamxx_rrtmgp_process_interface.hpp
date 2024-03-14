@@ -28,6 +28,9 @@ public:
   template<typename ScalarT>
   using uview_2d = Unmanaged<typename KT::template view_2d<ScalarT>>;
 
+  using ExtraClnskyDiag = rrtmgp::ExtraClnskyDiag;
+  using ExtraClnclrskyDiag = rrtmgp::ExtraClnclrskyDiag;
+
   // Constructors
   RRTMGPRadiation (const ekat::Comm& comm, const ekat::ParameterList& params);
 
@@ -57,10 +60,25 @@ public:
   Field m_lon;
 
   // Whether we use aerosol forcing in radiation
-  bool m_do_aerosol_rad;
+  // bool m_do_aerosol_rad;
+  enum class DoAerosolRad {
+    yes,
+    no
+  };
+  DoAerosolRad m_do_aerosol_rad;
   // Whether we do extra aerosol forcing calls
-  bool m_extra_clnsky_diag;
-  bool m_extra_clnclrsky_diag;
+  // bool m_extra_clnsky_diag;
+  // enum class ExtraClnskyDiag {
+  //   yes,
+  //   no
+  // };
+  ExtraClnskyDiag m_extra_clnsky_diag;
+  // bool m_extra_clnclrsky_diag;
+  // enum class ExtraClnclrskyDiag {
+  //   yes,
+  //   no
+  // };
+  ExtraClnclrskyDiag m_extra_clnclrsky_diag;
 
   // The orbital year, used for zenith angle calculations:
   // If > 0, use constant orbital year for duration of simulation
@@ -77,7 +95,7 @@ public:
   // This is only used if a positive value is supplied
   Real m_fixed_solar_zenith_angle;
 
-  // Need to hard-code some dimension sizes for now. 
+  // Need to hard-code some dimension sizes for now.
   // TODO: find a better way of configuring this
   const int m_nswbands = 14;
   const int m_nlwbands = 16;
@@ -103,7 +121,12 @@ public:
   int m_rad_freq_in_steps;
 
   // Whether or not to do subcolumn sampling of cloud state for MCICA
-  bool m_do_subcol_sampling;
+  // bool m_do_subcol_sampling;
+  enum class DoSubcolSampling {
+    yes,
+    no
+  };
+  DoSubcolSampling m_do_subcol_sampling;
 
   // Structure for storing local variables initialized using the ATMBufferManager
   struct Buffer {

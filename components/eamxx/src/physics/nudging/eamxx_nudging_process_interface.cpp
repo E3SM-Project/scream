@@ -20,8 +20,10 @@ Nudging::Nudging (const ekat::Comm& comm, const ekat::ParameterList& params)
   m_timescale = m_params.get<int>("nudging_timescale",0);
 
   m_fields_nudge = m_params.get<std::vector<std::string>>("nudging_fields");
-  m_use_weights   = m_params.get<bool>("use_nudging_weights",false);
-  m_skip_vert_interpolation   = m_params.get<bool>("skip_vert_interpolation",false);
+  m_use_weights = m_params.get<bool>("use_nudging_weights",false) ?
+                    UseWeights::yes : UseWeights::no;
+  m_skip_vert_interpolation = m_params.get<bool>("skip_vert_interpolation", false) ?
+                              SkipVertInterpolation::yes : SkipVertInterpolation::no;
   // If we are doing horizontal refine-remapping, we need to get the mapfile from user
   m_refine_remap_file = m_params.get<std::string>(
       "nudging_refine_remap_mapfile", "no-file-given");
@@ -34,7 +36,7 @@ Nudging::Nudging (const ekat::Comm& comm, const ekat::ParameterList& params)
     m_src_pres_type = STATIC_1D_VERTICAL_PROFILE;
     // Check for a designated source pressure file, default to first nudging data source if not given.
     m_static_vertical_pressure_file = m_params.get<std::string>("source_pressure_file",m_datafiles[0]);
-    EKAT_REQUIRE_MSG(m_skip_vert_interpolation == false,
+    EKAT_REQUIRE_MSG(m_skip_vert_interpolation == SkipVertInterpolation::no,
                    "Error! It makes no sense to not interpolate if src press is uniform and constant ");
   } else {
     EKAT_ERROR_MSG("ERROR! Nudging::parameter_list - unsupported source_pressure_type provided.  Current options are [TIME_DEPENDENT_3D_PROFILE,STATIC_1D_VERTICAL_PROFILE].  Please check");
@@ -46,7 +48,7 @@ Nudging::Nudging (const ekat::Comm& comm, const ekat::ParameterList& params)
                        "Error! Inconsistent 'lev' dimension found in nudging data files.");
   }
   // use nudging weights
-  if (m_use_weights) 
+  if (m_use_weights == UseWeights::yes)
     m_weights_file = m_params.get<std::string>("nudging_weights_file");
 
   // TODO: Add some warning messages here.
@@ -100,7 +102,7 @@ void Nudging::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   } else {
     m_num_src_levs = scorpio::get_dimlen(m_static_vertical_pressure_file,"lev");
   }
-  if (m_skip_vert_interpolation) {
+  if (m_skip_vert_interpolation == SkipVertInterpolation::yes) {
     EKAT_REQUIRE_MSG(m_num_src_levs == m_num_levs,
                    "Error! skip_vert_interpolation requires the vertical level to be "
                    << " the same as model vertical level ");
@@ -109,7 +111,7 @@ void Nudging::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   /* Check for consistency between nudging files, map file, and remapper */
 
   // Number of columns globally
-  auto num_cols_global = m_grid->get_num_global_dofs(); 
+  auto num_cols_global = m_grid->get_num_global_dofs();
 
   // Get the information from the first nudging data file
   int num_cols_src = scorpio::get_dimlen(m_datafiles[0],"ncol");
@@ -136,13 +138,13 @@ void Nudging::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
                      << std::to_string(num_cols_global) << " does not match the number of columns in the "
                      << "mapfile " << std::to_string(num_cols_remap_b) << ".  Please check the "
                      << "model grid and/or the mapfile.");
-    EKAT_REQUIRE_MSG(m_use_weights == false,
+    EKAT_REQUIRE_MSG(m_use_weights == UseWeights::no,
                      "Error! Nudging::set_grids - it seems that the user intends to use both nuding "
-                     << "from coarse data as well as weighted nudging simultaneously. This is not supported. " 
+                     << "from coarse data as well as weighted nudging simultaneously. This is not supported. "
                      << "If the user wants to use both at their own risk, the user should edit the source code "
                      << "by deleting this error message.");
     // If we get here, we are good to go!
-    m_refine_remap = true;
+    m_refine_remap = RefineRemap::yes;
   } else {
     // If the number of columns is the same, we don't need to do any remapping,
     // but print a warning if the user provided a mapfile
@@ -162,7 +164,7 @@ void Nudging::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
           " Please, check your settings. This parameter is only needed if we are remapping.");
     }
     // Set m_refine_remap to false
-    m_refine_remap = false;
+    m_refine_remap = RefineRemap::no;
   }
 }
 // =========================================================================================
@@ -177,7 +179,7 @@ void Nudging::apply_tendency(Field& state, const Field& nudge, const Real dt) co
   auto nudge_view = nudge.get_view<Real**>();
   cview_2d w_view, pmid_view;
 
-  if (m_use_weights) {
+  if (m_use_weights == UseWeights::yes) {
     auto weights = get_helper_field("nudging_weights");
     w_view = weights.get_view<const Real**>();
   }
@@ -185,7 +187,7 @@ void Nudging::apply_tendency(Field& state, const Field& nudge, const Real dt) co
     pmid_view = get_field_in("p_mid").get_view<const Real**>();
   }
 
-  auto use_weights = m_use_weights;
+  UseWeights use_weights = m_use_weights;
   auto cutoff = m_refine_remap_vert_cutoff;
   auto policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {m_num_cols, m_num_levs});
   auto update = KOKKOS_LAMBDA(const int& i, const int& j) {
@@ -194,7 +196,7 @@ void Nudging::apply_tendency(Field& state, const Field& nudge, const Real dt) co
     }
 
     auto tend = nudge_view(i,j) - state_view(i,j);
-    if (use_weights) {
+    if (use_weights == UseWeights::yes) {
       tend *= w_view(i,j);
     }
     state_view(i,j) += dtend * tend;
@@ -217,7 +219,7 @@ void Nudging::initialize_impl (const RunType /* run_type */)
   auto grid_tmp = m_grid->clone("after_horiz_before_vert",true);
   grid_tmp->reset_num_vertical_lev(m_num_src_levs);
 
-  if (m_refine_remap) {
+  if (m_refine_remap == RefineRemap::yes) {
     // P2P remapper
     m_horiz_remapper = std::make_shared<RefiningRemapperP2P>(grid_tmp, m_refine_remap_file);
   } else {
@@ -249,7 +251,7 @@ void Nudging::initialize_impl (const RunType /* run_type */)
 
     // Second copy of the field: after horiz interp (alias "ext" if no remap)
     Field field_tmp;
-    if (m_refine_remap) {
+    if (m_refine_remap == RefineRemap::yes) {
       field_tmp = create_helper_field(name_tmp, layout_tmp, grid_tmp->name());
     } else {
       field_tmp = field_ext.alias(name_tmp);
@@ -279,12 +281,13 @@ void Nudging::initialize_impl (const RunType /* run_type */)
   FieldLayout layout_padded ({COL,LEV},{m_num_cols,m_num_src_levs+2});
   create_helper_field("padded_field",layout_padded,"");
 
-  if (m_src_pres_type == TIME_DEPENDENT_3D_PROFILE && !m_skip_vert_interpolation) {
+  if (m_src_pres_type == TIME_DEPENDENT_3D_PROFILE &&
+      m_skip_vert_interpolation == SkipVertInterpolation::no) {
     // If the pressure profile is 3d and time-dep, we need to interpolate (in time/horiz)
     auto pmid_ext = create_helper_field("p_mid_ext", layout_ext, grid_ext->name());
     m_time_interp.add_field(pmid_ext.alias("p_mid"),true);
     Field pmid_tmp;
-    if (m_refine_remap) {
+    if (m_refine_remap == RefineRemap::yes) {
       pmid_tmp = create_helper_field("p_mid_tmp", layout_tmp, grid_tmp->name());
     } else {
       pmid_tmp = pmid_ext.alias("p_mid_tmp");
@@ -313,7 +316,7 @@ void Nudging::initialize_impl (const RunType /* run_type */)
   // load nudging weights from file
   // NOTE: the regional nudging use the same grid as the run, no need to
   // do the interpolation.
-  if (m_use_weights) {
+  if (m_use_weights == UseWeights::yes) {
     auto nudging_weights = create_helper_field("nudging_weights", layout_atm, m_grid->name());
     AtmosphereInput src_weights_input(m_weights_file, m_grid, {nudging_weights},true);
     src_weights_input.read_variables();
@@ -398,7 +401,7 @@ void Nudging::run_impl (const double dt)
   m_horiz_remapper->remap(true);
 
   // bypass copy_and_pad and vert_interp for skip_vert_interpolation:
-  if (m_skip_vert_interpolation) {
+  if (m_skip_vert_interpolation == SkipVertInterpolation::yes) {
     for (const auto& name : m_fields_nudge) {
       auto tmp_state_field = get_helper_field(name+"_tmp");
 

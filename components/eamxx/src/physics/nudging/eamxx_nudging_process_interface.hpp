@@ -72,22 +72,37 @@ protected:
   int m_num_levs;
   int m_num_src_levs;
   int m_timescale;
-  bool m_use_weights;
-  bool m_skip_vert_interpolation;
+  // bool m_use_weights;
+  enum class UseWeights {
+    yes,
+    no
+  };
+  UseWeights m_use_weights;
+  // bool m_skip_vert_interpolation;
+  enum class SkipVertInterpolation {
+    yes,
+    no
+  };
+  SkipVertInterpolation m_skip_vert_interpolation;
   std::vector<std::string> m_datafiles;
   std::string              m_static_vertical_pressure_file;
   // add nudging weights for regional nudging update
   std::string              m_weights_file;
 
   SourcePresType m_src_pres_type;
-  
+
   std::map<std::string,Field> m_helper_fields;
 
   std::vector<std::string> m_fields_nudge;
 
   /* Nudge from coarse data */
   // if true, remap coarse data to fine grid
-  bool m_refine_remap;
+  // bool m_refine_remap;
+  enum class RefineRemap {
+    yes,
+    no
+  };
+  RefineRemap m_refine_remap;
   // file containing coarse data mapping
   std::string m_refine_remap_file;
   // (refining) remapper object

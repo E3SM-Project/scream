@@ -68,7 +68,7 @@ TEST_CASE("nudging_tests") {
   auto grid_fine_h = gm_fine_h->get_grid("Point Grid");
   auto grid_fine_v = gm_fine_v->get_grid("Point Grid");
   auto grid_fine   = gm_fine->get_grid("Point Grid");
-  
+
   const int ncols_data = grid_data->get_num_local_dofs();
 
   // First section tests nudging when there is no horiz-vert interp

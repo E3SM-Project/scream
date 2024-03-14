@@ -37,7 +37,7 @@ namespace scream {
                 const int ncol, const int nlay, const int nbnd, const int ngpt,
                 OpticalProps1scl &cloud_optics, GasOpticsRRTMGP &kdist, real2d &cld, real2d &p_lay);
 
-        /* 
+        /*
          * Objects containing k-distribution information need to be initialized
          * once and then persist throughout the life of the program, so we
          * declare them here within the rrtmgp namespace.
@@ -77,7 +77,7 @@ namespace scream {
             if (initialized) {
                 if (logger)
                   logger->info("RRTMGP is already initialized; skipping\n");
-                return; 
+                return;
             }
 
             // Initialize YAKL
@@ -173,7 +173,7 @@ namespace scream {
             memset(sfc_flux_dir_vis, 0);
             memset(sfc_flux_dif_nir, 0);
             memset(sfc_flux_dif_vis, 0);
- 
+
             // Threshold between visible and infrared is 0.7 micron, or 14286 cm^-1.
             const real visible_wavenumber_threshold = 14286;
             auto wavenumber_limits = k_dist_sw.get_band_lims_wavenumber();
@@ -198,7 +198,7 @@ namespace scream {
 
                 } else {
 
-                    // Band straddles the visible to near-infrared transition, so put half 
+                    // Band straddles the visible to near-infrared transition, so put half
                     // the flux in visible and half in near-infrared fluxes
                     sfc_flux_dir_vis(icol) += 0.5 * sw_bnd_flux_dir(icol,ktop,ibnd);
                     sfc_flux_dif_vis(icol) += 0.5 * sw_bnd_flux_dif(icol,ktop,ibnd);
@@ -209,7 +209,7 @@ namespace scream {
             });
         }
 
- 
+
         void rrtmgp_main(
                 const int ncol, const int nlay,
                 real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev,
@@ -232,7 +232,8 @@ namespace scream {
                 real3d &lw_bnd_flux_up, real3d &lw_bnd_flux_dn,
                 const Real tsi_scaling,
                 const std::shared_ptr<spdlog::logger>& logger,
-                const bool extra_clnclrsky_diag, const bool extra_clnsky_diag) {
+                const ExtraClnclrskyDiag extra_clnclrsky_diag,
+                const ExtraClnskyDiag extra_clnsky_diag) {
 
 #ifdef SCREAM_RRTMGP_DEBUG
             // Sanity check inputs, and possibly repair
@@ -323,12 +324,12 @@ namespace scream {
 
             // Convert cloud physical properties to optical properties for input to RRTMGP
             OpticalProps2str clouds_sw = get_cloud_optics_sw(ncol, nlay, cloud_optics_sw, k_dist_sw, lwp, iwp, rel, rei);
-            OpticalProps1scl clouds_lw = get_cloud_optics_lw(ncol, nlay, cloud_optics_lw, k_dist_lw, lwp, iwp, rel, rei);        
+            OpticalProps1scl clouds_lw = get_cloud_optics_lw(ncol, nlay, cloud_optics_lw, k_dist_lw, lwp, iwp, rel, rei);
             clouds_sw.tau.deep_copy_to(cld_tau_sw_bnd);
             clouds_lw.tau.deep_copy_to(cld_tau_lw_bnd);
 
             // Do subcolumn sampling to map bands -> gpoints based on cloud fraction and overlap assumption;
-            // This implements the Monte Carlo Independing Column Approximation by mapping only a single 
+            // This implements the Monte Carlo Independing Column Approximation by mapping only a single
             // subcolumn (cloud state) to each gpoint.
             auto nswgpts = k_dist_sw.get_ngpt();
             auto clouds_sw_gpt = get_subsampled_clouds(ncol, nlay, nswbands, nswgpts, clouds_sw, k_dist_sw, cldfrac, p_lay);
@@ -361,7 +362,7 @@ namespace scream {
             // Do shortwave
             rrtmgp_sw(
                 ncol, nlay,
-                k_dist_sw, p_lay, t_lay, p_lev, t_lev, gas_concs, 
+                k_dist_sw, p_lay, t_lay, p_lev, t_lev, gas_concs,
                 sfc_alb_dir, sfc_alb_dif, mu0, aerosol_sw, clouds_sw_gpt,
                 fluxes_sw, clnclrsky_fluxes_sw, clrsky_fluxes_sw, clnsky_fluxes_sw,
                 tsi_scaling, logger,
@@ -376,11 +377,11 @@ namespace scream {
                 fluxes_lw, clnclrsky_fluxes_lw, clrsky_fluxes_lw, clnsky_fluxes_lw,
                 extra_clnclrsky_diag, extra_clnsky_diag
             );
-            
+
         }
 
         int3d get_subcolumn_mask(const int ncol, const int nlay, const int ngpt, real2d &cldf, const int overlap_option, int1d &seeds) {
-            
+
             // Routine will return subcolumn mask with values of 0 indicating no cloud, 1 indicating cloud
             auto subcolumn_mask = int3d("subcolumn_mask", ncol, nlay, ngpt);
 
@@ -462,7 +463,7 @@ namespace scream {
             parallel_for(SimpleBounds<3>(nbnd,nlay,ncol), YAKL_LAMBDA (int ibnd, int ilay, int icol) {
                 if (cloud_optics.tau(icol,ilay,ibnd) > 0) {
                     cldfrac_rad(icol,ilay) = cld(icol,ilay);
-                } 
+                }
             });
             // Get subcolumn cloud mask; note that get_subcolumn_mask exposes overlap assumption as an option,
             // but the only currently supported options are 0 (trivial all-or-nothing cloud) or 1 (max-rand),
@@ -489,7 +490,7 @@ namespace scream {
                     subsampled_optics.tau(icol,ilay,igpt) = 0;
                     subsampled_optics.ssa(icol,ilay,igpt) = 0;
                     subsampled_optics.g  (icol,ilay,igpt) = 0;
-                } 
+                }
             });
             return subsampled_optics;
         }
@@ -515,7 +516,7 @@ namespace scream {
             parallel_for(SimpleBounds<3>(nbnd,nlay,ncol), YAKL_LAMBDA (int ibnd, int ilay, int icol) {
                 if (cloud_optics.tau(icol,ilay,ibnd) > 0) {
                     cldfrac_rad(icol,ilay) = cld(icol,ilay);
-                } 
+                }
             });
             // Get subcolumn cloud mask
             int overlap = 1;
@@ -535,7 +536,7 @@ namespace scream {
                     subsampled_optics.tau(icol,ilay,igpt) = cloud_optics.tau(icol,ilay,ibnd);
                 } else {
                     subsampled_optics.tau(icol,ilay,igpt) = 0;
-                } 
+                }
             });
             return subsampled_optics;
         }
@@ -546,7 +547,7 @@ namespace scream {
                 const int ncol, const int nlay,
                 CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist,
                 real2d &lwp, real2d &iwp, real2d &rel, real2d &rei) {
- 
+
             // Initialize optics
             OpticalProps2str clouds;
             clouds.init(kdist.get_band_lims_wavenumber());
@@ -554,7 +555,7 @@ namespace scream {
 
             // Needed for consistency with all-sky example problem?
             cloud_optics.set_ice_roughness(2);
- 
+
             // Limit effective radii to be within bounds of lookup table
             auto rel_limited = real2d("rel_limited", ncol, nlay);
             auto rei_limited = real2d("rei_limited", ncol, nlay);
@@ -571,7 +572,7 @@ namespace scream {
 
         OpticalProps1scl get_cloud_optics_lw(
                 const int ncol, const int nlay,
-                CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist, 
+                CloudOptics &cloud_optics, GasOpticsRRTMGP &kdist,
                 real2d &lwp, real2d &iwp, real2d &rel, real2d &rei) {
 
             // Initialize optics
@@ -601,12 +602,13 @@ namespace scream {
                 GasOpticsRRTMGP &k_dist,
                 real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev,
                 GasConcs &gas_concs,
-                real2d &sfc_alb_dir, real2d &sfc_alb_dif, real1d &mu0, 
+                real2d &sfc_alb_dir, real2d &sfc_alb_dif, real1d &mu0,
                 OpticalProps2str &aerosol, OpticalProps2str &clouds,
                 FluxesByband &fluxes, FluxesBroadband &clnclrsky_fluxes, FluxesBroadband &clrsky_fluxes, FluxesBroadband &clnsky_fluxes,
                 const Real tsi_scaling,
                 const std::shared_ptr<spdlog::logger>& logger,
-                const bool extra_clnclrsky_diag, const bool extra_clnsky_diag) {
+                const ExtraClnclrskyDiag extra_clnclrsky_diag,
+                const ExtraClnskyDiag extra_clnsky_diag) {
 
             // Get problem sizes
             int nbnd = k_dist.get_nband();
@@ -650,7 +652,7 @@ namespace scream {
                 bnd_flux_dn    (icol,ilev,ibnd) = 0;
                 bnd_flux_dn_dir(icol,ilev,ibnd) = 0;
             });
- 
+
             // Get daytime indices
             auto dayIndices = int1d("dayIndices", ncol);
             memset(dayIndices, -1);
@@ -667,7 +669,7 @@ namespace scream {
             }
             // Copy data back to the device
             dayIndices_h.deep_copy_to(dayIndices);
-            if (nday == 0) { 
+            if (nday == 0) {
                 // No daytime columns in this chunk, skip the rest of this routine
                 return;
             }
@@ -757,7 +759,7 @@ namespace scream {
             optics.alloc_2str(nday, nlay, k_dist);
 
             OpticalProps2str optics_no_aerosols;
-            if (extra_clnsky_diag) {
+            if (extra_clnsky_diag == ExtraClnskyDiag::yes) {
                 // Allocate space for optical properties (no aerosols)
                 optics_no_aerosols.alloc_2str(nday, nlay, k_dist);
             }
@@ -772,7 +774,7 @@ namespace scream {
             bool top_at_1 = p_lay_host(1, 1) < p_lay_host(1, nlay);
 
             k_dist.gas_optics(nday, nlay, top_at_1, p_lay_day, p_lev_day, t_lay_limited, gas_concs_day, optics, toa_flux);
-            if (extra_clnsky_diag) {
+            if (extra_clnsky_diag == ExtraClnskyDiag::yes) {
                 k_dist.gas_optics(nday, nlay, top_at_1, p_lay_day, p_lev_day, t_lay_limited, gas_concs_day, optics_no_aerosols, toa_flux);
             }
 
@@ -789,7 +791,7 @@ namespace scream {
                 toa_flux(iday,igpt) = tsi_scaling * toa_flux(iday,igpt);
             });
 
-            if (extra_clnclrsky_diag) {
+            if (extra_clnclrsky_diag == ExtraClnclrskyDiag::yes) {
                 // Compute clear-clean-sky (just gas) fluxes on daytime columns
                 rte_sw(optics, top_at_1, mu0_day, toa_flux, sfc_alb_dir_T, sfc_alb_dif_T, fluxes_day);
                 // Expand daytime fluxes to all columns
@@ -836,7 +838,7 @@ namespace scream {
                 bnd_flux_dn_dir(icol,ilev,ibnd) = bnd_flux_dn_dir_day(iday,ilev,ibnd);
             });
 
-            if (extra_clnsky_diag) {
+            if (extra_clnsky_diag == ExtraClnskyDiag::yes) {
                 // First increment clouds in optics_no_aerosols
                 clouds_day.increment(optics_no_aerosols);
                 // Compute cleansky (gas + clouds) fluxes on daytime columns
@@ -860,7 +862,8 @@ namespace scream {
                 OpticalProps1scl &aerosol,
                 OpticalProps1scl &clouds,
                 FluxesByband &fluxes, FluxesBroadband &clnclrsky_fluxes, FluxesBroadband &clrsky_fluxes, FluxesBroadband &clnsky_fluxes,
-                const bool extra_clnclrsky_diag, const bool extra_clnsky_diag) {
+                const ExtraClnclrskyDiag extra_clnclrsky_diag,
+                const ExtraClnskyDiag extra_clnsky_diag) {
 
             // Problem size
             int nbnd = k_dist.get_nband();
@@ -900,7 +903,7 @@ namespace scream {
             OpticalProps1scl optics;
             optics.alloc_1scl(ncol, nlay, k_dist);
             OpticalProps1scl optics_no_aerosols;
-            if (extra_clnsky_diag) {
+            if (extra_clnsky_diag == ExtraClnskyDiag::yes) {
                 // Allocate space for optical properties (no aerosols)
                 optics_no_aerosols.alloc_1scl(ncol, nlay, k_dist);
             }
@@ -950,7 +953,7 @@ namespace scream {
 
             // Do gas optics
             k_dist.gas_optics(ncol, nlay, top_at_1, p_lay, p_lev, t_lay_limited, t_sfc, gas_concs, optics, lw_sources, real2d(), t_lev_limited);
-            if (extra_clnsky_diag) {
+            if (extra_clnsky_diag == ExtraClnskyDiag::yes) {
                 k_dist.gas_optics(ncol, nlay, top_at_1, p_lay, p_lev, t_lay_limited, t_sfc, gas_concs, optics_no_aerosols, lw_sources, real2d(), t_lev_limited);
             }
 
@@ -959,7 +962,7 @@ namespace scream {
             check_range(optics.tau,  0, std::numeric_limits<Real>::max(), "rrtmgp_lw:optics.tau");
 #endif
 
-            if (extra_clnclrsky_diag) {    
+            if (extra_clnclrsky_diag == ExtraClnclrskyDiag::yes) {
                 // Compute clean-clear-sky fluxes before we add in aerosols and clouds
                 rte_lw(max_gauss_pts, gauss_Ds, gauss_wts, optics, top_at_1, lw_sources, emis_sfc, clnclrsky_fluxes);
             }
@@ -976,7 +979,7 @@ namespace scream {
             // Compute allsky fluxes
             rte_lw(max_gauss_pts, gauss_Ds, gauss_wts, optics, top_at_1, lw_sources, emis_sfc, fluxes);
 
-            if (extra_clnsky_diag) {
+            if (extra_clnsky_diag == ExtraClnskyDiag::yes) {
                 // First increment clouds in optics_no_aerosols
                 clouds.increment(optics_no_aerosols);
                 // Compute clean-sky fluxes
@@ -986,7 +989,7 @@ namespace scream {
         }
 
         void compute_cloud_area(
-                int ncol, int nlay, int ngpt, const Real pmin, const Real pmax, 
+                int ncol, int nlay, int ngpt, const Real pmin, const Real pmax,
                 const real2d& pmid, const real3d& cld_tau_gpt, real1d& cld_area) {
             // Subcolumn binary cld mask; if any layers with pressure between pmin and pmax are cloudy
             // then 2d subcol mask is 1, otherwise it is 0

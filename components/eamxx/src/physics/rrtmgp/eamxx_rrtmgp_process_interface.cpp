@@ -115,8 +115,9 @@ void RRTMGPRadiation::set_grids(const std::shared_ptr<const GridsManager> grids_
     }
   }
   // Required aerosol optical properties from SPA
-  m_do_aerosol_rad = m_params.get<bool>("do_aerosol_rad",true);
-  if (m_do_aerosol_rad) {
+  m_do_aerosol_rad = m_params.get<bool>("do_aerosol_rad",true) ?
+                     DoAerosolRad::yes : DoAerosolRad::no;
+  if (m_do_aerosol_rad == DoAerosolRad::yes) {
     add_field<Required>("aero_tau_sw", scalar3d_swband_layout, nondim, grid_name);
     add_field<Required>("aero_ssa_sw", scalar3d_swband_layout, nondim, grid_name);
     add_field<Required>("aero_g_sw"  , scalar3d_swband_layout, nondim, grid_name);
@@ -124,8 +125,10 @@ void RRTMGPRadiation::set_grids(const std::shared_ptr<const GridsManager> grids_
   }
 
   // Whether we do extra clean/clear sky calculations
-  m_extra_clnclrsky_diag = m_params.get<bool>("extra_clnclrsky_diag", false);
-  m_extra_clnsky_diag    = m_params.get<bool>("extra_clnsky_diag", false);
+  m_extra_clnclrsky_diag = m_params.get<bool>("extra_clnclrsky_diag", false) ?
+                           ExtraClnclrskyDiag::yes : ExtraClnclrskyDiag::no;
+  m_extra_clnsky_diag    = m_params.get<bool>("extra_clnsky_diag", false) ?
+                           ExtraClnskyDiag::yes : ExtraClnskyDiag::no;
 
   // Set computed (output) fields
   add_field<Updated >("T_mid"     , scalar3d_layout_mid, K  , grid_name);
@@ -393,7 +396,8 @@ void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
   m_covmr      = m_params.get<double>("covmr", 1.0e-7);
 
   // Whether or not to do MCICA subcolumn sampling
-  m_do_subcol_sampling = m_params.get<bool>("do_subcol_sampling",true);
+  m_do_subcol_sampling = m_params.get<bool>("do_subcol_sampling",true) ?
+                         DoSubcolSampling::yes : DoSubcolSampling::no;
 
   // Initialize yakl
   yakl_init();
@@ -477,7 +481,7 @@ void RRTMGPRadiation::run_impl (const double dt) {
   view_3d d_aero_ssa_sw;
   view_3d d_aero_g_sw;
   view_3d d_aero_tau_lw;
-  if (m_do_aerosol_rad) {
+  if (m_do_aerosol_rad == DoAerosolRad::yes) {
     d_aero_tau_sw = get_field_in("aero_tau_sw").get_view<const Real***>();
     d_aero_ssa_sw = get_field_in("aero_ssa_sw").get_view<const Real***>();
     d_aero_g_sw   = get_field_in("aero_g_sw"  ).get_view<const Real***>();
@@ -541,7 +545,7 @@ void RRTMGPRadiation::run_impl (const double dt) {
   const auto nlwbands = m_nlwbands;
   const auto nswbands = m_nswbands;
   const auto nlwgpts = m_nlwgpts;
-  const auto do_aerosol_rad = m_do_aerosol_rad;
+  const DoAerosolRad do_aerosol_rad = m_do_aerosol_rad;
 
   // Are we going to update fluxes and heating this step?
   auto ts = timestamp();
@@ -787,7 +791,7 @@ void RRTMGPRadiation::run_impl (const double dt) {
           t_lev(i+1,nlay+1) = d_tint(i,nlay);
 
           // Note that RRTMGP expects ordering (col,lay,bnd) but the FM keeps things in (col,bnd,lay) order
-          if (do_aerosol_rad) {
+          if (do_aerosol_rad == DoAerosolRad::yes) {
             Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nswbands*nlay), [&] (const int&idx) {
                 auto b = idx / nlay;
                 auto k = idx % nlay;
@@ -856,10 +860,10 @@ void RRTMGPRadiation::run_impl (const double dt) {
       //
       // If we *are* doing subcolumn sampling for MCICA, then keep cloud fraction as input
       // from cloud fraction parameterization, wherever that is computed.
-      auto do_subcol_sampling = m_do_subcol_sampling;
+      DoSubcolSampling do_subcol_sampling = m_do_subcol_sampling;
       auto lwp = m_buffer.lwp;
       auto iwp = m_buffer.iwp;
-      if (not do_subcol_sampling) {
+      if (do_subcol_sampling == DoSubcolSampling::no) {
         const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(ncol, m_nlay);
         Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
           const int i = team.league_rank();

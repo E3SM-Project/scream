@@ -15,7 +15,7 @@ namespace scream {
   void yakl_init ();
   void yakl_finalize();
     namespace rrtmgp {
-        /* 
+        /*
          * Objects containing k-distribution information need to be initialized
          * once and then persist throughout the life of the program, so we
          * declare them here within the rrtmgp namespace.
@@ -56,6 +56,11 @@ namespace scream {
                 real3d &sw_bnd_flux_dir , real3d &sw_bnd_flux_dif ,
                 real1d &sfc_flux_dir_vis, real1d &sfc_flux_dir_nir,
                 real1d &sfc_flux_dif_vis, real1d &sfc_flux_dif_nir);
+
+        // some enum flags that function as bools
+        enum class ExtraClnskyDiag { yes, no };
+        enum class ExtraClnclrskyDiag { yes, no };
+
         /*
          * Main driver code to run RRTMGP.
          * The input logger is in charge of outputing info to
@@ -82,7 +87,8 @@ namespace scream {
                 real3d &lw_bnd_flux_up, real3d &lw_bnd_flux_dn,
                 const Real tsi_scaling,
                 const std::shared_ptr<spdlog::logger>& logger,
-                const bool extra_clnclrsky_diag = false, const bool extra_clnsky_diag = false);
+                const ExtraClnclrskyDiag extra_clnclrsky_diag = ExtraClnclrskyDiag::no,
+                const ExtraClnskyDiag extra_clnsky_diag = ExtraClnskyDiag::no);
         /*
          * Perform any clean-up tasks
          */
@@ -99,7 +105,7 @@ namespace scream {
                 FluxesByband &fluxes, FluxesBroadband &clnclrsky_fluxes, FluxesBroadband &clrsky_fluxes, FluxesBroadband &clnsky_fluxes,
                 const Real tsi_scaling,
                 const std::shared_ptr<spdlog::logger>& logger,
-                const bool extra_clnclrsky_diag, const bool extra_clnsky_diag);
+                const ExtraClnclrskyDiag extra_clnclrsky_diag, const ExtraClnskyDiag extra_clnsky_diag);
         /*
          * Longwave driver (called by rrtmgp_main)
          */
@@ -110,7 +116,7 @@ namespace scream {
                 GasConcs &gas_concs,
                 OpticalProps1scl &aerosol, OpticalProps1scl &clouds,
                 FluxesByband &fluxes, FluxesBroadband &clnclrsky_fluxes, FluxesBroadband &clrsky_fluxes, FluxesBroadband &clnsky_fluxes,
-                const bool extra_clnclrsky_diag, const bool extra_clnsky_diag);
+                const ExtraClnclrskyDiag extra_clnclrsky_diag, const ExtraClnskyDiag extra_clnsky_diag);
         /*
          * Return a subcolumn mask consistent with a specified overlap assumption
          */
@@ -134,16 +140,16 @@ namespace scream {
             real1d &cldfrac_tot_at_cldtop, real1d &cdnc_at_cldtop,
             real1d &eff_radius_qc_at_cldtop, real1d &eff_radius_qi_at_cldtop);
 
-        /* 
+        /*
          * Provide a function to convert cloud (water and ice) mixing ratios to layer mass per unit area
          * (what E3SM refers to as "in-cloud water paths", a terminology we shun here to avoid confusion
          * with the standard practice of using "water path" to refer to the total column-integrated
          * quantities).
          */
         template<class T, int myMem, int myStyle> void mixing_ratio_to_cloud_mass(
-                yakl::Array<T,2,myMem,myStyle> const &mixing_ratio, 
-                yakl::Array<T,2,myMem,myStyle> const &cloud_fraction, 
-                yakl::Array<T,2,myMem,myStyle> const &dp, 
+                yakl::Array<T,2,myMem,myStyle> const &mixing_ratio,
+                yakl::Array<T,2,myMem,myStyle> const &cloud_fraction,
+                yakl::Array<T,2,myMem,myStyle> const &dp,
                 yakl::Array<T,2,myMem,myStyle>       &cloud_mass) {
             int ncol = mixing_ratio.dimension[0];
             int nlay = mixing_ratio.dimension[1];

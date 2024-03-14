@@ -91,7 +91,7 @@ int run(int argc, char** argv) {
     int nlev = sw_flux_up_ref.dimension[1];
     int nlay = nlev - 1;
 
-    // Read in dummy Garand atmosphere; if this were an actual model simulation, 
+    // Read in dummy Garand atmosphere; if this were an actual model simulation,
     // these would be passed as inputs to the driver
     // NOTE: set ncol to size of col_flx dimension in the input file. This is so
     // that we can compare to the reference data provided in that file. Note that
@@ -216,14 +216,15 @@ int run(int argc, char** argv) {
             lw_clnsky_flux_up, lw_clnsky_flux_dn,
             sw_bnd_flux_up, sw_bnd_flux_dn, sw_bnd_flux_dir,
             lw_bnd_flux_up, lw_bnd_flux_dn, tsi_scaling, logger,
-            true, true // extra_clnclrsky_diag, extra_clnsky_diag
+            // extra_clnclrsky_diag, extra_clnsky_diag
+            rrtmgp::ExtraClnclrskyDiag::yes, rrtmgp::ExtraClnskyDiag::yes
             // set them both to true because we are testing them below
           );
 
     // Check values against baseline
     logger->info("Check values...\n");
     rrtmgpTest::read_fluxes(
-        baseline, 
+        baseline,
         sw_flux_up_ref, sw_flux_dn_ref, sw_flux_dir_ref,
         lw_flux_up_ref, lw_flux_dn_ref
     );
@@ -319,4 +320,3 @@ int main(int argc, char** argv) {
 
     return ret;
 }
-
