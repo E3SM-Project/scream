@@ -45,6 +45,13 @@ struct AmicPhysConfig {
 
 namespace {
 
+
+// enum that acts as a bool
+enum class IsCldySubarea {
+  cloudy,
+  clear
+};
+
 KOKKOS_INLINE_FUNCTION constexpr int nqtendaa() { return 5; }
 KOKKOS_INLINE_FUNCTION constexpr int nqqcwtendaa() { return 1; }
 KOKKOS_INLINE_FUNCTION constexpr int nqqcwtendbb() { return 1; }
@@ -168,7 +175,7 @@ void construct_subareas_1gridcell(
     int &ncldy_subarea,                // out
     int &jclea,                        // out
     int &jcldy,                        // out
-    bool iscldy_subarea[maxsubarea()],   // out
+    IsCldySubarea iscldy_subarea[maxsubarea()], // out
     Real afracsub[maxsubarea()],         // out
     Real relhumsub[maxsubarea()],        // out
     Real qsub1[gas_pcnst()][maxsubarea()], // out interstitial
@@ -230,9 +237,9 @@ void construct_subareas_1gridcell(
 
   const Real zfclea = 1.0 - zfcldy;
   for (int i = 0; i < maxsubarea(); ++i)
-    iscldy_subarea[i] = false;
+    iscldy_subarea[i] = IsCldySubarea::clear;
   if (jcldy > 0)
-    iscldy_subarea[jcldy - 1] = true;
+    iscldy_subarea[jcldy - 1] = IsCldySubarea::cloudy;
   for (int i = 0; i < maxsubarea(); ++i)
     afracsub[i] = 0.0;
   if (jclea > 0)
@@ -504,7 +511,7 @@ void construct_subareas_1gridcell(
 KOKKOS_INLINE_FUNCTION
 void mam_amicphys_1subarea_clear(
     const AmicPhysConfig& config, const int nstep, const Real deltat, const int jsub,
-    const int nsubarea, const bool iscldy_subarea, const Real afracsub,
+    const int nsubarea, const IsCldySubarea iscldy_subarea, const Real afracsub,
     const Real temp, const Real pmid, const Real pdel, const Real zmid,
     const Real pblh, const Real relhum, Real dgn_a[AeroConfig::num_modes()],
     Real dgn_awet[AeroConfig::num_modes()],
@@ -782,11 +789,12 @@ void mam_amicphys_1subarea_clear(
           }
         Rename rename;
         rename.mam_rename_1subarea_(
-            iscldy_subarea, smallest_dryvol_value, dest_mode_of_mode,
-            mean_std_dev, fmode_dist_tail_fac, v2n_lo_rlx, v2n_hi_rlx,
-            ln_diameter_tail_fac, num_pairs, diameter_cutoff, ln_dia_cutoff,
-            diameter_threshold, mass_2_vol, dgnum_amode, qnum_cur, qmol_i_cur,
-            qmol_i_del, qnumcw_cur, qmol_c_cur, qmol_c_del);
+            iscldy_subarea == IsCldySubarea::cloudy, smallest_dryvol_value,
+            dest_mode_of_mode, mean_std_dev, fmode_dist_tail_fac, v2n_lo_rlx,
+            v2n_hi_rlx, ln_diameter_tail_fac, num_pairs, diameter_cutoff,
+            ln_dia_cutoff, diameter_threshold, mass_2_vol, dgnum_amode,
+            qnum_cur, qmol_i_cur, qmol_i_del, qnumcw_cur, qmol_c_cur,
+            qmol_c_del);
 
         for (int j = 0; j < num_aerosol_ids; ++j)
           for (int i = 0; i < num_modes; ++i) {
@@ -952,7 +960,7 @@ void mam_amicphys_1subarea_clear(
 KOKKOS_INLINE_FUNCTION
 void mam_amicphys_1subarea_cloudy(
     const AmicPhysConfig& config, const int nstep, const Real deltat, const int jsub,
-    const int nsubarea, const bool iscldy_subarea, const Real afracsub,
+    const int nsubarea, const IsCldySubarea iscldy_subarea, const Real afracsub,
     const Real temp, const Real pmid, const Real pdel, const Real zmid,
     const Real pblh, const Real relhum, Real dgn_a[AeroConfig::num_modes()],
     Real dgn_awet[AeroConfig::num_modes()],
@@ -1262,7 +1270,7 @@ void mam_amicphys_1subarea_cloudy(
 
         Rename rename;
         rename.mam_rename_1subarea_(
-            iscldy_subarea, smallest_dryvol_value, dest_mode_of_mode,
+            iscldy_subarea == IsCldySubarea::cloudy, smallest_dryvol_value, dest_mode_of_mode,
             mean_std_dev, fmode_dist_tail_fac, v2n_lo_rlx, v2n_hi_rlx,
             ln_diameter_tail_fac, num_pairs, diameter_cutoff, ln_dia_cutoff,
             diameter_threshold, mass_2_vol, dgnum_amode, qnum_cur, qmol_i_cur,
@@ -1353,7 +1361,7 @@ void mam_amicphys_1subarea_cloudy(
 KOKKOS_INLINE_FUNCTION
 void mam_amicphys_1gridcell(
     const AmicPhysConfig& config, const int nstep, const Real deltat, const int nsubarea,
-    const int ncldy_subarea, const bool iscldy_subarea[maxsubarea()],
+    const int ncldy_subarea, const IsCldySubarea iscldy_subarea[maxsubarea()],
     const Real afracsub[maxsubarea()], const Real temp, const Real pmid,
     const Real pdel, const Real zmid, const Real pblh,
     const Real relhumsub[maxsubarea()], Real dgn_a[AeroConfig::num_modes()],
@@ -1413,7 +1421,7 @@ void mam_amicphys_1gridcell(
 
   for (int jsub = 0; jsub < nsubarea; ++jsub) {
     AmicPhysConfig sub_config = config;
-    if (iscldy_subarea[jsub]) {
+    if (iscldy_subarea[jsub] == IsCldySubarea::cloudy) {
       sub_config.do_cond = config.do_cond;
       sub_config.do_rename = config.do_rename;
       sub_config.do_newnuc = false;
@@ -1457,7 +1465,7 @@ void mam_amicphys_1gridcell(
     Real qnumcw3[num_modes] = {};
     Real qaercw4[num_aerosol_ids][num_modes] = {};
     Real qnumcw4[num_modes] = {};
-    if (iscldy_subarea[jsub]) {
+    if (iscldy_subarea[jsub] == IsCldySubarea::cloudy) {
       // only do cloud-borne for cloudy
       for (int n = 0; n < num_modes; ++n) {
         qnumcw3[n] = qqcwsub3[n][jsub] * fcvt_num();
@@ -1476,7 +1484,7 @@ void mam_amicphys_1gridcell(
     Real qaer_delaa[num_aerosol_ids][num_modes][nqtendaa()] = {};
     Real qaercw_delaa[num_aerosol_ids][num_modes][nqqcwtendaa()] = {};
 
-    if (iscldy_subarea[jsub]) {
+    if (iscldy_subarea[jsub] == IsCldySubarea::cloudy) {
       mam_amicphys_1subarea_cloudy(sub_config, nstep, deltat,
           jsub, nsubarea, iscldy_subarea[jsub], afracsub[jsub], temp, pmid,
           pdel, zmid, pblh, relhumsub[jsub], dgn_a, dgn_awet, wetdens, qgas1,
@@ -1513,7 +1521,7 @@ void mam_amicphys_1gridcell(
         }
         qaerwatsub4[n][jsub] = qwtr4[n] / fcvt_wtr();
 
-        if (iscldy_subarea[jsub]) {
+        if (iscldy_subarea[jsub] == IsCldySubarea::cloudy) {
           qqcwsub4[n][jsub] = qnumcw4[n] / fcvt_num();
           for (int i = 0; i < nqqcwtendaa(); ++i)
             qqcwsub_tendaa[n][i][jsub] =
@@ -1633,7 +1641,7 @@ void modal_aero_amicphys_intr(
 
   // Set up cloudy/clear subareas inside a grid cell
   int nsubarea, ncldy_subarea, jclea, jcldy;
-  bool iscldy_subarea[maxsubarea()];
+  IsCldySubarea iscldy_subarea[maxsubarea()];
   Real afracsub[maxsubarea()];
   Real relhumsub[maxsubarea()];
   Real qsub1[gas_pcnst()][maxsubarea()];
@@ -1730,7 +1738,7 @@ void modal_aero_amicphys_intr(
       for (int j = 0; j < nqqcwtendaa(); ++j)
         qqcwgcm_tendaa[i][j] = 0.0;
     for (int n = 0; n < nsubarea; ++n) {
-      if (iscldy_subarea[n]) {
+      if (iscldy_subarea[n] == IsCldySubarea::cloudy) {
         for (int i = 0; i < gas_pcnst(); ++i)
           qqcwgcm4[i] += qqcwsub4[i][n] * afracsub[n];
         for (int i = 0; i < gas_pcnst(); ++i)
