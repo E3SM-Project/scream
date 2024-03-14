@@ -58,14 +58,29 @@ protected:
   std::string m_diag_name;
 
   // Store if we only need to compute dz to save computation/memory requirements.
-  bool m_only_compute_dz;
+  // bool m_only_compute_dz;
+  enum class OnlyComputeDz {
+    yes,
+    no
+  };
+  OnlyComputeDz m_only_compute_dz;
 
   // Store if the diagnostic output field exists on interface values
-  bool m_is_interface_layout;
+  // bool m_is_interface_layout;
+  enum class IsInterfaceLayout {
+    yes,
+    no
+  };
+  IsInterfaceLayout m_is_interface_layout;
 
   // If z_int or z_mid is computed, determine whether the BC
   // is from sea level or not (from topography data).
-  bool m_from_sea_level;
+  // bool m_from_sea_level;
+  enum class FromSeaLevel {
+    yes,
+    no
+  };
+  FromSeaLevel m_from_sea_level;
 
 }; // class VerticalLayerDiagnostic
 

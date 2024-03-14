@@ -14,13 +14,15 @@ VerticalLayerDiagnostic (const ekat::Comm& comm, const ekat::ParameterList& para
                    m_diag_name == "dz",
                    "Error! VerticalLayerDiagnostic has been given an unknown name: "+m_diag_name+".\n");
 
-  m_only_compute_dz = (m_diag_name == "dz");
-  m_is_interface_layout = m_diag_name.find("_int") != std::string::npos;
+  m_only_compute_dz = (m_diag_name == "dz") ? OnlyComputeDz::yes : OnlyComputeDz::no;
+  m_is_interface_layout = m_diag_name.find("_int") != std::string::npos ?
+                          IsInterfaceLayout::yes : IsInterfaceLayout::no;
 
   // Whether or not diagnostic is computed from sea level depends on the name.
   // "z_" -> from sea level, "geopotential_" -> from topography data.
   // This boolean is irrelevant for vertical layer thickness (dz).
-  m_from_sea_level = m_diag_name.find("z_") != std::string::npos;
+  m_from_sea_level = m_diag_name.find("z_") != std::string::npos ?
+                     FromSeaLevel::yes : FromSeaLevel::no;
 }
 // ========================================================================================
 void VerticalLayerDiagnostic::
@@ -51,12 +53,12 @@ set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   add_field<Required>("qv",             scalar3d_layout_mid, Q,     grid_name, ps);
 
   // Only need phis if computing geopotential_*
-  if (not m_only_compute_dz and not m_from_sea_level) {
+  if (m_only_compute_dz == OnlyComputeDz::no and m_from_sea_level == FromSeaLevel::no) {
     add_field<Required>("phis", scalar2d_layout, m2/s2, grid_name);
   }
 
   // Construct and allocate the diagnostic field based on the diagnostic name.
-  const auto diag_layout = m_is_interface_layout ? scalar3d_layout_int : scalar3d_layout_mid;
+  const auto diag_layout = m_is_interface_layout == IsInterfaceLayout::yes ? scalar3d_layout_int : scalar3d_layout_mid;
   FieldIdentifier fid (name(), diag_layout, m, grid_name);
   m_diagnostic_output = Field(fid);
   auto& C_ap = m_diagnostic_output.get_header().get_alloc_properties();
@@ -64,8 +66,8 @@ set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   m_diagnostic_output.allocate_view();
 
   // Initialize temporary views based on need.
-  if (not m_only_compute_dz) {
-    if (m_is_interface_layout) {
+  if (m_only_compute_dz == OnlyComputeDz::no) {
+    if (m_is_interface_layout == IsInterfaceLayout::yes) {
       const auto npacks = ekat::npack<Pack>(m_num_levs);
       m_tmp_midpoint_view = view_2d("tmp_mid",m_num_cols,npacks);
     } else {
@@ -86,21 +88,21 @@ void VerticalLayerDiagnostic::compute_diagnostic_impl()
   const auto& pseudo_density_mid = get_field_in("pseudo_density").get_view<const Pack**>();
 
   view_1d_const phis;
-  if (not m_only_compute_dz and not m_from_sea_level) {
+  if (m_only_compute_dz == OnlyComputeDz::no and m_from_sea_level == FromSeaLevel::no) {
     phis = get_field_in("phis").get_view<const Real*>();
   }
 
-  const bool only_compute_dz     = m_only_compute_dz;
-  const bool is_interface_layout = m_is_interface_layout;
-  const bool from_sea_level      = m_from_sea_level;
-  const int  num_levs            = m_num_levs;
+  const OnlyComputeDz     only_compute_dz     = m_only_compute_dz;
+  const IsInterfaceLayout is_interface_layout = m_is_interface_layout;
+  const FromSeaLevel      from_sea_level      = m_from_sea_level;
+  const int               num_levs            = m_num_levs;
 
   // Alias correct view for diagnostic output and for tmp class views
   view_2d interface_view;
   view_2d midpoint_view;
-  if (only_compute_dz) {
+  if (only_compute_dz == OnlyComputeDz::yes) {
     midpoint_view  = m_diagnostic_output.get_view<Pack**>();
-  } else if (is_interface_layout) {
+  } else if (is_interface_layout == IsInterfaceLayout::yes) {
     interface_view = m_diagnostic_output.get_view<Pack**>();
     midpoint_view  = m_tmp_midpoint_view;
   } else {
@@ -121,13 +123,13 @@ void VerticalLayerDiagnostic::compute_diagnostic_impl()
     });
     team.team_barrier();
 
-    if (not only_compute_dz) {
+    if (only_compute_dz == OnlyComputeDz::no) {
       // Calculate z_int if this diagnostic is not dz
       const auto& z_int_s = ekat::subview(interface_view, icol);
-      const Real surf_geopotential = from_sea_level ? 0.0 : phis(icol);
+      const Real surf_geopotential = from_sea_level == FromSeaLevel::yes ? 0.0 : phis(icol);
       PF::calculate_z_int(team,num_levs,dz_s,surf_geopotential,z_int_s);
 
-      if (not is_interface_layout) {
+      if (is_interface_layout == IsInterfaceLayout::no) {
         // Calculate z_mid if this diagnostic is not dz or an interface value
         const auto& z_mid_s = ekat::subview(midpoint_view, icol);
         PF::calculate_z_mid(team,num_levs,z_int_s,z_mid_s);
