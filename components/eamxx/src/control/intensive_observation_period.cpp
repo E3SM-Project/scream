@@ -238,7 +238,7 @@ initialize_iop_file(const util::TimeStamp& run_t0,
   setup_iop_field({"Q2"},       fl_vector);
   setup_iop_field({"omega"},    fl_vector, "Ptend");
 
-  // Require Ps, T, q, divT, divq are all defined in the iop file
+  // Require certain fields are defined in the iop file
   EKAT_REQUIRE_MSG(has_iop_field("Ps"),
                    "Error! IOP file required to contain variable \"Ps\".\n");
   EKAT_REQUIRE_MSG(has_iop_field("T"),
@@ -249,6 +249,21 @@ initialize_iop_file(const util::TimeStamp& run_t0,
                    "Error! IOP file required to contain variable \"divT\".\n");
   EKAT_REQUIRE_MSG(has_iop_field("divq"),
                    "Error! IOP file required to contain variable \"divq\".\n");
+  if (m_params.get<bool>("iop_nudge_uv")) {
+    EKAT_REQUIRE_MSG(has_iop_field("u") or has_iop_field("u_ls"),
+                    "Error! If parameter iop_nudge_uv=true, IOP file required "
+                    "to contain variable \"u\" or \"u_ls\".\n");
+    EKAT_REQUIRE_MSG(has_iop_field("v") or has_iop_field("v_ls"),
+                    "Error! If parameter iop_nudge_uv=true, IOP file required "
+                    "to contain variable \"v\" or \"v_ls\".\n");
+  }
+
+  // Enfore large scale winds in IOP file is all-or-nothing
+  const bool both_ls = (has_iop_field("u_ls") and has_iop_field("v_ls"));
+  const bool neither_ls = (not (has_iop_field("u_ls") or has_iop_field("v_ls")));
+  EKAT_REQUIRE_MSG(both_ls or neither_ls,
+    "Error! Either u_ls and v_ls both defined in IOP file, or neither.\n");
+  m_params.set<bool>("use_large_scale_wind", both_ls);
 
   // If we have the vertical component of T/Q forcing, define 3d forcing as a computed field.
   if (has_iop_field("vertdivT")) {
@@ -269,11 +284,11 @@ initialize_iop_file(const util::TimeStamp& run_t0,
   }
 
   // Enforce that 3D forcing is all-or-nothing.
-  const bool both = (has_iop_field("divT3d") and has_iop_field("divq3d"));
-  const bool neither = (not (has_iop_field("divT3d") or has_iop_field("divq3d")));
-  EKAT_REQUIRE_MSG(both or neither,
+  const bool both_3d_forcing = (has_iop_field("divT3d") and has_iop_field("divq3d"));
+  const bool neither_3d_forcing = (not (has_iop_field("divT3d") or has_iop_field("divq3d")));
+  EKAT_REQUIRE_MSG(both_3d_forcing or neither_3d_forcing,
     "Error! Either T and q both have 3d forcing, or neither have 3d forcing.\n");
-  m_params.set<bool>("use_3d_forcing", both);
+  m_params.set<bool>("use_3d_forcing", both_3d_forcing);
 
   // Initialize time information
   int bdate;
@@ -307,11 +322,17 @@ initialize_iop_file(const util::TimeStamp& run_t0,
   Real iop_file_lat, iop_file_lon;
   read_variable_from_file(iop_file, "lat", "real", {"lat"}, -1, &iop_file_lat);
   read_variable_from_file(iop_file, "lon", "real", {"lon"}, -1, &iop_file_lon);
-  EKAT_REQUIRE_MSG(iop_file_lat == m_params.get<Real>("target_latitude"),
-                  "Error! IOP file variable \"lat\" does not match target_latitude from IOP parameters.\n");
-  EKAT_REQUIRE_MSG(std::fmod(iop_file_lon + 360, 360) == m_params.get<Real>("target_longitude"),
-                  "Error! IOP file variable \"lat\" does not match target_latitude from IOP parameters.\n");
+  iop_file_lat = round(iop_file_lat*1000)/1000;
+  iop_file_lon = round(iop_file_lon*1000)/1000;
 
+  EKAT_REQUIRE_MSG(iop_file_lat == m_params.get<Real>("target_latitude"),
+                  "Error! IOP file variable \"lat\" ("+std::to_string(iop_file_lat)+
+                  ") does not match target_latitude from IOP parameters ("+
+                  std::to_string(m_params.get<Real>("target_latitude"))+").\n");
+  EKAT_REQUIRE_MSG(std::fmod(iop_file_lon + 360.0, 360.0) == m_params.get<Real>("target_longitude"),
+                  "Error! IOP file variable \"lon\" ("+std::to_string(std::fmod(iop_file_lon + 360.0, 360.0))+
+                  ") does not match target_longitude from IOP parameters ("+
+                  std::to_string(m_params.get<Real>("target_longitude"))+").\n");
   // Store iop file pressure as helper field with dimension lev+1.
   // Load the first lev entries from iop file, the lev+1 entry will
   // be set when reading iop data.
@@ -625,6 +646,9 @@ read_iop_file_data (const util::TimeStamp& current_ts)
     Kokkos::Max<int>(iop_file_start),
     Kokkos::Min<int>(iop_file_end));
 
+    if(iop_file_start < 0) iop_file_start = 0;
+    if (iop_file_end > adjusted_file_levs) iop_file_end = adjusted_file_levs;
+
     // Find model pressure levels just inside range of file pressure levels
     Kokkos::parallel_reduce(model_nlevs, KOKKOS_LAMBDA (const int& ilev, int& lmin, int& lmax) {
       if (model_pres_v(ilev) >= iop_file_pres_v(iop_file_start) && ilev < lmin) {
@@ -636,6 +660,9 @@ read_iop_file_data (const util::TimeStamp& current_ts)
     },
     Kokkos::Min<int>(model_start),
     Kokkos::Max<int>(model_end));
+
+    if (model_start < 0) model_start = 0;
+    if (model_end > model_nlevs) model_end = model_nlevs;
   }
 
   // Loop through fields and store data from file
@@ -725,18 +752,24 @@ read_iop_file_data (const util::TimeStamp& current_ts)
       // the interpolated region with the value at model_start/model_end
       if (fname == "T"    || fname == "q" || fname == "u" ||
           fname == "u_ls" || fname == "v" || fname == "v_ls") {
-        if (model_start > 0) {
-          Kokkos::parallel_for(Kokkos::RangePolicy<>(0, model_start),
-                               KOKKOS_LAMBDA (const int ilev) {
-            iop_field_v(ilev) = iop_field_v(model_start);
-          });
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, model_start+1),
+                              KOKKOS_LAMBDA (const int ilev) {
+          iop_field_v(ilev) = iop_file_v(0);
+        });
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(model_end-1, total_nlevs),
+                              KOKKOS_LAMBDA (const int ilev) {
+          iop_field_v(ilev) = iop_file_v(adjusted_file_levs-1);
+        });
+      }
+
+      if (fname=="T") {
+        if (m_comm.am_i_root()) {
+          for (int k=0; k<total_nlevs; ++k) {
+            std::cout << k+1 << "    " << iop_field_v(k) << std::endl;
+          }
         }
-        if (model_end < total_nlevs) {
-          Kokkos::parallel_for(Kokkos::RangePolicy<>(model_end, total_nlevs),
-                               KOKKOS_LAMBDA (const int ilev) {
-            iop_field_v(ilev) = iop_field_v(model_end-1);
-          });
-        }
+        m_comm.barrier();
+        assert(false);
       }
     }
   }

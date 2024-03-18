@@ -22,6 +22,8 @@
 #include "ekat/ekat_workspace.hpp"
 #include "ekat/kokkos/ekat_kokkos_types.hpp"
 
+#include <iomanip>
+
 namespace scream {
 
 // Compute effects of large scale subsidence on T, q, u, and v.
@@ -288,61 +290,67 @@ apply_iop_forcing(const Real dt)
     temperature("temperature", nelem, NGP, NGP, NLEV),
     exner("exner", nelem, NGP, NGP, NLEV);
 
-  // Preprocess some homme states to get temperature and exner
-  Kokkos::parallel_for("compute_t_and_exner", policy_homme, KOKKOS_LAMBDA (const KT::MemberType& team) {
-    KV kv(team);
-    const int ie  =  team.league_rank();
+  // Lambda for computing exner and temperature from Homme element ops/eos
+  // to reduce code duplication later
+  auto compute_exner_and_temperature = [&]() {
+    Kokkos::parallel_for("compute_t_and_exner", policy_homme, KOKKOS_LAMBDA (const KT::MemberType& team) {
+      KV kv(team);
+      const int ie  =  team.league_rank();
 
-    // Get temp views from workspace
-    auto ws = homme_wsm.get_workspace(team);
-    auto pnh_slot   = ws.take_macro_block("pnh"  , NGP*NGP);
-    auto rstar_slot = ws.take_macro_block("rstar", NGP*NGP);
-    uview_2d<Pack>
-      pnh  (reinterpret_cast<Pack*>(pnh_slot.data()),   NGP*NGP, NLEV),
-      rstar(reinterpret_cast<Pack*>(rstar_slot.data()), NGP*NGP, NLEV);
+      // Get temp views from workspace
+      auto ws = homme_wsm.get_workspace(team);
+      auto pnh_slot   = ws.take_macro_block("pnh"  , NGP*NGP);
+      auto rstar_slot = ws.take_macro_block("rstar", NGP*NGP);
+      uview_2d<Pack>
+        pnh  (reinterpret_cast<Pack*>(pnh_slot.data()),   NGP*NGP, NLEV),
+        rstar(reinterpret_cast<Pack*>(rstar_slot.data()), NGP*NGP, NLEV);
 
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, NGP*NGP), [&] (const int idx) {
-      const int igp = idx/NGP;
-      const int jgp = idx%NGP;
+      Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, NGP*NGP), [&] (const int idx) {
+        const int igp = idx/NGP;
+        const int jgp = idx%NGP;
 
-      auto dp3d_i      = ekat::subview(dp3d_dyn, ie, igp, jgp);
-      auto vtheta_dp_i = ekat::subview(vtheta_dp_dyn, ie, igp, jgp);
-      auto phi_int_i   = ekat::subview(phi_int_dyn, ie, igp, jgp);
-      auto qv_i        = ekat::subview(Q_dyn, ie, 0, igp, jgp);
-      auto pnh_i         = ekat::subview(pnh, idx);
-      auto rstar_i       = ekat::subview(rstar, idx);
-      auto exner_i       = ekat::subview(exner, ie, igp, jgp);
-      auto temperature_i = ekat::subview(temperature, ie, igp, jgp);
+        auto dp3d_i      = ekat::subview(dp3d_dyn, ie, igp, jgp);
+        auto vtheta_dp_i = ekat::subview(vtheta_dp_dyn, ie, igp, jgp);
+        auto phi_int_i   = ekat::subview(phi_int_dyn, ie, igp, jgp);
+        auto qv_i        = ekat::subview(Q_dyn, ie, 0, igp, jgp);
+        auto pnh_i         = ekat::subview(pnh, idx);
+        auto rstar_i       = ekat::subview(rstar, idx);
+        auto exner_i       = ekat::subview(exner, ie, igp, jgp);
+        auto temperature_i = ekat::subview(temperature, ie, igp, jgp);
 
-      // Reinterperate into views of Homme::Scalar for calling Hommexx function.
-      Homme::ExecViewUnmanaged<Homme::Scalar[NLEV]> dp3d_scalar(reinterpret_cast<Homme::Scalar*>(dp3d_i.data()), NLEV);
-      Homme::ExecViewUnmanaged<Homme::Scalar[NLEV]> vtheta_dp_scalar(reinterpret_cast<Homme::Scalar*>(vtheta_dp_i.data()), NLEV);
-      Homme::ExecViewUnmanaged<Homme::Scalar[NLEVI]> phi_int_scalar(reinterpret_cast<Homme::Scalar*>(phi_int_i.data()), NLEVI);
-      Homme::ExecViewUnmanaged<Homme::Scalar[NLEV]> qv_scalar(reinterpret_cast<Homme::Scalar*>(qv_i.data()), NLEV);
-      Homme::ExecViewUnmanaged<Homme::Scalar[NLEV]> pnh_scalar(reinterpret_cast<Homme::Scalar*>(pnh_i.data()), NLEV);
-      Homme::ExecViewUnmanaged<Homme::Scalar[NLEV]> exner_scalar(reinterpret_cast<Homme::Scalar*>(exner_i.data()), NLEV);
-      Homme::ExecViewUnmanaged<Homme::Scalar[NLEV]> rstar_scalar(reinterpret_cast<Homme::Scalar*>(rstar_i.data()), NLEV);
-      Homme::ExecViewUnmanaged<Homme::Scalar[NLEV]> temperature_scalar(reinterpret_cast<Homme::Scalar*>(temperature_i.data()), NLEV);
+        // Reinterperate into views of Homme::Scalar for calling Hommexx function.
+        Homme::ExecViewUnmanaged<Homme::Scalar[NLEV]> dp3d_scalar(reinterpret_cast<Homme::Scalar*>(dp3d_i.data()), NLEV);
+        Homme::ExecViewUnmanaged<Homme::Scalar[NLEV]> vtheta_dp_scalar(reinterpret_cast<Homme::Scalar*>(vtheta_dp_i.data()), NLEV);
+        Homme::ExecViewUnmanaged<Homme::Scalar[NLEVI]> phi_int_scalar(reinterpret_cast<Homme::Scalar*>(phi_int_i.data()), NLEVI);
+        Homme::ExecViewUnmanaged<Homme::Scalar[NLEV]> qv_scalar(reinterpret_cast<Homme::Scalar*>(qv_i.data()), NLEV);
+        Homme::ExecViewUnmanaged<Homme::Scalar[NLEV]> pnh_scalar(reinterpret_cast<Homme::Scalar*>(pnh_i.data()), NLEV);
+        Homme::ExecViewUnmanaged<Homme::Scalar[NLEV]> exner_scalar(reinterpret_cast<Homme::Scalar*>(exner_i.data()), NLEV);
+        Homme::ExecViewUnmanaged<Homme::Scalar[NLEV]> rstar_scalar(reinterpret_cast<Homme::Scalar*>(rstar_i.data()), NLEV);
+        Homme::ExecViewUnmanaged<Homme::Scalar[NLEV]> temperature_scalar(reinterpret_cast<Homme::Scalar*>(temperature_i.data()), NLEV);
 
-      // Compute exner from EOS
-      if (params.theta_hydrostatic_mode) {
-        auto hydro_p_int = ws.take("hydro_p_int");
-        Homme::ExecViewUnmanaged<Homme::Scalar[NLEVI]> hydro_p_int_scalar(reinterpret_cast<Homme::Scalar*>(hydro_p_int.data()), NLEVI);
-        elem_ops.compute_hydrostatic_p(kv, dp3d_scalar, hydro_p_int_scalar, pnh_scalar);
-        eos.compute_exner(kv, pnh_scalar, exner_scalar);
-        ws.release(hydro_p_int);
-      } else {
-        eos.compute_pnh_and_exner(kv, vtheta_dp_scalar, phi_int_scalar, pnh_scalar, exner_scalar);
-      }
+        // Compute exner from EOS
+        if (params.theta_hydrostatic_mode) {
+          auto hydro_p_int = ws.take("hydro_p_int");
+          Homme::ExecViewUnmanaged<Homme::Scalar[NLEVI]> hydro_p_int_scalar(reinterpret_cast<Homme::Scalar*>(hydro_p_int.data()), NLEVI);
+          elem_ops.compute_hydrostatic_p(kv, dp3d_scalar, hydro_p_int_scalar, pnh_scalar);
+          eos.compute_exner(kv, pnh_scalar, exner_scalar);
+          ws.release(hydro_p_int);
+        } else {
+          eos.compute_pnh_and_exner(kv, vtheta_dp_scalar, phi_int_scalar, pnh_scalar, exner_scalar);
+        }
 
-      // Get the temperature from dynamics states
-      elem_ops.get_temperature(kv, eos, use_moisture, dp3d_scalar, exner_scalar, vtheta_dp_scalar, qv_scalar, rstar_scalar, temperature_scalar);
+        // Get the temperature from dynamics states
+        elem_ops.get_temperature(kv, eos, use_moisture, dp3d_scalar, exner_scalar, vtheta_dp_scalar, qv_scalar, rstar_scalar, temperature_scalar);
+      });
+
+      // Release WS views
+      ws.release_macro_block(rstar_slot, NGP*NGP);
+      ws.release_macro_block(pnh_slot, NGP*NGP);
     });
+  };
 
-    // Release WS views
-    ws.release_macro_block(rstar_slot, NGP*NGP);
-    ws.release_macro_block(pnh_slot, NGP*NGP);
-  });
+  // Preprocess some homme states to get temperature and exner
+  compute_exner_and_temperature();
   Kokkos::fence();
 
   // Apply IOP forcing
@@ -439,6 +447,144 @@ apply_iop_forcing(const Real dt)
     // Release WS views
     ws.release_macro_block(rstar_slot, NGP*NGP);
   });
+
+  // for (int k=0; k<total_levels+1; ++k) {
+  //   Kokkos::parallel_for("",nelem*NGP*NGP,KOKKOS_LAMBDA(const int idx) {
+  //     const int ie  =  idx/(NGP*NGP);
+  //     const int igp = (idx/NGP)%NGP;
+  //     const int jgp =  idx%NGP;
+
+  //     phi_int_dyn(ie, igp, jgp, k/Pack::n)[k%Pack::n] = 0.1*(igp+1)+0.01*(jgp+1)+ (1 - 0.001*(k+1));
+  //     if(k<total_levels) {
+  //       dp3d_dyn(ie, igp, jgp, k/Pack::n)[k%Pack::n] = 0.1*(igp+1)+0.01*(jgp+1)+0.001*(k+1);
+  //       vtheta_dp_dyn(ie, igp, jgp, k/Pack::n)[k%Pack::n] = 0.1*(igp+1)+0.01*(jgp+1)+0.001*(k+1);
+  //       Q_dyn(ie, 0, igp, jgp, k/Pack::n)[k%Pack::n] = 0.1*(igp+1)+0.01*(jgp+1)+0.001*(k+1);
+  //       v_dyn(ie, 0, igp, jgp, k/Pack::n)[k%Pack::n] = 0.1*(igp+1)+0.01*(jgp+1)+0.001*(k+1);
+  //       v_dyn(ie, 1, igp, jgp, k/Pack::n)[k%Pack::n] = 0.1*(igp+1)+0.01*(jgp+1)+0.001*(k+1);
+  //     }
+  //   });
+  // }
+
+  // const auto iop_nudge_tq = m_iop->get_params().get<bool>("iop_nudge_tq");
+  // const auto iop_nudge_uv = m_iop->get_params().get<bool>("iop_nudge_uv");
+  // if (iop_nudge_tq or iop_nudge_uv) {
+  //   // Grab IOP params/fields
+  //   const auto iop_nudge_tscale = m_iop->get_params().get<Real>("iop_nudge_tscale");
+  //   const auto use_large_scale_wind = m_iop->get_params().get<bool>("use_large_scale_wind");
+
+  //   view_1d<const Real> q_iop, t_iop, u_iop, v_iop;
+  //   if (iop_nudge_tq) {
+  //     q_iop = m_iop->get_iop_field("q").get_view<const Real*>();
+  //     t_iop = m_iop->get_iop_field("T").get_view<const Real*>();
+  //   }
+  //   if (iop_nudge_tq) {
+  //     u_iop = use_large_scale_wind ?
+  //             m_iop->get_iop_field("u_ls").get_view<const Real*>() :
+  //             m_iop->get_iop_field("u").get_view<const Real*>();
+  //     v_iop = use_large_scale_wind ?
+  //             m_iop->get_iop_field("v_ls").get_view<const Real*>() :
+  //             m_iop->get_iop_field("v").get_view<const Real*>();
+  //   }
+
+  //   if (iop_nudge_tq) {
+  //     // Compute temperature
+  //     compute_exner_and_temperature();
+  //     Kokkos::fence();
+  //   }
+
+  //   // Compute domain mean of u and v
+  //   view_1d<Real> q_mean, t_mean, u_mean, v_mean;
+  //   if (iop_nudge_tq) {
+  //     q_mean = view_1d<Real>("u_mean", total_levels),
+  //     t_mean = view_1d<Real>("v_mean", total_levels);
+  //   }
+  //   if (iop_nudge_uv){
+  //     u_mean = view_1d<Real>("u_mean", total_levels),
+  //     v_mean = view_1d<Real>("v_mean", total_levels);
+  //   }
+
+  //   for (int k=0; k<total_levels; ++k) {
+  //     if (iop_nudge_tq){
+  //       Real& q_mean_k = q_mean(k);
+  //       Real& t_mean_k = t_mean(k);
+  //       Kokkos::parallel_reduce("compute_domain_means_tq",
+  //                               nelem*NGP*NGP,
+  //                               KOKKOS_LAMBDA (const int idx, Real& q_sum, Real& t_sum) {
+  //         const int ie  =  idx/(NGP*NGP);
+  //         const int igp = (idx/NGP)%NGP;
+  //         const int jgp =  idx%NGP;
+
+  //         q_sum += Q_dyn(ie, 0, igp, jgp, k/Pack::n)[k%Pack::n];
+  //         t_sum += temperature(ie, igp, jgp, k/Pack::n)[k%Pack::n];
+  //       },
+  //       q_mean_k,
+  //       t_mean_k);
+
+  //       m_comm.all_reduce(&q_mean_k, 1, MPI_SUM);
+  //       m_comm.all_reduce(&t_mean_k, 1, MPI_SUM);
+
+  //       q_mean_k /= m_dyn_grid->get_num_global_dofs();
+  //       t_mean_k /= m_dyn_grid->get_num_global_dofs();
+  //     }
+  //     if (iop_nudge_uv){
+  //       Real& u_mean_k = u_mean(k);
+  //       Real& v_mean_k = v_mean(k);
+  //       Kokkos::parallel_reduce("compute_domain_means_uv",
+  //                               nelem*NGP*NGP,
+  //                               KOKKOS_LAMBDA (const int idx, Real& u_sum, Real& v_sum) {
+  //         const int ie  =  idx/(NGP*NGP);
+  //         const int igp = (idx/NGP)%NGP;
+  //         const int jgp =  idx%NGP;
+
+  //         u_sum += v_dyn(ie, 0, igp, jgp, k/Pack::n)[k%Pack::n];
+  //         v_sum += v_dyn(ie, 1, igp, jgp, k/Pack::n)[k%Pack::n];
+  //       },
+  //       u_mean_k,
+  //       v_mean_k);
+
+  //       m_comm.all_reduce(&u_mean_k, 1, MPI_SUM);
+  //       m_comm.all_reduce(&v_mean_k, 1, MPI_SUM);
+
+  //       u_mean_k /= m_dyn_grid->get_num_global_dofs();
+  //       v_mean_k /= m_dyn_grid->get_num_global_dofs();
+  //     }
+  //   }
+
+    // Apply u and v relaxation
+  //   const auto rtau = std::max(dt, iop_nudge_tscale);
+  //   Kokkos::parallel_for("apply_domain_relaxation",
+  //                        policy_eamxx,
+  //                        KOKKOS_LAMBDA (const KT::MemberType& team) {
+  //     const int ie  =  team.league_rank()/(NGP*NGP);
+  //     const int igp = (team.league_rank()/NGP)%NGP;
+  //     const int jgp =  team.league_rank()%NGP;
+
+  //     auto u_i = ekat::subview(v_dyn, ie, 0, igp, jgp);
+  //     auto v_i = ekat::subview(v_dyn, ie, 1, igp, jgp);
+
+  //     Kokkos::parallel_for(Kokkos::TeamVectorRange(team, total_levels), [&](const int& k) {
+  //       if (iop_nudge_uv){
+  //         const auto relax_u = -(u_mean(k) - u_iop(k))/rtau;
+  //         const auto relax_v = -(v_mean(k) - v_iop(k))/rtau;
+  //         u_i(k/Pack::n)[k%Pack::n] += relax_u*dt;
+  //         v_i(k/Pack::n)[k%Pack::n] += relax_v*dt;
+  //       }
+  //     });
+  //   });
+
+  //   if (m_comm.am_i_root()) {
+  //     auto u_i = ekat::subview(v_dyn, 0, 0, 2, 2);
+  //     auto v_i = ekat::subview(v_dyn, 0, 1, 2, 2);
+  //     for (int k=0; k<total_levels; ++k) {
+  //       std::cout << std::setprecision(15) << k << "    " << u_i(k/Pack::n)[k%Pack::n] << "     " << v_i(k/Pack::n)[k%Pack::n] << std::endl;
+  //     }
+  //   }
+
+  // }
+
+  // m_comm.barrier();
+
+  // assert(false);
 }
 
 } // namespace scream
