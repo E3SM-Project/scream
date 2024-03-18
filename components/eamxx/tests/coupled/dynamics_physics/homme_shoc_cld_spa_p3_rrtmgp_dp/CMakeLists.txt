@@ -19,7 +19,7 @@ CreateUnitTest(homme_shoc_cld_spa_p3_rrtmgp_dp "homme_shoc_cld_spa_p3_rrtmgp_dp.
 # Set AD configurable options
 set (ATM_TIME_STEP 100)
 SetVarDependingOnTestSize(NUM_STEPS 2 4 48)  # 1h 2h 24h
-set (RUN_T0 1999-07-10-00000)
+set (RUN_T0 2000-07-24-61100) #1999-07-10-00000)
 
 # Determine num subcycles needed to keep shoc dt<=300s
 set (SHOC_MAX_DT 300)
