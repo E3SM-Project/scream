@@ -307,10 +307,15 @@ initialize_iop_file(const util::TimeStamp& run_t0,
   Real iop_file_lat, iop_file_lon;
   read_variable_from_file(iop_file, "lat", "real", {"lat"}, -1, &iop_file_lat);
   read_variable_from_file(iop_file, "lon", "real", {"lon"}, -1, &iop_file_lon);
-  EKAT_REQUIRE_MSG(iop_file_lat == m_params.get<Real>("target_latitude"),
-                  "Error! IOP file variable \"lat\" does not match target_latitude from IOP parameters.\n");
-  EKAT_REQUIRE_MSG(std::fmod(iop_file_lon + 360, 360) == m_params.get<Real>("target_longitude"),
-                  "Error! IOP file variable \"lat\" does not match target_latitude from IOP parameters.\n");
+
+  const Real rel_lat_err = std::fabs(iop_file_lat - m_params.get<Real>("target_latitude"))/
+                             m_params.get<Real>("target_latitude");
+  const Real rel_lon_err = std::fabs(std::fmod(iop_file_lon + 360.0, 360.0)-m_params.get<Real>("target_longitude"))/
+                             m_params.get<Real>("target_longitude");
+  EKAT_REQUIRE_MSG(rel_lat_err < std::numeric_limits<float>::epsilon(),
+                   "Error! IOP file variable \"lat\" does not match target_latitude from IOP parameters.\n");
+  EKAT_REQUIRE_MSG(rel_lon_err < std::numeric_limits<float>::epsilon(),
+                   "Error! IOP file variable \"lon\" does not match target_longitude from IOP parameters.\n");
 
   // Store iop file pressure as helper field with dimension lev+1.
   // Load the first lev entries from iop file, the lev+1 entry will
@@ -737,7 +742,7 @@ read_iop_file_data (const util::TimeStamp& current_ts)
 			     KOKKOS_LAMBDA (const int ilev) {
 			       iop_field_v(ilev) = iop_file_v(0);
 			     });
-	Kokkos::parallel_for(Kokkos::RangePolicy<>(model_end-1, total_nlevs),
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(model_end-1, total_nlevs),
 			     KOKKOS_LAMBDA (const int ilev) {
 			       iop_field_v(ilev) = iop_file_v(adjusted_file_levs-1);
 			     });
