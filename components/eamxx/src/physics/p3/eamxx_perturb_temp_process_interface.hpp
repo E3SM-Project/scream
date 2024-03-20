@@ -10,8 +10,6 @@
 namespace scream {
 
 class PerturbTemp final : public scream::AtmosphereProcess {
-  using KT = ekat::KokkosTypes<DefaultDevice>;
-
   // number of horizontal columns and vertical levels
   int ncol_, nlev_;
 

@@ -1,0 +1,10 @@
+%YAML 1.1
+---
+filename_prefix: perturb_standalone_output
+Averaging Type: Instant
+Field Names:
+  - z_int
+output_control:
+  Frequency: 1
+  frequency_units: nsteps
+...
