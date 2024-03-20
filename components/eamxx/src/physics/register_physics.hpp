@@ -7,6 +7,7 @@
 
 #ifdef EAMXX_HAS_P3
 #include "physics/p3/eamxx_p3_process_interface.hpp"
+#include "physics/p3/eamxx_perturb_temp_process_interface.hpp"
 #endif
 #ifdef EAMXX_HAS_SHOC
 #include "physics/shoc/eamxx_shoc_process_interface.hpp"
@@ -43,6 +44,7 @@ inline void register_physics () {
   auto& proc_factory = AtmosphereProcessFactory::instance();
 #ifdef EAMXX_HAS_P3
   proc_factory.register_product("p3",&create_atmosphere_process<P3Microphysics>);
+  proc_factory.register_product("perturb_temperature",&create_atmosphere_process<PerturbTemp>);
 #endif
 #ifdef EAMXX_HAS_SHOC
   proc_factory.register_product("SHOC",&create_atmosphere_process<SHOCMacrophysics>);
