@@ -22,8 +22,6 @@
 #include "ekat/ekat_workspace.hpp"
 #include "ekat/kokkos/ekat_kokkos_types.hpp"
 
-#include <iomanip>
-
 namespace scream {
 
 // Compute effects of large scale subsidence on T, q, u, and v.
@@ -235,18 +233,6 @@ apply_iop_forcing(const Real dt)
     "Error! Dimension for vectorized Homme levels does not match level dimension "
     "of the packed views used here. Check that Pack typedef is using a pack size "
     "consistent with Homme's vector size.\n");
-
-  const auto T_iop = m_iop->get_iop_field("T").get_view<const Real*>();
-  if (m_comm.am_i_root()) {
-    for (int ilev=0; ilev<total_levels; ++ilev) {
-      std::cout << std::setprecision(15) 
-                << ilev << "    "
-		<< T_iop(ilev) 
-		<< std::endl; 
-    }
-  }
-  m_comm.barrier();
-  EKAT_ERROR_MSG("exit\n");
 
   // Hybrid coord values
   const auto ps0 = hvcoord.ps0;
