@@ -246,7 +246,6 @@ subroutine apply_iop_forcing(elem,hvcoord,hybrid,tl,n,t_before_advance,nets,nete
   use time_manager, only: get_nstep
   use shr_const_mod, only: SHR_CONST_PI
   use apply_iop_forcing_mod
-  use spmd_utils,   only : masterproc
 
   integer :: t1,t2,n,nets,nete,pp
   type (element_t)     , intent(inout), target :: elem(:)
@@ -271,14 +270,6 @@ subroutine apply_iop_forcing(elem,hvcoord,hybrid,tl,n,t_before_advance,nets,nete
   real (kind=real_kind), dimension(nlev) :: tdiff_dyn, qdiff_dyn
   real (kind=real_kind), dimension(npsq,nlev) :: tdiff_out, qdiff_out
   real (kind=real_kind) :: temperature(np,np,nlev)
-
-
-  if (masterproc) then
-    do k=1,nlev
-      print*, k-1, tobs(k)
-    enddo
-  endif
-  error stop ''
 
   if (t_before_advance) then
      t1=tl%nm1
