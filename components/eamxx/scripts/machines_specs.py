@@ -33,17 +33,17 @@ MACHINE_METADATA = {
                   "",
                   "/sems-data-store/ACME/baselines/scream/master-baselines"),
     "lassen" : (["module --force purge", "module load git gcc/8.3.1 cuda/11.8.0 cmake/3.16.8 spectrum-mpi python/3.7.2", "export LLNL_USE_OMPI_VARS='y'",
-                 "export PATH=/usr/gdata/climdat/netcdf/bin:$PATH",
-                 "export LD_LIBRARY_PATH=/usr/gdata/climdat/netcdf/lib:$LD_LIBRARY_PATH",
+                 "export PATH=/usr/gdata/e3sm/netcdf/bin:$PATH",
+                 "export LD_LIBRARY_PATH=/usr/gdata/e3sm/netcdf/lib:$LD_LIBRARY_PATH",
                 ],
                 ["mpicxx","mpifort","mpicc"],
                  "bsub -Ip -qpdebug",
                  ""),
-    "ruby-intel" : (["module --force purge", "module use --append /usr/gdata/climdat/install/quartz/modulefiles", "module load StdEnv cmake/3.19.2 mkl/2022.1.0 intel-classic/2021.6.0-magic mvapich2/2.3.7 hdf5/1.12.2 netcdf-c/4.9.0 netcdf-fortran/4.6.0 parallel-netcdf/1.12.3 python/3.9.12 screamML-venv/0.0.1"],
+    "ruby-intel" : (["module --force purge", "module use --append /usr/gdata/e3sm/install/quartz/modulefiles", "module load StdEnv cmake/3.19.2 mkl/2022.1.0 intel-classic/2021.6.0-magic mvapich2/2.3.7 hdf5/1.12.2 netcdf-c/4.9.0 netcdf-fortran/4.6.0 parallel-netcdf/1.12.3 python/3.9.12 screamML-venv/0.0.1"],
                  ["mpicxx","mpifort","mpicc"],
                   "salloc --partition=pdebug",
                   ""),
-    "quartz-intel" : (["module --force purge", "module use --append /usr/gdata/climdat/install/quartz/modulefiles", "module load StdEnv cmake/3.19.2 mkl/2022.1.0 intel-classic/2021.6.0-magic mvapich2/2.3.7 hdf5/1.12.2 netcdf-c/4.9.0 netcdf-fortran/4.6.0 parallel-netcdf/1.12.3 python/3.9.12 screamML-venv/0.0.1"],
+    "quartz-intel" : (["module --force purge", "module use --append /usr/gdata/e3sm/install/quartz/modulefiles", "module load StdEnv cmake/3.19.2 mkl/2022.1.0 intel-classic/2021.6.0-magic mvapich2/2.3.7 hdf5/1.12.2 netcdf-c/4.9.0 netcdf-fortran/4.6.0 parallel-netcdf/1.12.3 python/3.9.12 screamML-venv/0.0.1"],
                  ["mpicxx","mpifort","mpicc"],
                   "salloc --partition=pdebug",
                   ""),
@@ -61,11 +61,11 @@ MACHINE_METADATA = {
                 "/gpfs/alpine/cli115/proj-shared/scream/master-baselines"),
     "pm-cpu" : ([f"eval $({CIMEROOT}/CIME/Tools/get_case_env -c SMS.ne4pg2_ne4pg2.F2010-SCREAMv1.pm-cpu_gnu)"],
                 ["CC","ftn","cc"],
-                "srun --time 00:30:00 --nodes=1 --constraint=cpu -q regular --account e3sm_g",
+                "salloc --time 00:30:00 --nodes=1 --constraint=cpu -q debug --account e3sm_g",
                 "/global/cfs/cdirs/e3sm/baselines/gnu/scream/pm-cpu"),
-    "pm-gpu" : ([f"eval $({CIMEROOT}/CIME/Tools/get_case_env -c SMS.ne4pg2_ne4pg2.F2010-SCREAMv1.pm-gpu_gnugpu)"],
+    "pm-gpu" : ([f"eval $({CIMEROOT}/CIME/Tools/get_case_env -c SMS.ne4pg2_ne4pg2.F2010-SCREAMv1.pm-gpu_gnugpu)", "echo cuda=true"],
                 ["CC","ftn","cc"],
-                "srun --time 00:30:00 --nodes=1 --constraint=gpu --exclusive -q regular --account e3sm_g",
+                "salloc --time 02:00:00 --nodes=4 --constraint=gpu --gpus-per-node=4 --gpu-bind=none --exclusive -q regular --account e3sm_g",
                 "/global/cfs/cdirs/e3sm/baselines/gnugpu/scream/pm-gpu"),
     "compy"   : (["module purge", "module load cmake/3.19.6 gcc/8.1.0  mvapich2/2.3.1 python/3.7.3"],
                  ["mpicxx","mpifort","mpicc"],
@@ -199,9 +199,19 @@ def get_mach_testing_resources(machine):
     of jobs across cores.
     """
     if is_cuda_machine(machine):
-        return int(run_cmd_no_fail("nvidia-smi -L | wc -l"))
+        prefix = "srun " if is_salloc(machine) else ""
+        return int(run_cmd_no_fail(f"{prefix}nvidia-smi -L | wc -l"))
     else:
         return get_available_cpu_count()
+
+###############################################################################
+def is_salloc(machine):
+###############################################################################
+    """
+    Return true if we are running on an salloc'd job.
+    """
+    bcmd = get_mach_batch_command(machine)
+    return "salloc" in bcmd and "srun" not in bcmd
 
 ###############################################################################
 def is_cuda_machine(machine):
