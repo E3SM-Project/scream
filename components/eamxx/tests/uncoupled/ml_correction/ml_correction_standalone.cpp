@@ -80,7 +80,7 @@ TEST_CASE("ml_correction-stand-alone", "") {
           num_cols * num_levs, qv.data(), py::str{}),
       num_cols, num_levs, ML_model_tq, ML_model_uv);
 
-  // GPU Handoff test
+  // GPU Handoff test with modify
   const auto &qv_dev = qv_field.get_view<Real **, Device>();
   uintptr_t ptr = reinterpret_cast<uintptr_t>(qv_dev.data());
   std::string qv_dev_dtype = typeid(qv_dev(0, 0)).name();
@@ -89,6 +89,13 @@ TEST_CASE("ml_correction-stand-alone", "") {
       ptr,
       qv_dev_dtype,
       num_cols, num_levs, ML_model_tq, ML_model_uv);
+
+  // GPU handoff test xarray -- cupy -- tensorflow integration
+  // TODO: where to store model for load during CI?
+  py::object test_gpu_handoff_xarray = py_correction.attr("gpu_handoff_real_model")(
+      ptr,
+      qv_dev_dtype,
+      num_cols, num_levs, ML_model_tq_path);
   
   // // Testing function for checking pointer and pybind arrays are the same
   // py::object test_ptr_usage = py_correction.attr("test_ptr")(
@@ -100,13 +107,15 @@ TEST_CASE("ml_correction-stand-alone", "") {
   
   py::gil_scoped_release no_gil;
   ekat::enable_fpes(fpe_mask);
-  REQUIRE(qv(1, 10) == reference);   // This is the one that is modified
-  REQUIRE(qv(0, 10) != reference);
+  //Check CPU update
+  REQUIRE(qv(1, 10) != qv_ref(1, 10));   // This is the one that is modified
+  REQUIRE(qv(0, 10) == qv_ref(0, 10));
   
+  //Check GPU update
   const auto qv_dev_h = Kokkos::create_mirror_view(qv_dev);
   Kokkos::deep_copy(qv_dev_h, qv_dev);
-  REQUIRE(qv_dev_h(1, 0) == reference);   // This is the one that is modified
-  REQUIRE(qv_dev_h(0, 0) != reference);
+  REQUIRE(qv_dev_h(1, 0) != qv_ref(1, 0));   // This is the one that is modified
+  REQUIRE(qv_dev_h(0, 0) == qv_ref(0, 0));
   ad.finalize();
 }
 

@@ -5,8 +5,10 @@ import xarray as xr
 import cupy_xarray
 import fv3fit
 from scream_run.steppers.machine_learning import (
+    MachineLearningConfig,
     MultiModelAdapter,
     predict,
+    open_model
 )
 
 
@@ -18,7 +20,26 @@ def get_ML_model(model_path):
     return model
 
 
-def sample_ML_prediction(
+def sample_ML_prediction(nz, input_data: cp.ndarray, ML_model_tq: fv3fit.PureKerasModel):
+    """
+    This function is used to generate a sample ML prediction for the given input data.
+    We use a constant output predictor to generate the prediction.
+    """
+
+    inputs = {
+        "T_mid": (["ncol", "z"], input_data),
+        "qv": (["ncol", "z"], input_data),
+        "cos_zenith_angle": (["ncol"], cp.full((input_data.shape[0]), 0.5)),
+    }
+
+    input_data = xr.Dataset(inputs)
+    output = predict(ML_model_tq, input_data, dt=1.0)
+    # just check the output from one variable to see if it works
+    return output["dQ1"].data
+
+
+
+def sample_ML_prediction_dummy(
     nz: int, input_data: cp.ndarray, ML_model_tq: str, ML_model_uv: str
 ):
     """
@@ -73,26 +94,36 @@ def modify_view_gpu(ptr, dtype_char, Ncol, Nlev, model_tq, model_uv):
             cp.cuda.UnownedMemory(ptr, Ncol * Nlev * dtype.itemsize, None), 0
         )
     )
-    prediction = sample_ML_prediction(Nlev, data_from_ptr[1, :], model_tq, model_uv)
-    data_from_ptr[1, :] = prediction
+    prediction = sample_ML_prediction_dummy(Nlev, data_from_ptr, model_tq, model_uv)
+    data_from_ptr[1, :] = prediction[1, :]
 
 
 def modify_view(data, Ncol, Nlev, model_tq, model_uv):
     # data comes in as 1D Numpy array, a view constructed from C++ memory
     data_cp = cp.asarray(data)
-    data_np = cp.asnumpy(data_cp)
-    np.testing.assert_array_equal(data_np, data)
     data = data.reshape((-1, Nlev))
     data_cp_rshp = cp.reshape(data_cp, (-1, Nlev))
-    prediction = sample_ML_prediction(Nlev, data_cp_rshp[1, :], model_tq, model_uv)
-    data[1, :] = prediction.get()
+    prediction = sample_ML_prediction_dummy(Nlev, data_cp_rshp, model_tq, model_uv)
+    data[1, :] = prediction[1, :].get()
+
+
+def gpu_handoff_real_model(ptr, dtype_char, Ncol, Nlev, model_path):
+    dtype = cp.dtype(dtype_char)
+    data_from_ptr = cp.ndarray(
+        (Ncol, Nlev), 
+        dtype=dtype,
+        memptr=cp.cuda.MemoryPointer(
+            cp.cuda.UnownedMemory(ptr, Ncol * Nlev * dtype.itemsize, None), 0
+        )
+    )
+    model = get_ML_model(model_path)
+    sample_ML_prediction(Nlev, data_from_ptr, model)
 
 
 if __name__ == "__main__":
     Ncol = 2
-    Nlev = 72
-    model_tq = "NONE"
+    Nlev = 128
+    model_tq = get_ML_model("/pscratch/sd/a/andrep/no-tapering")
     model_uv = "NONE"
-    data = cp.random.rand(Ncol, Nlev)
-    modify_view(data, Ncol, Nlev, model_tq, model_uv)
-    print(data)
+    data = np.random.rand(Ncol, Nlev)
+    modify_view(data, Ncol, Nlev, model_tq, None)
