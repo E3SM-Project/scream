@@ -28,8 +28,8 @@ TEST_CASE("spa_read_data","spa")
   ekat::Comm comm(MPI_COMM_WORLD);
   scorpio::init_pio_subsystem(comm);
 
-  std::string spa_data_file  = SCREAM_DATA_DIR "/init/spa_data_for_testing.nc";
-  std::string spa_remap_file = SCREAM_DATA_DIR "/init/spa_data_for_testing.nc";
+  std::string spa_data_file  = SCREAM_DATA_DIR "/init/spa_data_for_testing_20240325.nc";
+  std::string spa_remap_file = SCREAM_DATA_DIR "/init/spa_data_for_testing_20240325.nc";
 
   scorpio::register_file(spa_data_file,scorpio::FileMode::Read);
 
