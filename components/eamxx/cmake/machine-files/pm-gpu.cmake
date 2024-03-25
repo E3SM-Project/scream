@@ -20,6 +20,7 @@ include (${EKAT_MACH_FILES_PATH}/mpi/srun.cmake)
 
 #option(Kokkos_ARCH_AMPERE80 "" ON)
 set(CMAKE_CXX_FLAGS "-DTHRUST_IGNORE_CUB_VERSION_CHECK" CACHE STRING "" FORCE)
+execute_process(COMMAND conda activate /global/common/software/m4492/fv3net-shared)
 
 #message(STATUS "pm-gpu CMAKE_CXX_COMPILER_ID=${CMAKE_CXX_COMPILER_ID} CMAKE_Fortran_COMPILER_VERSION=${CMAKE_Fortran_COMPILER_VERSION}")
 if ("${PROJECT_NAME}" STREQUAL "E3SM")
@@ -31,3 +32,5 @@ if ("${PROJECT_NAME}" STREQUAL "E3SM")
 else()
   set(CMAKE_Fortran_FLAGS "-fallow-argument-mismatch"  CACHE STRING "" FORCE) # only works with gnu v10 and above
 endif()
+
+option (SCREAM_ENABLE_ML_CORRECTION "Whether to enable ML correction parametrization" ON)
