@@ -55,7 +55,7 @@ public:
                              const Field& hybm);
 
   // Default destructor
-  ~IntensiveObservationPeriod() = default;
+  ~IntensiveObservationPeriod();
 
   // Read data from IOP file and store internally.
   void read_iop_file_data(const util::TimeStamp& current_ts);
@@ -188,6 +188,7 @@ private:
   void initialize_iop_file(const util::TimeStamp& run_t0,
                            int model_nlevs);
 
+  bool m_must_close_iop_file = false;
   ekat::Comm m_comm;
   ekat::ParameterList m_params;
 

@@ -273,7 +273,12 @@ initialize_iop_file(const util::TimeStamp& run_t0,
   model_pressure.get_header().get_alloc_properties().request_allocation(Pack::n);
   model_pressure.allocate_view();
   m_helper_fields.insert({"model_pressure", model_pressure});
+}
 
+IntensiveObservationPeriod::
+~IntensiveObservationPeriod ()
+{
+  const auto iop_file = m_params.get<std::string>("iop_file");
   scorpio::release_file(iop_file);
 }
 
