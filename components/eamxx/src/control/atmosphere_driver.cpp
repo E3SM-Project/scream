@@ -1657,6 +1657,9 @@ void AtmosphereDriver::finalize ( /* inputs? */ ) {
     m_atm_process_group = nullptr;
   }
 
+  // Destroy iop (if any)
+  m_iop = nullptr;
+
   // Destroy the buffer manager
   m_memory_buffer = nullptr;
 
@@ -1678,11 +1681,9 @@ void AtmosphereDriver::finalize ( /* inputs? */ ) {
     finalize_gptl();
   }
 
-  // Finalize scorpio
-  if (scorpio::is_pio_subsystem_inited()) {
-    // NOTE: this won't finalize pio in CIME runs, only in standalone runs
-    scorpio::finalize_pio_subsystem();
-  }
+  // Finalize scorpio session
+  // NOTE: this won't finalize scorpio itself in CIME runs
+  scorpio::finalize_pio_subsystem();
 
   m_atm_logger->info("[EAMxx] Finalize ... done!");
 
