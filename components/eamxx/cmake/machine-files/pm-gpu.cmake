@@ -18,6 +18,12 @@ endif()
 
 include (${EKAT_MACH_FILES_PATH}/mpi/srun.cmake)
 
+set(PYBIND11_PYTHON_VERSION 3.9 CACHE STRING "")
+set(Python_EXECUTABLE /global/homes/a/andrep/.conda/envs/fv3net/bin/python CACHE STRING "" FORCE)
+set(PYTHON_EXECUTABLE /global/homes/a/andrep/.conda/envs/fv3net/bin/python CACHE STRING "" FORCE)
+set(Python_INCLUDE_DIRS /global/homes/a/andrep/.conda/envs/fv3net/include/python3.9 CACHE STRING "" FORCE)
+option (SCREAM_ENABLE_ML_CORRECTION "Whether to enable ML correction parametrization" ON)
+
 #option(Kokkos_ARCH_AMPERE80 "" ON)
 set(CMAKE_CXX_FLAGS "-DTHRUST_IGNORE_CUB_VERSION_CHECK" CACHE STRING "" FORCE)
 

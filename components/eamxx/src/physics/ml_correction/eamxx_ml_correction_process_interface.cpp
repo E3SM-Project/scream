@@ -75,9 +75,7 @@ void MLCorrection::initialize_impl(const RunType /* run_type */) {
   pybind11::module sys = pybind11::module::import("sys");
   sys.attr("path").attr("insert")(1, ML_CORRECTION_CUSTOM_PATH);
   py_correction = pybind11::module::import("ml_correction");
-  ML_model_tq = py_correction.attr("get_ML_model")(m_ML_model_path_tq);
-  ML_model_uv = py_correction.attr("get_ML_model")(m_ML_model_path_uv);
-  ML_model_sfc_fluxes = py_correction.attr("get_ML_model")(m_ML_model_path_sfc_fluxes);
+  py_correction.attr("initialize_logging")();
   ekat::enable_fpes(fpe_mask);
 }
 
@@ -103,36 +101,55 @@ void MLCorrection::run_impl(const double dt) {
   const auto& tracers_info = tracers.m_info;
   Int num_tracers = tracers_info->size();
 
+  // Get device views instead
+  const auto &qv_dev              = get_field_out("qv").get_view<Real **, Device>();
+  const auto &T_mid_dev           = get_field_out("T_mid").get_view<Real **, Device>();
+  const auto &phis_dev            = get_field_in("phis").get_view<const Real *, Device>();
+  const auto &SW_flux_dn_dev      = get_field_out("SW_flux_dn").get_view<Real **, Device>();
+  const auto &sfc_alb_dif_vis_dev = get_field_in("sfc_alb_dif_vis").get_view<const Real *, Device>();  
+  const auto &sfc_flux_sw_net_dev = get_field_out("sfc_flux_sw_net").get_view<Real *, Device>();
+  const auto &sfc_flux_lw_dn_dev  = get_field_out("sfc_flux_lw_dn").get_view<Real *, Device>();
+  const auto &u_dev               = get_field_out("horiz_winds").get_component(0).get_view<Real **, Device>();
+  const auto &v_dev               = get_field_out("horiz_winds").get_component(1).get_view<Real **, Device>();
+  auto h_lat_dev  = m_lat.get_view<const Real*,Device>();
+  auto h_lon_dev  = m_lon.get_view<const Real*,Device>();
+
+  uintptr_t qv_dev_ptr = reinterpret_cast<uintptr_t>(qv_dev.data());
+  std::string field_dtype = typeid(qv_dev(0, 0)).name();
+  uintptr_t T_mid_dev_ptr = reinterpret_cast<uintptr_t>(T_mid_dev.data());
+  uintptr_t phis_dev_ptr = reinterpret_cast<uintptr_t>(phis_dev.data());
+  uintptr_t SW_flux_dn_dev_ptr = reinterpret_cast<uintptr_t>(SW_flux_dn_dev.data());
+  uintptr_t sfc_alb_dif_vis_dev_ptr = reinterpret_cast<uintptr_t>(sfc_alb_dif_vis_dev.data());
+  uintptr_t sfc_flux_sw_net_dev_ptr = reinterpret_cast<uintptr_t>(sfc_flux_sw_net_dev.data());
+  uintptr_t sfc_flux_lw_dn_dev_ptr = reinterpret_cast<uintptr_t>(sfc_flux_lw_dn.data());
+  uintptr_t u_dev_ptr = reinterpret_cast<uintptr_t>(u_dev.data());
+  uintptr_t v_dev_ptr = reinterpret_cast<uintptr_t>(v_dev.data());
+  uintptr_t h_lat_dev_ptr = reinterpret_cast<uintptr_t>(h_lat_dev.data());
+  uintptr_t h_lon_dev_ptr = reinterpret_cast<uintptr_t>(h_lon_dev.data());
+
   ekat::disable_all_fpes();  // required for importing numpy
   if ( Py_IsInitialized() == 0 ) {
     pybind11::initialize_interpreter();
   }
   // for qv, we need to stride across number of tracers
   pybind11::object ob1     = py_correction.attr("update_fields")(
-      pybind11::array_t<Real, pybind11::array::c_style | pybind11::array::forcecast>(
-          m_num_cols * m_num_levs, T_mid.data(), pybind11::str{}),
-      pybind11::array_t<Real, pybind11::array::c_style | pybind11::array::forcecast>(
-          m_num_cols * m_num_levs * num_tracers, qv.data(), pybind11::str{}),          
-      pybind11::array_t<Real, pybind11::array::c_style | pybind11::array::forcecast>(
-          m_num_cols * m_num_levs, u.data(), pybind11::str{}),        
-      pybind11::array_t<Real, pybind11::array::c_style | pybind11::array::forcecast>(
-          m_num_cols * m_num_levs, v.data(), pybind11::str{}),       
-      pybind11::array_t<Real, pybind11::array::c_style | pybind11::array::forcecast>(
-          m_num_cols, h_lat.data(), pybind11::str{}),       
-      pybind11::array_t<Real, pybind11::array::c_style | pybind11::array::forcecast>(
-          m_num_cols, h_lon.data(), pybind11::str{}),
-      pybind11::array_t<Real, pybind11::array::c_style | pybind11::array::forcecast>(
-          m_num_cols, phis.data(), pybind11::str{}),   
-      pybind11::array_t<Real, pybind11::array::c_style | pybind11::array::forcecast>(
-          m_num_cols * (m_num_levs+1), SW_flux_dn.data(), pybind11::str{}),
-      pybind11::array_t<Real, pybind11::array::c_style | pybind11::array::forcecast>(
-          m_num_cols, sfc_alb_dif_vis.data(), pybind11::str{}),
-      pybind11::array_t<Real, pybind11::array::c_style | pybind11::array::forcecast>(
-          m_num_cols, sfc_flux_sw_net.data(), pybind11::str{}),   
-      pybind11::array_t<Real, pybind11::array::c_style | pybind11::array::forcecast>(
-          m_num_cols, sfc_flux_lw_dn.data(), pybind11::str{}),                                                                                                   
+      field_dtype, 
+      qv_dev_ptr, 
+      T_mid_dev_ptr,
+      u_dev_ptr,
+      v_dev_ptr,
+      h_lat_dev_ptr,
+      h_lon_dev_ptr,
+      phis_dev_ptr,
+      SW_flux_dn_dev_ptr,
+      sfc_alb_dif_vis_dev_ptr,
+      sfc_flux_sw_net_dev_ptr,
+      sfc_flux_lw_dn_dev_ptr,
       m_num_cols, m_num_levs, num_tracers, dt, 
-      ML_model_tq, ML_model_uv, ML_model_sfc_fluxes, datetime_str);
+      datetime_str,
+      m_ML_model_path_tq, 
+      m_ML_model_path_uv, 
+      m_ML_model_path_sfc_fluxes);
   pybind11::gil_scoped_release no_gil;  
   ekat::enable_fpes(fpe_mask);   
 }

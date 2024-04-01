@@ -1,7 +1,9 @@
-# import numpy as np
-import cupy as np
+import numpy as np
+import cupy as cp
 import xarray as xr
+import cupy_xarray
 import datetime
+import logging
 from vcm import cos_zenith_angle
 from scream_run.steppers.machine_learning import (
     MachineLearningConfig,
@@ -9,13 +11,46 @@ from scream_run.steppers.machine_learning import (
     predict,
 )
 
+logger = logging.getLogger(__name__)
 
-def get_ML_model(model_path):
-    if model_path == "NONE":
-        return None
-    config = MachineLearningConfig(models=[model_path])
-    model = open_model(config)
+TQ = "tq"
+UV = "uv"
+FLUX = "flux"
+
+ML_MODELS = {
+    TQ: None,
+    UV: None,
+    FLUX: None,
+}
+
+
+def _load_model(key, path):
+    # No need to pass model objects back and forth into C++
+    # Just store the model in a global dict
+    global ML_MODELS
+    model = ML_MODELS[key]
+    
+    if model is None and path.lower() != "none":
+        logger.info(f"Loading ML {key} model from {path}")
+        config = MachineLearningConfig(models=[path])
+        model = open_model(config)
+        ML_MODELS[key] = model
+    elif path.lower() == "none":
+        logger.debug("skipping ML {key} model, no path provided")
+    else:
+        logger.debug(f"skipping ML {key} model, already loaded")
     return model
+
+
+def load_all_models(tq_model_path, uv_model_path, flx_model_path):
+    """Load all models into the global model dict"""
+    _load_model(TQ, tq_model_path)
+    _load_model(UV, uv_model_path)
+    _load_model(FLUX, flx_model_path)
+
+
+def initialize_logging(level=logging.INFO):
+    logging.basicConfig(level=level)
 
 
 def ensure_correction_ordering(correction):
@@ -126,9 +161,23 @@ def get_ML_correction_sfc_fluxes(
     return predict(model, ds, dt)
 
 
+def _get_cupy_from_gpu_ptr(ptr, shape, dtype_char):
+    dtype = cp.dtype(dtype_char)
+    total_size = np.product(shape) * dtype.itemsize
+    data_from_ptr = cp.ndarray(
+        shape, 
+        dtype=dtype,
+        memptr=cp.cuda.MemoryPointer(
+            cp.cuda.UnownedMemory(ptr, total_size, None), 0
+        )
+    )
+    return data_from_ptr
+
+
 def update_fields(
-    T_mid,
+    field_dtype_char,
     qv,
+    T_mid,
     u,
     v,
     lat,
@@ -142,10 +191,10 @@ def update_fields(
     Nlev,
     num_tracers,
     dt,
-    model_tq,
-    model_uv,
-    model_sfc_fluxes,
     current_time,
+    tq_model_path,
+    uv_model_path,
+    flux_model_path,
 ):
     """
     T_mid: temperature
@@ -163,41 +212,59 @@ def update_fields(
     Nlev: number of levels
     num_tracers: number of tracers
     dt: time step (s)
-    model_tq: path to the ML model for temperature and specific humidity
-    model_uv: path to the ML model for u and v
     current_time: current time in the format "YYYY-MM-DD HH:MM:SS"
+    tq_model_path: path to the temperature and specific humidity ML model
+    uv_model_path: path to the wind ML model
+    flux_model_path: path to the surface fluxes ML model
     """
-    raise ValueError("This function should not be called")
-    T_mid = np.reshape(T_mid, (-1, Nlev))
-    u = np.reshape(u, (-1, Nlev))
-    v = np.reshape(v, (-1, Nlev))
-    # qv is a 3D array of shape (Ncol, num_tracers, Nlev)
-    # by default, qv is the frist tracer variable
-    qv = np.reshape(qv, (-1, num_tracers, Nlev))
+    qv = _get_cupy_from_gpu_ptr(qv, (Ncol, num_tracers, Nlev), field_dtype_char)
+    T_mid = _get_cupy_from_gpu_ptr(T_mid, (Ncol, Nlev), field_dtype_char)
+    u = _get_cupy_from_gpu_ptr(u, (Ncol, Nlev), field_dtype_char)
+    v = _get_cupy_from_gpu_ptr(v, (Ncol, Nlev), field_dtype_char)
+    lat = _get_cupy_from_gpu_ptr(lat, (Ncol,), field_dtype_char)
+    lon = _get_cupy_from_gpu_ptr(lon, (Ncol,), field_dtype_char)
+    phis = _get_cupy_from_gpu_ptr(phis, (Ncol,), field_dtype_char)
+    sw_flux_dn = _get_cupy_from_gpu_ptr(sw_flux_dn, (Ncol, Nlev+1), field_dtype_char)
+    sfc_alb_dif_vis = _get_cupy_from_gpu_ptr(sfc_alb_dif_vis, (Ncol,), field_dtype_char)
+    sfc_flux_sw_net = _get_cupy_from_gpu_ptr(sfc_flux_sw_net, (Ncol,), field_dtype_char)
+    sfc_flux_lw_dn = _get_cupy_from_gpu_ptr(sfc_flux_lw_dn, (Ncol,), field_dtype_char)
     current_datetime = datetime.datetime.strptime(current_time, "%Y-%m-%d %H:%M:%S")
     cos_zenith = cos_zenith_angle(
         current_datetime,
         lon,
         lat,
     )
+
+    # Kokkos crashes if I import tensorflow too early 
+    # (i.e., during MLCorrection::initialize_impl)
+    # so defer the import until it's needed for models here.
+    # models are loaded into global state so they are only loaded once
+    # despite being called each time we ask for a correction
+    model_tq = _load_model(TQ, tq_model_path)
+    model_uv = _load_model(UV, uv_model_path)
+    model_sfc_fluxes = _load_model(FLUX, flux_model_path)
+    
+    device = qv.device.id
+    with cp.cuda.Device(device):
+        qv_0 = cp.ascontiguousarray(qv[:, 0, :])
+    
     if model_tq is not None:
         correction_tq = get_ML_correction_dQ1_dQ2(
-            model_tq, T_mid, qv[:, 0, :], cos_zenith, dt
+            model_tq, T_mid, qv_0, cos_zenith, dt
         )
-        T_mid[:, :] += correction_tq["dQ1"].values * dt
-        qv[:, 0, :] += correction_tq["dQ2"].values * dt
+        T_mid[:, :] += correction_tq["dQ1"].data * dt
+        qv[:, 0, :] += correction_tq["dQ2"].data * dt
     if model_uv is not None:
         correction_uv = get_ML_correction_dQu_dQv(
-            model_uv, T_mid, qv[:, 0, :], cos_zenith, lat, phis, u, v, dt
+            model_uv, T_mid, qv_0, cos_zenith, lat, phis, u, v, dt
         )
-        u[:, :] += correction_uv["dQu"].values * dt
-        v[:, :] += correction_uv["dQv"].values * dt
+        u[:, :] += correction_uv["dQu"].data * dt
+        v[:, :] += correction_uv["dQv"].data * dt
     if model_sfc_fluxes is not None:
-        sw_flux_dn = np.reshape(sw_flux_dn, (-1, Nlev+1))
         correction_sfc_fluxes = get_ML_correction_sfc_fluxes(
             model_sfc_fluxes,
             T_mid,
-            qv[:, 0, :],
+            qv_0,
             cos_zenith,
             lat,
             phis,
@@ -205,5 +272,5 @@ def update_fields(
             sw_flux_dn,
             dt,
         )
-        sfc_flux_sw_net[:] = correction_sfc_fluxes["net_shortwave_sfc_flux_via_transmissivity"].values
-        sfc_flux_lw_dn[:] = correction_sfc_fluxes["override_for_time_adjusted_total_sky_downward_longwave_flux_at_surface"].values
+        sfc_flux_sw_net[:] = correction_sfc_fluxes["net_shortwave_sfc_flux_via_transmissivity"].data
+        sfc_flux_lw_dn[:] = correction_sfc_fluxes["override_for_time_adjusted_total_sky_downward_longwave_flux_at_surface"].data
