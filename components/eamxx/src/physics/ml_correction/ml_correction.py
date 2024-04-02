@@ -4,6 +4,7 @@ import xarray as xr
 import cupy_xarray
 import datetime
 import logging
+import time
 from vcm import cos_zenith_angle
 from scream_run.steppers.machine_learning import (
     MachineLearningConfig,
@@ -217,6 +218,7 @@ def update_fields(
     uv_model_path: path to the wind ML model
     flux_model_path: path to the surface fluxes ML model
     """
+    start = time.time()
     qv = _get_cupy_from_gpu_ptr(qv, (Ncol, num_tracers, Nlev), field_dtype_char)
     T_mid = _get_cupy_from_gpu_ptr(T_mid, (Ncol, Nlev), field_dtype_char)
     u = _get_cupy_from_gpu_ptr(u, (Ncol, Nlev), field_dtype_char)
@@ -274,3 +276,8 @@ def update_fields(
         )
         sfc_flux_sw_net[:] = correction_sfc_fluxes["net_shortwave_sfc_flux_via_transmissivity"].data
         sfc_flux_lw_dn[:] = correction_sfc_fluxes["override_for_time_adjusted_total_sky_downward_longwave_flux_at_surface"].data
+    end = time.time()
+    logger.info(
+        "ML correction python timing (seconds):  {total: "
+        f"{end-start}"
+        "}")
