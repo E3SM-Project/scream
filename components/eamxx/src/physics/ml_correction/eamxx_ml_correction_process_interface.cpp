@@ -84,18 +84,6 @@ void MLCorrection::run_impl(const double dt) {
   // use model time to infer solar zenith angle for the ML prediction
   auto current_ts = timestamp();
   std::string datetime_str = current_ts.get_date_string() + " " + current_ts.get_time_string();
-  const auto &qv              = get_field_out("qv").get_view<Real **, Host>();
-  const auto &T_mid           = get_field_out("T_mid").get_view<Real **, Host>();
-  const auto &phis            = get_field_in("phis").get_view<const Real *, Host>();
-  const auto &SW_flux_dn      = get_field_out("SW_flux_dn").get_view<Real **, Host>();
-  const auto &sfc_alb_dif_vis = get_field_in("sfc_alb_dif_vis").get_view<const Real *, Host>();  
-  const auto &sfc_flux_sw_net = get_field_out("sfc_flux_sw_net").get_view<Real *, Host>();
-  const auto &sfc_flux_lw_dn  = get_field_out("sfc_flux_lw_dn").get_view<Real *, Host>();
-  const auto &u               = get_field_out("horiz_winds").get_component(0).get_view<Real **, Host>();
-  const auto &v               = get_field_out("horiz_winds").get_component(1).get_view<Real **, Host>();
-
-  auto h_lat  = m_lat.get_view<const Real*,Host>();
-  auto h_lon  = m_lon.get_view<const Real*,Host>();
 
   const auto& tracers = get_group_out("tracers");
   const auto& tracers_info = tracers.m_info;
