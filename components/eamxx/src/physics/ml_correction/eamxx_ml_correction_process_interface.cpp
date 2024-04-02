@@ -85,6 +85,9 @@ void MLCorrection::run_impl(const double dt) {
   auto current_ts = timestamp();
   std::string datetime_str = current_ts.get_date_string() + " " + current_ts.get_time_string();
 
+  auto h_lat  = m_lat.get_view<const Real*,Host>();
+  auto h_lon  = m_lon.get_view<const Real*,Host>();
+
   const auto& tracers = get_group_out("tracers");
   const auto& tracers_info = tracers.m_info;
   Int num_tracers = tracers_info->size();
@@ -109,7 +112,7 @@ void MLCorrection::run_impl(const double dt) {
   uintptr_t SW_flux_dn_dev_ptr = reinterpret_cast<uintptr_t>(SW_flux_dn_dev.data());
   uintptr_t sfc_alb_dif_vis_dev_ptr = reinterpret_cast<uintptr_t>(sfc_alb_dif_vis_dev.data());
   uintptr_t sfc_flux_sw_net_dev_ptr = reinterpret_cast<uintptr_t>(sfc_flux_sw_net_dev.data());
-  uintptr_t sfc_flux_lw_dn_dev_ptr = reinterpret_cast<uintptr_t>(sfc_flux_lw_dn.data());
+  uintptr_t sfc_flux_lw_dn_dev_ptr = reinterpret_cast<uintptr_t>(sfc_flux_lw_dn_dev.data());
   uintptr_t u_dev_ptr = reinterpret_cast<uintptr_t>(u_dev.data());
   uintptr_t v_dev_ptr = reinterpret_cast<uintptr_t>(v_dev.data());
   uintptr_t h_lat_dev_ptr = reinterpret_cast<uintptr_t>(h_lat_dev.data());
