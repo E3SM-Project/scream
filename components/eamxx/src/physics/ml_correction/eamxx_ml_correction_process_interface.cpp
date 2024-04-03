@@ -81,6 +81,9 @@ void MLCorrection::initialize_impl(const RunType /* run_type */) {
 
 // =========================================================================================
 void MLCorrection::run_impl(const double dt) {
+  // Start timing
+  auto start = std::chrono::high_resolution_clock::now();
+
   // use model time to infer solar zenith angle for the ML prediction
   auto current_ts = timestamp();
   std::string datetime_str = current_ts.get_date_string() + " " + current_ts.get_time_string();
@@ -142,7 +145,16 @@ void MLCorrection::run_impl(const double dt) {
       m_ML_model_path_uv, 
       m_ML_model_path_sfc_fluxes);
   pybind11::gil_scoped_release no_gil;  
-  ekat::enable_fpes(fpe_mask);   
+  ekat::enable_fpes(fpe_mask);
+
+
+  // End timing
+  auto end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = end - start;
+  std::cout << "MLCorrection::run_impl took " << elapsed.count() << " seconds" << std::endl;
+
+  // Print the current call timestamp string
+  std::cout << "Current timestamp: " << datetime_str << std::endl;
 }
 
 // =========================================================================================
