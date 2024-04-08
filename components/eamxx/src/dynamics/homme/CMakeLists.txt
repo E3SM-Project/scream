@@ -117,7 +117,22 @@ macro (CreateDynamicsLib HOMME_TARGET NP PLEV QSIZE)
     if (HOMME_ENABLE_COMPOSE)
       target_link_libraries (${hommeLibName} composec++)
     endif()
-    SetCudaFlags(${hommeLibName})
+
+    string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_ci)
+    if ((SCREAM_MACHINE STREQUAL "ascent" OR SCREAM_MACHINE STREQUAL "pm-gpu") AND CMAKE_BUILD_TYPE_ci STREQUAL "debug")
+      # --fmad=false is causing nondeterminism in RRTMGP on Ascent and pm-gpu,
+      # perhaps due to an nvcc bug. Provide a FLAGS entry to prevent
+      # SetCudaFlags from adding --fmad=false. Use -UNDEBUG as an (inert) entry
+      # for FLAGS so that cmake_parse_arguments defines SCF_FLAGS.
+      SetCudaFlags(${hommeLibName} CUDA_LANG FLAGS -UNDEBUG)
+    else()
+      # In the non-debug case, I want to make sure anything else that is done in
+      # SetCudaFlags continues to be done. Right now, I don't think any of it
+      # matters, but given the generality of the name "SetCudaFlags", it's
+      # possible something that matters will be added in the future.
+      SetCudaFlags(${hommeLibName} CUDA_LANG)
+    endif()
+
     SetOmpFlags(${hommeLibName})
 
     #####################################
@@ -131,6 +146,7 @@ macro (CreateDynamicsLib HOMME_TARGET NP PLEV QSIZE)
       ${SCREAM_DYNAMICS_SRC_DIR}/eamxx_homme_process_interface.cpp
       ${SCREAM_DYNAMICS_SRC_DIR}/eamxx_homme_fv_phys.cpp
       ${SCREAM_DYNAMICS_SRC_DIR}/eamxx_homme_rayleigh_friction.cpp
+      ${SCREAM_DYNAMICS_SRC_DIR}/eamxx_homme_iop.cpp
       ${SCREAM_DYNAMICS_SRC_DIR}/physics_dynamics_remapper.cpp
       ${SCREAM_DYNAMICS_SRC_DIR}/homme_grids_manager.cpp
       ${SCREAM_DYNAMICS_SRC_DIR}/interface/homme_context_mod.F90

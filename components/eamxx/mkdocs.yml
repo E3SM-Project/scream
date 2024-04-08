@@ -1,4 +1,4 @@
-site_name: The C++ E3SM Atmosphere Model (EAMxx)
+site_name: EAMxx
 
 nav:
   - 'Home': 'index.md'
@@ -8,6 +8,7 @@ nav:
     - 'Model output': 'user/model_output.md'
     - 'Model input': 'user/model_input.md'
     - 'Runtime parameters': 'common/eamxx_params.md'
+    - 'Coarse nudging': 'user/coarse_nudging.md'
   - 'Developer Guide':
     - 'Overview': 'developer/index.md'
     - 'Installation': 'common/installation.md'
@@ -26,6 +27,7 @@ nav:
       - 'CI and Nightly Testing': 'developer/ci_nightly.md'
   - 'Technical Guide':
     - 'AeroCOM cloud top': 'technical/aerocom_cldtop.md'
+    - 'Extra radiation calls': 'technical/clean_clear_sky.md'
 
 edit_uri: ""
 

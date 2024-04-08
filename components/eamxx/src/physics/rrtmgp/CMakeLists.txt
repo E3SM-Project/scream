@@ -2,12 +2,57 @@ include(EkatUtils)
 include(EkatSetCompilerFlags)
 include(ScreamUtils)
 
+# Copied from EKAT, YAKL is an interface target so requires special
+# handling. Get rid of this once RRTMGP is using kokkos.
+macro (SetCudaFlagsYakl targetName)
+  if (Kokkos_ENABLE_CUDA)
+    # We must find CUDA
+    find_package(CUDA REQUIRED)
+
+    # Still check if CUDA_FOUND is true, since we don't know if the particular
+    # FindCUDA.cmake module being used is checking _FIND_REQUIRED
+    if (NOT CUDA_FOUND)
+      message (FATAL_ERROR "Error! Unable to find CUDA.")
+    endif()
+
+    set(options CUDA_LANG)
+    set(args1v)
+    set(argsMv FLAGS)
+    cmake_parse_arguments(SCF "${options}" "${args1v}" "${argsMv}" ${ARGN})
+
+    if (SCF_FLAGS)
+      set (FLAGS ${SCF_FLAGS})
+    else ()
+      # We need host-device lambdas
+      set (FLAGS --expt-extended-lambda)
+
+      IsDebugBuild (SCF_DEBUG)
+      if (SCF_DEBUG)
+        # Turn off fused multiply add for debug so we can stay BFB with host
+        list (APPEND FLAGS --fmad=false)
+      endif()
+    endif()
+
+    # Set the flags on the target
+    if (SCF_CUDA_LANG)
+      # User is setting the src files language to CUDA
+      target_compile_options (${targetName} INTERFACE
+        "$<$<COMPILE_LANGUAGE:CUDA>:${FLAGS}>")
+    else()
+      # We assume the user is setting the src files lang to CXX
+      target_compile_options (${targetName} INTERFACE
+        "$<$<COMPILE_LANGUAGE:CXX>:${FLAGS}>")
+    endif()
+  endif()
+endmacro()
+
 ##################################
 #             YAKL               #
 ##################################
 
 # RRTMGP++ requires YAKL
 
+string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_ci)
 if (TARGET yakl)
   # Other E3SM components are building YAKL...
   message ("It appears some other part of E3SM is building YAKL.\n"
@@ -35,20 +80,21 @@ else ()
 
   # EAMxx *requires* MPI, so simply look for it, then link against it
   find_package(MPI REQUIRED COMPONENTS C)
-  target_link_libraries (yakl MPI::MPI_C)
-  EkatDisableAllWarning(yakl)
+  target_link_libraries (yakl INTERFACE MPI::MPI_C)
 
   # For debug builds, set -DYAKL_DEBUG
-  string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_ci)
   if (CMAKE_BUILD_TYPE_ci STREQUAL "debug")
-    target_compile_definitions(yakl PUBLIC YAKL_DEBUG)
+    target_compile_definitions(yakl INTERFACE YAKL_DEBUG)
   endif()
 endif()
 
-# Whether we built yakl or it was already built, we still need to ensure
-# debug builds have --fmad=false in it. The EKAT util automatically sets
-# the flag for debug builds
-SetCudaFlags(yakl CUDA_LANG)
+# See eamxx/src/dynamics/homme/CMakeLists.txt for an explanation of this
+# workaround.
+if ((SCREAM_MACHINE STREQUAL "ascent" OR SCREAM_MACHINE STREQUAL "pm-gpu") AND CMAKE_BUILD_TYPE_ci STREQUAL "debug")
+  SetCudaFlagsYakl(yakl CUDA_LANG FLAGS -UNDEBUG)
+else()
+  SetCudaFlagsYakl(yakl CUDA_LANG)
+endif()
 
 ##################################
 #           RRTMGP               #

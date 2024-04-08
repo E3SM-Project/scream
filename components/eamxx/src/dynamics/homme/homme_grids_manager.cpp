@@ -3,6 +3,8 @@
 #include "dynamics/homme/physics_dynamics_remapper.hpp"
 #include "dynamics/homme/homme_dynamics_helpers.hpp"
 
+#include "share/util/eamxx_fv_phys_rrtmgp_active_gases_workaround.hpp"
+
 #ifndef NDEBUG
 #include "share/property_checks/field_nan_check.hpp"
 #include "share/property_checks/field_lower_bound_check.hpp"
@@ -197,6 +199,10 @@ build_physics_grid (const ci_string& type, const ci_string& rebalance) {
     return;
   }
 
+  if (type=="PG2") {
+    fvphyshack = true;
+  }
+
   // Get the grid pg_type
   const int pg_code = m_pg_codes.at(type).at(rebalance);
 
@@ -261,6 +267,7 @@ build_physics_grid (const ci_string& type, const ci_string& rebalance) {
     for (auto f : {hyai, hybi, hyam, hybm}) {
       auto f_d = get_grid("Dynamics")->get_geometry_data(f.name());
       f.deep_copy(f_d);
+      f.sync_to_host();
     }
   }
 
@@ -278,7 +285,7 @@ build_physics_grid (const ci_string& type, const ci_string& rebalance) {
 
 void HommeGridsManager::
 initialize_vertical_coordinates (const nonconstgrid_ptr_type& dyn_grid) {
-  using view_1d_host = AtmosphereInput::view_1d_host; 
+  using view_1d_host = AtmosphereInput::view_1d_host;
   using vos_t = std::vector<std::string>;
   using namespace ShortFieldTagsNames;
 
@@ -331,7 +338,7 @@ initialize_vertical_coordinates (const nonconstgrid_ptr_type& dyn_grid) {
   hybi.sync_to_dev();
   hyam.sync_to_dev();
   hybm.sync_to_dev();
-  
+
   // Pass host views data to hvcoord init function
   const auto ps0 = Homme::PhysicalConstants::p0;
 
