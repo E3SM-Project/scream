@@ -304,6 +304,7 @@ be lost if SCREAM_HACK_XML is not enabled.
     <!-- Simple Prescribed Aerosols (SPA) -->
     <spa inherit="atm_proc_base">
       <spa_remap_file type="file" doc="File containing mapping data from the grid of spa_data_file to the model grid. Unused if the grid is the same."/>
+      <spa_remap_file hgrid="ne120np4">${DIN_LOC_ROOT}/atm/scream/maps/map_ne30np4_to_ne120np4_mono_20220502.nc</spa_remap_file>
       <spa_remap_file hgrid="ne120np4.pg2">${DIN_LOC_ROOT}/atm/scream/maps/map_ne30pg2_to_ne120pg2_20231201.nc</spa_remap_file>
       <spa_remap_file hgrid="ne256np4.pg2">${DIN_LOC_ROOT}/atm/scream/maps/map_ne30pg2_to_ne256pg2_20231201.nc</spa_remap_file>
       <spa_remap_file hgrid="ne512np4.pg2">${DIN_LOC_ROOT}/atm/scream/maps/map_ne30pg2_to_ne512pg2_20231201.nc</spa_remap_file>
@@ -312,7 +313,9 @@ be lost if SCREAM_HACK_XML is not enabled.
 
       <spa_data_file type="file" doc="File containing aerosol data. Must be on same grid as the atm, or a coarser one"/>
       <spa_data_file hgrid="ne.*np4.pg2">${DIN_LOC_ROOT}/atm/scream/init/spa_from_eamv3.ne30pg2.F2010.2011-2025.c_20240405.nc</spa_data_file>
+      <spa_data_file hgrid="ne.*np4">${DIN_LOC_ROOT}/atm/scream/init/spa_from_eamv3.ne30np4.F2010.2011-2025.c_20240405.nc</spa_data_file>
       <spa_data_file hgrid="ne4np4.pg2">${DIN_LOC_ROOT}/atm/scream/init/spa_from_eamv3.ne4pg2.F2010.2011-2025.c_20240405.nc</spa_data_file>
+      <spa_data_file hgrid="ne4np4">${DIN_LOC_ROOT}/atm/scream/init/spa_from_eamv3.ne4np4.F2010.2011-2025.c_20240405.nc</spa_data_file>
     </spa>
 
     <!-- Radiation -->
