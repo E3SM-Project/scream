@@ -313,7 +313,7 @@ be lost if SCREAM_HACK_XML is not enabled.
 
       <spa_data_file type="file" doc="File containing aerosol data. Must be on same grid as the atm, or a coarser one"/>
       <spa_data_file hgrid="ne.*np4">${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne30_20220428.nc</spa_data_file>
-      <spa_data_file hgrid="ne.*np4.pg2">${DIN_LOC_ROOT}/atm/scream/init/spa_v3.LR.F2010.2011-2025.c_20240405.nc</spa_data_file>
+      <spa_data_file hgrid="ne.*np4.pg2">${DIN_LOC_ROOT}/atm/scream/init/spa_from_eamv3.ne30pg2.F2010.2011-2025.c_20240405.nc</spa_data_file>
       <spa_data_file hgrid="ne4np4">${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne4_20220428.nc</spa_data_file>
       <spa_data_file hgrid="ne4np4.pg2">${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne4pg2_20231222.nc</spa_data_file>
     </spa>
