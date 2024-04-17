@@ -52,7 +52,7 @@ get_my_triplets (const std::string& map_file) const
   comm.scan(&offset,1,MPI_SUM);
   offset -= nlweights; // scan is inclusive, but we need exclusive
 
-  // Create a unique decomp tag, which ensures all refining remappers have
+  // Create a unique decomp tag, which ensures all horiz remappers have
   // their own decomposition
   static int tag_counter = 0;
   const std::string int_decomp_tag  = "RR::gmtg,int,grid-idx=" + std::to_string(tag_counter++);

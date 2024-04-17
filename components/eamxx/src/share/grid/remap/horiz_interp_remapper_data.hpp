@@ -25,12 +25,12 @@ struct HorizRemapperData {
   using view_1d = typename KT::template view_1d<T>;
 
   void build (const std::string& map_file,
-              const std::shared_ptr<const AbstractGrid>& fine_grid,
+              const std::shared_ptr<const AbstractGrid>& model_grid,
               const ekat::Comm& comm,
               const InterpType type);
 
-  // The coarse grid data
-  std::shared_ptr<AbstractGrid> coarse_grid;
+  // The grid to use to read/write from/to file
+  std::shared_ptr<AbstractGrid> file_grid;
   std::shared_ptr<AbstractGrid> ov_coarse_grid;
   
   // The CRS matrix data for online interpolation

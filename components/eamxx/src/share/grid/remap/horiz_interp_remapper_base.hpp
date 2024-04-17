@@ -18,7 +18,7 @@ namespace scream
 class HorizInterpRemapperBase : public AbstractRemapper
 {
 public:
-  HorizInterpRemapperBase (const grid_ptr_type& fine_grid,
+  HorizInterpRemapperBase (const grid_ptr_type& model_grid,
                            const std::string& map_file,
                            const InterpType type);
 
@@ -89,6 +89,7 @@ public:
   //       This helps with m_type=Coarsen, which is typically during
   //       model output, so that we can coarsen also geo data.
   grid_ptr_type   m_fine_grid;
+  grid_ptr_type   m_model_grid;
   std::shared_ptr<AbstractGrid> m_coarse_grid;
 
   // An version of the coarse grid where this rank owns all the ids

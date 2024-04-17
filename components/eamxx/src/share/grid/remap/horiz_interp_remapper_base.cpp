@@ -12,20 +12,20 @@ namespace scream
 {
 
 HorizInterpRemapperBase::
-HorizInterpRemapperBase (const grid_ptr_type& fine_grid,
+HorizInterpRemapperBase (const grid_ptr_type& model_grid,
                          const std::string& map_file,
                          const InterpType type)
- : m_fine_grid(fine_grid)
+ : m_model_grid(model_grid)
  , m_map_file (map_file)
  , m_type (type)
- , m_comm (fine_grid->get_comm())
+ , m_comm (model_grid->get_comm())
 {
   // Sanity checks
-  EKAT_REQUIRE_MSG (fine_grid->type()==GridType::Point,
+  EKAT_REQUIRE_MSG (model_grid->type()==GridType::Point,
       "Error! Horizontal interpolatory remap only works on PointGrid grids.\n"
-      "  - fine grid name: " + fine_grid->name() + "\n"
-      "  - fine_grid_type: " + e2str(fine_grid->type()) + "\n");
-  EKAT_REQUIRE_MSG (fine_grid->is_unique(),
+      "  - model grid name: " + model_grid->name() + "\n"
+      "  - model_grid_type: " + e2str(model_grid->type()) + "\n");
+  EKAT_REQUIRE_MSG (model_grid->is_unique(),
       "Error! HorizInterpRemapperBase requires a unique fine grid.\n");
 
   // This is a special remapper. We only go in one direction
