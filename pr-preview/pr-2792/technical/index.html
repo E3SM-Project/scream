@@ -995,6 +995,7 @@
 <ol>
 <li>a non-hydrostatic version of the <strong>spectral-element dynamical core</strong> used by other E3SM Atmosphere Model versions [@Taylor_et20] with semi-Lagrangian tracer advection as described by [@Bradley_et22]</li>
 <li>the <strong>Simple Higher-Order Closure (SHOC)</strong> parameterization from [@Bogenschutz_Krueger13], which handles turbulent diffusion, condensation/evaporation, and liquid cloud fraction</li>
+<li>turbulent mountain stress is crudely parameterized following [@Fiedler_Panofsky72] to reduce excessive winds around topography</li>
 <li>an <strong>all-or-nothing ice cloud fraction</strong> parameterization that sets ice cloud fraction to 100% whenever cloud ice mass q<sub>i</sub> is less than a user-specified threshold set by default to 1e-5 kg/kg. This scheme also sets the total cloud fraction (used by microphysics) to the maximum of the liquid and ice cloud fraction.</li>
 <li>the <strong>P3 microphysics</strong> scheme from [@Morrison_Milbrandt15] modified as described by [@Caldwell_et21] to assume instantaneous liquid saturation adjustment for consistency with SHOC</li>
 <li><strong>RTE/RRTMGP radiation</strong> from [@Pincus_et19] rewritten in C++ for consistency and performance</li>
