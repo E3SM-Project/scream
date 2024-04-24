@@ -34,7 +34,7 @@ concurrency:
 jobs:
 
   eamxx-docs:
-    if: ${{ github.event.repository.name == 'scream' }}
+    if: ${{ github.event.repository.name == 'eamxx-lets-not-run-this-at-all' }}
     runs-on: ubuntu-latest
 
     steps:
