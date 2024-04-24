@@ -464,9 +464,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#example-setup" class="md-nav__link">
+  <a href="#example-setup-current-as-of-april-2024" class="md-nav__link">
     <span class="md-ellipsis">
-      Example setup
+      Example setup (current as of April 2024)
     </span>
   </a>
   
@@ -1014,9 +1014,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#example-setup" class="md-nav__link">
+  <a href="#example-setup-current-as-of-april-2024" class="md-nav__link">
     <span class="md-ellipsis">
-      Example setup
+      Example setup (current as of April 2024)
     </span>
   </a>
   
@@ -1042,7 +1042,7 @@
 Instead, in EAMxx, it is possible to nudge from coarse data.
 This is done by remapping the coarse data provided by the user to the runtime physics grid of EAMxx.
 In order to enable nudging from coarse data, the user must provide nudging data at the coarse resolution desired and an appropriate     ncremap-compatible mapping file.</p>
-<h2 id="example-setup">Example setup</h2>
+<h2 id="example-setup-current-as-of-april-2024">Example setup (current as of April 2024)</h2>
 <p>A user can produce coarse nudging data from running EAMxx or EAM at a ne30pg2 or any other applicable resolution.
 Additionally, several users in the E3SM projects have produced nudging data at the ne30pg2 resolution from the MERRA2 and ERA5 datasets. Then, to enable nudging as a process, one must declare it in the <code>atm_procs_list</code> runtime parameter.</p>
 <div class="highlight"><pre><span></span><code><span class="w">    </span>./atmchange<span class="w"> </span>physics::atm_procs_list<span class="o">=</span><span class="s2">&quot;mac_aero_mic,rrtmgp,cosp,nudging&quot;</span>

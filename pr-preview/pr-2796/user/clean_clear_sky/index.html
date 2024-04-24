@@ -448,6 +448,17 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Extra radiation calls
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -457,6 +468,34 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#example-setup-current-as-of-april-2024" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example setup (current as of April 2024)
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -968,6 +1007,23 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#example-setup-current-as-of-april-2024" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example setup (current as of April 2024)
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -989,11 +1045,12 @@ These extra diagnostics are optionally added to the main radiation call. The ext
 <li>Clean-sky fluxes: the fluxes that would be present if there were no aerosols, and are calculated by adding an additional radiation call after substantiating an additional optics class, but not endowing it with aerosol properties.</li>
 </ul>
 <p>It was necessary to add an additional optics class because the original optics class is endowed with aerosols before clouds (in order to calculate the clear-sky fluxes).</p>
+<h2 id="example-setup-current-as-of-april-2024">Example setup (current as of April 2024)</h2>
 <p>The extra calls are controlled by runtime flags <code>extra_clnclrsky_diag</code> and <code>extra_clnsky_diag</code> (they take either <code>true</code> or <code>false</code> as their values).</p>
 <div class="highlight"><pre><span></span><code><span class="w">    </span>./atmchange<span class="w"> </span><span class="nv">extra_clnclrsky_diag</span><span class="o">=</span><span class="nb">true</span>
 <span class="w">    </span>./atmchange<span class="w"> </span><span class="nv">extra_clnsky_diag</span><span class="o">=</span><span class="nb">true</span>
 </code></pre></div>
-<p>An example output file with the additional radiation diagnostics requested (current as of April 2024).</p>
+<p>An example output file with the additional radiation diagnostics requested.</p>
 <div class="highlight"><pre><span></span><code><span class="nt">%YAML</span><span class="w"> </span><span class="m">1.1</span>
 <span class="nn">---</span>
 <span class="nt">filename_prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monthly.outputs</span>
