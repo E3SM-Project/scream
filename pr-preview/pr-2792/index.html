@@ -14,7 +14,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.18">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.19">
     
     
       
@@ -978,12 +978,14 @@
 
 
 <h1 id="the-e3sm-atmosphere-model-in-c-eamxx">The E3SM Atmosphere Model in C++ (EAMxx)</h1>
-<p>EAMxx is an entirely new atmosphere model for E3SM. It is written in C++ using the Kokkos performance portability library to enable it to run efficiently on CPUs, GPUs, and (hopefully) whatever comes next. Currently only the km-scale explicit-convection version called SCREAM (the Simple Cloud-Resolving E3SM Atmosphere Model) is available, but a low-resolution version is in the works.</p>
+<p>EAMxx 
+EAMxx is almost completely different in all ways from the atmosphere model used for E3SM versions 1-3. </p>
+<p>EAMxx was built from the ground up using C++ in order to embrace modern software practices and to allow "performance portability" across various supercomputers. The latter goal is achieved by using the Kokkos library. EAMxx is a "clean-start" model with almost no similarity to the E3SM atmosphere model used in versions 1-3.  Currently only the km-scale explicit-convection version called SCREAM (the Simple Cloud-Resolving E3SM Atmosphere Model) is available, but a low-resolution version is in the works.</p>
 <p>Like the documentation for other component models, EAMxx documentation is divided into:</p>
 <ul>
-<li>The <a href="user/">User Guide</a> which explains how to run EAMxx and describes all the compile-time and run-time options available for modifying a simulation</li>
-<li>The <a href="developer/">Developer Guide</a> which contains all the information needed to contribute to the development of EAMxx</li>
-<li>The <a href="technical/">Technical Guide</a> which describes the equations and numerical methods used by each of the specific process implementations and diagnostics available in the current version of EAMxx</li>
+<li>The <a href="user/">User Guide</a> - info about running EAMxx and all options for modifying a simulation</li>
+<li>The <a href="developer/">Developer Guide</a> - information needed to contribute to EAMxx development</li>
+<li>The <a href="technical/">Technical Guide</a> - equations and numerical methods used in EAMxx</li>
 </ul>
 <p>Put another way, all information about how to customize runs without changing code is included in the User Guide, general information about software design which is needed for intelligently modifying code goes in the Developer Guide, and details about the specific process implementations in the current model version are included in the Technical Guide. </p>
 
@@ -1041,7 +1043,7 @@
     <script id="__config" type="application/json">{"base": ".", "features": ["navigation.indices", "navigation.instant", "navigation.sections", "navigation.top"], "search": "assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="assets/javascripts/bundle.3220b9d7.min.js"></script>
+      <script src="assets/javascripts/bundle.dd8806f2.min.js"></script>
       
         <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
       
