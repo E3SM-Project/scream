@@ -623,9 +623,9 @@ contains
      enddo
   enddo
 
-  if (horiz_turb_diff) then
-    call turb_diff_updraft(elem, nt, nets, nete)
-  endif
+!  if (horiz_turb_diff) then
+!    call turb_diff_updraft(elem, nt, nets, nete)
+!  endif
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !  hyper viscosity
