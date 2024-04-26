@@ -251,6 +251,8 @@ void TimeInterpolation::set_file_data_triplets(const vos_type& list_of_files) {
   int running_idx = 0;
   for (size_t ii=0; ii<list_of_files.size(); ii++) {
     const auto filename = list_of_files[ii];
+    // Reference TimeStamp
+    auto ts_file_start = scorpio::read_timestamp(filename,"case_t0");
     // Gather the units of time
     auto time_units_tmp = scorpio::get_any_attribute(filename,"time","units");
     auto& time_units = ekat::any_cast<std::string>(time_units_tmp);
@@ -266,19 +268,6 @@ void TimeInterpolation::set_file_data_triplets(const vos_type& list_of_files) {
     } else {
       EKAT_ERROR_MSG("Error!! TimeInterpolation::set_file_triplets - unsupported units of time = (" << time_units << ") in source data file " << filename << ", supported units are: seconds, minutes, hours and days");
     }
-    auto date_start = time_units.find_first_of("0123456789");
-    auto time_units_date = time_units.substr(date_start);
-    // Parse the time_units_date into a vector of date and time
-    // Reference TimeStamp
-    auto tokens = ekat::split(time_units_date," ");
-    auto date_tkn = ekat::split(tokens[0],"-");
-    auto time_tkn = ekat::split(tokens[1],":");
-    std::vector<int> ts_date, ts_time;
-    for (int jj=0; jj<3; jj++) {
-      ts_date.push_back(stoi(date_tkn[jj]));
-      ts_time.push_back(stoi(time_tkn[jj]));
-    } 
-    const TimeStamp ts_file_start(ts_date,ts_time);
     // Gather information about time in this file
     if (ii==0) {
       ts_ref = ts_file_start;
