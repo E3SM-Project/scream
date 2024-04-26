@@ -28,7 +28,6 @@ namespace scream
 enum SourcePresType {
   TIME_DEPENDENT_3D_PROFILE  = 0,  // DEFAULT - source data should include time/spatially varying p_mid with dimensions (time, col, lev)
   STATIC_1D_VERTICAL_PROFILE = 1,  // source data includes p_levs which is a static set of levels in both space and time, with dimensions (lev)
-  TIME_DEPENDENT_3D_HYBRID = 2,  // hybrid data includes hyai(ilev),hybi(ilev),hyam(lev),hybm(lev),ilev(ilev),lev(lev),P0,PS(time, ncol)
 };
 
 class Nudging : public AtmosphereProcess
@@ -63,12 +62,6 @@ public:
 
   // The name of the subcomponent
   std::string name () const { return "Nudging"; }
-
-  // Find the full filename list from patterns
-  std::vector<std::string> filename_glob(const std::vector<std::string>& patterns);
-
-  // Use globloc for each filename pattern
-  std::vector<std::string> globloc(const std::string& pattern);
 
   // Set the grid
   void set_grids (const std::shared_ptr<const GridsManager> grids_manager);
