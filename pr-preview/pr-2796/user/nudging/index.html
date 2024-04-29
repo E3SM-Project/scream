@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.19">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.20">
     
     
       
@@ -1060,10 +1060,9 @@
 
 <h1 id="nudging-in-eamxx">Nudging in EAMxx</h1>
 <p>Nudging is supported in EAMxx.
-Currently, it is possible to nudge EAMxx to reference meterological fields at the run resolution or a coarser one.</p>
+Currently, it is possible to nudge EAMxx to the output from a different EAMxx run or to reanalysis. Nudging data can be on your model grid or an arbitrary coarser grid. Inline interpolating of finer-grid nudging data to a coarser model resolution isn't implemented yet but may be in the future. </p>
 <h2 id="example-setup-current-as-of-april-2024">Example setup (current as of April 2024)</h2>
-<p>A user can produce nudging data for EAMxx using a model run or by using reanalysis data.
-To enable nudging as a process, one must declare it in the <code>atm_procs_list</code> runtime parameter.</p>
+<p>To enable nudging as a process, one must declare it in the <code>atm_procs_list</code> runtime parameter.</p>
 <div class="highlight"><pre><span></span><code><span class="w">    </span>./atmchange<span class="w"> </span>physics::atm_procs_list<span class="o">=</span><span class="s2">&quot;mac_aero_mic,rrtmgp,cosp,nudging&quot;</span>
 </code></pre></div>
 <p>The following options are needed to specify the nudging.</p>
