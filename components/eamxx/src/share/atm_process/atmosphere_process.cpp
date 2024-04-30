@@ -128,6 +128,12 @@ void AtmosphereProcess::run (const double dt) {
   // Complete tendency calculations (if any)
   compute_step_tendencies(dt);
 
+  // If no-update reset state to the init_step_tendencies
+  // state.
+  if (m_params.get("no_update",false)) {
+    reset_state_to_init_step ();
+  }
+
   if (m_params.get("enable_postcondition_checks", true)) {
     // Run 'post-condition' property checks stored in this AP
     run_postcondition_checks();
@@ -502,6 +508,17 @@ void AtmosphereProcess::init_step_tendencies () {
     }
     stop_timer(m_timer_prefix + this->name() + "::compute_tendencies");
   }
+}
+
+void AtmosphereProcess::reset_state_to_init_step () {
+  start_timer(m_timer_prefix + this->name() + "::no_update");
+  for (auto& it : m_start_of_step_fields) {
+    const auto& fname = it.first;
+    const auto& f     = get_field_out(fname);
+          auto& f_beg = it.second;
+    f.deep_copy(f_beg);
+  }
+  stop_timer(m_timer_prefix + this->name() + "::no_update");
 }
 
 void AtmosphereProcess::compute_step_tendencies (const double dt) {

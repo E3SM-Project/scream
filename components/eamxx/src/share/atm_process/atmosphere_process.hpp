@@ -174,6 +174,7 @@ public:
 
   void init_step_tendencies ();
   void compute_step_tendencies (const double dt);
+  void reset_state_to_init_step ();
 
   // These methods allow the AD to figure out what each process needs, with very fine
   // grain detail. See field_request.hpp for more info on what FieldRequest and GroupRequest
