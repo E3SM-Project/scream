@@ -9,10 +9,10 @@
       
       
       
-        <link rel="prev" href="../model_output/">
+        <link rel="prev" href="../eamxx_cases/">
       
       
-        <link rel="next" href="../../common/eamxx_params/">
+        <link rel="next" href="../model_output/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -275,20 +275,15 @@
     
     
     
-      
-        
-        
-      
     
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -334,32 +329,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/installation/" class="md-nav__link">
+      <a href="../eamxx_cases/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Installation
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../model_output/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Model output
+    EAMxx case basics
   </span>
   
 
@@ -407,11 +381,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/eamxx_params/" class="md-nav__link">
+      <a href="../model_output/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Runtime parameters
+    Model output
   </span>
   
 
@@ -458,20 +432,15 @@
     
     
     
-      
-        
-        
-      
     
-    
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -602,8 +571,6 @@
   
     
     
-    
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -753,8 +720,6 @@
     
     
     
-      
-    
     
     <li class="md-nav__item md-nav__item--nested">
       
@@ -868,20 +833,15 @@
     
     
     
-      
-        
-        
-      
     
-    
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -985,8 +945,6 @@
 <p>This section explains how input parameters are passed to EAMxx, and how the user can
 change their value. The full list of the currently configuraable runtime parameters for
 EAMxx can be found <a href="../../common/eamxx_params/">here</a>.</p>
-<p>In the following, we assume that the reader has a familiarity with <a href="https://esmci.github.io/cime/versions/master/html/users_guide/index.html">CIME case
-control</a>.</p>
 <p>The main files/scripts involved in the EAMxx runtime configuration are the following:</p>
 <ol>
 <li><code>buildnml</code>: this script, located in <code>components/eamxx/cime_config</code>, is called by CIME's case management
@@ -1181,6 +1139,39 @@ $<span class="w"> </span>./atmquery<span class="w"> </span>homme::compute_tenden
 <span class="w">        </span>type:<span class="w"> </span>array<span class="o">(</span>string<span class="o">)</span>
 <span class="w">        </span>valid<span class="w"> </span>values:<span class="w"> </span><span class="o">[]</span>
 </code></pre></div></p>
+<h1 id="modifying-the-list-of-atmosphere-processes">Modifying the list of atmosphere processes</h1>
+<p>The <code>atmchange</code> script can be used to change any of the runtime parameters of EAMxx. In particular, it can
+be used to add, remove, or reorder atmosphere processes. When adding an atmosphere process, we must first
+make sure that the defaults for that process are present in <code>namelist_defaults_scream.xml</code>. For instance,
+the default settings for the "physics" atmosphere process group include the following:
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>physics::atm_procs_list
+<span class="w">    </span>namelist_defaults::atmosphere_processes::physics::atm_procs_list:<span class="w"> </span>mac_aero_mic,rrtmgp
+</code></pre></div>
+where "mac_aero_mic" is itself an atmosphere process group, consisting of macrophysics, aerosols, and microphysics
+processes. If one wanted to add the "cosp" atmosphere process to this list, and change the number of its
+subcycles, it could do so via
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmchange<span class="w"> </span>physics::atm_procs_list+<span class="o">=</span>cosp
+$<span class="w"> </span>./atmchange<span class="w"> </span>cosp::number_of_subcycles<span class="o">=</span><span class="m">3</span>
+</code></pre></div>
+Notice that if we swapped the two commands, we would get an error, since the node "cosp" is not present in
+the XML generated from the defaults until we decide to add it.</p>
+<p>It is also possible to declare a new (empty) atmosphere process group, which can then be filled with valid
+atmosphere processes via subsequent calls to <code>atmchange</code>. The syntax to trigger this behavior consists
+in specifying a process name that begins and ends with an underscore:
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmchange<span class="w"> </span>physics::atm_procs_list+<span class="o">=</span>_my_group_
+</code></pre></div>
+This adds a new process to the list of processes in "physics", called "_my_group_", and which is itself
+an atmosphere process group. Hence, we can then do
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmchange<span class="w"> </span>_my_group_::atm_procs_list+<span class="o">=</span>A,B
+</code></pre></div>
+where A and B must be valid atmosphere process names (i.e., present in <code>namelist_defaults_scream.xml</code>)
+or be themselves new atmosphere process groups (i.e., beginning/ending with an underscore)</p>
+<p><code>atmchange</code> can also be used to completely change a list of atmosphere processes:
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmchange<span class="w"> </span>physics::atm_procs_list<span class="o">=</span>A,B,C
+</code></pre></div>
+Notice that we used "=" instead of "+=", which means we will be overwriting the value, rather than appending.
+Any atmosphere process that was previously in the list but is no longer in it will be removed from
+the generated <code>namelist_defaults.xml</code> (and <code>scream_input.yaml</code>) files, along with all their nested parameters.</p>
 
 
 
@@ -1233,7 +1224,7 @@ $<span class="w"> </span>./atmquery<span class="w"> </span>homme::compute_tenden
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.indices", "navigation.instant", "navigation.sections", "navigation.top"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.indices", "navigation.instant", "navigation.top"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
       <script src="../../assets/javascripts/bundle.dd8806f2.min.js"></script>
