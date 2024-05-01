@@ -9,7 +9,7 @@
       
       
       
-        <link rel="prev" href="../../common/eamxx_params/">
+        <link rel="prev" href="../nudging/">
       
       
         <link rel="next" href="../../developer/">
@@ -20,7 +20,7 @@
     
     
       
-        <title>Coarse nudging - EAMxx</title>
+        <title>Extra radiation calls - EAMxx</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#nudging-from-coarse-data" class="md-skip">
+        <a href="#clean-and-clean-clear-sky-diagnostics" class="md-skip">
           Skip to content
         </a>
       
@@ -108,7 +108,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Coarse nudging
+              Extra radiation calls
             
           </span>
         </div>
@@ -415,6 +415,27 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../nudging/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Nudging
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -431,7 +452,7 @@
           
   
   <span class="md-ellipsis">
-    Coarse nudging
+    Extra radiation calls
   </span>
   
 
@@ -442,7 +463,7 @@
         
   
   <span class="md-ellipsis">
-    Coarse nudging
+    Extra radiation calls
   </span>
   
 
@@ -464,9 +485,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#example-setup" class="md-nav__link">
+  <a href="#example-setup-current-as-of-april-2024" class="md-nav__link">
     <span class="md-ellipsis">
-      Example setup
+      Example setup (current as of April 2024)
     </span>
   </a>
   
@@ -945,11 +966,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical/aerocom_cldtop/" class="md-nav__link">
+      <a href="../../technical/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    AeroCOM cloud top
+    Overview
   </span>
   
 
@@ -966,11 +987,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical/clean_clear_sky/" class="md-nav__link">
+      <a href="../../technical/aerocom_cldtop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Extra radiation calls
+    AeroCom cloud top
   </span>
   
 
@@ -1014,9 +1035,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#example-setup" class="md-nav__link">
+  <a href="#example-setup-current-as-of-april-2024" class="md-nav__link">
     <span class="md-ellipsis">
-      Example setup
+      Example setup (current as of April 2024)
     </span>
   </a>
   
@@ -1037,24 +1058,35 @@
                   
 
 
-<h1 id="nudging-from-coarse-data">Nudging from coarse data</h1>
-<p>Because EAMxx is designed to support ultra-high resolutions (in fact, that was the initial reason for its inception), it is not feasible to produce nudging data at the same resolution.
-Instead, in EAMxx, it is possible to nudge from coarse data.
-This is done by remapping the coarse data provided by the user to the runtime physics grid of EAMxx.
-In order to enable nudging from coarse data, the user must provide nudging data at the coarse resolution desired and an appropriate     ncremap-compatible mapping file.</p>
-<h2 id="example-setup">Example setup</h2>
-<p>A user can produce coarse nudging data from running EAMxx or EAM at a ne30pg2 or any other applicable resolution.
-Additionally, several users in the E3SM projects have produced nudging data at the ne30pg2 resolution from the MERRA2 and ERA5 datasets.
-A limitation for now is that the nudging data must be provided explicitly, either as one file or as a list of files.
-This can be problematic for long list of files, but we are working on a solution to this problem.</p>
-<p>Let's say that the nudging data is provided as one file in the following path: <code>/path/to/nudging_data_ne4pg2_L72.nc</code>.
-Then, a mapping file is provided as <code>/another/path/to/mapping_file_ne4pg2_to_ne120pg2.nc</code>.
-Then if the physics grid is ne120pg2, the user must enable the nudging process, specify the nudging files, and provide the specifies the nudging data and a remap file.
-In other words, the following options are needed:</p>
-<div class="highlight"><pre><span></span><code>./atmchange<span class="w"> </span><span class="nv">atm_procs_list</span><span class="o">=(</span>sc_import,nudging,homme,physics,sc_export<span class="o">)</span>
-./atmchange<span class="w"> </span><span class="nv">nudging_fields</span><span class="o">=</span>U,V
-./atmchange<span class="w"> </span><span class="nv">nudging_filenames_patterns</span><span class="o">=</span>/path/to/nudging_data_ne4pg2_L72.nc
-./atmchange<span class="w"> </span><span class="nv">nudging_refine_remap_mapfile</span><span class="o">=</span>/another/path/to/mapping_file_ne4pg2_to_ne120pg2.nc
+<h1 id="clean-and-clean-clear-sky-diagnostics">Clean- and clean-clear-sky diagnostics</h1>
+<p>In order to decompose the aerosol effective radiative forcing, additional diagnostic radiation calls are needed.
+These extra diagnostics are optionally added to the main radiation call. The extra diagnostics are:</p>
+<ul>
+<li>Clean-clear-sky fluxes: the fluxes that would be present if there were neither aerosols nor clouds, and are calculated by adding an additional radiation call at the very beginning of the logic before the optics class is endowed with aerosol and cloud properties.</li>
+<li>Clean-sky fluxes: the fluxes that would be present if there were no aerosols, and are calculated by adding an additional radiation call after substantiating an additional optics class, but not endowing it with aerosol properties.</li>
+</ul>
+<h2 id="example-setup-current-as-of-april-2024">Example setup (current as of April 2024)</h2>
+<p>The extra calls are controlled by runtime flags <code>extra_clnclrsky_diag</code> and <code>extra_clnsky_diag</code> (they take either <code>true</code> or <code>false</code> as their values).</p>
+<div class="highlight"><pre><span></span><code><span class="w">    </span>./atmchange<span class="w"> </span><span class="nv">extra_clnclrsky_diag</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">    </span>./atmchange<span class="w"> </span><span class="nv">extra_clnsky_diag</span><span class="o">=</span><span class="nb">true</span>
+</code></pre></div>
+<p>Below is an example output file to output the extra (clean and clean-clear-sky) radiation diagnostics atop the atmosphere.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">%YAML</span><span class="w"> </span><span class="m">1.1</span>
+<span class="nn">---</span>
+<span class="nt">filename_prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monthly.outputs</span>
+<span class="nt">Averaging Type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Average</span>
+<span class="nt">Max Snapshots Per File</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="nt">Fields</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">Physics PG2</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">Field Names</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SW_clnclrsky_flux_up_at_model_top</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LW_clnclrsky_flux_up_at_model_top</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SW_clnsky_flux_up_at_model_top</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LW_clnsky_flux_up_at_model_top</span>
+<span class="nt">output_control</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">Frequency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">frequency_units</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nmonths</span>
+<span class="w">  </span><span class="nt">MPI Ranks in Filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
 
 

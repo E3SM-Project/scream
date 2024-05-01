@@ -9,10 +9,8 @@
       
       
       
-        <link rel="prev" href="../../developer/ci_nightly/">
+        <link rel="prev" href="../">
       
-      
-        <link rel="next" href="../clean_clear_sky/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -20,7 +18,7 @@
     
     
       
-        <title>AeroCOM cloud top - EAMxx</title>
+        <title>AeroCom cloud top - EAMxx</title>
       
     
     
@@ -108,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              AeroCOM cloud top
+              AeroCom cloud top
             
           </span>
         </div>
@@ -416,11 +414,32 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user/coarse_nudging/" class="md-nav__link">
+      <a href="../../user/nudging/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Coarse nudging
+    Nudging
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/clean_clear_sky/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Extra radiation calls
   </span>
   
 
@@ -893,6 +912,27 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -909,33 +949,12 @@
         
   
   <span class="md-ellipsis">
-    AeroCOM cloud top
+    AeroCom cloud top
   </span>
   
 
       </a>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../clean_clear_sky/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Extra radiation calls
-  </span>
-  
-
-      </a>
     </li>
   
 
@@ -981,8 +1000,8 @@
                   
 
 
-<h1 id="the-aerocom-algorithm">The AeroCOM algorithm</h1>
-<p>The goal of the AeroCOM algorithm is to calculate properties at cloud top based on the AeroCOM recommendation. There are two main parts of the algorithm: probabilistically determining "cloud top" and then "calculating properties" at said cloud top.</p>
+<h1 id="the-aerocom-algorithm">The AeroCom algorithm</h1>
+<p>The goal of the AeroCom algorithm is to calculate properties at cloud top based on the AeroCom recommendation. There are two main parts of the algorithm: probabilistically determining "cloud top" and then "calculating properties" at said cloud top.</p>
 <p>We treat model columns independently, so we loop over all columns in parallel. We then loop over all layers in serial (due to needing an accumulative product), starting at 2 (second highest) layer because the highest is assumed to have no clouds. Let's take a photonic approach from above the model top. Let's say that <span class="arithmatex">\(p_{k}\)</span> is the probability of a photon passing through the layer <span class="arithmatex">\(k\)</span>. We follow the maximum-random overlap assumption. In all cases, we assume the cloudiness (or cloudy fraction) is completely opaque.</p>
 <p>We assume the highest layer has no clouds, thus the <span class="arithmatex">\(p_{k} = 1\)</span> for the highest layer. Note that <span class="arithmatex">\(p_{k}\)</span> is initialized as 1 for all layers. We also clip the cloudy fraction <span class="arithmatex">\(C_{i,k}\)</span> to ensure that <span class="arithmatex">\(C_{i,k} \in [0+\epsilon, 1-\epsilon]\)</span>, where <span class="arithmatex">\(\epsilon = 0.001\)</span>. Starting at the second highest layer, <span class="arithmatex">\(k+1\)</span>, we check if some "cloudy" conditions are met. These conditions are now arbitrarily defined by a cloudiness threshold of <span class="arithmatex">\(\epsilon\)</span> (i.e., <span class="arithmatex">\(C_{i,k}&gt;\epsilon\)</span>) and a non-zero threshold on the total (both liquid and ice) droplet number concentration (i.e., <span class="arithmatex">\(cQ_{i,k} + iQ_{i,k} &gt; 0\)</span>). If the conditions are met, we estimate the cloud-top cloud fraction using an accumulative product following the maximum-random overlap assumption.</p>
 <div class="arithmatex">\[c_{i} = 1 - \prod_{k=2}^{K} p_{k} = 1 - \prod_{k=2}^{K} \frac{1 - \max(C_{i,k}, C_{i,k-1})}{1-C_{i,k-1}}\]</div>
@@ -1013,7 +1032,18 @@
 <div class="arithmatex">\[i\Phi_{i,k} = \frac{iQ_{i,k}}{iQ_{i,k} + cQ_{i,k}}\]</div>
 <div class="arithmatex">\[c\Phi_{i,k} = \frac{cQ_{i,k}}{iQ_{i,k} + cQ_{i,k}}\]</div>
 <p>The thermodynamic phase is used only for cloud properties (e.g., cloud-top cloud droplet number concentration) or cloud content (e.g., cloud liquid content). Further, <span class="arithmatex">\(X_{i,k}\)</span> is the three-dimensional cloud property of interest which is needed if we are converting a property from three-dimensional (<span class="arithmatex">\(X\)</span>) to its two-dimensional counterpart (<span class="arithmatex">\(x\)</span>). "Other" properties here include temperature and pressure which are not dependent on the thermodynamic phase.</p>
-<p>A helpful references: Räisänen, P., Barker, H. W., Khairoutdinov, M. F., Li, J., &amp; Randall, D. A. (2004). Stochastic generation of subgrid‐scale cloudy columns for large‐scale models. Quarterly Journal of the Royal Meteorological Society: A journal of the atmospheric sciences, applied meteorology and physical oceanography, 130(601), 2047-2067.</p>
+<p>Most studies in this topic refer a technical report by Tiedtke et al. (1979)<sup id="fnref:1"><a class="footnote-ref" href="#fn:1">1</a></sup>. Another more recent general reference that may be of interest is that of Räisänen et al. (2004)<sup id="fnref:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<div class="footnote">
+<hr />
+<ol>
+<li id="fn:1">
+<p>M. Tiedtke, J.-F. Geleyn, A. Hollingsworth, and J.-F. Louis. ECMWF model parameterisation of sub-grid scale processes. Technical Report, ECMWF, Shinfield Park, Reading, January 1979. 10.&#160;<a class="footnote-backref" href="#fnref:1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+<li id="fn:2">
+<p>Petri Räisänen, Howard W Barker, Marat F Khairoutdinov, Jiangnan Li, and David A Randall. Stochastic generation of subgrid-scale cloudy columns for large-scale models. <em>Quarterly Journal of the Royal Meteorological Society: A journal of the atmospheric sciences, applied meteorology and physical oceanography</em>, 130(601):2047–2067, 2004.&#160;<a class="footnote-backref" href="#fnref:2" title="Jump back to footnote 2 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div>
 
 
 
