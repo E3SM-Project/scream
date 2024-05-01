@@ -130,9 +130,7 @@ void AtmosphereProcess::run (const double dt) {
 
   // If no-update reset state to the init_step_tendencies
   // state.
-  if (m_params.get("no_update",false)) {
-    reset_state_to_init_step ();
-  }
+  reset_state_to_beg_step ();
 
   if (m_params.get("enable_postcondition_checks", true)) {
     // Run 'post-condition' property checks stored in this AP
@@ -154,15 +152,42 @@ void AtmosphereProcess::finalize (/* what inputs? */) {
 void AtmosphereProcess::setup_tendencies_requests () {
   using vos_t = std::vector<std::string>;
   auto tend_vec = m_params.get<vos_t>("compute_tendencies",{});
-  if (tend_vec.size()==0) {
+  auto noupdate_vec = m_params.get<vos_t>("no_update",{});
+  if (tend_vec.size()==0 && noupdate_vec.size()==0) {
     return;
+  }
+  if (noupdate_vec.size()>0) {
+    // If no_update applies to any fiedls  print a warning to log.
+    m_atm_logger->warn("[EAMxx::" + this->name() + "] WARNING! WILL NOT UPDATE THE MODEL STATE...");
+  }
+
+  // If the no update field isn't already in the calculated tendencies we
+  // need to add it so that we can reset the model state at the end of the
+  // step.
+  // Note: If tend is 'all' then we are guaranteed to have the no update
+  // field in place. Nothing to do,
+        bool tend_all     = tend_vec.size()==1 && tend_vec[0]==ci_string("all");
+  const bool noupdate_all = noupdate_vec.size()==1 && noupdate_vec[0]==ci_string("all");
+  if (not tend_all && noupdate_vec.size()>0) {
+    if (noupdate_all) {
+      // Then we want to switch to calculating all tendencies for the no update feature.
+      tend_vec = {"all"};
+      tend_all = true;
+    } else {
+      for (auto it : noupdate_vec) {
+        if (std::find(tend_vec.begin(), tend_vec.end(), it) == tend_vec.end()) {
+          tend_vec.push_back(it);
+        }
+      }
+    }
   }
 
   // Will convert to list, since lists insert/erase are safe inside loops
   std::list<std::string> tend_list;
+  std::list<std::string> noupdate_list;
 
   // Allow user to specify [all] as a shortcut for all updated fields
-  if (tend_vec.size()==1 && tend_vec[0]==ci_string("all")) {
+  if (tend_all) {
     for (const auto& r_out : get_computed_field_requests()) {
       for (const auto& r_in : get_required_field_requests()) {
         if (r_in.fid==r_out.fid) {
@@ -260,9 +285,35 @@ void AtmosphereProcess::setup_tendencies_requests () {
     // Add an empty field, to be reset when we set the computed field
     m_proc_tendencies[tname] = {};
     m_tend_to_field[tname] = fn;
+    // Check if this field won't be updated
+    const bool u_found = std::find(noupdate_vec.begin(), noupdate_vec.end(), fn) != noupdate_vec.end();
+    if (noupdate_all or u_found) {
+      m_no_update_fields.push_back(fn);
+    }
   }
 
   m_compute_proc_tendencies = m_proc_tendencies.size()>0;
+  m_reset_updated_fields    = m_no_update_fields.size()>0;
+
+  if (m_compute_proc_tendencies) {
+    printf("-------------------- ASD: proc tendencies ----------------------\n");
+    for (auto it : m_proc_tendencies) {
+      // Note: f_beg is nonconst, so we can store step tendency in it
+      const auto& tname = it.first;
+      const auto& fname = m_tend_to_field.at(tname);
+      printf("%32s: %32s\n",tname.c_str(),fname.c_str());
+    }
+    printf("----------------------------------------------------------------\n");
+  }
+  if (m_reset_updated_fields) {
+    printf("--------------------  ASD: reset fields   ----------------------\n");
+    for (auto tname : m_no_update_fields) {
+      // Note: f_beg is nonconst, so we can store step tendency in it
+      printf("%32s\n",tname.c_str());
+    }
+    printf("----------------------------------------------------------------\n");
+  }
+
 }
 
 void AtmosphereProcess::set_required_field (const Field& f) {
@@ -510,15 +561,21 @@ void AtmosphereProcess::init_step_tendencies () {
   }
 }
 
-void AtmosphereProcess::reset_state_to_init_step () {
-  start_timer(m_timer_prefix + this->name() + "::no_update");
-  for (auto& it : m_start_of_step_fields) {
-    const auto& fname = it.first;
-    const auto& f     = get_field_out(fname);
-          auto& f_beg = it.second;
-    f.deep_copy(f_beg);
+void AtmosphereProcess::reset_state_to_beg_step () {
+  // Note, this is called after `compute_step_tendencies` and thus
+  // m_start_of_step_fields should now have the tendency for this
+  // step in it rather than the state at the beginning of the step.
+  // Also note, if m_reset_updated_fields=True then so does 
+  // m_compute_proc_tendencies.
+  if (m_reset_updated_fields) {
+    start_timer(m_timer_prefix + this->name() + "::no_update");
+    for (auto& fname : m_no_update_fields) {
+            auto& f      = get_field_out(fname);
+      const auto& f_tend = m_start_of_step_fields.at(fname);
+      f.update(f_tend,-1,1);
+    }
+    stop_timer(m_timer_prefix + this->name() + "::no_update");
   }
-  stop_timer(m_timer_prefix + this->name() + "::no_update");
 }
 
 void AtmosphereProcess::compute_step_tendencies (const double dt) {
@@ -531,7 +588,7 @@ void AtmosphereProcess::compute_step_tendencies (const double dt) {
       const auto& tname = it.first;
       const auto& fname = m_tend_to_field.at(tname);
       const auto& f     = get_field_out(fname);
-            auto& f_beg = m_start_of_step_fields.at(fname);
+            auto  f_beg = m_start_of_step_fields.at(fname);
             auto& tend  = it.second;
 
       // Compute tend from this atm proc step, then sum into overall atm timestep tendency

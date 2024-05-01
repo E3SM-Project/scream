@@ -174,7 +174,7 @@ public:
 
   void init_step_tendencies ();
   void compute_step_tendencies (const double dt);
-  void reset_state_to_init_step ();
+  void reset_state_to_beg_step ();
 
   // These methods allow the AD to figure out what each process needs, with very fine
   // grain detail. See field_request.hpp for more info on what FieldRequest and GroupRequest
@@ -531,6 +531,9 @@ private:
   strmap_t<Field>          m_proc_tendencies;
   strmap_t<Field>          m_start_of_step_fields;
 
+  // Data structures necessary for not updating a specific field as requested
+  std::list<std::string>   m_no_update_fields;
+
   // These maps help to retrieve a field/group stored in the lists above. E.g.,
   //   auto ptr = m_field_in_pointers[field_name][grid_name];
   // then *ptr is a field in m_fields_in, with name $field_name, on grid $grid_name.
@@ -579,6 +582,9 @@ private:
 
   // Whether this atm proc should compute tendencies for any of its updated fields
   bool m_compute_proc_tendencies = false;
+
+  // Whether this atm proc should skip updating any of its updated fields 
+  bool m_reset_updated_fields = false;
 
   // Log level for when property checks perform a repair
   ekat::logger::LogLevel  m_repair_log_level;
