@@ -12,7 +12,7 @@
         <link rel="prev" href="../model_output/">
       
       
-        <link rel="next" href="../../developer/">
+        <link rel="next" href="../clean_clear_sky/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -20,7 +20,7 @@
     
     
       
-        <title>Coarse nudging - EAMxx</title>
+        <title>Nudging - EAMxx</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#nudging-from-coarse-data" class="md-skip">
+        <a href="#nudging-in-eamxx" class="md-skip">
           Skip to content
         </a>
       
@@ -108,7 +108,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Coarse nudging
+              Nudging
             
           </span>
         </div>
@@ -405,7 +405,7 @@
           
   
   <span class="md-ellipsis">
-    Coarse nudging
+    Nudging
   </span>
   
 
@@ -416,7 +416,7 @@
         
   
   <span class="md-ellipsis">
-    Coarse nudging
+    Nudging
   </span>
   
 
@@ -438,9 +438,36 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#example-setup" class="md-nav__link">
+  <a href="#data-to-nudge-towards" class="md-nav__link">
     <span class="md-ellipsis">
-      Example setup
+      Data to nudge towards
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pressure-in-the-nudging-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pressure in the nudging data
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#weighted-nudging-for-rrm-applications" class="md-nav__link">
+    <span class="md-ellipsis">
+      Weighted nudging for RRM applications
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-setup-current-as-of-april-2024" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example setup (current as of April 2024)
     </span>
   </a>
   
@@ -450,6 +477,27 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../clean_clear_sky/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Extra radiation calls
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -905,11 +953,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical/aerocom_cldtop/" class="md-nav__link">
+      <a href="../../technical/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    AeroCOM cloud top
+    Overview
   </span>
   
 
@@ -926,11 +974,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical/clean_clear_sky/" class="md-nav__link">
+      <a href="../../technical/aerocom_cldtop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Extra radiation calls
+    AeroCom cloud top
   </span>
   
 
@@ -974,9 +1022,36 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#example-setup" class="md-nav__link">
+  <a href="#data-to-nudge-towards" class="md-nav__link">
     <span class="md-ellipsis">
-      Example setup
+      Data to nudge towards
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pressure-in-the-nudging-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pressure in the nudging data
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#weighted-nudging-for-rrm-applications" class="md-nav__link">
+    <span class="md-ellipsis">
+      Weighted nudging for RRM applications
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-setup-current-as-of-april-2024" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example setup (current as of April 2024)
     </span>
   </a>
   
@@ -997,25 +1072,33 @@
                   
 
 
-<h1 id="nudging-from-coarse-data">Nudging from coarse data</h1>
-<p>Because EAMxx is designed to support ultra-high resolutions (in fact, that was the initial reason for its inception), it is not feasible to produce nudging data at the same resolution.
-Instead, in EAMxx, it is possible to nudge from coarse data.
-This is done by remapping the coarse data provided by the user to the runtime physics grid of EAMxx.
-In order to enable nudging from coarse data, the user must provide nudging data at the coarse resolution desired and an appropriate     ncremap-compatible mapping file.</p>
-<h2 id="example-setup">Example setup</h2>
-<p>A user can produce coarse nudging data from running EAMxx or EAM at a ne30pg2 or any other applicable resolution.
-Additionally, several users in the E3SM projects have produced nudging data at the ne30pg2 resolution from the MERRA2 and ERA5 datasets.
-A limitation for now is that the nudging data must be provided explicitly, either as one file or as a list of files.
-This can be problematic for long list of files, but we are working on a solution to this problem.</p>
-<p>Let's say that the nudging data is provided as one file in the following path: <code>/path/to/nudging_data_ne4pg2_L72.nc</code>.
-Then, a mapping file is provided as <code>/another/path/to/mapping_file_ne4pg2_to_ne120pg2.nc</code>.
-Then if the physics grid is ne120pg2, the user must enable the nudging process, specify the nudging files, and provide the specifies the nudging data and a remap file.
-In other words, the following options are needed:</p>
-<div class="highlight"><pre><span></span><code>./atmchange<span class="w"> </span><span class="nv">atm_procs_list</span><span class="o">=(</span>sc_import,nudging,homme,physics,sc_export<span class="o">)</span>
-./atmchange<span class="w"> </span><span class="nv">nudging_fields</span><span class="o">=</span>U,V
-./atmchange<span class="w"> </span><span class="nv">nudging_filenames_patterns</span><span class="o">=</span>/path/to/nudging_data_ne4pg2_L72.nc
-./atmchange<span class="w"> </span><span class="nv">nudging_refine_remap_mapfile</span><span class="o">=</span>/another/path/to/mapping_file_ne4pg2_to_ne120pg2.nc
+<h1 id="nudging-in-eamxx">Nudging in EAMxx</h1>
+<p>Nudging is supported in EAMxx.
+Currently, it is possible to nudge EAMxx to the output from a different EAMxx run or to reanalysis. Nudging data can be on your model grid or an arbitrary coarser grid. Inline interpolating of finer-grid nudging data to a coarser model resolution isn't implemented yet but may be in the future.</p>
+<h2 id="data-to-nudge-towards">Data to nudge towards</h2>
+<p>The user is expected to prepapre (and then use <code>atmchange</code> to point to) nudging data files that are compliant with EAMxx specification.
+In practice, this means that the data files must contain variable names known to EAMxx (only U, V, T_mid, and qv are supported now).
+The files can be specified with an explicit list or via pattern matching.
+The files must contain an arbitary global attribute <code>case_t0</code>, and it is recommended to be the same as the time dimension unit (the files must be time-dimensioned).
+Finally, the dimension order must be such that <code>lev</code> is the last dimension, so most likely, the user must transpose the dimensions.</p>
+<h2 id="pressure-in-the-nudging-data">Pressure in the nudging data</h2>
+<p>Pressure can be explicitly provided in the nudging data as time-varying <code>p_mid</code> corresponding to the option <code>TIME_DEPENDENT_3D_PROFILE</code> for <code>source_pressure_type</code>.
+Alternatively, the data can contain a time-invariant pressure variable <code>p_lev</code> corresponding to the option <code>TIME_DEPENDENT_3D_PROFILE</code> for <code>source_pressure_type</code>.</p>
+<h2 id="weighted-nudging-for-rrm-applications">Weighted nudging for RRM applications</h2>
+<p>In regionally refined model applications, it is possible to use weighted nudging, for example, to avoid nudging the refined region.
+To achieve that, the user can use <code>atmchange</code> to set <code>use_nudging_weights</code> (boolean) and provide <code>nudging_weights_file</code> that has the weight to apply for nudging (for example, zeros in the refined region).
+Currently, weighted nudging is only supported if the user provides the nudging data at the target grid.</p>
+<h2 id="example-setup-current-as-of-april-2024">Example setup (current as of April 2024)</h2>
+<p>To enable nudging as a process, one must declare it in the <code>atm_procs_list</code> runtime parameter.</p>
+<div class="highlight"><pre><span></span><code>./atmchange<span class="w"> </span>physics::atm_procs_list<span class="o">=</span><span class="s2">&quot;mac_aero_mic,rrtmgp,cosp,nudging&quot;</span>
 </code></pre></div>
+<p>The following options are needed to specify the nudging.</p>
+<div class="highlight"><pre><span></span><code>./atmchange<span class="w"> </span>nudging::nudging_filenames_patterns<span class="o">=</span><span class="s2">&quot;/pathto/nudging_files/*.nc&quot;</span><span class="w"> </span><span class="c1"># can provide file name explicitly here instead (or multiple patterns)</span>
+./atmchange<span class="w"> </span>nudging::source_pressure_type<span class="o">=</span>TIME_DEPENDENT_3D_PROFILE<span class="w"> </span><span class="c1"># see section on pressure</span>
+./atmchange<span class="w"> </span>nudging::nudging_fields<span class="o">=</span>U,V<span class="w"> </span><span class="c1"># can include qv, T_mid as well</span>
+./atmchange<span class="w"> </span>nudging::nudging_timescale<span class="o">=</span><span class="m">21600</span><span class="w"> </span><span class="c1"># in seconds</span>
+</code></pre></div>
+<p>To gain a deeper understanding of these parameters and options, please refer to code implementation of the nudging process.</p>
 
 
 
