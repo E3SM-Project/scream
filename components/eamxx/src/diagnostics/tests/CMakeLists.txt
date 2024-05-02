@@ -3,7 +3,8 @@
 function (createDiagTest test_name test_srcs)
   CreateUnitTest(${test_name} "${test_srcs}"
     LIBS diagnostics physics_share
-    LABELS diagnostics)
+    LABELS diagnostics
+    ${ARGN})
 endfunction ()
 
 if (NOT SCREAM_ONLY_GENERATE_BASELINES)
@@ -70,5 +71,10 @@ if (NOT SCREAM_ONLY_GENERATE_BASELINES)
 
   # Test AEROCOM_CLD
   CreateDiagTest(aerocom_cld "aerocom_cld_test.cpp")
+
+  # Test Extra ACI diags
+  GetInputFile(cam/scam/iop/DYCOMSrf02_iopfile_4scam.nc)
+  CreateDiagTest(entrainment_budget "entrainment_budget_test.cpp"
+    EXE_ARGS "--ekat-test-params iop_file=${SCREAM_INPUT_ROOT}/atm/cam/scam/iop/DYCOMSrf02_iopfile_4scam.nc")
 
 endif()
