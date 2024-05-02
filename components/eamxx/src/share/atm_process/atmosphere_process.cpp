@@ -66,6 +66,10 @@ AtmosphereProcess (const ekat::Comm& comm, const ekat::ParameterList& params)
 }
 
 void AtmosphereProcess::initialize (const TimeStamp& t0, const RunType run_type) {
+  if (m_params.get<bool>("no_update",false)) {
+    printf("ASD: skipping initialize for %s\n",this->name().c_str());
+    return;
+  }
   if (this->type()!=AtmosphereProcessType::Group) {
     start_timer (m_timer_prefix + this->name() + "::init");
   }
@@ -86,6 +90,10 @@ void AtmosphereProcess::initialize (const TimeStamp& t0, const RunType run_type)
 }
 
 void AtmosphereProcess::run (const double dt) {
+  if (m_params.get<bool>("no_update",false)) {
+    printf("ASD: skipping run for %s\n",this->name().c_str());
+    return;
+  }
   m_atm_logger->debug("[EAMxx::" + this->name() + "] run...");
   start_timer (m_timer_prefix + this->name() + "::run");
   if (m_params.get("enable_precondition_checks", true)) {
@@ -142,6 +150,10 @@ void AtmosphereProcess::run (const double dt) {
 }
 
 void AtmosphereProcess::finalize (/* what inputs? */) {
+  if (m_params.get<bool>("no_update",false)) {
+    printf("ASD: skipping finalize for %s\n",this->name().c_str());
+    return;
+  }
   finalize_impl(/* what inputs? */);
 }
 
