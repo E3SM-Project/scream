@@ -9,10 +9,10 @@
       
       
       
-        <link rel="prev" href="../model_output/">
+        <link rel="prev" href="../eamxx_cases/">
       
       
-        <link rel="next" href="../../common/eamxx_params/">
+        <link rel="next" href="../model_output/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#model-input" class="md-skip">
+        <a href="#model-inputs" class="md-skip">
           Skip to content
         </a>
       
@@ -275,20 +275,15 @@
     
     
     
-      
-        
-        
-      
     
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -334,32 +329,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/installation/" class="md-nav__link">
+      <a href="../eamxx_cases/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Installation
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../model_output/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Model output
+    EAMxx case basics
   </span>
   
 
@@ -407,11 +381,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/eamxx_params/" class="md-nav__link">
+      <a href="../model_output/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Runtime parameters
+    Model output
   </span>
   
 
@@ -479,20 +453,15 @@
     
     
     
-      
-        
-        
-      
     
-    
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -623,8 +592,6 @@
   
     
     
-    
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -774,8 +741,6 @@
     
     
     
-      
-    
     
     <li class="md-nav__item md-nav__item--nested">
       
@@ -889,20 +854,15 @@
     
     
     
-      
-        
-        
-      
     
-    
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1002,9 +962,240 @@
                   
 
 
-<h1 id="model-input">Model input</h1>
-<p>TODO: explain how defaults XML, atmchange/atmquery, buildml, and input.yaml work.</p>
-<p><a href="../../common/eamxx_params/">Here</a> is a list of the currently configurable runtime parameters for EAMxx.</p>
+<h1 id="model-inputs">Model inputs</h1>
+<p>This section explains how input parameters are passed to EAMxx, and how the user can
+change their value. The full list of the currently configuraable runtime parameters for
+EAMxx can be found <a href="../../common/eamxx_params/">here</a>.</p>
+<p>The infrastructure for reading inputs into EAMxx involves a few scripts/files:</p>
+<ol>
+<li><code>atmchange</code> and <code>atmquery</code>: these scripts are located in <code>SRCDIR/components/eamxx/scripts</code>,
+    and are soft-linked in the case folder. As their names suggest, they can be used to query
+    and change the runtime configuration parameter of EAMxx. Since these two scripts are the
+    only scripts that the average user needs to know and interact with, in the next sections
+    we give a brief overview of how they can be used and how their output can be interpreted.
+    Additionally, for both of the scripts a short help can also be obtained using the <code>-h</code> flag.</li>
+<li>
+<p><code>buildnml</code>: this script, located in <code>SRCDIR/components/eamxx/cime_config</code>, is called by CIME's
+    case management scripts (<code>case.setup</code>, <code>case.build</code>, and <code>case.submit</code>), and is responsible for creating
+    the input files that EAMxx will read to load its runtime parameters. Users should not have to modify this script,
+    nor should they have to manually call it, but it is useful to know what it does.
+    When <code>buildnml</code> runs, it creates a few files, containing EAMxx input parameters:</p>
+<ul>
+<li><code>scream_input.yaml</code>: this <a href="https://yaml.org/spec/1.2.2">YAML</a> file is located in the <code>RUNDIR/data</code> folder,
+    and will be read by EAMxx at runtime to load all of its configuration parameters. More precisely,
+    this file contains parameters that need to be used inside the EAMxx interfaces.</li>
+<li><code>namelist.nl</code>: this <a href="https://docs.oracle.com/cd/E19957-01/805-4939/6j4m0vnad/index.html">namelist</a> file is
+    located in the <code>RUNDIR/data</code> folder, and will be parsed at runtime to get all the parameters for the
+    HOMME dycore (ADD REF). This file only contains dycore-specific parameters that are only recognized
+    inside HOMME, and does not contain any parameter pertaining EAMxx infrastructure.</li>
+<li><code>namelist_scream.xml</code>: this XML file is located in the case directory, and contains all the runtime parameters that EAMxx
+    will read in at runtime. <code>buildnml</code> uses this XML file as an intermediate file during the generation of
+    <code>scream_input.yaml</code> and <code>namelist.nl</code>. More specifically, <code>buildnml</code> generates this file using case information to select the
+    proper configurations from the file <code>namelist_defaults_scream.xml</code>, located in <code>SRCDIR/components/eamxx/cime_config</code>.
+    Despite the fact that the only files that are needed at runtime are <code>scream_input.yaml</code> and <code>namelist.nl</code>,
+    we generate and keep this XML file around to make the implementation of <code>atmquery</code> easier.</li>
+</ul>
+<p>Since these files are automatically generated when <code>buildnml</code> runs, users should not manually modify them.
+Any manual modification will be lost the next time <code>buildnml</code> runs (e.g., at <code>case.submit</code> time).</p>
+</li>
+</ol>
+<h1 id="querying-parameters-with-atmquery">Querying parameters with <code>atmquery</code></h1>
+<p>This script is the simplest way for the user to check the value and properties of EAMxx input parameters.
+A basic usage of the script is</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>my_param
+</code></pre></div>
+<p>which will retrieve the value of the parameter called <code>my_param</code>, by locating the XML node "my_param" in the
+file <code>namelist_scream.xml</code> in the RUNDIR folder. Obviously, an XML file can have multiple nodes with the same tag,
+and the script is implemented to error out if multiple matches are found. In such a scenario, the user needs
+to provide also the parents nodes names, using enough parents to uniquely identify the node (in most cases,
+one parent is enough). To specify a parent, the user can prepend the parent name and <code>::</code> to the node name:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>foo::my_param
+</code></pre></div>
+<p>The output will contain the fully scoped parameter name, along with the value. E.g.,</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>foo::my_param
+<span class="w">    </span>namelist_defaults::node1::node2::foo::my_param:<span class="w">   </span><span class="m">10</span>
+</code></pre></div>
+<p>It is sometimes desirable to query <em>all</em> the nodes that have a particular name, or that contain a particular
+string. We can do that by using the <code>--grep</code> flag:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>--grep<span class="w"> </span>sub
+<span class="w">    </span>iop_options::iop_dosubsidence:<span class="w"> </span><span class="nb">false</span>
+<span class="w">    </span>ctl_nl::hypervis_subcycle:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>ctl_nl::hypervis_subcycle_tom:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>ctl_nl::hypervis_subcycle_q:<span class="w"> </span><span class="m">6</span>
+<span class="w">    </span>atmosphere_processes::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>sc_import::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>homme::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>physics::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+</code></pre></div>
+<p>TODO: This difference between basic and <code>--grep</code> is not really intuitive: as pointed out in <a href="https://github.com/E3SM-Project/scream/issues/2413">this
+issue</a>, we should change this. If we do, don't forget
+to update this following part of the docs.
+Using the <code>--grep</code> option has another effect: if the match is not a leaf of the XML tree, all its subelements
+are printed:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>--grep<span class="w"> </span>homme
+<span class="w">  </span>homme
+<span class="w">      </span>Moisture:<span class="w"> </span>moist
+<span class="w">      </span>BfbHash:<span class="w"> </span><span class="m">18</span>
+<span class="w">      </span>number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">      </span>enable_precondition_checks:<span class="w"> </span><span class="nb">true</span>
+<span class="w">      </span>enable_postcondition_checks:<span class="w"> </span><span class="nb">true</span>
+<span class="w">      </span>repair_log_level:<span class="w"> </span>trace
+<span class="w">      </span>internal_diagnostics_level:<span class="w"> </span><span class="m">0</span>
+<span class="w">      </span>compute_tendencies:<span class="w"> </span>None
+</code></pre></div>
+<p>Similarly to the CIME utility <code>xmlchange</code>, the options <code>--value</code>, <code>--type</code>, <code>--valid-values</code>, and <code>--full</code> can be
+used to respectively retrieve just the parameter value (useful for shell scripting), the parameter's type,
+a list of valid values for parameter (when applicable), or all of the above:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>atm_log_level<span class="w"> </span>--value
+<span class="w">    </span>info
+$<span class="w"> </span>./atmquery<span class="w"> </span>atm_log_level<span class="w"> </span>--type
+<span class="w">    </span>namelist_defaults::driver_options::atm_log_level:<span class="w"> </span>string
+$<span class="w"> </span>./atmquery<span class="w"> </span>atm_log_level<span class="w"> </span>--valid-values
+<span class="w">    </span>namelist_defaults::driver_options::atm_log_level:<span class="w"> </span><span class="o">[</span><span class="s1">&#39;trace&#39;</span>,<span class="w"> </span><span class="s1">&#39;debug&#39;</span>,<span class="w"> </span><span class="s1">&#39;info&#39;</span>,<span class="w"> </span><span class="s1">&#39;warn&#39;</span>,<span class="w"> </span><span class="s1">&#39;error&#39;</span><span class="o">]</span>
+$<span class="w"> </span>./atmquery<span class="w"> </span>atm_log_level<span class="w"> </span>--full
+<span class="w">      </span>namelist_defaults::driver_options::atm_log_level
+<span class="w">        </span>value:<span class="w"> </span>info
+<span class="w">        </span>type:<span class="w"> </span>string
+<span class="w">        </span>valid<span class="w"> </span>values:<span class="w"> </span><span class="o">[</span><span class="s1">&#39;trace&#39;</span>,<span class="w"> </span><span class="s1">&#39;debug&#39;</span>,<span class="w"> </span><span class="s1">&#39;info&#39;</span>,<span class="w"> </span><span class="s1">&#39;warn&#39;</span>,<span class="w"> </span><span class="s1">&#39;error&#39;</span><span class="o">]</span>
+</code></pre></div>
+<p>Finally, the option <code>--listall</code> can be used to list the whole content of the XML file, which will be displayed
+with each node indented in its parent scope:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>--listall
+<span class="w">    </span>namelist_defaults
+<span class="w">        </span>grids_manager
+<span class="w">            </span>Type:<span class="w"> </span>Homme
+<span class="w">            </span>physics_grid_type:<span class="w"> </span>PG2
+<span class="w">            </span>physics_grid_rebalance:<span class="w"> </span>None
+<span class="w">            </span>dynamics_namelist_file_name:<span class="w"> </span>./data/namelist.nl
+<span class="w">            </span>vertical_coordinate_filename:<span class="w"> </span>/some/path/to/coords/file.nc
+<span class="w">        </span>initial_conditions
+<span class="w">            </span>Filename:<span class="w"> </span>/some/path/to/ic/file.nc
+<span class="w">            </span>topography_filename:<span class="w"> </span>/some/path/to/topo/file.nc
+<span class="w">    </span>...
+</code></pre></div>
+<h1 id="changing-model-inputs-via-atmchange">Changing model inputs via <code>atmchange</code></h1>
+<p>When <code>buildnml</code> runs, the model inputs are deduced from the case configuration settings (e.g., the grid,
+the compset, etc.) and the <code>namelist_scream_defaults.xml</code> file, located in the eamxx source tree.
+The user can change any of these parameters using the <code>atmchange</code> script.
+A basic usage of the script is</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmchange<span class="w"> </span><span class="nv">my_param</span><span class="o">=</span><span class="m">10</span>
+</code></pre></div>
+<p>As for <code>atmquery</code>, if there are multiple matches for a given parameter name, the user must specify a unique
+scoped name, which allows <code>atmchange</code> to uniquely identify the XML node to modify:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>homme::number_of_subcycles
+<span class="w">    </span>namelist_defaults::atmosphere_processes::homme::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+$<span class="w"> </span>./atmchange<span class="w"> </span><span class="nv">number_of_subcycles</span><span class="o">=</span><span class="m">10</span>
+ERROR:<span class="w"> </span>number_of_subcycles<span class="w"> </span>is<span class="w"> </span>ambiguous<span class="w"> </span><span class="o">(</span>use<span class="w"> </span>--all<span class="w"> </span>to<span class="w"> </span>change<span class="w"> </span>all<span class="w"> </span>matches<span class="o">)</span>,<span class="w"> </span>matches:
+<span class="w">  </span>namelist_defaults::atmosphere_processes::number_of_subcycles
+<span class="w">  </span>namelist_defaults::atmosphere_processes::sc_import::number_of_subcycles
+<span class="w">  </span>namelist_defaults::atmosphere_processes::homme::number_of_subcycles
+<span class="w">  </span>namelist_defaults::atmosphere_processes::physics::number_of_subcycles
+<span class="w">  </span>namelist_defaults::atmosphere_processes::physics::mac_aero_mic::number_of_subcycles
+<span class="w">  </span>namelist_defaults::atmosphere_processes::physics::mac_aero_mic::tms::number_of_subcycles
+<span class="w">  </span>namelist_defaults::atmosphere_processes::physics::mac_aero_mic::shoc::number_of_subcycles
+<span class="w">  </span>namelist_defaults::atmosphere_processes::physics::mac_aero_mic::cldFraction::number_of_subcycles
+<span class="w">  </span>namelist_defaults::atmosphere_processes::physics::mac_aero_mic::p3::number_of_subcycles
+<span class="w">  </span>namelist_defaults::atmosphere_processes::physics::rrtmgp::number_of_subcycles
+<span class="w">  </span>namelist_defaults::atmosphere_processes::sc_export::number_of_subcycles
+$<span class="w"> </span>./atmchange<span class="w"> </span>homme::number_of_subcycles<span class="o">=</span><span class="m">10</span>
+Regenerating<span class="w"> </span>/path/to/namelist_scream.xml.<span class="w"> </span>Manual<span class="w"> </span>edits<span class="w"> </span>will<span class="w"> </span>be<span class="w"> </span>lost.
+$<span class="w"> </span>./atmquery<span class="w"> </span>homme::number_of_subcycles
+<span class="w">    </span>namelist_defaults::atmosphere_processes::homme::number_of_subcycles:<span class="w"> </span><span class="m">10</span>
+</code></pre></div>
+<p>In some cases, the user may be interested in changing <em>all</em> nodes with a given name. In that case,
+the <code>--all</code> flag can be used:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>--grep<span class="w"> </span>number_of_subcycles
+<span class="w">    </span>atmosphere_processes::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>sc_import::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>homme::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>physics::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>mac_aero_mic::number_of_subcycles:<span class="w"> </span><span class="m">24</span>
+<span class="w">    </span>tms::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>shoc::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>cldFraction::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>spa::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>p3::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>rrtmgp::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>sc_export::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+$<span class="w"> </span>./atmchange<span class="w"> </span>--all<span class="w"> </span><span class="nv">number_of_subcycles</span><span class="o">=</span><span class="m">3</span>
+Regenerating<span class="w"> </span>/path/to/namelist_scream.xml.<span class="w"> </span>Manual<span class="w"> </span>edits<span class="w"> </span>will<span class="w"> </span>be<span class="w"> </span>lost.
+$<span class="w"> </span>./atmquery<span class="w"> </span>--grep<span class="w"> </span>number_of_subcycles
+<span class="w">    </span>atmosphere_processes::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>sc_import::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>homme::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>physics::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>mac_aero_mic::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>tms::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>shoc::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>cldFraction::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>spa::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>p3::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>rrtmgp::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>sc_export::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+</code></pre></div>
+<p>Since the XML file stores constraints on the parameter value (like its type or valid values), attempting to use the
+wrong type will cause an error:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>--type<span class="w"> </span>se_ne
+<span class="w">    </span>namelist_defaults::ctl_nl::se_ne:<span class="w"> </span>integer
+$<span class="w"> </span>./atmchange<span class="w"> </span><span class="nv">se_ne</span><span class="o">=</span>hello
+ERROR:<span class="w"> </span>Could<span class="w"> </span>not<span class="w"> </span>refine<span class="w"> </span><span class="s1">&#39;hello&#39;</span><span class="w"> </span>as<span class="w"> </span><span class="nb">type</span><span class="w"> </span><span class="s1">&#39;integer&#39;</span>:
+</code></pre></div>
+<p>There are three main types supported: integer, float, string, logical. When passing a string to <code>atmchange</code>,
+the script will try to interpret it acoording to the parameter type, and throw an error if that's not possible:
+for "string", anything works; for "integer", only digits are allowed, possibly with a negative sign in front;
+for "float", only digits are allowed, possibly with a negative sign in front and a decimal point; for "logical",
+only the strings "true" and "false" are allowed (case insensitive). There are two additional types supported:
+"file" and "array(T)", where "T" is any of the other supported types (but not another array):
+ - "file" is used to inform CIME of the input files that have to be download from E3SM data servers, like initial conditions files,
+or certain lookup tables.
+ - "array(T)" allows to specify a list of items (of the same type), which will be parsed inside EAMxx as
+   a <code>std::vector&lt;T&gt;</code>.</p>
+<p>For type "string" and "array(T)", it is also possible to <em>append</em> to the currently stored value</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>homme::compute_tendencies
+<span class="w">    </span>namelist_defaults::atmosphere_processes::homme::compute_tendencies:
+<span class="w">        </span>value:<span class="w"> </span>a,<span class="w"> </span>b
+<span class="w">        </span>type:<span class="w"> </span>array<span class="o">(</span>string<span class="o">)</span>
+<span class="w">        </span>valid<span class="w"> </span>values:<span class="w"> </span><span class="o">[]</span>
+$<span class="w"> </span>./atmchange<span class="w"> </span>homme::compute_tendencies+<span class="o">=</span>c
+$<span class="w"> </span>./atmquery<span class="w"> </span>homme::compute_tendencies<span class="w"> </span>--full
+<span class="w">    </span>namelist_defaults::atmosphere_processes::homme::compute_tendencies
+<span class="w">        </span>value:<span class="w"> </span>a,<span class="w"> </span>b,<span class="w"> </span>c
+<span class="w">        </span>type:<span class="w"> </span>array<span class="o">(</span>string<span class="o">)</span>
+<span class="w">        </span>valid<span class="w"> </span>values:<span class="w"> </span><span class="o">[]</span>
+</code></pre></div>
+<h1 id="modifying-the-list-of-atmosphere-processes">Modifying the list of atmosphere processes</h1>
+<p>The <code>atmchange</code> script can be used to change any of the runtime parameters of EAMxx. In particular, it can
+be used to add, remove, or reorder atmosphere processes. When adding an atmosphere process, we must first
+make sure that the defaults for that process are present in <code>namelist_defaults_scream.xml</code>. For instance,
+the default settings for the "physics" atmosphere process group include the following:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>physics::atm_procs_list
+<span class="w">    </span>namelist_defaults::atmosphere_processes::physics::atm_procs_list:<span class="w"> </span>mac_aero_mic,rrtmgp
+</code></pre></div>
+<p>where "mac_aero_mic" is itself an atmosphere process group, consisting of macrophysics, aerosols, and microphysics
+processes. If one wanted to add the "cosp" atmosphere process to this list, and change the number of its
+subcycles, it could do so via</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmchange<span class="w"> </span>physics::atm_procs_list+<span class="o">=</span>cosp
+$<span class="w"> </span>./atmchange<span class="w"> </span>cosp::number_of_subcycles<span class="o">=</span><span class="m">3</span>
+</code></pre></div>
+<p>Notice that if we swapped the two commands, we would get an error, since the node "cosp" is not present in
+the XML generated from the defaults until we decide to add it.</p>
+<p>It is also possible to declare a new (empty) atmosphere process group, which can then be filled with valid
+atmosphere processes via subsequent calls to <code>atmchange</code>. The syntax to trigger this behavior consists
+in specifying a process name that begins and ends with an underscore:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmchange<span class="w"> </span>physics::atm_procs_list+<span class="o">=</span>_my_group_
+</code></pre></div>
+<p>This adds a new process to the list of processes in "physics", called "_my_group_", and which is itself
+an atmosphere process group. Hence, we can then do</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmchange<span class="w"> </span>_my_group_::atm_procs_list+<span class="o">=</span>A,B
+</code></pre></div>
+<p>where A and B must be valid atmosphere process names (i.e., present in <code>namelist_defaults_scream.xml</code>)
+or be themselves new atmosphere process groups (i.e., beginning/ending with an underscore)</p>
+<p><code>atmchange</code> can also be used to completely change a list of atmosphere processes:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmchange<span class="w"> </span>physics::atm_procs_list<span class="o">=</span>A,B,C
+</code></pre></div>
+<p>Notice that we used "=" instead of "+=", which means we will be overwriting the value, rather than appending.
+Any atmosphere process that was previously in the list but is no longer in it will be removed from
+the generated <code>namelist_defaults.xml</code> (and <code>scream_input.yaml</code>) files, along with all their nested parameters.</p>
 
 
 
@@ -1057,7 +1248,7 @@
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.indices", "navigation.instant", "navigation.sections", "navigation.top"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.indices", "navigation.instant", "navigation.top"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
       <script src="../../assets/javascripts/bundle.dd8806f2.min.js"></script>
