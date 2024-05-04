@@ -108,7 +108,7 @@ public:
   // Structure for storing local variables initialized using the ATMBufferManager
   struct Buffer {
     static constexpr int num_1d_ncol        = 10;
-    static constexpr int num_2d_nlay        = 16;
+    static constexpr int num_2d_nlay        = 14;
     static constexpr int num_2d_nlay_p1     = 23;
     static constexpr int num_2d_nswbands    = 2;
     static constexpr int num_3d_nlev_nswbands = 4;
@@ -133,10 +133,8 @@ public:
     // 2d size (ncol, nlay)
     real2d p_lay;
     real2d t_lay;
-    real2d z_del;
     real2d p_del;
     real2d qc;
-    real2d nc;
     real2d qi;
     real2d cldfrac_tot;
     real2d eff_radius_qc;
