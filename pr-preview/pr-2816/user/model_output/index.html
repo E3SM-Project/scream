@@ -1207,7 +1207,8 @@ I/O interface of EAMxx. There are two types of diagnostic outputs:</p>
 <li><code>X_at_model_bot</code>, <code>X_at_model_top</code>: special case for top and bottom of the model.</li>
 <li><code>X_at_Ymb</code>, <code>X_at_YPa</code>, <code>X_at_YhPa</code>: interpolates the field <code>X</code> at a vertical position
   specified by the give pressure <code>Y</code>. Available units are <code>mb</code> (millibar), <code>Pa</code>, and <code>hPa</code>.</li>
-<li><code>X_at_Ym</code>: interpolates the field <code>X</code> at a vertical height of <code>Y</code> meters.</li>
+<li><code>X_at_Ym_above_Z</code>: interpolates the field <code>X</code> at a vertical height of <code>Y</code> meters above
+  <code>Z</code>, with <code>Z=surface</code> or <code>Z=sealevel</code>.</li>
 </ul>
 </li>
 </ul>
