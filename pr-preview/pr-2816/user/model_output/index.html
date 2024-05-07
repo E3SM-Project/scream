@@ -1238,8 +1238,9 @@ they are computed on.</p>
 <h2 id="tendencies-output">Tendencies output</h2>
 <p>It is also possible to request tendencies of fields that are computed by atmosphere processes,
 on a per-process basis. Since the term "tendency" can be used with slightly different connotations,
-we clarify what we mean by that: if process P updates field A, the tendency of A from process P
-is <code>(A_after_P - A_before_P) / dt</code>, where <code>dt</code> is the atmosphere timestep.</p>
+we clarify what we mean by that when it comes to model output: if process P updates field A,
+by the tendency of A from process P we mean <code>(A_after_P - A_before_P) / dt</code>, where <code>dt</code> is
+the atmosphere timestep.</p>
 <p>As of today, the user needs two things in order to get tendencies from a process. E.g., to get
 the tendencies of <code>T_mid</code> and <code>horiz_winds</code> from the process <code>shoc</code>, one needs:</p>
 <ul>
