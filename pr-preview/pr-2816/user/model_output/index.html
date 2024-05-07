@@ -1236,19 +1236,20 @@ they are computed on.</p>
   Note: this feature cannot be used along with the horizontal/vertical remap.</li>
 </ul>
 <h2 id="tendencies-output">Tendencies output</h2>
-<p>It is also possible to request tendencies of fields that are computed by atmosphere processes,
-on a per-process basis. Since the term "tendency" can be used with slightly different connotations,
+<p>It is also possible to request tendencies of fields that are updated by atmosphere processes,
+on a per-process basis (here, "updated" means that the field is both an input as well as an output
+of the atmosphere process). Since the term "tendency" can be used with slightly different connotations,
 we clarify what we mean by that when it comes to model output: if process P updates field A,
 by the tendency of A from process P we mean <code>(A_after_P - A_before_P) / dt</code>, where <code>dt</code> is
 the atmosphere timestep.</p>
-<p>As of today, the user needs two things in order to get tendencies from a process. E.g., to get
+<p>As of May 2024, the user needs two things in order to get tendencies from a process. E.g., to get
 the tendencies of <code>T_mid</code> and <code>horiz_winds</code> from the process <code>shoc</code>, one needs:</p>
 <ul>
-<li><code>atmchange shoc::compute_tendencies=T_mid,horiz_winds</code></li>
-<li>add <code>shoc_T_mid_tend</code> and <code>shoc_horiz_winds_tend</code> to the list of fields in the output YAML file</li>
+<li><code>atmchange shoc::compute_tendencies=T_mid,horiz_winds</code>;</li>
+<li>add <code>shoc_T_mid_tend</code> and <code>shoc_horiz_winds_tend</code> to the list of fields in the desired output YAML file.</li>
 </ul>
 <h2 id="additional-options">Additional options</h2>
-<p>There YAML file shown at the top of this section, together with the remap options in the following
+<p>The YAML file shown at the top of this section, together with the remap options in the following
 section, covers most of the options used in a typical run. There are however particular use cases
 that require some less common options, which we list here (in parentheses, the location in the YAML
 file and the type of the parameter value).</p>
