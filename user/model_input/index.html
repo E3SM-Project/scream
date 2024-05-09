@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.20">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.21">
     
     
       
@@ -359,6 +359,17 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Model input
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -368,6 +379,58 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#querying-model-inputs-atmquery" class="md-nav__link">
+    <span class="md-ellipsis">
+      Querying model inputs: atmquery
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changing-model-inputs-atmchange" class="md-nav__link">
+    <span class="md-ellipsis">
+      Changing model inputs: atmchange
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Changing model inputs: atmchange">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#modifying-the-list-of-atmosphere-processes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Modifying the list of atmosphere processes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -949,6 +1012,47 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#querying-model-inputs-atmquery" class="md-nav__link">
+    <span class="md-ellipsis">
+      Querying model inputs: atmquery
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changing-model-inputs-atmchange" class="md-nav__link">
+    <span class="md-ellipsis">
+      Changing model inputs: atmchange
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Changing model inputs: atmchange">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#modifying-the-list-of-atmosphere-processes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Modifying the list of atmosphere processes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -999,7 +1103,7 @@ EAMxx can be found <a href="../../common/eamxx_params/">here</a>.</p>
 Any manual modification will be lost the next time <code>buildnml</code> runs (e.g., at <code>case.submit</code> time).</p>
 </li>
 </ol>
-<h1 id="querying-parameters-with-atmquery">Querying parameters with <code>atmquery</code></h1>
+<h2 id="querying-model-inputs-atmquery">Querying model inputs: atmquery</h2>
 <p>This script is the simplest way for the user to check the value and properties of EAMxx input parameters.
 A basic usage of the script is</p>
 <div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>my_param
@@ -1073,7 +1177,7 @@ with each node indented in its parent scope:</p>
 <span class="w">            </span>topography_filename:<span class="w"> </span>/some/path/to/topo/file.nc
 <span class="w">    </span>...
 </code></pre></div>
-<h1 id="changing-model-inputs-via-atmchange">Changing model inputs via <code>atmchange</code></h1>
+<h2 id="changing-model-inputs-atmchange">Changing model inputs: atmchange</h2>
 <p>When <code>buildnml</code> runs, the model inputs are deduced from the case configuration settings (e.g., the grid,
 the compset, etc.) and the <code>namelist_scream_defaults.xml</code> file, located in the eamxx source tree.
 The user can change any of these parameters using the <code>atmchange</code> script.
@@ -1163,7 +1267,7 @@ $<span class="w"> </span>./atmquery<span class="w"> </span>homme::compute_tenden
 <span class="w">        </span>type:<span class="w"> </span>array<span class="o">(</span>string<span class="o">)</span>
 <span class="w">        </span>valid<span class="w"> </span>values:<span class="w"> </span><span class="o">[]</span>
 </code></pre></div>
-<h1 id="modifying-the-list-of-atmosphere-processes">Modifying the list of atmosphere processes</h1>
+<h3 id="modifying-the-list-of-atmosphere-processes">Modifying the list of atmosphere processes</h3>
 <p>The <code>atmchange</code> script can be used to change any of the runtime parameters of EAMxx. In particular, it can
 be used to add, remove, or reorder atmosphere processes. When adding an atmosphere process, we must first
 make sure that the defaults for that process are present in <code>namelist_defaults_scream.xml</code>. For instance,
@@ -1251,7 +1355,7 @@ the generated <code>namelist_defaults.xml</code> (and <code>scream_input.yaml</c
     <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.indices", "navigation.instant", "navigation.top"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.dd8806f2.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a7c05c9e.min.js"></script>
       
         <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
       
