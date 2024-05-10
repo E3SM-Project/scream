@@ -560,6 +560,8 @@ end subroutine micro_p3_readnl
    call addfld('vap_liq_exchange',  (/ 'lev' /), 'A', 'kg/kg/s', 'Tendency for conversion from/to vapor phase to/from liquid phase')
    call addfld('vap_ice_exchange',  (/ 'lev' /), 'A', 'kg/kg/s', 'Tendency for conversion from/to vapor phase to/from frozen phase')
    call addfld('liq_ice_exchange',  (/ 'lev' /), 'A', 'kg/kg/s', 'Tendency for conversion from/to liquid phase to/from frozen phase')
+   call addfld('cond_from_macro',  (/ 'lev' /), 'A', 'kg/kg/s', 'Tendency for conversion from/to liquid phase to/from frozen phase')
+   call addfld ('I_VAP_COND_EXCHANGE', horiz_only,    'A', 'kg/m2/s', 'Vertically-integrated all phase condensation rate'             )
 
    ! determine the add_default fields
    call phys_getopts(history_amwg_out           = history_amwg         , &
@@ -598,6 +600,8 @@ end subroutine micro_p3_readnl
       call add_default('vap_liq_exchange',  1, ' ')
       call add_default('vap_ice_exchange',  1, ' ')
       call add_default('liq_ice_exchange',  1, ' ')
+      call add_default('I_VAP_COND_EXCHANGE',  1, ' ')
+
       ! Microphysics tendencies
       ! warm-phase process rates
       if (micro_tend_output) then
@@ -785,6 +789,8 @@ end subroutine micro_p3_readnl
     real(rtype), dimension(pcols,pver) :: liq_ice_exchange ! sum of liq-ice phase change tendenices
     real(rtype), dimension(pcols,pver) :: vap_liq_exchange ! sum of vap-liq phase change tendenices
     real(rtype), dimension(pcols,pver) :: vap_ice_exchange ! sum of vap-ice phase change tendenices
+    real(rtype), dimension(pcols,pver) :: cond_from_macro ! sum of vap-ice phase change tendenices
+
     real(rtype) :: dummy_out(pcols,pver)    ! dummy_output variable for p3_main to replace unused variables.
 
     !Prescribed CCN concentration
@@ -851,6 +857,7 @@ end subroutine micro_p3_readnl
     real(rtype) :: cdnumc(pcols)
     real(rtype) :: icinc(pcols,pver)
     real(rtype) :: icwnc(pcols,pver)
+    real(rtype) :: I_VAP_COND_EXCHANGE(pcols)
 
     real(rtype) :: ratio_local(pcols,pver)
     real(rtype) :: dtemp(pcols,pver)
@@ -1083,6 +1090,7 @@ end subroutine micro_p3_readnl
     prec_pcw = 0.0_rtype
     snow_pcw = 0.0_rtype
     vap_liq_exchange = 0.0_rtype
+    cond_from_macro = 0.0_rtype
 
     call t_startf('micro_p3_tend_loop')
     call p3_main( &
@@ -1235,6 +1243,7 @@ end subroutine micro_p3_readnl
     qme(:ncol,top_lev:pver) = cmeliq(:ncol,top_lev:pver) + qv2qi_depos_tend(:ncol,top_lev:pver)  ! qv2qi_depos_tend is output from p3 micro
     ! Add cmeliq to  vap_liq_exchange
     vap_liq_exchange(:ncol,top_lev:pver) = vap_liq_exchange(:ncol,top_lev:pver) + cmeliq(:ncol,top_lev:pver)
+    cond_from_macro(:ncol,top_lev:pver) =  cmeliq(:ncol,top_lev:pver)
 
 !====================== Export variables/Conservation START ======================!
      !For precip, accumulate only total precip in prec_pcw and snow_pcw variables.
@@ -1318,6 +1327,7 @@ end subroutine micro_p3_readnl
    freqi       = 0._rtype
    cdnumc      = 0._rtype
    nfice       = 0._rtype
+   I_VAP_COND_EXCHANGE      = 0._rtype
 
    ! FICE
    do k = top_lev, pver
@@ -1333,6 +1343,11 @@ end subroutine micro_p3_readnl
    ! Column droplet concentration
    cdnumc(:ncol) = sum(numliq(:ncol,top_lev:pver) * &
         state%pdel(:ncol,top_lev:pver)/gravit, dim=2)
+
+   ! Column vap_liq_exchange and vap_ice_exchange
+   I_VAP_COND_EXCHANGE(:ncol) = sum((vap_liq_exchange(:ncol,top_lev:pver)+vap_ice_exchange(:ncol,top_lev:pver)) * &
+        state%pdel(:ncol,top_lev:pver)/gravit, dim=2)
+
    do k = top_lev, pver
       do icol = 1, ncol
          if ( cld_frac_l(icol,k) > 0.01_rtype .and. icwmrst(icol,k) > 5.e-5_rtype ) then
@@ -1475,6 +1490,9 @@ end subroutine micro_p3_readnl
    call outfld('vap_ice_exchange',      vap_ice_exchange,      pcols, lchnk)
    call outfld('vap_liq_exchange',      vap_liq_exchange,      pcols, lchnk)
    call outfld('liq_ice_exchange',      liq_ice_exchange,      pcols, lchnk)
+   call outfld('cond_from_macro',      cond_from_macro,      pcols, lchnk)
+
+   call outfld('I_VAP_COND_EXCHANGE',      I_VAP_COND_EXCHANGE,      pcols,    lchnk)
 
    call t_stopf('micro_p3_tend_finish')
   end subroutine micro_p3_tend
