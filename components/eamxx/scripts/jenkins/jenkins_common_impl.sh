@@ -125,7 +125,9 @@ if [ $skip_testing -eq 0 ]; then
         fi
       fi
 
-      if [[ "$SCREAM_MACHINE" == "weaver" ]]; then
+      if [[ -z "$SCREAM_FAKE_ONLY" && "$SCREAM_MACHINE" == "weaver" ]]; then
+        # The fake-only tests don't launch any kernels which will cause all
+        # the compute-sanitizer runs to fail.
         ./scripts/gather-all-data "./scripts/test-all-scream -t csm -t csr -t csi -t css ${TAS_ARGS}" -l -m $SCREAM_MACHINE
         if [[ $? != 0 ]]; then
           fails=$fails+1;
@@ -186,7 +188,7 @@ if [ $skip_testing -eq 0 ]; then
 
       if [[ $test_v1 == 1 ]]; then
         # AT runs should be fast. => run only low resolution
-        this_output=$(../../cime/scripts/create_test e3sm_scream_v1_at --compiler=gnu9 -c -b master --wait)
+        this_output=$(../../cime/scripts/create_test e3sm_scream_v1_at -c -b master --wait)
         if [[ $? != 0 ]]; then
           fails=$fails+1;
           v1_fail=1
