@@ -108,14 +108,14 @@ TEST_CASE("ml_correction-stand-alone", "") {
   py::gil_scoped_release no_gil;
   ekat::enable_fpes(fpe_mask);
   //Check CPU update
-  REQUIRE(qv(1, 10) != qv_ref(1, 10));   // This is the one that is modified
-  REQUIRE(qv(0, 10) == qv_ref(0, 10));
+  REQUIRE(qv(1, 10) == reference);   // This is the one that is modified
+  REQUIRE(qv(0, 10) != reference);
   
   //Check GPU update
   const auto qv_dev_h = Kokkos::create_mirror_view(qv_dev);
   Kokkos::deep_copy(qv_dev_h, qv_dev);
-  REQUIRE(qv_dev_h(1, 0) != qv_ref(1, 0));   // This is the one that is modified
-  REQUIRE(qv_dev_h(0, 0) == qv_ref(0, 0));
+  REQUIRE(qv_dev_h(1, 0) == reference);   // This is the one that is modified
+  REQUIRE(qv_dev_h(0, 0) != reference);
   ad.finalize();
 }
 

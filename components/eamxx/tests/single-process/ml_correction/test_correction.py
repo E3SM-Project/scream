@@ -3,13 +3,17 @@ import cupy as cp
 import h5py
 import xarray as xr
 import cupy_xarray
+import tensorflow as tf
 import fv3fit
+import logging
 from scream_run.steppers.machine_learning import (
     MachineLearningConfig,
     MultiModelAdapter,
     predict,
     open_model
 )
+
+logger = logging.getLogger(__name__)
 
 
 def get_ML_model(model_path):
@@ -117,13 +121,30 @@ def gpu_handoff_real_model(ptr, dtype_char, Ncol, Nlev, model_path):
         )
     )
     model = get_ML_model(model_path)
-    sample_ML_prediction(Nlev, data_from_ptr, model)
+    gpu_result = sample_ML_prediction(Nlev, data_from_ptr, model).get()
+
+    with tf.device("/cpu:0"):
+        cpu_data = data_from_ptr.get()
+        logger.info(f"CPU data type: {type(cpu_data)}")
+        cpu_result = sample_ML_prediction(Nlev, cpu_data, model)
+
+    cp.testing.assert_array_almost_equal(cpu_result, gpu_result, decimal=6)
+
+
+def gpu_handoff_real_model_local_test(data, Ncol, Nlev, model_path):
+    model = get_ML_model(model_path)
+    gpu_result = sample_ML_prediction(Nlev, data, model).get()
+
+    with tf.device("/cpu:0"):
+        cpu_data = data.get()
+        cpu_result = sample_ML_prediction(Nlev, cpu_data, model)
+
+    cp.testing.assert_array_almost_equal(cpu_result, gpu_result, decimal=6)
 
 
 if __name__ == "__main__":
     Ncol = 2
     Nlev = 128
-    model_tq = get_ML_model("/pscratch/sd/a/andrep/no-tapering")
-    model_uv = "NONE"
+    model_tq_path = "/pscratch/sd/a/andrep/no-tapering"
     data = np.random.rand(Ncol, Nlev)
-    modify_view(data, Ncol, Nlev, model_tq, None)
+    gpu_handoff_real_model_local_test(cp.asarray(data), Ncol, Nlev, model_tq_path)
