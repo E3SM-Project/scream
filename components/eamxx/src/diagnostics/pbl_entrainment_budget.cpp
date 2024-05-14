@@ -8,7 +8,7 @@
 namespace scream {
 
 PBLEntrainmentBudget::PBLEntrainmentBudget(const ekat::Comm &comm,
-                                     const ekat::ParameterList &params)
+                                           const ekat::ParameterList &params)
     : AtmosphereDiagnostic(comm, params) {
   // Nothing to do here
 }
@@ -76,7 +76,8 @@ void PBLEntrainmentBudget::set_grids(
   add_field<Required>("LW_flux_up", scalar2d_layout, W / m * m, grid_name);
 
   // Construct and allocate the output field
-  FieldIdentifier fid("PBLEntrainmentBudget", vector1d_layout, nondim, grid_name);
+  FieldIdentifier fid("PBLEntrainmentBudget", vector1d_layout, nondim,
+                      grid_name);
   m_diagnostic_output = Field(fid);
   m_diagnostic_output.allocate_view();
 
@@ -111,8 +112,9 @@ void PBLEntrainmentBudget::initialize_impl(const RunType /*run_type*/) {
 }
 
 void PBLEntrainmentBudget::calc_tl_qt(const view_2d &tm_v, const view_2d &pm_v,
-                                   const view_2d &qv_v, const view_2d &qc_v,
-                                   const view_2d &tl_v, const view_2d &qt_v) {
+                                      const view_2d &qv_v, const view_2d &qc_v,
+                                      const view_2d &tl_v,
+                                      const view_2d &qt_v) {
   int ncols = m_ncols;
   int nlevs = m_nlevs;
   Kokkos::parallel_for(
@@ -182,7 +184,7 @@ void PBLEntrainmentBudget::compute_diagnostic_impl() {
   const auto &curr_ts =
       get_field_in("qc").get_header().get_tracking().get_time_stamp();
 
-  std::int64_t dt = curr_ts - m_start_t;
+  auto dt = curr_ts - m_start_t;
 
   const int num_levs  = m_nlevs;
   const int pblinvalg = m_pblinvalg;
@@ -279,18 +281,36 @@ void PBLEntrainmentBudget::compute_diagnostic_impl() {
                            (lu_icol(opt_tm_grad_lev - 1) - lu_icol(0));
 
         // Now only need to compute below from opt_tm_grad_lev to num_levs
-        Kokkos::parallel_for(
+        // Integrate through the PBL, mass-weighted
+        // TODO:
+        // combine/refactor this once inner parallel_reduce
+        // with multiple results/sums is supported...
+        Kokkos::parallel_reduce(
             Kokkos::TeamVectorRange(team, opt_tm_grad_lev, num_levs),
-            [&](int k) {
-              // The time-based tendencies
+            [&](const int &k, Real &result) {
+              result += tl_icol(k) * pd_icol(k) / g;
+            },
+            o_tl_caret(icol));
+        Kokkos::parallel_reduce(
+            Kokkos::TeamVectorRange(team, opt_tm_grad_lev, num_levs),
+            [&](const int &k, Real &result) {
+              result += qt_icol(k) * pd_icol(k) / g;
+            },
+            o_qt_caret(icol));
+        Kokkos::parallel_reduce(
+            Kokkos::TeamVectorRange(team, opt_tm_grad_lev, num_levs),
+            [&](const int &k, Real &result) {
               auto tl_tend = (tl_icol(k) - prev_tliq_icol(k)) / dt;
+              result += tl_tend * pd_icol(k) / g;
+            },
+            o_tl_ttend(icol));
+        Kokkos::parallel_reduce(
+            Kokkos::TeamVectorRange(team, opt_tm_grad_lev, num_levs),
+            [&](const int &k, Real &result) {
               auto qt_tend = (qt_icol(k) - prev_qtot_icol(k)) / dt;
-              // the integrated (averaged) quantities
-              o_tl_caret(icol) += tl_icol(k) * pd_icol(k) / g;
-              o_tl_ttend(icol) += tl_tend * pd_icol(k) / g;
-              o_qt_caret(icol) += qt_icol(k) * pd_icol(k) / g;
-              o_qt_ttend(icol) += qt_tend * pd_icol(k) / g;
-            });
+              result += qt_tend * pd_icol(k) / g;
+            },
+            o_qt_ttend(icol));
 
         // release stuff from wsm
         ws.release_many_contiguous<wsms>({&tm_grad});
