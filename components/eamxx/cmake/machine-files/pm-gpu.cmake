@@ -19,9 +19,9 @@ endif()
 include (${EKAT_MACH_FILES_PATH}/mpi/srun.cmake)
 
 set(PYBIND11_PYTHON_VERSION 3.9 CACHE STRING "")
-set(Python_EXECUTABLE /global/homes/a/andrep/.conda/envs/fv3net/bin/python CACHE STRING "" FORCE)
-set(PYTHON_EXECUTABLE /global/homes/a/andrep/.conda/envs/fv3net/bin/python CACHE STRING "" FORCE)
-set(Python_INCLUDE_DIRS /global/homes/a/andrep/.conda/envs/fv3net/include/python3.9 CACHE STRING "" FORCE)
+set(Python_EXECUTABLE /global/common/software/m4492/fv3net-shared-py39/bin/python CACHE STRING "" FORCE)
+set(PYTHON_EXECUTABLE /global/common/software/m4492/fv3net-shared-py39/bin/python CACHE STRING "" FORCE)
+set(Python_INCLUDE_DIRS /global/common/software/m4492/fv3net-shared-py39/include/python3.9 CACHE STRING "" FORCE)
 option (SCREAM_ENABLE_ML_CORRECTION "Whether to enable ML correction parametrization" ON)
 
 #option(Kokkos_ARCH_AMPERE80 "" ON)
