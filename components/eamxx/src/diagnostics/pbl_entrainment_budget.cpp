@@ -1,19 +1,19 @@
-#include "diagnostics/entrainment_budget.hpp"
+#include "diagnostics/pbl_entrainment_budget.hpp"
 
-#include "diagnostics/entrainment_budget_util.hpp"
+#include "diagnostics/pbl_entrainment_budget_util.hpp"
 #include "ekat/ekat_workspace.hpp"
 #include "ekat/kokkos/ekat_kokkos_utils.hpp"
 #include "share/util/scream_universal_constants.hpp"
 
 namespace scream {
 
-EntrainmentBudget::EntrainmentBudget(const ekat::Comm &comm,
+PBLEntrainmentBudget::PBLEntrainmentBudget(const ekat::Comm &comm,
                                      const ekat::ParameterList &params)
     : AtmosphereDiagnostic(comm, params) {
   // Nothing to do here
 }
 
-void EntrainmentBudget::set_grids(
+void PBLEntrainmentBudget::set_grids(
     const std::shared_ptr<const GridsManager> grids_manager) {
   using namespace ekat::units;
   using namespace ShortFieldTagsNames;
@@ -24,7 +24,7 @@ void EntrainmentBudget::set_grids(
   const auto nondim = Units::nondimensional();
 
   // Set the index map and units map
-  EntrainmentBudgetDiagUtil eadu;
+  PBLEntrainmentBudgetDiagUtil eadu;
   m_index_map = eadu.index_map;
   m_units_map = eadu.units_map;
   m_ndiag     = eadu.size;
@@ -45,12 +45,12 @@ void EntrainmentBudget::set_grids(
   // Ensure m_index_map and m_units_map match
   EKAT_REQUIRE_MSG(
       m_index_map.size() == m_units_map.size(),
-      "Error! Some inconsistency in EntrainmentBudget: index and units "
+      "Error! Some inconsistency in PBLEntrainmentBudget: index and units "
       "maps do not match!\n");
   // Ensure m_index_map and m_ndiag match
   EKAT_REQUIRE_MSG(
       static_cast<int>(m_index_map.size()) == m_ndiag,
-      "Error! Some inconsistency in EntrainmentBudget: m_ndiag and index "
+      "Error! Some inconsistency in PBLEntrainmentBudget: m_ndiag and index "
       "map do not match!\n");
 
   m_ncols = grid->get_num_local_dofs();
@@ -76,7 +76,7 @@ void EntrainmentBudget::set_grids(
   add_field<Required>("LW_flux_up", scalar2d_layout, W / m * m, grid_name);
 
   // Construct and allocate the output field
-  FieldIdentifier fid("EntrainmentBudget", vector1d_layout, nondim, grid_name);
+  FieldIdentifier fid("PBLEntrainmentBudget", vector1d_layout, nondim, grid_name);
   m_diagnostic_output = Field(fid);
   m_diagnostic_output.allocate_view();
 
@@ -91,7 +91,7 @@ void EntrainmentBudget::set_grids(
   }
 }
 
-void EntrainmentBudget::initialize_impl(const RunType /*run_type*/) {
+void PBLEntrainmentBudget::initialize_impl(const RunType /*run_type*/) {
   // Field qt will have units and layout similar to qc, qv
   const auto &qv   = get_field_in("qv");
   const auto &qvid = qv.get_header().get_identifier();
@@ -110,7 +110,7 @@ void EntrainmentBudget::initialize_impl(const RunType /*run_type*/) {
   m_prev_tl.allocate_view();
 }
 
-void EntrainmentBudget::calc_tl_qt(const view_2d &tm_v, const view_2d &pm_v,
+void PBLEntrainmentBudget::calc_tl_qt(const view_2d &tm_v, const view_2d &pm_v,
                                    const view_2d &qv_v, const view_2d &qc_v,
                                    const view_2d &tl_v, const view_2d &qt_v) {
   int ncols = m_ncols;
@@ -126,7 +126,7 @@ void EntrainmentBudget::calc_tl_qt(const view_2d &tm_v, const view_2d &pm_v,
       });
 }
 
-void EntrainmentBudget::init_timestep(const util::TimeStamp &start_of_step) {
+void PBLEntrainmentBudget::init_timestep(const util::TimeStamp &start_of_step) {
   m_start_t = start_of_step;
 
   const auto &tm_v = get_field_in("T_mid").get_view<Real **>();
@@ -140,7 +140,7 @@ void EntrainmentBudget::init_timestep(const util::TimeStamp &start_of_step) {
   calc_tl_qt(tm_v, pm_v, qv_v, qc_v, m_prev_tl_v, m_prev_qt_v);
 }
 
-void EntrainmentBudget::compute_diagnostic_impl() {
+void PBLEntrainmentBudget::compute_diagnostic_impl() {
   using PC  = scream::physics::Constants<Real>;
   using KT  = KokkosTypes<DefaultDevice>;
   using MT  = typename KT::MemberType;

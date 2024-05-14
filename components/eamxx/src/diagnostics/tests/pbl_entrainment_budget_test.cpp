@@ -135,7 +135,7 @@ TEST_CASE("entrainment_budget") {
 
     // Create and set up the diagnostic
     ekat::ParameterList params;
-    auto diag = diag_factory.create("EntrainmentBudget", comm, params);
+    auto diag = diag_factory.create("PBLEntrainmentBudget", comm, params);
     diag->set_grids(gm);
     diag->set_required_field(qc);
     diag->set_required_field(qv);

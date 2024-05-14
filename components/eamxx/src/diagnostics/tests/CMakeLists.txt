@@ -74,7 +74,7 @@ if (NOT SCREAM_ONLY_GENERATE_BASELINES)
 
   # Test Extra ACI diags
   GetInputFile(cam/scam/iop/DYCOMSrf02_iopfile_4scam.nc)
-  CreateDiagTest(entrainment_budget "entrainment_budget_test.cpp"
+  CreateDiagTest(pbl_entrainment_budget "pbl_entrainment_budget_test.cpp"
     EXE_ARGS "--ekat-test-params iop_file=${SCREAM_INPUT_ROOT}/atm/cam/scam/iop/DYCOMSrf02_iopfile_4scam.nc")
 
 endif()

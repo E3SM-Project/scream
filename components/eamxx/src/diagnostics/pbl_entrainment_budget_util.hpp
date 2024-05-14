@@ -1,17 +1,17 @@
-#ifndef EAMXX_ENTRAINMENT_BUDGET_DIAG_UTIL
-#define EAMXX_ENTRAINMENT_BUDGET_DIAG_UTIL
+#ifndef EAMXX_PBL_ENTRAINMENT_BUDGET_DIAG_UTIL
+#define EAMXX_PBL_ENTRAINMENT_BUDGET_DIAG_UTIL
 
 #include <map>
 
 namespace scream {
-class EntrainmentBudgetDiagUtil {
+class PBLEntrainmentBudgetDiagUtil {
  public:
   std::map<std::string, int> index_map;
   std::map<std::string, std::string> units_map;
   int size;
   std::string pblinvalg;
 
-  EntrainmentBudgetDiagUtil() {
+  PBLEntrainmentBudgetDiagUtil() {
     // Start (post) incrementing size from 0
     size = 0;
 
@@ -45,4 +45,4 @@ class EntrainmentBudgetDiagUtil {
 };
 }  // namespace scream
 
-#endif  // EAMXX_ENTRAINMENT_BUDGET_DIAG_UTIL
+#endif  // EAMXX_PBL_ENTRAINMENT_BUDGET_DIAG_UTIL

@@ -7,20 +7,20 @@
 namespace scream {
 
 /*
- * This diagnostic will compute entrainment budget terms.
+ * This diagnostic will compute pbl entrainment budget terms.
  */
 
-class EntrainmentBudget : public AtmosphereDiagnostic {
+class PBLEntrainmentBudget : public AtmosphereDiagnostic {
  public:
   using PF      = scream::PhysicsFunctions<DefaultDevice>;
   using KT      = KokkosTypes<DefaultDevice>;
   using view_2d = typename KT::template view_2d<Real>;
 
   // Constructors
-  EntrainmentBudget(const ekat::Comm &comm, const ekat::ParameterList &params);
+  PBLEntrainmentBudget(const ekat::Comm &comm, const ekat::ParameterList &params);
 
   // The name of the diagnostic
-  std::string name() const { return "EntrainmentBudget"; };
+  std::string name() const { return "PBLEntrainmentBudget"; };
 
   // Set the grid
   void set_grids(
