@@ -94,7 +94,7 @@ public:
 
   // Constructor(s)
   Field () = default;
-  explicit Field (const identifier_type& id);
+  Field (const identifier_type& id, const bool allocate = false);
   template<typename ViewT,
            typename = typename std::enable_if<Kokkos::is_view<ViewT>::value>::type>
   Field (const identifier_type& id,

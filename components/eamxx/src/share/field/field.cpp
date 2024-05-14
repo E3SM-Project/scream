@@ -5,10 +5,12 @@ namespace scream
 {
 
 Field::
-Field (const identifier_type& id)
+Field (const identifier_type& id, const bool allocate)
  : m_header (create_header(id))
 {
-  // Nothing to do here
+  if (allocate) {
+    allocate_view();
+  }
 }
 
 Field
