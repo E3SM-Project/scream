@@ -12,6 +12,9 @@ if (NOT SCREAM_ONLY_GENERATE_BASELINES)
   # Test extracting a single level of a field
   CreateDiagTest(field_at_level "field_at_level_tests.cpp")
 
+  # Test expression parser diagnostic
+  CreateDiagTest(expr_parser "expr_parser.cpp")
+
   # Test interpolating a field onto a single pressure level
   CreateDiagTest(field_at_pressure_level "field_at_pressure_level_tests.cpp")
   # Test interpolating a field at a specific height

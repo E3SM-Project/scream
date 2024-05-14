@@ -2,6 +2,7 @@ set(DIAGNOSTIC_SRCS
   atm_density.cpp
   dry_static_energy.cpp
   exner.cpp
+  expression_parser.cpp
   field_at_height.cpp
   field_at_level.cpp
   field_at_pressure_level.cpp

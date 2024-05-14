@@ -23,6 +23,7 @@
 #include "diagnostics/aodvis.hpp"
 #include "diagnostics/number_path.hpp"
 #include "diagnostics/aerocom_cld.hpp"
+#include "diagnostics/expression_parser.hpp"
 
 namespace scream {
 
@@ -53,6 +54,7 @@ inline void register_diagnostics () {
   diag_factory.register_product("AerosolOpticalDepth550nm",&create_atmosphere_diagnostic<AODVis>);
   diag_factory.register_product("NumberPath",&create_atmosphere_diagnostic<NumberPathDiagnostic>);
   diag_factory.register_product("AeroComCld",&create_atmosphere_diagnostic<AeroComCld>);
+  diag_factory.register_product("expression_parser",&create_atmosphere_diagnostic<ExprParser>);
 }
 
 } // namespace scream
