@@ -3,6 +3,7 @@
 #include "ekat/util/ekat_units.hpp"
 #include "share/field/field_utils.hpp"
 #include "physics/share/physics_constants.hpp"
+#include "share/scream_types.hpp"
 
 namespace scream {
 // =========================================================================================
@@ -104,7 +105,8 @@ void MLCorrection::run_impl(const double dt) {
   const auto &v               = get_field_out("horiz_winds").get_component(1).get_view<Real **, Host>();
 
   // For precipitation adjustment we need to track the change in column integrated 'qv'
-  decltype(qv) qv_told("", qv.extent(0), qv.extent(1));
+  auto qv_tmp = get_field_out("qv").clone();
+  const auto& qv_told = qv_tmp.get_view<Real **, Host>();
   Kokkos::deep_copy(qv_told,qv);
 
   auto h_lat  = m_lat.get_view<const Real*,Host>();
