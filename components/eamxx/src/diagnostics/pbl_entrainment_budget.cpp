@@ -119,7 +119,7 @@ void PBLEntrainmentBudget::calc_tl_qt(const view_2d &tm_v, const view_2d &pm_v,
   int nlevs = m_nlevs;
   Kokkos::parallel_for(
       Kokkos::RangePolicy<>(0, ncols * nlevs), KOKKOS_LAMBDA(const int &idx) {
-        const int icol   = idx / ncols;
+        const int icol   = idx / nlevs;
         const int jlev   = idx % nlevs;
         qt_v(icol, jlev) = qc_v(icol, jlev) + qv_v(icol, jlev);
         tl_v(icol, jlev) = PF::calculate_thetal_from_theta(

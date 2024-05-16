@@ -121,7 +121,6 @@ TEST_CASE("entrainment_budget") {
 
   constexpr int ntests = 1;
   for(int itest = 0; itest < ntests; ++itest) {
-    // {
     // Randomize
     randomize(qc, engine, pdf);
     randomize(qv, engine, pdf);
