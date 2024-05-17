@@ -68,8 +68,7 @@ TEST_CASE("output_restart","io")
   const auto& out_fields = fm0->get_groups_info().at("output")->m_fields_names;
 
   // Initialize the pio_subsystem for this test:
-  MPI_Fint fcomm = MPI_Comm_c2f(comm.mpi_comm());
-  scorpio::eam_init_pio_subsystem(fcomm);
+  scorpio::init_subsystem(comm);
 
   // Timestamp of the simulation initial time
   util::TimeStamp t0 ({2000,1,1},{0,0,0});
@@ -100,6 +99,7 @@ TEST_CASE("output_restart","io")
     // The output restart data is written every 5 time steps, while the output freq is 10.
     auto time = run_t0;
     for (int i=0; i<nsteps; ++i) {
+      output_manager.init_timestep(time,dt);
       time_advance(*fm,out_fields,dt);
       time += dt;
       output_manager.run(time);
@@ -150,7 +150,7 @@ TEST_CASE("output_restart","io")
     print(" DONE\n");
   }
   // Finalize everything
-  scorpio::eam_pio_finalize();
+  scorpio::finalize_subsystem();
 } 
 
 /*=============================================================================================*/
