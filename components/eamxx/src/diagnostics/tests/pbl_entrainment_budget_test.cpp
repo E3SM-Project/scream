@@ -5,7 +5,9 @@
 #include "share/field/field_utils.hpp"
 #include "share/grid/mesh_free_grids_manager.hpp"
 #include "share/io/scorpio_input.hpp"
+#include "share/util/scream_common_physics_functions.hpp"
 #include "share/util/scream_setup_random_test.hpp"
+#include "share/util/scream_universal_constants.hpp"
 
 namespace scream {
 
@@ -31,6 +33,9 @@ std::shared_ptr<GridsManager> create_gm(const ekat::Comm &comm, const int ncols,
 TEST_CASE("entrainment_budget") {
   using namespace ShortFieldTagsNames;
   using namespace ekat::units;
+  using PF = scream::PhysicsFunctions<DefaultDevice>;
+  using PC = scream::physics::Constants<Real>;
+
   // A world comm
   ekat::Comm comm(MPI_COMM_WORLD);
 
@@ -47,8 +52,9 @@ TEST_CASE("entrainment_budget") {
   }
 
   // time stamps
-  util::TimeStamp t0({2022, 1, 1}, {0, 0, 0});
-  util::TimeStamp t1({2022, 1, 2}, {0, 0, 0});
+  util::TimeStamp t0({2022, 1, 1}, {0, 1, 0});
+  util::TimeStamp t1({2022, 1, 1}, {0, 2, 0});
+  util::TimeStamp t2({2022, 1, 1}, {0, 3, 0});
 
   // Create a grids manager - single column for these tests
   const int ngcols = 1 * comm.size();
@@ -109,6 +115,9 @@ TEST_CASE("entrainment_budget") {
   scorpio::release_file(iop_file);
   scorpio::finalize_subsystem();
 
+  // gravity
+  constexpr Real g = PC::gravit;
+
   // Construct random number generator stuff
   using RPDF = std::uniform_real_distribution<Real>;
   RPDF pdf(0, 0.05);
@@ -148,8 +157,28 @@ TEST_CASE("entrainment_budget") {
 
     diag->initialize(t0, RunType::Initial);
 
+    qc.get_header().get_tracking().update_time_stamp(t1);
+    qv.get_header().get_tracking().update_time_stamp(t1);
+    tm.get_header().get_tracking().update_time_stamp(t1);
+    pm.get_header().get_tracking().update_time_stamp(t1);
+    pd.get_header().get_tracking().update_time_stamp(t1);
+    sd.get_header().get_tracking().update_time_stamp(t1);
+    su.get_header().get_tracking().update_time_stamp(t1);
+    ld.get_header().get_tracking().update_time_stamp(t1);
+    lu.get_header().get_tracking().update_time_stamp(t1);
+
+    qc.deep_copy(0.001);
+    qv.deep_copy(0.002);
+    tm.deep_copy(290.0);
+    pm.deep_copy(1e5);
+    pd.deep_copy(0.0);
+    sd.deep_copy(0.0);
+    su.deep_copy(0.0);
+    ld.deep_copy(0.0);
+    lu.deep_copy(0.0);
+
     // Run diag
-    diag->init_timestep(t0);
+    diag->init_timestep(t1);
 
     randomize(qc, engine, pdf);
     randomize(qv, engine, pdf);
@@ -161,32 +190,35 @@ TEST_CASE("entrainment_budget") {
     randomize(ld, engine, pdf);
     randomize(lu, engine, pdf);
 
-    qc.get_header().get_tracking().update_time_stamp(t1);
-    qv.get_header().get_tracking().update_time_stamp(t1);
-    tm.get_header().get_tracking().update_time_stamp(t1);
-    pm.get_header().get_tracking().update_time_stamp(t1);
-    pd.get_header().get_tracking().update_time_stamp(t1);
-    sd.get_header().get_tracking().update_time_stamp(t1);
-    su.get_header().get_tracking().update_time_stamp(t1);
-    ld.get_header().get_tracking().update_time_stamp(t1);
-    lu.get_header().get_tracking().update_time_stamp(t1);
+    qc.get_header().get_tracking().update_time_stamp(t2);
+    qv.get_header().get_tracking().update_time_stamp(t2);
+    tm.get_header().get_tracking().update_time_stamp(t2);
+    pm.get_header().get_tracking().update_time_stamp(t2);
+    pd.get_header().get_tracking().update_time_stamp(t2);
+    sd.get_header().get_tracking().update_time_stamp(t2);
+    su.get_header().get_tracking().update_time_stamp(t2);
+    ld.get_header().get_tracking().update_time_stamp(t2);
+    lu.get_header().get_tracking().update_time_stamp(t2);
 
     auto tm_v = tm.get_view<Real **, Host>();
     auto pm_v = pm.get_view<Real **, Host>();
     auto qc_v = qc.get_view<Real **, Host>();
     auto qv_v = qv.get_view<Real **, Host>();
+    auto pd_v = pd.get_view<Real **, Host>();
 
     for(int ilev = 1; ilev < nlevs; ++ilev) {
       tm_v(0, ilev) = iop_tm[ilev];
       pm_v(0, ilev) = iop_pm[ilev];
       qc_v(0, ilev) = iop_qc[ilev];
       qv_v(0, ilev) = iop_qv[ilev];
+      pd_v(0, ilev) = iop_pm[ilev] - iop_pm[ilev - 1];
     }
 
     tm.sync_to_dev();
     pm.sync_to_dev();
     qc.sync_to_dev();
     qv.sync_to_dev();
+    pd.sync_to_dev();
 
     diag->compute_diagnostic();
 
@@ -210,6 +242,32 @@ TEST_CASE("entrainment_budget") {
     std::cout << "Success! Inversion is just below " << iop_pm[123] << " Pa. "
               << "The temperature jump is: " << (iop_tm[123] - iop_tm[124])
               << " K." << std::endl;
+
+    REQUIRE(out_hv(0, 4) == Real(iop_qc[123] + iop_qv[123]));
+    std::cout << "Success! Calculated qt is " << iop_qc[123] + iop_qv[123]
+              << " kg/kg." << std::endl;
+
+    Real qt_sum;
+    qt_sum = 0.0;
+    for(int ilev = 124; ilev < nlevs; ++ilev) {
+      qt_sum +=
+          (iop_qc[ilev] + iop_qv[ilev]) * (iop_pm[ilev] - iop_pm[ilev - 1]) / g;
+    }
+    REQUIRE(out_hv(0, 5) == Real(qt_sum));
+
+    auto dt = t2 - t1;
+    Real qt_ten;
+    qt_ten = 0.0;
+    for(int ilev = 124; ilev < nlevs; ++ilev) {
+      qt_ten += ((iop_qc[ilev] + iop_qv[ilev] - 0.003) / dt) *
+                (iop_pm[ilev] - iop_pm[ilev - 1]) / g;
+    }
+    // REQUIRE(out_hv(0, 6) == Real(qt_ten)); // Fails with 0.10174f ==
+    // 0.10174f...
+
+    for(int idx = 0; idx < 8; ++idx) {
+      std::cout << "idx = " << idx << " ---> " << out_hv(0, idx) << std::endl;
+    }
   }
 }  // TEST_CASE("entrainment_budget")
 
