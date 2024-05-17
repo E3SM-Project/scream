@@ -350,7 +350,7 @@ struct Dispatch<HommexxGPU> {
       });
     // Broadcast result to all threads by doing sum of one thread's
     // non-0 value and the rest of the 0s.
-    Kokkos::Impl::CudaTeamMember::vector_reduce(
+    Kokkos::TeamPolicy<ExeSpace>::member_type::vector_reduce(
       Kokkos::Sum<ValueType>(local_tmp));
     result = local_tmp;
 #else
