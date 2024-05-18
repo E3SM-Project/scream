@@ -149,6 +149,7 @@ void PBLEntrainmentBudget::compute_diagnostic_impl() {
   using ESU = ekat::ExeSpaceUtils<typename KT::ExeSpace>;
 
   constexpr Real g = PC::gravit;
+  Real fill_value  = constants::DefaultFillValue<Real>().value;
 
   // Before doing anything, subview the out field for each variable
   auto out = m_diagnostic_output.get_view<Real **>();
@@ -227,7 +228,7 @@ void PBLEntrainmentBudget::compute_diagnostic_impl() {
         // biggest positive jump in theta_l. Third, we can find the level which
         // has the biggest negative jump in qt.
 
-        int opt_tm_grad_lev = 0;
+        int opt_tm_grad_lev = 1;
         // Find tm_grad (tm_grad is a catch-all for the 3 methods)
         Kokkos::parallel_for(
             Kokkos::TeamVectorRange(team, 1, num_levs), [&](int k) {
@@ -269,49 +270,60 @@ void PBLEntrainmentBudget::compute_diagnostic_impl() {
         team.team_barrier();
         opt_tm_grad_lev = minloc.loc;
 
-        // Save some outputs just above the "mixed" PBL
-        o_pm_hplus(icol) = pm_icol(opt_tm_grad_lev - 1);
-        o_tl_hplus(icol) = tl_icol(opt_tm_grad_lev - 1);
-        o_qt_hplus(icol) = qt_icol(opt_tm_grad_lev - 1);
+        if(opt_tm_grad_lev < 2 || opt_tm_grad_lev > num_levs - 1) {
+          // Weird stuff can happen near the top and bottom of atm, so fill_val
+          o_pm_hplus(icol) = fill_value;
+          o_tl_hplus(icol) = fill_value;
+          o_qt_hplus(icol) = fill_value;
+          o_df_inpbl(icol) = fill_value;
+          o_tl_caret(icol) = fill_value;
+          o_qt_caret(icol) = fill_value;
+          o_tl_ttend(icol) = fill_value;
+          o_qt_ttend(icol) = fill_value;
+        } else {
+          // Save some outputs just above the "mixed" PBL
+          o_pm_hplus(icol) = pm_icol(opt_tm_grad_lev - 1);
+          o_tl_hplus(icol) = tl_icol(opt_tm_grad_lev - 1);
+          o_qt_hplus(icol) = qt_icol(opt_tm_grad_lev - 1);
 
-        // Save the dF term (F(h) - F(0))
-        o_df_inpbl(icol) = (sd_icol(opt_tm_grad_lev - 1) - sd_icol(0)) -
-                           (su_icol(opt_tm_grad_lev - 1) - su_icol(0)) +
-                           (ld_icol(opt_tm_grad_lev - 1) - ld_icol(0)) -
-                           (lu_icol(opt_tm_grad_lev - 1) - lu_icol(0));
+          // Save the dF term (F(h) - F(0))
+          o_df_inpbl(icol) = (sd_icol(opt_tm_grad_lev - 1) - sd_icol(0)) -
+                             (su_icol(opt_tm_grad_lev - 1) - su_icol(0)) +
+                             (ld_icol(opt_tm_grad_lev - 1) - ld_icol(0)) -
+                             (lu_icol(opt_tm_grad_lev - 1) - lu_icol(0));
 
-        // Now only need to compute below from opt_tm_grad_lev to num_levs
-        // Integrate through the PBL, mass-weighted
-        // TODO:
-        // combine/refactor this once inner parallel_reduce
-        // with multiple results/sums is supported...
-        Kokkos::parallel_reduce(
-            Kokkos::TeamVectorRange(team, opt_tm_grad_lev, num_levs),
-            [&](const int &k, Real &result) {
-              result += tl_icol(k) * pd_icol(k) / g;
-            },
-            o_tl_caret(icol));
-        Kokkos::parallel_reduce(
-            Kokkos::TeamVectorRange(team, opt_tm_grad_lev, num_levs),
-            [&](const int &k, Real &result) {
-              result += qt_icol(k) * pd_icol(k) / g;
-            },
-            o_qt_caret(icol));
-        Kokkos::parallel_reduce(
-            Kokkos::TeamVectorRange(team, opt_tm_grad_lev, num_levs),
-            [&](const int &k, Real &result) {
-              auto tl_tend = (tl_icol(k) - prev_tliq_icol(k)) / dt;
-              result += tl_tend * pd_icol(k) / g;
-            },
-            o_tl_ttend(icol));
-        Kokkos::parallel_reduce(
-            Kokkos::TeamVectorRange(team, opt_tm_grad_lev, num_levs),
-            [&](const int &k, Real &result) {
-              auto qt_tend = (qt_icol(k) - prev_qtot_icol(k)) / dt;
-              result += qt_tend * pd_icol(k) / g;
-            },
-            o_qt_ttend(icol));
-
+          // Now only need to compute below from opt_tm_grad_lev to num_levs
+          // Integrate through the PBL, mass-weighted
+          // TODO:
+          // combine/refactor this once inner parallel_reduce
+          // with multiple results/sums is supported...
+          Kokkos::parallel_reduce(
+              Kokkos::TeamVectorRange(team, opt_tm_grad_lev, num_levs),
+              [&](const int &k, Real &result) {
+                result += tl_icol(k) * pd_icol(k) / g;
+              },
+              o_tl_caret(icol));
+          Kokkos::parallel_reduce(
+              Kokkos::TeamVectorRange(team, opt_tm_grad_lev, num_levs),
+              [&](const int &k, Real &result) {
+                result += qt_icol(k) * pd_icol(k) / g;
+              },
+              o_qt_caret(icol));
+          Kokkos::parallel_reduce(
+              Kokkos::TeamVectorRange(team, opt_tm_grad_lev, num_levs),
+              [&](const int &k, Real &result) {
+                auto tl_tend = (tl_icol(k) - prev_tliq_icol(k)) / dt;
+                result += tl_tend * pd_icol(k) / g;
+              },
+              o_tl_ttend(icol));
+          Kokkos::parallel_reduce(
+              Kokkos::TeamVectorRange(team, opt_tm_grad_lev, num_levs),
+              [&](const int &k, Real &result) {
+                auto qt_tend = (qt_icol(k) - prev_qtot_icol(k)) / dt;
+                result += qt_tend * pd_icol(k) / g;
+              },
+              o_qt_ttend(icol));
+        }
         // release stuff from wsm
         ws.release_many_contiguous<wsms>({&tm_grad});
       });
