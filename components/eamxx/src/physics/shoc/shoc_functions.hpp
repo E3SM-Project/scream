@@ -540,8 +540,8 @@ struct Functions
     const view_2d<Spack>&        shoc_mix);
 #endif
 
-  KOKKOS_FUNCTION
   template<typename InputProviderRhoZt>
+  KOKKOS_FUNCTION
   static void shoc_energy_fixer(
     const MemberType&            team,
     const Int&                   nlev,
