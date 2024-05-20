@@ -66,6 +66,7 @@ template<typename S, typename D>
 KOKKOS_FUNCTION
 void Functions<S,D>::shoc_main_internal(
   const MemberType&            team,
+  const int                    scratch_level,
   const Int&                   nlev,         // Number of levels
   const Int&                   nlevi,        // Number of levels on interface grid
   const Int&                   npbl,         // Maximum number of levels in pbl from surface
@@ -137,10 +138,20 @@ void Functions<S,D>::shoc_main_internal(
 {
 
   // Define temporary variables
-  uview_1d<Spack> rho_zt, shoc_qv, shoc_tabs, dz_zt, dz_zi, tkh;
-  workspace.template take_many_and_reset<6>(
-    {"rho_zt", "shoc_qv", "shoc_tabs", "dz_zt", "dz_zi", "tkh"},
-    {&rho_zt, &shoc_qv, &shoc_tabs, &dz_zt, &dz_zi, &tkh});
+  uview_1d<Spack> /*rho_zt,*/ shoc_qv, shoc_tabs, dz_zt, dz_zi, tkh;
+  workspace.template take_many_and_reset</*6*/5>(
+    {/*"rho_zt",*/ "shoc_qv", "shoc_tabs", "dz_zt", "dz_zi", "tkh"},
+    {/*&rho_zt,*/ &shoc_qv, &shoc_tabs, &dz_zt, &dz_zi, &tkh});
+
+  const auto nlev_packs = ekat::npack<Spack>(nlev);
+  const auto nlevi_packs = ekat::npack<Spack>(nlevi);
+  scratch_view_1d<Spack>
+    rho_zt   (team.team_scratch(scratch_level), nlev_packs);
+    // shoc_qv  (team.team_scratch(scratch_level), nlev_packs),
+    // shoc_tabs(team.team_scratch(scratch_level), nlev_packs),
+    // dz_zt    (team.team_scratch(scratch_level), nlev_packs),
+    // dz_zi    (team.team_scratch(scratch_level), nlevi_packs),
+    // tkh      (team.team_scratch(scratch_level), nlev_packs);
 
   // Local scalars
   Scalar se_b{0},   ke_b{0}, wv_b{0},   wl_b{0},
@@ -311,8 +322,8 @@ void Functions<S,D>::shoc_main_internal(
           pblh);                          // Output
 
   // Release temporary variables from the workspace
-  workspace.template release_many_contiguous<6>(
-    {&rho_zt, &shoc_qv, &shoc_tabs, &dz_zt, &dz_zi, &tkh});
+  workspace.template release_many_contiguous</*6*/5>(
+    {/*&rho_zt,*/ &shoc_qv, &shoc_tabs, &dz_zt, &dz_zi, &tkh});
 }
 #else
 template<typename S, typename D>
@@ -592,10 +603,10 @@ Int Functions<S,D>::shoc_main(
   auto start = std::chrono::steady_clock::now();
 
   // Runtime options
-  const Scalar lambda_low    = shoc_runtime.lambda_low;    
-  const Scalar lambda_high   = shoc_runtime.lambda_high;   
-  const Scalar lambda_slope  = shoc_runtime.lambda_slope;  
-  const Scalar lambda_thresh = shoc_runtime.lambda_thresh; 
+  const Scalar lambda_low    = shoc_runtime.lambda_low;
+  const Scalar lambda_high   = shoc_runtime.lambda_high;
+  const Scalar lambda_slope  = shoc_runtime.lambda_slope;
+  const Scalar lambda_thresh = shoc_runtime.lambda_thresh;
   const Scalar thl2tune      = shoc_runtime.thl2tune;
   const Scalar qw2tune       = shoc_runtime.qw2tune;
   const Scalar qwthl2tune    = shoc_runtime.qwthl2tune;
@@ -608,10 +619,22 @@ Int Functions<S,D>::shoc_main(
 #ifndef SCREAM_SMALL_KERNELS
   using ExeSpace = typename KT::ExeSpace;
 
-  // SHOC main loop
   const auto nlev_packs = ekat::npack<Spack>(nlev);
-  const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs);
-  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+  const auto nlevi_packs = ekat::npack<Spack>(nlevi);
+
+  // Kokkos scratch space info
+  const auto bytes =
+    5*scratch_view_1d<Spack>::shmem_size(nlev_packs) + // rho_zt, shoc_qv, shoc_tabs, dz_zt, tkh
+      scratch_view_1d<Spack>::shmem_size(nlevi_packs); // dz_zi
+  const int level = 0;
+
+  const auto policy =
+    ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs)
+      .set_scratch_size(level, Kokkos::PerTeam(bytes));
+
+  // SHOC main loop
+  Kokkos::parallel_for(policy,
+                       KOKKOS_LAMBDA(const MemberType& team) {
     const Int i = team.league_rank();
 
     auto workspace = workspace_mgr.get_workspace(team);
@@ -662,8 +685,8 @@ Int Functions<S,D>::shoc_main(
     const auto v_wind_s   = Kokkos::subview(shoc_input_output.horiz_wind, i, 1, Kokkos::ALL());
     const auto qtracers_s = Kokkos::subview(shoc_input_output.qtracers, i, Kokkos::ALL(), Kokkos::ALL());
 
-    shoc_main_internal(team, nlev, nlevi, npbl, nadv, num_qtracers, dtime,
-	               lambda_low, lambda_high, lambda_slope, lambda_thresh,  // Runtime options
+    shoc_main_internal(team, level, nlev, nlevi, npbl, nadv, num_qtracers, dtime,
+	                     lambda_low, lambda_high, lambda_slope, lambda_thresh,  // Runtime options
                        thl2tune, qw2tune, qwthl2tune, w2tune, length_fac,     // Runtime options
                        c_diag_3rd_mom, Ckh, Ckm,                              // Runtime options
                        dx_s, dy_s, zt_grid_s, zi_grid_s,                      // Input

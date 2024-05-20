@@ -18,6 +18,7 @@ namespace shoc {
  */
 
 template<typename S, typename D>
+template<typename InputProviderRhoZt>
 KOKKOS_FUNCTION
 void Functions<S,D>::shoc_grid(
   const MemberType&            team,
@@ -28,7 +29,7 @@ void Functions<S,D>::shoc_grid(
   const uview_1d<const Spack>& pdel,
   const uview_1d<Spack>&       dz_zt,
   const uview_1d<Spack>&       dz_zi,
-  const uview_1d<Spack>&       rho_zt)
+  const InputProviderRhoZt&    rho_zt)
 {
   const auto ggr = C::gravit;
 

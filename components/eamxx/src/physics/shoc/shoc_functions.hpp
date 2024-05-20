@@ -64,6 +64,9 @@ struct Functions
   template <typename S>
   using uview_2d = typename ekat::template Unmanaged<view_2d<S> >;
 
+  template <typename S>
+  using scratch_view_1d = Kokkos::View<S*, typename KT::ExeSpace::scratch_memory_space>;
+
   using MemberType = typename KT::MemberType;
 
   using WorkspaceMgr = typename ekat::WorkspaceManager<Spack,  Device>;
@@ -334,16 +337,17 @@ struct Functions
     const uview_1d<const Spack>& w_sec_zi,
     const uview_1d<Spack>& w3);
 
+  template<typename InputProviderX1, typename InputProviderX2, typename InputProviderY1, typename OutputProviderY2>
   KOKKOS_FUNCTION
   static void linear_interp(
-    const MemberType& team,
-    const uview_1d<const Spack>& x1,
-    const uview_1d<const Spack>& x2,
-    const uview_1d<const Spack>& y1,
-    const uview_1d<Spack>& y2,
-    const Int& km1,
-    const Int& km2,
-    const Scalar& minthresh);
+    const MemberType&       team,
+    const InputProviderX1&  x1,
+    const InputProviderX2&  x2,
+    const InputProviderY1&  y1,
+    const OutputProviderY2& y2,
+    const Int&              km1,
+    const Int&              km2,
+    const Scalar&           minthresh);
 
   KOKKOS_FUNCTION
   static void shoc_energy_integrals(
@@ -408,9 +412,9 @@ struct Functions
 #ifdef SCREAM_SMALL_KERNELS
   static void diag_second_shoc_moments_disp(
     const Int& shcol, const Int& nlev, const Int& nlevi,
-    const Scalar& thl2tune, 
-    const Scalar& qw2tune, 
-    const Scalar& qwthl2tune, 
+    const Scalar& thl2tune,
+    const Scalar& qw2tune,
+    const Scalar& qwthl2tune,
     const Scalar& w2tune,
     const view_2d<const Spack>& thetal,
     const view_2d<const Spack>& qw,
@@ -537,6 +541,7 @@ struct Functions
 #endif
 
   KOKKOS_FUNCTION
+  template<typename InputProviderRhoZt>
   static void shoc_energy_fixer(
     const MemberType&            team,
     const Int&                   nlev,
@@ -555,7 +560,7 @@ struct Functions
     const Scalar&                wl_a,
     const Scalar&                wthl_sfc,
     const Scalar&                wqw_sfc,
-    const uview_1d<const Spack>& rho_zt,
+    const InputProviderRhoZt&    rho_zt,
     const uview_1d<const Spack>& tke,
     const uview_1d<const Spack>& pint,
     const Workspace&             workspace,
@@ -621,6 +626,7 @@ struct Functions
 #endif
 
   KOKKOS_FUNCTION
+  template<typename InputProviderRhoZt>
   static void update_prognostics_implicit(
     const MemberType&            team,
     const Int&                   nlev,
@@ -629,7 +635,7 @@ struct Functions
     const Scalar&                dtime,
     const uview_1d<const Spack>& dz_zt,
     const uview_1d<const Spack>& dz_zi,
-    const uview_1d<const Spack>& rho_zt,
+    const InputProviderRhoZt&    rho_zt,
     const uview_1d<const Spack>& zt_grid,
     const uview_1d<const Spack>& zi_grid,
     const uview_1d<const Spack>& tk,
@@ -819,10 +825,11 @@ struct Functions
     const uview_1d<Spack>&       isotropy);
 
   KOKKOS_FUNCTION
+  template<typename InputProviderRhoZt>
   static void dp_inverse(
     const MemberType&            team,
     const Int&                   nlev,
-    const uview_1d<const Spack>& rho_zt,
+    const InputProviderRhoZt&    rho_zt,
     const uview_1d<const Spack>& dz_zt,
     const uview_1d<Spack>&       rdp_zt);
 
@@ -835,6 +842,7 @@ struct Functions
   KOKKOS_FUNCTION
   static void shoc_main_internal(
     const MemberType&            team,
+    const int                    scratch_level,
     const Int&                   nlev,         // Number of levels
     const Int&                   nlevi,        // Number of levels on interface grid
     const Int&                   npbl,         // Maximum number of levels in pbl from surface
@@ -988,12 +996,12 @@ struct Functions
     const view_1d<Scalar>& obklen,
     const view_1d<Scalar>& ustar2,
     const view_1d<Scalar>& wstar,
-    const view_2d<Spack>& rho_zt,
-    const view_2d<Spack>& shoc_qv,
-    const view_2d<Spack>& tabs,
-    const view_2d<Spack>& dz_zt,
-    const view_2d<Spack>& dz_zi,
-    const view_2d<Spack>& tkh);
+    const view_2d<Spack>&  rho_zt,
+    const view_2d<Spack>&  shoc_qv,
+    const view_2d<Spack>&  tabs,
+    const view_2d<Spack>&  dz_zt,
+    const view_2d<Spack>&  dz_zi,
+    const view_2d<Spack>&  tkh);
 #endif
 
   // Return microseconds elapsed
@@ -1104,6 +1112,7 @@ struct Functions
 #endif
 
   KOKKOS_FUNCTION
+  template<typename InputProviderRhoZt>
   static void shoc_grid(
     const MemberType&            team,
     const Int&                   nlev,
@@ -1113,7 +1122,7 @@ struct Functions
     const uview_1d<const Spack>& pdel,
     const uview_1d<Spack>&       dz_zt,
     const uview_1d<Spack>&       dz_zi,
-    const uview_1d<Spack>&       rho_zt);
+    const InputProviderRhoZt&    rho_zt);
 #ifdef SCREAM_SMALL_KERNELS
   static void shoc_grid_disp(
     const Int&                  shcol,

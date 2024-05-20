@@ -16,6 +16,7 @@ namespace shoc {
  */
 
 template<typename S, typename D>
+template<typename InputProviderRhoZt>
 KOKKOS_FUNCTION
 void Functions<S,D>::shoc_energy_fixer(
   const MemberType&            team,
@@ -35,7 +36,7 @@ void Functions<S,D>::shoc_energy_fixer(
   const Scalar&                wl_a,
   const Scalar&                wthl_sfc,
   const Scalar&                wqw_sfc,
-  const uview_1d<const Spack>& rho_zt,
+  const InputProviderRhoZt&    rho_zt,
   const uview_1d<const Spack>& tke,
   const uview_1d<const Spack>& pint,
   const Workspace&             workspace,

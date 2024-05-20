@@ -12,6 +12,7 @@ namespace shoc {
  */
 
 template<typename S, typename D>
+template<typename InputProviderRhoZt>
 KOKKOS_FUNCTION
 void Functions<S,D>::update_prognostics_implicit(
   const MemberType&            team,
@@ -21,7 +22,7 @@ void Functions<S,D>::update_prognostics_implicit(
   const Scalar&                dtime,
   const uview_1d<const Spack>& dz_zt,
   const uview_1d<const Spack>& dz_zi,
-  const uview_1d<const Spack>& rho_zt,
+  const InputProviderRhoZt& rho_zt,
   const uview_1d<const Spack>& zt_grid,
   const uview_1d<const Spack>& zi_grid,
   const uview_1d<const Spack>& tk,
