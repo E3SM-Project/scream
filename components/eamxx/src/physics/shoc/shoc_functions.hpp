@@ -824,8 +824,8 @@ struct Functions
     const uview_1d<const Spack>& brunt,
     const uview_1d<Spack>&       isotropy);
 
-  KOKKOS_FUNCTION
   template<typename InputProviderRhoZt>
+  KOKKOS_FUNCTION
   static void dp_inverse(
     const MemberType&            team,
     const Int&                   nlev,
