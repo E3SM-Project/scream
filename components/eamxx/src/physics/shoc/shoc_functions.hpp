@@ -625,8 +625,8 @@ struct Functions
     const view_2d<Spack>&       tabs);
 #endif
 
-  KOKKOS_FUNCTION
   template<typename InputProviderRhoZt>
+  KOKKOS_FUNCTION
   static void update_prognostics_implicit(
     const MemberType&            team,
     const Int&                   nlev,
