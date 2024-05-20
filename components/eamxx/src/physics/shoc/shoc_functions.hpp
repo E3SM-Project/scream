@@ -1111,7 +1111,7 @@ struct Functions
     const view_1d<Scalar>&       pblh);
 #endif
 
-  template<typename InputProviderRhoZt>
+  template<typename OutputProviderRhoZt>
   KOKKOS_FUNCTION
   static void shoc_grid(
     const MemberType&            team,
@@ -1122,7 +1122,7 @@ struct Functions
     const uview_1d<const Spack>& pdel,
     const uview_1d<Spack>&       dz_zt,
     const uview_1d<Spack>&       dz_zi,
-    const InputProviderRhoZt&    rho_zt);
+    const OutputProviderRhoZt&    rho_zt);
 #ifdef SCREAM_SMALL_KERNELS
   static void shoc_grid_disp(
     const Int&                  shcol,
