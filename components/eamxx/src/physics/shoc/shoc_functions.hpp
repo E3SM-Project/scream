@@ -1111,8 +1111,8 @@ struct Functions
     const view_1d<Scalar>&       pblh);
 #endif
 
-  KOKKOS_FUNCTION
   template<typename InputProviderRhoZt>
+  KOKKOS_FUNCTION
   static void shoc_grid(
     const MemberType&            team,
     const Int&                   nlev,
