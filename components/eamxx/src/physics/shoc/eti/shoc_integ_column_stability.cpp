@@ -1,4 +1,4 @@
-#include "shoc_integ_column_stability_impl.hpp"
+#include "shoc_functions.hpp"
 
 namespace scream {
 namespace shoc {
@@ -12,3 +12,4 @@ template struct Functions<Real,DefaultDevice>;
 } // namespace shoc
 } // namespace scream
 
+#include "shoc_integ_column_stability_impl.hpp"

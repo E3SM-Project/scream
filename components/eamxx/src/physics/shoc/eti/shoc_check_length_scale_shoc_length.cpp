@@ -1,4 +1,4 @@
-#include "shoc_check_length_scale_shoc_length_impl.hpp"
+#include "shoc_functions.hpp"
 
 namespace scream {
 namespace shoc {
@@ -11,3 +11,5 @@ template struct Functions<Real,DefaultDevice>;
 
 } // namespace shoc
 } // namespace scream
+
+#include "shoc_check_length_scale_shoc_length_impl.hpp"

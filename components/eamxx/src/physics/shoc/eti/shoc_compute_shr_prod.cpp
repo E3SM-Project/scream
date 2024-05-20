@@ -1,4 +1,4 @@
-#include "shoc_compute_shr_prod_impl.hpp"
+#include "shoc_functions.hpp"
 
 namespace scream {
 namespace shoc {
@@ -12,3 +12,5 @@ template struct Functions<Real,DefaultDevice>;
 
 } // namespace shoc
 } // namespace scream
+
+#include "shoc_compute_shr_prod_impl.hpp"
