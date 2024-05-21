@@ -7,6 +7,7 @@ namespace scream {
 namespace shoc {
 
 template<typename S, typename D>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>
 ::compute_tmpi(
@@ -14,7 +15,7 @@ void Functions<S,D>
   const Int&                   nlevi,
   const Scalar&                dtime,
   const uview_1d<const Spack>& rho_zi,
-  const uview_1d<const Spack>& dz_zi,
+  const TempViewType& dz_zi,
   const uview_1d<Spack>&       tmpi)
 {
   const auto ggr = C::gravit;

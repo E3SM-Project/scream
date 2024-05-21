@@ -9,18 +9,22 @@ namespace scream {
 namespace shoc {
 
 template<typename S, typename D>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>
 ::shoc_pblintd_init_pot(
-    const MemberType& team, const Int& nlev,
-    const view_1d<const Spack>& thl, const view_1d<const Spack>& ql, const view_1d<const Spack>& q,
-    const view_1d<Spack>& thv)
+    const MemberType&            team,
+    const Int&                   nlev,
+    const uview_1d<const Spack>& thl,
+    const uview_1d<const Spack>& ql,
+    const TempViewType&          q,
+    const uview_1d<Spack>&       thv)
 {
    // Compute virtual potential temperature
    const auto lcond = C::LatVap;
    const auto cp    = C::Cpair;
-   const auto eps   = C::ZVIR; 
-   const auto one   = C::ONE; 
+   const auto eps   = C::ZVIR;
+   const auto one   = C::ONE;
 
    const Int nlev_pack = ekat::npack<Spack>(nlev);
 

@@ -12,7 +12,10 @@ namespace shoc {
  */
 
 template<typename S, typename D>
-template<typename InputProviderX1, typename InputProviderX2, typename InputProviderY1, typename OutputProviderY2>
+template<typename InputProviderX1,
+         typename InputProviderX2,
+         typename InputProviderY1,
+         typename OutputProviderY2>
 KOKKOS_FUNCTION
 void Functions<S,D>::linear_interp(
   const MemberType&       team,

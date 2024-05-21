@@ -7,12 +7,13 @@ namespace scream {
 namespace shoc {
 
 template<typename S, typename D>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>
 ::integ_column_stability(
   const MemberType&            team,
   const Int&                   nlev,
-  const uview_1d<const Spack>& dz_zt,
+  const TempViewType&          dz_zt,
   const uview_1d<const Spack>& pres,
   const uview_1d<const Spack>& brunt,
   Scalar&                      brunt_int)

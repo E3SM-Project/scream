@@ -7,12 +7,13 @@ namespace scream {
 namespace shoc {
 
 template<typename S, typename D>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>::compute_brunt_shoc_length(
   const MemberType&            team,
   const Int&                   nlev,
   const Int&                   nlevi,
-  const uview_1d<const Spack>& dz_zt,
+  const TempViewType&          dz_zt,
   const uview_1d<const Spack>& thv,
   const uview_1d<const Spack>& thv_zi,
   const uview_1d<Spack>&       brunt)

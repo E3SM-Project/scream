@@ -18,6 +18,7 @@ namespace shoc {
  */
 
 template<typename S, typename D>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>::shoc_tke(
   const MemberType&            team,
@@ -32,10 +33,10 @@ void Functions<S,D>::shoc_tke(
   const Scalar&                Ckm,
   const uview_1d<const Spack>& wthv_sec,
   const uview_1d<const Spack>& shoc_mix,
-  const uview_1d<const Spack>& dz_zi,
-  const uview_1d<const Spack>& dz_zt,
+  const TempViewType&          dz_zi,
+  const TempViewType&          dz_zt,
   const uview_1d<const Spack>& pres,
-  const uview_1d<const Spack>& tabs,
+  const TempViewType&          tabs,
   const uview_1d<const Spack>& u_wind,
   const uview_1d<const Spack>& v_wind,
   const uview_1d<const Spack>& brunt,

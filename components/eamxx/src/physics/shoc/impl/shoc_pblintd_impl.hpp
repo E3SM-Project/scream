@@ -38,6 +38,7 @@ namespace shoc {
 //
 
 template<typename S, typename D>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>::pblintd(
   const MemberType&            team,
@@ -48,7 +49,7 @@ void Functions<S,D>::pblintd(
   const uview_1d<const Spack>& zi,
   const uview_1d<const Spack>& thl,
   const uview_1d<const Spack>& ql,
-  const uview_1d<const Spack>& q,
+  const TempViewType&          q,
   const uview_1d<const Spack>& u,
   const uview_1d<const Spack>& v,
   const Scalar&                ustar,

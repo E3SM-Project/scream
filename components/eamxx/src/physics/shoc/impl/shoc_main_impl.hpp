@@ -138,19 +138,19 @@ void Functions<S,D>::shoc_main_internal(
 {
 
   // Define temporary variables
-  uview_1d<Spack> /*rho_zt,*/ shoc_qv, shoc_tabs, dz_zt, dz_zi, tkh;
-  workspace.template take_many_and_reset</*6*/5>(
-    {/*"rho_zt",*/ "shoc_qv", "shoc_tabs", "dz_zt", "dz_zi", "tkh"},
-    {/*&rho_zt,*/ &shoc_qv, &shoc_tabs, &dz_zt, &dz_zi, &tkh});
+  uview_1d<Spack> /*rho_zt, shoc_qv, shoc_tabs, dz_zt, dz_zi,*/ tkh;
+  workspace.template take_many_and_reset</*6*/1>(
+    {/*"rho_zt", "shoc_qv", "shoc_tabs", "dz_zt", "dz_zi", */"tkh"},
+    {/*&rho_zt, &shoc_qv, &shoc_tabs, &dz_zt, &dz_zi, */&tkh});
 
   const auto nlev_packs = ekat::npack<Spack>(nlev);
   const auto nlevi_packs = ekat::npack<Spack>(nlevi);
   scratch_view_1d<Spack>
-    rho_zt   (team.team_scratch(scratch_level), nlev_packs);
-    // shoc_qv  (team.team_scratch(scratch_level), nlev_packs),
-    // shoc_tabs(team.team_scratch(scratch_level), nlev_packs),
-    // dz_zt    (team.team_scratch(scratch_level), nlev_packs),
-    // dz_zi    (team.team_scratch(scratch_level), nlevi_packs),
+    rho_zt   (team.team_scratch(scratch_level), nlev_packs),
+    shoc_qv  (team.team_scratch(scratch_level), nlev_packs),
+    shoc_tabs(team.team_scratch(scratch_level), nlev_packs),
+    dz_zt    (team.team_scratch(scratch_level), nlev_packs),
+    dz_zi    (team.team_scratch(scratch_level), nlevi_packs);
     // tkh      (team.team_scratch(scratch_level), nlev_packs);
 
   // Local scalars
@@ -222,16 +222,16 @@ void Functions<S,D>::shoc_main_internal(
                 brunt,shoc_mix);       // Output
 
     // Advance the SGS TKE equation
-    shoc_tke(team,nlev,nlevi,dtime,              // Input
-	     lambda_low,lambda_high,lambda_slope, // Runtime options
-	     lambda_thresh,Ckh,Ckm,              // Runtime options
-	     wthv_sec,                           // Input
-             shoc_mix,dz_zi,dz_zt,pres,shoc_tabs,// Input
-             u_wind,v_wind,brunt,zt_grid,        // Input
-             zi_grid,pblh,                       // Input
-             workspace,                          // Workspace
-             tke,tk,tkh,                         // Input/Output
-             isotropy);                          // Output
+    shoc_tke(team,nlev,nlevi,dtime,               // Input
+             lambda_low,lambda_high,lambda_slope, // Runtime options
+             lambda_thresh,Ckh,Ckm,               // Runtime options
+             wthv_sec,                            // Input
+             shoc_mix,dz_zi,dz_zt,pres,shoc_tabs, // Input
+             u_wind,v_wind,brunt,zt_grid,         // Input
+             zi_grid,pblh,                        // Input
+             workspace,                           // Workspace
+             tke,tk,tkh,                          // Input/Output
+             isotropy);                           // Output
 
     // Update SHOC prognostic variables here
     // via implicit diffusion solver
@@ -322,8 +322,8 @@ void Functions<S,D>::shoc_main_internal(
           pblh);                          // Output
 
   // Release temporary variables from the workspace
-  workspace.template release_many_contiguous</*6*/5>(
-    {/*&rho_zt,*/ &shoc_qv, &shoc_tabs, &dz_zt, &dz_zi, &tkh});
+  workspace.template release_many_contiguous</*6*/1>(
+    {/*&rho_zt, &shoc_qv, &shoc_tabs, &dz_zt, &dz_zi, */&tkh});
 }
 #else
 template<typename S, typename D>

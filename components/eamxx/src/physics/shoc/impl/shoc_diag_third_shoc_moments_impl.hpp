@@ -12,6 +12,7 @@ namespace shoc {
  */
 
 template<typename S, typename D>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>::diag_third_shoc_moments(
   const MemberType&            team,
@@ -25,8 +26,8 @@ void Functions<S,D>::diag_third_shoc_moments(
   const uview_1d<const Spack>& brunt,
   const uview_1d<const Spack>& thetal,
   const uview_1d<const Spack>& tke,
-  const uview_1d<const Spack>& dz_zt,
-  const uview_1d<const Spack>& dz_zi,
+  const TempViewType&          dz_zt,
+  const TempViewType&          dz_zi,
   const uview_1d<const Spack>& zt_grid,
   const uview_1d<const Spack>& zi_grid,
   const Workspace&             workspace,

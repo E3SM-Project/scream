@@ -7,15 +7,16 @@ namespace scream {
 namespace shoc {
 
 template<typename S, typename D>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>
 ::calc_shoc_vertflux(
-  const MemberType& team,
-  const Int& nlev,
+  const MemberType&            team,
+  const Int&                   nlev,
   const uview_1d<const Spack>& tkh_zi,
-  const uview_1d<const Spack>& dz_zi,
+  const TempViewType&          dz_zi,
   const uview_1d<const Spack>& invar,
-  const uview_1d<Spack>& vertflux)
+  const uview_1d<Spack>&       vertflux)
 {
   const Int nlev_pack = ekat::npack<Spack>(nlev);
   const auto sinvar = scalarize(invar);

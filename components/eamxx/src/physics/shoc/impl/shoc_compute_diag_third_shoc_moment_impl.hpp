@@ -7,6 +7,7 @@ namespace scream {
 namespace shoc {
 
 template<typename S, typename D>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>
 ::compute_diag_third_shoc_moment(
@@ -18,8 +19,8 @@ void Functions<S,D>
   const uview_1d<const Spack>& thl_sec,
   const uview_1d<const Spack>& wthl_sec,
   const uview_1d<const Spack>& tke,
-  const uview_1d<const Spack>& dz_zt,
-  const uview_1d<const Spack>& dz_zi,
+  const TempViewType&          dz_zt,
+  const TempViewType&          dz_zi,
   const uview_1d<const Spack>& isotropy_zi,
   const uview_1d<const Spack>& brunt_zi,
   const uview_1d<const Spack>& w_sec_zi,

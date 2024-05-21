@@ -15,15 +15,8 @@ template void Func::dp_inverse(
   const Func::MemberType&                   team,
   const Int&                                nlev,
   const Func::scratch_view_1d<Func::Spack>& rho_zt,
-  const Func::uview_1d<const Func::Spack>&  dz_zt,
+  const Func::scratch_view_1d<Func::Spack>& dz_zt,
   const Func::uview_1d<Func::Spack>&        rdp_zt);
-
-template void Func::dp_inverse(
-  const Func::MemberType&                  team,
-  const Int&                               nlev,
-  const Func::uview_1d<const Func::Spack>& rho_zt,
-  const Func::uview_1d<const Func::Spack>& dz_zt,
-  const Func::uview_1d<Func::Spack>&       rdp_zt);
 
 } // namespace shoc
 } // namespace scream

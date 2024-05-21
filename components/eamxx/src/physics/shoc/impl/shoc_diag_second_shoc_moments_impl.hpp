@@ -12,12 +12,13 @@ namespace shoc {
  */
 
 template<typename S, typename D>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>::diag_second_shoc_moments(const MemberType& team, const Int& nlev, const Int& nlevi,
        const Scalar& thl2tune, const Scalar& qw2tune, const Scalar& qwthl2tune, const Scalar& w2tune,
        const uview_1d<const Spack>& thetal, const uview_1d<const Spack>& qw, const uview_1d<const Spack>& u_wind,
        const uview_1d<const Spack>& v_wind, const uview_1d<const Spack>& tke, const uview_1d<const Spack>& isotropy,
-       const uview_1d<const Spack>& tkh, const uview_1d<const Spack>& tk, const uview_1d<const Spack>& dz_zi,
+       const uview_1d<const Spack>& tkh, const uview_1d<const Spack>& tk, const TempViewType& dz_zi,
        const uview_1d<const Spack>& zt_grid, const uview_1d<const Spack>& zi_grid, const uview_1d<const Spack>& shoc_mix,
        const Scalar& wthl_sfc, const Scalar& wqw_sfc, const Scalar& uw_sfc, const Scalar& vw_sfc, Scalar& ustar2, Scalar& wstar,
        const Workspace& workspace, const uview_1d<Spack>& thl_sec,

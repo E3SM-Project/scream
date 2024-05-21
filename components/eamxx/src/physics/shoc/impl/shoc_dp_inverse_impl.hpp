@@ -7,15 +7,15 @@ namespace scream {
 namespace shoc {
 
 template<typename S, typename D>
-template<typename InputProviderRhoZt>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>
 ::dp_inverse(
-  const MemberType&            team,
-  const Int&                   nlev,
-  const InputProviderRhoZt&    rho_zt,
-  const uview_1d<const Spack>& dz_zt,
-  const uview_1d<Spack>&       rdp_zt)
+  const MemberType&      team,
+  const Int&             nlev,
+  const TempViewType&    rho_zt,
+  const TempViewType&    dz_zt,
+  const uview_1d<Spack>& rdp_zt)
 {
   const auto ggr = C::gravit;
 

@@ -12,6 +12,7 @@ namespace shoc {
  */
 
 template<typename S, typename D>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>::eddy_diffusivities(
   const MemberType&            team,
@@ -20,7 +21,7 @@ void Functions<S,D>::eddy_diffusivities(
   const Scalar&                 Ckm,
   const Scalar&                pblh,
   const uview_1d<const Spack>& zt_grid,
-  const uview_1d<const Spack>& tabs,
+  const TempViewType&          tabs,
   const uview_1d<const Spack>& shoc_mix,
   const uview_1d<const Spack>& sterm_zt,
   const uview_1d<const Spack>& isotropy,

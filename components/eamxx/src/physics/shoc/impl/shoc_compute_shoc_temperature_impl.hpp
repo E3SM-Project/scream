@@ -10,11 +10,12 @@ namespace shoc {
  * Implementation of shoc compute_shoc_temperature. Clients should NOT
  * #include this file, but include shoc_functions.hpp instead.
  *
- * This function computes absolute temperature 
+ * This function computes absolute temperature
  * based on SHOC's prognostic liquid water potential temperature.
  */
 
 template<typename S, typename D>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>::compute_shoc_temperature(
   const MemberType&            team,
@@ -22,9 +23,8 @@ void Functions<S,D>::compute_shoc_temperature(
   const uview_1d<const Spack>& thetal,
   const uview_1d<const Spack>& ql,
   const uview_1d<const Spack>& inv_exner,
-  const uview_1d<Spack>&       tabs)
+  const TempViewType&          tabs)
 {
-
   const Scalar cp = C::CP;
   const Scalar lcond = C::LatVap;
 

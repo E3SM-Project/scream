@@ -16,13 +16,14 @@ namespace shoc {
  */
 
 template<typename S, typename D>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>::compute_shoc_vapor(
   const MemberType&            team,
   const Int&                   nlev,
   const uview_1d<const Spack>& qw,
   const uview_1d<const Spack>& ql,
-  const uview_1d<Spack>&       qv)
+  const TempViewType&          qv)
 {
   const Int nlev_pack = ekat::npack<Spack>(nlev);
   Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlev_pack), [&] (const Int& k) {

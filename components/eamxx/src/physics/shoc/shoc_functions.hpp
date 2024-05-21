@@ -230,6 +230,7 @@ struct Functions
   //
   // --------- Functions ---------
   //
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void calc_shoc_varorcovar(
     const MemberType&            team,
@@ -237,19 +238,20 @@ struct Functions
     const Scalar&                tunefac,
     const uview_1d<const Spack>& isotropy_zi,
     const uview_1d<const Spack>& tkh_zi,
-    const uview_1d<const Spack>& dz_zi,
+    const TempViewType&          dz_zi,
     const uview_1d<const Spack>& invar1,
     const uview_1d<const Spack>& invar2,
     const uview_1d<Spack>&       varorcovar);
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void calc_shoc_vertflux(
-    const MemberType& team,
-    const Int& nlev,
+    const MemberType&            team,
+    const Int&                   nlev,
     const uview_1d<const Spack>& tkh_zi,
-    const uview_1d<const Spack>& dz_zi,
+    const TempViewType&          dz_zi,
     const uview_1d<const Spack>& invar,
-    const uview_1d<Spack>& vertflux);
+    const uview_1d<Spack>&       vertflux);
 
   KOKKOS_FUNCTION
   static void shoc_diag_second_moments_srf(
@@ -283,29 +285,34 @@ struct Functions
     const view_2d<Spack>& host_dse);
 #endif
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void compute_diag_third_shoc_moment(
-    const MemberType& team,
-    const Int& nlev,
-    const Int& nlevi,
-    const Scalar& c_diag_3rd_mom,
+    const MemberType&            team,
+    const Int&                   nlev,
+    const Int&                   nlevi,
+    const Scalar&                c_diag_3rd_mom,
     const uview_1d<const Spack>& w_sec,
     const uview_1d<const Spack>& thl_sec,
     const uview_1d<const Spack>& wthl_sec,
     const uview_1d<const Spack>& tke,
-    const uview_1d<const Spack>& dz_zt,
-    const uview_1d<const Spack>& dz_zi,
+    const TempViewType&          dz_zt,
+    const TempViewType&          dz_zi,
     const uview_1d<const Spack>& isotropy_zi,
     const uview_1d<const Spack>& brunt_zi,
     const uview_1d<const Spack>& w_sec_zi,
     const uview_1d<const Spack>& thetal_zi,
-    const uview_1d<Spack>& w3);
+    const uview_1d<Spack>&       w3);
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void shoc_pblintd_init_pot(
-    const MemberType& team, const Int& nlev,
-    const view_1d<const Spack>& thl, const view_1d<const Spack>& ql, const view_1d<const Spack>& q,
-    const view_1d<Spack>& thv);
+    const MemberType&            team,
+    const Int&                   nlev,
+    const uview_1d<const Spack>& thl,
+    const uview_1d<const Spack>& ql,
+    const TempViewType&          q,
+    const uview_1d<Spack>&       thv);
 
   KOKKOS_FUNCTION
   static void compute_shoc_mix_shoc_length(
@@ -337,7 +344,10 @@ struct Functions
     const uview_1d<const Spack>& w_sec_zi,
     const uview_1d<Spack>& w3);
 
-  template<typename InputProviderX1, typename InputProviderX2, typename InputProviderY1, typename OutputProviderY2>
+  template<typename InputProviderX1,
+           typename InputProviderX2,
+           typename InputProviderY1,
+           typename OutputProviderY2>
   KOKKOS_FUNCTION
   static void linear_interp(
     const MemberType&       team,
@@ -386,24 +396,26 @@ struct Functions
     Scalar& wthl_sec, Scalar& wqw_sec, Scalar& uw_sec, Scalar& vw_sec,
     Scalar& wtke_sec, Scalar& thl_sec, Scalar& qw_sec, Scalar& qwthl_sec);
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void diag_second_moments(const MemberType& team, const Int& nlev, const Int& nlevi,
      const Real& thl2tune, const Real& qw2tune, const Real& qwthl2tune, const Real& w2tune,
      const uview_1d<const Spack>& thetal, const uview_1d<const Spack>& qw, const uview_1d<const Spack>& u_wind,
      const uview_1d<const Spack>& v_wind, const uview_1d<const Spack>& tke, const uview_1d<const Spack>& isotropy,
-     const uview_1d<const Spack>& tkh, const uview_1d<const Spack>& tk, const uview_1d<const Spack>& dz_zi,
+     const uview_1d<const Spack>& tkh, const uview_1d<const Spack>& tk, const TempViewType& dz_zi,
      const uview_1d<const Spack>& zt_grid, const uview_1d<const Spack>& zi_grid, const uview_1d<const Spack>& shoc_mix,
      const uview_1d<Spack>& isotropy_zi, const uview_1d<Spack>& tkh_zi, const uview_1d<Spack>& tk_zi,
      const uview_1d<Spack>& thl_sec, const uview_1d<Spack>& qw_sec, const uview_1d<Spack>& wthl_sec,
      const uview_1d<Spack>& wqw_sec, const uview_1d<Spack>& qwthl_sec, const uview_1d<Spack>& uw_sec,
      const uview_1d<Spack>& vw_sec, const uview_1d<Spack>& wtke_sec, const uview_1d<Spack>& w_sec);
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void diag_second_shoc_moments(const MemberType& team, const Int& nlev, const Int& nlevi,
      const Scalar& thl2tune, const Scalar& qw2tune, const Scalar& qwthl2tune, const Scalar& w2tune,
      const uview_1d<const Spack>& thetal, const uview_1d<const Spack>& qw, const uview_1d<const Spack>& u_wind,
      const uview_1d<const Spack>& v_wind, const uview_1d<const Spack>& tke, const uview_1d<const Spack>& isotropy,
-     const uview_1d<const Spack>& tkh, const uview_1d<const Spack>& tk, const uview_1d<const Spack>& dz_zi,
+     const uview_1d<const Spack>& tkh, const uview_1d<const Spack>& tk, const TempViewType& dz_zi,
      const uview_1d<const Spack>& zt_grid, const uview_1d<const Spack>& zi_grid, const uview_1d<const Spack>& shoc_mix,
      const Scalar& wthl_sfc, const Scalar& wqw_sfc, const Scalar& uw_sfc, const Scalar& vw_sfc, Scalar& ustar2, Scalar& wstar,
      const Workspace& workspace, const uview_1d<Spack>& thl_sec,
@@ -446,22 +458,24 @@ struct Functions
     const view_2d<Spack>& w_sec);
 #endif
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void compute_brunt_shoc_length(
     const MemberType&            team,
     const Int&                   nlev,
     const Int&                   nlevi,
-    const uview_1d<const Spack>& dz_zt,
+    const TempViewType&          dz_zt,
     const uview_1d<const Spack>& thv,
     const uview_1d<const Spack>& thv_zi,
     const uview_1d<Spack>&       brunt);
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void compute_l_inf_shoc_length(
     const MemberType&            team,
     const Int&                   nlev,
     const uview_1d<const Spack>& zt_grid,
-    const uview_1d<const Spack>& dz_zt,
+    const TempViewType&          dz_zt,
     const uview_1d<const Spack>& tke,
     Scalar&                      l_inf);
 
@@ -506,6 +520,7 @@ struct Functions
     const Scalar& zi, const Scalar& cldn,
     Scalar& pblh);
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void shoc_length(
     const MemberType&            team,
@@ -516,7 +531,7 @@ struct Functions
     const Scalar&                dy,
     const uview_1d<const Spack>& zt_grid,
     const uview_1d<const Spack>& zi_grid,
-    const uview_1d<const Spack>& dz_zt,
+    const TempViewType&          dz_zt,
     const uview_1d<const Spack>& tke,
     const uview_1d<const Spack>& thv,
     const Workspace&             workspace,
@@ -540,7 +555,7 @@ struct Functions
     const view_2d<Spack>&        shoc_mix);
 #endif
 
-  template<typename InputProviderRhoZt>
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void shoc_energy_fixer(
     const MemberType&            team,
@@ -560,7 +575,7 @@ struct Functions
     const Scalar&                wl_a,
     const Scalar&                wthl_sfc,
     const Scalar&                wqw_sfc,
-    const InputProviderRhoZt&    rho_zt,
+    const TempViewType&          rho_zt,
     const uview_1d<const Spack>& tke,
     const uview_1d<const Spack>& pint,
     const Workspace&             workspace,
@@ -591,13 +606,14 @@ struct Functions
     const view_2d<Spack>&        host_dse);
 #endif
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void compute_shoc_vapor(
     const MemberType&            team,
     const Int&                   nlev,
     const uview_1d<const Spack>& qw,
     const uview_1d<const Spack>& ql,
-    const uview_1d<Spack>&       qv);
+    const TempViewType&          qv);
 #ifdef SCREAM_SMALL_KERNELS
   static void compute_shoc_vapor_disp(
     const Int&                  shcol,
@@ -607,6 +623,7 @@ struct Functions
     const view_2d<Spack>&       qv);
 #endif
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void compute_shoc_temperature(
     const MemberType&            team,
@@ -614,7 +631,7 @@ struct Functions
     const uview_1d<const Spack>& thetal,
     const uview_1d<const Spack>& ql,
     const uview_1d<const Spack>& inv_exner,
-    const uview_1d<Spack>&       tabs);
+    const TempViewType&          tabs);
 #ifdef SCREAM_SMALL_KERNELS
   static void compute_shoc_temperature_disp(
     const Int&                  shcol,
@@ -625,7 +642,7 @@ struct Functions
     const view_2d<Spack>&       tabs);
 #endif
 
-  template<typename InputProviderRhoZt>
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void update_prognostics_implicit(
     const MemberType&            team,
@@ -633,9 +650,9 @@ struct Functions
     const Int&                   nlevi,
     const Int&                   num_tracer,
     const Scalar&                dtime,
-    const uview_1d<const Spack>& dz_zt,
-    const uview_1d<const Spack>& dz_zi,
-    const InputProviderRhoZt&    rho_zt,
+    const TempViewType&          dz_zt,
+    const TempViewType&          dz_zi,
+    const TempViewType&          rho_zt,
     const uview_1d<const Spack>& zt_grid,
     const uview_1d<const Spack>& zi_grid,
     const uview_1d<const Spack>& tk,
@@ -680,6 +697,7 @@ struct Functions
     const view_2d<Spack>&        v_wind);
 #endif
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void diag_third_shoc_moments(
     const MemberType&            team,
@@ -693,8 +711,8 @@ struct Functions
     const uview_1d<const Spack>& brunt,
     const uview_1d<const Spack>& thetal,
     const uview_1d<const Spack>& tke,
-    const uview_1d<const Spack>& dz_zt,
-    const uview_1d<const Spack>& dz_zi,
+    const TempViewType&          dz_zt,
+    const TempViewType&          dz_zi,
     const uview_1d<const Spack>& zt_grid,
     const uview_1d<const Spack>& zi_grid,
     const Workspace&             workspace,
@@ -782,30 +800,33 @@ struct Functions
     const view_2d<Spack>&       shoc_ql2);
 #endif
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void compute_shr_prod(
     const MemberType&            team,
     const Int&                   nlevi,
     const Int&                   nlev,
-    const uview_1d<const Spack>& dz_zi,
+    const TempViewType&          dz_zi,
     const uview_1d<const Spack>& u_wind,
     const uview_1d<const Spack>& v_wind,
     const uview_1d<Spack>&       sterm);
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void compute_tmpi(
     const MemberType&            team,
     const Int&                   nlevi,
     const Scalar&                dtime,
     const uview_1d<const Spack>& rho_zi,
-    const uview_1d<const Spack>& dz_zi,
+    const TempViewType&          dz_zi,
     const uview_1d<Spack>&       tmpi);
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void integ_column_stability(
     const MemberType&            team,
     const Int&                   nlev,
-    const uview_1d<const Spack>& dz_zt,
+    const TempViewType&          dz_zt,
     const uview_1d<const Spack>& pres,
     const uview_1d<const Spack>& brunt,
     Scalar&                      brunt_int);
@@ -824,14 +845,14 @@ struct Functions
     const uview_1d<const Spack>& brunt,
     const uview_1d<Spack>&       isotropy);
 
-  template<typename InputProviderRhoZt>
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void dp_inverse(
-    const MemberType&            team,
-    const Int&                   nlev,
-    const InputProviderRhoZt&    rho_zt,
-    const uview_1d<const Spack>& dz_zt,
-    const uview_1d<Spack>&       rdp_zt);
+    const MemberType&      team,
+    const Int&             nlev,
+    const TempViewType&    rho_zt,
+    const TempViewType&    dz_zt,
+    const uview_1d<Spack>& rdp_zt);
 
   static Int shoc_init(
     const Int&                  nbot_shoc,
@@ -1071,6 +1092,7 @@ struct Functions
   static void pblintd_check_pblh(const Int& nlevi, const Int& npbl,
               const uview_1d<const Spack>& z, const Scalar& ustar, const bool& check, Scalar& pblh);
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void pblintd(
     const MemberType&            team,
@@ -1081,7 +1103,7 @@ struct Functions
     const uview_1d<const Spack>& zi,
     const uview_1d<const Spack>& thl,
     const uview_1d<const Spack>& ql,
-    const uview_1d<const Spack>& q,
+    const TempViewType&          q,
     const uview_1d<const Spack>& u,
     const uview_1d<const Spack>& v,
     const Scalar&                ustar,
@@ -1111,7 +1133,7 @@ struct Functions
     const view_1d<Scalar>&       pblh);
 #endif
 
-  template<typename OutputProviderRhoZt>
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void shoc_grid(
     const MemberType&            team,
@@ -1120,9 +1142,9 @@ struct Functions
     const uview_1d<const Spack>& zt_grid,
     const uview_1d<const Spack>& zi_grid,
     const uview_1d<const Spack>& pdel,
-    const uview_1d<Spack>&       dz_zt,
-    const uview_1d<Spack>&       dz_zi,
-    const OutputProviderRhoZt&    rho_zt);
+    const TempViewType&          dz_zt,
+    const TempViewType&          dz_zi,
+    const TempViewType&          rho_zt);
 #ifdef SCREAM_SMALL_KERNELS
   static void shoc_grid_disp(
     const Int&                  shcol,
@@ -1136,6 +1158,7 @@ struct Functions
     const view_2d<Spack>&       rho_zt);
 #endif
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void eddy_diffusivities(
     const MemberType&            team,
@@ -1144,7 +1167,7 @@ struct Functions
     const Scalar&                Ckm,
     const Scalar&                pblh,
     const uview_1d<const Spack>& zt_grid,
-    const uview_1d<const Spack>& tabs,
+    const TempViewType&          tabs,
     const uview_1d<const Spack>& shoc_mix,
     const uview_1d<const Spack>& sterm_zt,
     const uview_1d<const Spack>& isotropy,
@@ -1152,6 +1175,7 @@ struct Functions
     const uview_1d<Spack>&       tkh,
     const uview_1d<Spack>&       tk);
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void shoc_tke(
     const MemberType&            team,
@@ -1166,10 +1190,10 @@ struct Functions
     const Scalar&                Ckm,
     const uview_1d<const Spack>& wthv_sec,
     const uview_1d<const Spack>& shoc_mix,
-    const uview_1d<const Spack>& dz_zi,
-    const uview_1d<const Spack>& dz_zt,
+    const TempViewType&          dz_zi,
+    const TempViewType&          dz_zt,
     const uview_1d<const Spack>& pres,
-    const uview_1d<const Spack>& tabs,
+    const TempViewType&          tabs,
     const uview_1d<const Spack>& u_wind,
     const uview_1d<const Spack>& v_wind,
     const uview_1d<const Spack>& brunt,

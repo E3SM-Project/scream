@@ -7,6 +7,7 @@ namespace scream {
 namespace shoc {
 
 template<typename S, typename D>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>
 ::shoc_length(
@@ -18,7 +19,7 @@ void Functions<S,D>
   const Scalar&                dy,
   const uview_1d<const Spack>& zt_grid,
   const uview_1d<const Spack>& zi_grid,
-  const uview_1d<const Spack>& dz_zt,
+  const TempViewType&          dz_zt,
   const uview_1d<const Spack>& tke,
   const uview_1d<const Spack>& thv,
   const Workspace&             workspace,

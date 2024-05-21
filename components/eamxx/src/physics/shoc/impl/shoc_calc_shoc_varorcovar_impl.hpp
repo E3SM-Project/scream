@@ -7,6 +7,7 @@ namespace scream {
 namespace shoc {
 
 template<typename S, typename D>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>
 ::calc_shoc_varorcovar(
@@ -15,7 +16,7 @@ void Functions<S,D>
   const Scalar& tunefac,
   const uview_1d<const Spack>& isotropy_zi,
   const uview_1d<const Spack>& tkh_zi,
-  const uview_1d<const Spack>& dz_zi,
+  const TempViewType&          dz_zi,
   const uview_1d<const Spack>& invar1,
   const uview_1d<const Spack>& invar2,
   const uview_1d<Spack>&       varorcovar)
