@@ -96,6 +96,15 @@ void SHOCMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids
     add_field<Computed>("ice_flux",   scalar2d, m/s,     grid_name);
     add_field<Computed>("heat_flux",  scalar2d, W/m2,    grid_name);
   }
+
+  // Note for Peter B
+  // Add new fields just to diagnose SHOC
+  // We use `add_field<Computed> as we plan to just compute this field locally.
+  // We also just set dimensions to `nondim` to not bother with dimensions, setting them to unitless in this way is only impactful to the netCDF metadata.
+  //   - note, you can add the dimension if you want, it's just uneccesary.
+  // Note, for any 3d fields we add the `ps` argument so we can grab them as packs.
+  //     , for a 2d field (i.e. no vertical structure) we would end the command after 'grid_name'.
+  add_field<Computed>("shoc_mix", scalar3d_mid, nondim, grid_name, ps);
 }
 
 // =========================================================================================
@@ -489,6 +498,14 @@ void SHOCMacrophysics::run_impl (const double dt)
                        default_policy,
                        shoc_postprocess);
   Kokkos::fence();
+
+  // Note for Peter B.
+  // Copy the results of the internal diagnostic variables over to the fields so we can use for output.
+  // First we get a "view" of the field.  Note, for 3D variables we use "Spack**" for 2D fields we would use "Real*"
+  const auto& shoc_mix     = get_field_out("shoc_mix").get_view<Spack**>();
+  // Now we copy the data stored in the appropriate SHOC structure to the view we just grabbed.
+  // For example, searching for 'shoc_mix' I see that it is assigned to the 'history_output' structure.
+  Kokkos::deep_copy(shoc_mix,history_output.shoc_mix);
 }
 // =========================================================================================
 void SHOCMacrophysics::finalize_impl()
