@@ -26,7 +26,7 @@ void Functions<S,D>::update_prognostics_implicit(
   const uview_1d<const Spack>& zt_grid,
   const uview_1d<const Spack>& zi_grid,
   const uview_1d<const Spack>& tk,
-  const uview_1d<const Spack>& tkh,
+  const TempViewType&          tkh,
   const Scalar&                uw_sfc,
   const Scalar&                vw_sfc,
   const Scalar&                wthl_sfc,

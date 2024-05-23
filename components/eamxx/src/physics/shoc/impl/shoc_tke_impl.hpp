@@ -18,7 +18,7 @@ namespace shoc {
  */
 
 template<typename S, typename D>
-template<typename TempViewType>
+template<typename TempViewTypeIn, typename TempViewTypeOut>
 KOKKOS_FUNCTION
 void Functions<S,D>::shoc_tke(
   const MemberType&            team,
@@ -33,10 +33,10 @@ void Functions<S,D>::shoc_tke(
   const Scalar&                Ckm,
   const uview_1d<const Spack>& wthv_sec,
   const uview_1d<const Spack>& shoc_mix,
-  const TempViewType&          dz_zi,
-  const TempViewType&          dz_zt,
+  const TempViewTypeIn&        dz_zi,
+  const TempViewTypeIn&        dz_zt,
   const uview_1d<const Spack>& pres,
-  const TempViewType&          tabs,
+  const TempViewTypeIn&        tabs,
   const uview_1d<const Spack>& u_wind,
   const uview_1d<const Spack>& v_wind,
   const uview_1d<const Spack>& brunt,
@@ -46,7 +46,7 @@ void Functions<S,D>::shoc_tke(
   const Workspace&             workspace,
   const uview_1d<Spack>&       tke,
   const uview_1d<Spack>&       tk,
-  const uview_1d<Spack>&       tkh,
+  const TempViewTypeOut&       tkh,
   const uview_1d<Spack>&       isotropy)
 {
   // Define temporary variables

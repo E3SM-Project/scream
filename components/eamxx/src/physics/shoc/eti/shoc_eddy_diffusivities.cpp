@@ -23,7 +23,7 @@ template void Func::eddy_diffusivities(
   const Func::uview_1d<const Func::Spack>&  sterm_zt,
   const Func::uview_1d<const Func::Spack>&  isotropy,
   const Func::uview_1d<const Func::Spack>&  tke,
-  const Func::uview_1d<Func::Spack>&        tkh,
+  const Func::scratch_view_1d<Func::Spack>& tkh,
   const Func::uview_1d<Func::Spack>&        tk);
 
 template void Func::eddy_diffusivities(

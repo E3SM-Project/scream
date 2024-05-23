@@ -2668,7 +2668,7 @@ void isotropic_ts_f(Int nlev, Int shcol, Real* brunt_int, Real* tke,
       const auto isotropy_s = ekat::subview(isotropy_d, i); //output
 
       // Hard code these runtime options for F90
-      const Real lambda_low = 0.001; 
+      const Real lambda_low = 0.001;
       const Real lambda_high   = 0.04;
       const Real lambda_slope  = 2.65;
       const Real lambda_thresh = 0.02;
@@ -2920,7 +2920,7 @@ Int shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Int npbl, 
   // Create local workspace
   const int n_wind_slots = ekat::npack<Spack>(2)*Spack::n;
   const int n_trac_slots = ekat::npack<Spack>(num_qtracers+3)*Spack::n;
-  ekat::WorkspaceManager<Spack, SHF::KT::Device> workspace_mgr(nlevi_packs, 14+(n_wind_slots+n_trac_slots), policy);
+  ekat::WorkspaceManager<Spack, SHF::KT::Device> workspace_mgr(nlevi_packs, 8+(n_wind_slots+n_trac_slots), policy);
 
   const auto elapsed_microsec = SHF::shoc_main(shcol, nlev, nlevi, npbl, nadv, num_qtracers, dtime,
                                                workspace_mgr, shoc_runtime_options,
@@ -3481,7 +3481,7 @@ void shoc_tke_f(Int shcol, Int nlev, Int nlevi, Real dtime, Real* wthv_sec, Real
     const auto isotropy_s = ekat::subview(isotropy_d, i);
 
     // Hardcode for F90 testing
-    const Real lambda_low    = 0.001;  
+    const Real lambda_low    = 0.001;
     const Real lambda_high   = 0.04;
     const Real lambda_slope  = 2.65;
     const Real lambda_thresh = 0.02;

@@ -138,10 +138,10 @@ void Functions<S,D>::shoc_main_internal(
 {
 
   // Define temporary variables
-  uview_1d<Spack> /*rho_zt, shoc_qv, shoc_tabs, dz_zt, dz_zi,*/ tkh;
-  workspace.template take_many_and_reset</*6*/1>(
-    {/*"rho_zt", "shoc_qv", "shoc_tabs", "dz_zt", "dz_zi", */"tkh"},
-    {/*&rho_zt, &shoc_qv, &shoc_tabs, &dz_zt, &dz_zi, */&tkh});
+  //uview_1d<Spack> rho_zt, shoc_qv, shoc_tabs, dz_zt, dz_zi, tkh;
+  //workspace.template take_many_and_reset</*6*/1>(
+  //  {"rho_zt", "shoc_qv", "shoc_tabs", "dz_zt", "dz_zi", "tkh"},
+  //  {&rho_zt, &shoc_qv, &shoc_tabs, &dz_zt, &dz_zi, &tkh});
 
   const auto nlev_packs = ekat::npack<Spack>(nlev);
   const auto nlevi_packs = ekat::npack<Spack>(nlevi);
@@ -150,8 +150,8 @@ void Functions<S,D>::shoc_main_internal(
     shoc_qv  (team.team_scratch(scratch_level), nlev_packs),
     shoc_tabs(team.team_scratch(scratch_level), nlev_packs),
     dz_zt    (team.team_scratch(scratch_level), nlev_packs),
-    dz_zi    (team.team_scratch(scratch_level), nlevi_packs);
-    // tkh      (team.team_scratch(scratch_level), nlev_packs);
+    dz_zi    (team.team_scratch(scratch_level), nlevi_packs),
+    tkh      (team.team_scratch(scratch_level), nlev_packs);
 
   // Local scalars
   Scalar se_b{0},   ke_b{0}, wv_b{0},   wl_b{0},
@@ -322,8 +322,8 @@ void Functions<S,D>::shoc_main_internal(
           pblh);                          // Output
 
   // Release temporary variables from the workspace
-  workspace.template release_many_contiguous</*6*/1>(
-    {/*&rho_zt, &shoc_qv, &shoc_tabs, &dz_zt, &dz_zi, */&tkh});
+  //workspace.template release_many_contiguous</*6*/1>(
+  //  {&rho_zt, &shoc_qv, &shoc_tabs, &dz_zt, &dz_zi, &tkh});
 }
 #else
 template<typename S, typename D>
@@ -624,7 +624,7 @@ Int Functions<S,D>::shoc_main(
 
   // Kokkos scratch space info
   const auto bytes =
-    5*scratch_view_1d<Spack>::shmem_size(nlev_packs) + // rho_zt, shoc_qv, shoc_tabs, dz_zt, tkh
+    6*scratch_view_1d<Spack>::shmem_size(nlev_packs) + // rho_zt, shoc_qv, shoc_tabs, dz_zt, tkh
       scratch_view_1d<Spack>::shmem_size(nlevi_packs); // dz_zi
   const int level = 0;
 

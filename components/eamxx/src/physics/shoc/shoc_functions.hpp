@@ -402,7 +402,7 @@ struct Functions
      const Real& thl2tune, const Real& qw2tune, const Real& qwthl2tune, const Real& w2tune,
      const uview_1d<const Spack>& thetal, const uview_1d<const Spack>& qw, const uview_1d<const Spack>& u_wind,
      const uview_1d<const Spack>& v_wind, const uview_1d<const Spack>& tke, const uview_1d<const Spack>& isotropy,
-     const uview_1d<const Spack>& tkh, const uview_1d<const Spack>& tk, const TempViewType& dz_zi,
+     const TempViewType& tkh, const uview_1d<const Spack>& tk, const TempViewType& dz_zi,
      const uview_1d<const Spack>& zt_grid, const uview_1d<const Spack>& zi_grid, const uview_1d<const Spack>& shoc_mix,
      const uview_1d<Spack>& isotropy_zi, const uview_1d<Spack>& tkh_zi, const uview_1d<Spack>& tk_zi,
      const uview_1d<Spack>& thl_sec, const uview_1d<Spack>& qw_sec, const uview_1d<Spack>& wthl_sec,
@@ -415,7 +415,7 @@ struct Functions
      const Scalar& thl2tune, const Scalar& qw2tune, const Scalar& qwthl2tune, const Scalar& w2tune,
      const uview_1d<const Spack>& thetal, const uview_1d<const Spack>& qw, const uview_1d<const Spack>& u_wind,
      const uview_1d<const Spack>& v_wind, const uview_1d<const Spack>& tke, const uview_1d<const Spack>& isotropy,
-     const uview_1d<const Spack>& tkh, const uview_1d<const Spack>& tk, const TempViewType& dz_zi,
+     const TempViewType& tkh, const uview_1d<const Spack>& tk, const TempViewType& dz_zi,
      const uview_1d<const Spack>& zt_grid, const uview_1d<const Spack>& zi_grid, const uview_1d<const Spack>& shoc_mix,
      const Scalar& wthl_sfc, const Scalar& wqw_sfc, const Scalar& uw_sfc, const Scalar& vw_sfc, Scalar& ustar2, Scalar& wstar,
      const Workspace& workspace, const uview_1d<Spack>& thl_sec,
@@ -656,7 +656,7 @@ struct Functions
     const uview_1d<const Spack>& zt_grid,
     const uview_1d<const Spack>& zi_grid,
     const uview_1d<const Spack>& tk,
-    const uview_1d<const Spack>& tkh,
+    const TempViewType&          tkh,
     const Scalar&                uw_sfc,
     const Scalar&                vw_sfc,
     const Scalar&                wthl_sfc,
@@ -1158,7 +1158,7 @@ struct Functions
     const view_2d<Spack>&       rho_zt);
 #endif
 
-  template<typename TempViewType>
+  template<typename TempViewTypeIn, typename TempViewTypeOut>
   KOKKOS_FUNCTION
   static void eddy_diffusivities(
     const MemberType&            team,
@@ -1167,15 +1167,15 @@ struct Functions
     const Scalar&                Ckm,
     const Scalar&                pblh,
     const uview_1d<const Spack>& zt_grid,
-    const TempViewType&          tabs,
+    const TempViewTypeIn&        tabs,
     const uview_1d<const Spack>& shoc_mix,
     const uview_1d<const Spack>& sterm_zt,
     const uview_1d<const Spack>& isotropy,
     const uview_1d<const Spack>& tke,
-    const uview_1d<Spack>&       tkh,
+    const TempViewTypeOut&       tkh,
     const uview_1d<Spack>&       tk);
 
-  template<typename TempViewType>
+  template<typename TempViewTypeIn, typename TempViewTypeOut>
   KOKKOS_FUNCTION
   static void shoc_tke(
     const MemberType&            team,
@@ -1190,10 +1190,10 @@ struct Functions
     const Scalar&                Ckm,
     const uview_1d<const Spack>& wthv_sec,
     const uview_1d<const Spack>& shoc_mix,
-    const TempViewType&          dz_zi,
-    const TempViewType&          dz_zt,
+    const TempViewTypeIn&        dz_zi,
+    const TempViewTypeIn&        dz_zt,
     const uview_1d<const Spack>& pres,
-    const TempViewType&          tabs,
+    const TempViewTypeIn&          tabs,
     const uview_1d<const Spack>& u_wind,
     const uview_1d<const Spack>& v_wind,
     const uview_1d<const Spack>& brunt,
@@ -1203,7 +1203,7 @@ struct Functions
     const Workspace&             workspace,
     const uview_1d<Spack>&       tke,
     const uview_1d<Spack>&       tk,
-    const uview_1d<Spack>&       tkh,
+    const TempViewTypeOut&       tkh,
     const uview_1d<Spack>&       isotropy);
 #ifdef SCREAM_SMALL_KERNELS
   static void shoc_tke_disp(

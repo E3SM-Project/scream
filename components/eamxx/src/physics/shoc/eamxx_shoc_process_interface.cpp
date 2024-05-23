@@ -135,7 +135,7 @@ size_t SHOCMacrophysics::requested_buffer_size_in_bytes() const
   const auto policy       = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nlev_packs);
   const int n_wind_slots  = ekat::npack<Spack>(2)*Spack::n;
   const int n_trac_slots  = ekat::npack<Spack>(m_num_tracers+3)*Spack::n;
-  const size_t wsm_request= WSM::get_total_bytes_needed(nlevi_packs, 14+(n_wind_slots+n_trac_slots), policy);
+  const size_t wsm_request= WSM::get_total_bytes_needed(nlevi_packs, 8+(n_wind_slots+n_trac_slots), policy);
 
   return interface_request + wsm_request;
 }
@@ -211,7 +211,7 @@ void SHOCMacrophysics::init_buffers(const ATMBufferManager &buffer_manager)
   const auto policy      = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nlev_packs);
   const int n_wind_slots = ekat::npack<Spack>(2)*Spack::n;
   const int n_trac_slots = ekat::npack<Spack>(m_num_tracers+3)*Spack::n;
-  const int wsm_size     = WSM::get_total_bytes_needed(nlevi_packs, 14+(n_wind_slots+n_trac_slots), policy)/sizeof(Spack);
+  const int wsm_size     = WSM::get_total_bytes_needed(nlevi_packs, 8+(n_wind_slots+n_trac_slots), policy)/sizeof(Spack);
   s_mem += wsm_size;
 
   size_t used_mem = (reinterpret_cast<Real*>(s_mem) - buffer_manager.get_memory())*sizeof(Real);
@@ -401,7 +401,7 @@ void SHOCMacrophysics::initialize_impl (const RunType run_type)
   const int n_wind_slots = ekat::npack<Spack>(2)*Spack::n;
   const int n_trac_slots = ekat::npack<Spack>(m_num_tracers+3)*Spack::n;
   const auto default_policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nlev_packs);
-  workspace_mgr.setup(m_buffer.wsm_data, nlevi_packs, 14+(n_wind_slots+n_trac_slots), default_policy);
+  workspace_mgr.setup(m_buffer.wsm_data, nlevi_packs, 8+(n_wind_slots+n_trac_slots), default_policy);
 
   // Calculate pref_mid, and use that to calculate
   // maximum number of levels in pbl from surface

@@ -37,7 +37,7 @@ template void Func::shoc_tke(
   const Func::Workspace&                    workspace,
   const Func::uview_1d<Func::Spack>&        tke,
   const Func::uview_1d<Func::Spack>&        tk,
-  const Func::uview_1d<Func::Spack>&        tkh,
+  const Func::scratch_view_1d<Func::Spack>& tkh,
   const Func::uview_1d<Func::Spack>&        isotropy);
 
 template void Func::shoc_tke(
