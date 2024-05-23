@@ -15,6 +15,22 @@ template void Func::shoc_pblintd_init_pot(
   const Func::scratch_view_1d<Func::Spack>& q,
   const Func::uview_1d<Func::Spack>&        thv);
 
+template void Func::shoc_pblintd_init_pot(
+  const Func::MemberType&                   team,
+  const Int&                                nlev,
+  const Func::uview_1d<const Func::Spack>&  thl,
+  const Func::uview_1d<const Func::Spack>&  ql,
+  const Func::uview_1d<Func::Spack>& q,
+  const Func::uview_1d<Func::Spack>&        thv);
+
+template void Func::shoc_pblintd_init_pot(
+  const Func::MemberType&                   team,
+  const Int&                                nlev,
+  const Func::uview_1d<const Func::Spack>&  thl,
+  const Func::uview_1d<const Func::Spack>&  ql,
+  const Func::uview_1d<const Func::Spack>& q,
+  const Func::uview_1d<Func::Spack>&        thv);
+
 } // namespace shoc
 } // namespace scream
 

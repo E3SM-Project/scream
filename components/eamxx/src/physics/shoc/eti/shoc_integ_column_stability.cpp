@@ -19,6 +19,22 @@ template void Func::integ_column_stability(
   const Func::uview_1d<const Func::Spack>&  brunt,
   Func::Scalar&                             brunt_int);
 
+template void Func::integ_column_stability(
+  const Func::MemberType&                   team,
+  const Int&                                nlev,
+  const Func::uview_1d<Func::Spack>& dz_zt,
+  const Func::uview_1d<const Func::Spack>&  pres,
+  const Func::uview_1d<const Func::Spack>&  brunt,
+  Func::Scalar&                             brunt_int);
+
+template void Func::integ_column_stability(
+  const Func::MemberType&                   team,
+  const Int&                                nlev,
+  const Func::uview_1d<const Func::Spack>& dz_zt,
+  const Func::uview_1d<const Func::Spack>&  pres,
+  const Func::uview_1d<const Func::Spack>&  brunt,
+  Func::Scalar&                             brunt_int);
+
 } // namespace shoc
 } // namespace scream
 

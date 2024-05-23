@@ -20,6 +20,24 @@ template void Func::compute_brunt_shoc_length(
   const Func::uview_1d<const Func::Spack>&  thv_zi,
   const Func::uview_1d<Func::Spack>&        brunt);
 
+template void Func::compute_brunt_shoc_length(
+  const Func::MemberType&                   team,
+  const Int&                                nlev,
+  const Int&                                nlevi,
+  const Func::uview_1d<Func::Spack>& dz_zt,
+  const Func::uview_1d<const Func::Spack>&  thv,
+  const Func::uview_1d<const Func::Spack>&  thv_zi,
+  const Func::uview_1d<Func::Spack>&        brunt);
+
+template void Func::compute_brunt_shoc_length(
+  const Func::MemberType&                   team,
+  const Int&                                nlev,
+  const Int&                                nlevi,
+  const Func::uview_1d<const Func::Spack>& dz_zt,
+  const Func::uview_1d<const Func::Spack>&  thv,
+  const Func::uview_1d<const Func::Spack>&  thv_zi,
+  const Func::uview_1d<Func::Spack>&        brunt);
+
 } // namespace shoc
 } // namespace scream
 

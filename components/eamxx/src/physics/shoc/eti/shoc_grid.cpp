@@ -22,6 +22,17 @@ template void Func::shoc_grid(
   const Func::scratch_view_1d<Spack>&      dz_zi,
   const Func::scratch_view_1d<Spack>&      rho_zt);
 
+template void Func::shoc_grid(
+  const Func::MemberType&                  team,
+  const Int&                               nlev,
+  const Int&                               nlevi,
+  const Func::uview_1d<const Func::Spack>& zt_grid,
+  const Func::uview_1d<const Func::Spack>& zi_grid,
+  const Func::uview_1d<const Func::Spack>& pdel,
+  const Func::uview_1d<Spack>&      dz_zt,
+  const Func::uview_1d<Spack>&      dz_zi,
+  const Func::uview_1d<Spack>&      rho_zt);
+
 } // namespace shoc
 } // namespace scream
 
