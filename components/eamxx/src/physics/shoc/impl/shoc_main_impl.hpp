@@ -756,7 +756,7 @@ Int Functions<S,D>::shoc_main(
   const auto policy =
     Kokkos::TeamPolicy<ExeSpace>(shcol, 1)
     //ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs)
-      .set_scratch_size(level, Kokkos::PerTeam(bytes));
+    ;//  .set_scratch_size(level, Kokkos::PerTeam(bytes));
 
   // SHOC main loop
   Kokkos::parallel_for(policy,functor);
