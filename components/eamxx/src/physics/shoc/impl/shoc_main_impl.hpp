@@ -629,7 +629,7 @@ Int Functions<S,D>::shoc_main(
   const int level = 0;
 
   const auto policy =
-    Kokkos::TeamPolicy<ExeSpace>(schol, Kokkos::AUTO)
+    Kokkos::TeamPolicy<ExeSpace>(shcol, Kokkos::AUTO)
     //ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs)
       .set_scratch_size(level, Kokkos::PerTeam(bytes));
 
