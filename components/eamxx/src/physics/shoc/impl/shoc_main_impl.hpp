@@ -638,7 +638,7 @@ Int Functions<S,D>::shoc_main(
                        KOKKOS_LAMBDA(const MemberType& team) {
     const Int i = team.league_rank();
 
-    printf("Team size = %d",team.team_size());
+    if (team.team_rank() == 0) printf("Team size = %d\n",team.team_size());
 
     auto workspace = workspace_mgr.get_workspace(team);
 
