@@ -753,10 +753,14 @@ Int Functions<S,D>::shoc_main(
     shoc_runtime.thl2tune, shoc_runtime.qw2tune, shoc_runtime.qwthl2tune, shoc_runtime.w2tune,
     shoc_runtime.length_fac, shoc_runtime.c_diag_3rd_mom, shoc_runtime.Ckh, shoc_runtime.Ckm);
 
-  const auto policy =
+  const auto policy_tmp =
     Kokkos::TeamPolicy<ExeSpace>(shcol, 1)
     //ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs)
-    ;//  .set_scratch_size(level, Kokkos::PerTeam(bytes));
+      .set_scratch_size(level, Kokkos::PerTeam(bytes));
+
+  const auto tsr = policy_tmp.team_size_recommended(functor, Kokkos::ParallelForTag());
+
+  const auto policy = Kokkos::TeamPolicy<ExeSpace>(shcol, tsr).set_scratch_size(level, Kokkos::PerTeam(bytes));
 
   // SHOC main loop
   Kokkos::parallel_for(policy,functor);
