@@ -639,7 +639,7 @@ struct Functor {
   void operator() (member_type team) const {
     const Int i = team.league_rank();
 
-    if (team.team_rank() == 0) printf("Team size = %d\n",team.team_size());
+    //if (team.team_rank() == 0) printf("Team size = %d\n",team.team_size());
 
     auto workspace = workspace_mgr.get_workspace(team);
 
