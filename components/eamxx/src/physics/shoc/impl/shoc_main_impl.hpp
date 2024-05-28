@@ -758,7 +758,7 @@ Int Functions<S,D>::shoc_main(
     //ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs)
       .set_scratch_size(level, Kokkos::PerTeam(bytes));
 
-  const auto tsr = policy_tmp.team_size_recommended(functor, Kokkos::ParallelForTag());
+  const auto tsr = policy_tmp.team_size_max(functor, Kokkos::ParallelForTag());
 
   const auto policy = Kokkos::TeamPolicy<ExeSpace>(shcol, tsr).set_scratch_size(level, Kokkos::PerTeam(bytes));
 
