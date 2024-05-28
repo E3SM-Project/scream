@@ -579,63 +579,64 @@ void Functions<S,D>::shoc_main_internal(
 }
 #endif
 
-template<typename S, typename D>
-Int Functions<S,D>::shoc_main(
-  const Int&               shcol,               // Number of SHOC columns in the array
-  const Int&               nlev,                // Number of levels
-  const Int&               nlevi,               // Number of levels on interface grid
-  const Int&               npbl,                // Maximum number of levels in pbl from surface
-  const Int&               nadv,                // Number of times to loop SHOC
-  const Int&               num_qtracers,        // Number of tracers
-  const Scalar&            dtime,               // SHOC timestep [s]
-  WorkspaceMgr&            workspace_mgr,       // WorkspaceManager for local variables
-  const SHOCRuntime&       shoc_runtime,        // Runtime Options
-  const SHOCInput&         shoc_input,          // Input
-  const SHOCInputOutput&   shoc_input_output,   // Input/Output
-  const SHOCOutput&        shoc_output,         // Output
-  const SHOCHistoryOutput& shoc_history_output  // Output (diagnostic)
-#ifdef SCREAM_SMALL_KERNELS
-  , const SHOCTemporaries& shoc_temporaries     // Temporaries for small kernels
-#endif
-                              )
-{
-  // Start timer
-  auto start = std::chrono::steady_clock::now();
+template<class S, class D>
+struct Functor {
+  using Func = Functions<S,D>;
+  using Scalar = typename Func::Scalar;
+  using KT = typename Func::KT;
 
-  // Runtime options
-  const Scalar lambda_low    = shoc_runtime.lambda_low;
-  const Scalar lambda_high   = shoc_runtime.lambda_high;
-  const Scalar lambda_slope  = shoc_runtime.lambda_slope;
-  const Scalar lambda_thresh = shoc_runtime.lambda_thresh;
-  const Scalar thl2tune      = shoc_runtime.thl2tune;
-  const Scalar qw2tune       = shoc_runtime.qw2tune;
-  const Scalar qwthl2tune    = shoc_runtime.qwthl2tune;
-  const Scalar w2tune        = shoc_runtime.w2tune;
-  const Scalar length_fac    = shoc_runtime.length_fac;
-  const Scalar c_diag_3rd_mom = shoc_runtime.c_diag_3rd_mom;
-  const Scalar Ckh           = shoc_runtime.Ckh;
-  const Scalar Ckm           = shoc_runtime.Ckm;
+  using execution_space = typename KT::ExeSpace;
+  using member_type = typename KT::MemberType;
 
-#ifndef SCREAM_SMALL_KERNELS
-  using ExeSpace = typename KT::ExeSpace;
+  Int level;
+  Int               nlev;                // Number of levels
+  Int               nlevi;               // Number of levels on interface grid
+  Int               npbl;                // Maximum number of levels in pbl from surface
+  Int               nadv;                // Number of times to loop SHOC
+  Int               num_qtracers;        // Number of tracers
+  Scalar            dtime;               // SHOC timestep [s]
+  const typename Func::WorkspaceMgr&      workspace_mgr;       // WorkspaceManager for local variables
+  const typename Func::SHOCRuntime&       shoc_runtime;        // Runtime Options
+  const typename Func::SHOCInput&         shoc_input;          // Input
+  const typename Func::SHOCInputOutput&   shoc_input_output;   // Input/Output
+  const typename Func::SHOCOutput&        shoc_output;         // Output
+  const typename Func::SHOCHistoryOutput& shoc_history_output; // Output (diagnostic)
 
-  const auto nlev_packs = ekat::npack<Spack>(nlev);
-  const auto nlevi_packs = ekat::npack<Spack>(nlevi);
+  Scalar lambda_low;
+  Scalar lambda_high;
+  Scalar lambda_slope;
+  Scalar lambda_thresh;
+  Scalar thl2tune;
+  Scalar qw2tune;
+  Scalar qwthl2tune;
+  Scalar w2tune;
+  Scalar length_fac;
+  Scalar c_diag_3rd_mom;
+  Scalar Ckh;
+  Scalar Ckm;
 
-  // Kokkos scratch space info
-  const auto bytes =
-    6*scratch_view_1d<Spack>::shmem_size(nlev_packs) + // rho_zt, shoc_qv, shoc_tabs, dz_zt, tkh
-      scratch_view_1d<Spack>::shmem_size(nlevi_packs); // dz_zi
-  const int level = 0;
+  Functor(int lev_, int nlev_, int nlevi_, int npbl_, int nadv_, int num_qtracers_, int dtime_,
+          const typename Func::WorkspaceMgr& wsm_,
+          const typename Func::SHOCRuntime&  shoc_runtime_,
+          const typename Func::SHOCInput&         shoc_input_,
+          const typename Func::SHOCInputOutput&   shoc_input_output_,
+          const typename Func::SHOCOutput&        shoc_output_,
+          const typename Func::SHOCHistoryOutput& shoc_history_output_,
+          Scalar lambda_low_, Scalar lambda_high_, Scalar lambda_slope_, Scalar lambda_thresh_,
+          Scalar thl2tune_, Scalar qw2tune_, Scalar qwthl2tune_, Scalar w2tune_, Scalar length_fac_,
+          Scalar c_diag_3rd_mom_, Scalar Ckh_, Scalar Ckm_)
+  :
+    level(lev_), nlev(nlev_), nlevi(nlevi_), npbl(npbl_), nadv(nadv_), num_qtracers(num_qtracers_),
+    dtime(dtime_), workspace_mgr(wsm_),
+    shoc_runtime(shoc_runtime_), shoc_input(shoc_input_), shoc_input_output(shoc_input_output_),
+    shoc_output(shoc_output_), shoc_history_output(shoc_history_output_),
+    lambda_low(lambda_low_), lambda_high(lambda_high_), lambda_slope(lambda_slope_), lambda_thresh(lambda_thresh_),
+    thl2tune(thl2tune_), qw2tune(qw2tune_), qwthl2tune(qwthl2tune_), w2tune(w2tune_), length_fac(length_fac_),
+    c_diag_3rd_mom(c_diag_3rd_mom_), Ckh(Ckh_), Ckm(Ckm_)
+    {}
 
-  const auto policy =
-    Kokkos::TeamPolicy<ExeSpace>(shcol, Kokkos::AUTO)
-    //ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs)
-      .set_scratch_size(level, Kokkos::PerTeam(bytes));
-
-  // SHOC main loop
-  Kokkos::parallel_for(policy,
-                       KOKKOS_LAMBDA(const MemberType& team) {
+  KOKKOS_INLINE_FUNCTION
+  void operator() (member_type team) const {
     const Int i = team.league_rank();
 
     if (team.team_rank() == 0) printf("Team size = %d\n",team.team_size());
@@ -688,7 +689,7 @@ Int Functions<S,D>::shoc_main(
     const auto v_wind_s   = Kokkos::subview(shoc_input_output.horiz_wind, i, 1, Kokkos::ALL());
     const auto qtracers_s = Kokkos::subview(shoc_input_output.qtracers, i, Kokkos::ALL(), Kokkos::ALL());
 
-    shoc_main_internal(team, level, nlev, nlevi, npbl, nadv, num_qtracers, dtime,
+    Func::shoc_main_internal(team, level, nlev, nlevi, npbl, nadv, num_qtracers, dtime,
 	                     lambda_low, lambda_high, lambda_slope, lambda_thresh,  // Runtime options
                        thl2tune, qw2tune, qwthl2tune, w2tune, length_fac,     // Runtime options
                        c_diag_3rd_mom, Ckh, Ckm,                              // Runtime options
@@ -706,16 +707,68 @@ Int Functions<S,D>::shoc_main(
                        w3_s, wqls_sec_s, brunt_s, isotropy_s);                // Diagnostic Output Variables
 
     shoc_output.pblh(i) = pblh_s;
-  });
+  }
+};
+
+
+template<typename S, typename D>
+Int Functions<S,D>::shoc_main(
+  const Int&               shcol,               // Number of SHOC columns in the array
+  const Int&               nlev,                // Number of levels
+  const Int&               nlevi,               // Number of levels on interface grid
+  const Int&               npbl,                // Maximum number of levels in pbl from surface
+  const Int&               nadv,                // Number of times to loop SHOC
+  const Int&               num_qtracers,        // Number of tracers
+  const Scalar&            dtime,               // SHOC timestep [s]
+  WorkspaceMgr&            workspace_mgr,       // WorkspaceManager for local variables
+  const SHOCRuntime&       shoc_runtime,        // Runtime Options
+  const SHOCInput&         shoc_input,          // Input
+  const SHOCInputOutput&   shoc_input_output,   // Input/Output
+  const SHOCOutput&        shoc_output,         // Output
+  const SHOCHistoryOutput& shoc_history_output  // Output (diagnostic)
+#ifdef SCREAM_SMALL_KERNELS
+  , const SHOCTemporaries& shoc_temporaries     // Temporaries for small kernels
+#endif
+                              )
+{
+  // Start timer
+  auto start = std::chrono::steady_clock::now();
+
+#ifndef SCREAM_SMALL_KERNELS
+  using ExeSpace = typename KT::ExeSpace;
+
+  const auto nlev_packs = ekat::npack<Spack>(nlev);
+  const auto nlevi_packs = ekat::npack<Spack>(nlevi);
+
+  // Kokkos scratch space info
+  const auto bytes =
+    6*scratch_view_1d<Spack>::shmem_size(nlev_packs) + // rho_zt, shoc_qv, shoc_tabs, dz_zt, tkh
+      scratch_view_1d<Spack>::shmem_size(nlevi_packs); // dz_zi
+  const int level = 0;
+
+  Functor<S,D> functor(
+    level, nlev, nlevi, npbl, nadv, num_qtracers, dtime,
+    workspace_mgr, shoc_runtime, shoc_input, shoc_input_output, shoc_output, shoc_history_output,
+    shoc_runtime.lambda_low, shoc_runtime.lambda_high, shoc_runtime.lambda_slope, shoc_runtime.lambda_thresh,
+    shoc_runtime.thl2tune, shoc_runtime.qw2tune, shoc_runtime.qwthl2tune, shoc_runtime.w2tune,
+    shoc_runtime.length_fac, shoc_runtime.c_diag_3rd_mom, shoc_runtime.Ckh, shoc_runtime.Ckm);
+
+  const auto policy =
+    Kokkos::TeamPolicy<ExeSpace>(shcol, 1)
+    //ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs)
+      .set_scratch_size(level, Kokkos::PerTeam(bytes));
+
+  // SHOC main loop
+  Kokkos::parallel_for(policy,functor);
   Kokkos::fence();
 #else
   const auto u_wind_s   = Kokkos::subview(shoc_input_output.horiz_wind, Kokkos::ALL(), 0, Kokkos::ALL());
   const auto v_wind_s   = Kokkos::subview(shoc_input_output.horiz_wind, Kokkos::ALL(), 1, Kokkos::ALL());
 
   shoc_main_internal(shcol, nlev, nlevi, npbl, nadv, num_qtracers, dtime,
-    lambda_low, lambda_high, lambda_slope, lambda_thresh,  // Runtime options
-    thl2tune, qw2tune, qwthl2tune, w2tune, length_fac,     // Runtime options
-    c_diag_3rd_mom, Ckh, Ckm,                              // Runtime options
+    shoc_runtime.lambda_low, shoc_runtime.lambda_high, shoc_runtime.lambda_slope, shoc_runtime.lambda_thresh,  // Runtime options
+    shoc_runtime.thl2tune, shoc_runtime.qw2tune, shoc_runtime.qwthl2tune, shoc_runtime.w2tune, shoc_runtime.length_fac,     // Runtime options
+    shoc_runtime.c_diag_3rd_mom, shoc_runtime.Ckh, shoc_runtime.Ckm,                              // Runtime options
     shoc_input.dx, shoc_input.dy, shoc_input.zt_grid, shoc_input.zi_grid, // Input
     shoc_input.pres, shoc_input.presi, shoc_input.pdel, shoc_input.thv, shoc_input.w_field, // Input
     shoc_input.wthl_sfc, shoc_input.wqw_sfc, shoc_input.uw_sfc, shoc_input.vw_sfc, // Input
