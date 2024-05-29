@@ -639,8 +639,6 @@ struct Functor {
   void operator() (member_type team) const {
     const Int i = team.league_rank();
 
-    //if (team.team_rank() == 0) printf("Team size = %d\n",team.team_size());
-
     auto workspace = workspace_mgr.get_workspace(team);
 
     const Scalar dx_s{shoc_input.dx(i)};
@@ -753,12 +751,19 @@ Int Functions<S,D>::shoc_main(
     shoc_runtime.thl2tune, shoc_runtime.qw2tune, shoc_runtime.qwthl2tune, shoc_runtime.w2tune,
     shoc_runtime.length_fac, shoc_runtime.c_diag_3rd_mom, shoc_runtime.Ckh, shoc_runtime.Ckm);
 
-  const auto policy_tmp =
-    Kokkos::TeamPolicy<ExeSpace>(shcol, 1)
-    //ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs)
-      .set_scratch_size(level, Kokkos::PerTeam(bytes));
+  auto p0 =
+    Kokkos::TeamPolicy<ExeSpace>(shcol, 1);
+    //ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs);
+  auto tsm = p0.team_size_max(functor, Kokkos::ParallelForTag());
+  auto tsr = p0.team_size_recommended(functor, Kokkos::ParallelForTag());
+  printf("W/O SCRATCH -> MAX=%d, REC=%d\n", tsm, tsr);
 
-  const auto tsr = policy_tmp.team_size_max(functor, Kokkos::ParallelForTag());
+  auto p1 = p0.set_scratch_size(level, Kokkos::PerTeam(bytes));
+  tsm = p1.team_size_max(functor, Kokkos::ParallelForTag());
+  tsr = p1.team_size_recommended(functor, Kokkos::ParallelForTag());
+  printf("W/O SCRATCH -> MAX=%d, REC=%d\n", tsm, tsr);
+
+  EKAT_ERROR_MSG("STOP\n");
 
   const auto policy = Kokkos::TeamPolicy<ExeSpace>(shcol, tsr).set_scratch_size(level, Kokkos::PerTeam(bytes));
 
