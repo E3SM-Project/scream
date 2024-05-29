@@ -765,7 +765,7 @@ Int Functions<S,D>::shoc_main(
 
   //EKAT_ERROR_MSG("STOP\n");
 
-  const auto policy = Kokkos::TeamPolicy<ExeSpace>(shcol, tsm).set_scratch_size(level, Kokkos::PerTeam(bytes));
+  const auto policy = Kokkos::TeamPolicy<ExeSpace>(shcol, tsr).set_scratch_size(level, Kokkos::PerTeam(bytes));
 
   // SHOC main loop
   Kokkos::parallel_for(policy,functor);
