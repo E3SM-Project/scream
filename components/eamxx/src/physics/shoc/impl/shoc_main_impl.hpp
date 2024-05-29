@@ -756,16 +756,16 @@ Int Functions<S,D>::shoc_main(
     //ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs);
   auto tsm = p0.team_size_max(functor, Kokkos::ParallelForTag());
   auto tsr = p0.team_size_recommended(functor, Kokkos::ParallelForTag());
-  printf("W/O SCRATCH -> MAX=%d, REC=%d\n", tsm, tsr);
+  //printf("W/O SCRATCH -> MAX=%d, REC=%d\n", tsm, tsr);
 
   auto p1 = p0.set_scratch_size(level, Kokkos::PerTeam(bytes));
   tsm = p1.team_size_max(functor, Kokkos::ParallelForTag());
   tsr = p1.team_size_recommended(functor, Kokkos::ParallelForTag());
-  printf("W/O SCRATCH -> MAX=%d, REC=%d\n", tsm, tsr);
+  //printf("W/O SCRATCH -> MAX=%d, REC=%d\n", tsm, tsr);
 
-  EKAT_ERROR_MSG("STOP\n");
+  //EKAT_ERROR_MSG("STOP\n");
 
-  const auto policy = Kokkos::TeamPolicy<ExeSpace>(shcol, tsr).set_scratch_size(level, Kokkos::PerTeam(bytes));
+  const auto policy = Kokkos::TeamPolicy<ExeSpace>(shcol, tsm).set_scratch_size(level, Kokkos::PerTeam(bytes));
 
   // SHOC main loop
   Kokkos::parallel_for(policy,functor);
