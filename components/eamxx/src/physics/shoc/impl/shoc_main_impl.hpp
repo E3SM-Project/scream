@@ -639,6 +639,8 @@ struct Functor {
   void operator() (member_type team) const {
     const Int i = team.league_rank();
 
+    if (i==0 && team.team_rank()==0) printf("Team Size = %d\n",team.team_size());
+
     auto workspace = workspace_mgr.get_workspace(team);
 
     const Scalar dx_s{shoc_input.dx(i)};
@@ -727,7 +729,7 @@ Int Functions<S,D>::shoc_main(
 #ifdef SCREAM_SMALL_KERNELS
   , const SHOCTemporaries& shoc_temporaries     // Temporaries for small kernels
 #endif
-                              )
+  , std::string tst                            )
 {
   // Start timer
   auto start = std::chrono::steady_clock::now();
@@ -752,20 +754,21 @@ Int Functions<S,D>::shoc_main(
     shoc_runtime.length_fac, shoc_runtime.c_diag_3rd_mom, shoc_runtime.Ckh, shoc_runtime.Ckm);
 
   auto p0 =
-    Kokkos::TeamPolicy<ExeSpace>(shcol, 1);
-    //ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs);
+    Kokkos::TeamPolicy<ExeSpace>(shcol, 1)
+      .set_scratch_size(level, Kokkos::PerTeam(bytes));
   auto tsm = p0.team_size_max(functor, Kokkos::ParallelForTag());
   auto tsr = p0.team_size_recommended(functor, Kokkos::ParallelForTag());
   //printf("W/O SCRATCH -> MAX=%d, REC=%d\n", tsm, tsr);
-
-  auto p1 = p0.set_scratch_size(level, Kokkos::PerTeam(bytes));
-  tsm = p1.team_size_max(functor, Kokkos::ParallelForTag());
-  tsr = p1.team_size_recommended(functor, Kokkos::ParallelForTag());
-  //printf("W/O SCRATCH -> MAX=%d, REC=%d\n", tsm, tsr);
-
   //EKAT_ERROR_MSG("STOP\n");
 
-  const auto policy = Kokkos::TeamPolicy<ExeSpace>(shcol, tsr).set_scratch_size(level, Kokkos::PerTeam(bytes));
+  EKAT_REQUIRE_MSG(tst=="default" || tst=="rec" || tst=="max", "Error! Nothing matches "+tst+"\n");
+  auto p1 =
+    tst=="default" ? ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs)
+    :  tst=="rec" ?  Kokkos::TeamPolicy<ExeSpace>(shcol, tsr)
+       : tst=="max" ? Kokkos::TeamPolicy<ExeSpace>(shcol, tsm)
+         : p0;
+
+  const auto policy = p1.set_scratch_size(level, Kokkos::PerTeam(bytes));
 
   // SHOC main loop
   Kokkos::parallel_for(policy,functor);

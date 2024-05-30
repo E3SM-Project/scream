@@ -2741,7 +2741,7 @@ Int shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Int npbl, 
                 Real* thetal, Real* qw, Real* u_wind, Real* v_wind, Real* qtracers, Real* wthv_sec, Real* tkh, Real* tk,
                 Real* shoc_ql, Real* shoc_cldfrac, Real* pblh, Real* shoc_mix, Real* isotropy, Real* w_sec, Real* thl_sec,
                 Real* qw_sec, Real* qwthl_sec, Real* wthl_sec, Real* wqw_sec, Real* wtke_sec, Real* uw_sec, Real* vw_sec,
-                Real* w3, Real* wqls_sec, Real* brunt, Real* shoc_ql2)
+                Real* w3, Real* wqls_sec, Real* brunt, Real* shoc_ql2, std::string tst)
 {
   // tkh is a local variable in C++ impl
   (void)tkh;
@@ -2928,7 +2928,7 @@ Int shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Int npbl, 
 #ifdef SCREAM_SMALL_KERNELS
                                                , shoc_temporaries
 #endif
-                                               );
+					       , tst);
 
   // Copy wind back into separate views and
   // Transpose tracers

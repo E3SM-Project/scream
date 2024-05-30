@@ -1043,7 +1043,7 @@ struct Functions
 #ifdef SCREAM_SMALL_KERNELS
     , const SHOCTemporaries& shoc_temporaries      // Temporaries for small kernels
 #endif
-                       );
+    , std::string tst = "default"                   );
 
   KOKKOS_FUNCTION
   static void pblintd_height(

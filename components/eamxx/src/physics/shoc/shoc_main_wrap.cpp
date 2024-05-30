@@ -27,7 +27,7 @@ extern "C" {
 namespace scream {
 namespace shoc {
 
-Int shoc_main(FortranData& d, bool use_fortran) {
+  Int shoc_main(FortranData& d, bool use_fortran, std::string tst) {
   EKAT_REQUIRE_MSG(d.dtime > 0, "Invalid dtime");
   EKAT_REQUIRE_MSG(d.nadv > 0,  "Invalid nadv");
   if (use_fortran) {
@@ -64,7 +64,7 @@ Int shoc_main(FortranData& d, bool use_fortran) {
                        d.qw_sec.data(), d.qwthl_sec.data(), d.wthl_sec.data(), d.wqw_sec.data(),
                        d.wtke_sec.data(), d.uw_sec.data(),
                        d.vw_sec.data(), d.w3.data(), d.wqls_sec.data(), d.brunt.data(),
-                       d.shoc_ql2.data());
+                       d.shoc_ql2.data(), tst);
   }
 }
 

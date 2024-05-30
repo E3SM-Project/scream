@@ -56,9 +56,10 @@ using namespace scream::shoc;
 
 struct Baseline {
 
-  Baseline (const Int nsteps, const Real dt, const Int ncol, const Int nlev, const Int num_qtracers, const Int nadv, const Int repeat)
+  Baseline (const Int nsteps, const Real dt, const Int ncol, const Int nlev, const Int num_qtracers, const Int nadv, const Int repeat, const std::string tst)
   {
     params_.push_back({ic::Factory::standard, repeat, nsteps, ncol, nlev, num_qtracers, nadv, dt});
+    params_.back().tst = tst;
   }
 
   Int generate_baseline (const std::string& filename, bool use_fortran) {
@@ -87,7 +88,7 @@ struct Baseline {
         }
 
         for (int it = 0; it < ps.nsteps; ++it) {
-          Int current_microsec = shoc_main(*d, use_fortran);
+          Int current_microsec = shoc_main(*d, use_fortran, ps.tst);
 
           if (r != -1 && ps.repeat > 0) { // do not count the "cold" run
             duration += current_microsec;
@@ -142,6 +143,7 @@ private:
     ic::Factory::IC ic;
     Int repeat, nsteps, ncol, nlev, num_qtracers, nadv;
     Real dt;
+    std::string tst;
   };
 
   static void set_params (const ParamSet& ps, FortranData& d) {
@@ -218,6 +220,7 @@ int main (int argc, char** argv) {
   Int num_qtracers = 3;
   Int nadv = 15;
   Int repeat = 0;
+  std::string tst = "default";
   std::string baseline_fn;
   std::string device;
   for (int i = 1; i < argc-1; ++i) {
@@ -271,6 +274,11 @@ int main (int argc, char** argv) {
         generate = true;
       }
     }
+    if (ekat::argv_matches(argv[i], "-tst", "--team-size-type")) {
+      expect_another_arg(i, argc);
+      ++i;
+      tst = argv[i];
+    }
     if (std::string(argv[i])=="--ekat-kokkos-device") {
       expect_another_arg(i, argc);
       ++i;
@@ -307,7 +315,7 @@ int main (int argc, char** argv) {
   }
 
   scream::initialize_scream_session(args.size(), args.data()); {
-    Baseline bln(nsteps, static_cast<Real>(dt), ncol, nlev, num_qtracers, nadv, repeat);
+    Baseline bln(nsteps, static_cast<Real>(dt), ncol, nlev, num_qtracers, nadv, repeat, tst);
     if (generate) {
       std::cout << "Generating to " << baseline_fn << "\n";
       nerr += bln.generate_baseline(baseline_fn, use_fortran);
