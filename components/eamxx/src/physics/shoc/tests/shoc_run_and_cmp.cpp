@@ -56,10 +56,13 @@ using namespace scream::shoc;
 
 struct Baseline {
 
-  Baseline (const Int nsteps, const Real dt, const Int ncol, const Int nlev, const Int num_qtracers, const Int nadv, const Int repeat, const std::string tst)
+  Baseline (const Int nsteps, const Real dt, const Int ncol, const Int nlev,
+            const Int num_qtracers, const Int nadv, const Int repeat,
+            const std::string tst, const bool use_scratch)
   {
     params_.push_back({ic::Factory::standard, repeat, nsteps, ncol, nlev, num_qtracers, nadv, dt});
     params_.back().tst = tst;
+    params_.back().use_scratch = use_scratch;
   }
 
   Int generate_baseline (const std::string& filename, bool use_fortran) {
@@ -88,7 +91,7 @@ struct Baseline {
         }
 
         for (int it = 0; it < ps.nsteps; ++it) {
-          Int current_microsec = shoc_main(*d, use_fortran, ps.tst);
+          Int current_microsec = shoc_main(*d, use_fortran, ps.tst, ps.use_scratch);
 
           if (r != -1 && ps.repeat > 0) { // do not count the "cold" run
             duration += current_microsec;
@@ -128,7 +131,7 @@ struct Baseline {
           std::cout << "--- checking case # " << case_num << ", timestep # = " << (it+1)*ps.nadv
                      << " ---\n" << std::flush;
           read(fid, d_ref);
-          shoc_main(*d,use_fortran);
+          shoc_main(*d,use_fortran, ps.tst, ps.use_scratch);
           ne = compare(tol, d_ref, d);
           if (ne) std::cout << "Ref impl failed.\n";
           nerr += ne;
@@ -144,6 +147,7 @@ private:
     Int repeat, nsteps, ncol, nlev, num_qtracers, nadv;
     Real dt;
     std::string tst;
+    bool use_scratch;
   };
 
   static void set_params (const ParamSet& ps, FortranData& d) {
@@ -221,9 +225,10 @@ int main (int argc, char** argv) {
   Int nadv = 15;
   Int repeat = 0;
   std::string tst = "default";
+  bool use_scratch = false;
   std::string baseline_fn;
   std::string device;
-  for (int i = 1; i < argc-1; ++i) {
+  for (int i = 1; i < argc; ++i) {
     if (ekat::argv_matches(argv[i], "-g", "--generate")) generate = true;
     if (ekat::argv_matches(argv[i], "-f", "--fortran")) use_fortran = true;
     if (ekat::argv_matches(argv[i], "-b", "--baseline-file")) {
@@ -279,6 +284,7 @@ int main (int argc, char** argv) {
       ++i;
       tst = argv[i];
     }
+    if (ekat::argv_matches(argv[i], "-scratch", "--use-scratch")) use_scratch = true;
     if (std::string(argv[i])=="--ekat-kokkos-device") {
       expect_another_arg(i, argc);
       ++i;
@@ -315,7 +321,7 @@ int main (int argc, char** argv) {
   }
 
   scream::initialize_scream_session(args.size(), args.data()); {
-    Baseline bln(nsteps, static_cast<Real>(dt), ncol, nlev, num_qtracers, nadv, repeat, tst);
+    Baseline bln(nsteps, static_cast<Real>(dt), ncol, nlev, num_qtracers, nadv, repeat, tst, use_scratch);
     if (generate) {
       std::cout << "Generating to " << baseline_fn << "\n";
       nerr += bln.generate_baseline(baseline_fn, use_fortran);

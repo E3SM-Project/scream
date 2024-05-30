@@ -515,6 +515,9 @@ protected:
   ekat::WorkspaceManager<Spack, KT::Device> workspace_mgr;
 
   std::shared_ptr<const AbstractGrid>   m_grid;
+
+  std::string m_tst = "default";
+  bool m_use_scratch = true;
 }; // class SHOCMacrophysics
 
 } // namespace scream

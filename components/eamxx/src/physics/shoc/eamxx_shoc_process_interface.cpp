@@ -211,7 +211,7 @@ void SHOCMacrophysics::init_buffers(const ATMBufferManager &buffer_manager)
   const auto policy      = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nlev_packs);
   const int n_wind_slots = ekat::npack<Spack>(2)*Spack::n;
   const int n_trac_slots = ekat::npack<Spack>(m_num_tracers+3)*Spack::n;
-  const int wsm_size     = WSM::get_total_bytes_needed(nlevi_packs, 8+(n_wind_slots+n_trac_slots), policy)/sizeof(Spack);
+  const int wsm_size     = WSM::get_total_bytes_needed(nlevi_packs, (m_use_scratch ? 8 : 14)+(n_wind_slots+n_trac_slots), policy)/sizeof(Spack);
   s_mem += wsm_size;
 
   size_t used_mem = (reinterpret_cast<Real*>(s_mem) - buffer_manager.get_memory())*sizeof(Real);
@@ -234,6 +234,10 @@ void SHOCMacrophysics::initialize_impl (const RunType run_type)
   runtime_options.c_diag_3rd_mom = m_params.get<double>("c_diag_3rd_mom");
   runtime_options.Ckh           = m_params.get<double>("Ckh");
   runtime_options.Ckm           = m_params.get<double>("Ckm");
+
+  m_tst = m_params.get<std::string>("tst", "default");
+  m_use_scratch = m_params.get<bool>("use_scratch", false);
+
   // Initialize all of the structures that are passed to shoc_main in run_impl.
   // Note: Some variables in the structures are not stored in the field manager.  For these
   //       variables a local view is constructed.
@@ -401,7 +405,7 @@ void SHOCMacrophysics::initialize_impl (const RunType run_type)
   const int n_wind_slots = ekat::npack<Spack>(2)*Spack::n;
   const int n_trac_slots = ekat::npack<Spack>(m_num_tracers+3)*Spack::n;
   const auto default_policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nlev_packs);
-  workspace_mgr.setup(m_buffer.wsm_data, nlevi_packs, 8+(n_wind_slots+n_trac_slots), default_policy);
+  workspace_mgr.setup(m_buffer.wsm_data, nlevi_packs, (m_use_scratch ? 8 : 14)+(n_wind_slots+n_trac_slots), default_policy);
 
   // Calculate pref_mid, and use that to calculate
   // maximum number of levels in pbl from surface
@@ -482,7 +486,7 @@ void SHOCMacrophysics::run_impl (const double dt)
 #ifdef SCREAM_SMALL_KERNELS
                  , temporaries
 #endif
-                 );
+                 , m_tst, m_use_scratch);
 
   // Postprocessing of SHOC outputs
   Kokkos::parallel_for("shoc_postprocess",

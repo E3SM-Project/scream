@@ -2741,7 +2741,7 @@ Int shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Int npbl, 
                 Real* thetal, Real* qw, Real* u_wind, Real* v_wind, Real* qtracers, Real* wthv_sec, Real* tkh, Real* tk,
                 Real* shoc_ql, Real* shoc_cldfrac, Real* pblh, Real* shoc_mix, Real* isotropy, Real* w_sec, Real* thl_sec,
                 Real* qw_sec, Real* qwthl_sec, Real* wthl_sec, Real* wqw_sec, Real* wtke_sec, Real* uw_sec, Real* vw_sec,
-                Real* w3, Real* wqls_sec, Real* brunt, Real* shoc_ql2, std::string tst)
+                Real* w3, Real* wqls_sec, Real* brunt, Real* shoc_ql2, const std::string tst, const bool use_scratch)
 {
   // tkh is a local variable in C++ impl
   (void)tkh;
@@ -2920,7 +2920,7 @@ Int shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Int npbl, 
   // Create local workspace
   const int n_wind_slots = ekat::npack<Spack>(2)*Spack::n;
   const int n_trac_slots = ekat::npack<Spack>(num_qtracers+3)*Spack::n;
-  ekat::WorkspaceManager<Spack, SHF::KT::Device> workspace_mgr(nlevi_packs, 8+(n_wind_slots+n_trac_slots), policy);
+  ekat::WorkspaceManager<Spack, SHF::KT::Device> workspace_mgr(nlevi_packs, (use_scratch ? 8 : 14)+(n_wind_slots+n_trac_slots), policy);
 
   const auto elapsed_microsec = SHF::shoc_main(shcol, nlev, nlevi, npbl, nadv, num_qtracers, dtime,
                                                workspace_mgr, shoc_runtime_options,
@@ -2928,7 +2928,7 @@ Int shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Int npbl, 
 #ifdef SCREAM_SMALL_KERNELS
                                                , shoc_temporaries
 #endif
-					       , tst);
+					       , tst, use_scratch);
 
   // Copy wind back into separate views and
   // Transpose tracers

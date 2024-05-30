@@ -931,7 +931,8 @@ struct Functions
     const uview_1d<Spack>&       w3,
     const uview_1d<Spack>&       wqls_sec,
     const uview_1d<Spack>&       brunt,
-    const uview_1d<Spack>&       isotropy);
+    const uview_1d<Spack>&       isotropy,
+    const bool use_scratch = false);
 #else
   static void shoc_main_internal(
     const Int&                   shcol,        // Number of columns
@@ -1043,7 +1044,7 @@ struct Functions
 #ifdef SCREAM_SMALL_KERNELS
     , const SHOCTemporaries& shoc_temporaries      // Temporaries for small kernels
 #endif
-    , std::string tst = "default"                   );
+    , const std::string tst = "default", const bool use_scratch = false);
 
   KOKKOS_FUNCTION
   static void pblintd_height(

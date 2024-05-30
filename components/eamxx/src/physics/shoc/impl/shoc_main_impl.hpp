@@ -134,24 +134,29 @@ void Functions<S,D>::shoc_main_internal(
   const uview_1d<Spack>&       w3,
   const uview_1d<Spack>&       wqls_sec,
   const uview_1d<Spack>&       brunt,
-  const uview_1d<Spack>&       isotropy)
+  const uview_1d<Spack>&       isotropy,
+  const bool use_scratch)
 {
 
   // Define temporary variables
-  //uview_1d<Spack> rho_zt, shoc_qv, shoc_tabs, dz_zt, dz_zi, tkh;
-  //workspace.template take_many_and_reset</*6*/1>(
-  //  {"rho_zt", "shoc_qv", "shoc_tabs", "dz_zt", "dz_zi", "tkh"},
-  //  {&rho_zt, &shoc_qv, &shoc_tabs, &dz_zt, &dz_zi, &tkh});
+  uview_1d<Spack> rho_zt_wsm, shoc_qv_wsm, shoc_tabs_wsm, dz_zt_wsm, dz_zi_wsm, tkh_wsm;
+  if (not use_scratch) {
+    workspace.template take_many_and_reset<6>(
+      {"rho_zt", "shoc_qv", "shoc_tabs", "dz_zt", "dz_zi", "tkh"},
+      {&rho_zt_wsm, &shoc_qv_wsm, &shoc_tabs_wsm, &dz_zt_wsm, &dz_zi_wsm, &tkh_wsm});
+  }
 
   const auto nlev_packs = ekat::npack<Spack>(nlev);
   const auto nlevi_packs = ekat::npack<Spack>(nlevi);
-  scratch_view_1d<Spack>
-    rho_zt   (team.team_scratch(scratch_level), nlev_packs),
-    shoc_qv  (team.team_scratch(scratch_level), nlev_packs),
-    shoc_tabs(team.team_scratch(scratch_level), nlev_packs),
-    dz_zt    (team.team_scratch(scratch_level), nlev_packs),
-    dz_zi    (team.team_scratch(scratch_level), nlevi_packs),
-    tkh      (team.team_scratch(scratch_level), nlev_packs);
+  scratch_view_1d<Spack> rho_zt_ks, shoc_qv_ks, shoc_tabs_ks, dz_zt_ks, dz_zi_ks, tkh_ks;
+  if (use_scratch) {
+    rho_zt_ks    = scratch_view_1d<Spack>(team.team_scratch(scratch_level), nlev_packs);
+    shoc_qv_ks   = scratch_view_1d<Spack>(team.team_scratch(scratch_level), nlev_packs);
+    shoc_tabs_ks = scratch_view_1d<Spack>(team.team_scratch(scratch_level), nlev_packs);
+    dz_zt_ks     = scratch_view_1d<Spack>(team.team_scratch(scratch_level), nlev_packs);
+    dz_zi_ks     = scratch_view_1d<Spack>(team.team_scratch(scratch_level), nlevi_packs);
+    tkh_ks       = scratch_view_1d<Spack>(team.team_scratch(scratch_level), nlev_packs);
+  }
 
   // Local scalars
   Scalar se_b{0},   ke_b{0}, wv_b{0},   wl_b{0},
@@ -161,7 +166,8 @@ void Functions<S,D>::shoc_main_internal(
   // Scalarize some views for single entry access
   const auto s_thetal  = ekat::scalarize(thetal);
   const auto s_shoc_ql = ekat::scalarize(shoc_ql);
-  const auto s_shoc_qv = ekat::scalarize(shoc_qv);
+  const auto s_shoc_qv_ks = ekat::scalarize(shoc_qv_ks);
+  const auto s_shoc_qv_wsm = ekat::scalarize(shoc_qv_wsm);
 
   // Compute integrals of static energy, kinetic energy, water vapor, and liquid water
   // for the computation of total energy before SHOC is called.  This is for an
@@ -179,89 +185,220 @@ void Functions<S,D>::shoc_main_internal(
     // Define vertical grid arrays needed for
     // vertical derivatives in SHOC, also
     // define air density (rho_zt)
-    shoc_grid(team,nlev,nlevi,      // Input
+    if (use_scratch) {
+      shoc_grid(team,nlev,nlevi,      // Input
               zt_grid,zi_grid,pdel, // Input
-              dz_zt,dz_zi,rho_zt);  // Output
+              dz_zt_ks,
+              dz_zi_ks,
+              rho_zt_ks);  // Output
+    } else {
+      shoc_grid(team,nlev,nlevi,      // Input
+              zt_grid,zi_grid,pdel, // Input
+              dz_zt_wsm,
+              dz_zi_wsm,
+              rho_zt_wsm);  // Output
+    }
 
     // Compute the planetary boundary layer height, which is an
     // input needed for the length scale calculation.
 
     // Update SHOC water vapor,
     // to be used by the next two routines
-    compute_shoc_vapor(team,nlev,qw,shoc_ql, // Input
-                       shoc_qv);             // Output
+    if (use_scratch) {
+      compute_shoc_vapor(team,nlev,qw,shoc_ql, // Input
+                         shoc_qv_ks);             // Output
+    } else {
+      compute_shoc_vapor(team,nlev,qw,shoc_ql, // Input
+                         shoc_qv_wsm);             // Output
+    }
 
     // Update SHOC temperature
-    compute_shoc_temperature(team,nlev,thetal,  // Input
+    if (use_scratch) {
+      compute_shoc_temperature(team,nlev,thetal,  // Input
                              shoc_ql,inv_exner, // Input
-                             shoc_tabs);        // Output
+                             shoc_tabs_ks);        // Output
+    } else {
+      compute_shoc_temperature(team,nlev,thetal,  // Input
+                             shoc_ql,inv_exner, // Input
+                             shoc_tabs_wsm);        // Output
+    }
 
     team.team_barrier();
-    shoc_diag_obklen(uw_sfc,vw_sfc,     // Input
-                     wthl_sfc, wqw_sfc, // Input
-                     s_thetal(nlev-1),  // Input
-                     s_shoc_ql(nlev-1), // Input
-                     s_shoc_qv(nlev-1), // Input
-                     ustar,kbfs,obklen); // Output
+    if (use_scratch) {
+      shoc_diag_obklen(uw_sfc,vw_sfc,     // Input
+                        wthl_sfc, wqw_sfc, // Input
+                        s_thetal(nlev-1),  // Input
+                        s_shoc_ql(nlev-1), // Input
+                        s_shoc_qv_ks(nlev-1), // Input
+                        ustar,kbfs,obklen); // Output
+    } else {
+      shoc_diag_obklen(uw_sfc,vw_sfc,     // Input
+                        wthl_sfc, wqw_sfc, // Input
+                        s_thetal(nlev-1),  // Input
+                        s_shoc_ql(nlev-1), // Input
+                        s_shoc_qv_wsm(nlev-1), // Input
+                        ustar,kbfs,obklen); // Output
+    }
 
-    pblintd(team,nlev,nlevi,npbl,     // Input
+    if (use_scratch) {
+      pblintd(team,nlev,nlevi,npbl,     // Input
             zt_grid,zi_grid,thetal,   // Input
-            shoc_ql,shoc_qv,u_wind,   // Input
+            shoc_ql,
+            shoc_qv_ks,
+            u_wind,   // Input
             v_wind,ustar,obklen,kbfs, // Input
             shoc_cldfrac,             // Input
             workspace,                // Workspace
             pblh);                    // Output
+    } else {
+      pblintd(team,nlev,nlevi,npbl,     // Input
+            zt_grid,zi_grid,thetal,   // Input
+            shoc_ql,
+            shoc_qv_wsm,
+            u_wind,   // Input
+            v_wind,ustar,obklen,kbfs, // Input
+            shoc_cldfrac,             // Input
+            workspace,                // Workspace
+            pblh);                    // Output
+    }
 
     // Update the turbulent length scale
-    shoc_length(team,nlev,nlevi,       // Input
+    if (use_scratch) {
+      shoc_length(team,nlev,nlevi,       // Input
                 length_fac,            // Runtime Options
                 dx,dy,                 // Input
-                zt_grid,zi_grid,dz_zt, // Input
+                zt_grid,zi_grid,
+                dz_zt_ks, // Input
                 tke,thv,               // Input
                 workspace,             // Workspace
                 brunt,shoc_mix);       // Output
+    } else {
+      shoc_length(team,nlev,nlevi,       // Input
+                length_fac,            // Runtime Options
+                dx,dy,                 // Input
+                zt_grid,zi_grid,
+                dz_zt_wsm, // Input
+                tke,thv,               // Input
+                workspace,             // Workspace
+                brunt,shoc_mix);       // Output
+    }
 
     // Advance the SGS TKE equation
-    shoc_tke(team,nlev,nlevi,dtime,               // Input
+    if (use_scratch) {
+      shoc_tke(team,nlev,nlevi,dtime,               // Input
              lambda_low,lambda_high,lambda_slope, // Runtime options
              lambda_thresh,Ckh,Ckm,               // Runtime options
              wthv_sec,                            // Input
-             shoc_mix,dz_zi,dz_zt,pres,shoc_tabs, // Input
+             shoc_mix,
+             dz_zi_ks,
+             dz_zt_ks,
+             pres,
+             shoc_tabs_ks, // Input
              u_wind,v_wind,brunt,zt_grid,         // Input
              zi_grid,pblh,                        // Input
              workspace,                           // Workspace
-             tke,tk,tkh,                          // Input/Output
+             tke,tk,
+             tkh_ks,                          // Input/Output
              isotropy);                           // Output
+    } else {
+      shoc_tke(team,nlev,nlevi,dtime,               // Input
+             lambda_low,lambda_high,lambda_slope, // Runtime options
+             lambda_thresh,Ckh,Ckm,               // Runtime options
+             wthv_sec,                            // Input
+             shoc_mix,
+             dz_zi_wsm,
+             dz_zt_wsm,
+             pres,
+             shoc_tabs_wsm, // Input
+             u_wind,v_wind,brunt,zt_grid,         // Input
+             zi_grid,pblh,                        // Input
+             workspace,                           // Workspace
+             tke,tk,
+             tkh_wsm,                          // Input/Output
+             isotropy);                           // Output
+    }
 
     // Update SHOC prognostic variables here
     // via implicit diffusion solver
     team.team_barrier();
-    update_prognostics_implicit(team,nlev,nlevi,num_qtracers,dtime,dz_zt,   // Input
-                                dz_zi,rho_zt,zt_grid,zi_grid,tk,tkh,uw_sfc, // Input
+    if (use_scratch) {
+      update_prognostics_implicit(team,nlev,nlevi,num_qtracers,dtime,
+                                dz_zt_ks,   // Input
+                                dz_zi_ks,
+                                rho_zt_ks,
+                                zt_grid,zi_grid,tk,
+                                tkh_ks,
+                                uw_sfc, // Input
                                 vw_sfc,wthl_sfc,wqw_sfc,wtracer_sfc,        // Input
                                 workspace,                                  // Workspace
                                 thetal,qw,qtracers,tke,u_wind,v_wind);   // Input/Output
+    } else {
+      update_prognostics_implicit(team,nlev,nlevi,num_qtracers,dtime,
+                                dz_zt_wsm,   // Input
+                                dz_zi_wsm,
+                                rho_zt_wsm,
+                                zt_grid,zi_grid,tk,
+                                tkh_wsm,
+                                uw_sfc, // Input
+                                vw_sfc,wthl_sfc,wqw_sfc,wtracer_sfc,        // Input
+                                workspace,                                  // Workspace
+                                thetal,qw,qtracers,tke,u_wind,v_wind);   // Input/Output
+    }
 
     // Diagnose the second order moments
-    diag_second_shoc_moments(team,nlev,nlevi,
+    if (use_scratch) {
+      diag_second_shoc_moments(team,nlev,nlevi,
                              thl2tune, qw2tune, qwthl2tune, w2tune,     // Runtime options
                              thetal,qw,u_wind,v_wind,                   // Input
-                             tke,isotropy,tkh,tk,dz_zi,zt_grid,zi_grid, // Input
+                             tke,isotropy,
+                             tkh_ks,
+                             tk,
+                             dz_zi_ks,
+                             zt_grid,zi_grid, // Input
                              shoc_mix,wthl_sfc,wqw_sfc,uw_sfc,vw_sfc,   // Input
                              ustar2,wstar,                              // Input/Output
                              workspace,                                 // Workspace
                              thl_sec,qw_sec,wthl_sec,wqw_sec,qwthl_sec, // Output
                              uw_sec,vw_sec,wtke_sec,w_sec);             // Output
+    } else {
+      diag_second_shoc_moments(team,nlev,nlevi,
+                             thl2tune, qw2tune, qwthl2tune, w2tune,     // Runtime options
+                             thetal,qw,u_wind,v_wind,                   // Input
+                             tke,isotropy,
+                             tkh_wsm,
+                             tk,
+                             dz_zi_wsm,
+                             zt_grid,zi_grid, // Input
+                             shoc_mix,wthl_sfc,wqw_sfc,uw_sfc,vw_sfc,   // Input
+                             ustar2,wstar,                              // Input/Output
+                             workspace,                                 // Workspace
+                             thl_sec,qw_sec,wthl_sec,wqw_sec,qwthl_sec, // Output
+                             uw_sec,vw_sec,wtke_sec,w_sec);             // Output
+    }
 
     // Diagnose the third moment of vertical velocity,
     //  needed for the PDF closure
-    diag_third_shoc_moments(team,nlev,nlevi,
+    if (use_scratch) {
+      diag_third_shoc_moments(team,nlev,nlevi,
                             c_diag_3rd_mom,                         // Runtime options
                             w_sec,thl_sec,wthl_sec,                 // Input
-                            isotropy,brunt,thetal,tke,dz_zt,dz_zi,  // Input
+                            isotropy,brunt,thetal,tke,
+                            dz_zt_ks,
+                            dz_zi_ks,  // Input
                             zt_grid,zi_grid,                        // Input
                             workspace,                              // Workspace
                             w3);                                    // Output
+    } else {
+       diag_third_shoc_moments(team,nlev,nlevi,
+                            c_diag_3rd_mom,                         // Runtime options
+                            w_sec,thl_sec,wthl_sec,                 // Input
+                            isotropy,brunt,thetal,tke,
+                            dz_zt_wsm,
+                            dz_zi_wsm,  // Input
+                            zt_grid,zi_grid,                        // Input
+                            workspace,                              // Workspace
+                            w3);                                    // Output
+    }
 
     // Call the PDF to close on SGS cloud and turbulence
     team.team_barrier();
@@ -289,11 +426,23 @@ void Functions<S,D>::shoc_main_internal(
                         qw,shoc_ql,u_wind,v_wind, // Input
                         se_a,ke_a,wv_a,wl_a);     // Output
 
-  shoc_energy_fixer(team,nlev,nlevi,dtime,nadv,zt_grid,zi_grid, // Input
+  if (use_scratch) {
+      shoc_energy_fixer(team,nlev,nlevi,dtime,nadv,zt_grid,zi_grid, // Input
                     se_b,ke_b,wv_b,wl_b,se_a,ke_a,wv_a,wl_a,    // Input
-                    wthl_sfc,wqw_sfc,rho_zt,tke,presi,          // Input
+                    wthl_sfc,wqw_sfc,
+                    rho_zt_ks,
+                    tke,presi,          // Input
                     workspace,                                  // Workspace
                     host_dse);                                  // Output
+  } else {
+       shoc_energy_fixer(team,nlev,nlevi,dtime,nadv,zt_grid,zi_grid, // Input
+                    se_b,ke_b,wv_b,wl_b,se_a,ke_a,wv_a,wl_a,    // Input
+                    wthl_sfc,wqw_sfc,
+                    rho_zt_wsm,
+                    tke,presi,          // Input
+                    workspace,                                  // Workspace
+                    host_dse);                                  // Output
+  }
 
   // Remaining code is to diagnose certain quantities
   // related to PBL.  No answer changing subroutines
@@ -303,27 +452,54 @@ void Functions<S,D>::shoc_main_internal(
   // may require this variable.
 
   // Update SHOC water vapor, to be used by the next two routines
-  compute_shoc_vapor(team,nlev,qw,shoc_ql, // Input
-                     shoc_qv);             // Output
+  if (use_scratch) {
+      compute_shoc_vapor(team,nlev,qw,shoc_ql, // Input
+                     shoc_qv_ks);             // Output
+  } else {
+      compute_shoc_vapor(team,nlev,qw,shoc_ql, // Input
+                     shoc_qv_wsm);             // Output
+  }
 
   team.team_barrier();
-  shoc_diag_obklen(uw_sfc,vw_sfc,      // Input
+  if (use_scratch) {
+      shoc_diag_obklen(uw_sfc,vw_sfc,      // Input
                    wthl_sfc,wqw_sfc,   // Input
                    s_thetal(nlev-1),   // Input
                    s_shoc_ql(nlev-1),  // Input
-                   s_shoc_qv(nlev-1),  // Input
+                   s_shoc_qv_ks(nlev-1),  // Input
                    ustar,kbfs,obklen); // Output
+  } else {
+    shoc_diag_obklen(uw_sfc,vw_sfc,      // Input
+                   wthl_sfc,wqw_sfc,   // Input
+                   s_thetal(nlev-1),   // Input
+                   s_shoc_ql(nlev-1),  // Input
+                   s_shoc_qv_wsm(nlev-1),  // Input
+                   ustar,kbfs,obklen); // Output
+  }
 
-  pblintd(team,nlev,nlevi,npbl,zt_grid,   // Input
-          zi_grid,thetal,shoc_ql,shoc_qv, // Input
+  if (use_scratch) {
+      pblintd(team,nlev,nlevi,npbl,zt_grid,   // Input
+          zi_grid,thetal,shoc_ql,
+          shoc_qv_ks, // Input
           u_wind,v_wind,ustar,obklen,     // Input
           kbfs,shoc_cldfrac,              // Input
           workspace,                      // Workspace
           pblh);                          // Output
+  } else {
+       pblintd(team,nlev,nlevi,npbl,zt_grid,   // Input
+          zi_grid,thetal,shoc_ql,
+          shoc_qv_wsm, // Input
+          u_wind,v_wind,ustar,obklen,     // Input
+          kbfs,shoc_cldfrac,              // Input
+          workspace,                      // Workspace
+          pblh);                          // Output
+  }
 
   // Release temporary variables from the workspace
-  //workspace.template release_many_contiguous</*6*/1>(
-  //  {&rho_zt, &shoc_qv, &shoc_tabs, &dz_zt, &dz_zi, &tkh});
+  if (not use_scratch) {
+    workspace.template release_many_contiguous<6>(
+      {&rho_zt_wsm, &shoc_qv_wsm, &shoc_tabs_wsm, &dz_zt_wsm, &dz_zi_wsm, &tkh_wsm});
+  }
 }
 #else
 template<typename S, typename D>
@@ -615,6 +791,8 @@ struct Functor {
   Scalar Ckh;
   Scalar Ckm;
 
+  bool use_scratch;
+
   Functor(int lev_, int nlev_, int nlevi_, int npbl_, int nadv_, int num_qtracers_, int dtime_,
           const typename Func::WorkspaceMgr& wsm_,
           const typename Func::SHOCRuntime&  shoc_runtime_,
@@ -624,7 +802,7 @@ struct Functor {
           const typename Func::SHOCHistoryOutput& shoc_history_output_,
           Scalar lambda_low_, Scalar lambda_high_, Scalar lambda_slope_, Scalar lambda_thresh_,
           Scalar thl2tune_, Scalar qw2tune_, Scalar qwthl2tune_, Scalar w2tune_, Scalar length_fac_,
-          Scalar c_diag_3rd_mom_, Scalar Ckh_, Scalar Ckm_)
+          Scalar c_diag_3rd_mom_, Scalar Ckh_, Scalar Ckm_, bool use_scratch_)
   :
     level(lev_), nlev(nlev_), nlevi(nlevi_), npbl(npbl_), nadv(nadv_), num_qtracers(num_qtracers_),
     dtime(dtime_), workspace_mgr(wsm_),
@@ -632,7 +810,7 @@ struct Functor {
     shoc_output(shoc_output_), shoc_history_output(shoc_history_output_),
     lambda_low(lambda_low_), lambda_high(lambda_high_), lambda_slope(lambda_slope_), lambda_thresh(lambda_thresh_),
     thl2tune(thl2tune_), qw2tune(qw2tune_), qwthl2tune(qwthl2tune_), w2tune(w2tune_), length_fac(length_fac_),
-    c_diag_3rd_mom(c_diag_3rd_mom_), Ckh(Ckh_), Ckm(Ckm_)
+    c_diag_3rd_mom(c_diag_3rd_mom_), Ckh(Ckh_), Ckm(Ckm_), use_scratch(use_scratch_)
     {}
 
   KOKKOS_INLINE_FUNCTION
@@ -704,7 +882,7 @@ struct Functor {
                        pblh_s, shoc_ql2_s,                                    // Output
                        shoc_mix_s, w_sec_s, thl_sec_s, qw_sec_s, qwthl_sec_s, // Diagnostic Output Variables
                        wthl_sec_s, wqw_sec_s, wtke_sec_s, uw_sec_s, vw_sec_s, // Diagnostic Output Variables
-                       w3_s, wqls_sec_s, brunt_s, isotropy_s);                // Diagnostic Output Variables
+                       w3_s, wqls_sec_s, brunt_s, isotropy_s, use_scratch);                // Diagnostic Output Variables
 
     shoc_output.pblh(i) = pblh_s;
   }
@@ -729,7 +907,7 @@ Int Functions<S,D>::shoc_main(
 #ifdef SCREAM_SMALL_KERNELS
   , const SHOCTemporaries& shoc_temporaries     // Temporaries for small kernels
 #endif
-  , std::string tst                            )
+  , const std::string tst, const bool use_scratch)
 {
   // Start timer
   auto start = std::chrono::steady_clock::now();
@@ -751,24 +929,26 @@ Int Functions<S,D>::shoc_main(
     workspace_mgr, shoc_runtime, shoc_input, shoc_input_output, shoc_output, shoc_history_output,
     shoc_runtime.lambda_low, shoc_runtime.lambda_high, shoc_runtime.lambda_slope, shoc_runtime.lambda_thresh,
     shoc_runtime.thl2tune, shoc_runtime.qw2tune, shoc_runtime.qwthl2tune, shoc_runtime.w2tune,
-    shoc_runtime.length_fac, shoc_runtime.c_diag_3rd_mom, shoc_runtime.Ckh, shoc_runtime.Ckm);
+    shoc_runtime.length_fac, shoc_runtime.c_diag_3rd_mom, shoc_runtime.Ckh, shoc_runtime.Ckm,
+    use_scratch);
 
-  auto p0 =
-    Kokkos::TeamPolicy<ExeSpace>(shcol, 1)
-      .set_scratch_size(level, Kokkos::PerTeam(bytes));
-  auto tsm = p0.team_size_max(functor, Kokkos::ParallelForTag());
-  auto tsr = p0.team_size_recommended(functor, Kokkos::ParallelForTag());
+  auto p0 = Kokkos::TeamPolicy<ExeSpace>(shcol, 1);
+  auto p1 = p0;
+  if (use_scratch) p1 = p0.set_scratch_size(level, Kokkos::PerTeam(bytes));
+
+  auto tsm = p1.team_size_max(functor, Kokkos::ParallelForTag());
+  auto tsr = p1.team_size_recommended(functor, Kokkos::ParallelForTag());
 
   EKAT_REQUIRE_MSG(tst=="default" || tst=="rec" || tst=="max", "Error! Nothing matches "+tst+"\n");
-  auto p1 =
+  auto p2 =
     tst=="default" ? ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs)
     :  tst=="rec" ?  Kokkos::TeamPolicy<ExeSpace>(shcol, tsr)
        : tst=="max" ? Kokkos::TeamPolicy<ExeSpace>(shcol, tsm)
-         : p0;
+         : p1;
+  auto policy = p2;
+  if (use_scratch) policy = p2.set_scratch_size(level, Kokkos::PerTeam(bytes));
 
-  const auto policy = p1.set_scratch_size(level, Kokkos::PerTeam(bytes));
-
-  printf("TeamSize=%d\n", policy.team_size());
+  printf("teamsize type: %s, TeamSize=%d, use kokkos scratch: %d\n", tst.c_str(), policy.team_size(), (int)use_scratch);
 
   start = std::chrono::steady_clock::now();
 

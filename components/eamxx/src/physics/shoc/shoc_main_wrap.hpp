@@ -12,7 +12,7 @@ namespace shoc {
 struct FortranData;
 
 // Run SHOC subroutines, populating inout and out fields of d.
-  ekat::Int shoc_main(FortranData& d, bool use_fortran, const std::string tst = "default");
+  ekat::Int shoc_main(FortranData& d, bool use_fortran, const std::string tst = "default", const bool use_scratch = false);
 
 
 // Test SHOC by running initial conditions for a number of steps and comparing
