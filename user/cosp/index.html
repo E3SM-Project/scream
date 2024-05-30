@@ -9,10 +9,10 @@
       
       
       
-        <link rel="prev" href="../style_guide/">
+        <link rel="prev" href="../clean_clear_sky/">
       
       
-        <link rel="next" href="../source_tree/">
+        <link rel="next" href="../../developer/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -20,7 +20,7 @@
     
     
       
-        <title>Kokkos and EKAT - EAMxx</title>
+        <title>COSP - EAMxx</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#building-blocks" class="md-skip">
+        <a href="#cfmip-observation-simulator-package-cosp-in-eamxx" class="md-skip">
           Skip to content
         </a>
       
@@ -121,7 +121,7 @@ EAMxx is not supported yet.
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Kokkos and EKAT
+              COSP
             
           </span>
         </div>
@@ -281,17 +281,19 @@ EAMxx is not supported yet.
       
   
   
+    
   
   
+  
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -305,7 +307,7 @@ EAMxx is not supported yet.
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             User Guide
@@ -319,7 +321,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../../user/" class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -340,7 +342,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../../user/eamxx_cases/" class="md-nav__link">
+      <a href="../eamxx_cases/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -361,7 +363,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../../user/model_input/" class="md-nav__link">
+      <a href="../model_input/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -382,7 +384,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../../user/model_output/" class="md-nav__link">
+      <a href="../model_output/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -403,7 +405,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../../user/nudging/" class="md-nav__link">
+      <a href="../nudging/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -424,7 +426,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../../user/clean_clear_sky/" class="md-nav__link">
+      <a href="../clean_clear_sky/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -442,10 +444,30 @@ EAMxx is not supported yet.
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../user/cosp/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    COSP
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -454,6 +476,44 @@ EAMxx is not supported yet.
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#running-with-cosp" class="md-nav__link">
+    <span class="md-ellipsis">
+      Running with COSP
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#available-output-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      Available output fields
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -470,19 +530,17 @@ EAMxx is not supported yet.
       
   
   
-    
   
   
-  
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -496,7 +554,7 @@ EAMxx is not supported yet.
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Developer Guide
@@ -510,7 +568,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+      <a href="../../developer/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -552,7 +610,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../style_guide/" class="md-nav__link">
+      <a href="../../developer/style_guide/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -570,30 +628,10 @@ EAMxx is not supported yet.
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Kokkos and EKAT
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../developer/kokkos_ekat/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -602,68 +640,6 @@ EAMxx is not supported yet.
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#kokkos-views" class="md-nav__link">
-    <span class="md-ellipsis">
-      Kokkos Views
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#vectorization-packs" class="md-nav__link">
-    <span class="md-ellipsis">
-      Vectorization: Packs
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fields-and-the-field-manager" class="md-nav__link">
-    <span class="md-ellipsis">
-      Fields and the Field Manager
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Fields and the Field Manager">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#preconditions-postconditions-and-invariants" class="md-nav__link">
-    <span class="md-ellipsis">
-      Preconditions, Postconditions, and Invariants
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -676,7 +652,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../source_tree/" class="md-nav__link">
+      <a href="../../developer/source_tree/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -732,7 +708,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../field/" class="md-nav__link">
+      <a href="../../developer/field/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -753,7 +729,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../grid/" class="md-nav__link">
+      <a href="../../developer/grid/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -774,7 +750,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../processes/" class="md-nav__link">
+      <a href="../../developer/processes/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -795,7 +771,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../managers/" class="md-nav__link">
+      <a href="../../developer/managers/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -824,7 +800,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../io/" class="md-nav__link">
+      <a href="../../developer/io/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -880,7 +856,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../standalone_testing/" class="md-nav__link">
+      <a href="../../developer/standalone_testing/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -901,7 +877,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../cime_testing/" class="md-nav__link">
+      <a href="../../developer/cime_testing/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -922,7 +898,7 @@ EAMxx is not supported yet.
   
   
     <li class="md-nav__item">
-      <a href="../ci_nightly/" class="md-nav__link">
+      <a href="../../developer/ci_nightly/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1062,44 +1038,20 @@ EAMxx is not supported yet.
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#kokkos-views" class="md-nav__link">
+  <a href="#running-with-cosp" class="md-nav__link">
     <span class="md-ellipsis">
-      Kokkos Views
+      Running with COSP
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#vectorization-packs" class="md-nav__link">
+  <a href="#available-output-fields" class="md-nav__link">
     <span class="md-ellipsis">
-      Vectorization: Packs
+      Available output fields
     </span>
   </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fields-and-the-field-manager" class="md-nav__link">
-    <span class="md-ellipsis">
-      Fields and the Field Manager
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Fields and the Field Manager">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#preconditions-postconditions-and-invariants" class="md-nav__link">
-    <span class="md-ellipsis">
-      Preconditions, Postconditions, and Invariants
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1118,13 +1070,54 @@ EAMxx is not supported yet.
                   
 
 
-<h1 id="building-blocks">Building Blocks</h1>
-<p>Here we can discuss EKAT, Kokkos, and all of the highly-technical non-scientific
-stuff that makes our heads hurt.</p>
-<h2 id="kokkos-views">Kokkos Views</h2>
-<h2 id="vectorization-packs">Vectorization: Packs</h2>
-<h2 id="fields-and-the-field-manager">Fields and the Field Manager</h2>
-<h3 id="preconditions-postconditions-and-invariants">Preconditions, Postconditions, and Invariants</h3>
+<h1 id="cfmip-observation-simulator-package-cosp-in-eamxx">CFMIP Observation Simulator Package (COSP) in EAMxx</h1>
+<p><a href="https://github.com/CFMIP/COSPv2.0">COSP</a> is partially implemented and supported in EAMxx. Currently, minimal outputs from the ISCCP, MODIS, and MISR simulators have been enabled.</p>
+<h2 id="running-with-cosp">Running with COSP</h2>
+<p>Turning COSP on simply requires adding the <code>cosp</code> process to <code>atm_procs_list</code> via <code>atmchange</code> in a case directory:
+<div class="highlight"><pre><span></span><code>./atmchange physics::atm_procs_list=&quot;mac_aero_mic,rrtmgp,cosp&quot;
+</code></pre></div>
+Additionally, the frequency at which COSP is run can be configured via <code>atmchange</code>:
+<div class="highlight"><pre><span></span><code>./atmchange physics::cosp::cosp_frequency_units=&quot;steps&quot;
+./atmchange physics::cosp::cosp_frequency=1
+</code></pre></div></p>
+<p>COSP can be run with or without subcolumn sampling. This is configured by changing the <code>cosp_subcolumns</code> namelist variable via <code>atmchange</code>. A value of 1 implies <em>no</em> subcolumn sampling, while values greater than 1 specify the number of subcolumns to use for subcolumn sampling (assuming maximum-random overlap). E.g.,
+<div class="highlight"><pre><span></span><code>./atmchange physics::cosp:cosp_subcolumns=1
+</code></pre></div>
+would disable subcolumn sampling, while
+<div class="highlight"><pre><span></span><code>./atmchange physics::cosp::cosp_subcolumns=10
+</code></pre></div>
+would use 10 subcolumns for the COSP internal subcolumn sampling using <code>SCOPS</code>/<code>PREC_SCOPS</code>. The default for high resolution cases (e.g., ne1024) should be to <em>not</em> use subcolumns, while lower resolutions (e.g., ne30) should enable subcolumn sampling.</p>
+<p>Output streams need to be added manually. A minimal example:
+<div class="highlight"><pre><span></span><code>./atmchange output_yaml_files=scream_daily_output.yaml
+cat &lt;&lt; EOF &gt; scream_cosp_daily_output.yaml
+Averaging Type: Average
+Fields:
+  Physics PG2:
+    Field Names:
+    - isccp_cldtot
+    - isccp_ctptau
+    - modis_ctptau
+    - misr_cthtau
+    - cosp_sunlit
+Max Snapshots Per File: 1
+filename_prefix: eamxx
+output_control:
+  Frequency: 1
+  frequency_units: ndays
+EOF
+</code></pre></div></p>
+<h2 id="available-output-fields">Available output fields</h2>
+<p>The following output fields are available:</p>
+<ul>
+<li>isccp_cldtot (total cloud area from ISCCP simulator)</li>
+<li>isccp_ctptau (ISCCP-simulated cloud top pressure/optical depth joint histogram)</li>
+<li>modis_ctptau (MODIS-simulated cloud top pressure/optical depth joint histogram)</li>
+<li>misr_cthtau  (MISR-simulated cloud top height/optical depth joint histogram)</li>
+<li>cosp_sunlit  (sunlit flag aggregated at COSP frequency for renormalizing daytime averages)</li>
+</ul>
+<p>ISCCP, MODIS, and MISR outputs are valid only for daytime/sunlit columns (to be consistent with available satellite retrievals). In order to aggregate only daytime columns in time averages, these outputs are multiplied by the sunlit flag (0 or 1) at each COSP calculation time. Time averages of these quantities are then aggregated, along with the cosp sunlit flag each time COSP is called. In order to back out the daytime-only time averages from the outputs, one needs to divide the output fields by <code>cosp_sunlit</code>. E.g.,
+<div class="highlight"><pre><span></span><code>isccp_ctptau = mean(isccp_ctptau) / mean(cosp_sunlit)
+</code></pre></div></p>
 
 
 
