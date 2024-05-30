@@ -639,7 +639,7 @@ struct Functor {
   void operator() (member_type team) const {
     const Int i = team.league_rank();
 
-    if (i==0 && team.team_rank()==0) printf("Team Size = %d\n",team.team_size());
+    //if (i==0 && team.team_rank()==0) printf("Team Size = %d\n",team.team_size());
 
     auto workspace = workspace_mgr.get_workspace(team);
 
@@ -758,8 +758,6 @@ Int Functions<S,D>::shoc_main(
       .set_scratch_size(level, Kokkos::PerTeam(bytes));
   auto tsm = p0.team_size_max(functor, Kokkos::ParallelForTag());
   auto tsr = p0.team_size_recommended(functor, Kokkos::ParallelForTag());
-  //printf("W/O SCRATCH -> MAX=%d, REC=%d\n", tsm, tsr);
-  //EKAT_ERROR_MSG("STOP\n");
 
   EKAT_REQUIRE_MSG(tst=="default" || tst=="rec" || tst=="max", "Error! Nothing matches "+tst+"\n");
   auto p1 =
@@ -769,6 +767,10 @@ Int Functions<S,D>::shoc_main(
          : p0;
 
   const auto policy = p1.set_scratch_size(level, Kokkos::PerTeam(bytes));
+
+  printf("TeamSize=%d\n", policy.team_size());
+
+  start = std::chrono::steady_clock::now();
 
   // SHOC main loop
   Kokkos::parallel_for(policy,functor);
