@@ -135,7 +135,8 @@ size_t SHOCMacrophysics::requested_buffer_size_in_bytes() const
   const auto policy       = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nlev_packs);
   const int n_wind_slots  = ekat::npack<Spack>(2)*Spack::n;
   const int n_trac_slots  = ekat::npack<Spack>(m_num_tracers+3)*Spack::n;
-  const size_t wsm_request= WSM::get_total_bytes_needed(nlevi_packs, 8+(n_wind_slots+n_trac_slots), policy);
+  const int total_slots = (m_use_scratch ? 8 : 14+(n_wind_slots+n_trac_slots));
+  const size_t wsm_request= WSM::get_total_bytes_needed(nlevi_packs, total_slots, policy);
 
   return interface_request + wsm_request;
 }
@@ -211,7 +212,8 @@ void SHOCMacrophysics::init_buffers(const ATMBufferManager &buffer_manager)
   const auto policy      = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nlev_packs);
   const int n_wind_slots = ekat::npack<Spack>(2)*Spack::n;
   const int n_trac_slots = ekat::npack<Spack>(m_num_tracers+3)*Spack::n;
-  const int wsm_size     = WSM::get_total_bytes_needed(nlevi_packs, (m_use_scratch ? 8 : 14)+(n_wind_slots+n_trac_slots), policy)/sizeof(Spack);
+  const int total_slots = (m_use_scratch ? 8 : 14+(n_wind_slots+n_trac_slots));
+  const int wsm_size     = WSM::get_total_bytes_needed(nlevi_packs, total_slots, policy)/sizeof(Spack);
   printf("SHOC bytes: %d\n", wsm_size*(int)sizeof(Spack));
 
   s_mem += wsm_size;

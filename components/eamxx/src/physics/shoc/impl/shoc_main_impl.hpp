@@ -148,7 +148,10 @@ void Functions<S,D>::shoc_main_internal(
 
   const auto nlev_packs = ekat::npack<Spack>(nlev);
   const auto nlevi_packs = ekat::npack<Spack>(nlevi);
+  const int num_wind_transpose_packs = ekat::npack<Spack>(2);
+  const int num_qtracers_transpose_packs = ekat::npack<Spack>(num_qtracers+3);
   scratch_view_1d<Spack> rho_zt_ks, shoc_qv_ks, shoc_tabs_ks, dz_zt_ks, dz_zi_ks, tkh_ks;
+  scratch_view_2d<Spack> wind_rhs_ks, qtracers_rhs_ks;
   if (use_scratch) {
     rho_zt_ks    = scratch_view_1d<Spack>(team.team_scratch(scratch_level), nlev_packs);
     shoc_qv_ks   = scratch_view_1d<Spack>(team.team_scratch(scratch_level), nlev_packs);
@@ -156,6 +159,9 @@ void Functions<S,D>::shoc_main_internal(
     dz_zt_ks     = scratch_view_1d<Spack>(team.team_scratch(scratch_level), nlev_packs);
     dz_zi_ks     = scratch_view_1d<Spack>(team.team_scratch(scratch_level), nlevi_packs);
     tkh_ks       = scratch_view_1d<Spack>(team.team_scratch(scratch_level), nlev_packs);
+
+    wind_rhs_ks = scratch_view_2d<Spack>(team.team_scratch(scratch_level), nlev, num_wind_transpose_packs);
+    qtracers_rhs_ks = scratch_view_2d<Spack>(team.team_scratch(scratch_level), nlev, num_qtracers_transpose_packs);
   }
 
   // Local scalars
@@ -331,6 +337,7 @@ void Functions<S,D>::shoc_main_internal(
                                 uw_sfc, // Input
                                 vw_sfc,wthl_sfc,wqw_sfc,wtracer_sfc,        // Input
                                 workspace,                                  // Workspace
+                                use_scratch, wind_rhs_ks, qtracers_rhs_ks,
                                 thetal,qw,qtracers,tke,u_wind,v_wind);   // Input/Output
     } else {
       update_prognostics_implicit(team,nlev,nlevi,num_qtracers,dtime,
@@ -342,6 +349,7 @@ void Functions<S,D>::shoc_main_internal(
                                 uw_sfc, // Input
                                 vw_sfc,wthl_sfc,wqw_sfc,wtracer_sfc,        // Input
                                 workspace,                                  // Workspace
+                                use_scratch, wind_rhs_ks, qtracers_rhs_ks,
                                 thetal,qw,qtracers,tke,u_wind,v_wind);   // Input/Output
     }
 
@@ -917,11 +925,15 @@ Int Functions<S,D>::shoc_main(
 
   const auto nlev_packs = ekat::npack<Spack>(nlev);
   const auto nlevi_packs = ekat::npack<Spack>(nlevi);
+  const int num_wind_transpose_packs = ekat::npack<Spack>(2);
+  const int num_qtracers_transpose_packs = ekat::npack<Spack>(num_qtracers+3);
 
   // Kokkos scratch space info
   const auto bytes =
     6*scratch_view_1d<Spack>::shmem_size(nlev_packs) + // rho_zt, shoc_qv, shoc_tabs, dz_zt, tkh
-      scratch_view_1d<Spack>::shmem_size(nlevi_packs); // dz_zi
+      scratch_view_1d<Spack>::shmem_size(nlevi_packs)+ // dz_zi
+      scratch_view_2d<Spack>::shmem_size(nlev, num_wind_transpose_packs) +
+      scratch_view_2d<Spack>::shmem_size(nlev, num_qtracers_transpose_packs);
   const int level = 0;
 
   Functor<S,D> functor(

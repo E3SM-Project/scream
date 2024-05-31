@@ -2240,7 +2240,7 @@ void update_prognostics_implicit_f(Int shcol, Int nlev, Int nlevi, Int num_trace
                                      dz_zt_s, dz_zi_s, rho_zt_s, zt_grid_s,
                                      zi_grid_s, tk_s, tkh_s, uw_sfc_s, vw_sfc_s,
                                      wthl_sfc_s, wqw_sfc_s, wtracer_sfc_s,
-                                     workspace,
+                                     workspace, false, SHF::scratch_view_2d<Spack>(), SHF::scratch_view_2d<Spack>(),
                                      thetal_s, qw_s, tracer_s, tke_s, u_wind_s, v_wind_s);
   });
 
@@ -2920,7 +2920,11 @@ Int shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Int npbl, 
   // Create local workspace
   const int n_wind_slots = ekat::npack<Spack>(2)*Spack::n;
   const int n_trac_slots = ekat::npack<Spack>(num_qtracers+3)*Spack::n;
-  ekat::WorkspaceManager<Spack, SHF::KT::Device> workspace_mgr(nlevi_packs, (use_scratch ? 8 : 14)+(n_wind_slots+n_trac_slots), policy);
+  const int total_slots = (use_scratch ? 8 : 14+(n_wind_slots+n_trac_slots));
+  ekat::WorkspaceManager<Spack, SHF::KT::Device> workspace_mgr(nlevi_packs, total_slots, policy);
+
+  const int bytes = ekat::WorkspaceManager<Spack, SHF::KT::Device>::get_total_bytes_needed(nlevi_packs, total_slots, policy);
+  printf("WSM bytes request: %d\n",bytes);
 
   const auto elapsed_microsec = SHF::shoc_main(shcol, nlev, nlevi, npbl, nadv, num_qtracers, dtime,
                                                workspace_mgr, shoc_runtime_options,

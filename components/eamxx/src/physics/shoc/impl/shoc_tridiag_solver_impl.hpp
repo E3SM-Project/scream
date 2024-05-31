@@ -75,13 +75,14 @@ void Functions<S,D>::vd_shoc_decomp(
 }
 
 template<typename S, typename D>
+template<typename TempViewType>
 KOKKOS_FUNCTION
 void Functions<S,D>::vd_shoc_solve(
   const MemberType&      team,
   const uview_1d<Scalar>& du,
   const uview_1d<Scalar>& dl,
   const uview_1d<Scalar>& d,
-  const uview_2d<Spack>&  var)
+  const TempViewType&  var)
 {
 #ifdef EKAT_DEFAULT_BFB
   ekat::tridiag::bfb(team, dl, d, du, var);

@@ -33,6 +33,9 @@ void Functions<S,D>::update_prognostics_implicit(
   const Scalar&                wqw_sfc,
   const uview_1d<const Spack>& wtracer_sfc,
   const Workspace&             workspace,
+  const bool use_scratch,
+  const scratch_view_2d<Spack>& wind_rhs_ks,
+  const scratch_view_2d<Spack>& qtracers_rhs_ks,
   const uview_1d<Spack>&       thetal,
   const uview_1d<Spack>&       qw,
   const uview_2d<Spack>&       qtracers,
@@ -46,7 +49,11 @@ void Functions<S,D>::update_prognostics_implicit(
   uview_1d<Spack> tmpi, tkh_zi,
                   tk_zi, rho_zi,
                   rdp_zt;
-  uview_1d<Scalar> du_workspace, dl_workspace, d_workspace;
+  uview_1d<Scalar> du_workspace, dl_workspace, d_workspace, wind_slot, tracers_slot;
+  uview_2d<Spack> wind_rhs, qtracers_rhs;
+
+  int n_wind_slots;
+  int n_trac_slots;
 
   workspace.template take_many_contiguous_unsafe<5>(
     {"tmpi", "tkh_zi", "tk_zi", "rho_zi", "rdp_zt"},
@@ -60,20 +67,22 @@ void Functions<S,D>::update_prognostics_implicit(
   auto d  = Kokkos::subview(d_workspace,  Kokkos::make_pair(0,nlev));
 
   // 2d allocations for solver RHS
-  const int num_wind_transpose_packs = ekat::npack<Spack>(2);
-  const int num_qtracers_transpose_packs = ekat::npack<Spack>(num_qtracers+3);
+  if (not use_scratch) {
+    const int num_wind_transpose_packs = ekat::npack<Spack>(2);
+    const int num_qtracers_transpose_packs = ekat::npack<Spack>(num_qtracers+3);
 
-  const int n_wind_slots = num_wind_transpose_packs*Spack::n;
-  const int n_trac_slots = num_qtracers_transpose_packs*Spack::n;
+    n_wind_slots = num_wind_transpose_packs*Spack::n;
+    n_trac_slots = num_qtracers_transpose_packs*Spack::n;
 
-  const auto wind_slot    = workspace.template take_macro_block<Scalar>("wind_slot",n_wind_slots);
-  const auto tracers_slot = workspace.template take_macro_block<Scalar>("tracers_slot",n_trac_slots);
+    wind_slot    = workspace.template take_macro_block<Scalar>("wind_slot",n_wind_slots);
+    tracers_slot = workspace.template take_macro_block<Scalar>("tracers_slot",n_trac_slots);
 
-  // Reshape 2d views
-  const auto wind_rhs     = uview_2d<Spack>(reinterpret_cast<Spack*>(wind_slot.data()),
-                                            nlev, num_wind_transpose_packs);
-  const auto qtracers_rhs  = uview_2d<Spack>(reinterpret_cast<Spack*>(tracers_slot.data()),
-                                            nlev, num_qtracers_transpose_packs);
+    // Reshape 2d views
+    wind_rhs     = uview_2d<Spack>(reinterpret_cast<Spack*>(wind_slot.data()),
+                                              nlev, num_wind_transpose_packs);
+    qtracers_rhs  = uview_2d<Spack>(reinterpret_cast<Spack*>(tracers_slot.data()),
+                                              nlev, num_qtracers_transpose_packs);
+  }
 
   // scalarized versions of some views will be needed
   const auto rdp_zt_s       = ekat::scalarize(rdp_zt);
@@ -87,6 +96,9 @@ void Functions<S,D>::update_prognostics_implicit(
   const auto qtracers_s     = ekat::scalarize(qtracers);
   const auto qtracers_rhs_s = ekat::scalarize(qtracers_rhs);
   const auto wtracer_sfc_s  = ekat::scalarize(wtracer_sfc);
+
+  const auto wind_rhs_s_ks = ekat::scalarize(wind_rhs_ks);
+  const auto qtracers_rhs_s_ks = ekat::scalarize(qtracers_rhs_ks);
 
   // linearly interpolate tkh, tk, and air density onto the interface grids
   linear_interp(team,zt_grid,zi_grid,tkh,tkh_zi,nlev,nlevi,0);
@@ -148,61 +160,115 @@ void Functions<S,D>::update_prognostics_implicit(
 
   // Store RHS values in wind_rhs and qtracers_rhs for 1st and 2nd solve respectively
   team.team_barrier();
-  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&] (const Int& k) {
-    wind_rhs_s(k,0) = u_wind_s(k);
-    wind_rhs_s(k,1) = v_wind_s(k);
+  if (use_scratch) {
+    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&] (const Int& k) {
+      wind_rhs_s_ks(k,0) = u_wind_s(k);
+      wind_rhs_s_ks(k,1) = v_wind_s(k);
 
-    // The rhs version of the tracers is the transpose of the input/output layout
-    Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, num_qtracers), [&] (const Int& q) {
-      qtracers_rhs_s(k, q) = qtracers_s(q, k);
+      // The rhs version of the tracers is the transpose of the input/output layout
+      Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, num_qtracers), [&] (const Int& q) {
+        qtracers_rhs_s_ks(k, q) = qtracers_s(q, k);
+      });
+      qtracers_rhs_s_ks(k, num_qtracers)   = thetal_s(k);
+      qtracers_rhs_s_ks(k, num_qtracers+1) = qw_s(k);
+      qtracers_rhs_s_ks(k, num_qtracers+2) = tke_s(k);
     });
-    qtracers_rhs_s(k, num_qtracers)   = thetal_s(k);
-    qtracers_rhs_s(k, num_qtracers+1) = qw_s(k);
-    qtracers_rhs_s(k, num_qtracers+2) = tke_s(k);
-  });
 
-  // march u_wind and v_wind one step forward using implicit solver
-  {
-    // Call decomp for momentum variables
-    vd_shoc_decomp(team, nlev, tk_zi, tmpi, rdp_zt, dtime, ksrf, du, dl, d);
+    // march u_wind and v_wind one step forward using implicit solver
+    {
+      // Call decomp for momentum variables
+      vd_shoc_decomp(team, nlev, tk_zi, tmpi, rdp_zt, dtime, ksrf, du, dl, d);
 
-    // Solve
+      // Solve
+      team.team_barrier();
+      vd_shoc_solve(team, du, dl, d, wind_rhs_ks);
+    }
+
+    // march temperature, total water, tke,and tracers one step forward using implicit solver
+    {
+      // Call decomp for thermo variables. Fluxes applied explicitly, so zero
+      // fluxes out for implicit solver decomposition.
+      team.team_barrier();
+      vd_shoc_decomp(team, nlev, tkh_zi, tmpi, rdp_zt, dtime, 0, du, dl, d);
+
+      // Solve
+      team.team_barrier();
+      vd_shoc_solve(team, du, dl, d, qtracers_rhs_ks);
+    }
+
+    // Copy RHS values back into output variables
     team.team_barrier();
-    vd_shoc_solve(team, du, dl, d, wind_rhs);
-  }
+    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&] (const Int& k) {
+      u_wind_s(k) = wind_rhs_s_ks(k, 0);
+      v_wind_s(k) = wind_rhs_s_ks(k, 1);
 
-  // march temperature, total water, tke,and tracers one step forward using implicit solver
-  {
-    // Call decomp for thermo variables. Fluxes applied explicitly, so zero
-    // fluxes out for implicit solver decomposition.
-    team.team_barrier();
-    vd_shoc_decomp(team, nlev, tkh_zi, tmpi, rdp_zt, dtime, 0, du, dl, d);
-
-    // Solve
-    team.team_barrier();
-    vd_shoc_solve(team, du, dl, d, qtracers_rhs);
-  }
-
-  // Copy RHS values back into output variables
-  team.team_barrier();
-  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&] (const Int& k) {
-    u_wind_s(k) = wind_rhs_s(k, 0);
-    v_wind_s(k) = wind_rhs_s(k, 1);
-
-    // Transpose tracers back to  input/output layout
-    Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, num_qtracers), [&] (const Int& q) {
-      qtracers_s(q, k) = qtracers_rhs_s(k, q);
+      // Transpose tracers back to  input/output layout
+      Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, num_qtracers), [&] (const Int& q) {
+        qtracers_s(q, k) = qtracers_rhs_s_ks(k, q);
+      });
+      thetal_s(k) = qtracers_rhs_s_ks(k, num_qtracers);
+      qw_s(k)     = qtracers_rhs_s_ks(k, num_qtracers+1);
+      tke_s(k)    = qtracers_rhs_s_ks(k, num_qtracers+2);
     });
-    thetal_s(k) = qtracers_rhs_s(k, num_qtracers);
-    qw_s(k)     = qtracers_rhs_s(k, num_qtracers+1);
-    tke_s(k)    = qtracers_rhs_s(k, num_qtracers+2);
-  });
+  } else {
+    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&] (const Int& k) {
+      wind_rhs_s(k,0) = u_wind_s(k);
+      wind_rhs_s(k,1) = v_wind_s(k);
+
+      // The rhs version of the tracers is the transpose of the input/output layout
+      Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, num_qtracers), [&] (const Int& q) {
+        qtracers_rhs_s(k, q) = qtracers_s(q, k);
+      });
+      qtracers_rhs_s(k, num_qtracers)   = thetal_s(k);
+      qtracers_rhs_s(k, num_qtracers+1) = qw_s(k);
+      qtracers_rhs_s(k, num_qtracers+2) = tke_s(k);
+    });
+
+    // march u_wind and v_wind one step forward using implicit solver
+    {
+      // Call decomp for momentum variables
+      vd_shoc_decomp(team, nlev, tk_zi, tmpi, rdp_zt, dtime, ksrf, du, dl, d);
+
+      // Solve
+      team.team_barrier();
+      vd_shoc_solve(team, du, dl, d, wind_rhs);
+    }
+
+    // march temperature, total water, tke,and tracers one step forward using implicit solver
+    {
+      // Call decomp for thermo variables. Fluxes applied explicitly, so zero
+      // fluxes out for implicit solver decomposition.
+      team.team_barrier();
+      vd_shoc_decomp(team, nlev, tkh_zi, tmpi, rdp_zt, dtime, 0, du, dl, d);
+
+      // Solve
+      team.team_barrier();
+      vd_shoc_solve(team, du, dl, d, qtracers_rhs);
+    }
+
+    // Copy RHS values back into output variables
+    team.team_barrier();
+    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&] (const Int& k) {
+      u_wind_s(k) = wind_rhs_s(k, 0);
+      v_wind_s(k) = wind_rhs_s(k, 1);
+
+      // Transpose tracers back to  input/output layout
+      Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, num_qtracers), [&] (const Int& q) {
+        qtracers_s(q, k) = qtracers_rhs_s(k, q);
+      });
+      thetal_s(k) = qtracers_rhs_s(k, num_qtracers);
+      qw_s(k)     = qtracers_rhs_s(k, num_qtracers+1);
+      tke_s(k)    = qtracers_rhs_s(k, num_qtracers+2);
+    });
+  }
 
 
   // Release temporary variables from the workspace
   team.team_barrier();
-  workspace.template release_macro_block<Scalar>(tracers_slot,n_trac_slots);
-  workspace.template release_macro_block<Scalar>(wind_slot,n_wind_slots);
+  if (not use_scratch) {
+    workspace.template release_macro_block<Scalar>(tracers_slot,n_trac_slots);
+    workspace.template release_macro_block<Scalar>(wind_slot,n_wind_slots);
+  }
   workspace.template release_many_contiguous<3,Scalar>(
     {&du_workspace, &dl_workspace, &d_workspace});
   workspace.template release_many_contiguous<5>(

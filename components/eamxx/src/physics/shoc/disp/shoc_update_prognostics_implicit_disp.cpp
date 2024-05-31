@@ -56,6 +56,7 @@ void Functions<Real,DefaultDevice>
                                 wqw_sfc(i),
                                 ekat::subview(wtracer_sfc, i),
                                 workspace,
+                                false, scratch_view_2d<Spack>(), scratch_view_2d<Spack>(),
                                 ekat::subview(thetal, i),
                                 ekat::subview(qw, i),
                                 ekat::subview(tracer, i),

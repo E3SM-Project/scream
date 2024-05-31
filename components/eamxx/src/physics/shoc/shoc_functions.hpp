@@ -66,6 +66,8 @@ struct Functions
 
   template <typename S>
   using scratch_view_1d = Kokkos::View<S*, typename KT::ExeSpace::scratch_memory_space>;
+  template <typename S>
+  using scratch_view_2d = Kokkos::View<S**, typename KT::ExeSpace::scratch_memory_space>;
 
   using MemberType = typename KT::MemberType;
 
@@ -663,6 +665,9 @@ struct Functions
     const Scalar&                wqw_sfc,
     const uview_1d<const Spack>& wtracer_sfc,
     const Workspace&             workspace,
+    const bool use_scratch,
+    const scratch_view_2d<Spack>& wind_rhs_ks,
+    const scratch_view_2d<Spack>& qtracers_rhs_ks,
     const uview_1d<Spack>&       thetal,
     const uview_1d<Spack>&       qw,
     const uview_2d<Spack>&       tracer,
@@ -1074,13 +1079,14 @@ struct Functions
     const uview_1d<Scalar>&      dl,
     const uview_1d<Scalar>&      d);
 
+  template<typename TempViewType>
   KOKKOS_FUNCTION
   static void vd_shoc_solve(
     const MemberType&       team,
     const uview_1d<Scalar>& du,
     const uview_1d<Scalar>& dl,
     const uview_1d<Scalar>& d,
-    const uview_2d<Spack>&  var);
+    const TempViewType&  var);
 
   KOKKOS_FUNCTION
   static void pblintd_surf_temp(const Int& nlev, const Int& nlevi, const Int& npbl,
