@@ -212,6 +212,8 @@ void SHOCMacrophysics::init_buffers(const ATMBufferManager &buffer_manager)
   const int n_wind_slots = ekat::npack<Spack>(2)*Spack::n;
   const int n_trac_slots = ekat::npack<Spack>(m_num_tracers+3)*Spack::n;
   const int wsm_size     = WSM::get_total_bytes_needed(nlevi_packs, (m_use_scratch ? 8 : 14)+(n_wind_slots+n_trac_slots), policy)/sizeof(Spack);
+  printf("SHOC bytes: %d\n", wsm_size*(int)sizeof(Spack));
+
   s_mem += wsm_size;
 
   size_t used_mem = (reinterpret_cast<Real*>(s_mem) - buffer_manager.get_memory())*sizeof(Real);

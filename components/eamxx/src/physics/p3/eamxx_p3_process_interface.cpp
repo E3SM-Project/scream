@@ -193,6 +193,8 @@ void P3Microphysics::init_buffers(const ATMBufferManager &buffer_manager)
   // vs. requested memory
   const auto policy  = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nk_pack);
   const int wsm_size = WSM::get_total_bytes_needed(nk_pack_p1, 52, policy)/sizeof(Spack);
+  printf("P3 bytes: %d\n", wsm_size*(int)sizeof(Spack));
+
   s_mem += wsm_size;
 
   size_t used_mem = (reinterpret_cast<Real*>(s_mem) - buffer_manager.get_memory())*sizeof(Real);
