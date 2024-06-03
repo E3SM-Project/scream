@@ -90,24 +90,6 @@ void MLCorrection::run_impl(const double dt) {
   auto current_ts = timestamp();
   std::string datetime_str = current_ts.get_date_string() + " " + current_ts.get_time_string();
 
-<<<<<<< HEAD
-=======
-  const auto &phis            = get_field_in("phis").get_view<const Real *, Host>();
-  const auto &sfc_alb_dif_vis = get_field_in("sfc_alb_dif_vis").get_view<const Real *, Host>();  
-
-  const auto &qv              = get_field_out("qv").get_view<Real **, Host>();
-  const auto &T_mid           = get_field_out("T_mid").get_view<Real **, Host>();
-  const auto &SW_flux_dn      = get_field_out("SW_flux_dn").get_view<Real **, Host>();
-  const auto &sfc_flux_sw_net = get_field_out("sfc_flux_sw_net").get_view<Real *, Host>();
-  const auto &sfc_flux_lw_dn  = get_field_out("sfc_flux_lw_dn").get_view<Real *, Host>();
-  const auto &u               = get_field_out("horiz_winds").get_component(0).get_view<Real **, Host>();
-  const auto &v               = get_field_out("horiz_winds").get_component(1).get_view<Real **, Host>();
-
-  // For precipitation adjustment we need to track the change in column integrated 'qv'
-  decltype(qv) qv_told("", qv.extent(0), qv.extent(1));
-  Kokkos::deep_copy(qv_told,qv);
-
->>>>>>> master
   auto h_lat  = m_lat.get_view<const Real*,Host>();
   auto h_lon  = m_lon.get_view<const Real*,Host>();
 
@@ -129,8 +111,8 @@ void MLCorrection::run_impl(const double dt) {
   auto h_lon_dev  = m_lon.get_view<const Real*,Device>();
 
   // For precipitation adjustment we need to track the change in column integrated 'qv'
-  // host_view2d_type qv_told("",qv_dev.extent(0),qv_dev.extent(1));
-  // Kokkos::deep_copy(qv_told,qv_dev);
+  decltype(qv) qv_told("", qv.extent(0), qv.extent(1));
+  Kokkos::deep_copy(qv_told,qv);
 
   uintptr_t qv_dev_ptr = reinterpret_cast<uintptr_t>(qv_dev.data());
   std::string field_dtype = typeid(qv_dev(0, 0)).name();
