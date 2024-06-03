@@ -23,6 +23,7 @@ set(Python_EXECUTABLE /global/common/software/m4492/fv3net-shared-py39/bin/pytho
 set(PYTHON_EXECUTABLE /global/common/software/m4492/fv3net-shared-py39/bin/python CACHE STRING "" FORCE)
 set(Python_INCLUDE_DIRS /global/common/software/m4492/fv3net-shared-py39/include/python3.9 CACHE STRING "" FORCE)
 option (SCREAM_ENABLE_ML_CORRECTION "Whether to enable ML correction parametrization" ON)
+set(EKAT_MPI_EXTRA_ARGS "${EKAT_MPI_EXTRA_ARGS} --gpus-per-task=1" CACHE STRING "" FORCE)
 
 #option(Kokkos_ARCH_AMPERE80 "" ON)
 set(CMAKE_CXX_FLAGS "-DTHRUST_IGNORE_CUB_VERSION_CHECK" CACHE STRING "" FORCE)

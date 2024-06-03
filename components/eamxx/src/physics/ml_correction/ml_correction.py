@@ -62,7 +62,7 @@ def ensure_correction_ordering(correction):
     return correction
 
 
-def get_ML_correction_dQ1_dQ2(model, T_mid, qv, cos_zenith, dt):
+def get_ML_correction_dQ1_dQ2(model, T_mid, qv, cos_zenith, lat, phis, dt):
     """Get ML correction for air temperature (dQ1) and specific humidity (dQ2)
 
     Args:
@@ -77,6 +77,8 @@ def get_ML_correction_dQ1_dQ2(model, T_mid, qv, cos_zenith, dt):
             T_mid=(["ncol", "z"], T_mid),
             qv=(["ncol", "z"], qv),
             cos_zenith_angle=(["ncol"], cos_zenith),
+            lat=(["ncol"], lat),
+            surface_geopotential=(["ncol"], phis),
         )
     )
     return ensure_correction_ordering(predict(model, ds, dt))
@@ -252,7 +254,14 @@ def update_fields(
     
     if model_tq is not None:
         correction_tq = get_ML_correction_dQ1_dQ2(
-            model_tq, T_mid, qv_0, cos_zenith, dt
+            model_tq,
+            model_tq, 
+            T_mid, 
+            qv_0, 
+            cos_zenith,
+            lat,
+            phis,
+            dt
         )
         T_mid[:, :] += correction_tq["dQ1"].data * dt
         qv[:, 0, :] += correction_tq["dQ2"].data * dt
