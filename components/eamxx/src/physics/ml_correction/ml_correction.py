@@ -10,6 +10,7 @@ from scream_run.steppers.machine_learning import (
     MachineLearningConfig,
     open_model,
     predict,
+    predict_with_qv_constraint
 )
 
 logger = logging.getLogger(__name__)
@@ -72,6 +73,7 @@ def get_ML_correction_dQ1_dQ2(model, T_mid, qv, cos_zenith, lat, phis, dt):
         cos_zenith: cosine zenith angle
         dt: time step (s)
     """
+    # TODO: standardize reference DataArray dims 1D or 2D
     ds = xr.Dataset(
         data_vars=dict(
             T_mid=(["ncol", "z"], T_mid),
@@ -81,7 +83,7 @@ def get_ML_correction_dQ1_dQ2(model, T_mid, qv, cos_zenith, lat, phis, dt):
             surface_geopotential=(["ncol"], phis),
         )
     )
-    return ensure_correction_ordering(predict(model, ds, dt))
+    return ensure_correction_ordering(predict_with_qv_constraint(model, ds, dt))
 
 
 def get_ML_correction_dQu_dQv(model, T_mid, qv, cos_zenith, lat, phis, u, v, dt):
@@ -109,7 +111,7 @@ def get_ML_correction_dQu_dQv(model, T_mid, qv, cos_zenith, lat, phis, u, v, dt)
             cos_zenith_angle=(["ncol"], cos_zenith),
         )
     )
-    output = ensure_correction_ordering(predict(model, ds, dt))
+    output = ensure_correction_ordering(predict(model, ds))
     # rename dQxwind and dQywind to dQu and dQv if needed
     if "dQxwind" in output.keys():
         output["dQu"] = output.pop("dQxwind")
@@ -126,9 +128,8 @@ def get_ML_correction_sfc_fluxes(
     cos_zenith,
     lat,
     phis,
-    sfc_alb_dif_vis,
-    sw_flux_dn,
-    dt,
+    # sfc_alb_dif_vis,
+    # sw_flux_dn,
 ):    
     """Get ML correction for overriding surface fluxes (net shortwave and downward longwave)
     ML model should have the following output variables:
@@ -146,7 +147,7 @@ def get_ML_correction_sfc_fluxes(
         sw_flux_dn: downward shortwave flux
         dt: time step (s)
     """    
-    SW_flux_dn_at_model_top = sw_flux_dn[:, 0]
+    # SW_flux_dn_at_model_top = sw_flux_dn[:, 0]
     ds = xr.Dataset(
         data_vars=dict(
             T_mid=(["ncol", "z"], T_mid),
@@ -154,14 +155,14 @@ def get_ML_correction_sfc_fluxes(
             lat=(["ncol"], lat),
             surface_geopotential=(["ncol"], phis),
             cos_zenith_angle=(["ncol"], cos_zenith),
-            surface_diffused_shortwave_albedo=(["ncol"], sfc_alb_dif_vis),
-            total_sky_downward_shortwave_flux_at_top_of_atmosphere=(
-                ["ncol"],
-                SW_flux_dn_at_model_top,
-            ),
+            # surface_diffused_shortwave_albedo=(["ncol"], sfc_alb_dif_vis),
+            # total_sky_downward_shortwave_flux_at_top_of_atmosphere=(
+            #     ["ncol"],
+            #     SW_flux_dn_at_model_top,
+            # ),
         )
     )
-    return predict(model, ds, dt)
+    return predict(model, ds)
 
 
 def _get_cupy_from_gpu_ptr(ptr, shape, dtype_char):
@@ -186,8 +187,10 @@ def update_fields(
     lat,
     lon,
     phis,
-    sw_flux_dn,
-    sfc_alb_dif_vis,
+    sfc_flux_dir_nir,
+    sfc_flux_dir_vis,
+    sfc_flux_dif_nir,
+    sfc_flux_dif_vis,
     sfc_flux_sw_net,
     sfc_flux_lw_dn,
     Ncol,
@@ -228,8 +231,12 @@ def update_fields(
     lat = _get_cupy_from_gpu_ptr(lat, (Ncol,), field_dtype_char)
     lon = _get_cupy_from_gpu_ptr(lon, (Ncol,), field_dtype_char)
     phis = _get_cupy_from_gpu_ptr(phis, (Ncol,), field_dtype_char)
-    sw_flux_dn = _get_cupy_from_gpu_ptr(sw_flux_dn, (Ncol, Nlev+1), field_dtype_char)
-    sfc_alb_dif_vis = _get_cupy_from_gpu_ptr(sfc_alb_dif_vis, (Ncol,), field_dtype_char)
+    # sw_flux_dn = _get_cupy_from_gpu_ptr(sw_flux_dn, (Ncol, Nlev+1), field_dtype_char)
+    # sfc_alb_dif_vis = _get_cupy_from_gpu_ptr(sfc_alb_dif_vis, (Ncol,), field_dtype_char)
+    sfc_flux_dir_nir = _get_cupy_from_gpu_ptr(sfc_flux_dir_nir, (Ncol,), field_dtype_char)
+    sfc_flux_dir_vis = _get_cupy_from_gpu_ptr(sfc_flux_dir_vis, (Ncol,), field_dtype_char)
+    sfc_flux_dif_nir = _get_cupy_from_gpu_ptr(sfc_flux_dif_nir, (Ncol,), field_dtype_char)
+    sfc_flux_dif_vis = _get_cupy_from_gpu_ptr(sfc_flux_dif_vis, (Ncol,), field_dtype_char)
     sfc_flux_sw_net = _get_cupy_from_gpu_ptr(sfc_flux_sw_net, (Ncol,), field_dtype_char)
     sfc_flux_lw_dn = _get_cupy_from_gpu_ptr(sfc_flux_lw_dn, (Ncol,), field_dtype_char)
     current_datetime = datetime.datetime.strptime(current_time, "%Y-%m-%d %H:%M:%S")
@@ -279,12 +286,18 @@ def update_fields(
             cos_zenith,
             lat,
             phis,
-            sfc_alb_dif_vis,
-            sw_flux_dn,
-            dt,
+            # sfc_alb_dif_vis,
+            # sw_flux_dn,
         )
-        sfc_flux_sw_net[:] = correction_sfc_fluxes["net_shortwave_sfc_flux_via_transmissivity"].data
-        sfc_flux_lw_dn[:] = correction_sfc_fluxes["override_for_time_adjusted_total_sky_downward_longwave_flux_at_surface"].data
+        # sfc_flux_sw_net[:] = correction_sfc_fluxes["net_shortwave_sfc_flux_via_transmissivity"].data
+        # sfc_flux_lw_dn[:] = correction_sfc_fluxes["override_for_time_adjusted_total_sky_downward_longwave_flux_at_surface"].data
+        sfc_flux_dir_nir[:] = correction_sfc_fluxes["sfc_flux_dir_nir"].data
+        sfc_flux_dir_vis[:] = correction_sfc_fluxes["sfc_flux_dir_vis"].data
+        sfc_flux_dif_nir[:] = correction_sfc_fluxes["sfc_flux_dif_nir"].data
+        sfc_flux_dif_vis[:] = correction_sfc_fluxes["sfc_flux_dif_vis"].data
+        sfc_flux_sw_net[:] = correction_sfc_fluxes["sfc_flux_sw_net"].data
+        sfc_flux_lw_dn[:] = correction_sfc_fluxes["sfc_flux_lw_dn"].data
+
     end = time.time()
     logger.info(
         "ML correction python timing (seconds):  {total: "
