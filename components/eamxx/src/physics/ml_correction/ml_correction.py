@@ -261,7 +261,6 @@ def update_fields(
     
     if model_tq is not None:
         correction_tq = get_ML_correction_dQ1_dQ2(
-            model_tq,
             model_tq, 
             T_mid, 
             qv_0, 
