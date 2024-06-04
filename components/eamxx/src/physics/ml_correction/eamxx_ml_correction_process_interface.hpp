@@ -42,10 +42,16 @@ class MLCorrection : public AtmosphereProcess {
   // Set the grid
   void set_grids(const std::shared_ptr<const GridsManager> grids_manager);
 
+#ifndef KOKKOS_ENABLE_CUDA
+  // Cuda requires methods enclosing __device__ lambda's to be public
+ protected:
+#endif
+
+  void run_impl(const double dt);
+
  protected:
   // The three main overrides for the subcomponent
   void initialize_impl(const RunType run_type);
-  void run_impl(const double dt);
   void finalize_impl();
   void apply_tendency(Field& base, const Field& next, const int dt);
 
