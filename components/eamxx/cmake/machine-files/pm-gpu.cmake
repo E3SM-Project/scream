@@ -18,10 +18,10 @@ endif()
 
 include (${EKAT_MACH_FILES_PATH}/mpi/srun.cmake)
 
-set(PYBIND11_PYTHON_VERSION 3.8 CACHE STRING "")
-set(Python_EXECUTABLE /pscratch/sd/a/andrep/conda_venvs/fv3net-local/bin/python CACHE STRING "" FORCE)
-set(PYTHON_EXECUTABLE /pscratch/sd/a/andrep/conda_venvs/fv3net-local/bin/python CACHE STRING "" FORCE)
-set(Python_INCLUDE_DIRS /pscratch/sd/a/andrep/conda_venvs/fv3net-local/include/python3.9 CACHE STRING "" FORCE)
+set(PYBIND11_PYTHON_VERSION 3.9 CACHE STRING "")
+set(Python_EXECUTABLE /global/common/software/m4492/fv3net-shared-py39/bin/python CACHE STRING "" FORCE)
+set(PYTHON_EXECUTABLE /global/common/software/m4492/fv3net-shared-py39/bin/python CACHE STRING "" FORCE)
+set(Python_INCLUDE_DIRS /global/common/software/m4492/fv3net-shared-py39/include/python3.9 CACHE STRING "" FORCE)
 option (SCREAM_ENABLE_ML_CORRECTION "Whether to enable ML correction parametrization" ON)
 set(EKAT_MPI_EXTRA_ARGS "${EKAT_MPI_EXTRA_ARGS} --gpus-per-task=1" CACHE STRING "" FORCE)
 
