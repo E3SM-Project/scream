@@ -89,8 +89,8 @@ void MLCorrection::initialize_impl(const RunType /* run_type */) {
 
   // Enforce bounds on quantities adjusted by ML using Field Property Checks
   using LowerBound = FieldLowerBoundCheck;
-  add_postcondition_check<LowerBound>(get_field_out("precip_liq_surf_mass"),m_grid,0);
-  add_postcondition_check<LowerBound>(get_field_out("precip_ice_surf_mass"),m_grid,0);
+  add_postcondition_check<LowerBound>(get_field_out("precip_liq_surf_mass"),m_grid,0,true);
+  add_postcondition_check<LowerBound>(get_field_out("precip_ice_surf_mass"),m_grid,0,true);
   // Add sanity property check for other variables.
   using Interval = FieldWithinIntervalCheck;
   add_postcondition_check<Interval>(get_field_out("qv"),m_grid,0,0.2,true);
@@ -189,20 +189,20 @@ void MLCorrection::run_impl(const double dt) {
      using KT  = KokkosTypes<DefaultDevice>;
      using MT  = typename KT::MemberType;
      using ESU = ekat::ExeSpaceUtils<typename KT::ExeSpace>;
-     const auto &pseudo_density       = get_field_in("pseudo_density").get_view<const Real**>();
-     const auto &precip_liq_surf_mass = get_field_out("precip_liq_surf_mass").get_view<Real *>();
-     const auto &precip_ice_surf_mass = get_field_out("precip_ice_surf_mass").get_view<Real *>();
+     const auto &pseudo_density       = get_field_in("pseudo_density").get_view<const Real**, Device>();
+     const auto &precip_liq_surf_mass = get_field_out("precip_liq_surf_mass").get_view<Real *, Device>();
+     const auto &precip_ice_surf_mass = get_field_out("precip_ice_surf_mass").get_view<Real *, Device>();
      constexpr Real g = PC::gravit;
      const auto num_levs = m_num_levs;
      const auto policy = ESU::get_default_team_policy(m_num_cols, m_num_levs);
   
-     const auto &qv_told = qv_in.get_view<const Real **>();
+     const auto &qv_told = qv_in.get_view<const Real **, Device>();
      Kokkos::parallel_for("Compute WVP diff", policy,
                           KOKKOS_LAMBDA(const MT& team) {
        const int icol = team.league_rank();
        auto qold_icol = ekat::subview(qv_told,icol);
        auto qnew_icol = ekat::subview(qv_dev,icol);
-       auto dp_icol  = ekat::subview(pseudo_density,icol);
+       auto dp_icol   = ekat::subview(pseudo_density,icol);
        Real net_column_moistening = 0;
        // Compute WaterVaporPath Difference
        // The water vapor path (WVP) is calculated as the integral of d_qv over the vertical column
@@ -217,7 +217,7 @@ void MLCorrection::run_impl(const double dt) {
        Kokkos::parallel_reduce(Kokkos::TeamVectorRange(team, num_levs),
                                [&] (const int& ilev, Real& lsum) {
          lsum += (qnew_icol(ilev)-qold_icol(ilev)) * dp_icol(ilev) / g;
-       },net_column_moistening);
+       },Kokkos::Sum<Real>(net_column_moistening));
        team.team_barrier();
        // Adjust Precipitation
        //  - Note, we subtract the water vapor path because a descrease in qv reflects positive
@@ -235,7 +235,7 @@ void MLCorrection::run_impl(const double dt) {
          // Apply all the adjustment to a single phase based on surface temperature
          Kokkos::single(Kokkos::PerTeam(team), [&] {
            auto T_icol = ekat::subview(T_mid_dev,icol);
-           if (T_icol(m_num_levs-1)>273.15) {
+           if (T_icol(num_levs-1)>273.15) {
              precip_liq_surf_mass(icol) -= net_column_moistening;
            } else {
              precip_ice_surf_mass(icol) -= net_column_moistening;
@@ -256,6 +256,7 @@ void MLCorrection::run_impl(const double dt) {
 //       }
      });
    }
+
 
   // End timing
   auto end = std::chrono::high_resolution_clock::now();
