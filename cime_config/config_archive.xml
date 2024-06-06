@@ -29,7 +29,19 @@
     <rest_file_extension>r\.(INSTANT|AVERAGE|MAX|MIN)\.n(step|sec|min|hour|day|month|year)s_x\d*</rest_file_extension>
     <rest_file_extension>rhist\.(INSTANT|AVERAGE|MAX|MIN)\.n(step|sec|min|hour|day|month|year)s_x\d*</rest_file_extension>
     <!-- The following matches "hi.AVGTYPE.FREQUNITS_xFREQ.TIMESTAMP.nc"-->
+    <!-- what's the "hi" for? I don't think we follow that convention (maybe we should?) -->
     <hist_file_extension>hi\.(INSTANT|AVERAGE|MAX|MIN)\.n(step|sec|min|hour|day|month|year)s_x\d*\.\d{4}-\d{2}-\d{2}-\d{5}\.nc$</hist_file_extension>
+    <!-- The following will actually match all files produced by EAMxx IO, which may prove problematic; need some testing -->
+    <hist_file_extension>\.(INSTANT|AVERAGE|MAX|MIN)\.n(step|sec|min|hour|day|month|year)s_x\d*\.\d{4}-\d{2}-\d{2}-\d{5}\.nc$</hist_file_extension>
+    <!-- I think we likely need this: https://github.com/E3SM-Project/E3SM/issues/4615 -->
+    <rest_history_varname>nhfil</rest_history_varname>
+    <rpointer>
+      <rpointer_file>rpointer.atm$NINST_STRING</rpointer_file>
+      <!-- Currently a period and a slash exist in rpointer.atm in EAMxx cases -->
+      <rpointer_content>./$CASE.scream$NINST_STRING.r.$DATENAME.nc </rpointer_content>
+      <!-- Note that unlike EAMf90, EAMxx relies on the availability of rhist files to store metadata (so may need more stuff in here?)-->
+    </rpointer>
+    <!-- TODO: Add a test while at it like all other components? -->
   </comp_archive_spec>
 
   <comp_archive_spec compname="elm" compclass="lnd">
