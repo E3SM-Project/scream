@@ -97,6 +97,7 @@ option (Kokkos_ENABLE_SERIAL "" ON)
 set (EAMXX_ENABLE_GPU FALSE CACHE BOOL "")
 set (CUDA_BUILD FALSE CACHE BOOL "") #needed for yakl if kokkos vars are not visible there?
 set (HIP_BUILD FALSE CACHE BOOL "") #needed for yakl if kokkos vars are not visible there?
+set (SYCL_BUILD FALSE CACHE BOOL "") #needed for yakl if kokkos vars are not visible there?
 
 # Determine if this is a Cuda build.
 if (Kokkos_ENABLE_CUDA)
@@ -106,12 +107,19 @@ if (Kokkos_ENABLE_CUDA)
   set (CUDA_BUILD TRUE CACHE BOOL "" FORCE) #needed for yakl if kokkos vars are not visible there?
 endif ()
 
-# Determine if this is a Cuda build.
+# Determine if this is a HIP build.
 if (Kokkos_ENABLE_HIP)
   # Add CUDA as a language for CUDA builds
   enable_language(HIP)
   set (EAMXX_ENABLE_GPU TRUE CACHE BOOL "" FORCE)
   set (HIP_BUILD TRUE CACHE BOOL "" FORCE) #needed for yakl if kokkos vars are not visible there?
+endif ()
+
+# Determine if this is a sycl build.
+if (Kokkos_ENABLE_SYCL)
+  #enable_language(SYCL)
+  set (EAMXX_ENABLE_GPU TRUE CACHE BOOL "" FORCE)
+  set (SYCL_BUILD TRUE CACHE BOOL "" FORCE) #needed for yakl if kokkos vars are not visible there?
 endif ()
 
 if( NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "[Cc]lang" )
@@ -178,7 +186,7 @@ elseif(MACH)
 endif()
 
 set(DEFAULT_SMALL_KERNELS FALSE)
-if (Kokkos_ENABLE_HIP)
+if (Kokkos_ENABLE_HIP OR Kokkos_ENABLE_SYCL)
   set(DEFAULT_SMALL_KERNELS TRUE)
 endif()
 
@@ -552,6 +560,26 @@ if (SCREAM_DOUBLE_PRECISION)
   endif()
 endif()
 
+#print_var(SCREAM_MACHINE)
+#print_var(EAMXX_ENABLE_GPU)
+#print_var(CUDA_BUILD)
+#print_var(HIP_BUILD)
+#print_var(SYCL_BUILD)
+#print_var(SCREAM_DOUBLE_PRECISION)
+#print_var(SCREAM_MIMIC_GPU)
+#print_var(SCREAM_FPE)
+#print_var(SCREAM_NUM_VERTICAL_LEV)
+#print_var(SCREAM_PACK_SIZE)
+#print_var(SCREAM_SMALL_PACK_SIZE)
+#print_var(SCREAM_POSSIBLY_NO_PACK_SIZE)
+#print_var(SCREAM_LINK_FLAGS)
+#print_var(SCREAM_FPMODEL)
+#print_var(SCREAM_LIB_ONLY)
+#print_var(SCREAM_TPL_LIBRARIES)
+#print_var(SCREAM_TEST_MAX_THREADS)
+#print_var(SCREAM_TEST_THREAD_INC)
+#print_var(SCREAM_TEST_MAX_RANKS)
+
 # This must be done using add_definitions because it is used to determine
 # whether to include scream_config.h.
 add_definitions(-DSCREAM_CONFIG_IS_CMAKE)
@@ -604,28 +632,28 @@ message ("*       Summary of EAMxx config settings         *")
 message ("**************************************************")
 
 # Shortcut function, to print a variable
-function (print_var var)
-  message ("${var}: ${${var}}")
-endfunction ()
+#function (print_var var)
+#  message ("${var}: ${${var}}")
+#endfunction ()
 
-print_var(EAMXX_ENABLE_GPU)
-print_var(CUDA_BUILD)
-print_var(HIP_BUILD)
-print_var(SCREAM_MACHINE)
-print_var(SCREAM_DYNAMICS_DYCORE)
-print_var(SCREAM_DOUBLE_PRECISION)
-print_var(SCREAM_MIMIC_GPU)
-print_var(SCREAM_FPE)
-print_var(SCREAM_NUM_VERTICAL_LEV)
-print_var(SCREAM_PACK_SIZE)
-print_var(SCREAM_SMALL_PACK_SIZE)
-print_var(SCREAM_POSSIBLY_NO_PACK_SIZE)
-print_var(SCREAM_LINK_FLAGS)
-print_var(SCREAM_FPMODEL)
-print_var(SCREAM_LIB_ONLY)
-print_var(SCREAM_TPL_LIBRARIES)
-print_var(SCREAM_TEST_MAX_THREADS)
-print_var(SCREAM_TEST_THREAD_INC)
-print_var(SCREAM_TEST_MAX_RANKS)
+#print_var(EAMXX_ENABLE_GPU)
+#print_var(CUDA_BUILD)
+#print_var(HIP_BUILD)
+#print_var(SCREAM_MACHINE)
+#print_var(SCREAM_DYNAMICS_DYCORE)
+#print_var(SCREAM_DOUBLE_PRECISION)
+#print_var(SCREAM_MIMIC_GPU)
+#print_var(SCREAM_FPE)
+#print_var(SCREAM_NUM_VERTICAL_LEV)
+#print_var(SCREAM_PACK_SIZE)
+#print_var(SCREAM_SMALL_PACK_SIZE)
+#print_var(SCREAM_POSSIBLY_NO_PACK_SIZE)
+#print_var(SCREAM_LINK_FLAGS)
+#print_var(SCREAM_FPMODEL)
+#print_var(SCREAM_LIB_ONLY)
+#print_var(SCREAM_TPL_LIBRARIES)
+#print_var(SCREAM_TEST_MAX_THREADS)
+#print_var(SCREAM_TEST_THREAD_INC)
+#print_var(SCREAM_TEST_MAX_RANKS)
 
 message ("**************************************************")

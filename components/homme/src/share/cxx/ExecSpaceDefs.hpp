@@ -31,6 +31,10 @@ using HommexxGPU = Kokkos::Cuda;
 using HommexxGPU = Kokkos::Experimental::HIP;
 #endif
 
+#ifdef KOKKOS_ENABLE_SYCL
+using HommexxGPU = Kokkos::Experimental::SYCL;
+#endif
+
 #else
 using HommexxGPU = void;
 #endif
@@ -60,6 +64,12 @@ using Hommexx_Serial = void;
 #else
 # define HOMMEXX_STATIC static
 #endif
+
+
+// a hack to have a cpu build without rebuilding kokkos
+//#define HOMMEXX_SERIAL_SPACE
+
+
 
 // Selecting the execution space. If no specific request, use Kokkos default
 // exec space
