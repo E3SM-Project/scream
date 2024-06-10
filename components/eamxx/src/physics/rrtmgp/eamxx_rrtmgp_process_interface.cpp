@@ -433,6 +433,8 @@ void RRTMGPRadiation::init_buffers(const ATMBufferManager &buffer_manager)
   // 2d arrays
   m_buffer.z_del_k = decltype(m_buffer.z_del_k)(mem, m_col_chunk_size, m_nlay);
   mem += m_buffer.z_del_k.size();
+  m_buffer.cldfrac_tot_k = decltype(m_buffer.cldfrac_tot_k)(mem, m_col_chunk_size, m_nlay);
+  mem += m_buffer.cldfrac_tot_k.size();
   m_buffer.tmp2d_k = decltype(m_buffer.tmp2d_k)(mem, m_col_chunk_size, m_nlay);
   mem += m_buffer.tmp2d_k.size();
   m_buffer.lwp_k = decltype(m_buffer.lwp_k)(mem, m_col_chunk_size, m_nlay);

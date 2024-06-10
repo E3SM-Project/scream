@@ -980,7 +980,7 @@ static view_t<int***> get_subcolumn_mask(const int ncol, const int nlay, const i
     // Kokkos::deep_copy(seeds_host, seeds);
     // for (int icol = 0; icol < ncol; ++icol) {
     //   Kokkos::Random_XorShift64_Pool<> random_pool(seeds_host(icol));
-    //   Kokkos::parallel_for(conv::get_mdrp<2>({ngpt, nlay}), KOKKOS_LAMBDA(int igpt, int ilay) {
+    //   Kokkos::parallel_for(MDRP::template get<2>({ngpt, nlay}), KOKKOS_LAMBDA(int igpt, int ilay) {
     //     auto generator = random_pool.get_state();
     //     cldx(icol,ilay,igpt) = generator.drand(0., 1.);
     //     random_pool.free_state(generator);
@@ -996,7 +996,7 @@ static view_t<int***> get_subcolumn_mask(const int ncol, const int nlay, const i
     });
 
     // Step down columns and apply algorithm from eq (14)
-    Kokkos::parallel_for(conv::get_mdrp<2>({ngpt,ncol}), KOKKOS_LAMBDA(int igpt, int icol) {
+    Kokkos::parallel_for(MDRP::template get<2>({ngpt,ncol}), KOKKOS_LAMBDA(int igpt, int icol) {
       for (int ilay = 1; ilay < nlay; ilay++) {
         // Check cldx in level above and see if it satisfies conditions to create a cloudy subcolumn
         if (cldx(icol,ilay-1,igpt) > 1.0 - cldf(icol,ilay-1)) {
@@ -1016,7 +1016,7 @@ static view_t<int***> get_subcolumn_mask(const int ncol, const int nlay, const i
   }
 
   // Use cldx array to create subcolumn mask
-  Kokkos::parallel_for(conv::get_mdrp<3>({ngpt,nlay,ncol}), KOKKOS_LAMBDA(int igpt, int ilay, int icol) {
+  Kokkos::parallel_for(MDRP::template get<3>({ngpt,nlay,ncol}), KOKKOS_LAMBDA(int igpt, int ilay, int icol) {
     if (cldx(icol,ilay,igpt) > 1.0 - cldf(icol,ilay)) {
       subcolumn_mask(icol,ilay,igpt) = 1;
     } else {
@@ -1382,7 +1382,7 @@ static OpticalProps1sclK<RealT, LayoutT, DeviceT> get_subsampled_clouds(
   auto cldmask = get_subcolumn_mask(ncol, nlay, ngpt, cldfrac_rad, overlap, seeds);
   // Assign optical properties to subcolumns (note this implements MCICA)
   auto gpoint_bands = kdist.get_gpoint_bands();
-  Kokkos::parallel_for(conv::get_mdrp<3>({ngpt,nlay,ncol}), KOKKOS_LAMBDA(int igpt, int ilay, int icol) {
+  Kokkos::parallel_for(MDRP::template get<3>({ngpt,nlay,ncol}), KOKKOS_LAMBDA(int igpt, int ilay, int icol) {
       auto ibnd = gpoint_bands(igpt);
       if (cldmask(icol,ilay,igpt) == 1) {
         subsampled_optics.tau(icol,ilay,igpt) = cloud_optics.tau(icol,ilay,ibnd);
