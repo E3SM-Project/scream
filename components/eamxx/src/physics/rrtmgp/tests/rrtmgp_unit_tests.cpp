@@ -1082,7 +1082,7 @@ TEST_CASE("rrtmgp_test_compute_broadband_surface_flux_k") {
 
   // Need to initialize RRTMGP with dummy gases
   logger->info("Init gases...\n");
-  GasConcsK gas_concs;
+  GasConcsK<scream::Real, Kokkos::LayoutRight, DefaultDevice> gas_concs;
   string1dv gas_names = {"h2o", "co2", "o3", "n2o", "co", "ch4", "o2", "n2"};
   gas_concs.init(gas_names,ncol,nlay);
   logger->info("Init RRTMGP...\n");

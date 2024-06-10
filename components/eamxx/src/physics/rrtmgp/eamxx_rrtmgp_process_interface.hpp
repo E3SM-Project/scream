@@ -172,16 +172,8 @@ public:
     real2d lw_heating;
 #endif
 #ifdef RRTMGP_ENABLE_KOKKOS
-    ureal2dk p_lay_k;
-    ureal2dk t_lay_k;
     ureal2dk z_del_k;
-    ureal2dk p_del_k;
-    ureal2dk qc_k;
-    ureal2dk nc_k;
-    ureal2dk qi_k;
     ureal2dk cldfrac_tot_k;
-    ureal2dk eff_radius_qc_k;
-    ureal2dk eff_radius_qi_k;
     ureal2dk tmp2d_k;
     ureal2dk lwp_k;
     ureal2dk iwp_k;

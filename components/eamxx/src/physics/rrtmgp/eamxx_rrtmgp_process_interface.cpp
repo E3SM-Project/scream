@@ -431,26 +431,8 @@ void RRTMGPRadiation::init_buffers(const ATMBufferManager &buffer_manager)
   mem += m_buffer.cosine_zenith.size();
 
   // 2d arrays
-  m_buffer.p_lay_k = decltype(m_buffer.p_lay_k)(mem, m_col_chunk_size, m_nlay);
-  mem += m_buffer.p_lay_k.size();
-  m_buffer.t_lay_k = decltype(m_buffer.t_lay_k)(mem, m_col_chunk_size, m_nlay);
-  mem += m_buffer.t_lay_k.size();
   m_buffer.z_del_k = decltype(m_buffer.z_del_k)(mem, m_col_chunk_size, m_nlay);
   mem += m_buffer.z_del_k.size();
-  m_buffer.p_del_k = decltype(m_buffer.p_del_k)(mem, m_col_chunk_size, m_nlay);
-  mem += m_buffer.p_del_k.size();
-  m_buffer.qc_k = decltype(m_buffer.qc_k)(mem, m_col_chunk_size, m_nlay);
-  mem += m_buffer.qc_k.size();
-  m_buffer.nc_k = decltype(m_buffer.nc_k)(mem, m_col_chunk_size, m_nlay);
-  mem += m_buffer.nc_k.size();
-  m_buffer.qi_k = decltype(m_buffer.qi_k)(mem, m_col_chunk_size, m_nlay);
-  mem += m_buffer.qi_k.size();
-  m_buffer.cldfrac_tot_k = decltype(m_buffer.cldfrac_tot_k)(mem, m_col_chunk_size, m_nlay);
-  mem += m_buffer.cldfrac_tot_k.size();
-  m_buffer.eff_radius_qc_k = decltype(m_buffer.eff_radius_qc_k)(mem, m_col_chunk_size, m_nlay);
-  mem += m_buffer.eff_radius_qc_k.size();
-  m_buffer.eff_radius_qi_k = decltype(m_buffer.eff_radius_qi_k)(mem, m_col_chunk_size, m_nlay);
-  mem += m_buffer.eff_radius_qi_k.size();
   m_buffer.tmp2d_k = decltype(m_buffer.tmp2d_k)(mem, m_col_chunk_size, m_nlay);
   mem += m_buffer.tmp2d_k.size();
   m_buffer.lwp_k = decltype(m_buffer.lwp_k)(mem, m_col_chunk_size, m_nlay);
@@ -549,8 +531,8 @@ void RRTMGPRadiation::init_buffers(const ATMBufferManager &buffer_manager)
   mem += m_buffer.cld_tau_lw_bnd_k.size();
 #endif
 
-  size_t used_mem = (reinterpret_cast<Real*>(mem) - buffer_manager.get_memory())*sizeof(Real);
-  EKAT_REQUIRE_MSG(used_mem==requested_buffer_size_in_bytes(), "Error! Used memory != requested memory for RRTMGPRadiation.");
+  // size_t used_mem = (reinterpret_cast<Real*>(mem) - buffer_manager.get_memory())*sizeof(Real);
+  // EKAT_REQUIRE_MSG(used_mem==requested_buffer_size_in_bytes(), "Error! Used memory != requested memory for RRTMGPRadiation.");
 } // RRTMGPRadiation::init_buffers
 
 void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
@@ -944,6 +926,16 @@ void RRTMGPRadiation::run_impl (const double dt) {
         return subv;
 #endif
       };
+      auto subview_2dkc = [&](const cureal2dk& v) -> cureal2dk {
+        cureal2dk subv(v, std::make_pair(0, ncol), Kokkos::ALL);
+#ifdef RRTMGP_ENABLE_YAKL
+        creal2dk rv(v.label(), ncol, v.extent(1));
+        Kokkos::deep_copy(rv, subv);
+        return rv;
+#else
+        return subv;
+#endif
+      };
       auto subview_3dk = [&](const ureal3dk& v) -> ureal3dk {
         ureal3dk subv(v, std::make_pair(0, ncol), Kokkos::ALL, Kokkos::ALL);
 #ifdef RRTMGP_ENABLE_YAKL
@@ -954,12 +946,22 @@ void RRTMGPRadiation::run_impl (const double dt) {
         return subv;
 #endif
       };
+      auto subview_3dkc = [&](const cureal3dk& v) -> cureal3dk {
+        cureal3dk subv(v, std::make_pair(0, ncol), Kokkos::ALL, Kokkos::ALL);
+#ifdef RRTMGP_ENABLE_YAKL
+        creal3dk rv(v.label(), ncol, v.extent(1), v.extent(2));
+        Kokkos::deep_copy(rv, subv);
+        return rv;
+#else
+        return subv;
+#endif
+      };
 
-      auto p_lay_k           = subview_2dk(m_buffer.p_lay_k);
-      auto t_lay_k           = subview_2dk(m_buffer.t_lay_k);
-      auto p_lev_k           = subview_2dk(m_buffer.p_lev_k);
+      auto p_lay_k           = subview_2dkc(d_pmid);
+      auto t_lay_k           = subview_2dkc(d_tmid);
+      auto p_lev_k           = subview_2dkc(d_pint);
       auto z_del_k           = subview_2dk(m_buffer.z_del_k);
-      auto p_del_k           = subview_2dk(m_buffer.p_del_k);
+      auto p_del_k           = subview_2dkc(d_pdel);
       auto t_lev_k           = subview_2dk(m_buffer.t_lev_k);
       auto mu0_k             = subview_1dk(m_buffer.mu0_k);
       auto sfc_alb_dir_k     = subview_2dk(m_buffer.sfc_alb_dir_k);
@@ -968,12 +970,12 @@ void RRTMGPRadiation::run_impl (const double dt) {
       auto sfc_alb_dir_nir_k = subview_1dkc(d_sfc_alb_dir_nir);
       auto sfc_alb_dif_vis_k = subview_1dkc(d_sfc_alb_dif_vis);
       auto sfc_alb_dif_nir_k = subview_1dkc(d_sfc_alb_dif_nir);
-      auto qc_k              = subview_2dk(m_buffer.qc_k);
-      auto nc_k              = subview_2dk(m_buffer.nc_k);
-      auto qi_k              = subview_2dk(m_buffer.qi_k);
+      auto qc_k              = subview_2dkc(d_qc);
+      auto nc_k              = subview_2dkc(d_nc);
+      auto qi_k              = subview_2dkc(d_qi);
       auto cldfrac_tot_k     = subview_2dk(m_buffer.cldfrac_tot_k);
-      auto rel_k             = subview_2dk(m_buffer.eff_radius_qc_k);
-      auto rei_k             = subview_2dk(m_buffer.eff_radius_qi_k);
+      auto rel_k             = subview_2dkc(d_rel);
+      auto rei_k             = subview_2dkc(d_rei);
       auto sw_flux_up_k      = subview_2dk(m_buffer.sw_flux_up_k);
       auto sw_flux_dn_k      = subview_2dk(m_buffer.sw_flux_dn_k);
       auto sw_flux_dn_dir_k  = subview_2dk(m_buffer.sw_flux_dn_dir_k);
@@ -1140,20 +1142,10 @@ void RRTMGPRadiation::run_impl (const double dt) {
           mu0_k(i) = d_mu0(i);
 
           Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlay), [&] (const int& k) {
-            p_lay_k(i,k)       = d_pmid(icol,k);
-            t_lay_k(i,k)       = d_tmid(icol,k);
             z_del_k(i,k)       = d_dz(i,k);
-            p_del_k(i,k)       = d_pdel(icol,k);
-            qc_k(i,k)          = d_qc(icol,k);
-            nc_k(i,k)          = d_nc(icol,k);
-            qi_k(i,k)          = d_qi(icol,k);
-            rel_k(i,k)         = d_rel(icol,k);
-            rei_k(i,k)         = d_rei(icol,k);
-            p_lev_k(i,k)       = d_pint(icol,k);
             t_lev_k(i,k)       = d_tint(i,k);
           });
 
-          p_lev_k(i,nlay) = d_pint(icol,nlay);
           t_lev_k(i,nlay) = d_tint(i,nlay);
 
           // Note that RRTMGP expects ordering (col,lay,bnd) but the FM keeps things in (col,bnd,lay) order

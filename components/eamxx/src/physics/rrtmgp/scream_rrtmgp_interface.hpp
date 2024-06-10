@@ -159,7 +159,7 @@ int get_wavelength_index_lw(double wavelength);
 
 // New interface for Kokkos and flexible types
 #ifdef RRTMGP_ENABLE_KOKKOS
-template <typename RealT=Real, typename LayoutT=Kokkos::LayoutLeft, typename DeviceT=DefaultDevice>
+template <typename RealT=Real, typename LayoutT=Kokkos::LayoutRight, typename DeviceT=DefaultDevice>
 struct rrtmgp_interface {
 
 using MDRP = typename conv::MDRP<LayoutT>;

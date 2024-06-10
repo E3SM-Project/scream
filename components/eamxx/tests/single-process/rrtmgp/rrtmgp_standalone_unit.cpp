@@ -422,6 +422,12 @@ TEST_CASE("rrtmgp_scream_standalone", "") {
 #endif
 #ifdef RRTMGP_ENABLE_KOKKOS
 TEST_CASE("rrtmgp_scream_standalone_k", "") {
+  using interface_t = scream::rrtmgp::rrtmgp_interface<>;
+  using utils_t = rrtmgpTest::rrtmgp_test_utils<>;
+  using real1dk = interface_t::view_t<Real*>;
+  using real2dk = interface_t::view_t<Real**>;
+  using real3dk = interface_t::view_t<Real***>;
+
   // Get baseline name (needs to be passed as an arg)
   std::string inputfile = ekat::TestSession::get().params.at("rrtmgp_inputfile");
   std::string baseline = ekat::TestSession::get().params.at("rrtmgp_baseline");
@@ -439,7 +445,7 @@ TEST_CASE("rrtmgp_scream_standalone_k", "") {
   real2dk sw_flux_dn_dir_ref;
   real2dk lw_flux_up_ref;
   real2dk lw_flux_dn_ref;
-  rrtmgpTest::read_fluxes(baseline, sw_flux_up_ref, sw_flux_dn_ref, sw_flux_dn_dir_ref, lw_flux_up_ref, lw_flux_dn_ref );
+  utils_t::read_fluxes(baseline, sw_flux_up_ref, sw_flux_dn_ref, sw_flux_dn_dir_ref, lw_flux_up_ref, lw_flux_dn_ref );
 
   // Load ad parameter list
   std::string fname = "input_unit.yaml";
@@ -530,7 +536,7 @@ TEST_CASE("rrtmgp_scream_standalone_k", "") {
   real2dk col_dry;
   read_atmos(inputfile, p_lay_all, t_lay_all, p_lev_all, t_lev_all, gas_concs, col_dry, ncol_all);
   // Setup dummy problem; need to use tmp arrays with ncol_all size
-  rrtmgpTest::dummy_atmos(
+  utils_t::dummy_atmos(
     inputfile, ncol_all, p_lay_all, t_lay_all,
     sfc_alb_dir_vis_all, sfc_alb_dir_nir_all,
     sfc_alb_dif_vis_all, sfc_alb_dif_nir_all,
@@ -730,11 +736,11 @@ TEST_CASE("rrtmgp_scream_standalone_k", "") {
     lw_flux_up_loc(icol,ilay) = lw_flux_up_ref(icol_all,ilay);
     lw_flux_dn_loc(icol,ilay) = lw_flux_dn_ref(icol_all,ilay);
   });
-  REQUIRE(rrtmgpTest::all_close(sw_flux_up_loc    , sw_flux_up_test    , 1.0));
-  REQUIRE(rrtmgpTest::all_close(sw_flux_dn_loc    , sw_flux_dn_test    , 1.0));
-  REQUIRE(rrtmgpTest::all_close(sw_flux_dn_dir_loc, sw_flux_dn_dir_test, 1.0));
-  REQUIRE(rrtmgpTest::all_close(lw_flux_up_loc    , lw_flux_up_test    , 1.0));
-  REQUIRE(rrtmgpTest::all_close(lw_flux_dn_loc    , lw_flux_dn_test    , 1.0));
+  REQUIRE(utils_t::all_close(sw_flux_up_loc    , sw_flux_up_test    , 1.0));
+  REQUIRE(utils_t::all_close(sw_flux_dn_loc    , sw_flux_dn_test    , 1.0));
+  REQUIRE(utils_t::all_close(sw_flux_dn_dir_loc, sw_flux_dn_dir_test, 1.0));
+  REQUIRE(utils_t::all_close(lw_flux_up_loc    , lw_flux_up_test    , 1.0));
+  REQUIRE(utils_t::all_close(lw_flux_dn_loc    , lw_flux_dn_test    , 1.0));
 
   // Finalize the driver. YAKL will be finalized inside
   // RRTMGPRadiation::finalize_impl after RRTMGP has had the
