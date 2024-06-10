@@ -20,9 +20,15 @@ public:
   using real1dk   = typename KT::template view_1d<Real>;
   using real2dk   = typename KT::template view_2d<Real>;
   using real3dk   = typename KT::template view_3d<Real>;
+  using creal1dk   = typename KT::template view_1d<const Real>;
+  using creal2dk   = typename KT::template view_2d<const Real>;
+  using creal3dk   = typename KT::template view_3d<const Real>;
   using ureal1dk  = Unmanaged<real1dk>;
   using ureal2dk  = Unmanaged<real2dk>;
   using ureal3dk  = Unmanaged<real3dk>;
+  using cureal1dk  = Unmanaged<creal1dk>;
+  using cureal2dk  = Unmanaged<creal2dk>;
+  using cureal3dk  = Unmanaged<creal3dk>;
 
   using ci_string = ekat::CaseInsensitiveString;
 
@@ -140,10 +146,6 @@ public:
 #endif
 #ifdef RRTMGP_ENABLE_KOKKOS
     ureal1dk mu0_k;
-    ureal1dk sfc_alb_dir_vis_k;
-    ureal1dk sfc_alb_dir_nir_k;
-    ureal1dk sfc_alb_dif_vis_k;
-    ureal1dk sfc_alb_dif_nir_k;
     ureal1dk sfc_flux_dir_vis_k;
     ureal1dk sfc_flux_dir_nir_k;
     ureal1dk sfc_flux_dif_vis_k;

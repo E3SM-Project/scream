@@ -419,14 +419,6 @@ void RRTMGPRadiation::init_buffers(const ATMBufferManager &buffer_manager)
   // 1d arrays
   m_buffer.mu0_k = decltype(m_buffer.mu0_k)(mem, m_col_chunk_size);
   mem += m_buffer.mu0_k.size();
-  m_buffer.sfc_alb_dir_vis_k = decltype(m_buffer.sfc_alb_dir_vis_k)(mem, m_col_chunk_size);
-  mem += m_buffer.sfc_alb_dir_vis_k.size();
-  m_buffer.sfc_alb_dir_nir_k = decltype(m_buffer.sfc_alb_dir_nir_k)(mem, m_col_chunk_size);
-  mem += m_buffer.sfc_alb_dir_nir_k.size();
-  m_buffer.sfc_alb_dif_vis_k = decltype(m_buffer.sfc_alb_dif_vis_k)(mem, m_col_chunk_size);
-  mem += m_buffer.sfc_alb_dif_vis_k.size();
-  m_buffer.sfc_alb_dif_nir_k = decltype(m_buffer.sfc_alb_dif_nir_k)(mem, m_col_chunk_size);
-  mem += m_buffer.sfc_alb_dif_nir_k.size();
   m_buffer.sfc_flux_dir_vis_k = decltype(m_buffer.sfc_flux_dir_vis_k)(mem, m_col_chunk_size);
   mem += m_buffer.sfc_flux_dir_vis_k.size();
   m_buffer.sfc_flux_dir_nir_k = decltype(m_buffer.sfc_flux_dir_nir_k)(mem, m_col_chunk_size);
@@ -848,11 +840,9 @@ void RRTMGPRadiation::run_impl (const double dt) {
                 "[RRTMGP::run_impl] Col chunk beg,end: " + std::to_string(beg) + ", " + std::to_string(beg+ncol) + "\n");
 
 
+#ifdef RRTMGP_ENABLE_YAKL
       // Create YAKL arrays. RRTMGP expects YAKL arrays with styleFortran, i.e., data has ncol
       // as the fastest index. For this reason we must copy the data.
-      // JGF: this doesn't appear to be copying the data, just returning a new array
-      // pointing to the same memory.
-#ifdef RRTMGP_ENABLE_YAKL
       auto subview_1d = [&](const real1d v) -> real1d {
         return real1d(v.label(),v.myData,ncol);
       };
@@ -923,8 +913,8 @@ void RRTMGPRadiation::run_impl (const double dt) {
 #endif
 #ifdef RRTMGP_ENABLE_KOKKOS
       // If YAKL is on, we don't want aliased memory in both the yakl and kokos
-      // subviews.
-      auto subview_1dk = [&](const ureal1dk v) -> ureal1dk {
+      // subviews, so make new views and deep_copy.
+      auto subview_1dk = [&](const ureal1dk& v) -> ureal1dk {
         ureal1dk subv(v, std::make_pair(0, ncol));
 #ifdef RRTMGP_ENABLE_YAKL
         real1dk rv(v.label(), ncol);
@@ -934,7 +924,17 @@ void RRTMGPRadiation::run_impl (const double dt) {
         return subv;
 #endif
       };
-      auto subview_2dk = [&](const ureal2dk v) -> ureal2dk {
+      auto subview_1dkc = [&](const cureal1dk& v) -> cureal1dk {
+        cureal1dk subv(v, std::make_pair(0, ncol));
+#ifdef RRTMGP_ENABLE_YAKL
+        creal1dk rv(v.label(), ncol);
+        Kokkos::deep_copy(rv, subv);
+        return rv;
+#else
+        return subv;
+#endif
+      };
+      auto subview_2dk = [&](const ureal2dk& v) -> ureal2dk {
         ureal2dk subv(v, std::make_pair(0, ncol), Kokkos::ALL);
 #ifdef RRTMGP_ENABLE_YAKL
         real2dk rv(v.label(), ncol, v.extent(1));
@@ -944,7 +944,7 @@ void RRTMGPRadiation::run_impl (const double dt) {
         return subv;
 #endif
       };
-      auto subview_3dk = [&](const ureal3dk v) -> ureal3dk {
+      auto subview_3dk = [&](const ureal3dk& v) -> ureal3dk {
         ureal3dk subv(v, std::make_pair(0, ncol), Kokkos::ALL, Kokkos::ALL);
 #ifdef RRTMGP_ENABLE_YAKL
         real3dk rv(v.label(), ncol, v.extent(1), v.extent(2));
@@ -964,10 +964,10 @@ void RRTMGPRadiation::run_impl (const double dt) {
       auto mu0_k             = subview_1dk(m_buffer.mu0_k);
       auto sfc_alb_dir_k     = subview_2dk(m_buffer.sfc_alb_dir_k);
       auto sfc_alb_dif_k     = subview_2dk(m_buffer.sfc_alb_dif_k);
-      auto sfc_alb_dir_vis_k = subview_1dk(m_buffer.sfc_alb_dir_vis_k);
-      auto sfc_alb_dir_nir_k = subview_1dk(m_buffer.sfc_alb_dir_nir_k);
-      auto sfc_alb_dif_vis_k = subview_1dk(m_buffer.sfc_alb_dif_vis_k);
-      auto sfc_alb_dif_nir_k = subview_1dk(m_buffer.sfc_alb_dif_nir_k);
+      auto sfc_alb_dir_vis_k = subview_1dkc(d_sfc_alb_dir_vis);
+      auto sfc_alb_dir_nir_k = subview_1dkc(d_sfc_alb_dir_nir);
+      auto sfc_alb_dif_vis_k = subview_1dkc(d_sfc_alb_dif_vis);
+      auto sfc_alb_dif_nir_k = subview_1dkc(d_sfc_alb_dif_nir);
       auto qc_k              = subview_2dk(m_buffer.qc_k);
       auto nc_k              = subview_2dk(m_buffer.nc_k);
       auto qi_k              = subview_2dk(m_buffer.qi_k);
@@ -1138,10 +1138,6 @@ void RRTMGPRadiation::run_impl (const double dt) {
 #endif
 #ifdef RRTMGP_ENABLE_KOKKOS
           mu0_k(i) = d_mu0(i);
-          sfc_alb_dir_vis_k(i) = d_sfc_alb_dir_vis(icol);
-          sfc_alb_dir_nir_k(i) = d_sfc_alb_dir_nir(icol);
-          sfc_alb_dif_vis_k(i) = d_sfc_alb_dif_vis(icol);
-          sfc_alb_dif_nir_k(i) = d_sfc_alb_dif_nir(icol);
 
           Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlay), [&] (const int& k) {
             p_lay_k(i,k)       = d_pmid(icol,k);
