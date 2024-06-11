@@ -2,6 +2,7 @@
 #define SCREAM_FIELD_ALLOC_PROP_HPP
 
 #include "share/field/field_layout.hpp"
+#include "share/util/scream_data_type.hpp"
 #include "share/scream_types.hpp"
 
 #include "ekat/ekat_scalar_traits.hpp"
@@ -85,7 +86,7 @@ public:
   using layout_type      = FieldLayout;
   using layout_ptr_type  = std::shared_ptr<const layout_type>;
 
-  FieldAllocProp (const int scalar_size);
+  FieldAllocProp (const DataType scalar_type);
   FieldAllocProp (const FieldAllocProp&) = default;
 
   FieldAllocProp& operator= (const FieldAllocProp&);
@@ -144,14 +145,15 @@ public:
 
 protected:
 
+  // The type and size of the scalar
+  DataType  m_scalar_type;
+  int       m_scalar_type_size;
+
   // The FieldLayout associated to this allocation
   layout_type     m_layout;
 
   // The list of requested value types for this allocation
   std::vector<int>    m_value_type_sizes;
-
-  // The size of the scalar type
-  int   m_scalar_type_size;
 
   // The largest pack size that was requested
   int   m_pack_size_max;
@@ -170,7 +172,7 @@ protected:
   bool  m_contiguous;
 
   // Whether commit was called (i.e., no more value type requests allowed)
-  bool  m_committed;
+  bool  m_committed = false;
 };
 
 // ================================= IMPLEMENTATION ================================== //

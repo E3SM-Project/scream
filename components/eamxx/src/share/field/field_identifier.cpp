@@ -9,7 +9,7 @@ FieldIdentifier (const std::string& name,
                  const layout_type& layout,
                  const Units& units,
                  const std::string& grid_name)
- : FieldIdentifier(name,layout,units,grid_name,DataType::RealType)
+ : FieldIdentifier(name,layout,units,grid_name,DataType::EnsembleReal)
 {
   // Nothing to do here
 }

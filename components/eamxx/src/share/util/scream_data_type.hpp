@@ -12,14 +12,18 @@ namespace scream
 
 // An enum for specifying fields data type
 enum class DataType {
-  Invalid    = 0,
-  IntType    = 1,
-  FloatType  = 2,
-  DoubleType = 3,
+  Invalid,
+  IntType,
+  FloatType,
+  DoubleType,
+  EnsembleDouble,
+  EnsembleFloat,
 #ifdef SCREAM_DOUBLE_PRECISION
-  RealType   = DoubleType
+  RealType     = DoubleType,
+  EnsembleReal = EnsembleDouble
 #else
-  RealType   = FloatType
+  RealType     = FloatType,
+  EnsembleReal = EnsembleFloat
 #endif
 };
 
@@ -39,16 +43,32 @@ DataType get_data_type () {
   return DataType::Invalid;
 }
 
+inline bool is_ensemble (const DataType data_type) {
+  switch (data_type) {
+    case DataType::IntType:         [[fallthrough]];
+    case DataType::FloatType:       [[fallthrough]];
+    case DataType::DoubleType:      [[fallthrough]];
+    case DataType::Invalid:         return false;
+    case DataType::EnsembleDouble:  [[fallthrough]];
+    case DataType::EnsembleFloat:   return true;
+    default:
+      EKAT_ERROR_MSG("Error! Unsupported DataType value.\n");
+  }
+}
+
+
 inline bool is_narrowing_conversion (const DataType from, const DataType to) {
   return (from==DataType::FloatType || from==DataType::DoubleType) && to==DataType::IntType;
 }
 
 inline std::string e2str (const DataType data_type) {
   switch (data_type) {
-    case DataType::IntType:    return "int";
-    case DataType::FloatType:  return "float";
-    case DataType::DoubleType: return "double";
-    case DataType::Invalid:    return "invalid";
+    case DataType::IntType:         return "int";
+    case DataType::FloatType:       return "float";
+    case DataType::DoubleType:      return "double";
+    case DataType::Invalid:         return "invalid";
+    case DataType::EnsembleDouble:  return "ensemble(double)";
+    case DataType::EnsembleFloat:   return "ensemble(float)";
     default:
       EKAT_ERROR_MSG("Error! Unsupported DataType value.\n");
   }
@@ -56,9 +76,11 @@ inline std::string e2str (const DataType data_type) {
 
 inline int get_type_size (const DataType data_type) {
   switch (data_type) {
-    case DataType::IntType:    return sizeof(int);
-    case DataType::FloatType:  return sizeof(float);
-    case DataType::DoubleType: return sizeof(double);
+    case DataType::IntType:         return sizeof(int);
+    case DataType::FloatType:       return sizeof(float);
+    case DataType::DoubleType:      return sizeof(double);
+    case DataType::EnsembleDouble:  return sizeof(double)*SCREAM_ENSEMBLE_SIZE;
+    case DataType::EnsembleFloat:   return sizeof(float)*SCREAM_ENSEMBLE_SIZE;
     default:
       EKAT_ERROR_MSG("Error! Unsupported DataType value.\n");
   }

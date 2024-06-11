@@ -19,6 +19,9 @@
 // How many levels to use for the vertical grid
 #define SCREAM_NUM_VERTICAL_LEV ${SCREAM_NUM_VERTICAL_LEV}
 
+// The size of ensembles
+#define SCREAM_ENSEMBLE_SIZE ${SCREAM_ENSEMBLE_SIZE}
+
 // Whether this is a CUDA/HIP build
 #cmakedefine EAMXX_ENABLE_GPU
 

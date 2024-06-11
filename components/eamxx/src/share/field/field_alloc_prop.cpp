@@ -2,13 +2,14 @@
 
 namespace scream {
 
-FieldAllocProp::FieldAllocProp (const int scalar_size)
- : m_layout           (FieldLayout::invalid())
- , m_value_type_sizes (1,scalar_size)
- , m_scalar_type_size (scalar_size)
+FieldAllocProp::
+FieldAllocProp (const DataType scalar_type)
+ : m_scalar_type      (scalar_type)
+ , m_scalar_type_size (get_type_size(scalar_type))
+ , m_layout           (FieldLayout::invalid())
+ , m_value_type_sizes (1,m_scalar_type_size)
  , m_pack_size_max    (1)
  , m_alloc_size       (0)
- , m_committed        (false)
 {
   // Nothing to do here
 }
@@ -44,7 +45,7 @@ subview (const int idim, const int k, const bool dynamic) const {
       "Error! Index along the dimension is out of bounds.\n");
 
   // Set new layout basic stuff
-  FieldAllocProp props(m_scalar_type_size);
+  FieldAllocProp props(m_scalar_type);
   props.m_committed = true;
   props.m_scalar_type_size = m_scalar_type_size;
   props.m_layout = m_layout.clone().strip_dim(idim);
@@ -78,6 +79,11 @@ subview (const int idim, const int k, const bool dynamic) const {
 }
 
 void FieldAllocProp::request_allocation (const int pack_size) {
+  if (is_ensemble(m_scalar_type)) {
+    // There won't be any packing along the field dimensions,
+    // since packs are already used for the ensemble dimension
+    return;
+  }
   using ekat::ScalarTraits;
 
   EKAT_REQUIRE_MSG(!m_committed,
@@ -135,15 +141,14 @@ void FieldAllocProp::commit (const layout_type& layout)
   // Store layout for future use (in case subview is called)
   m_layout = layout;
 
+  m_pack_size_max = 1;
+  m_last_extent = 0;
   if (m_layout.rank()==0) {
     // Zero-dimensional fields are supported. In this case allocate a single
     // scalar, but set the last extent to 0 since we have no dimension.
     m_alloc_size = m_scalar_type_size;
-    m_pack_size_max = 1;
-    m_last_extent = 0;
   } else {
     // Loop on all value type sizes.
-    m_last_extent = 0;
     int last_phys_extent = m_layout.dims().back();
     for (auto vts : m_value_type_sizes) {
       // The number of scalar_type in a value_type
