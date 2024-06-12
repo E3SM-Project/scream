@@ -205,26 +205,6 @@ public:
 #ifdef RRTMGP_ENABLE_KOKKOS
     ureal2dk p_lev_k;
     ureal2dk t_lev_k;
-    ureal2dk sw_flux_up_k;
-    ureal2dk sw_flux_dn_k;
-    ureal2dk sw_flux_dn_dir_k;
-    ureal2dk lw_flux_up_k;
-    ureal2dk lw_flux_dn_k;
-    ureal2dk sw_clnclrsky_flux_up_k;
-    ureal2dk sw_clnclrsky_flux_dn_k;
-    ureal2dk sw_clnclrsky_flux_dn_dir_k;
-    ureal2dk sw_clrsky_flux_up_k;
-    ureal2dk sw_clrsky_flux_dn_k;
-    ureal2dk sw_clrsky_flux_dn_dir_k;
-    ureal2dk sw_clnsky_flux_up_k;
-    ureal2dk sw_clnsky_flux_dn_k;
-    ureal2dk sw_clnsky_flux_dn_dir_k;
-    ureal2dk lw_clnclrsky_flux_up_k;
-    ureal2dk lw_clnclrsky_flux_dn_k;
-    ureal2dk lw_clrsky_flux_up_k;
-    ureal2dk lw_clrsky_flux_dn_k;
-    ureal2dk lw_clnsky_flux_up_k;
-    ureal2dk lw_clnsky_flux_dn_k;
 #endif
 
     // 3d size (ncol, nlay+1, nswbands)
