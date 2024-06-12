@@ -897,16 +897,6 @@ void RRTMGPRadiation::run_impl (const double dt) {
         return subv;
 #endif
       };
-      auto subview_3dkc = [&](const cureal3dk& v) -> cureal3dk {
-        cureal3dk subv(v, std::make_pair(0, ncol), Kokkos::ALL, Kokkos::ALL);
-#ifdef RRTMGP_ENABLE_YAKL
-        creal3dk rv(v.label(), ncol, v.extent(1), v.extent(2));
-        Kokkos::deep_copy(rv, subv);
-        return rv;
-#else
-        return subv;
-#endif
-      };
 
       auto p_lay_k           = subview_2dkc(d_pmid);
       auto t_lay_k           = subview_2dkc(d_tmid);
@@ -1114,18 +1104,10 @@ void RRTMGPRadiation::run_impl (const double dt) {
                 aero_tau_lw_k(i,k,b) = d_aero_tau_lw(icol,b,k);
             });
           } else {
-            Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nswbands*nlay), [&] (const int&idx) {
-                auto b = idx / nlay;
-                auto k = idx % nlay;
-                aero_tau_sw_k(i,k,b) = 0;
-                aero_ssa_sw_k(i,k,b) = 0;
-                aero_g_sw_k  (i,k,b) = 0;
-            });
-            Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlwbands*nlay), [&] (const int&idx) {
-                auto b = idx / nlay;
-                auto k = idx % nlay;
-                aero_tau_lw_k(i,k,b) = 0;
-            });
+            Kokkos::deep_copy(aero_tau_sw_k, 0);
+            Kokkos::deep_copy(aero_ssa_sw_k, 0);
+            Kokkos::deep_copy(aero_g_sw_k, 0);
+            Kokkos::deep_copy(aero_tau_lw_k, 0);
           }
 #endif
         });
