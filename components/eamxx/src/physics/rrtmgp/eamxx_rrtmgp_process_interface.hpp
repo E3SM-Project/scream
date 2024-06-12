@@ -146,10 +146,6 @@ public:
 #endif
 #ifdef RRTMGP_ENABLE_KOKKOS
     ureal1dk mu0_k;
-    ureal1dk sfc_flux_dir_vis_k;
-    ureal1dk sfc_flux_dir_nir_k;
-    ureal1dk sfc_flux_dif_vis_k;
-    ureal1dk sfc_flux_dif_nir_k;
 #endif
 
     // 2d size (ncol, nlay)
@@ -174,7 +170,6 @@ public:
 #ifdef RRTMGP_ENABLE_KOKKOS
     ureal2dk z_del_k;
     ureal2dk cldfrac_tot_k;
-    ureal2dk tmp2d_k;
     ureal2dk lwp_k;
     ureal2dk iwp_k;
     ureal2dk sw_heating_k;

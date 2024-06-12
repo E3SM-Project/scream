@@ -419,14 +419,6 @@ void RRTMGPRadiation::init_buffers(const ATMBufferManager &buffer_manager)
   // 1d arrays
   m_buffer.mu0_k = decltype(m_buffer.mu0_k)(mem, m_col_chunk_size);
   mem += m_buffer.mu0_k.size();
-  m_buffer.sfc_flux_dir_vis_k = decltype(m_buffer.sfc_flux_dir_vis_k)(mem, m_col_chunk_size);
-  mem += m_buffer.sfc_flux_dir_vis_k.size();
-  m_buffer.sfc_flux_dir_nir_k = decltype(m_buffer.sfc_flux_dir_nir_k)(mem, m_col_chunk_size);
-  mem += m_buffer.sfc_flux_dir_nir_k.size();
-  m_buffer.sfc_flux_dif_vis_k = decltype(m_buffer.sfc_flux_dif_vis_k)(mem, m_col_chunk_size);
-  mem += m_buffer.sfc_flux_dif_vis_k.size();
-  m_buffer.sfc_flux_dif_nir_k = decltype(m_buffer.sfc_flux_dif_nir_k)(mem, m_col_chunk_size);
-  mem += m_buffer.sfc_flux_dif_nir_k.size();
   m_buffer.cosine_zenith = decltype(m_buffer.cosine_zenith)(mem, m_col_chunk_size);
   mem += m_buffer.cosine_zenith.size();
 
@@ -435,8 +427,6 @@ void RRTMGPRadiation::init_buffers(const ATMBufferManager &buffer_manager)
   mem += m_buffer.z_del_k.size();
   m_buffer.cldfrac_tot_k = decltype(m_buffer.cldfrac_tot_k)(mem, m_col_chunk_size, m_nlay);
   mem += m_buffer.cldfrac_tot_k.size();
-  m_buffer.tmp2d_k = decltype(m_buffer.tmp2d_k)(mem, m_col_chunk_size, m_nlay);
-  mem += m_buffer.tmp2d_k.size();
   m_buffer.lwp_k = decltype(m_buffer.lwp_k)(mem, m_col_chunk_size, m_nlay);
   mem += m_buffer.lwp_k.size();
   m_buffer.iwp_k = decltype(m_buffer.iwp_k)(mem, m_col_chunk_size, m_nlay);
@@ -1004,10 +994,10 @@ void RRTMGPRadiation::run_impl (const double dt) {
       auto sw_bnd_flux_dif_k = subview_3dk(m_buffer.sw_bnd_flux_dif_k);
       auto lw_bnd_flux_up_k  = subview_3dk(m_buffer.lw_bnd_flux_up_k);
       auto lw_bnd_flux_dn_k  = subview_3dk(m_buffer.lw_bnd_flux_dn_k);
-      auto sfc_flux_dir_vis_k = subview_1dk(m_buffer.sfc_flux_dir_vis_k);
-      auto sfc_flux_dir_nir_k = subview_1dk(m_buffer.sfc_flux_dir_nir_k);
-      auto sfc_flux_dif_vis_k = subview_1dk(m_buffer.sfc_flux_dif_vis_k);
-      auto sfc_flux_dif_nir_k = subview_1dk(m_buffer.sfc_flux_dif_nir_k);
+      auto sfc_flux_dir_vis_k = subview_1dk(d_sfc_flux_dir_vis);
+      auto sfc_flux_dir_nir_k = subview_1dk(d_sfc_flux_dir_nir);
+      auto sfc_flux_dif_vis_k = subview_1dk(d_sfc_flux_dif_vis);
+      auto sfc_flux_dif_nir_k = subview_1dk(d_sfc_flux_dif_nir);
       auto aero_tau_sw_k     = subview_3dk(m_buffer.aero_tau_sw_k);
       auto aero_ssa_sw_k     = subview_3dk(m_buffer.aero_ssa_sw_k);
       auto aero_g_sw_k       = subview_3dk(m_buffer.aero_g_sw_k);
@@ -1195,9 +1185,6 @@ void RRTMGPRadiation::run_impl (const double dt) {
 #ifdef RRTMGP_ENABLE_YAKL
       real2d tmp2d = subview_2d(m_buffer.tmp2d);
 #endif
-#ifdef RRTMGP_ENABLE_KOKKOS
-      real2dk tmp2d_k = subview_2dk(m_buffer.tmp2d_k);
-#endif
       for (int igas = 0; igas < m_ngas; igas++) {
         auto name = m_gas_names[igas];
         auto full_name = name + "_volume_mix_ratio";
@@ -1205,22 +1192,21 @@ void RRTMGPRadiation::run_impl (const double dt) {
         // 'o3' is marked as 'Required' rather than 'Computed', so we need to get the proper field
         auto f = name=="o3" ? get_field_in(full_name) : get_field_out(full_name);
         auto d_vmr = f.get_view<const Real**>();
-
+#ifdef RRTMGP_ENABLE_YAKL
         // Copy to YAKL
         const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(ncol, m_nlay);
         Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
           const int i = team.league_rank();
           const int icol = i + beg;
           Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlay), [&] (const int& k) {
-#ifdef RRTMGP_ENABLE_YAKL
             tmp2d(i+1,k+1) = d_vmr(icol,k); // Note that for YAKL arrays i and k start with index 1
-#endif
-#ifdef RRTMGP_ENABLE_KOKKOS
-            tmp2d_k(i,k) = d_vmr(icol,k);
-#endif
           });
         });
         Kokkos::fence();
+#endif
+#ifdef RRTMGP_ENABLE_KOKKOS
+        auto tmp2d_k = subview_2dkc(d_vmr);
+#endif
 
         // Populate GasConcs object
 #ifdef RRTMGP_ENABLE_YAKL
@@ -1648,10 +1634,6 @@ void RRTMGPRadiation::run_impl (const double dt) {
       Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
         const int i = team.league_rank();
         const int icol = i + beg;
-        d_sfc_flux_dir_nir(icol) = sfc_flux_dir_nir_k(i);
-        d_sfc_flux_dir_vis(icol) = sfc_flux_dir_vis_k(i);
-        d_sfc_flux_dif_nir(icol) = sfc_flux_dif_nir_k(i);
-        d_sfc_flux_dif_vis(icol) = sfc_flux_dif_vis_k(i);
         d_sfc_flux_sw_net(icol)  = sw_flux_dn_k(i,kbot_k) - sw_flux_up_k(i,kbot_k);
         d_sfc_flux_lw_dn(icol)   = lw_flux_dn_k(i,kbot_k);
         Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlay+1), [&] (const int& k) {
