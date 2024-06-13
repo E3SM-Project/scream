@@ -417,14 +417,10 @@ void RRTMGPRadiation::init_buffers(const ATMBufferManager &buffer_manager)
   mem = reinterpret_cast<Real*>(buffer_manager.get_memory());
 
   // 1d arrays
-  m_buffer.mu0_k = decltype(m_buffer.mu0_k)(mem, m_col_chunk_size);
-  mem += m_buffer.mu0_k.size();
   m_buffer.cosine_zenith = decltype(m_buffer.cosine_zenith)(mem, m_col_chunk_size);
   mem += m_buffer.cosine_zenith.size();
 
   // 2d arrays
-  m_buffer.z_del_k = decltype(m_buffer.z_del_k)(mem, m_col_chunk_size, m_nlay);
-  mem += m_buffer.z_del_k.size();
   m_buffer.cldfrac_tot_k = decltype(m_buffer.cldfrac_tot_k)(mem, m_col_chunk_size, m_nlay);
   mem += m_buffer.cldfrac_tot_k.size();
   m_buffer.lwp_k = decltype(m_buffer.lwp_k)(mem, m_col_chunk_size, m_nlay);
@@ -435,10 +431,6 @@ void RRTMGPRadiation::init_buffers(const ATMBufferManager &buffer_manager)
   mem += m_buffer.sw_heating_k.size();
   m_buffer.lw_heating_k = decltype(m_buffer.lw_heating_k)(mem, m_col_chunk_size, m_nlay);
   mem += m_buffer.lw_heating_k.size();
-  m_buffer.p_lev_k = decltype(m_buffer.p_lev_k)(mem, m_col_chunk_size, m_nlay+1);
-  mem += m_buffer.p_lev_k.size();
-  m_buffer.t_lev_k = decltype(m_buffer.t_lev_k)(mem, m_col_chunk_size, m_nlay+1);
-  mem += m_buffer.t_lev_k.size();
   m_buffer.d_tint = decltype(m_buffer.d_tint)(mem, m_col_chunk_size, m_nlay+1);
   mem += m_buffer.d_tint.size();
   m_buffer.d_dz  = decltype(m_buffer.d_dz)(mem, m_col_chunk_size, m_nlay);
@@ -901,10 +893,7 @@ void RRTMGPRadiation::run_impl (const double dt) {
       auto p_lay_k           = subview_2dkc(d_pmid);
       auto t_lay_k           = subview_2dkc(d_tmid);
       auto p_lev_k           = subview_2dkc(d_pint);
-      auto z_del_k           = subview_2dk(m_buffer.z_del_k);
       auto p_del_k           = subview_2dkc(d_pdel);
-      auto t_lev_k           = subview_2dk(m_buffer.t_lev_k);
-      auto mu0_k             = subview_1dk(m_buffer.mu0_k);
       auto sfc_alb_dir_k     = subview_2dk(m_buffer.sfc_alb_dir_k);
       auto sfc_alb_dif_k     = subview_2dk(m_buffer.sfc_alb_dif_k);
       auto sfc_alb_dir_vis_k = subview_1dkc(d_sfc_alb_dir_vis);
@@ -958,7 +947,7 @@ void RRTMGPRadiation::run_impl (const double dt) {
 #endif
       auto d_tint = m_buffer.d_tint;
       auto d_dz = m_buffer.d_dz;
-
+      auto d_mu0 = m_buffer.cosine_zenith;
 
       // Set gas concs to "view" only the first ncol columns
 #ifdef RRTMGP_ENABLE_YAKL
@@ -975,7 +964,6 @@ void RRTMGPRadiation::run_impl (const double dt) {
         // Determine the cosine zenith angle
         // NOTE: Since we are bridging to F90 arrays this must be done on HOST and then
         //       deep copied to a device view.
-        auto d_mu0 = m_buffer.cosine_zenith;
         auto h_mu0 = Kokkos::create_mirror_view(d_mu0);
         if (m_fixed_solar_zenith_angle > 0) {
           for (int i=0; i<ncol; i++) {
@@ -1080,15 +1068,6 @@ void RRTMGPRadiation::run_impl (const double dt) {
           }
 #endif
 #ifdef RRTMGP_ENABLE_KOKKOS
-          mu0_k(i) = d_mu0(i);
-
-          Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlay), [&] (const int& k) {
-            z_del_k(i,k)       = d_dz(i,k);
-            t_lev_k(i,k)       = d_tint(i,k);
-          });
-
-          t_lev_k(i,nlay) = d_tint(i,nlay);
-
           // Note that RRTMGP expects ordering (col,lay,bnd) but the FM keeps things in (col,bnd,lay) order
           if (do_aerosol_rad) {
             Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nswbands*nlay), [&] (const int&idx) {
@@ -1303,9 +1282,9 @@ void RRTMGPRadiation::run_impl (const double dt) {
 #ifdef RRTMGP_ENABLE_KOKKOS
       interface_t::rrtmgp_main(
         ncol, m_nlay,
-        p_lay_k, t_lay_k, p_lev_k, t_lev_k,
+        p_lay_k, t_lay_k, p_lev_k, d_tint,
         m_gas_concs_k,
-        sfc_alb_dir_k, sfc_alb_dif_k, mu0_k,
+        sfc_alb_dir_k, sfc_alb_dif_k, d_mu0,
         lwp_k, iwp_k, rel_k, rei_k, cldfrac_tot_k,
         aero_tau_sw_k, aero_ssa_sw_k, aero_g_sw_k, aero_tau_lw_k,
         cld_tau_sw_bnd_k, cld_tau_lw_bnd_k,
@@ -1511,7 +1490,7 @@ void RRTMGPRadiation::run_impl (const double dt) {
       real1dk eff_radius_qi_at_cldtop_k (d_eff_radius_qi_at_cldtop.data() + m_col_chunk_beg[ic], ncol);
 
       interface_t::compute_aerocom_cloudtop(
-          ncol, nlay, t_lay_k, p_lay_k, p_del_k, z_del_k, qc_k, qi_k, rel_k, rei_k, cldfrac_tot_k,
+          ncol, nlay, t_lay_k, p_lay_k, p_del_k, d_dz, qc_k, qi_k, rel_k, rei_k, cldfrac_tot_k,
           nc_k, T_mid_at_cldtop_k, p_mid_at_cldtop_k, cldfrac_ice_at_cldtop_k,
           cldfrac_liq_at_cldtop_k, cldfrac_tot_at_cldtop_k, cdnc_at_cldtop_k,
           eff_radius_qc_at_cldtop_k, eff_radius_qi_at_cldtop_k);

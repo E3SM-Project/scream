@@ -1204,7 +1204,7 @@ static void mixing_ratio_to_cloud_mass(
  */
 template<typename InT, typename T, typename OutT>
 static void limit_to_bounds_k(InT const &arr_in, T const lower, T const upper, OutT &arr_out) {
-  Kokkos::parallel_for(arr_in.size(), KOKKOS_LAMBDA(int i) {
+  Kokkos::parallel_for(arr_out.size(), KOKKOS_LAMBDA(int i) {
     arr_out.data()[i] = std::min(std::max(arr_in.data()[i], lower), upper);
   });
 }

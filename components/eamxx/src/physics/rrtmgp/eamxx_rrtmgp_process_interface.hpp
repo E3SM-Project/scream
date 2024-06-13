@@ -144,9 +144,6 @@ public:
     real1d sfc_flux_dif_vis;
     real1d sfc_flux_dif_nir;
 #endif
-#ifdef RRTMGP_ENABLE_KOKKOS
-    ureal1dk mu0_k;
-#endif
 
     // 2d size (ncol, nlay)
     ureal2dk d_dz;
@@ -168,7 +165,6 @@ public:
     real2d lw_heating;
 #endif
 #ifdef RRTMGP_ENABLE_KOKKOS
-    ureal2dk z_del_k;
     ureal2dk cldfrac_tot_k;
     ureal2dk lwp_k;
     ureal2dk iwp_k;
@@ -201,10 +197,6 @@ public:
     real2d lw_clrsky_flux_dn;
     real2d lw_clnsky_flux_up;
     real2d lw_clnsky_flux_dn;
-#endif
-#ifdef RRTMGP_ENABLE_KOKKOS
-    ureal2dk p_lev_k;
-    ureal2dk t_lev_k;
 #endif
 
     // 3d size (ncol, nlay+1, nswbands)
