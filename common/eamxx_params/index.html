@@ -1356,6 +1356,51 @@ EAMxx is not supported yet.
 </ul>
 </li>
 </ul>
+<h2 id="mam4_aci">mam4_aci</h2>
+<ul>
+<li>mam4_aci::wsubmin:  <ul>
+<li>description: Minimum diagnostic sub-grid vertical velocity  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>mam4_aci::top_level_mam4xx:  <ul>
+<li>description: Top level for MAM4xx  </li>
+<li>type: integer  </li>
+</ul>
+</li>
+<li>mam4_aci::number_of_subcycles:  <ul>
+<li>description: how many times to subcycle this atm process  </li>
+<li>type: <strong>MISSING</strong>  </li>
+<li>constraints: gt 0  </li>
+</ul>
+</li>
+<li>mam4_aci::enable_precondition_checks:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: logical  </li>
+</ul>
+</li>
+<li>mam4_aci::enable_postcondition_checks:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: logical  </li>
+</ul>
+</li>
+<li>mam4_aci::repair_log_level:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: string  </li>
+<li>valid values: trace,debug,info,warn  </li>
+</ul>
+</li>
+<li>mam4_aci::internal_diagnostics_level:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: integer  </li>
+</ul>
+</li>
+<li>mam4_aci::compute_tendencies:  <ul>
+<li>description: list of computed fields for which this process will back out tendencies  </li>
+<li>type: array(string)  </li>
+</ul>
+</li>
+</ul>
 <h2 id="cldfraction">cldFraction</h2>
 <ul>
 <li>cldFraction::number_of_subcycles:  <ul>
@@ -2184,6 +2229,136 @@ EAMxx is not supported yet.
 <li>initial_conditions::surf_mom_flux:  <ul>
 <li>description: <strong>MISSING</strong>  </li>
 <li>type: array(real)  </li>
+</ul>
+</li>
+<li>initial_conditions::dgnum:  <ul>
+<li>description: Dry aerosol particles diameter in meters  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::bc_c1:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::bc_c3:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::bc_c4:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::dst_c1:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::dst_c3:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::so4_c1:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::so4_c2:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::so4_c3:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::pom_c1:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::pom_c3:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::pom_c4:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::soa_c1:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::soa_c2:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::soa_c3:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::nacl_c1:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::nacl_c2:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::nacl_c3:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::mom_c1:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::mom_c2:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::mom_c3:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::mom_c4:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::num_c1:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::num_c2:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::num_c3:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::num_c4:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: real  </li>
 </ul>
 </li>
 <li>initial_conditions::qc:  <ul>
