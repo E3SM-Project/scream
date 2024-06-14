@@ -134,6 +134,12 @@ contains
     par%dynproc = .FALSE.
     if (color == 0) par%dynproc = .TRUE.
 #else
+    if (present(npes_in)) then
+      write(iulog,*)'It is pointless to pass npes_in to init_par in non-CAM builds...'
+    endif
+    if (present(npes_stride)) then
+      write(iulog,*)'It is pointless to pass npes_stride to init_par in non-CAM builds...'
+    endif
     par%comm     = MPI_COMM_WORLD
     par%dynproc  = .TRUE.
 #endif
@@ -158,7 +164,6 @@ contains
 #ifdef _MPI
     character(len=MPI_MAX_PROCESSOR_NAME)               :: my_name
     character(len=MPI_MAX_PROCESSOR_NAME), allocatable  :: the_names(:)
-    integer(kind=int_kind),allocatable                  :: tarray(:)
     integer(kind=int_kind)                              :: namelen,i
     integer(kind=int_kind)                              :: ierr,tmp_min,tmp_max
     integer :: node_color

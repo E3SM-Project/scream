@@ -9,7 +9,7 @@ module dof_mod
   use element_mod, only : element_t,index_t
   use parallel_mod, only : parallel_t, mpiinteger_t
   use edge_mod, only : initlongedgebuffer,freelongedgebuffer, &
-		       longedgevpack, longedgevunpackmin
+                       longedgevpack, longedgevunpackmin
   use edgetype_mod, only : longedgebuffer_t
   use bndry_mod, only : bndry_exchangev
 implicit none
@@ -72,16 +72,10 @@ contains
 
     type (LongEdgeBuffer_t)    :: edge
 
-    real(kind=real_kind)  da                     ! area element
-
-    type (quadrature_t) :: gp
-
     integer (kind=int_kind) :: ldofP(np,np,nelemd)
 
-    integer ii
-    integer i,j,ig,ie
+    integer ig,ie
     integer kptr
-    integer iptr
 
     ! ===================
     ! begin code
@@ -362,7 +356,6 @@ contains
     type (index_t), pointer  :: idx 
     type (LongEdgeBuffer_t)    :: edge
     integer :: i, j, ii, ie, base
-    integer(kind=long_kind), pointer :: gdof(:,:)
     integer :: fdofp_local(np,np,nelemd)
 
     call initLongEdgeBuffer(edge,1)
@@ -426,7 +419,6 @@ contains
          write(6,*) (elem(ie)%gdofP(i,j), i=1,np)
       enddo
    enddo
- 10 format('I5')
 
  end subroutine PrintDofP
 

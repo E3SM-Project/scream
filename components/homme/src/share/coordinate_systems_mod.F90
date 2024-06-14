@@ -32,13 +32,13 @@ module coordinate_systems_mod
   end type spherical_polar_t
 
 
-  interface assignment ( = )
-     module procedure copy_cart2d
-  end interface
+  ! interface assignment ( = )
+  !    module procedure copy_cart2d
+  ! end interface
 
-  interface operator( == )
-     module procedure eq_cart2d
-  end interface
+  ! interface operator( == )
+  !    module procedure eq_cart2d
+  ! end interface
 
   interface distance
      module procedure distance_cart2D
@@ -77,8 +77,8 @@ module coordinate_systems_mod
   public :: cart2cubedspherexy  !  (x,y,z)          -> gnomonic (x,y)
   public :: cart2spherical      !  gnominic (x,y)   -> (lat,lon) 
 
-  private :: copy_cart2d
-  private :: eq_cart2d
+  ! private :: copy_cart2d
+  ! private :: eq_cart2d
   private :: distance_cart2D
   private :: distance_cart2D_v
   private :: distance_cart3D
@@ -97,13 +97,13 @@ contains
   ! Overload assignment operator for cartesian2D_t
   ! ============================================
 
-  subroutine copy_cart2d(cart2,cart1)
-    implicit none
-    type(cartesian2D_t), intent(out) :: cart2
-    type(cartesian2D_t), intent(in)  :: cart1
-    cart2%x=cart1%x
-    cart2%y=cart1%y
-  end subroutine copy_cart2d
+  ! subroutine copy_cart2d(cart2,cart1)
+  !   implicit none
+  !   type(cartesian2D_t), intent(out) :: cart2
+  !   type(cartesian2D_t), intent(in)  :: cart1
+  !   cart2%x=cart1%x
+  !   cart2%y=cart1%y
+  ! end subroutine copy_cart2d
 
   ! ============================================
   ! eq_cart2d:
@@ -111,20 +111,20 @@ contains
   ! Overload == operator for cartesian2D_t
   ! ============================================
 
-  pure function eq_cart2d(cart2,cart1) result(is_same)
-    implicit none
-    type(cartesian2D_t), intent(in)  :: cart2
-    type(cartesian2D_t), intent(in)  :: cart1
+  ! pure function eq_cart2d(cart2,cart1) result(is_same)
+  !   implicit none
+  !   type(cartesian2D_t), intent(in)  :: cart2
+  !   type(cartesian2D_t), intent(in)  :: cart1
 
-    logical :: is_same    
+  !   logical :: is_same    
 
-    if (distance(cart1,cart2)<DIST_THRESHOLD) then
-       is_same=.true.
-    else
-       is_same=.false.
-    end if
+  !   if (distance(cart1,cart2)<DIST_THRESHOLD) then
+  !      is_same=.true.
+  !   else
+  !      is_same=.false.
+  !   end if
 
-  end function eq_cart2d
+  ! end function eq_cart2d
 
   ! ===================================================
   ! distance_cart2D  : scalar version
@@ -351,7 +351,6 @@ contains
  
     type (spherical_polar_t)             :: sphere
 
-    integer i,j
     real(kind=real_kind) :: r!, l_inf
 
 ! MNL: removing check that points are on the unit cube because we allow
@@ -447,7 +446,6 @@ contains
  
     type (spherical_polar_t)             :: sphere
 
-    integer i,j
     real(kind=real_kind) :: r!, l_inf
 
 ! MNL: removing check that points are on the unit cube because we allow
@@ -496,13 +494,6 @@ contains
     end if
 
   end function cart2spherical
-
-
-
-
-
-
-
 
 ! Note: Output spherical longitude is [-pi,pi]
   function projectpoint(cartin, face_no) result(sphere)         

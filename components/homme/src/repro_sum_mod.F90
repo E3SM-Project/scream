@@ -625,8 +625,6 @@ module repro_sum_mod
          repro_sum_stats(5) = repro_sum_stats(5) + gbl_cnt_red
       endif
 
-      return
-
    end subroutine repro_sum
 
 !
@@ -681,7 +679,7 @@ module repro_sum_mod
 ! Local workspace
 !
       integer, parameter  :: max_jlevel = &
-                                1 + (digits(0_i8)/digits(0.0_r8))
+                                1 + Nint(real(digits(0_i8))/digits(0.0_r8))
 
       integer(i8) :: i8_arr_lsum_level((max_level+2)*nflds) 
                                    ! integer vector representing local 
@@ -1087,8 +1085,6 @@ module repro_sum_mod
 !
 ! Local workspace
 !
-      integer :: old_cw                  ! for x86 processors, save
-                                         !  current arithmetic mode
       integer :: ifld, isum              ! loop variables
       integer :: ierr                    ! MPI error return
 
@@ -1104,7 +1100,6 @@ module repro_sum_mod
 !
 !-----------------------------------------------------------------------
 !
-!     call x86_fix_start (old_cw)
 
       if (first_time) then
 #if ( defined SPMD )
@@ -1144,10 +1139,6 @@ module repro_sum_mod
       enddo
 #endif
 
-!     call x86_fix_end (old_cw)
-
-      return
-
    end subroutine repro_sum_ddpdd
 !
 !-----------------------------------------------------------------------
@@ -1186,8 +1177,11 @@ module repro_sum_mod
          ddb(i) = cmplx ( t1 + t2, t2 - ((t1 + t2) - t1), r8 )
       enddo
 
-      return
-
+      ! Suppress warning due to unused arg (we can't rm the arg, b/c
+      ! this function must have the correct signature for an MPI_op function
+      if (.false.) then
+        print *, "itype:", itype
+      endif
    end subroutine DDPDD
 !
 !========================================================================

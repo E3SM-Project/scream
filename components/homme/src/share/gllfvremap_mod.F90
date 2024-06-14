@@ -145,7 +145,7 @@ module gllfvremap_mod
   end interface gfr_fv_phys_to_dyn
 
   interface gfr_dyn_to_fv_phys_topo
-     module procedure gfr_dyn_to_fv_phys_topo_hybrid
+     module procedure gfr_dyn_to_fv_phys_topo_range
      module procedure gfr_dyn_to_fv_phys_topo_dom_mt
      module procedure gfr_dyn_to_fv_phys_topo_mpi_only
   end interface gfr_dyn_to_fv_phys_topo
@@ -184,7 +184,7 @@ contains
     use dimensions_mod, only: nlev
     use parallel_mod, only: parallel_t, abortmp
     use quadrature_mod, only: gausslobatto, quadrature_t
-    use control_mod, only: geometry, cubed_sphere_map
+    use control_mod, only: geometry
 
     type (parallel_t), intent(in) :: par
     type (element_t), intent(in) :: elem(:)
@@ -318,8 +318,8 @@ contains
 
     real(kind=real_kind), dimension(np,np,nlev) :: wg1, dp, p
     real(kind=real_kind), dimension(np*np,nlev) :: wf1, dp_fv, p_fv
-    real(kind=real_kind) :: qmin, qmax, ones(np,np)
-    integer :: ie, nf, nf2, qi, qsize, k, nerr
+    real(kind=real_kind) :: ones(np,np)
+    integer :: ie, nf, nf2, qi, qsize, nerr
 
     ones = one
     nf = gfr%nphys
@@ -414,8 +414,7 @@ contains
     real(kind=real_kind), intent(in) :: T(:,:,:), uv(:,:,:,:), q(:,:,:,:)
 
     real(kind=real_kind), dimension(np,np,nlev) :: dp, wg1, p
-    real(kind=real_kind), dimension(np*np,nlev) :: wf1, wf2, dp_fv, p_fv
-    real(kind=real_kind) :: qmin, qmax
+    real(kind=real_kind), dimension(np*np,nlev) :: wf1, dp_fv, p_fv
     integer :: ie, nf, nf2, k, qsize, qi, nerr
 
     nf = gfr%nphys
@@ -505,12 +504,11 @@ contains
     end if
   end subroutine gfr_fv_phys_to_dyn_hybrid
 
-  subroutine gfr_dyn_to_fv_phys_topo_hybrid(hybrid, elem, nets, nete, phis)
+  subroutine gfr_dyn_to_fv_phys_topo_range(elem, nets, nete, phis)
     ! If needed, remap topography data defined on the GLL grid to the
     ! FV grid. The intended EAM configuration is to use topography
     ! data on the FV grid, so this routine is unlikely to be used.
 
-    type (hybrid_t), intent(in) :: hybrid
     type (element_t), intent(in) :: elem(:)
     integer, intent(in) :: nets, nete
     real(kind=real_kind), intent(out) :: phis(:,:)
@@ -520,9 +518,9 @@ contains
     do ie = nets,nete
        call gfr_g2f_scalar_and_limit(gfr, ie, elem(ie)%metdet, elem(ie)%state%phis, phis(:,ie))
     end do
-  end subroutine gfr_dyn_to_fv_phys_topo_hybrid
+  end subroutine gfr_dyn_to_fv_phys_topo_range
 
-  subroutine gfr_dyn_to_fv_phys_topo_data(par, elem, nets, nete, g, gsz, p, psz, square, augment)
+  subroutine gfr_dyn_to_fv_phys_topo_data(elem, nets, nete, g, gsz, p, psz, square, augment)
     ! Remap SGH, SGH30, phis, landm_coslat, landfrac from GLL to FV grids. For
     ! SGH* fields, square should be true. Then variance is remapped and so
     ! conserved. For SGH, but not SGH30, set augment to true to add the variance
@@ -531,17 +529,15 @@ contains
     ! added since it's the variance due to truncation of wave numbers at a
     ! separation length scale; this is independent of grid.
 
-    use parallel_mod, only: parallel_t, abortmp
+    use parallel_mod, only: abortmp
     use hybrid_mod, only: hybrid_create
 
-    type (parallel_t), intent(in) :: par
     type (element_t), intent(inout) :: elem(:)
     integer, intent(in) :: nets, nete, gsz, psz
     real(kind=real_kind), intent(in) :: g(gsz)
     real(kind=real_kind), intent(out) :: p(psz)
     logical, intent(in), optional :: square, augment
 
-    type (hybrid_t) :: hybrid
     integer :: ie, nf2
     logical :: augment_in
 
@@ -746,7 +742,7 @@ contains
     !$omp parallel num_threads(hthreads), default(shared), private(nets,nete,hybrid)
 #endif
     call gfr_hybrid_create(par, dom_mt, hybrid, nets, nete)
-    call gfr_dyn_to_fv_phys_topo_hybrid(hybrid, elem, nets, nete, phis)
+    call gfr_dyn_to_fv_phys_topo_range(elem, nets, nete, phis)
 #ifdef HORIZ_OPENMP
     !$omp end parallel
 #endif
@@ -768,7 +764,7 @@ contains
 
     if (.not. par%dynproc) return
     hybrid = hybrid_create(par, 0, 1)
-    call gfr_dyn_to_fv_phys_topo_hybrid(hybrid, elem, 1, nelemd, phis)
+    call gfr_dyn_to_fv_phys_topo_range(elem, 1, nelemd, phis)
   end subroutine gfr_dyn_to_fv_phys_topo_mpi_only
 
   subroutine gfr_fv_phys_to_dyn_topo_dom_mt(par, dom_mt, elem, phis)
