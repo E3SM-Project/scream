@@ -169,10 +169,10 @@ void P3Microphysics::init_buffers(const ATMBufferManager &buffer_manager)
   s_mem += m_buffer.inv_exner.size();
   m_buffer.th_atm = decltype(m_buffer.th_atm)(s_mem, m_num_cols, nk_pack);
   s_mem += m_buffer.th_atm.size();
-  m_buffer.cld_frac_l = decltype(m_buffer.cld_frac_l)(s_mem, m_num_cols, nk_pack);
-  s_mem += m_buffer.cld_frac_l.size();
-  m_buffer.cld_frac_i = decltype(m_buffer.cld_frac_i)(s_mem, m_num_cols, nk_pack);
-  s_mem += m_buffer.cld_frac_i.size();
+  //m_buffer.cld_frac_l = decltype(m_buffer.cld_frac_l)(s_mem, m_num_cols, nk_pack);
+  //s_mem += m_buffer.cld_frac_l.size();
+  //m_buffer.cld_frac_i = decltype(m_buffer.cld_frac_i)(s_mem, m_num_cols, nk_pack);
+  //s_mem += m_buffer.cld_frac_i.size();
   m_buffer.dz = decltype(m_buffer.dz)(s_mem, m_num_cols, nk_pack);
   s_mem += m_buffer.dz.size();
   m_buffer.qv2qi_depos_tend = decltype(m_buffer.qv2qi_depos_tend)(s_mem, m_num_cols, nk_pack);
@@ -258,12 +258,14 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   const auto& precip_liq_surf_mass = get_field_out("precip_liq_surf_mass").get_view<Real*>();
   const auto& precip_ice_surf_mass = get_field_out("precip_ice_surf_mass").get_view<Real*>();
   auto cld_frac_r             = get_field_out("rainfrac").get_view<Pack**>();
+  auto cld_frac_l           = get_field_in("cldfrac_liq").get_view<Pack**>();
+  auto cld_frac_i           = get_field_in("cldfrac_ice").get_view<Pack**>();
 
   // Alias local variables from temporary buffer
   auto inv_exner  = m_buffer.inv_exner;
   auto th_atm     = m_buffer.th_atm;
-  auto cld_frac_l = m_buffer.cld_frac_l;
-  auto cld_frac_i = m_buffer.cld_frac_i;
+//  auto cld_frac_l = m_buffer.cld_frac_l;
+//  auto cld_frac_i = m_buffer.cld_frac_i;
   auto dz         = m_buffer.dz;
 
   // -- Set values for the pre-amble structure

@@ -73,6 +73,8 @@ public:
         const Spack& pmid_pack(pmid(icol,ipack));
         const Spack& T_atm_pack(T_atm(icol,ipack));
         const Spack& cld_frac_t_pack(cld_frac_t(icol,ipack));
+        const Spack& cld_frac_l_pack(cld_frac_l(icol,ipack));
+        const Spack& cld_frac_i_pack(cld_frac_i(icol,ipack));
         const Spack& pseudo_density_pack(pseudo_density(icol,ipack));
         const Spack& pseudo_density_dry_pack(pseudo_density_dry(icol,ipack));
 
@@ -108,8 +110,8 @@ public:
         th_atm(icol,ipack) = PF::calculate_theta_from_T(T_atm_pack,pmid_pack);
         // Cloud fraction
         // Set minimum cloud fraction - avoids division by zero
-        cld_frac_l(icol,ipack) = ekat::max(cld_frac_t_pack,mincld);
-        cld_frac_i(icol,ipack) = ekat::max(cld_frac_t_pack,mincld);
+        cld_frac_l(icol,ipack) = ekat::max(cld_frac_l_pack,mincld);
+        cld_frac_i(icol,ipack) = ekat::max(cld_frac_i_pack,mincld);
         cld_frac_r(icol,ipack) = ekat::max(cld_frac_t_pack,mincld);
 
         // update rain cloud fraction given neighboring levels using max-overlap approach.
