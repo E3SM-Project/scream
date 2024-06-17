@@ -62,6 +62,7 @@ class MLCorrection : public AtmosphereProcess {
   Field m_lat;
   Field m_lon;
   std::string m_ML_model_path_tq;
+  std::string m_ML_model_path_t_only;
   std::string m_ML_model_path_uv;
   std::string m_ML_model_path_sfc_fluxes;
   std::vector<std::string> m_fields_ml_output_variables;
