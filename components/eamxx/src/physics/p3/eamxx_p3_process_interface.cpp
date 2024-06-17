@@ -258,8 +258,8 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   const auto& precip_liq_surf_mass = get_field_out("precip_liq_surf_mass").get_view<Real*>();
   const auto& precip_ice_surf_mass = get_field_out("precip_ice_surf_mass").get_view<Real*>();
   auto cld_frac_r             = get_field_out("rainfrac").get_view<Pack**>();
-  auto cld_frac_l           = get_field_in("cldfrac_liq").get_view<Pack**>();
-  auto cld_frac_i           = get_field_in("cldfrac_ice").get_view<Pack**>();
+  const  auto cld_frac_l           = get_field_in("cldfrac_liq").get_view<const Pack**>();
+  const  auto cld_frac_i           = get_field_in("cldfrac_ice").get_view<const Pack**>();
 
   // Alias local variables from temporary buffer
   auto inv_exner  = m_buffer.inv_exner;
@@ -270,9 +270,9 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
 
   // -- Set values for the pre-amble structure
   p3_preproc.set_variables(m_num_cols,nk_pack,pmid,pmid_dry,pseudo_density,pseudo_density_dry,
-                        T_atm,cld_frac_t,
+                        T_atm,cld_frac_t,cld_frac_l, cld_frac_i,
                         qv, qc, nc, qr, nr, qi, qm, ni, bm, qv_prev,
-                        inv_exner, th_atm, cld_frac_l, cld_frac_i, cld_frac_r, dz);
+                        inv_exner, th_atm, cld_frac_r, dz);
   // --Prognostic State Variables:
   prog_state.qc     = p3_preproc.qc;
   prog_state.nc     = p3_preproc.nc;

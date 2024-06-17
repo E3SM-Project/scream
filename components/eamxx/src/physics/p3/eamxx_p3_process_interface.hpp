@@ -110,8 +110,8 @@ public:
         th_atm(icol,ipack) = PF::calculate_theta_from_T(T_atm_pack,pmid_pack);
         // Cloud fraction
         // Set minimum cloud fraction - avoids division by zero
-        cld_frac_l(icol,ipack) = ekat::max(cld_frac_l_pack,mincld);
-        cld_frac_i(icol,ipack) = ekat::max(cld_frac_i_pack,mincld);
+        //cld_frac_l(icol,ipack) = ekat::max(cld_frac_l_pack,mincld);
+        //cld_frac_i(icol,ipack) = ekat::max(cld_frac_i_pack,mincld);
         cld_frac_r(icol,ipack) = ekat::max(cld_frac_t_pack,mincld);
 
         // update rain cloud fraction given neighboring levels using max-overlap approach.
@@ -141,6 +141,8 @@ public:
     view_2d_const pseudo_density_dry;
     view_2d       T_atm;
     view_2d_const cld_frac_t;
+    view_2d_const cld_frac_l;
+    view_2d_const cld_frac_i;
     view_2d       qv;
     view_2d       qc;
     view_2d       nc;
@@ -153,8 +155,6 @@ public:
     view_2d       qv_prev;
     view_2d       inv_exner;
     view_2d       th_atm;
-    view_2d       cld_frac_l;
-    view_2d       cld_frac_i;
     view_2d       cld_frac_r;
     view_2d       dz;
     // Assigning local variables
@@ -162,11 +162,11 @@ public:
            const view_2d_const& pmid_, const view_2d_const& pmid_dry_,
            const view_2d_const& pseudo_density_, 
            const view_2d_const& pseudo_density_dry_, const view_2d& T_atm_,
-           const view_2d_const& cld_frac_t_, const view_2d& qv_, const view_2d& qc_,
+           const view_2d_const& cld_frac_t_,const view_2d_const& cld_frac_l_,
+           const view_2d_const& cld_frac_i_, const view_2d& qv_, const view_2d& qc_,
            const view_2d& nc_, const view_2d& qr_, const view_2d& nr_, const view_2d& qi_,
            const view_2d& qm_, const view_2d& ni_, const view_2d& bm_, const view_2d& qv_prev_,
-           const view_2d& inv_exner_, const view_2d& th_atm_, const view_2d& cld_frac_l_,
-           const view_2d& cld_frac_i_, const view_2d& cld_frac_r_, const view_2d& dz_
+           const view_2d& inv_exner_, const view_2d& th_atm_, const view_2d& cld_frac_r_, const view_2d& dz_
            )
     {
       m_ncol = ncol;
@@ -178,6 +178,8 @@ public:
       pseudo_density_dry = pseudo_density_dry_;
       T_atm          = T_atm_;
       cld_frac_t     = cld_frac_t_;
+      cld_frac_l = cld_frac_l_;
+      cld_frac_i = cld_frac_i_;
       // OUT
       qv             = qv_;
       qc             = qc_;
@@ -191,8 +193,6 @@ public:
       qv_prev        = qv_prev_;
       inv_exner = inv_exner_;
       th_atm = th_atm_;
-      cld_frac_l = cld_frac_l_;
-      cld_frac_i = cld_frac_i_;
       cld_frac_r = cld_frac_r_;
       dz = dz_;
     } // set_variables
