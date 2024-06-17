@@ -12,10 +12,14 @@ MLCorrection::MLCorrection(const ekat::Comm &comm,
                            const ekat::ParameterList &params)
     : AtmosphereProcess(comm, params) {
   m_ML_model_path_tq = m_params.get<std::string>("ML_model_path_tq");
+  m_ML_model_path_t_only = m_params.get<std::string>("ML_model_path_temperature");
   m_ML_model_path_uv = m_params.get<std::string>("ML_model_path_uv");
   m_ML_model_path_sfc_fluxes = m_params.get<std::string>("ML_model_path_sfc_fluxes");
   m_fields_ml_output_variables = m_params.get<std::vector<std::string>>("ML_output_fields");
   m_ML_correction_unit_test = m_params.get<bool>("ML_correction_unit_test");
+  EKAT_ASSERT_MSG(!(m_ML_model_path_tq != "None" && m_ML_model_path_t_only != "None"),
+                   "Error! Only one of ML_model_path_tq and ML_model_path_temperature"
+                   " can be specificed. \n");  
 }
 
 // =========================================================================================
@@ -177,7 +181,8 @@ void MLCorrection::run_impl(const double dt) {
       sfc_flux_lw_dn_dev_ptr,
       m_num_cols, m_num_levs, num_tracers, dt, 
       datetime_str,
-      m_ML_model_path_tq, 
+      m_ML_model_path_tq,
+      m_ML_model_path_t_only,
       m_ML_model_path_uv, 
       m_ML_model_path_sfc_fluxes);
   pybind11::gil_scoped_release no_gil;  

@@ -16,11 +16,13 @@ from scream_run.steppers.machine_learning import (
 logger = logging.getLogger(__name__)
 
 TQ = "tq"
+T_ONLY = "t"
 UV = "uv"
 FLUX = "flux"
 
 ML_MODELS = {
     TQ: None,
+    T_ONLY: None,
     UV: None,
     FLUX: None,
 }
@@ -44,9 +46,10 @@ def _load_model(key, path):
     return model
 
 
-def load_all_models(tq_model_path, uv_model_path, flx_model_path):
+def load_all_models(tq_model_path, t_model_path, uv_model_path, flx_model_path):
     """Load all models into the global model dict"""
     _load_model(TQ, tq_model_path)
+    _load_model(T_ONLY, t_model_path)
     _load_model(UV, uv_model_path)
     _load_model(FLUX, flx_model_path)
 
@@ -85,6 +88,26 @@ def get_ML_correction_dQ1_dQ2(model, T_mid, qv, cos_zenith, lat, phis, dt):
     )
     return ensure_correction_ordering(predict_with_qv_constraint(model, ds, dt))
 
+def get_ML_correction_dQ1_only(model, T_mid, qv, cos_zenith, lat, phis):
+    """Get ML correction for air temperature (dQ1)
+
+    Args:
+        model: pre-trained ML model for dQ1
+        T_mid: air temperature
+        qv: specific humidity
+        cos_zenith: cosine zenith angle
+    """
+    # TODO: standardize reference DataArray dims 1D or 2D
+    ds = xr.Dataset(
+        data_vars=dict(
+            T_mid=(["ncol", "z"], T_mid),
+            qv=(["ncol", "z"], qv),
+            cos_zenith_angle=(["ncol"], cos_zenith),
+            lat=(["ncol"], lat),
+            surface_geopotential=(["ncol"], phis),
+        )
+    )
+    return ensure_correction_ordering(predict(model, ds))
 
 def get_ML_correction_dQu_dQv(model, T_mid, qv, cos_zenith, lat, phis, u, v, dt):
     """Get ML correction for eastward wind (dQu or dQxwind) and northward wind (dQv or dQywind)
@@ -199,6 +222,7 @@ def update_fields(
     dt,
     current_time,
     tq_model_path,
+    t_model_path,
     uv_model_path,
     flux_model_path,
 ):
@@ -220,6 +244,7 @@ def update_fields(
     dt: time step (s)
     current_time: current time in the format "YYYY-MM-DD HH:MM:SS"
     tq_model_path: path to the temperature and specific humidity ML model
+    t_model_path: path to the temperature only ML model
     uv_model_path: path to the wind ML model
     flux_model_path: path to the surface fluxes ML model
     """
@@ -252,6 +277,7 @@ def update_fields(
     # models are loaded into global state so they are only loaded once
     # despite being called each time we ask for a correction
     model_tq = _load_model(TQ, tq_model_path)
+    model_t = _load_model(T_ONLY, t_model_path)
     model_uv = _load_model(UV, uv_model_path)
     model_sfc_fluxes = _load_model(FLUX, flux_model_path)
     
@@ -271,6 +297,16 @@ def update_fields(
         )
         T_mid[:, :] += correction_tq["dQ1"].data * dt
         qv[:, 0, :] += correction_tq["dQ2"].data * dt
+    if model_t is not None:
+        correction_tq = get_ML_correction_dQ1_only(
+            model_tq, 
+            T_mid, 
+            qv_0, 
+            cos_zenith,
+            lat,
+            phis,
+        )
+        T_mid[:, :] += correction_tq["dQ1"].data * dt        
     if model_uv is not None:
         correction_uv = get_ML_correction_dQu_dQv(
             model_uv, T_mid, qv_0, cos_zenith, lat, phis, u, v, dt
