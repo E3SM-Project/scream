@@ -98,7 +98,9 @@ module micro_p3_interface
 
 ! Physics buffer indices for fields registered by other modules
    integer :: &
-      ast_idx = -1
+      ast_idx = -1, &
+      alst_idx = -1, &
+      aist_idx = -1
 
    integer :: &
       ni_activated_idx = -1,           &
@@ -363,6 +365,8 @@ end subroutine micro_p3_readnl
     !==============
     !might want to add all E3SM parameter vals to p3_init call...
     ast_idx      = pbuf_get_index('AST') !! from CLUBB
+    alst_idx      = pbuf_get_index('ALST')
+    aist_idx      = pbuf_get_index('AIST')
     cmeliq_idx   = pbuf_get_index('CMELIQ') !! from CLUBB Rate of cond-evap of liq within the cloud
 
     !!
@@ -658,13 +662,13 @@ end subroutine micro_p3_readnl
   end subroutine micro_p3_init
 
   !================================================================================================
-    subroutine get_cloud_fraction(its,ite,kts,kte,ast,qc,qr,qi,method, &
+    subroutine get_cloud_fraction(its,ite,kts,kte,alst,aist,ast,qc,qr,qi,method, &
                   cld_frac_i,cld_frac_l,cld_frac_r)
 
        use micro_p3_utils, only: mincld, qsmall
 
        integer,intent(in)                                 :: its,ite,kts,kte
-       real(rtype),dimension(its:ite,kts:kte),intent(in)  :: ast, qc, qr, qi
+       real(rtype),dimension(its:ite,kts:kte),intent(in)  :: ast,alst,aist, qc, qr, qi
        character(len=16),intent(in)                       :: method
        real(rtype),dimension(its:ite,kts:kte),intent(out) :: cld_frac_i, cld_frac_l, cld_frac_r
        real(rtype),dimension(its:ite,kts:kte)             :: cldm
@@ -683,8 +687,8 @@ end subroutine micro_p3_readnl
        do k = kbot,ktop,kdir
           do i=its,ite
              cldm(i,k)  = max(ast(i,k), mincld)
-             cld_frac_i(i,k) = max(ast(i,k), mincld)
-             cld_frac_l(i,k) = max(ast(i,k), mincld)
+             cld_frac_i(i,k) = max(alst(i,k), mincld)
+             cld_frac_l(i,k) = max(aist(i,k), mincld)
              cld_frac_r(i,k) = cldm(i,k)
           end do
        end do
@@ -792,6 +796,8 @@ end subroutine micro_p3_readnl
 
     ! PBUF Variables
     real(rtype), pointer :: ast(:,:)      ! Relative humidity cloud fraction
+    real(rtype), pointer :: alst(:,:)
+    real(rtype), pointer :: aist(:,:)
     real(rtype), pointer :: ni_activated(:,:)     ! ice nucleation number
     real(rtype), pointer :: npccn(:,:)    ! liquid activation number tendency
     real(rtype), pointer :: cmeliq(:,:)
@@ -885,6 +891,8 @@ end subroutine micro_p3_readnl
     ! All external PBUF variables:
     ! INPUTS
     call pbuf_get_field(pbuf, ast_idx,         ast, start=(/1,1,itim_old/), kount=(/psetcols,pver,1/))
+    call pbuf_get_field(pbuf, alst_idx,         alst, start=(/1,1,itim_old/), kount=(/psetcols,pver,1/))
+    call pbuf_get_field(pbuf, aist_idx,         aist, start=(/1,1,itim_old/), kount=(/psetcols,pver,1/))
     call pbuf_get_field(pbuf, ni_activated_idx,        ni_activated                                                  )
     call pbuf_get_field(pbuf, npccn_idx,       npccn                                                 )
     call pbuf_get_field(pbuf, cmeliq_idx,      cmeliq                                                )
@@ -1040,7 +1048,7 @@ end subroutine micro_p3_readnl
     cld_frac_r(:,:) = 1.0_rtype
     do_subgrid_clouds = micro_subgrid_cloud
     if (do_subgrid_clouds) &
-        call get_cloud_fraction(its,ite,kts,kte,ast(its:ite,kts:kte),cldliq(its:ite,kts:kte), &
+        call get_cloud_fraction(its,ite,kts,kte,ast(its:ite,kts:kte),alst(its:ite,kts:kte),aist(its:ite,kts:kte),cldliq(its:ite,kts:kte), &
                 rain(its:ite,kts:kte),ice(its:ite,kts:kte),precip_frac_method, &
                 cld_frac_i(its:ite,kts:kte),cld_frac_l(its:ite,kts:kte),cld_frac_r(its:ite,kts:kte))
     call t_stopf('micro_p3_tend_init')

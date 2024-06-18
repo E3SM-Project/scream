@@ -2806,12 +2806,14 @@ subroutine back_to_cell_average(cld_frac_l,cld_frac_r,cld_frac_i,               
         nc_collect_tend, ncshdc, nc2ni_immers_freeze_tend, nr_collect_tend, ni_selfcollect_tend, qidep
    real(rtype), intent(inout) :: nr2ni_immers_freeze_tend, ni_sublim_tend, qinuc, ni_nucleat_tend, qiberg
 
-   real(rtype) :: ir_cldm, il_cldm, lr_cldm
+   real(rtype) :: ir_cldm, il_cldm, lr_cldm, cld_frac_i_not_mixed_phase
 
    ir_cldm = min(cld_frac_i,cld_frac_r)  ! Intersection of ICE and RAIN cloud
    il_cldm = min(cld_frac_i,cld_frac_l)  ! Intersection of ICE and LIQUID cloud
    lr_cldm = min(cld_frac_l,cld_frac_r)  ! Intersection of LIQUID and RAIN cloud
 
+   !need to define region where qidep is active
+   cld_frac_i_not_mixed_phase = cld_frac_i - il_cldm
    ! Some process rates take place within the intersection of liquid, rain and ice cloud fractions.
    ! We calculate the intersection as the minimum between combinations of cloud fractions and use
    ! these values to map back to cell-average quantities where applicable.
@@ -2842,7 +2844,7 @@ subroutine back_to_cell_average(cld_frac_l,cld_frac_r,cld_frac_i,               
    nc2ni_immers_freeze_tend  = nc2ni_immers_freeze_tend*cld_frac_l      ! Number change associated with freexzing of cld drops
    nr_collect_tend   = nr_collect_tend*ir_cldm     ! Rain number change due to collection from ice
    ni_selfcollect_tend   = ni_selfcollect_tend*cld_frac_i       ! Ice self collection
-   qidep   = qidep*cld_frac_i       ! Vapor deposition to ice phase
+   qidep   = qidep*cld_frac_i_not_mixed_phase       ! Vapor deposition to ice phase
    nr2ni_immers_freeze_tend  = nr2ni_immers_freeze_tend*cld_frac_r      ! Change in number due to immersion freezing of rain
    ni_sublim_tend   = ni_sublim_tend*cld_frac_i       ! Number change due to sublimation of ice
    qiberg  = qiberg*il_cldm    ! Bergeron process
@@ -3051,10 +3053,12 @@ subroutine cloud_water_conservation(qc,dt,    &
    !"ratio" of timestep and vapor deposition and sublimation  for the
    !remaining frac of the timestep.  Only limit if there will be cloud
    !water to begin with.
-   if (qc .gt. 1.e-20_rtype) then
-      qidep  = qidep*(1._rtype-ratio)
-      qi2qv_sublim_tend  = qi2qv_sublim_tend*(1._rtype-ratio)
-   end if
+   
+   !This is no longer necessary since we partition berguron and vap dep using overlap assumptions
+!   if (qc .gt. 1.e-20_rtype) then
+!      qidep  = qidep*(1._rtype-ratio)
+!      qi2qv_sublim_tend  = qi2qv_sublim_tend*(1._rtype-ratio)
+!   end if
 
 
 end subroutine cloud_water_conservation
