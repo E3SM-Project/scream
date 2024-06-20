@@ -236,8 +236,14 @@ def perform_consistency_checks(case, xml):
     ic_xml = find_node(xml,"initial_conditions")
     if ic_xml is not None:
         ic_fname = get_child(ic_xml,"Filename")
-        cmd = f"ncdump -h {ic_fname.text}" + r" | sed '/variables:/q' | awk '/\<lev/{ print $3 }'"
-        nlevs_ic = int(run_cmd_no_fail(cmd))
+        cmd = f"ncdump -h {ic_fname.text}"
+        ncdump_out = run_cmd_no_fail(cmd)
+        dims = ncdump_out.split("dimensions:")[1].split("variables:")[0].strip().splitlines()
+        dim_len = {}
+        for item in dims:
+            tokens = item.split(';')[0].split('=');
+            dim_len[tokens[0].strip()] = tokens[1].strip()
+        nlevs_ic = int(dim_len['lev'])
         expect (nlevs_cmake == nlevs_ic,
                 "Error! IC file contains a number of levels different from the cmake option SCREAM_NUM_VERTICAL_LEV\n"
                 f"  ic file, lev: {nlevs_ic}\n"
