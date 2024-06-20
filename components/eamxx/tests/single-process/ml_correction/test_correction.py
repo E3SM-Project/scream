@@ -37,7 +37,7 @@ def sample_ML_prediction(nz, input_data: cp.ndarray, ML_model_tq: fv3fit.PureKer
     }
 
     input_data = xr.Dataset(inputs)
-    output = predict(ML_model_tq, input_data, dt=1.0)
+    output = predict(ML_model_tq, input_data)
     # just check the output from one variable to see if it works
     return output["dQ1"].data
 
@@ -63,7 +63,7 @@ def sample_ML_prediction_dummy(
     if len(input_data.shape) < 2:
         input_data = input_data[cp.newaxis, :]
     input_data = xr.Dataset({"qv": xr.DataArray(data=input_data, dims=["ncol", "z"])})
-    output = predict(model, input_data, dt=1.0)
+    output = predict(model, input_data)
     return output["qv"].data
 
 
