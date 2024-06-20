@@ -12,9 +12,9 @@ atmosphere_processes:
   atm_procs_list: [MLCorrection]
   MLCorrection:
     ML_model_path_tq: /global/cfs/cdirs/m4492/corrective_ml/case_ne120_to_ne30_20240422_novertical_remap/2024-04-19-tq-test-1cc4324d6138/no-tapering
-    ML_model_path_temperature: None
-    ML_model_path_uv: None
-    ML_model_path_sfc_fluxes: None
+    ML_model_path_temperature: NONE
+    ML_model_path_uv: NONE
+    ML_model_path_sfc_fluxes: NONE
     ML_output_fields: ["qv","T_mid"]
     ML_correction_unit_test: True
 grids_manager:
