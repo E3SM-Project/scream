@@ -39,12 +39,19 @@ def _load_model(key, path):
         config = MachineLearningConfig(models=[path])
         model = open_model(config)
         ML_MODELS[key] = model
+        _check_valid_model_option()
     elif path.lower() == "none":
         logger.debug("skipping ML {key} model, no path provided")
     else:
         logger.debug(f"skipping ML {key} model, already loaded")
     return model
 
+def _check_valid_model_option():
+    """Check if the loaded model has the right combination"""
+    if ML_MODELS[TQ] is not None and ML_MODELS[T_ONLY] is not None:
+        raise ValueError("Only one of ML_model_path_tq, \
+            ML_model_path_temperature can be specified")
+    
 
 def load_all_models(tq_model_path, t_model_path, uv_model_path, flx_model_path):
     """Load all models into the global model dict"""
@@ -96,6 +103,8 @@ def get_ML_correction_dQ1_only(model, T_mid, qv, cos_zenith, lat, phis):
         T_mid: air temperature
         qv: specific humidity
         cos_zenith: cosine zenith angle
+        lat: latitude
+        phis: surface geopotential
     """
     # TODO: standardize reference DataArray dims 1D or 2D
     ds = xr.Dataset(

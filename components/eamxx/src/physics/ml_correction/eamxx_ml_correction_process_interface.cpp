@@ -17,9 +17,6 @@ MLCorrection::MLCorrection(const ekat::Comm &comm,
   m_ML_model_path_sfc_fluxes = m_params.get<std::string>("ML_model_path_sfc_fluxes");
   m_fields_ml_output_variables = m_params.get<std::vector<std::string>>("ML_output_fields");
   m_ML_correction_unit_test = m_params.get<bool>("ML_correction_unit_test");
-  EKAT_ASSERT_MSG(!(m_ML_model_path_tq != "None" && m_ML_model_path_t_only != "None"),
-                   "Error! Only one of ML_model_path_tq and ML_model_path_temperature"
-                   " can be specificed. \n");  
 }
 
 // =========================================================================================
