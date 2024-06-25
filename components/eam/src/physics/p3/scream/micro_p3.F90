@@ -818,7 +818,7 @@ contains
 
       ! cloud
       call cloud_water_conservation(qc(k), dt, qc2qr_autoconv_tend, qc2qr_accret_tend, qccol, qc2qi_hetero_freeze_tend, &
-           qc2qr_ice_shed_tend, qiberg, qi2qv_sublim_tend, qidep)
+           qc2qr_ice_shed_tend, qiberg, qi2qv_sublim_tend, qidep,cld_frac_l,cld_frac_i)
 
       ! rain
       call rain_water_conservation(qr(k), qc2qr_autoconv_tend, qc2qr_accret_tend, qi2qr_melt_tend, qc2qr_ice_shed_tend, dt, &
@@ -3027,14 +3027,16 @@ subroutine ni_conservation(ni, ni_nucleat_tend, nr2ni_immers_freeze_tend, nc2ni_
 end subroutine ni_conservation
 
 subroutine cloud_water_conservation(qc,dt,    &
-   qc2qr_autoconv_tend,qc2qr_accret_tend,qccol,qc2qi_hetero_freeze_tend,qc2qr_ice_shed_tend,qiberg,qi2qv_sublim_tend,qidep)
+   qc2qr_autoconv_tend,qc2qr_accret_tend,qccol,qc2qi_hetero_freeze_tend,qc2qr_ice_shed_tend,qiberg,qi2qv_sublim_tend,qidep,cld_frac_l,cld_frac_i)
 
    implicit none
 
-   real(rtype), intent(in) :: qc, dt
+   real(rtype), intent(in) :: qc, dt,cld_frac_l,cld_frac_i
    real(rtype), intent(inout) :: qc2qr_autoconv_tend, qc2qr_accret_tend, qccol, qc2qi_hetero_freeze_tend, qc2qr_ice_shed_tend, &
    qiberg, qi2qv_sublim_tend, qidep
-   real(rtype) :: sinks, ratio
+   real(rtype) :: sinks, ratio, il_cldm
+
+   il_cldm = min(cld_frac_i,cld_frac_l)  ! Intersection of ICE and LIQUID cloud
 
    sinks   = (qc2qr_autoconv_tend+qc2qr_accret_tend+qccol+qc2qi_hetero_freeze_tend+qc2qr_ice_shed_tend+qiberg)*dt
    if (sinks .gt. qc .and. sinks.ge.1.e-20_rtype) then
