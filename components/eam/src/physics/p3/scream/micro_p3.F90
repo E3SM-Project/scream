@@ -2841,7 +2841,7 @@ subroutine back_to_cell_average(cld_frac_l,cld_frac_r,cld_frac_i,               
    ni2nr_melt_tend   = ni2nr_melt_tend*cld_frac_i       ! Change in number due to melting
    nc_collect_tend   = nc_collect_tend*il_cldm     ! Cloud # change due to collection of cld water by ice
    ncshdc  = ncshdc*il_cldm    ! Number change due to shedding, occurs when ice and liquid interact
-   nc2ni_immers_freeze_tend  = nc2ni_immers_freeze_tend*cld_frac_l      ! Number change associated with freexzing of cld drops
+   nc2ni_immers_freeze_tend  = nc2ni_immers_freeze_tend*il_cldm      ! Number change associated with freexzing of cld drops
    nr_collect_tend   = nr_collect_tend*ir_cldm     ! Rain number change due to collection from ice
    ni_selfcollect_tend   = ni_selfcollect_tend*cld_frac_i       ! Ice self collection
    qidep   = qidep*cld_frac_i_not_mixed_phase       ! Vapor deposition to ice phase
@@ -3053,12 +3053,16 @@ subroutine cloud_water_conservation(qc,dt,    &
    !"ratio" of timestep and vapor deposition and sublimation  for the
    !remaining frac of the timestep.  Only limit if there will be cloud
    !water to begin with.
-   
-   !This is no longer necessary since we partition berguron and vap dep using overlap assumptions
-!   if (qc .gt. 1.e-20_rtype) then
-!      qidep  = qidep*(1._rtype-ratio)
-!      qi2qv_sublim_tend  = qi2qv_sublim_tend*(1._rtype-ratio)
-!   end if
+
+    !in instances where ratio < 1 and we have qc, qidep needs to take over 
+   !but this is an in addition to the qidep we computed outside the mixed 
+   !phase cloud. qidep*(1._rtype-ratio)*(il_cldm/cld_frac_i) is the additional
+   ! vapor depositional growth rate that takes place within the mixed phase cloud
+   ! after qc is depleted  
+   if (qc .gt. 1.e-20_rtype) then
+      qidep  = qidep + qidep*(1._rtype-ratio)*(il_cldm/cld_frac_i)
+      qi2qv_sublim_tend = qi2qv_sublim_tend + qi2qv_sublim_tend*(1._rtype-ratio)*(il_cldm/cld_frac_i)
+   end if
 
 
 end subroutine cloud_water_conservation
