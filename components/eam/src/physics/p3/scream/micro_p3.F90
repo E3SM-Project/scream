@@ -817,8 +817,8 @@ contains
       !   2) Is MG correct in NOT limiting qi2qv_sublim_tend?
 
       ! cloud
-      call cloud_water_conservation(qc(k), dt, qc2qr_autoconv_tend, qc2qr_accret_tend, qccol, qc2qi_hetero_freeze_tend, &
-           qc2qr_ice_shed_tend, qiberg, qi2qv_sublim_tend, qidep,cld_frac_l,cld_frac_i)
+      call cloud_water_conservation(qc(k), dt,cld_frac_l(k),cld_frac_i(k), qc2qr_autoconv_tend, qc2qr_accret_tend, qccol, qc2qi_hetero_freeze_tend, &
+           qc2qr_ice_shed_tend, qiberg, qi2qv_sublim_tend, qidep)
 
       ! rain
       call rain_water_conservation(qr(k), qc2qr_autoconv_tend, qc2qr_accret_tend, qi2qr_melt_tend, qc2qr_ice_shed_tend, dt, &
@@ -3026,8 +3026,8 @@ subroutine ni_conservation(ni, ni_nucleat_tend, nr2ni_immers_freeze_tend, nc2ni_
   return
 end subroutine ni_conservation
 
-subroutine cloud_water_conservation(qc,dt,    &
-   qc2qr_autoconv_tend,qc2qr_accret_tend,qccol,qc2qi_hetero_freeze_tend,qc2qr_ice_shed_tend,qiberg,qi2qv_sublim_tend,qidep,cld_frac_l,cld_frac_i)
+subroutine cloud_water_conservation(qc,dt,cld_frac_l,cld_frac_i,    &
+   qc2qr_autoconv_tend,qc2qr_accret_tend,qccol,qc2qi_hetero_freeze_tend,qc2qr_ice_shed_tend,qiberg,qi2qv_sublim_tend,qidep)
 
    implicit none
 
