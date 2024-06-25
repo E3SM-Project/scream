@@ -294,6 +294,9 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
    call t_startf('stepon_bndry_exch')
    ! do boundary exchange
    if (.not. single_column .or. dp_crm) then
+
+print *, 'OG we do DSS on forcings'
+
       do ie=1,nelemd
 
          if (fv_nphys>0) then
@@ -577,6 +580,11 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
 
    endif
 
+print *, 'OG in STEPON'
+print *, 'OG in stepon doiopupdate', doiopupdate
+print *, 'OG in stepon dp_crm', dp_crm
+
+
    call t_barrierf('sync_dyn_run', mpicom)
    call t_startf ('dyn_run')
    call dyn_run(dyn_out,rc)
@@ -595,6 +603,8 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    
    ! Update to get tendency 
 #if (defined E3SM_SCM_REPLAY) 
+
+print *, 'OG defined E3SM_SCM_REPLAY'
 
    tl_f = TimeLevel%n0
    
@@ -635,6 +645,10 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
      
    enddo
 
+
+#else
+
+print *, 'OG NOTdefined E3SM_SCM_REPLAY'
 #endif   
 
 end subroutine stepon_run3

@@ -279,6 +279,13 @@ subroutine apply_iop_forcing(elem,hvcoord,hybrid,tl,n,t_before_advance,nets,nete
      t2=tl%np1
   endif
 
+print *, 'OG in apply_iop_forcing'
+print *, 'OG scm_multcols', scm_multcols
+print *, 'OG dp_crm', dp_crm
+print *, 'OG iop_nudge_tq', iop_nudge_tq
+print *, 'OG iop_dosubsidence', iop_dosubsidence
+
+
   call TimeLevel_Qdp(tl,qsplit,tlQdp)
 
   ! Settings for traditional SCM run
@@ -333,9 +340,22 @@ subroutine apply_iop_forcing(elem,hvcoord,hybrid,tl,n,t_before_advance,nets,nete
 
         if (.not. use_3dfrc .or. dp_crm) then
           temp_tend(:) = 0.0_real_kind
+
+print *, 'OG we are in if-statement of \.not. use_3dfrc .or. dp_crm\ ' 
+print *, 'OG temp_tend', temp_tend(:)
+
+
         else
           temp_tend(:) = elem(ie)%derived%fT(i,j,:)
+
+print *, 'OG we are in ELSE of if-statement \.not. use_3dfrc .or. dp_crm\ ' 
+if( (i==1) .and. (j==1))then
+print *, 'OG in apply_iop_forcing FT is ',elem(ie)%derived%fT(i,j,:)
+endif
         endif
+
+
+
 
 #ifdef MODEL_THETA_L
         ! At first time step the tendency term is set to the
@@ -364,6 +384,9 @@ subroutine apply_iop_forcing(elem,hvcoord,hybrid,tl,n,t_before_advance,nets,nete
 
         ! Call the main subroutine to update t, q, u, and v according to
         !  large scale forcing as specified in IOP file.
+
+print *, 'OG about to call advance_iop_forcing'
+print *, 'OG before advance_iop_forcing temp_tend', temp_tend(:)
         call advance_iop_forcing(dt,elem(ie)%state%ps_v(i,j,t1),& ! In
           u_in,v_in,t_in,stateQ_in,temp_tend,&                    ! In
           u_update,v_update,t_update,q_update)                    ! Out

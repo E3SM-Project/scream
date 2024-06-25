@@ -524,6 +524,10 @@ contains
   integer,                intent(in)    :: np1,nets,nete
 
   integer :: k,ie
+
+print *, 'OG in applycam... dynamics'
+
+
   do ie=nets,nete
 
      elem(ie)%state%vtheta_dp(:,:,:,np1) = elem(ie)%state%vtheta_dp(:,:,:,np1) + dt*elem(ie)%derived%FVTheta(:,:,:)

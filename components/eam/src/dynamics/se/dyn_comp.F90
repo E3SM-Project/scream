@@ -466,7 +466,13 @@ CONTAINS
          end do
        endif
 
+print *, 'OG in dyn_comp in dyn_run single_column=', single_column
+print *, 'OG in dyn_comp in dyn_run dp_crm=',dp_crm
+
        if (single_column) then
+
+print *, 'OG in dyn_comp in dyn_run about to call apply_iop_forcing'
+
          call apply_iop_forcing(dyn_state%elem,hvcoord,hybrid,TimeLevel,3,.false.,nets,nete)
        endif
 

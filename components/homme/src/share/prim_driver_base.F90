@@ -1781,6 +1781,13 @@ contains
 
   call t_stopf("ApplyCAMForcing_tracers")
 
+
+print *, 'OG in cam_tracers'
+!print *, 'OG in cam_tracers FPHI', elem%derived%FPHI(1,1,:)
+!print *, 'OG in cam_tracers FVT', elem%derived%fvtheta(1,1,:)
+print *, 'OG in cam_tracers FT', elem%derived%FT(1,1,:)
+
+
   end subroutine applyCAMforcing_tracers
   
   
