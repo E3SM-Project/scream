@@ -687,8 +687,8 @@ end subroutine micro_p3_readnl
        do k = kbot,ktop,kdir
           do i=its,ite
              cldm(i,k)  = max(ast(i,k), mincld)
-             cld_frac_i(i,k) = max(aist(i,k), mincld)
-             cld_frac_l(i,k) = max(alst(i,k), mincld)
+             cld_frac_i(i,k) = max(alst(i,k), mincld)
+             cld_frac_l(i,k) = max(aist(i,k), mincld)
              cld_frac_r(i,k) = cldm(i,k)
           end do
        end do
