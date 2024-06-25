@@ -818,7 +818,7 @@ contains
 
       ! cloud
       call cloud_water_conservation(qc(k), dt, qc2qr_autoconv_tend, qc2qr_accret_tend, qccol, qc2qi_hetero_freeze_tend, &
-           qc2qr_ice_shed_tend, qiberg, qi2qv_sublim_tend, qidep)
+           qc2qr_ice_shed_tend, qiberg, qi2qv_sublim_tend, qidep, cld_frac_l, cld_frac_i)
 
       ! rain
       call rain_water_conservation(qr(k), qc2qr_autoconv_tend, qc2qr_accret_tend, qi2qr_melt_tend, qc2qr_ice_shed_tend, dt, &
@@ -1030,62 +1030,6 @@ contains
          ze_rain(k) = nr(k)*(mu_r(k)+6._rtype)*(mu_r(k)+5._rtype)*(mu_r(k)+4._rtype)*           &
               (mu_r(k)+3._rtype)*(mu_r(k)+2._rtype)*(mu_r(k)+1._rtype)/bfb_pow(lamr(k), 6._rtype)
          ze_rain(k) = max(ze_rain(k),1.e-22_rtype)
-         diag_eff_radius_qr(k) = 1.5_rtype/lamr(k)
-      else
-         qv(k) = qv(k)+qr(k)
-         th_atm(k) = th_atm(k)-inv_exner(k)*qr(k)*latent_heat_vapor(k)*inv_cp
-         vap_liq_exchange(k) = vap_liq_exchange(k) - qr(k)
-         qr(k) = 0._rtype
-         nr(k) = 0._rtype
-      endif
-
-      ! ice:
-
-      qi_not_small:  if (qi(k).ge.qsmall) then
-
-         !impose lower limits to prevent taking log of # < 0
-         ni(k) = max(ni(k),nsmall)
-
-         qi_incld=qi(k)/cld_frac_i(k)
-         ni_incld=ni(k)/cld_frac_i(k)
-         qm_incld=qm(k)/cld_frac_i(k)
-         bm_incld=bm(k)/cld_frac_i(k)
-
-         call calc_bulkRhoRime(qi_incld,qm_incld,bm_incld,rhop)
-         qm(k)=qm_incld*cld_frac_i(k)
-         bm(k)=bm_incld*cld_frac_i(k)
-
-         call impose_max_total_ni(ni_incld,max_total_Ni,inv_rho(k))
-
-         call find_lookupTable_indices_1a(dumi,dumjj,dumii,dumzz,dum1,dum4,          &
-              dum5,dum6,isize,rimsize,densize,     &
-              qi_incld,ni_incld,           &
-              qm_incld,rhop)
-         !qm(k),zitot(k),rhop)
-
-         call access_lookup_table(dumjj,dumii,dumi, 2,dum1,dum4,dum5,table_val_qi_fallspd)
-         call access_lookup_table(dumjj,dumii,dumi, 6,dum1,dum4,dum5,table_val_ice_eff_radius)
-         call access_lookup_table(dumjj,dumii,dumi, 7,dum1,dum4,dum5,table_val_ni_lammax)
-         call access_lookup_table(dumjj,dumii,dumi, 8,dum1,dum4,dum5,table_val_ni_lammin)
-         call access_lookup_table(dumjj,dumii,dumi, 9,dum1,dum4,dum5,table_val_ice_reflectivity)
-         call access_lookup_table(dumjj,dumii,dumi,11,dum1,dum4,dum5,table_val_ice_mean_diam)
-         call access_lookup_table(dumjj,dumii,dumi,12,dum1,dum4,dum5,table_val_ice_bulk_dens)
-
-         ! impose mean ice size bounds (i.e. apply lambda limiters)
-         ! note that the Nmax and Nmin are normalized and thus need to be multiplied by existing N
-         ni_incld = min(ni_incld,table_val_ni_lammax*ni_incld)
-         ni_incld = max(ni_incld,table_val_ni_lammin*ni_incld)
-         ni(k) = ni_incld*cld_frac_i(k)
-
-         !--this should already be done in s/r 'calc_bulkRhoRime'
-         if (qm(k).lt.qsmall) then
-            qm(k) = 0._rtype
-            bm(k) = 0._rtype
-         endif
-         !==
-
-         ! note that reflectivity from lookup table is normalized, so we need to multiply by N
-         diag_vm_qi(k)   = table_val_qi_fallspd*rhofaci(k)
          diag_eff_radius_qi(k)  = table_val_ice_eff_radius ! units are in m
          diag_diam_qi(k)    = table_val_ice_mean_diam
          rho_qi(k)  = table_val_ice_bulk_dens
@@ -2841,7 +2785,7 @@ subroutine back_to_cell_average(cld_frac_l,cld_frac_r,cld_frac_i,               
    ni2nr_melt_tend   = ni2nr_melt_tend*cld_frac_i       ! Change in number due to melting
    nc_collect_tend   = nc_collect_tend*il_cldm     ! Cloud # change due to collection of cld water by ice
    ncshdc  = ncshdc*il_cldm    ! Number change due to shedding, occurs when ice and liquid interact
-   nc2ni_immers_freeze_tend  = nc2ni_immers_freeze_tend*cld_frac_l      ! Number change associated with freexzing of cld drops
+   nc2ni_immers_freeze_tend  = nc2ni_immers_freeze_tend*il_cldm      ! Number change associated with freexzing of cld drops
    nr_collect_tend   = nr_collect_tend*ir_cldm     ! Rain number change due to collection from ice
    ni_selfcollect_tend   = ni_selfcollect_tend*cld_frac_i       ! Ice self collection
    qidep   = qidep*cld_frac_i_not_mixed_phase       ! Vapor deposition to ice phase
@@ -3027,14 +2971,16 @@ subroutine ni_conservation(ni, ni_nucleat_tend, nr2ni_immers_freeze_tend, nc2ni_
 end subroutine ni_conservation
 
 subroutine cloud_water_conservation(qc,dt,    &
-   qc2qr_autoconv_tend,qc2qr_accret_tend,qccol,qc2qi_hetero_freeze_tend,qc2qr_ice_shed_tend,qiberg,qi2qv_sublim_tend,qidep)
+   qc2qr_autoconv_tend,qc2qr_accret_tend,qccol,qc2qi_hetero_freeze_tend,qc2qr_ice_shed_tend,qiberg,qi2qv_sublim_tend,qidep,cld_frac_l,cld_frac_i)
 
    implicit none
 
-   real(rtype), intent(in) :: qc, dt
+   real(rtype), intent(in) :: qc, dt,cld_frac_l,cld_frac_i
    real(rtype), intent(inout) :: qc2qr_autoconv_tend, qc2qr_accret_tend, qccol, qc2qi_hetero_freeze_tend, qc2qr_ice_shed_tend, &
    qiberg, qi2qv_sublim_tend, qidep
-   real(rtype) :: sinks, ratio
+   real(rtype) :: sinks, ratio, il_cldm
+
+   il_cldm = min(cld_frac_i,cld_frac_l)  ! Intersection of ICE and LIQUID cloud
 
    sinks   = (qc2qr_autoconv_tend+qc2qr_accret_tend+qccol+qc2qi_hetero_freeze_tend+qc2qr_ice_shed_tend+qiberg)*dt
    if (sinks .gt. qc .and. sinks.ge.1.e-20_rtype) then
@@ -3054,11 +3000,15 @@ subroutine cloud_water_conservation(qc,dt,    &
    !remaining frac of the timestep.  Only limit if there will be cloud
    !water to begin with.
    
-   !This is no longer necessary since we partition berguron and vap dep using overlap assumptions
-!   if (qc .gt. 1.e-20_rtype) then
-!      qidep  = qidep*(1._rtype-ratio)
-!      qi2qv_sublim_tend  = qi2qv_sublim_tend*(1._rtype-ratio)
-!   end if
+   !in instances where ratio < 1 and we have qc, qidep needs to take over 
+   !but this is an in addition to the qidep we computed outside the mixed 
+   !phase cloud. qidep*(1._rtype-ratio)*(il_cldm/cld_frac_i) is the additional
+   ! vapor depositional growth rate that takes place within the mixed phase cloud
+   ! after qc is depleted 
+   if (qc .gt. 1.e-20_rtype) then
+      qidep  = qidep + qidep*(1._rtype-ratio)*(il_cldm/cld_frac_i)
+      qi2qv_sublim_tend  = qi2qv_sublim_tend*(1._rtype-ratio)
+   end if
 
 
 end subroutine cloud_water_conservation
