@@ -43,8 +43,11 @@ class MLCorrection : public AtmosphereProcess {
   void set_grids(const std::shared_ptr<const GridsManager> grids_manager);
 
 #ifndef KOKKOS_ENABLE_CUDA
+  bool ML_uses_GPU = false;
   // Cuda requires methods enclosing __device__ lambda's to be public
  protected:
+#else
+  bool ML_uses_GPU = true; 
 #endif
 
   void run_impl(const double dt);

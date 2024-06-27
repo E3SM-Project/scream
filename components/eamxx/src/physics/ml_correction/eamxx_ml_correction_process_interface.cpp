@@ -162,6 +162,7 @@ void MLCorrection::run_impl(const double dt) {
   }
   // for qv, we need to stride across number of tracers
   pybind11::object ob1     = py_correction.attr("update_fields")(
+      ML_uses_GPU,
       field_dtype, 
       qv_dev_ptr, 
       T_mid_dev_ptr,

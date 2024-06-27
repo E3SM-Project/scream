@@ -209,8 +209,12 @@ def _get_cupy_from_gpu_ptr(ptr, shape, dtype_char):
     )
     return data_from_ptr
 
+def _get_numpy_from_cpu_ptr(ptr, shape, dtype_char):
+    dtype = np.dtype(dtype_char)
+    return np.frombuffer(ptr, dtype=dtype).reshape(shape)
 
 def update_fields(
+    ML_uses_GPU,
     field_dtype_char,
     qv,
     T_mid,
