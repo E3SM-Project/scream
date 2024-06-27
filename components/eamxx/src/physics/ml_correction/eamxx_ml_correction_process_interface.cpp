@@ -16,6 +16,7 @@ MLCorrection::MLCorrection(const ekat::Comm &comm,
   m_ML_model_path_sfc_fluxes = m_params.get<std::string>("ML_model_path_sfc_fluxes");
   m_fields_ml_output_variables = m_params.get<std::vector<std::string>>("ML_output_fields");
   m_ML_correction_unit_test = m_params.get<bool>("ML_correction_unit_test");
+  m_ML_offline_diags = m_params.get<bool>("ML_calculate_offline_diags",true);
 }
 
 // =========================================================================================
@@ -68,6 +69,14 @@ void MLCorrection::set_grids(
   add_field<Updated>("precip_ice_surf_mass", scalar2d,     kg/m2,  grid_name);
   /* ----------------------- WARNING --------------------------------*/
   add_group<Updated>("tracers", grid_name, 1, Bundling::Required);
+
+  /* ----------------------------------------------------------------*/
+  /* Add diagnostics for offline ML validation
+   */
+  if (m_ML_offline_diags) {
+    add_field<Computed>("ml_diag_model_precip_liq_surf_mass", scalar2d,     kg/m2,  grid_name);
+    add_field<Computed>("ml_diag_model_precip_ice_surf_mass", scalar2d,     kg/m2,  grid_name);
+  }
 }
 
 // =========================================================================================
@@ -112,6 +121,18 @@ void MLCorrection::run_impl(const double dt) {
   const auto &sfc_flux_lw_dn  = get_field_out("sfc_flux_lw_dn").get_view<Real *, Host>();
   const auto &u               = get_field_out("horiz_winds").get_component(0).get_view<Real **, Host>();
   const auto &v               = get_field_out("horiz_winds").get_component(1).get_view<Real **, Host>();
+
+  // Set the model predicted precip values before ML adjustment
+  if (m_ML_offline_diags) {
+    // Set liquid precipitation from model
+    auto precip_liq       = get_field_out("precip_liq_surf_mass");
+    auto model_precip_liq = get_field_out("ml_diag_model_precip_liq_surf_mass");
+    model_precip_liq.deep_copy(precip_liq);
+    // Set ice precipitation from model
+    auto precip_ice       = get_field_out("precip_ice_surf_mass");
+    auto model_precip_ice = get_field_out("ml_diag_model_precip_ice_surf_mass");
+    model_precip_ice.deep_copy(precip_ice);
+  }
 
   // For precipitation adjustment we need to track the change in column integrated 'qv'
   // So we clone the original qv before ML changes the state so we can back out a qv_tend
