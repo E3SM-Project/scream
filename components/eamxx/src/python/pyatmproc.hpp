@@ -131,11 +131,8 @@ struct PyAtmProc {
     return pybind11::cast(missing);
   }
 
-  void setup_output (const std::string& yaml_file) {
+  void setup_output (const ekat::ParameterList& params) {
     auto comm = PySession::get().comm;
-
-    // Load output params
-    auto params = ekat::parse_yaml_file(yaml_file);
 
     // Stuff all fields in a field manager
     auto gm = PySession::get().gm;
@@ -154,6 +151,16 @@ struct PyAtmProc {
     output_mgr = std::make_shared<OutputManager>();
     output_mgr->setup(comm,params,fms,gm,t0,t0,false);
     output_mgr->set_logger(ap->get_logger());
+  }
+
+  void setup_output (const std::string& yaml_file) {
+    auto params = ekat::parse_yaml_file(yaml_file);
+    setup_output(params);
+  }
+
+  void setup_output (const pybind11::dict& d) {
+    PyParamList py_params(d);
+    setup_output(py_params.pl_ref.get());
   }
 
   void run (double dt) {
