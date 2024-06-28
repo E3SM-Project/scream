@@ -121,6 +121,53 @@ def get_ML_correction_dQu_dQv(model, T_mid, qv, cos_zenith, lat, phis, u, v, dt)
     return output
 
 
+def _limit_sw_down(sfc_sw_down: xr.DataArray, toa_sw_down: xr.DataArray, is_sw_down_toa: xr.DataArray) -> xr.DataArray:
+    sfc_sw_down = sfc_sw_down.where(is_sw_down_toa, 0.0)
+    # max downwelling based on checking training data
+    sfc_sw_down_constraint = toa_sw_down * 0.92  
+    sfc_sw_down = sfc_sw_down.where(sfc_sw_down <= sfc_sw_down_constraint, sfc_sw_down_constraint)
+
+    return sfc_sw_down
+
+
+def _limit_sfc_vis_frac(sfc_vis_frac: xr.DataArray, is_sw_down_toa: xr.DataArray) -> xr.DataArray:
+    sfc_vis_frac = sfc_vis_frac.where(is_sw_down_toa, 0.0)
+    # sfc vis frac doesn't go lower than ~0.35 where downwelling shortwave exists
+    # TODO: should I also add a cap?  Perhaps just add to clip config for training
+    vis_frac_ok = cp.logical_and(is_sw_down_toa.data, sfc_vis_frac.data >= 0.35)
+    vis_frac_ok = cp.logical_or(vis_frac_ok, cp.logical_not(is_sw_down_toa.data))
+    sfc_vis_frac = sfc_vis_frac.where(vis_frac_ok, 0.35)
+
+    return sfc_vis_frac
+
+
+def _get_constrained_diffusive_fluxes(
+    sfc_nir_dif_frac: xr.DataArray,
+    sfc_vis_dif_frac: xr.DataArray,
+    is_sw_down_toa: xr.DataArray,
+) -> xr.DataArray:
+    sfc_nir_dif_frac = sfc_nir_dif_frac.where(is_sw_down_toa, 0.0)
+    sfc_vis_dif_frac = sfc_vis_dif_frac.where(is_sw_down_toa, 0.0)
+
+    # from notebook, nir dif frac should never be greater than sfc_vis_dif_frac
+    nir_vis_dif_inconsistency = sfc_nir_dif_frac > sfc_vis_dif_frac
+    sfc_nir_dif_frac = xr.where(
+        nir_vis_dif_inconsistency, sfc_vis_dif_frac, sfc_nir_dif_frac
+    )
+    num_inconsistent_points = nir_vis_dif_inconsistency.sum()
+    if num_inconsistent_points.data > 0:
+        avg_difference = (sfc_nir_dif_frac - sfc_vis_dif_frac).where(nir_vis_dif_inconsistency).mean()
+        logger.info(
+            "Number of inconsistent downwelling nir diffuse fractions (> vis diffuse):"
+            f" {num_inconsistent_points.data}"
+        )
+        logger.info(
+            "Average difference between downwelling nir and vis diffuse fractions"
+            f" at inconsistent points: {avg_difference.data}"
+        )
+    return sfc_nir_dif_frac, sfc_vis_dif_frac
+
+
 def get_ML_correction_sfc_fluxes(
     model,
     T_mid,
@@ -128,8 +175,11 @@ def get_ML_correction_sfc_fluxes(
     cos_zenith,
     lat,
     phis,
-    # sfc_alb_dif_vis,
-    # sw_flux_dn,
+    sw_flux_dn,
+    sfc_alb_dir_vis,
+    sfc_alb_dif_vis,
+    sfc_alb_dir_nir,
+    sfc_alb_dif_nir,
 ):    
     """Get ML correction for overriding surface fluxes (net shortwave and downward longwave)
     ML model should have the following output variables:
@@ -147,7 +197,12 @@ def get_ML_correction_sfc_fluxes(
         sw_flux_dn: downward shortwave flux
         dt: time step (s)
     """    
-    # SW_flux_dn_at_model_top = sw_flux_dn[:, 0]
+    SW_flux_dn_at_model_top = xr.DataArray(sw_flux_dn[:, 0], dims=["ncol"])
+    sfc_alb_dir_vis = xr.DataArray(sfc_alb_dir_vis, dims=["ncol"])
+    sfc_alb_dif_vis = xr.DataArray(sfc_alb_dif_vis, dims=["ncol"])
+    sfc_alb_dir_nir = xr.DataArray(sfc_alb_dir_nir, dims=["ncol"])
+    sfc_alb_dif_nir = xr.DataArray(sfc_alb_dif_nir, dims=["ncol"])
+    
     ds = xr.Dataset(
         data_vars=dict(
             T_mid=(["ncol", "z"], T_mid),
@@ -155,14 +210,68 @@ def get_ML_correction_sfc_fluxes(
             lat=(["ncol"], lat),
             surface_geopotential=(["ncol"], phis),
             cos_zenith_angle=(["ncol"], cos_zenith),
-            # surface_diffused_shortwave_albedo=(["ncol"], sfc_alb_dif_vis),
-            # total_sky_downward_shortwave_flux_at_top_of_atmosphere=(
-            #     ["ncol"],
-            #     SW_flux_dn_at_model_top,
-            # ),
         )
     )
-    return predict(model, ds)
+    output = predict(model, ds)
+    is_sw_down_toa = SW_flux_dn_at_model_top > 0
+
+    # TODO: this was for transmissivity calculation
+    # atmos_transmissivity = output["shortwave_transmissivity_of_atmospheric_column"].where(is_sw_down_toa, 0.0)
+    # sfc_sw_down = SW_flux_dn_at_model_top * atmos_transmissivity
+    
+    sfc_sw_down = _limit_sw_down(
+        output["total_sky_downward_shortwave_flux_at_surface"],
+        SW_flux_dn_at_model_top,
+        is_sw_down_toa,
+    )
+
+    sfc_vis_frac = _limit_sfc_vis_frac(
+        output["downward_vis_fraction_at_surface"],
+        is_sw_down_toa,
+    )
+
+    sfc_nir_frac = (1 - sfc_vis_frac).where(is_sw_down_toa, 0.0)
+    sfc_nir_dif_frac, sfc_vis_dif_frac = _get_constrained_diffusive_fluxes(
+        output["downward_nir_diffuse_fraction_at_surface"],
+        output["downward_vis_diffuse_fraction_at_surface"],
+        is_sw_down_toa,
+    )
+
+    sfc_nir_dir_frac = (1 - sfc_nir_dif_frac).where(is_sw_down_toa, 0.0)
+    sfc_vis_dir_frac = (1 - sfc_vis_dif_frac).where(is_sw_down_toa, 0.0)
+
+    sfc_flux_vis_dir = sfc_sw_down * sfc_vis_frac * sfc_vis_dir_frac
+    sfc_flux_vis_dif = sfc_sw_down * sfc_vis_frac * sfc_vis_dif_frac 
+    sfc_flux_nir_dir = sfc_sw_down * sfc_nir_frac * sfc_nir_dir_frac
+    sfc_flux_nir_dif = sfc_sw_down * sfc_nir_frac * sfc_nir_dif_frac
+
+    sw_net = (
+        sfc_flux_vis_dir * (1 - sfc_alb_dir_vis) +
+        sfc_flux_vis_dif * (1 - sfc_alb_dif_vis) +
+        sfc_flux_nir_dir * (1 - sfc_alb_dir_nir) +
+        sfc_flux_nir_dif * (1 - sfc_alb_dif_nir)
+    )
+
+    if (is_sw_down_toa.sum().data > 0):
+        logger.info(
+            "Min max radiation outputs\n"
+            f"\sfc_sw_down_min: {sfc_sw_down.where(is_sw_down_toa).min().data:1.2f}, sfc_sw_down_max: {sfc_sw_down.where(is_sw_down_toa).max().data:1.2f}\n"
+            f"\tsw_net_min: {sw_net.where(is_sw_down_toa).min().data:1.2f}, sw_net_max: {sw_net.where(is_sw_down_toa).max().data:1.2f}\n"
+            f"\tsfc_vis_frac_min: {sfc_vis_frac.where(is_sw_down_toa).min().data:1.2f}, sfc_vis_frac_max: {sfc_vis_frac.where(is_sw_down_toa).max().data:1.2f}\n"
+            f"\tsfc_nir_dif_frac_min: {sfc_nir_dif_frac.where(is_sw_down_toa).min().data:1.2f}, sfc_nir_dif_frac_max: {sfc_nir_dif_frac.where(is_sw_down_toa).max().data:1.2f}\n"
+            f"\tsfc_vis_dif_frac_min: {sfc_vis_dif_frac.where(is_sw_down_toa).min().data:1.2f}, sfc_vis_dif_frac_max: {sfc_vis_dif_frac.where(is_sw_down_toa).max().data:1.2f}\n"
+        )
+
+    output["sfc_flux_dif_nir"] = sfc_flux_nir_dif
+    output["sfc_flux_dif_vis"] = sfc_flux_vis_dif
+    output["sfc_flux_dir_nir"] = sfc_flux_nir_dir
+    output["sfc_flux_dir_vis"] = sfc_flux_vis_dir
+    output["sfc_flux_sw_net"] = sw_net
+    output["sfc_flux_sw_dn"] = sfc_sw_down
+
+    return ensure_correction_ordering(output)
+
+
 
 
 def _get_cupy_from_gpu_ptr(ptr, shape, dtype_char):
@@ -187,6 +296,11 @@ def update_fields(
     lat,
     lon,
     phis,
+    sw_flux_dn,
+    sfc_alb_dir_vis,
+    sfc_alb_dif_vis,
+    sfc_alb_dir_nir,
+    sfc_alb_dif_nir,
     sfc_flux_dir_nir,
     sfc_flux_dir_vis,
     sfc_flux_dif_nir,
@@ -231,8 +345,11 @@ def update_fields(
     lat = _get_cupy_from_gpu_ptr(lat, (Ncol,), field_dtype_char)
     lon = _get_cupy_from_gpu_ptr(lon, (Ncol,), field_dtype_char)
     phis = _get_cupy_from_gpu_ptr(phis, (Ncol,), field_dtype_char)
-    # sw_flux_dn = _get_cupy_from_gpu_ptr(sw_flux_dn, (Ncol, Nlev+1), field_dtype_char)
-    # sfc_alb_dif_vis = _get_cupy_from_gpu_ptr(sfc_alb_dif_vis, (Ncol,), field_dtype_char)
+    sw_flux_dn = _get_cupy_from_gpu_ptr(sw_flux_dn, (Ncol, Nlev+1), field_dtype_char)
+    sfc_alb_dir_vis = _get_cupy_from_gpu_ptr(sfc_alb_dir_vis, (Ncol,), field_dtype_char)
+    sfc_alb_dif_vis = _get_cupy_from_gpu_ptr(sfc_alb_dif_vis, (Ncol,), field_dtype_char)
+    sfc_alb_dir_nir = _get_cupy_from_gpu_ptr(sfc_alb_dir_nir, (Ncol,), field_dtype_char)
+    sfc_alb_dif_nir = _get_cupy_from_gpu_ptr(sfc_alb_dif_nir, (Ncol,), field_dtype_char)
     sfc_flux_dir_nir = _get_cupy_from_gpu_ptr(sfc_flux_dir_nir, (Ncol,), field_dtype_char)
     sfc_flux_dir_vis = _get_cupy_from_gpu_ptr(sfc_flux_dir_vis, (Ncol,), field_dtype_char)
     sfc_flux_dif_nir = _get_cupy_from_gpu_ptr(sfc_flux_dif_nir, (Ncol,), field_dtype_char)
@@ -285,8 +402,11 @@ def update_fields(
             cos_zenith,
             lat,
             phis,
-            # sfc_alb_dif_vis,
-            # sw_flux_dn,
+            sw_flux_dn,
+            sfc_alb_dir_vis,
+            sfc_alb_dif_vis,
+            sfc_alb_dir_nir,
+            sfc_alb_dif_nir,
         )
         # sfc_flux_sw_net[:] = correction_sfc_fluxes["net_shortwave_sfc_flux_via_transmissivity"].data
         # sfc_flux_lw_dn[:] = correction_sfc_fluxes["override_for_time_adjusted_total_sky_downward_longwave_flux_at_surface"].data
@@ -298,7 +418,7 @@ def update_fields(
         sfc_flux_lw_dn[:] = correction_sfc_fluxes["sfc_flux_lw_dn"].data
 
     end = time.time()
-    logger.info(
+    logger.debug(
         "ML correction python timing (seconds):  {total: "
         f"{end-start}"
         "}")
