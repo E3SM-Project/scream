@@ -215,15 +215,16 @@ def get_ML_correction_sfc_fluxes(
     output = predict(model, ds)
     is_sw_down_toa = SW_flux_dn_at_model_top > 0
 
-    # TODO: this was for transmissivity calculation
-    # atmos_transmissivity = output["shortwave_transmissivity_of_atmospheric_column"].where(is_sw_down_toa, 0.0)
-    # sfc_sw_down = SW_flux_dn_at_model_top * atmos_transmissivity
+    # for transmissivity calculation
+    atmos_transmissivity = output["shortwave_transmissivity_of_atmospheric_column"].where(is_sw_down_toa, 0.0)
+    sfc_sw_down = SW_flux_dn_at_model_top * atmos_transmissivity
     
-    sfc_sw_down = _limit_sw_down(
-        output["total_sky_downward_shortwave_flux_at_surface"],
-        SW_flux_dn_at_model_top,
-        is_sw_down_toa,
-    )
+    # for direct sw_down prediction if used
+    # sfc_sw_down = _limit_sw_down(
+    #     output["total_sky_downward_shortwave_flux_at_surface"],
+    #     SW_flux_dn_at_model_top,
+    #     is_sw_down_toa,
+    # )
 
     sfc_vis_frac = _limit_sfc_vis_frac(
         output["downward_vis_fraction_at_surface"],
@@ -408,8 +409,6 @@ def update_fields(
             sfc_alb_dir_nir,
             sfc_alb_dif_nir,
         )
-        # sfc_flux_sw_net[:] = correction_sfc_fluxes["net_shortwave_sfc_flux_via_transmissivity"].data
-        # sfc_flux_lw_dn[:] = correction_sfc_fluxes["override_for_time_adjusted_total_sky_downward_longwave_flux_at_surface"].data
         sfc_flux_dir_nir[:] = correction_sfc_fluxes["sfc_flux_dir_nir"].data
         sfc_flux_dir_vis[:] = correction_sfc_fluxes["sfc_flux_dir_vis"].data
         sfc_flux_dif_nir[:] = correction_sfc_fluxes["sfc_flux_dif_nir"].data
