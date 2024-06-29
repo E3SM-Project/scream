@@ -101,8 +101,8 @@ class SP(TestProperty):
             "debug single precision",
             [("CMAKE_BUILD_TYPE", "Debug"),
              ("EKAT_DEFAULT_BFB", "True"),
-             ("SCREAM_DOUBLE_PRECISION", "False")
-             ("EAMXX_ENABLE_PYBIND", "True"],
+             ("SCREAM_DOUBLE_PRECISION", "False"),
+             ("EAMXX_ENABLE_PYBIND", "True")],
         )
 
 ###############################################################################
