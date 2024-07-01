@@ -51,16 +51,21 @@ def sample_ML_prediction(nz, input_data: Union[cp.ndarray, np.ndarray], ML_model
 
 
 def sample_ML_prediction_dummy(
-    nz: int, input_data: cp.ndarray, ML_model_tq: str, ML_model_uv: str
+    nz: int, input_data: cp.ndarray, ML_model_tq: str, ML_model_uv: str, ML_uses_GPU: bool,
 ):
     """
     This function is used to generate a sample ML prediction for the given input data.
     We use a constant output predictor to generate the prediction.
     """
     output_variables = ["qv"]
-    outputs = {
-        "qv": cp.full(nz, 1e-4),
-    }
+    if ML_uses_GPU:
+        outputs = {
+            "qv": cp.full(nz, 1e-4),
+        }
+    else:
+        outputs = {
+            "qv": np.full(nz, 1e-4),
+        }
     predictor = fv3fit.testing.ConstantOutputPredictor(
         input_variables=["qv"],
         output_variables=output_variables,
@@ -68,7 +73,10 @@ def sample_ML_prediction_dummy(
     predictor.set_outputs(**outputs)
     model = MultiModelAdapter([predictor])
     if len(input_data.shape) < 2:
-        input_data = input_data[cp.newaxis, :]
+        if ML_uses_GPU:
+            input_data = input_data[cp.newaxis, :]
+        else:
+            input_data = input_data[np.newaxis, :]
     input_data = xr.Dataset({"qv": xr.DataArray(data=input_data, dims=["ncol", "z"])})
     output = predict(model, input_data)
     return output["qv"].data
@@ -105,17 +113,39 @@ def modify_view_gpu(ptr, dtype_char, Ncol, Nlev, model_tq, model_uv):
             cp.cuda.UnownedMemory(ptr, Ncol * Nlev * dtype.itemsize, None), 0
         )
     )
-    prediction = sample_ML_prediction_dummy(Nlev, data_from_ptr, model_tq, model_uv)
+    prediction = sample_ML_prediction_dummy(Nlev, data_from_ptr, model_tq, model_uv, True)
     data_from_ptr[1, :] = prediction[1, :]
+    
+def build_gpu_array(ptr, dtype_char, Ncol, Nlev):
+    dtype = cp.dtype(dtype_char)
+    data_from_ptr = cp.ndarray(
+        (Ncol, Nlev), 
+        dtype=dtype,
+        memptr=cp.cuda.MemoryPointer(
+            cp.cuda.UnownedMemory(ptr, Ncol * Nlev * dtype.itemsize, None), 0
+        )
+    )
+    return data_from_ptr
 
+def build_cpu_array(ptr, dtype_char, Ncol, Nlev):
+    dtype = np.dtype(dtype_char)
+    import ctypes
+    test = (ctypes.c_double * Ncol * Nlev).from_address(ptr)
+    data_from_ptr = np.ctypeslib.as_array(test)
+    # this always seg fault
 
-def modify_view(data, Ncol, Nlev, model_tq, model_uv):
+def compare_cpu_gpu_arrays(cpu_data, gpu_ptr, dtype_char, Ncol, Nlev):
+    cpu = cpu_data.reshape((-1, Nlev))
+    assert type(cpu) == np.ndarray
+    gpu = build_gpu_array(gpu_ptr, dtype_char, Ncol, Nlev)
+    assert type(gpu) == cp.ndarray
+    np.testing.assert_allclose(cpu, gpu.get())
+
+def modify_view_cpu(data, Ncol, Nlev, model_tq, model_uv):
     # data comes in as 1D Numpy array, a view constructed from C++ memory
-    data_cp = cp.asarray(data)
     data = data.reshape((-1, Nlev))
-    data_cp_rshp = cp.reshape(data_cp, (-1, Nlev))
-    prediction = sample_ML_prediction_dummy(Nlev, data_cp_rshp, model_tq, model_uv)
-    data[1, :] = prediction[1, :].get()
+    prediction = sample_ML_prediction_dummy(Nlev, data, model_tq, model_uv, False)
+    data[1, :] = prediction[1, :]
 
 
 def gpu_handoff_real_model(ptr, dtype_char, Ncol, Nlev, model_path):

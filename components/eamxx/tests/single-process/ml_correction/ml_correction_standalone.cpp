@@ -5,6 +5,7 @@
 #include "share/grid/mesh_free_grids_manager.hpp"
 
 #include <ekat/ekat_parse_yaml_file.hpp>
+#include <ekat/util/ekat_arch.hpp>
 
 #include <pybind11/embed.h>
 #include <pybind11/numpy.h>
@@ -39,6 +40,15 @@ TEST_CASE("ml_correction-stand-alone", "") {
   EKAT_ASSERT_MSG(!(ML_model_tq_path != "NONE" && ML_model_t_only_path != "NONE"),
                    "Error! Only one of ML_model_path_tq and ML_model_path_temperature"
                    " can be specificed. \n");  
+  
+  const auto exec_space = DefaultDevice::execution_space::name();
+  bool ML_uses_GPU;
+  if (exec_space == "Cuda") {
+    ML_uses_GPU = true;
+  } else {
+    ML_uses_GPU = false;
+  }
+
   ekat::Comm atm_comm(MPI_COMM_WORLD);
 
   register_physics();
@@ -79,13 +89,14 @@ TEST_CASE("ml_correction-stand-alone", "") {
   py::object ML_model_uv = py_correction.attr("get_ML_model")(ML_model_uv_path);
   
   // CPU Test
-  py::object ob1  = py_correction.attr("modify_view")(
+  py::object ob1  = py_correction.attr("modify_view_cpu")(
       py::array_t<Real, py::array::c_style | py::array::forcecast>(
           num_cols * num_levs, qv.data(), py::str{}),
       num_cols, num_levs, ML_model_tq, ML_model_uv);
-
-  // GPU Handoff test with modify
+  
   const auto &qv_dev = qv_field.get_view<Real **, Device>();
+  if (ML_uses_GPU) {
+  // GPU Handoff test with modify
   uintptr_t ptr = reinterpret_cast<uintptr_t>(qv_dev.data());
   std::string qv_dev_dtype = typeid(qv_dev(0, 0)).name();
 
@@ -94,32 +105,23 @@ TEST_CASE("ml_correction-stand-alone", "") {
       qv_dev_dtype,
       num_cols, num_levs, ML_model_tq, ML_model_uv);
 
-  // GPU handoff test xarray -- cupy -- tensorflow integration
-  // TODO: where to store model for load during CI?
-  // py::object test_gpu_handoff_xarray = py_correction.attr("gpu_handoff_real_model")(
-  //     ptr,
-  //     qv_dev_dtype,
-  //     num_cols, num_levs, ML_model_tq_path);
-  
-  // // Testing function for checking pointer and pybind arrays are the same
-  // py::object test_ptr_usage = py_correction.attr("test_ptr")(
-  //   ptr,
-  //   py::array_t<Real, py::array::c_style | py::array::forcecast>(
-  //         num_cols * num_levs, qv.data(), py::str{}),
-  //   num_cols,
-  //   num_levs); // This one should be unchanged
+  py::object ob1  = py_correction.attr("compare_cpu_gpu_arrays")(
+      py::array_t<Real, py::array::c_style | py::array::forcecast>(
+          num_cols * num_levs, qv.data(), py::str{}),
+      ptr, qv_dev_dtype, num_cols, num_levs);
+  }
   
   py::gil_scoped_release no_gil;
   ekat::enable_fpes(fpe_mask);
-  //Check CPU update
   REQUIRE(qv(1, 10) == reference);   // This is the one that is modified
   REQUIRE(qv(0, 10) != reference);
   
-  //Check GPU update
-  const auto qv_dev_h = Kokkos::create_mirror_view(qv_dev);
-  Kokkos::deep_copy(qv_dev_h, qv_dev);
-  REQUIRE(qv_dev_h(1, 0) == reference);   // This is the one that is modified
-  REQUIRE(qv_dev_h(0, 0) != reference);
+  if (ML_uses_GPU) {
+    const auto qv_dev_h = Kokkos::create_mirror_view(qv_dev);
+    Kokkos::deep_copy(qv_dev_h, qv_dev);
+    REQUIRE(qv_dev_h(1, 0) == reference);   // This is the one that is modified
+    REQUIRE(qv_dev_h(0, 0) != reference);
+  }
   ad.finalize();
 }
 

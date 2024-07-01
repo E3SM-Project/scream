@@ -209,9 +209,6 @@ def _get_cupy_from_gpu_ptr(ptr, shape, dtype_char):
     )
     return data_from_ptr
 
-def _get_numpy_from_cpu_ptr(ptr, shape, dtype_char):
-    dtype = np.dtype(dtype_char)
-    return np.frombuffer(ptr, dtype=dtype).reshape(shape)
 
 def update_fields(
     ML_uses_GPU,
@@ -311,15 +308,15 @@ def update_fields(
         T_mid[:, :] += correction_tq["dQ1"].data * dt
         qv[:, 0, :] += correction_tq["dQ2"].data * dt
     if model_t is not None:
-        correction_tq = get_ML_correction_dQ1_only(
-            model_tq, 
+        correction_t = get_ML_correction_dQ1_only(
+            model_t, 
             T_mid, 
             qv_0, 
             cos_zenith,
             lat,
             phis,
         )
-        T_mid[:, :] += correction_tq["dQ1"].data * dt        
+        T_mid[:, :] += correction_t["dQ1"].data * dt        
     if model_uv is not None:
         correction_uv = get_ML_correction_dQu_dQv(
             model_uv, T_mid, qv_0, cos_zenith, lat, phis, u, v, dt
