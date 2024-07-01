@@ -115,6 +115,8 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
 
   // layout for 3D (2d horiz X 1d vertical) variables
   FieldLayout scalar3d_layout_mid{ {COL, LEV}, {ncol_, nlev_} };
+  // At interfaces
+  FieldLayout scalar3d_layout_int{{COL, ILEV}, {ncol_, nlev_ + 1}};
 
   // define fields needed in mam4xx
 
@@ -122,6 +124,8 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
   add_field<Required>("omega", scalar3d_layout_mid, Pa/s, grid_name); // vertical pressure velocity
   add_field<Required>("T_mid", scalar3d_layout_mid, K, grid_name); // Temperature
   add_field<Required>("p_mid", scalar3d_layout_mid, Pa, grid_name); // total pressure
+  // Total pressure [Pa] at interfaces
+  add_field<Required>("p_int", scalar3d_layout_int, Pa, grid_name);
   add_field<Required>("qv", scalar3d_layout_mid, kg/kg, grid_name, "tracers"); // specific humidity
   add_field<Required>("qi", scalar3d_layout_mid, kg/kg, grid_name, "tracers"); // ice wet mixing ratio
   add_field<Required>("ni", scalar3d_layout_mid, n_unit, grid_name, "tracers"); // ice number mixing ratio
@@ -190,7 +194,7 @@ void MAMMicrophysics::init_buffers(const ATMBufferManager &buffer_manager) {
 
 void MAMMicrophysics::initialize_impl(const RunType run_type) {
 
-  /*step_ = 0;
+  step_ = 0;
 
   // populate the wet and dry atmosphere states with views from fields and
   // the buffer
@@ -203,6 +207,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
 
   dry_atm_.T_mid     = get_field_in("T_mid").get_view<const Real**>();
   dry_atm_.p_mid     = get_field_in("p_mid").get_view<const Real**>();
+  dry_atm_.p_int     = get_field_in("p_int").get_view<const Real **>();
   dry_atm_.p_del     = get_field_in("pseudo_density").get_view<const Real**>();
   dry_atm_.cldfrac   = get_field_in("cldfrac_tot").get_view<const Real**>(); // FIXME: tot or liq?
   dry_atm_.pblh      = get_field_in("pbl_height").get_view<const Real*>();
@@ -245,9 +250,9 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   }
 
   // create our photolysis rate calculation table
-  photo_table_ = impl::read_photo_table(get_comm(),
+  /*photo_table_ = impl::read_photo_table(get_comm(),
                                         config_.photolysis.rsf_file,
-                                        config_.photolysis.xs_long_file);
+                                        config_.photolysis.xs_long_file);*/
 
   // FIXME: read relevant land use data from drydep surface file
 
@@ -273,7 +278,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
 
 void MAMMicrophysics::run_impl(const double dt) {
 
-  /*const auto scan_policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_thread_range_parallel_scan_team_policy(ncol_, nlev_);
+  const auto scan_policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_thread_range_parallel_scan_team_policy(ncol_, nlev_);
   const auto policy      = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(ncol_, nlev_);
 
   // preprocess input -- needs a scan for the calculation of atm height
@@ -324,11 +329,11 @@ void MAMMicrophysics::run_impl(const double dt) {
 
     // fetch column-specific atmosphere state data
     auto atm = mam_coupling::atmosphere_for_column(dry_atm, icol);
-    auto z_iface = ekat::subview(dry_atm.z_iface, icol);
+    /*auto z_iface = ekat::subview(dry_atm.z_iface, icol);
     Real phis = dry_atm.phis(icol);
 
     // set surface state data
-    haero::Surface sfc{};
+    /*haero::Surface sfc{};
 
     // fetch column-specific subviews into aerosol prognostics
     mam4::Prognostics progs = mam_coupling::interstitial_aerosols_for_column(dry_aero, icol);
@@ -359,10 +364,10 @@ void MAMMicrophysics::run_impl(const double dt) {
     constexpr int extcnt = mam4::gas_chemistry::extcnt;
     view_2d extfrc; // FIXME: where to allocate? (nlev, extcnt)
     mam4::mo_setext::Forcing forcings[extcnt]; // FIXME: forcings seem to require file data
-    mam4::mo_setext::extfrc_set(forcings, extfrc);
+    mam4::mo_setext::extfrc_set(forcings, extfrc);*/
 
     // compute aerosol microphysics on each vertical level within this column
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&](const int k) {
+    /*Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&](const int k) {
 
       constexpr int num_modes = mam4::AeroConfig::num_modes();
       constexpr int gas_pcnst = mam_coupling::gas_pcnst();
@@ -499,12 +504,12 @@ void MAMMicrophysics::run_impl(const double dt) {
       // transfer updated prognostics from work arrays
       mam_coupling::convert_work_arrays_to_mmr(vmr, vmrcw, q, qqcw);
       mam_coupling::transfer_work_arrays_to_prognostics(q, qqcw, progs, k);
-    });
+    });*/
   });
 
   // postprocess output
   Kokkos::parallel_for("postprocess", policy, postprocess_);
-  Kokkos::fence();*/
+  Kokkos::fence();
 }
 
 void MAMMicrophysics::finalize_impl() {
