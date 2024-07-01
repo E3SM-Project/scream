@@ -20,6 +20,7 @@ set(DIAGNOSTIC_SRCS
   aodvis.cpp
   number_path.cpp
   aerocom_cld.cpp
+  pbl_entrainment_budget.cpp
 )
 
 add_library(diagnostics ${DIAGNOSTIC_SRCS})
