@@ -140,12 +140,12 @@ private_except_cuda:
     void operator()(const Kokkos::TeamPolicy<KT::ExeSpace>::member_type& team) const {
       const int i = team.league_rank(); // column index
 
-      compute_vertical_layer_heights(team, dry_atm_, i);
-      team.team_barrier(); // allows kernels below to use layer heights
-      compute_updraft_velocities(team, wet_atm_, dry_atm_, i);
       compute_dry_mixing_ratios(team, wet_atm_, dry_atm_, i);
       compute_dry_mixing_ratios(team, wet_atm_, wet_aero_, dry_aero_, i);
       team.team_barrier();
+
+      compute_vertical_layer_heights(team, dry_atm_, i);
+      compute_updraft_velocities(team, wet_atm_, dry_atm_, i);
     } // operator()
 
     // number of horizontal columns and vertical levels
