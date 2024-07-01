@@ -203,7 +203,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   wet_atm_.nc = get_field_out("nc").get_view<Real**>();
   wet_atm_.qi = get_field_in("qi").get_view<const Real**>();
   wet_atm_.ni = get_field_in("ni").get_view<const Real**>();
-  
+
 
   dry_atm_.T_mid     = get_field_in("T_mid").get_view<const Real**>();
   dry_atm_.p_mid     = get_field_in("p_mid").get_view<const Real**>();
@@ -320,8 +320,6 @@ void MAMMicrophysics::run_impl(const double dt) {
   // FIXME: read relevant chlorine loading data from file based on time
 
   // loop over atmosphere columns and compute aerosol microphyscs
-  auto some_step = step_;
-
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const ThreadTeam& team) {
     const int icol = team.league_rank(); // column index
 
@@ -453,7 +451,7 @@ void MAMMicrophysics::run_impl(const double dt) {
       impl::compute_water_content(progs, k, qv, temp, pmid, dgncur_a, dgncur_awet, wetdens, qaerwat);
 
       // do aerosol microphysics (gas-aerosol exchange, nucleation, coagulation)
-      impl::modal_aero_amicphys_intr(config.amicphys, step_, dt, t, pmid, pdel,
+      /*impl::modal_aero_amicphys_intr(config.amicphys, step_, dt, t, pmid, pdel,
                                      zm, pblh, qv, cldfrac, vmr, vmrcw, vmr_pregaschem,
                                      vmr_precldchem, vmrcw_precldchem, vmr_tendbb,
                                      vmrcw_tendbb, dgncur_a, dgncur_awet,
