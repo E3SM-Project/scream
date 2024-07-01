@@ -180,7 +180,8 @@ inline void pybind_pyatmproc(pybind11::module& m)
     .def("get_field",&PyAtmProc::get_field)
     .def("initialize",&PyAtmProc::initialize)
     .def("get_params",&PyAtmProc::get_params)
-    .def("setup_output",&PyAtmProc::setup_output)
+    .def("setup_output",pybind11::overload_cast<const pybind11::dict&>(&PyAtmProc::setup_output))
+    .def("setup_output",pybind11::overload_cast<const std::string&>(&PyAtmProc::setup_output))
     .def("run",&PyAtmProc::run)
     .def("read_ic",&PyAtmProc::read_ic);
 }
