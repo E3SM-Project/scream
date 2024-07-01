@@ -131,11 +131,8 @@ struct PyAtmProc {
     return pybind11::cast(missing);
   }
 
-  void setup_output (const std::string& yaml_file) {
+  void setup_output (const ekat::ParameterList& params) {
     auto comm = PySession::get().comm;
-
-    // Load output params
-    auto params = ekat::parse_yaml_file(yaml_file);
 
     // Stuff all fields in a field manager
     auto gm = PySession::get().gm;
@@ -156,6 +153,16 @@ struct PyAtmProc {
     output_mgr->set_logger(ap->get_logger());
   }
 
+  void setup_output (const std::string& yaml_file) {
+    auto params = ekat::parse_yaml_file(yaml_file);
+    setup_output(params);
+  }
+
+  void setup_output (const pybind11::dict& d) {
+    PyParamList py_params(d);
+    setup_output(py_params.pl_ref.get());
+  }
+
   void run (double dt) {
     ap->run(dt);
     time += dt;
@@ -173,7 +180,8 @@ inline void pybind_pyatmproc(pybind11::module& m)
     .def("get_field",&PyAtmProc::get_field)
     .def("initialize",&PyAtmProc::initialize)
     .def("get_params",&PyAtmProc::get_params)
-    .def("setup_output",&PyAtmProc::setup_output)
+    .def("setup_output",pybind11::overload_cast<const pybind11::dict&>(&PyAtmProc::setup_output))
+    .def("setup_output",pybind11::overload_cast<const std::string&>(&PyAtmProc::setup_output))
     .def("run",&PyAtmProc::run)
     .def("read_ic",&PyAtmProc::read_ic);
 }

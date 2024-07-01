@@ -7,3 +7,5 @@ set(SCREAM_INPUT_ROOT "/home/projects/e3sm/scream/data" CACHE STRING "")
 #set(CMAKE_CXX_FLAGS "-DTHRUST_IGNORE_CUB_VERSION_CHECK" CACHE STRING "" FORCE)
 set(CMAKE_Fortran_FLAGS "-fallow-argument-mismatch"  CACHE STRING "" FORCE)
 set(HOMMEXX_CUDA_MAX_WARP_PER_TEAM 8 CACHE STRING "")
+
+set(pybind11_ROOT /home/e3sm-jenkins/.local/lib/python3.10/site-packages CACHE PATH "Path to pybind11 installation folder")
