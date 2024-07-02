@@ -55,8 +55,9 @@ void fpe_guard_wrapper (const Lambda& f) {
   } catch (std::exception &e) {
     fprintf(stderr, "%s\n", e.what());
     auto& c = ScreamContext::singleton();
+    auto mpi_comm = c.get<ekat::Comm>().mpi_comm();
     c.clean_up();
-    throw;
+    MPI_Abort(mpi_comm,-1);
   }
 
   // Restore the FPE flag as it was when control was handed to us.
