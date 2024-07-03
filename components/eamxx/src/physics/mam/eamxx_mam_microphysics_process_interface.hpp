@@ -10,6 +10,8 @@
 #include <ekat/ekat_parameter_list.hpp>
 #include <ekat/ekat_workspace.hpp>
 #include <mam4xx/mam4.hpp>
+#include "share/io/scorpio_input.hpp"
+#include "share/io/scream_scorpio_interface.hpp"
 
 #include <string>
 

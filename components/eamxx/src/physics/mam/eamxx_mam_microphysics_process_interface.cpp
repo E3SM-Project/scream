@@ -159,6 +159,37 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
   // Tracers group -- do we need this in addition to the tracers above? In any
   // case, this call should be idempotent, so it can't hurt.
   add_group<Updated>("tracers", grid_name, 1, Bundling::Required);
+  // read linoz files
+#if 1 
+  {
+   using view_1d_host = typename KT::view_1d<Real>::HostMirror;
+   using view_2d_host = typename KT::view_2d<Real>::HostMirror;
+   using strvec_t = std::vector<std::string>;
+   std::map<std::string, FieldLayout> layouts_linoz;
+   // const auto& fname = m_params.get<std::string>(table_name); 
+   std::string linoz_file_name="linoz1850-2015_2010JPL_CMIP6_10deg_58km_c20171109.nc";
+   ekat::ParameterList params_Linoz; 
+   params_Linoz.set("Filename", linoz_file_name);
+   // make a list of host views
+   std::map<std::string, view_1d_host> host_views_Linoz;
+   
+   params_Linoz.set("Skip_Grid_Checks", true);
+   params_Linoz.set<strvec_t>(
+      "Field Names",
+      {"o3_clim"});
+
+   view_2d_host o3_clim_host("o3_clim_host",ncol_, nlev_);
+   host_views_Linoz["o3_clim"] =
+      view_1d_host(o3_clim_host.data(), o3_clim_host.size());
+
+   layouts_linoz.emplace("o3_clim", scalar3d_layout_mid);   
+
+   AtmosphereInput Linoz_reader(params_Linoz, grid_, host_views_Linoz,
+                                         layouts_linoz);
+   Linoz_reader.read_variables();
+   Linoz_reader.finalize();
+  }
+#endif
 }
 
 // this checks whether we have the tracers we expect
@@ -315,6 +346,7 @@ void MAMMicrophysics::run_impl(const double dt) {
   mam4::mo_photo::PhotoTableData &photo_table = photo_table_;
   const int nlev = nlev_;
   const Config &config = config_;
+  const auto& step= step_;
   // FIXME: read relevant linoz climatology data from file(s) based on time
 
   // FIXME: read relevant chlorine loading data from file based on time
@@ -451,7 +483,7 @@ void MAMMicrophysics::run_impl(const double dt) {
       impl::compute_water_content(progs, k, qv, temp, pmid, dgncur_a, dgncur_awet, wetdens, qaerwat);
 
       // do aerosol microphysics (gas-aerosol exchange, nucleation, coagulation)
-      /*impl::modal_aero_amicphys_intr(config.amicphys, step_, dt, t, pmid, pdel,
+      /*impl::modal_aero_amicphys_intr(config.amicphys, step, dt, t, pmid, pdel,
                                      zm, pblh, qv, cldfrac, vmr, vmrcw, vmr_pregaschem,
                                      vmr_precldchem, vmrcw_precldchem, vmr_tendbb,
                                      vmrcw_tendbb, dgncur_a, dgncur_awet,
