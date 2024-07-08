@@ -140,17 +140,35 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
   add_field<Updated>("qc", scalar3d_layout_mid, kg/kg, grid_name, "tracers"); // cloud liquid wet mixing ratio
   add_field<Updated>("nc", scalar3d_layout_mid, n_unit, grid_name, "tracers"); // cloud liquid wet number mixing ratio
 
-  // (interstitial) aerosol tracers of interest: mass (q) and number (n) mixing ratios
+  // interstitial and cloudborne aerosol tracers of interest: mass (q) and
+  // number (n) mixing ratios
   for (int m = 0; m < mam_coupling::num_aero_modes(); ++m) {
+    // interstitial aerosol tracers of interest: number (n) mixing ratios
     const char* int_nmr_field_name = mam_coupling::int_aero_nmr_field_name(m);
     add_field<Updated>(int_nmr_field_name, scalar3d_layout_mid, n_unit, grid_name, "tracers");
+
+    // cloudborne aerosol tracers of interest: number (n) mixing ratios
+    // NOTE: DO NOT add cld borne aerosols to the "tracer" group as these are
+    // NOT advected
+    const char* cld_nmr_field_name = mam_coupling::cld_aero_nmr_field_name(m);
+    add_field<Updated>(cld_nmr_field_name, scalar3d_layout_mid, n_unit, grid_name);
+
     for (int a = 0; a < mam_coupling::num_aero_species(); ++a) {
+      // (interstitial) aerosol tracers of interest: mass (q) mixing ratios
       const char* int_mmr_field_name = mam_coupling::int_aero_mmr_field_name(m, a);
       if (strlen(int_mmr_field_name) > 0) {
         add_field<Updated>(int_mmr_field_name, scalar3d_layout_mid, kg/kg, grid_name, "tracers");
       }
-    }
-  }
+
+      // (cloudborne) aerosol tracers of interest: mass (q) mixing ratios
+      // NOTE: DO NOT add cld borne aerosols to the "tracer" group as these are
+      // NOT advected
+      const char* cld_mmr_field_name = mam_coupling::cld_aero_mmr_field_name(m, a);
+      if (strlen(cld_mmr_field_name) > 0) {
+        add_field<Updated>(cld_mmr_field_name, scalar3d_layout_mid, kg/kg, grid_name);
+      }
+    } // end for loop for num species
+  }   // end for loop for num modes
 
   // aerosol-related gases: mass mixing ratios
   for (int g = 0; g < mam_coupling::num_aero_gases(); ++g) {
@@ -291,16 +309,32 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   if (run_type==RunType::Initial) {
   }
 
-  // set wet/dry aerosol state data (interstitial aerosols only)
+  // interstitial and cloudborne aerosol tracers of interest: mass (q) and
+  // number (n) mixing ratios
   for (int m = 0; m < mam_coupling::num_aero_modes(); ++m) {
+    // interstitial aerosol tracers of interest: number (n) mixing ratios
     const char* int_nmr_field_name = mam_coupling::int_aero_nmr_field_name(m);
     wet_aero_.int_aero_nmr[m] = get_field_out(int_nmr_field_name).get_view<Real**>();
     dry_aero_.int_aero_nmr[m] = buffer_.dry_int_aero_nmr[m];
+
+    // cloudborne aerosol tracers of interest: number (n) mixing ratios
+    const char* cld_nmr_field_name = mam_coupling::cld_aero_nmr_field_name(m);
+    wet_aero_.cld_aero_nmr[m] = get_field_out(cld_nmr_field_name).get_view<Real **>();
+    dry_aero_.cld_aero_nmr[m] = buffer_.dry_cld_aero_nmr[m];
+
     for (int a = 0; a < mam_coupling::num_aero_species(); ++a) {
+      // (interstitial) aerosol tracers of interest: mass (q) mixing ratios
       const char* int_mmr_field_name = mam_coupling::int_aero_mmr_field_name(m, a);
       if (strlen(int_mmr_field_name) > 0) {
         wet_aero_.int_aero_mmr[m][a] = get_field_out(int_mmr_field_name).get_view<Real**>();
         dry_aero_.int_aero_mmr[m][a] = buffer_.dry_int_aero_mmr[m][a];
+      }
+
+      // (cloudborne) aerosol tracers of interest: mass (q) mixing ratios
+      const char* cld_mmr_field_name = mam_coupling::cld_aero_mmr_field_name(m, a);
+      if(strlen(cld_mmr_field_name) > 0) {
+        wet_aero_.cld_aero_mmr[m][a] = get_field_out(cld_mmr_field_name).get_view<Real **>();
+        dry_aero_.cld_aero_mmr[m][a] = buffer_.dry_cld_aero_mmr[m][a]; 
       }
     }
   }
@@ -611,7 +645,7 @@ void MAMMicrophysics::run_impl(const double dt) {
     haero::Surface sfc{};
 
     // fetch column-specific subviews into aerosol prognostics
-    mam4::Prognostics progs = mam_coupling::interstitial_aerosols_for_column(dry_aero, icol);
+    mam4::Prognostics progs = mam_coupling::aerosols_for_column(dry_aero, icol);
 
     // set up diagnostics
     mam4::Diagnostics diags(nlev);
@@ -635,10 +669,11 @@ void MAMMicrophysics::run_impl(const double dt) {
     Real zenith_angle = 0.0; // FIXME: need to get this from EAMxx [radians]
     Real surf_albedo = 0.0; // FIXME: surface albedo
     Real esfact = 0.0; // FIXME: earth-sun distance factor
+
     const auto& photo_rates_icol = ekat::subview(photo_rates, icol);
 #if 0
     mam4::mo_photo::table_photo(photo_rates_icol, atm.pressure, atm.hydrostatic_dp,
-     atm.temperature, o3_col_dens_i, zenith_angle, surf_albedo, lwc_icol,
+     atm.temperature, o3_col_dens_i, zenith_angle, surf_albedo, atm.liquid_mixing_ratio,
      atm.cloud_fraction, esfact, photo_table, photo_work_arrays_icol);
 #endif
     // compute external forcings at time t(n+1) [molecules/cm^3/s]
@@ -663,18 +698,20 @@ void MAMMicrophysics::run_impl(const double dt) {
       Real pblh    = atm.planetary_boundary_layer_height;
       Real qv      = atm.vapor_mixing_ratio(k);
       Real cldfrac = atm.cloud_fraction(k);
+      Real lwc     = atm.liquid_mixing_ratio(k);
+      Real cldnum  = atm.cloud_liquid_number_mixing_ratio(k);
 
       // extract aerosol state variables into "working arrays" (mass mixing ratios)
       // (in EAM, this is done in the gas_phase_chemdr subroutine defined within
       //  mozart/mo_gas_phase_chemdr.F90)
       Real q[gas_pcnst] = {};
       Real qqcw[gas_pcnst] = {};
-      //mam_coupling::transfer_prognostics_to_work_arrays(progs, k, q, qqcw);
+      mam_coupling::transfer_prognostics_to_work_arrays(progs, k, q, qqcw);
 
       // convert mass mixing ratios to volume mixing ratios (VMR), equivalent
       // to tracer mixing ratios (TMR))
       Real vmr[gas_pcnst], vmrcw[gas_pcnst];
-      //mam_coupling::convert_work_arrays_to_vmr(q, qqcw, vmr, vmrcw);
+      mam_coupling::convert_work_arrays_to_vmr(q, qqcw, vmr, vmrcw);
 
       // aerosol/gas species tendencies (output)
       Real vmr_tendbb[gas_pcnst][nqtendbb] = {};
@@ -720,8 +757,7 @@ void MAMMicrophysics::run_impl(const double dt) {
                              // (taken from mam4xx setsox validation test)
       const Real mbar = haero::Constants::molec_weight_dry_air;
       constexpr int indexm = 0;  // FIXME: index of xhnm in invariants array (??)
-      Real cldnum = 0.0; // FIXME: droplet number concentration: where do we get this?
-      /*setsox_single_level(loffset, dt, pmid, pdel, temp, mbar, lwc(k),
+      /*mam4::mo_setsox::setsox_single_level(loffset, dt, pmid, pdel, temp, mbar, lwc,
         cldfrac, cldnum, invariants[indexm], config.setsox, vmrcw, vmr);*/
 
       // calculate aerosol water content using water uptake treatment
@@ -739,7 +775,7 @@ void MAMMicrophysics::run_impl(const double dt) {
                                      zm, pblh, qv, cldfrac, vmr, vmrcw, vmr_pregaschem,
                                      vmr_precldchem, vmrcw_precldchem, vmr_tendbb,
                                      vmrcw_tendbb, dgncur_a, dgncur_awet,
-                                     wetdens, qaerwat);*/
+                                     wetdens, qaerwat); */
 
       //-----------------
       // LINOZ chemistry
@@ -763,11 +799,11 @@ void MAMMicrophysics::run_impl(const double dt) {
         o3col_du_diag, o3clim_linoz_diag, zenith_angle_degrees);
 #endif
       // update source terms above the ozone decay threshold
-      if (k > nlev - config.linoz.o3_lbl - 1) {
+      /*if (k > nlev - config.linoz.o3_lbl - 1) {
         Real do3_mass; // diagnostic, not needed
         mam4::lin_strat_chem::lin_strat_sfcsink_kk(dt, pdel, vmr[o3_ndx], config.linoz.o3_sfc,
           config.linoz.o3_tau, do3_mass);
-      }
+      }*/
 
       // ... check for negative values and reset to zero
       for (int i = 0; i < gas_pcnst; ++i) {
@@ -783,7 +819,7 @@ void MAMMicrophysics::run_impl(const double dt) {
 
       // transfer updated prognostics from work arrays
       //mam_coupling::convert_work_arrays_to_mmr(vmr, vmrcw, q, qqcw);
-      //mam_coupling::transfer_work_arrays_to_prognostics(q, qqcw, progs, k);*/
+      //mam_coupling::transfer_work_arrays_to_prognostics(q, qqcw, progs, k);
     });
   });
 
