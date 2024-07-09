@@ -45,12 +45,15 @@ void MLCorrection::set_grids(
     const auto s2 = pow(s,2);
     auto nondim = Units::nondimensional();
     add_field<Required>("phis", scalar2d, m2/s2, grid_name);
+    add_field<Required>("sfc_alb_dir_vis", scalar2d, nondim, grid_name);
     add_field<Required>("sfc_alb_dif_vis", scalar2d, nondim, grid_name);
+    add_field<Required>("sfc_alb_dir_nir", scalar2d, nondim, grid_name);
+    add_field<Required>("sfc_alb_dif_nir", scalar2d, nondim, grid_name);
+    add_field<Updated>("SW_flux_dn", scalar3d_int, W/m2, grid_name, ps);
     add_field<Updated>("sfc_flux_dir_nir", scalar2d, W/m2, grid_name);
     add_field<Updated>("sfc_flux_dir_vis", scalar2d, W/m2, grid_name);
     add_field<Updated>("sfc_flux_dif_nir", scalar2d, W/m2, grid_name);
     add_field<Updated>("sfc_flux_dif_vis", scalar2d, W/m2, grid_name);
-    // add_field<Updated>("SW_flux_dn", scalar3d_int, W/m2, grid_name, ps);
     add_field<Updated>("sfc_flux_sw_net", scalar2d, W/m2, grid_name);
     add_field<Updated>("sfc_flux_lw_dn", scalar2d, W/m2, grid_name);
     m_lat  = m_grid->get_geometry_data("lat");
@@ -118,8 +121,11 @@ void MLCorrection::run_impl(const double dt) {
   const auto &qv_dev              = get_field_out("qv").get_view<Real **, Device>();
   const auto &T_mid_dev           = get_field_out("T_mid").get_view<Real **, Device>();
   const auto &phis_dev            = get_field_in("phis").get_view<const Real *, Device>();
-  // const auto &SW_flux_dn_dev      = get_field_out("SW_flux_dn").get_view<Real **, Device>();
-  // const auto &sfc_alb_dif_vis_dev = get_field_in("sfc_alb_dif_vis").get_view<const Real *, Device>();  
+  const auto &SW_flux_dn_dev      = get_field_out("SW_flux_dn").get_view<Real **, Device>();
+  const auto &sfc_alb_dif_vis_dev = get_field_in("sfc_alb_dif_vis").get_view<const Real *, Device>();
+  const auto &sfc_alb_dir_vis_dev = get_field_in("sfc_alb_dir_vis").get_view<const Real *, Device>();
+  const auto &sfc_alb_dif_nir_dev = get_field_in("sfc_alb_dif_nir").get_view<const Real *, Device>();
+  const auto &sfc_alb_dir_nir_dev = get_field_in("sfc_alb_dir_nir").get_view<const Real *, Device>();
   const auto &sfc_flux_dif_nir_dev = get_field_out("sfc_flux_dif_nir").get_view<const Real *, Device>();  
   const auto &sfc_flux_dif_vis_dev = get_field_out("sfc_flux_dif_vis").get_view<const Real *, Device>();  
   const auto &sfc_flux_dir_nir_dev = get_field_out("sfc_flux_dir_nir").get_view<const Real *, Device>();  
@@ -142,8 +148,11 @@ void MLCorrection::run_impl(const double dt) {
   std::string field_dtype = typeid(qv_dev(0, 0)).name();
   uintptr_t T_mid_dev_ptr = reinterpret_cast<uintptr_t>(T_mid_dev.data());
   uintptr_t phis_dev_ptr = reinterpret_cast<uintptr_t>(phis_dev.data());
-  // uintptr_t SW_flux_dn_dev_ptr = reinterpret_cast<uintptr_t>(SW_flux_dn_dev.data());
-  // uintptr_t sfc_alb_dir_vis_dev_ptr = reinterpret_cast<uintptr_t>(sfc_alb_dir_vis_dev.data());
+  uintptr_t SW_flux_dn_dev_ptr = reinterpret_cast<uintptr_t>(SW_flux_dn_dev.data());
+  uintptr_t sfc_alb_dir_vis_dev_ptr = reinterpret_cast<uintptr_t>(sfc_alb_dir_vis_dev.data());
+  uintptr_t sfc_alb_dif_vis_dev_ptr = reinterpret_cast<uintptr_t>(sfc_alb_dif_vis_dev.data());
+  uintptr_t sfc_alb_dir_nir_dev_ptr = reinterpret_cast<uintptr_t>(sfc_alb_dir_nir_dev.data());
+  uintptr_t sfc_alb_dif_nir_dev_ptr = reinterpret_cast<uintptr_t>(sfc_alb_dif_nir_dev.data());
   uintptr_t sfc_flux_dir_nir_dev_ptr = reinterpret_cast<uintptr_t>(sfc_flux_dir_nir_dev.data());
   uintptr_t sfc_flux_dir_vis_dev_ptr = reinterpret_cast<uintptr_t>(sfc_flux_dir_vis_dev.data());
   uintptr_t sfc_flux_dif_nir_dev_ptr = reinterpret_cast<uintptr_t>(sfc_flux_dif_nir_dev.data());
@@ -169,6 +178,11 @@ void MLCorrection::run_impl(const double dt) {
       h_lat_dev_ptr,
       h_lon_dev_ptr,
       phis_dev_ptr,
+      SW_flux_dn_dev_ptr,
+      sfc_alb_dir_vis_dev_ptr,
+      sfc_alb_dif_vis_dev_ptr,
+      sfc_alb_dir_nir_dev_ptr,
+      sfc_alb_dif_nir_dev_ptr,
       sfc_flux_dir_nir_dev_ptr,
       sfc_flux_dir_vis_dev_ptr,
       sfc_flux_dif_nir_dev_ptr,
