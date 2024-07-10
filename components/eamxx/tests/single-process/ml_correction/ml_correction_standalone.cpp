@@ -31,10 +31,14 @@ TEST_CASE("ml_correction-stand-alone", "") {
   const auto  t0     = util::str_to_time_stamp(t0_str);
   const auto  ml     = ad_params.sublist("atmosphere_processes").sublist("MLCorrection");
   const auto  ML_model_tq_path = ml.get<std::string>("ML_model_path_tq");
+  const auto  ML_model_t_only_path = ml.get<std::string>("ML_model_path_temperature");
   const auto  ML_model_uv_path = ml.get<std::string>("ML_model_path_uv");
-
+  std::cout << "ML_model_tq_path: " << ML_model_tq_path << std::endl;
+  std::cout << "ML_model_t_only_path: " << ML_model_t_only_path << std::endl;
   EKAT_ASSERT_MSG(dt > 0, "Error! Time step must be positive.\n");
-
+  EKAT_ASSERT_MSG(!(ML_model_tq_path != "NONE" && ML_model_t_only_path != "NONE"),
+                   "Error! Only one of ML_model_path_tq and ML_model_path_temperature"
+                   " can be specificed. \n");  
   ekat::Comm atm_comm(MPI_COMM_WORLD);
 
   register_physics();
@@ -92,10 +96,10 @@ TEST_CASE("ml_correction-stand-alone", "") {
 
   // GPU handoff test xarray -- cupy -- tensorflow integration
   // TODO: where to store model for load during CI?
-  py::object test_gpu_handoff_xarray = py_correction.attr("gpu_handoff_real_model")(
-      ptr,
-      qv_dev_dtype,
-      num_cols, num_levs, ML_model_tq_path);
+  // py::object test_gpu_handoff_xarray = py_correction.attr("gpu_handoff_real_model")(
+  //     ptr,
+  //     qv_dev_dtype,
+  //     num_cols, num_levs, ML_model_tq_path);
   
   // // Testing function for checking pointer and pybind arrays are the same
   // py::object test_ptr_usage = py_correction.attr("test_ptr")(
