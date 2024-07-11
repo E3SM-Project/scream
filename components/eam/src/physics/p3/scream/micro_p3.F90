@@ -1030,7 +1030,7 @@ contains
          ze_rain(k) = nr(k)*(mu_r(k)+6._rtype)*(mu_r(k)+5._rtype)*(mu_r(k)+4._rtype)*           &
               (mu_r(k)+3._rtype)*(mu_r(k)+2._rtype)*(mu_r(k)+1._rtype)/bfb_pow(lamr(k), 6._rtype)
          ze_rain(k) = max(ze_rain(k),1.e-22_rtype)
-         diag_eff_radius_qr(k) = 1.5_rtype/lamr(k)
+         diag_eff_radius_qr(k) = 0.5_rtype*(mu_r(k)+3._rtype)/lamr(k)
       else
          qv(k) = qv(k)+qr(k)
          th_atm(k) = th_atm(k)-inv_exner(k)*qr(k)*latent_heat_vapor(k)*inv_cp
@@ -2839,7 +2839,7 @@ subroutine back_to_cell_average(cld_frac_l,cld_frac_r,cld_frac_i,               
    ni2nr_melt_tend   = ni2nr_melt_tend*cld_frac_i       ! Change in number due to melting
    nc_collect_tend   = nc_collect_tend*il_cldm     ! Cloud # change due to collection of cld water by ice
    ncshdc  = ncshdc*il_cldm    ! Number change due to shedding, occurs when ice and liquid interact
-   nc2ni_immers_freeze_tend  = nc2ni_immers_freeze_tend*cld_frac_l      ! Number change associated with freexzing of cld drops
+   nc2ni_immers_freeze_tend  = nc2ni_immers_freeze_tend*il_cldm      ! Number change associated with freexzing of cld drops
    nr_collect_tend   = nr_collect_tend*ir_cldm     ! Rain number change due to collection from ice
    ni_selfcollect_tend   = ni_selfcollect_tend*cld_frac_i       ! Ice self collection
    qidep   = qidep*cld_frac_i       ! Vapor deposition to ice phase

@@ -62,7 +62,7 @@ void Functions<S,D>
   ni2nr_melt_tend.set(context, ni2nr_melt_tend * cld_frac_i);    // Change in number due to melting
   nc_collect_tend.set(context, nc_collect_tend * il_cldm);  // Cloud # change due to collection of cld water by ice
   ncshdc.set(context, ncshdc * il_cldm); // Number change due to shedding, occurs when ice and liquid interact
-  nc2ni_immers_freeze_tend.set(context, nc2ni_immers_freeze_tend * cld_frac_l);   // Number change associated with freexzing of cld drops
+  nc2ni_immers_freeze_tend.set(context, nc2ni_immers_freeze_tend * il_cldm);   // Number change associated with freexzing of cld drops
   nr_collect_tend.set(context, nr_collect_tend * ir_cldm);  // Rain number change due to collection from ice
   ni_selfcollect_tend.set(context, ni_selfcollect_tend * cld_frac_i);    // Ice self collection
   qv2qi_vapdep_tend.set(context, qv2qi_vapdep_tend * cld_frac_i);    // Vapor deposition to ice phase
