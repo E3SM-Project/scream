@@ -2830,7 +2830,7 @@ subroutine back_to_cell_average(cld_frac_l,cld_frac_r,cld_frac_i,               
    ! map ice-phase  process rates to cell-avg
    qi2qv_sublim_tend   = qi2qv_sublim_tend*cld_frac_i       ! Sublimation of ice in ice cloud
    nr_ice_shed_tend  = nr_ice_shed_tend*il_cldm    ! Rain # increase due to shedding from rain-ice collisions, occurs when ice and liquid interact
-   qc2qi_hetero_freeze_tend  = qc2qi_hetero_freeze_tend*il_cldm    ! Immersion freezing of cloud drops
+   qc2qi_hetero_freeze_tend  = qc2qi_hetero_freeze_tend*cld_frac_l    ! Immersion freezing of cloud drops
    qrcol   = qrcol*ir_cldm     ! Collection of rain mass by ice
    qc2qr_ice_shed_tend   = qc2qr_ice_shed_tend*il_cldm     ! Rain mass growth due to shedding of fain drops after collisions with ice, occurs when ice and liquid interact
    qi2qr_melt_tend   = qi2qr_melt_tend*cld_frac_i       ! Melting of ice
@@ -2839,7 +2839,7 @@ subroutine back_to_cell_average(cld_frac_l,cld_frac_r,cld_frac_i,               
    ni2nr_melt_tend   = ni2nr_melt_tend*cld_frac_i       ! Change in number due to melting
    nc_collect_tend   = nc_collect_tend*il_cldm     ! Cloud # change due to collection of cld water by ice
    ncshdc  = ncshdc*il_cldm    ! Number change due to shedding, occurs when ice and liquid interact
-   nc2ni_immers_freeze_tend  = nc2ni_immers_freeze_tend*il_cldm      ! Number change associated with freexzing of cld drops
+   nc2ni_immers_freeze_tend  = nc2ni_immers_freeze_tend*cld_frac_l      ! Number change associated with freexzing of cld drops
    nr_collect_tend   = nr_collect_tend*ir_cldm     ! Rain number change due to collection from ice
    ni_selfcollect_tend   = ni_selfcollect_tend*cld_frac_i       ! Ice self collection
    qidep   = qidep*cld_frac_i       ! Vapor deposition to ice phase

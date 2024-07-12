@@ -89,6 +89,7 @@ void Functions<S,D>
 
       if (qc_gt_small.any()) {
         nc(k).set(qc_gt_small,nc_incld*cld_frac_l(k)); //cld_dsd2 might have changed incld nc... need consistency.
+        //diag_eff_radius_qc is obtained by diving the 3rd and 2nd moments of the DSD e.g., eqn 5 of MG2008
         diag_eff_radius_qc(k).set(qc_gt_small, sp(0.5) * (mu_c(k) + 3) / lamc(k));
       }
       if (qc_small.any()) {
