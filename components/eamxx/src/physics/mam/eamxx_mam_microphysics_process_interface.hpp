@@ -13,6 +13,8 @@
 #include <mam4xx/mam4.hpp>
 #include "share/io/scorpio_input.hpp"
 #include "share/io/scream_scorpio_interface.hpp"
+
+
 #include <string>
 
 #ifndef KOKKOS_ENABLE_CUDA
@@ -48,6 +50,7 @@ class MAMMicrophysics final : public scream::AtmosphereProcess {
 
   // a thread team dispatched to a single vertical column
   using ThreadTeam = mam4::ThreadTeam;
+
 
 public:
 
@@ -227,7 +230,8 @@ private_except_cuda:
 
   std::shared_ptr<AtmosphereInput> linoz_reader_;
   mam_coupling::LinozReaderParams linoz_params_;
-  view_1d col_latitudes_copy_;
+  mam_coupling::view_1d col_latitudes_copy_;
+  mam_coupling::LinozTimeState linoz_time_state_;
 
 }; // MAMMicrophysics
 
