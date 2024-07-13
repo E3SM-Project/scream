@@ -19,6 +19,10 @@ using namespace ShortFieldTagsNames;
   std::vector<view_2d> views_horiz;
   std::vector<view_2d> views_horiz_transpose;
   std::vector<view_2d> views_vert;
+  // work arrays
+  view_int_1d kupper;
+  //
+  view_2d pin;
   };
 
     // using npack equal to 1.
@@ -95,13 +99,6 @@ using namespace ShortFieldTagsNames;
   const int num_vars = linoz_params.nlevs;
   LIV horiz_interp(num_vars, linoz_params.nlat, ncol);
   const auto policy_setup = ESU::get_default_team_policy(num_vars, ncol);
-  // Setup the linear interpolation object
-  // auto& col_latitudes= col_latitudes_;
-  // view_1d col_latitudes("col",ncol_);
-  // Kokkos::deep_copy(col_latitudes, col_latitudes_);
-
-  // view_1d lat("lat",nlat_data );
-  // Kokkos::deep_copy(lat, lat_host);
   auto lat = linoz_params.io_fields[0].get_view<Real*>();
 
   Kokkos::parallel_for("spa_vert_interp_setup_loop", policy_setup,
@@ -143,9 +140,9 @@ using namespace ShortFieldTagsNames;
 
 
 void static
-perform_vertical_interpolation(
-  LinozReaderParams& linoz_params,
-  view_2d& p_tgt,
+perform_vertical_interpolation_linear(
+  const LinozReaderParams& linoz_params,
+  const view_2d& p_tgt,
   const int ncols,
   const int nlevs)
 {
@@ -187,8 +184,87 @@ perform_vertical_interpolation(
   Kokkos::fence();
 }
 
+// Direct port of components/eam/src/chemistry/utils/tracer_data.F90/vert_interp
+static void vert_interp(int ncol,
+                 int levsiz,
+                 int pver,
+                 const view_2d&  pin,
+                 const const_view_2d&  pmid,
+                 const view_2d&  datain,
+                 const view_2d&  dataout,
+                 //work array
+                 const view_int_1d& kupper
+                 ) {
+    const int one = 1;
+    // Initialize index array
+    for (int i = 0; i < ncol; ++i) {
+      kupper(i)= one;
+    } // ncol
 
+    for (int k = 0; k < pver; ++k) {
+        // Top level we need to start looking is the top level for the previous k for all column points
+        int kkstart = levsiz;
+        for (int i = 0; i < ncol; ++i) {
+            kkstart = haero::min(kkstart, kupper(i));
+        }
 
+        // Store level indices for interpolation
+        for (int kk = kkstart - 1; kk < levsiz - 1; ++kk) {
+            for (int i = 0; i < ncol; ++i) {
+                if (pin(i, kk) < pmid(i, k) && pmid(i, k) <= pin(i, kk + 1)) {
+                    kupper(i) = kk;
+                }// end if
+            } // end for
+        } // end kk
+        // Interpolate or extrapolate...
+        for (int i = 0; i < ncol; ++i) {
+            if (pmid(i, k) < pin(i, 0)) {
+                dataout(i, k) = datain(i, 0) * pmid(i, k) / pin(i, 0);
+            } else if (pmid(i, k) > pin(i, levsiz - 1)) {
+                dataout(i, k) = datain(i, levsiz - 1);
+            } else {
+                Real dpu = pmid(i, k) - pin(i, kupper(i));
+                Real dpl = pin(i, kupper(i) + 1) - pmid(i, k);
+                dataout(i, k) = (datain(i, kupper[i]) * dpl + datain(i, kupper(i) + 1) * dpu) / (dpl + dpu);
+            }// end if
+        } // end col
+    } // end k
+
+} // vert_interp
+
+static void perform_vertical_interpolation(const LinozReaderParams& linoz_params,
+                                           const const_view_2d& p_mid)
+{
+  const int ncol = p_mid.extent(0);
+  const int nlev = p_mid.extent(1);
+
+  const auto kupper = linoz_params.kupper;
+  const auto levs = linoz_params.io_fields[1].get_view< Real*>();
+  const auto pin = linoz_params.pin;
+
+  for (int kk = 0; kk < linoz_params.nlevs; ++kk)
+  {
+    const auto pin_kk = Kokkos::subview(pin,Kokkos::ALL,kk);
+    Kokkos::deep_copy(pin_kk,levs(kk));
+  }// i
+  Kokkos::fence();
+
+  const auto policy_interp = ESU::get_default_team_policy(1, 1);
+  Kokkos::parallel_for("vertical_interpolation_linoz", policy_interp,
+    KOKKOS_LAMBDA(typename LIV::MemberType const& team) {
+  scream::mam_coupling::vert_interp(ncol,
+              linoz_params.nlevs,
+              nlev,
+              pin,
+              p_mid,
+              linoz_params.views_horiz_transpose[0],
+              linoz_params.views_vert[0],
+              //work array
+              kupper);
+    });
+    Kokkos::fence();
+
+}//perform_vertical_interpolation
 
 #if 0
  static void vertical_interpolation( LinozReaderParams& linoz_params,
