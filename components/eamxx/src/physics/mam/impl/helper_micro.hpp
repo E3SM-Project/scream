@@ -17,6 +17,7 @@ using namespace ShortFieldTagsNames;
   int nlat{-1};
   std::vector<Field> io_fields;
   std::vector<view_2d> views_horiz;
+  std::vector<view_2d> views_horiz_transpose;
   std::vector<view_2d> views_vert;
   };
 
@@ -86,7 +87,9 @@ using namespace ShortFieldTagsNames;
  static void perform_horizontal_interpolation( LinozReaderParams& linoz_params,
                                   const view_1d& col_latitudes)
  {
+  // FIXME: get this inputs from eamxx interface.
   const int ncol = col_latitudes.extent(0);
+  const int nlev =linoz_params.views_horiz[0].extent(0);
 
   // We can ||ize over columns as well as over variables and bands
   const int num_vars = linoz_params.nlevs;
@@ -123,6 +126,19 @@ using namespace ShortFieldTagsNames;
   });
   Kokkos::fence();
 
+
+  // FIXME: Does ekat or kokkos have a call to transpose a view?
+  const auto policy_transpose = ESU::get_default_team_policy(ncol*nlev,1);
+  Kokkos::parallel_for("transpose_horization_data", policy_transpose,
+    KOKKOS_LAMBDA(typename LIV::MemberType const& team) {
+    const int icol = team.league_rank() / nlev;
+    const int ilev = team.league_rank() % nlev;
+    const auto input = linoz_params.views_horiz[0];
+    const auto output = linoz_params.views_horiz_transpose[0];
+    output(icol, ilev) = input(ilev, icol);
+  });
+  Kokkos::fence();
+
  }
 
 
@@ -153,7 +169,7 @@ perform_vertical_interpolation(
     vert_interp.setup(team, lev, ekat::subview(p_tgt,icol));
   });
   Kokkos::fence();
-#if 1
+
   // Now use the interpolation object in || over all variables.
   const int outer_iters = ncols*num_vars;
   const auto policy_interp = ESU::get_default_team_policy(outer_iters, num_vert_packs);
@@ -164,12 +180,11 @@ perform_vertical_interpolation(
     const auto x1 = lev;
     const auto x2 = ekat::subview(p_tgt,icol);
 
-    const auto y1 = ekat::subview(linoz_params.views_horiz[0],icol);
+    const auto y1 = ekat::subview(linoz_params.views_horiz_transpose[0],icol);
     const auto y2 = ekat::subview(linoz_params.views_vert[0],icol);
     vert_interp.lin_interp(team, x1, x2, y1, y2, icol);
   });
   Kokkos::fence();
-#endif
 }
 
 
