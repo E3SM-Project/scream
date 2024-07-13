@@ -6,13 +6,13 @@
 #include <share/util/scream_common_physics_functions.hpp>
 
 #include "impl/mam4_amicphys.cpp" // mam4xx top-level microphysics function(s)
+#include "impl/helper_micro.hpp"
 
 #include <ekat/ekat_parameter_list.hpp>
 #include <ekat/ekat_workspace.hpp>
 #include <mam4xx/mam4.hpp>
 #include "share/io/scorpio_input.hpp"
 #include "share/io/scream_scorpio_interface.hpp"
-
 #include <string>
 
 #ifndef KOKKOS_ENABLE_CUDA
@@ -224,6 +224,10 @@ private_except_cuda:
 
   // sets defaults for "namelist parameters"
   void set_defaults_();
+
+  std::shared_ptr<AtmosphereInput> linoz_reader_;
+  mam_coupling::LinozReaderParams linoz_params_;
+  view_1d col_latitudes_copy_;
 
 }; // MAMMicrophysics
 
