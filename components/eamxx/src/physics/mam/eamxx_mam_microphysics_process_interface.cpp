@@ -170,8 +170,10 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
   linoz_reader_->read_variables();
   view_1d col_latitudes("col",ncol_);
   Kokkos::deep_copy(col_latitudes, col_latitudes_);
-  view_2d o3_clim_test("o3_clim_test", nlev_, ncol_);
-  linoz_params_.views_horiz.push_back(o3_clim_test);
+  view_2d o3_clim_org("o3_clim_test", nlev_,ncol_);
+  linoz_params_.views_horiz.push_back(o3_clim_org);
+  view_2d o3_clim_data("o3_clim_data", ncol_, nlev_);
+  linoz_params_.views_horiz_transpose.push_back(o3_clim_data);
 
   perform_horizontal_interpolation(linoz_params_,
                       col_latitudes);
@@ -319,11 +321,11 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   Kokkos::deep_copy(p_mid_copy,dry_atm_.p_mid);
   linoz_params_.views_vert.push_back(linoz_o3_clim);
 
-  // perform_vertical_interpolation(
-  // linoz_params_,
-  // p_mid_copy,
-  // ncol_,
-  // nlev_);
+  perform_vertical_interpolation(
+  linoz_params_,
+  p_mid_copy,
+  ncol_,
+  nlev_);
 
   }
 }
