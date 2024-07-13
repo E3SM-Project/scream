@@ -316,16 +316,12 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   linoz_reader_->read_variables(curr_month);
   perform_horizontal_interpolation(linoz_params_,
                       col_latitudes_copy_);
-
-  view_2d p_mid_copy("p_mid",ncol_,nlev_);
-  Kokkos::deep_copy(p_mid_copy,dry_atm_.p_mid);
   linoz_params_.views_vert.push_back(linoz_o3_clim);
+  linoz_params_.kupper = scream::mam_coupling::view_int_1d("kupper",ncol_);
+  linoz_params_.pin = view_2d("pin", ncol_,linoz_params_.nlevs);
 
-  perform_vertical_interpolation(
-  linoz_params_,
-  p_mid_copy,
-  ncol_,
-  nlev_);
+  perform_vertical_interpolation(linoz_params_,
+                                 dry_atm_.p_mid);
 
   }
 }
