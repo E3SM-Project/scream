@@ -6,7 +6,6 @@
 #include "share/grid/point_grid.hpp"
 #include <ekat/util/ekat_lin_interp.hpp>
 
-
 namespace scream::mam_coupling {
 
 using namespace ShortFieldTagsNames;
@@ -23,13 +22,28 @@ using namespace ShortFieldTagsNames;
   view_int_1d kupper;
   //
   view_2d pin;
+  view_1d col_latitudes;
   };
+
+  // Linoz structures to help manage all of the variables:
+  struct LinozTimeState {
+    // Whether the timestate has been initialized.
+    // The current month
+    int current_month = -1;
+    // Julian Date for the beginning of the month, as defined in
+    //           /src/share/util/scream_time_stamp.hpp
+    // See this file for definition of Julian Date.
+    Real t_beg_month;
+    // Current simulation Julian Date
+    Real t_now;
+    // Number of days in the current month, cast as a Real
+    Real days_this_month;
+  }; // LinozTimeState
 
     // using npack equal to 1.
   using LIV = ekat::LinInterp<Real,1>;
   using ExeSpace = typename KT::ExeSpace;
   using ESU = ekat::ExeSpaceUtils<ExeSpace>;
-
 
   // define the different field layouts that will be used for this process
   static std::shared_ptr<AtmosphereInput>
@@ -88,12 +102,13 @@ using namespace ShortFieldTagsNames;
   }
 
 
- static void perform_horizontal_interpolation( LinozReaderParams& linoz_params,
-                                  const view_1d& col_latitudes)
+ static void perform_horizontal_interpolation( const LinozReaderParams& linoz_params)
  {
   // FIXME: get this inputs from eamxx interface.
+  const auto col_latitudes = linoz_params.col_latitudes;
   const int ncol = col_latitudes.extent(0);
   const int nlev =linoz_params.views_horiz[0].extent(0);
+
 
   // We can ||ize over columns as well as over variables and bands
   const int num_vars = linoz_params.nlevs;
@@ -266,6 +281,35 @@ static void perform_vertical_interpolation(const LinozReaderParams& linoz_params
 
 }//perform_vertical_interpolation
 
+// This function is based on update_spa_timestate
+void static update_linoz_timestate(const util::TimeStamp& ts,
+                                   LinozTimeState& time_state,
+                                   std::shared_ptr<AtmosphereInput> linoz_reader,
+                                   const LinozReaderParams& linoz_params)
+{
+  // Now we check if we have to update the data that changes monthly
+  // NOTE:  This means that SPA assumes monthly data to update.  Not
+  //        any other frequency.
+  const auto month = ts.get_month() - 1; // Make it 0-based
+  if (month != time_state.current_month) {
+    // Update the SPA time state information
+    time_state.current_month = month;
+    time_state.t_beg_month = util::TimeStamp({ts.get_year(),month+1,1}, {0,0,0}).frac_of_year_in_days();
+    time_state.days_this_month = util::days_in_month(ts.get_year(),month+1);
+
+    // // Copy spa_end'data into spa_beg'data, and read in the new spa_end
+    // std::swap(spa_beg,spa_end);
+
+    // Update the SPA forcing data for this month and next month
+    // Start by copying next months data to this months data structure.
+    // NOTE: If the timestep is bigger than monthly this could cause the wrong values
+    //       to be assigned.  A timestep greater than a month is very unlikely so we
+    //       will proceed.
+    int next_month = (time_state.current_month + 1) % 12;
+    linoz_reader->read_variables(next_month);
+    perform_horizontal_interpolation(linoz_params);
+  }
+}
 #if 0
  static void vertical_interpolation( LinozReaderParams& linoz_params,
                                      const view_2d& pmid)

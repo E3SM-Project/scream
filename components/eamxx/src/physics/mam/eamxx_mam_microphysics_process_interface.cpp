@@ -174,9 +174,9 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
   linoz_params_.views_horiz.push_back(o3_clim_org);
   view_2d o3_clim_data("o3_clim_data", ncol_, nlev_);
   linoz_params_.views_horiz_transpose.push_back(o3_clim_data);
+  linoz_params_.col_latitudes = col_latitudes;
 
-  perform_horizontal_interpolation(linoz_params_,
-                      col_latitudes);
+  perform_horizontal_interpolation(linoz_params_);
   }
 #endif
 }
@@ -312,10 +312,8 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   //       and spa_end will be reloaded from file with the new month.
   const int curr_month = timestamp().get_month()-1; // 0-based
   std::cout << curr_month << " : curr_month \n";
-
   linoz_reader_->read_variables(curr_month);
-  perform_horizontal_interpolation(linoz_params_,
-                      col_latitudes_copy_);
+  perform_horizontal_interpolation(linoz_params_);
   linoz_params_.views_vert.push_back(linoz_o3_clim);
   linoz_params_.kupper = scream::mam_coupling::view_int_1d("kupper",ncol_);
   linoz_params_.pin = view_2d("pin", ncol_,linoz_params_.nlevs);
@@ -365,11 +363,14 @@ void MAMMicrophysics::run_impl(const double dt) {
     /* Gather time and state information for interpolation */
   auto ts = timestamp()+dt;
   /* Update the SPATimeState to reflect the current time, note the addition of dt */
-  // SPATimeState.t_now = ts.frac_of_year_in_days();
+  linoz_time_state_.t_now = ts.frac_of_year_in_days();
   /* Update time state and if the month has changed, update the data.*/
+  update_linoz_timestate(ts,
+                         linoz_time_state_,
+                         linoz_reader_,
+                         linoz_params_);
 
   }
-
 
   const_view_1d &col_latitudes = col_latitudes_;
   mam_coupling::DryAtmosphere &dry_atm =  dry_atm_;
