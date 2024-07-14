@@ -16,13 +16,11 @@ namespace scream::mam_coupling {
   using ExeSpace = typename KT::ExeSpace;
   using ESU = ekat::ExeSpaceUtils<ExeSpace>;
 
-  constexpr int NVARS_LINOZ=7;
+  constexpr int NVARS_LINOZ=8;
   const std::vector<std::string>
   linoz_var_names={"o3_clim", "o3col_clim",
                    "t_clim", "PmL_clim", "dPmL_dO3",
-                   "dPmL_dT", "dPmL_dO3col"};
-                  //  ,"cariolle_psc"};
-
+                   "dPmL_dT", "dPmL_dO3col","cariolle_pscs"};
 
   struct LinozReaderParams {
   int nlevs{-1};
@@ -103,9 +101,8 @@ namespace scream::mam_coupling {
                         const view_2d& linoz_PmL_clim,
                         const view_2d& linoz_dPmL_dO3,
                         const view_2d& linoz_dPmL_dT,
-                        const view_2d& linoz_dPmL_dO3col)
-                        // ,
-                        // const view_2d& linoz_cariolle_psc)
+                        const view_2d& linoz_dPmL_dO3col,
+                        const view_2d& linoz_cariolle_pscs)
     {
       data[0] = linoz_o3_clim;
       data[1] = linoz_o3col_clim;
@@ -114,7 +111,7 @@ namespace scream::mam_coupling {
       data[4] = linoz_dPmL_dO3;
       data[5] = linoz_dPmL_dT;
       data[6] = linoz_dPmL_dO3col;
-      // data[7] = linoz_cariolle_psc;
+      data[7] = linoz_cariolle_pscs;
     }
 
   };
