@@ -232,6 +232,9 @@ private_except_cuda:
   mam_coupling::LinozReaderParams linoz_params_;
   mam_coupling::view_1d col_latitudes_copy_;
   mam_coupling::LinozTimeState linoz_time_state_;
+  mam_coupling::LinozData LinozData_start_;
+  mam_coupling::LinozData LinozData_end_;
+  mam_coupling::LinozData LinozData_out_;
 
 }; // MAMMicrophysics
 
