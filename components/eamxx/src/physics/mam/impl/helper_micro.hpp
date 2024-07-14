@@ -293,16 +293,16 @@ static void perform_vertical_interpolation(const LinozReaderParams& linoz_params
                                            LinozData& non_interpolated_linoz,
                                            LinozData& interpolated_linoz)
 {
-  const int ncol = p_mid.extent(0);
-  const int nlev = p_mid.extent(1);
+  const int ncol = interpolated_linoz.ncol_;
+  const int nlev = interpolated_linoz.nlev_;
 
   const int nvars = non_interpolated_linoz.nvars_;
-  const int nlevs_linoz = linoz_params.nlevs;
+  const int nlevs_linoz = non_interpolated_linoz.nlev_;
 
   const auto kupper = linoz_params.kupper;
   const auto levs = linoz_params.io_fields[1].get_view< Real*>();
   const auto pin = linoz_params.pin;
-
+  // FIXME: we do not need to update pin every time iteration.
   for (int kk = 0; kk < nlevs_linoz; ++kk)
   {
     const auto pin_kk = Kokkos::subview(pin,Kokkos::ALL,kk);
