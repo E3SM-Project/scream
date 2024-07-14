@@ -20,10 +20,10 @@ namespace scream::mam_coupling {
   int nlevs{-1};
   int nlat{-1};
   std::vector<Field> io_fields;
-  std::vector<view_2d> views_vert;
+
   // work arrays
   view_int_1d kupper;
-  std::vector<view_2d> views_horiz;
+  view_2d views_horiz[1];
   //
   view_2d pin;
   view_1d col_latitudes;
