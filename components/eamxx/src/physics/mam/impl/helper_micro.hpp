@@ -28,7 +28,7 @@ namespace scream::mam_coupling {
   view_2d data_orig[1];
 
   // data arrays after horizontal interpolation.
-  view_2d views_horiz[1];
+  view_2d data_horiz[1];
 
   // work arrays
   view_int_1d kupper;
@@ -95,6 +95,8 @@ namespace scream::mam_coupling {
   create_linoz_data_reader (
       const std::string& linoz_data_file,
       LinozReaderParams& linoz_params,
+      const int ncol,
+      const const_view_1d const_col_latitudes,
       const ekat::Comm& comm)
   {
 
@@ -151,12 +153,23 @@ namespace scream::mam_coupling {
   for (int ivar = 0; ivar < nvars; ++ivar) {
     linoz_params.data_orig[ivar] = io_fields[ivar+2].get_view<Real**>();
   }
+  //
+  view_2d o3_clim_org("o3_clim_test", nlevs_data, ncol);
+  linoz_params.data_horiz[0]=o3_clim_org;
+  //
+  view_1d col_latitudes("col",ncol);
+  Kokkos::deep_copy(col_latitudes, const_col_latitudes);
+  linoz_params.col_latitudes = col_latitudes;
+
+  //
+  linoz_params.kupper = view_int_1d("kupper",ncol);
+  linoz_params.pin = view_2d("pin", ncol,nlevs_data);
+
   return std::make_shared<AtmosphereInput>(linoz_data_file, io_grid,io_fields,true);
   }
 
 
- static void perform_horizontal_interpolation( const LinozReaderParams& linoz_params,
-                                               LinozData& linoz_data_out)
+ static void perform_horizontal_interpolation( const              LinozReaderParams& linoz_params, LinozData& linoz_data_out)
  {
   // FIXME: get this inputs from eamxx interface.
   const auto col_latitudes = linoz_params.col_latitudes;
@@ -187,7 +200,7 @@ namespace scream::mam_coupling {
     for (int ivar = 0; ivar < nvars; ++ivar) {
         const auto var_org = linoz_params.data_orig[ivar];
         const auto y1 = ekat::subview(var_org,kk);
-        const auto y2 = ekat::subview(linoz_params.views_horiz[ivar],kk);
+        const auto y2 = ekat::subview(linoz_params.data_horiz[ivar],kk);
        horiz_interp.lin_interp(team, x1, x2, y1, y2, kk);
     }
   });
@@ -201,7 +214,7 @@ namespace scream::mam_coupling {
     const int icol = team.league_rank() / linoz_data_nlev;
     const int ilev = team.league_rank() % linoz_data_nlev;
     for (int ivar = 0; ivar < nvars; ++ivar) {
-      const auto input = linoz_params.views_horiz[ivar];
+      const auto input = linoz_params.data_horiz[ivar];
       const auto output = linoz_data_out.data[ivar];
       output(icol, ilev) = input(ilev, icol);
     }// ivar
