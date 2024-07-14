@@ -62,8 +62,6 @@ namespace scream::mam_coupling {
 
     void allocate_data_views()
     {
-      std::cout<< ncol_<<" ncol_ \n";
-      std::cout<< nlev_<<" nlev_ \n";
       EKAT_REQUIRE_MSG (ncol_ != int(-1),
       "Error! ncols has not been set. \n");
       EKAT_REQUIRE_MSG (nlev_ !=int(-1),
@@ -148,6 +146,7 @@ namespace scream::mam_coupling {
   const auto col_latitudes = linoz_params.col_latitudes;
   const int ncol = linoz_data_out.ncol_;
   const int linoz_data_nlev = linoz_data_out.nlev_;
+  const int nvars = linoz_data_out.nvars_;
 
   // We can ||ize over columns as well as over variables and bands
   LIV horiz_interp(linoz_data_nlev, linoz_params.nlat, ncol);
@@ -169,10 +168,12 @@ namespace scream::mam_coupling {
     const int kk = team.league_rank();
     const auto x1 = lat;
     const auto x2 = col_latitudes;
-    auto var_org=linoz_params.io_fields[2].get_view<Real**>();
-    const auto y1 = ekat::subview(var_org,kk);
-    const auto y2 = ekat::subview(linoz_params.views_horiz[0],kk);
-    horiz_interp.lin_interp(team, x1, x2, y1, y2, kk);
+    for (int ivar = 0; ivar < nvars; ++ivar) {
+        auto var_org = linoz_params.io_fields[ivar+2].get_view<Real**>();
+        const auto y1 = ekat::subview(var_org,kk);
+        const auto y2 = ekat::subview(linoz_params.views_horiz[ivar],kk);
+       horiz_interp.lin_interp(team, x1, x2, y1, y2, kk);
+    }
   });
   Kokkos::fence();
 
@@ -183,9 +184,11 @@ namespace scream::mam_coupling {
     KOKKOS_LAMBDA(typename LIV::MemberType const& team) {
     const int icol = team.league_rank() / linoz_data_nlev;
     const int ilev = team.league_rank() % linoz_data_nlev;
-    const auto input = linoz_params.views_horiz[0];
-    const auto output = linoz_data_out.data[0];
-    output(icol, ilev) = input(ilev, icol);
+    for (int ivar = 0; ivar < nvars; ++ivar) {
+      const auto input = linoz_params.views_horiz[ivar];
+      const auto output = linoz_data_out.data[ivar];
+      output(icol, ilev) = input(ilev, icol);
+    }// ivar
   });
   Kokkos::fence();
 
