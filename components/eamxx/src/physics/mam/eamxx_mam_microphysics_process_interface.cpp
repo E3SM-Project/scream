@@ -321,6 +321,15 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   perform_vertical_interpolation(linoz_params_,
                                  dry_atm_.p_mid);
 
+  LinozData_start_.init(ncol_,nlev_);
+  LinozData_start_.set_data_views(linoz_params_.views_vert);
+
+  LinozData_end_.init(ncol_,nlev_);
+  LinozData_end_.allocate_data_views();
+  LinozData_end_.deep_copy_data_views(LinozData_start_.data);
+
+  LinozData_out_.init(ncol_,nlev_);
+  LinozData_out_.allocate_data_views();
   }
 }
 

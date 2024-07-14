@@ -47,9 +47,49 @@ namespace scream::mam_coupling {
   }; // LinozTimeState
 
   struct LinozData {
-    int ncols;
-    int nlevs;
+
+    LinozData() = default;
+    LinozData(const int ncol, const int nlev)
+    {
+      init (ncol,nlev);
+    }
+    void init (const int ncol, const int nlev){
+     ncol_=ncol;
+     nlev_=nlev;
+    }
+    int ncol_{-1};
+    int nlev_{-1};
+    int nvars_{1};
     view_2d data[1];
+
+    void allocate_data_views()
+    {
+      EKAT_REQUIRE_MSG (ncol_ != int(-1),
+      "Error! ncols has not been set. \n");
+      EKAT_REQUIRE_MSG (nlev_ !=int(-1),
+      "Error! nlevs has not been set. \n");
+
+      for (int ivar = 0; ivar< nvars_; ++ivar) {
+        data[ivar] = view_2d("linoz_1",ncol_,nlev_);
+      }
+    } //allocate_data_views
+
+    void set_data_views(std::vector<view_2d>& list_of_views)
+    {
+     for (int ivar = 0; ivar< nvars_; ++ivar) {
+      EKAT_REQUIRE_MSG(data[ivar].data() == 0,
+                   "Error! Insufficient memory  size.\n");
+      data[ivar] =list_of_views[ivar];
+      }
+    }
+    void deep_copy_data_views(view_2d in_data[]){
+
+      for (int ivar = 0; ivar< nvars_; ++ivar) {
+        EKAT_REQUIRE_MSG(data[ivar].data() == 0,
+                   "Error! Insufficient memory size.\n");
+        Kokkos::deep_copy(data[ivar],in_data[ivar] );
+      }
+    }
   };
 
   // define the different field layouts that will be used for this process
@@ -347,9 +387,9 @@ static view_1d get_var_column (const LinozData& data,
   auto& delta_t = time_state.days_this_month;
 
   // We can ||ize over columns as well as over variables and bands
-  const int num_vars = 1;
-  const int outer_iters = data_beg.ncols*num_vars;
-  const int num_vert = data_beg.nlevs;
+  const int num_vars = data_beg.nvars_;
+  const int outer_iters = data_beg.ncol_*num_vars;
+  const int num_vert = data_beg.nlev_;
   const auto policy = ESU::get_default_team_policy(outer_iters, num_vert);
 
   auto delta_t_fraction = (t_now-t_beg) / delta_t;
