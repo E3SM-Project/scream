@@ -172,7 +172,7 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
   Kokkos::deep_copy(col_latitudes, col_latitudes_);
   view_2d o3_clim_org("o3_clim_test", nlev_,ncol_);
   linoz_params_.views_horiz.push_back(o3_clim_org);
-  view_2d o3_clim_data("o3_clim_data", ncol_, nlev_);
+  view_2d o3_clim_data("o3_clim_data", ncol_, linoz_params_.nlevs);
   linoz_params_.views_horiz_transpose.push_back(o3_clim_data);
   linoz_params_.col_latitudes = col_latitudes;
 
@@ -316,20 +316,21 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   perform_horizontal_interpolation(linoz_params_);
   linoz_params_.views_vert.push_back(linoz_o3_clim);
   linoz_params_.kupper = scream::mam_coupling::view_int_1d("kupper",ncol_);
-  linoz_params_.pin = view_2d("pin", ncol_,linoz_params_.nlevs);
+  linoz_params_.pin = view_2d("pin", ncol_,nlev_);
 
   perform_vertical_interpolation(linoz_params_,
                                  dry_atm_.p_mid);
 
-  LinozData_start_.init(ncol_,nlev_);
-  LinozData_start_.set_data_views(linoz_params_.views_vert);
-
-  LinozData_end_.init(ncol_,nlev_);
+  LinozData_end_.init(ncol_,linoz_params_.nlevs);
   LinozData_end_.allocate_data_views();
-  LinozData_end_.deep_copy_data_views(LinozData_start_.data);
 
-  LinozData_out_.init(ncol_,nlev_);
-  LinozData_out_.allocate_data_views();
+  LinozData_start_.init(ncol_,linoz_params_.nlevs);
+  LinozData_start_.allocate_data_views();
+  // LinozData_start_.deep_copy_data_views(LinozData_end_.data);
+
+  LinozData_out_.init(ncol_,linoz_params_.nlevs);
+  // LinozData_out_.allocate_data_views();
+  LinozData_end_.set_data_views(linoz_params_.views_horiz_transpose);
   }
 }
 
@@ -377,7 +378,17 @@ void MAMMicrophysics::run_impl(const double dt) {
   update_linoz_timestate(ts,
                          linoz_time_state_,
                          linoz_reader_,
-                         linoz_params_);
+                         linoz_params_,
+                         LinozData_start_,
+                         LinozData_end_);
+
+  perform_time_interpolation(linoz_time_state_,
+                             LinozData_start_,
+                             LinozData_end_,
+                             LinozData_out_);
+
+  perform_vertical_interpolation(linoz_params_,
+                                 dry_atm_.p_mid);
 
   }
 

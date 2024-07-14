@@ -64,6 +64,8 @@ namespace scream::mam_coupling {
 
     void allocate_data_views()
     {
+      std::cout<< ncol_<<" ncol_ \n";
+      std::cout<< nlev_<<" nlev_ \n";
       EKAT_REQUIRE_MSG (ncol_ != int(-1),
       "Error! ncols has not been set. \n");
       EKAT_REQUIRE_MSG (nlev_ !=int(-1),
@@ -77,15 +79,17 @@ namespace scream::mam_coupling {
     void set_data_views(std::vector<view_2d>& list_of_views)
     {
      for (int ivar = 0; ivar< nvars_; ++ivar) {
-      EKAT_REQUIRE_MSG(data[ivar].data() == 0,
+      EKAT_REQUIRE_MSG(list_of_views[ivar].data() != 0,
                    "Error! Insufficient memory  size.\n");
       data[ivar] =list_of_views[ivar];
       }
     }
-    void deep_copy_data_views(view_2d in_data[]){
+    void deep_copy_data_views(const view_2d in_data[]){
 
       for (int ivar = 0; ivar< nvars_; ++ivar) {
-        EKAT_REQUIRE_MSG(data[ivar].data() == 0,
+        EKAT_REQUIRE_MSG(data[ivar].data() != 0,
+                   "Error! Insufficient memory size.\n");
+        EKAT_REQUIRE_MSG(in_data[ivar].data() != 0,
                    "Error! Insufficient memory size.\n");
         Kokkos::deep_copy(data[ivar],in_data[ivar] );
       }
@@ -333,7 +337,9 @@ static void perform_vertical_interpolation(const LinozReaderParams& linoz_params
 void static update_linoz_timestate(const util::TimeStamp& ts,
                                    LinozTimeState& time_state,
                                    std::shared_ptr<AtmosphereInput> linoz_reader,
-                                   const LinozReaderParams& linoz_params)
+                                   const LinozReaderParams& linoz_params,
+                                   LinozData&  data_beg,
+                                   LinozData&  data_end)
 {
   // Now we check if we have to update the data that changes monthly
   // NOTE:  This means that SPA assumes monthly data to update.  Not
@@ -346,7 +352,7 @@ void static update_linoz_timestate(const util::TimeStamp& ts,
     time_state.days_this_month = util::days_in_month(ts.get_year(),month+1);
 
     // // Copy spa_end'data into spa_beg'data, and read in the new spa_end
-    // std::swap(spa_beg,spa_end);
+    data_beg.deep_copy_data_views(data_end.data);
 
     // Update the SPA forcing data for this month and next month
     // Start by copying next months data to this months data structure.
@@ -356,6 +362,7 @@ void static update_linoz_timestate(const util::TimeStamp& ts,
     int next_month = (time_state.current_month + 1) % 12;
     linoz_reader->read_variables(next_month);
     perform_horizontal_interpolation(linoz_params);
+    //
   } // end if
 } // update_linoz_timestate
 
