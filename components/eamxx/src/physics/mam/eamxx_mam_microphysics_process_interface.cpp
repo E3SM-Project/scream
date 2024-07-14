@@ -307,11 +307,15 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
 
   interpolated_Linoz_data_.init(ncol_,nlev_);
 
-  std::vector<view_2d> list_linoz_views;
-  list_linoz_views.push_back(linoz_o3_clim);
-  list_linoz_views.push_back(linoz_o3col_clim);
-
-  interpolated_Linoz_data_.set_data_views(list_linoz_views);
+  interpolated_Linoz_data_.set_data_views(linoz_o3_clim,
+                                          linoz_o3col_clim,
+                                          linoz_t_clim,
+                                          linoz_PmL_clim,
+                                          linoz_dPmL_dO3,
+                                          linoz_dPmL_dT,
+                                          linoz_dPmL_dO3col);
+                                          // ,
+                                          // linoz_cariolle_psc);
 
     // Load the first month into spa_end.
   // Note: At the first time step, the data will be moved into spa_beg,
