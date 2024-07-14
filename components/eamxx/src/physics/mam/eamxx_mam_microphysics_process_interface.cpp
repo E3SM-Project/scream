@@ -311,7 +311,6 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
 
   LinozData_start_.init(ncol_,linoz_params_.nlevs);
   LinozData_start_.allocate_data_views();
-  // LinozData_start_.deep_copy_data_views(LinozData_end_.data);
 
   LinozData_out_.init(ncol_,linoz_params_.nlevs);
   LinozData_out_.allocate_data_views();

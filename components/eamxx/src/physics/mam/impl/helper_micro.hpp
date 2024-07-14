@@ -84,16 +84,6 @@ namespace scream::mam_coupling {
       data[ivar] =list_of_views[ivar];
       }
     }
-    void deep_copy_data_views(const view_2d in_data[]){
-
-      for (int ivar = 0; ivar< nvars_; ++ivar) {
-        EKAT_REQUIRE_MSG(data[ivar].data() != 0,
-                   "Error! Insufficient memory size.\n");
-        EKAT_REQUIRE_MSG(in_data[ivar].data() != 0,
-                   "Error! Insufficient memory size.\n");
-        Kokkos::deep_copy(data[ivar],in_data[ivar] );
-      }
-    }
   };
 
   // define the different field layouts that will be used for this process
@@ -359,7 +349,10 @@ void static update_linoz_timestate(const util::TimeStamp& ts,
     time_state.days_this_month = util::days_in_month(ts.get_year(),month+1);
 
     // // Copy spa_end'data into spa_beg'data, and read in the new spa_end
-    data_beg.deep_copy_data_views(data_end.data);
+    for (int ivar = 0; ivar < data_beg.nvars_; ++ivar)
+    {
+      Kokkos::deep_copy(data_beg.data[ivar],data_end.data[ivar]);
+    }
 
     // Update the SPA forcing data for this month and next month
     // Start by copying next months data to this months data structure.
