@@ -16,6 +16,8 @@ namespace scream::mam_coupling {
   using ExeSpace = typename KT::ExeSpace;
   using ESU = ekat::ExeSpaceUtils<ExeSpace>;
 
+  constexpr int NVARS_LINOZ=1;
+
   struct LinozReaderParams {
   int nlevs{-1};
   int nlat{-1};
@@ -25,10 +27,10 @@ namespace scream::mam_coupling {
   view_1d levs;
 
   // non_interpolated data from linoz files.
-  view_2d data_orig[1];
+  view_2d data_orig[NVARS_LINOZ];
 
   // data arrays after horizontal interpolation.
-  view_2d data_horiz[1];
+  view_2d data_horiz[NVARS_LINOZ];
 
   // work arrays
   view_int_1d kupper;
@@ -65,8 +67,8 @@ namespace scream::mam_coupling {
     }
     int ncol_{-1};
     int nlev_{-1};
-    int nvars_{1};
-    view_2d data[1];
+    int nvars_{NVARS_LINOZ};
+    view_2d data[NVARS_LINOZ];
 
     void allocate_data_views()
     {
@@ -131,7 +133,7 @@ namespace scream::mam_coupling {
   auto scalar1d_lev_layout_linoz = make_layout({nlevs_data},
                                              {"lev"});
 
-  const int nvars=1;
+  const int nvars=NVARS_LINOZ;
 
   Field lat (FieldIdentifier("lat",  scalar1d_lat_layout_linoz,  nondim,io_grid->name()));
   Field lev (FieldIdentifier("lev",  scalar1d_lev_layout_linoz,  nondim,io_grid->name()));
