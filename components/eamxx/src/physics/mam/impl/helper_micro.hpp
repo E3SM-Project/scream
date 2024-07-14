@@ -160,7 +160,6 @@ namespace scream::mam_coupling {
   const int ncol = col_latitudes.extent(0);
   const int nlev =linoz_params.views_horiz[0].extent(0);
 
-
   // We can ||ize over columns as well as over variables and bands
   const int num_vars = linoz_params.nlevs;
   LIV horiz_interp(num_vars, linoz_params.nlat, ncol);
@@ -300,32 +299,40 @@ static void vert_interp(int ncol,
 } // vert_interp
 
 static void perform_vertical_interpolation(const LinozReaderParams& linoz_params,
-                                           const const_view_2d& p_mid)
+                                           const const_view_2d& p_mid,
+                                           LinozData& non_interpolated_linoz,
+                                           LinozData& interpolated_linoz)
 {
   const int ncol = p_mid.extent(0);
   const int nlev = p_mid.extent(1);
+
+  const int nvars = non_interpolated_linoz.nvars_;
+  const int nlevs_linoz = linoz_params.nlevs;
 
   const auto kupper = linoz_params.kupper;
   const auto levs = linoz_params.io_fields[1].get_view< Real*>();
   const auto pin = linoz_params.pin;
 
-  for (int kk = 0; kk < linoz_params.nlevs; ++kk)
+  for (int kk = 0; kk < nlevs_linoz; ++kk)
   {
     const auto pin_kk = Kokkos::subview(pin,Kokkos::ALL,kk);
     Kokkos::deep_copy(pin_kk,levs(kk));
   }// i
   Kokkos::fence();
 
-  const auto policy_interp = ESU::get_default_team_policy(1, 1);
+  const auto policy_interp = ESU::get_default_team_policy(nvars, 1);
   Kokkos::parallel_for("vertical_interpolation_linoz", policy_interp,
     KOKKOS_LAMBDA(typename LIV::MemberType const& team) {
+  const int ivar = team.league_rank();
+  const auto var_non_inter = non_interpolated_linoz.data[ivar];
+  const auto var_inter = interpolated_linoz.data[ivar];
   scream::mam_coupling::vert_interp(ncol,
-              linoz_params.nlevs,
+              nlevs_linoz,
               nlev,
               pin,
               p_mid,
-              linoz_params.views_horiz_transpose[0],
-              linoz_params.views_vert[0],
+              var_non_inter,
+              var_inter,
               //work array
               kupper);
     });
