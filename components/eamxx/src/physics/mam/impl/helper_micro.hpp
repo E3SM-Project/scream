@@ -16,7 +16,9 @@ namespace scream::mam_coupling {
   using ExeSpace = typename KT::ExeSpace;
   using ESU = ekat::ExeSpaceUtils<ExeSpace>;
 
-  constexpr int NVARS_LINOZ=1;
+  constexpr int NVARS_LINOZ=2;
+  const std::vector<std::string>
+  linoz_var_names={"o3_clim", "o3col_clim"};
 
   struct LinozReaderParams {
   int nlevs{-1};
@@ -137,33 +139,35 @@ namespace scream::mam_coupling {
 
   Field lat (FieldIdentifier("lat",  scalar1d_lat_layout_linoz,  nondim,io_grid->name()));
   Field lev (FieldIdentifier("lev",  scalar1d_lev_layout_linoz,  nondim,io_grid->name()));
-
-  Field o3_clim (FieldIdentifier("o3_clim",  scalar2d_layout_linoz,  nondim,io_grid->name()));
-
-  o3_clim.allocate_view();
   lat.allocate_view();
   lev.allocate_view();
 
   std::vector<Field> io_fields;
   io_fields.push_back(lat);
   io_fields.push_back(lev);
-  io_fields.push_back(o3_clim);
+
+  // FIXME: units are wrong.
+  for (int ivar = 0; ivar < nvars; ++ivar) {
+    auto var_name = linoz_var_names[ivar];
+    // set and allocate fields
+    Field f(FieldIdentifier(var_name,  scalar2d_layout_linoz,  nondim,io_grid->name()));
+    f.allocate_view();
+    io_fields.push_back(f);
+    // get views
+    linoz_params.data_orig[ivar] = io_fields[ivar+2].get_view<Real**>();
+    // allocate views to store data after horizontal interpolation.
+    linoz_params.data_horiz[ivar]=view_2d(var_name+"_test", nlevs_data, ncol);
+  }
 
   linoz_params.latitudes=io_fields[0].get_view<Real*>();
   linoz_params.levs = io_fields[1].get_view< Real*>();
 
-  for (int ivar = 0; ivar < nvars; ++ivar) {
-    linoz_params.data_orig[ivar] = io_fields[ivar+2].get_view<Real**>();
-  }
-  //
-  view_2d o3_clim_org("o3_clim_test", nlevs_data, ncol);
-  linoz_params.data_horiz[0]=o3_clim_org;
-  //
+  // make a copy of col_latitudes without const Real
   view_1d col_latitudes("col",ncol);
   Kokkos::deep_copy(col_latitudes, const_col_latitudes);
   linoz_params.col_latitudes = col_latitudes;
 
-  //
+  // allocate temp views
   linoz_params.kupper = view_int_1d("kupper",ncol);
   linoz_params.pin = view_2d("pin", ncol,nlevs_data);
 

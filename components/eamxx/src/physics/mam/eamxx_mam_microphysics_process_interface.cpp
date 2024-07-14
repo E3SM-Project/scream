@@ -306,8 +306,11 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   LinozData_out_.allocate_data_views();
 
   interpolated_Linoz_data_.init(ncol_,nlev_);
+
   std::vector<view_2d> list_linoz_views;
   list_linoz_views.push_back(linoz_o3_clim);
+  list_linoz_views.push_back(linoz_o3col_clim);
+
   interpolated_Linoz_data_.set_data_views(list_linoz_views);
 
     // Load the first month into spa_end.
