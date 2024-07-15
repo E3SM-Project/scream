@@ -161,14 +161,13 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
   // Tracers group -- do we need this in addition to the tracers above? In any
   // case, this call should be idempotent, so it can't hurt.
   add_group<Updated>("tracers", grid_name, 1, Bundling::Required);
-  // read linoz files
-#if 1
+  // Creating a Linoz reader and setting Linoz parameters involves reading data from a file
+  // and configuring the necessary parameters for the Linoz model.
   {
   std::string linoz_file_name="linoz1850-2015_2010JPL_CMIP6_10deg_58km_c20171109.nc";
   linoz_reader_ = create_linoz_data_reader(linoz_file_name,
   linoz_params_, ncol_, col_latitudes_, m_comm);
   }
-#endif
 }
 
 // this checks whether we have the tracers we expect
