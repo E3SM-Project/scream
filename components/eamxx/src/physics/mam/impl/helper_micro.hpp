@@ -181,7 +181,7 @@ namespace scream::mam_coupling {
     linoz_params.data_horiz[ivar]=view_2d(var_name+"_test", nlevs_data, ncol);
   }
 
-  linoz_params.latitudes=io_fields[0].get_view<Real*>();
+  const auto& latitudes_degree = io_fields[0].get_view<Real*>();
   linoz_params.levs = io_fields[1].get_view< Real*>();
 
   // make a copy of col_latitudes without const Real
@@ -192,6 +192,27 @@ namespace scream::mam_coupling {
   // allocate temp views
   linoz_params.kupper = view_int_1d("kupper",ncol);
   linoz_params.pin = view_2d("pin", ncol,nlevs_data);
+
+  const auto& pin = linoz_params.pin;
+  view_1d latitudes("lat",nlevs_data );
+
+  const auto& levs = linoz_params.levs;
+  const auto policy_interp = ESU::get_default_team_policy(ncol, nlevs_data);
+  const int pi =haero::Constants::pi;
+  Kokkos::parallel_for("unit_convertion", policy_interp,
+    KOKKOS_LAMBDA(typename LIV::MemberType const& team) {
+      // mbar->pascals
+      const int icol = team.league_rank();
+      Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlevs_data), [&] (const Int& kk) {
+      pin(icol, kk) = levs(kk)*100;
+      // radians to degrees
+      if (icol==0){
+        latitudes(kk) = latitudes_degree (kk)* pi/180.;
+      }
+      });
+    });
+  Kokkos::fence();
+  linoz_params.latitudes=latitudes;
 
   return std::make_shared<AtmosphereInput>(linoz_data_file, io_grid,io_fields,true);
   }
@@ -313,13 +334,7 @@ static void perform_vertical_interpolation(const LinozReaderParams& linoz_params
   const auto kupper = linoz_params.kupper;
   const auto levs = linoz_params.levs;
   const auto pin = linoz_params.pin;
-  // FIXME: we do not need to update pin every time iteration.
-  for (int kk = 0; kk < nlevs_linoz; ++kk)
-  {
-    const auto pin_kk = Kokkos::subview(pin,Kokkos::ALL,kk);
-    Kokkos::deep_copy(pin_kk,levs(kk));
-  }// i
-  Kokkos::fence();
+
 
   const auto policy_interp = ESU::get_default_team_policy(nvars, 1);
   Kokkos::parallel_for("vertical_interpolation_linoz", policy_interp,
