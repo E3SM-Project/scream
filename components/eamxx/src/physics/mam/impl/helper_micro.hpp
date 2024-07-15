@@ -231,7 +231,7 @@ namespace scream::mam_coupling {
   const auto policy_setup = ESU::get_default_team_policy(1, ncol);
   auto lat = linoz_params.latitudes;
 
-  Kokkos::parallel_for("spa_vert_interp_setup_loop", policy_setup,
+  Kokkos::parallel_for("vert_interp_setup_loop", policy_setup,
     KOKKOS_LAMBDA(typename LIV::MemberType const& team) {
     // Setup
     horiz_interp.setup(team, lat, col_latitudes);
@@ -272,7 +272,8 @@ namespace scream::mam_coupling {
 
  }
 // Direct port of components/eam/src/chemistry/utils/tracer_data.F90/vert_interp
-inline void vert_interp(int ncol,
+KOKKOS_INLINE_FUNCTION
+void vert_interp(int ncol,
                  int levsiz,
                  int pver,
                  const view_2d&  pin,
@@ -342,7 +343,7 @@ inline void perform_vertical_interpolation(const LinozReaderParams& linoz_params
   const int ivar = team.league_rank();
   const auto var_non_inter = non_interpolated_linoz.data[ivar];
   const auto var_inter = interpolated_linoz.data[ivar];
-  scream::mam_coupling::vert_interp(ncol,
+  vert_interp(ncol,
               nlevs_linoz,
               nlev,
               pin,
