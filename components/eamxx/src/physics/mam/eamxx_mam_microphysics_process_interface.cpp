@@ -164,7 +164,9 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
   // Creating a Linoz reader and setting Linoz parameters involves reading data from a file
   // and configuring the necessary parameters for the Linoz model.
   {
-  std::string linoz_file_name="linoz1850-2015_2010JPL_CMIP6_10deg_58km_c20171109.nc";
+  // std::string linoz_file_name="linoz1850-2015_2010JPL_CMIP6_10deg_58km_c20171109.nc";
+  std::string linoz_file_name =
+      m_params.get<std::string>("mam4_linoz_file_name");
   linoz_reader_ = create_linoz_data_reader(linoz_file_name,
   linoz_params_, ncol_, col_latitudes_, m_comm);
   }

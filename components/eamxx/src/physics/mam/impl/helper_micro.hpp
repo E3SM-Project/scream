@@ -201,9 +201,10 @@ namespace scream::mam_coupling {
   const int pi =haero::Constants::pi;
   Kokkos::parallel_for("unit_convertion", policy_interp,
     KOKKOS_LAMBDA(typename LIV::MemberType const& team) {
-      // mbar->pascals
+
       const int icol = team.league_rank();
       Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlevs_data), [&] (const Int& kk) {
+      // mbar->pascals
       pin(icol, kk) = levs(kk)*100;
       // radians to degrees
       if (icol==0){
