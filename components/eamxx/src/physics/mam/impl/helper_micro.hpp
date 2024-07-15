@@ -314,7 +314,7 @@ void vert_interp(int ncol,
             } else {
                 Real dpu = pmid(i, k) - pin(i, kupper(i));
                 Real dpl = pin(i, kupper(i) + 1) - pmid(i, k);
-                dataout(i, k) = (datain(i, kupper[i]) * dpl + datain(i, kupper(i) + 1) * dpu) / (dpl + dpu);
+                dataout(i, k) = (datain(i, kupper(i)) * dpl + datain(i, kupper(i) + 1) * dpu) / (dpl + dpu);
             }// end if
         } // end col
     } // end k
