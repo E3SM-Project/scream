@@ -368,7 +368,7 @@ void MAMMicrophysics::run_impl(const double dt) {
   {
     /* Gather time and state information for interpolation */
   auto ts = timestamp()+dt;
-  /* Update the SPATimeState to reflect the current time, note the addition of dt */
+  /* Update the LinozTimeState to reflect the current time, note the addition of dt */
   linoz_time_state_.t_now = ts.frac_of_year_in_days();
   /* Update time state and if the month has changed, update the data.*/
   update_linoz_timestate(ts,
