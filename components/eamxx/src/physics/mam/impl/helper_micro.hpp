@@ -11,7 +11,7 @@ namespace scream::mam_coupling {
 
   using namespace ShortFieldTagsNames;
 
-      // using npack equal to 1.
+  // using npack equal to 1.
   using LIV = ekat::LinInterp<Real,1>;
   using ExeSpace = typename KT::ExeSpace;
   using ESU = ekat::ExeSpaceUtils<ExeSpace>;
@@ -117,7 +117,7 @@ namespace scream::mam_coupling {
   };
 
   // define the different field layouts that will be used for this process
-  static std::shared_ptr<AtmosphereInput>
+  inline std::shared_ptr<AtmosphereInput>
   create_linoz_data_reader (
       const std::string& linoz_data_file,
       LinozReaderParams& linoz_params,
@@ -218,7 +218,7 @@ namespace scream::mam_coupling {
   }
 
 
- static void perform_horizontal_interpolation( const              LinozReaderParams& linoz_params, LinozData& linoz_data_out)
+ inline void perform_horizontal_interpolation( const              LinozReaderParams& linoz_params, LinozData& linoz_data_out)
  {
   // FIXME: get this inputs from eamxx interface.
   const auto col_latitudes = linoz_params.col_latitudes;
@@ -272,7 +272,7 @@ namespace scream::mam_coupling {
 
  }
 // Direct port of components/eam/src/chemistry/utils/tracer_data.F90/vert_interp
-static void vert_interp(int ncol,
+inline void vert_interp(int ncol,
                  int levsiz,
                  int pver,
                  const view_2d&  pin,
@@ -320,7 +320,7 @@ static void vert_interp(int ncol,
 
 } // vert_interp
 
-static void perform_vertical_interpolation(const LinozReaderParams& linoz_params,
+inline void perform_vertical_interpolation(const LinozReaderParams& linoz_params,
                                            const const_view_2d& p_mid,
                                            LinozData& non_interpolated_linoz,
                                            LinozData& interpolated_linoz)
@@ -357,7 +357,7 @@ static void perform_vertical_interpolation(const LinozReaderParams& linoz_params
 }//perform_vertical_interpolation
 
 // This function is based on update_spa_timestate
-void static update_linoz_timestate(const util::TimeStamp& ts,
+inline void update_linoz_timestate(const util::TimeStamp& ts,
                                    LinozTimeState& time_state,
                                    std::shared_ptr<AtmosphereInput> linoz_reader,
                                    const LinozReaderParams& linoz_params,
@@ -393,20 +393,20 @@ void static update_linoz_timestate(const util::TimeStamp& ts,
 } // update_linoz_timestate
 
 KOKKOS_INLINE_FUNCTION
-static Real linear_interp(const Real& x0, const Real& x1, const Real& t)
+Real linear_interp(const Real& x0, const Real& x1, const Real& t)
 {
   return (1 - t)*x0 + t*x1;
 } // linear_interp
 
 KOKKOS_INLINE_FUNCTION
-static view_1d get_var_column (const LinozData& data,
+view_1d get_var_column (const LinozData& data,
                                const int icol,
                                const int ivar)
 {
     return ekat::subview(data.data[ivar],icol);
 } // get_var_column
 // This function is based on the SPA::perform_time_interpolation function.
- static void perform_time_interpolation(
+ inline void perform_time_interpolation(
   const LinozTimeState& time_state,
   const LinozData&  data_beg,
   const LinozData&  data_end,
