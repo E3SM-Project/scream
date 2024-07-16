@@ -478,12 +478,12 @@ view_1d get_var_column (const LinozData& data,
   inline void create_linoz_chlorine_reader(
       const std::string& linoz_chlorine_file,
       const util::TimeStamp& model_time,
+      const int chlorine_loading_ymd, // in format YYYYMMDD
       std::vector<Real>& values,
       std::vector<int>& time_secs
       )
   {
-  int date_beg=20100101;
-  auto time_stamp_beg = convert_date(date_beg);
+  auto time_stamp_beg = convert_date(chlorine_loading_ymd);
 
   const int offset_time = compute_days(time_stamp_beg) - compute_days(model_time);
   scorpio::register_file(linoz_chlorine_file,scorpio::Read);
@@ -492,7 +492,7 @@ view_1d get_var_column (const LinozData& data,
   {
     int date;
     scorpio::read_var(linoz_chlorine_file,"date",&date,itime);
-    if (date >= date_beg ) {
+    if (date >= chlorine_loading_ymd ) {
       Real value;
       scorpio::read_var(linoz_chlorine_file,"chlorine_loading",&value, itime);
       values.push_back(value);
@@ -510,7 +510,8 @@ view_1d get_var_column (const LinozData& data,
 
   const int current_time = compute_days(ts);
   int index=0;
-  for(int i=0; i < values.size(); i++){
+  // update index
+  for(int i=0; i < int(values.size()); i++){
   if (current_time > time_secs[i] ) {
     index =i;
     break;

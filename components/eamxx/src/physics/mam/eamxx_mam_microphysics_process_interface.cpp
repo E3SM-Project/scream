@@ -79,7 +79,7 @@ void MAMMicrophysics::set_defaults_() {
   set_file_location(config_.photolysis.xs_long_file,     "../waccm/phot/temp_prs_GT200nm_JPL10_c130206.nc");
 
   // stratospheric chemistry
-  set_file_location(config_.linoz.chlorine_loading_file, "../cam/chem/trop_mozart/ub/Linoz_Chlorine_Loading_CMIP6_0003-2017_c20171114.nc");
+  // set_file_location(config_.linoz.chlorine_loading_file, "../cam/chem/trop_mozart/ub/Linoz_Chlorine_Loading_CMIP6_0003-2017_c20171114.nc");
 
   // dry deposition
   set_file_location(config_.drydep.srf_file,             "../cam/chem/trop_mam/atmsrf_ne4pg2_200527.nc");
@@ -330,11 +330,15 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
                                  LinozData_end_,
                                  interpolated_Linoz_data_);
 
-
-
-  const std::string linoz_chlorine_file = "Linoz_Chlorine_Loading_CMIP6_0003-2017_c20171114.nc";
+  // const std::string linoz_chlorine_file = "Linoz_Chlorine_Loading_CMIP6_0003-2017_c20171114.nc";
+  // auto ts = timestamp();
+  // int chlorine_loading_ymd=20100101;
   auto ts = timestamp();
-  scream::mam_coupling::create_linoz_chlorine_reader (linoz_chlorine_file, ts,
+  std::string linoz_chlorine_file =
+      m_params.get<std::string>("mam4_linoz_chlorine_file");
+  int chlorine_loading_ymd =
+      m_params.get<int>("mam4_chlorine_loading_ymd");
+  scream::mam_coupling::create_linoz_chlorine_reader (linoz_chlorine_file, ts, chlorine_loading_ymd,
    chlorine_values_, chlorine_time_secs_ );
   }
 }
