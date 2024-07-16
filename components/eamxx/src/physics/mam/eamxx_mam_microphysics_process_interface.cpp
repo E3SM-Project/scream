@@ -169,6 +169,7 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
       m_params.get<std::string>("mam4_linoz_file_name");
   linoz_reader_ = create_linoz_data_reader(linoz_file_name,
   linoz_params_, ncol_, col_latitudes_, m_comm);
+
   }
 }
 
@@ -329,6 +330,12 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
                                  LinozData_end_,
                                  interpolated_Linoz_data_);
 
+
+
+  const std::string linoz_chlorine_file = "Linoz_Chlorine_Loading_CMIP6_0003-2017_c20171114.nc";
+  auto ts = timestamp();
+  scream::mam_coupling::create_linoz_chlorine_reader (linoz_chlorine_file, ts,
+   chlorine_values_, chlorine_time_secs_ );
   }
 }
 
@@ -389,6 +396,10 @@ void MAMMicrophysics::run_impl(const double dt) {
                                  dry_atm_.p_mid,
                                  LinozData_out_,
                                  interpolated_Linoz_data_);
+
+  //
+  const Real chlorine_loading = scream::mam_coupling::chlorine_loading_advance(ts, chlorine_values_,
+                           chlorine_time_secs_);
 
   }
 
@@ -551,7 +562,7 @@ void MAMMicrophysics::run_impl(const double dt) {
            zenith_angle_degrees;
 
       // FIXME: Need to get chlorine loading data from file
-      Real chlorine_loading = 0.0;
+      // Real chlorine_loading = 0.0;
 
       Real rlats = col_lat * M_PI / 180.0; // convert column latitude to radians
       int o3_ndx = 0; // index of "O3" in solsym array (in EAM)
