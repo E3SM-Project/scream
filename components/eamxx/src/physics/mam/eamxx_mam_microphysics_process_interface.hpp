@@ -236,6 +236,9 @@ private_except_cuda:
   mam_coupling::LinozData LinozData_end_;
   mam_coupling::LinozData LinozData_out_;
   mam_coupling::LinozData interpolated_Linoz_data_;
+  //
+  std::vector<Real> chlorine_values_;
+  std::vector<int> chlorine_time_secs_;
 
 }; // MAMMicrophysics
 
