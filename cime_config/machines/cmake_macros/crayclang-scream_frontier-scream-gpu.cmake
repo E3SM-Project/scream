@@ -18,6 +18,7 @@ if (compile_threaded)
 endif()
 
 string(APPEND CMAKE_Fortran_FLAGS " -hipa0 -hzero -f free")
+string(APPEND MPI_Fortran_LINK_FLAGS "/opt/gcc/12.2.0/snos/lib64/libstdc++.so.6")
 
 string(APPEND CMAKE_EXE_LINKER_FLAGS " -L$ENV{ROCM_PATH}/lib -lamdhip64")
 string(APPEND CMAKE_CXX_FLAGS " -I$ENV{ROCM_PATH}/include")
