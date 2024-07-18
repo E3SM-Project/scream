@@ -123,7 +123,7 @@ void MLCorrection::run_impl(const double dt) {
   const auto &sfc_alb_dif_vis_dev = get_field_in("sfc_alb_dif_vis").get_view<const Real *, Device>();
   const auto &sfc_alb_dir_vis_dev = get_field_in("sfc_alb_dir_vis").get_view<const Real *, Device>();
   const auto &sfc_alb_dif_nir_dev = get_field_in("sfc_alb_dif_nir").get_view<const Real *, Device>();
-  const auto &sfc_alb_dir_nir_dev = get_field_in("sfc_alb_dir_nir").get_view<const Real *, Device>();  
+  const auto &sfc_alb_dir_nir_dev = get_field_in("sfc_alb_dir_nir").get_view<const Real *, Device>();
   const auto &sfc_flux_dif_nir_dev = get_field_out("sfc_flux_dif_nir").get_view<const Real *, Device>();  
   const auto &sfc_flux_dif_vis_dev = get_field_out("sfc_flux_dif_vis").get_view<const Real *, Device>();  
   const auto &sfc_flux_dir_nir_dev = get_field_out("sfc_flux_dir_nir").get_view<const Real *, Device>();  
@@ -180,7 +180,7 @@ void MLCorrection::run_impl(const double dt) {
       sfc_alb_dir_vis_dev_ptr,
       sfc_alb_dif_vis_dev_ptr,
       sfc_alb_dir_nir_dev_ptr,
-      sfc_alb_dif_nir_dev_ptr,      
+      sfc_alb_dif_nir_dev_ptr,
       sfc_flux_dir_nir_dev_ptr,
       sfc_flux_dir_vis_dev_ptr,
       sfc_flux_dif_nir_dev_ptr,
@@ -308,7 +308,7 @@ void MLCorrection::run_impl(const double dt) {
   // End timing
   auto end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = end - start;
-  std::cout << "MLCorrection::run_impl took " << elapsed.count() << " seconds" << std::endl;
+  // std::cout << "MLCorrection::run_impl took " << elapsed.count() << " seconds" << std::endl;
 
   // Print the current call timestamp string
   std::cout << "Current timestamp: " << datetime_str << std::endl;

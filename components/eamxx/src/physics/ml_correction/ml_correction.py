@@ -333,7 +333,6 @@ def get_ML_correction_sfc_fluxes(
     sfc_alb_dif_vis = xr.DataArray(sfc_alb_dif_vis, dims=["ncol"])
     sfc_alb_dir_nir = xr.DataArray(sfc_alb_dir_nir, dims=["ncol"])
     sfc_alb_dif_nir = xr.DataArray(sfc_alb_dif_nir, dims=["ncol"])
-
     ds = xr.Dataset(
         data_vars=dict(
             T_mid=(["ncol", "z"], T_mid),
@@ -352,7 +351,6 @@ def get_ML_correction_sfc_fluxes(
         sfc_sw_down = SW_flux_dn_at_model_top * transmissivity
     else:
         sfc_sw_down = output["total_sky_downward_shortwave_flux_at_surface"]
-
     sfc_sw_down = _limit_sw_down(
         sfc_sw_down,
         SW_flux_dn_at_model_top,
