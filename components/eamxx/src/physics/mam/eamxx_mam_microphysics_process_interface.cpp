@@ -713,16 +713,9 @@ void MAMMicrophysics::run_impl(const double dt) {
     Real esfact = 0.0; // FIXME: earth-sun distance factor
 
     const auto& photo_rates_icol = ekat::subview(photo_rates, icol);
-#if 0
     mam4::mo_photo::table_photo(photo_rates_icol, atm.pressure, atm.hydrostatic_dp,
      atm.temperature, o3_col_dens_i, zenith_angle, surf_albedo, atm.liquid_mixing_ratio,
      atm.cloud_fraction, esfact, photo_table, photo_work_arrays_icol);
-#endif
-    // compute external forcings at time t(n+1) [molecules/cm^3/s]
-    constexpr int extcnt = mam4::gas_chemistry::extcnt;
-    view_2d extfrc; // FIXME: where to allocate? (nlev, extcnt)
-    mam4::mo_setext::Forcing forcings[extcnt]; // FIXME: forcings seem to require file data
-    //mam4::mo_setext::extfrc_set(forcings, extfrc);
 
     // compute aerosol microphysics on each vertical level within this column
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&](const int k) {
@@ -777,16 +770,12 @@ void MAMMicrophysics::run_impl(const double dt) {
       for (int i = 0; i < mam4::mo_photo::phtcnt; ++i) {
         photo_rates_k[i] = photo_rates_icol(k, i);
       }
-      /*Real extfrc_k[extcnt];
-      for (int i = 0; i < extcnt; ++i) {
-        extfrc_k[i] = extfrc(k, i);
-      }*/
       constexpr int nfs = mam4::gas_chemistry::nfs; // number of "fixed species"
       // NOTE: we compute invariants here and pass them out to use later with
       // NOTE: setsox
       Real invariants[nfs];
-      /*impl::gas_phase_chemistry(zm, zi, phis, temp, pmid, pdel, dt,
-                                photo_rates_k, extfrc_k, vmr, invariants);*/
+      impl::gas_phase_chemistry(zm, zi, phis, temp, pmid, pdel, dt,
+                                  photo_rates_k, vmr, invariants);
 
       //----------------------
       // Aerosol microphysics
