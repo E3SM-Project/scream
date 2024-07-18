@@ -1,7 +1,11 @@
 import numpy as np
-import cupy as cp
+
+try:
+    import cupy as cp
+    import cupy_xarray
+except ImportError:
+    cp = np
 import xarray as xr
-import cupy_xarray
 import datetime
 import logging
 import time
@@ -10,7 +14,7 @@ from scream_run.steppers.machine_learning import (
     MachineLearningConfig,
     open_model,
     predict,
-    predict_with_qv_constraint
+    predict_with_qv_constraint,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,13 +31,21 @@ ML_MODELS = {
     FLUX: None,
 }
 
+VISIBLE_FRAC_KEY = "downward_vis_fraction_at_surface"
+NIR_FRAC_KEY = "downward_nir_fraction_at_surface"
+
+VIS_DIFFUSE_KEY = "downward_vis_diffuse_fraction_at_surface"
+VIS_DIRECT_KEY = "downward_vis_direct_fraction_at_surface"
+NIR_DIFFUSE_KEY = "downward_nir_diffuse_fraction_at_surface"
+NIR_DIRECT_KEY = "downward_nir_direct_fraction_at_surface"
+
 
 def _load_model(key, path):
     # No need to pass model objects back and forth into C++
     # Just store the model in a global dict
     global ML_MODELS
     model = ML_MODELS[key]
-    
+
     if model is None and path.lower() != "none":
         logger.info(f"Loading ML {key} model from {path}")
         config = MachineLearningConfig(models=[path])
@@ -46,12 +58,15 @@ def _load_model(key, path):
         logger.debug(f"skipping ML {key} model, already loaded")
     return model
 
+
 def _check_valid_model_option():
     """Check if the loaded model has the right combination"""
     if ML_MODELS[TQ] is not None and ML_MODELS[T_ONLY] is not None:
-        raise ValueError("Only one of ML_model_path_tq, \
-            ML_model_path_temperature can be specified")
-    
+        raise ValueError(
+            "Only one of ML_model_path_tq, \
+            ML_model_path_temperature can be specified"
+        )
+
 
 def load_all_models(tq_model_path, t_model_path, uv_model_path, flx_model_path):
     """Load all models into the global model dict"""
@@ -95,6 +110,7 @@ def get_ML_correction_dQ1_dQ2(model, T_mid, qv, cos_zenith, lat, phis, dt):
     )
     return ensure_correction_ordering(predict_with_qv_constraint(model, ds, dt))
 
+
 def get_ML_correction_dQ1_only(model, T_mid, qv, cos_zenith, lat, phis):
     """Get ML correction for air temperature (dQ1)
 
@@ -117,6 +133,7 @@ def get_ML_correction_dQ1_only(model, T_mid, qv, cos_zenith, lat, phis):
         )
     )
     return ensure_correction_ordering(predict(model, ds))
+
 
 def get_ML_correction_dQu_dQv(model, T_mid, qv, cos_zenith, lat, phis, u, v, dt):
     """Get ML correction for eastward wind (dQu or dQxwind) and northward wind (dQv or dQywind)
@@ -153,6 +170,135 @@ def get_ML_correction_dQu_dQv(model, T_mid, qv, cos_zenith, lat, phis, u, v, dt)
     return output
 
 
+def _limit_sw_down(
+    sfc_sw_down: xr.DataArray, toa_sw_down: xr.DataArray, is_sw_down_toa: xr.DataArray
+) -> xr.DataArray:
+    sfc_sw_down = sfc_sw_down.where(is_sw_down_toa, 0.0)
+    # max downwelling based on checking training data
+    sfc_sw_down_constraint = toa_sw_down * 0.92
+    sfc_sw_down = sfc_sw_down.where(
+        sfc_sw_down <= sfc_sw_down_constraint, sfc_sw_down_constraint
+    )
+
+    return sfc_sw_down
+
+
+def _limit_sfc_vis_frac(
+    sfc_vis_frac: xr.DataArray, is_sw_down_toa: xr.DataArray
+) -> xr.DataArray:
+    sfc_vis_frac = sfc_vis_frac.where(is_sw_down_toa, 0.0)
+    # sfc vis frac doesn't go lower than ~0.35 where downwelling shortwave exists
+    vis_frac_ok = cp.logical_and(is_sw_down_toa.data, sfc_vis_frac.data >= 0.35)
+    vis_frac_ok = cp.logical_or(vis_frac_ok, cp.logical_not(is_sw_down_toa.data))
+    sfc_vis_frac = sfc_vis_frac.where(vis_frac_ok, 0.35)
+
+    return sfc_vis_frac
+
+
+def _get_vis_nir_fractions(output: xr.Dataset, is_sw_down_toa: xr.DataArray):
+    """
+    Expect the ML model to predict either visible or NIR fraction.  Determine
+    the opposite component based on what's provided for consistency.
+    """
+
+    if VISIBLE_FRAC_KEY in output:
+        if NIR_FRAC_KEY in output:
+            logger.warning(
+                "Both vis and nir sw fractions are present in the ML output, defaulting to vis"
+            )
+        vis_frac = output[VISIBLE_FRAC_KEY]
+    elif VISIBLE_FRAC_KEY in output:
+        vis_frac = output[VISIBLE_FRAC_KEY]
+    elif NIR_FRAC_KEY in output:
+        nir_frac = output[NIR_FRAC_KEY]
+        vis_frac = 1 - nir_frac
+    else:
+        raise ValueError("Neither vis nor nir fractions are present in the ML output")
+
+    vis_frac = _limit_sfc_vis_frac(vis_frac, is_sw_down_toa)
+    nir_frac = 1 - vis_frac
+
+    return vis_frac.where(is_sw_down_toa, 0.0), nir_frac.where(is_sw_down_toa, 0.0)
+
+
+def _get_constrained_diffusive_fluxes(
+    sfc_nir_dif_frac: xr.DataArray,
+    sfc_vis_dif_frac: xr.DataArray,
+) -> xr.DataArray:
+
+    # from notebook, nir dif frac should never be greater than sfc_vis_dif_frac
+    nir_vis_dif_inconsistency = sfc_nir_dif_frac > sfc_vis_dif_frac
+    sfc_nir_dif_frac = xr.where(
+        nir_vis_dif_inconsistency, sfc_vis_dif_frac, sfc_nir_dif_frac
+    )
+    num_inconsistent_points = nir_vis_dif_inconsistency.sum()
+    if num_inconsistent_points.data > 0:
+        avg_difference = (
+            (sfc_nir_dif_frac - sfc_vis_dif_frac)
+            .where(nir_vis_dif_inconsistency)
+            .mean()
+        )
+        logger.info(
+            "Number of inconsistent downwelling nir diffuse fractions (> vis diffuse):"
+            f" {num_inconsistent_points.data}"
+        )
+        logger.info(
+            "Average difference between downwelling nir and vis diffuse fractions"
+            f" at inconsistent points: {avg_difference.data}"
+        )
+    return sfc_nir_dif_frac, sfc_vis_dif_frac
+
+
+def _get_direct_diffusive_fractions(output: xr.Dataset, is_sw_down_toa: xr.DataArray):
+    """
+    Expect the ML model to predict either direct or diffuse fractions.  Determine
+    the opposite component based on what's provided for consistency.
+
+    Note: predicting the direct fraction is preferred since diffuse both reaches
+    a max and has sharp cutoff to 0 at edges of downwelling solar radiation, which
+    is difficult for NNs to achieve.  Overall, since the donwelling radiation is relatively
+    small at the edges, getting the direct/diffuse fractions wrong probably won't have
+    a large impact.
+    """
+
+    if VIS_DIRECT_KEY in output:
+        if VIS_DIFFUSE_KEY in output:
+            logger.warning(
+                "visible direct and diffuse fraction found in output, defaulting to direct"
+            )
+        vis_dir_frac = output[VIS_DIRECT_KEY]
+        vis_dif_frac = 1 - vis_dir_frac
+    elif VIS_DIFFUSE_KEY in output:
+        vis_dif_frac = output[VIS_DIFFUSE_KEY]
+    else:
+        raise ValueError("No direct/diffuse visible variable found in output")
+
+    if NIR_DIRECT_KEY in output:
+        if NIR_DIFFUSE_KEY in output:
+            logger.warning(
+                "visible direct and diffuse fraction found in output, defaulting to direct"
+            )
+        nir_dir_frac = output[NIR_DIRECT_KEY]
+        nir_dif_frac = 1 - nir_dir_frac
+    elif NIR_DIFFUSE_KEY in output:
+        nir_dif_frac = output[NIR_DIFFUSE_KEY]
+    else:
+        raise ValueError("No direct/diffuse visible variable found in output")
+
+    nir_dif_frac, vis_dif_frac = _get_constrained_diffusive_fluxes(
+        nir_dif_frac, vis_dif_frac
+    )
+    nir_dir_frac = 1 - nir_dif_frac
+    vis_dir_frac = 1 - vis_dif_frac
+
+    return (
+        vis_dir_frac.where(is_sw_down_toa, 0.0),
+        vis_dif_frac.where(is_sw_down_toa, 0.0),
+        nir_dir_frac.where(is_sw_down_toa, 0.0),
+        nir_dif_frac.where(is_sw_down_toa, 0.0),
+    )
+
+
 def get_ML_correction_sfc_fluxes(
     model,
     T_mid,
@@ -160,9 +306,12 @@ def get_ML_correction_sfc_fluxes(
     cos_zenith,
     lat,
     phis,
-    # sfc_alb_dif_vis,
-    # sw_flux_dn,
-):    
+    sw_flux_dn,
+    sfc_alb_dir_vis,
+    sfc_alb_dif_vis,
+    sfc_alb_dir_nir,
+    sfc_alb_dif_nir,
+):
     """Get ML correction for overriding surface fluxes (net shortwave and downward longwave)
     ML model should have the following output variables:
         net_shortwave_sfc_flux_via_transmissivity
@@ -178,8 +327,13 @@ def get_ML_correction_sfc_fluxes(
         sfc_alb_dif_vis: surface albedo for diffuse shortwave radiation
         sw_flux_dn: downward shortwave flux
         dt: time step (s)
-    """    
-    # SW_flux_dn_at_model_top = sw_flux_dn[:, 0]
+    """
+    SW_flux_dn_at_model_top = xr.DataArray(sw_flux_dn[:, 0], dims=["ncol"])
+    sfc_alb_dir_vis = xr.DataArray(sfc_alb_dir_vis, dims=["ncol"])
+    sfc_alb_dif_vis = xr.DataArray(sfc_alb_dif_vis, dims=["ncol"])
+    sfc_alb_dir_nir = xr.DataArray(sfc_alb_dir_nir, dims=["ncol"])
+    sfc_alb_dif_nir = xr.DataArray(sfc_alb_dif_nir, dims=["ncol"])
+
     ds = xr.Dataset(
         data_vars=dict(
             T_mid=(["ncol", "z"], T_mid),
@@ -187,32 +341,83 @@ def get_ML_correction_sfc_fluxes(
             lat=(["ncol"], lat),
             surface_geopotential=(["ncol"], phis),
             cos_zenith_angle=(["ncol"], cos_zenith),
-            # surface_diffused_shortwave_albedo=(["ncol"], sfc_alb_dif_vis),
-            # total_sky_downward_shortwave_flux_at_top_of_atmosphere=(
-            #     ["ncol"],
-            #     SW_flux_dn_at_model_top,
-            # ),
         )
     )
-    return predict(model, ds)
+    output = predict(model, ds)
+    is_sw_down_toa = SW_flux_dn_at_model_top > 0
+
+    transmissivity_key = "shortwave_transmissivity_of_atmospheric_column"
+    if transmissivity_key in output:
+        transmissivity = output[transmissivity_key]
+        sfc_sw_down = SW_flux_dn_at_model_top * transmissivity
+    else:
+        sfc_sw_down = output["total_sky_downward_shortwave_flux_at_surface"]
+
+    sfc_sw_down = _limit_sw_down(
+        sfc_sw_down,
+        SW_flux_dn_at_model_top,
+        is_sw_down_toa,
+    )
+
+    sfc_vis_frac = _limit_sfc_vis_frac(
+        output["downward_vis_fraction_at_surface"],
+        is_sw_down_toa,
+    )
+
+    sfc_nir_frac = (1 - sfc_vis_frac).where(is_sw_down_toa, 0.0)
+
+    [
+        sfc_vis_dir_frac,
+        sfc_vis_dif_frac,
+        sfc_nir_dir_frac,
+        sfc_nir_dif_frac,
+    ] = _get_direct_diffusive_fractions(output, is_sw_down_toa)
+
+    sfc_flux_vis_dir = sfc_sw_down * sfc_vis_frac * sfc_vis_dir_frac
+    sfc_flux_vis_dif = sfc_sw_down * sfc_vis_frac * sfc_vis_dif_frac
+    sfc_flux_nir_dir = sfc_sw_down * sfc_nir_frac * sfc_nir_dir_frac
+    sfc_flux_nir_dif = sfc_sw_down * sfc_nir_frac * sfc_nir_dif_frac
+
+    sw_net = (
+        sfc_flux_vis_dir * (1 - sfc_alb_dir_vis)
+        + sfc_flux_vis_dif * (1 - sfc_alb_dif_vis)
+        + sfc_flux_nir_dir * (1 - sfc_alb_dir_nir)
+        + sfc_flux_nir_dif * (1 - sfc_alb_dif_nir)
+    )
+
+    if is_sw_down_toa.sum().data > 0:
+        logger.info(
+            "Min max radiation outputs\n"
+            f"\sfc_sw_down_min: {sfc_sw_down.where(is_sw_down_toa).min().data:1.2f}, sfc_sw_down_max: {sfc_sw_down.where(is_sw_down_toa).max().data:1.2f}\n"
+            f"\tsw_net_min: {sw_net.where(is_sw_down_toa).min().data:1.2f}, sw_net_max: {sw_net.where(is_sw_down_toa).max().data:1.2f}\n"
+            f"\tsfc_vis_frac_min: {sfc_vis_frac.where(is_sw_down_toa).min().data:1.2f}, sfc_vis_frac_max: {sfc_vis_frac.where(is_sw_down_toa).max().data:1.2f}\n"
+            f"\tsfc_nir_dif_frac_min: {sfc_nir_dif_frac.where(is_sw_down_toa).min().data:1.2f}, sfc_nir_dif_frac_max: {sfc_nir_dif_frac.where(is_sw_down_toa).max().data:1.2f}\n"
+            f"\tsfc_vis_dif_frac_min: {sfc_vis_dif_frac.where(is_sw_down_toa).min().data:1.2f}, sfc_vis_dif_frac_max: {sfc_vis_dif_frac.where(is_sw_down_toa).max().data:1.2f}\n"
+        )
+
+    output["sfc_flux_dif_nir"] = sfc_flux_nir_dif
+    output["sfc_flux_dif_vis"] = sfc_flux_vis_dif
+    output["sfc_flux_dir_nir"] = sfc_flux_nir_dir
+    output["sfc_flux_dir_vis"] = sfc_flux_vis_dir
+    output["sfc_flux_sw_net"] = sw_net
+    output["sfc_flux_sw_dn"] = sfc_sw_down
+
+    return ensure_correction_ordering(output)
 
 
 def _get_cupy_from_gpu_ptr(ptr, shape, dtype_char):
     dtype = cp.dtype(dtype_char)
     total_size = np.product(shape) * dtype.itemsize
     data_from_ptr = cp.ndarray(
-        shape, 
+        shape,
         dtype=dtype,
-        memptr=cp.cuda.MemoryPointer(
-            cp.cuda.UnownedMemory(ptr, total_size, None), 0
-        )
+        memptr=cp.cuda.MemoryPointer(cp.cuda.UnownedMemory(ptr, total_size, None), 0),
     )
     return data_from_ptr
 
 
-def update_fields(
-    ML_uses_GPU,
-    field_dtype_char,
+def apply_ml_correction(
+    q_tracers,
     qv,
     T_mid,
     u,
@@ -220,6 +425,171 @@ def update_fields(
     lat,
     lon,
     phis,
+    sw_flux_dn,
+    sfc_alb_dir_vis,
+    sfc_alb_dif_vis,
+    sfc_alb_dir_nir,
+    sfc_alb_dif_nir,
+    sfc_flux_dir_nir,
+    sfc_flux_dir_vis,
+    sfc_flux_dif_nir,
+    sfc_flux_dif_vis,
+    sfc_flux_sw_net,
+    sfc_flux_lw_dn,
+    Ncol,
+    Nlev,
+    num_tracers,
+    dt,
+    current_time,
+    tq_model_path,
+    t_model_path,
+    uv_model_path,
+    flux_model_path,
+):
+    current_datetime = datetime.datetime.strptime(current_time, "%Y-%m-%d %H:%M:%S")
+    cos_zenith = cos_zenith_angle(
+        current_datetime,
+        lon,
+        lat,
+    )
+
+    # Kokkos crashes if I import tensorflow too early
+    # (i.e., during MLCorrection::initialize_impl)
+    # so defer the import until it's needed for models here.
+    # models are loaded into global state so they are only loaded once
+    # despite being called each time we ask for a correction
+    model_tq = _load_model(TQ, tq_model_path)
+    model_t = _load_model(T_ONLY, t_model_path)
+    model_uv = _load_model(UV, uv_model_path)
+    model_sfc_fluxes = _load_model(FLUX, flux_model_path)
+
+    if model_tq is not None:
+        correction_tq = get_ML_correction_dQ1_dQ2(
+            model_tq, T_mid, qv, cos_zenith, lat, phis, dt
+        )
+        T_mid[:, :] += correction_tq["dQ1"].data * dt
+        q_tracers[:, 0, :] += correction_tq["dQ2"].data * dt
+    if model_t is not None:
+        correction_t = get_ML_correction_dQ1_only(
+            model_t,
+            T_mid,
+            qv,
+            cos_zenith,
+            lat,
+            phis,
+        )
+        T_mid[:, :] += correction_t["dQ1"].data * dt
+    if model_uv is not None:
+        correction_uv = get_ML_correction_dQu_dQv(
+            model_uv, T_mid, qv, cos_zenith, lat, phis, u, v, dt
+        )
+        u[:, :] += correction_uv["dQu"].data * dt
+        v[:, :] += correction_uv["dQv"].data * dt
+    if model_sfc_fluxes is not None:
+        correction_sfc_fluxes = get_ML_correction_sfc_fluxes(
+            model_sfc_fluxes,
+            T_mid,
+            qv,
+            cos_zenith,
+            lat,
+            phis,
+            sw_flux_dn,
+            sfc_alb_dir_vis,
+            sfc_alb_dif_vis,
+            sfc_alb_dir_nir,
+            sfc_alb_dif_nir,
+        )
+        sfc_flux_dir_nir[:] = correction_sfc_fluxes["sfc_flux_dir_nir"].data
+        sfc_flux_dir_vis[:] = correction_sfc_fluxes["sfc_flux_dir_vis"].data
+        sfc_flux_dif_nir[:] = correction_sfc_fluxes["sfc_flux_dif_nir"].data
+        sfc_flux_dif_vis[:] = correction_sfc_fluxes["sfc_flux_dif_vis"].data
+        sfc_flux_sw_net[:] = correction_sfc_fluxes["sfc_flux_sw_net"].data
+        sfc_flux_lw_dn[:] = correction_sfc_fluxes["sfc_flux_lw_dn"].data
+
+
+def update_fields_cpu(
+    q_tracers,
+    T_mid,
+    u,
+    v,
+    lat,
+    lon,
+    phis,
+    sw_flux_dn,
+    sfc_alb_dir_vis,
+    sfc_alb_dif_vis,
+    sfc_alb_dir_nir,
+    sfc_alb_dif_nir,
+    sfc_flux_dir_nir,
+    sfc_flux_dir_vis,
+    sfc_flux_dif_nir,
+    sfc_flux_dif_vis,
+    sfc_flux_sw_net,
+    sfc_flux_lw_dn,
+    Ncol,
+    Nlev,
+    num_tracers,
+    dt,
+    current_time,
+    tq_model_path,
+    t_model_path,
+    uv_model_path,
+    flux_model_path,
+):
+    # qv is a 3D array of shape (Ncol, num_tracers, Nlev)
+    # by default, qv is the frist tracer variable
+    q_tracers = np.reshape(q_tracers, (-1, num_tracers, Nlev))
+    qv = q_tracers[:, 0, :]
+    T_mid = np.reshape(T_mid, (-1, Nlev))
+    u = np.reshape(u, (-1, Nlev))
+    v = np.reshape(v, (-1, Nlev))
+    sw_flux_dn = np.reshape(sw_flux_dn, (-1, Nlev + 1))
+    apply_ml_correction(
+        q_tracers,
+        qv,
+        T_mid,
+        u,
+        v,
+        lat,
+        lon,
+        phis,
+        sw_flux_dn,
+        sfc_alb_dir_vis,
+        sfc_alb_dif_vis,
+        sfc_alb_dir_nir,
+        sfc_alb_dif_nir,
+        sfc_flux_dir_nir,
+        sfc_flux_dir_vis,
+        sfc_flux_dif_nir,
+        sfc_flux_dif_vis,
+        sfc_flux_sw_net,
+        sfc_flux_lw_dn,
+        Ncol,
+        Nlev,
+        num_tracers,
+        dt,
+        current_time,
+        tq_model_path,
+        t_model_path,
+        uv_model_path,
+        flux_model_path,
+    )
+
+
+def update_fields_gpu(
+    field_dtype_char,
+    q_tracers,
+    T_mid,
+    u,
+    v,
+    lat,
+    lon,
+    phis,
+    sw_flux_dn,
+    sfc_alb_dir_vis,
+    sfc_alb_dif_vis,
+    sfc_alb_dir_nir,
+    sfc_alb_dif_nir,
     sfc_flux_dir_nir,
     sfc_flux_dir_vis,
     sfc_flux_dif_nir,
@@ -259,92 +629,69 @@ def update_fields(
     flux_model_path: path to the surface fluxes ML model
     """
     start = time.time()
-    qv = _get_cupy_from_gpu_ptr(qv, (Ncol, num_tracers, Nlev), field_dtype_char)
+    q_tracers = _get_cupy_from_gpu_ptr(
+        q_tracers, (Ncol, num_tracers, Nlev), field_dtype_char
+    )
+    device = q_tracers.device.id
+    with cp.cuda.Device(device):
+        # by default, qv is the frist tracer variable
+        qv = cp.ascontiguousarray(q_tracers[:, 0, :])
     T_mid = _get_cupy_from_gpu_ptr(T_mid, (Ncol, Nlev), field_dtype_char)
     u = _get_cupy_from_gpu_ptr(u, (Ncol, Nlev), field_dtype_char)
     v = _get_cupy_from_gpu_ptr(v, (Ncol, Nlev), field_dtype_char)
     lat = _get_cupy_from_gpu_ptr(lat, (Ncol,), field_dtype_char)
     lon = _get_cupy_from_gpu_ptr(lon, (Ncol,), field_dtype_char)
     phis = _get_cupy_from_gpu_ptr(phis, (Ncol,), field_dtype_char)
-    # sw_flux_dn = _get_cupy_from_gpu_ptr(sw_flux_dn, (Ncol, Nlev+1), field_dtype_char)
-    # sfc_alb_dif_vis = _get_cupy_from_gpu_ptr(sfc_alb_dif_vis, (Ncol,), field_dtype_char)
-    sfc_flux_dir_nir = _get_cupy_from_gpu_ptr(sfc_flux_dir_nir, (Ncol,), field_dtype_char)
-    sfc_flux_dir_vis = _get_cupy_from_gpu_ptr(sfc_flux_dir_vis, (Ncol,), field_dtype_char)
-    sfc_flux_dif_nir = _get_cupy_from_gpu_ptr(sfc_flux_dif_nir, (Ncol,), field_dtype_char)
-    sfc_flux_dif_vis = _get_cupy_from_gpu_ptr(sfc_flux_dif_vis, (Ncol,), field_dtype_char)
+
+    sw_flux_dn = _get_cupy_from_gpu_ptr(sw_flux_dn, (Ncol, Nlev + 1), field_dtype_char)
+    sfc_alb_dir_vis = _get_cupy_from_gpu_ptr(sfc_alb_dir_vis, (Ncol,), field_dtype_char)
+    sfc_alb_dif_vis = _get_cupy_from_gpu_ptr(sfc_alb_dif_vis, (Ncol,), field_dtype_char)
+    sfc_alb_dir_nir = _get_cupy_from_gpu_ptr(sfc_alb_dir_nir, (Ncol,), field_dtype_char)
+    sfc_alb_dif_nir = _get_cupy_from_gpu_ptr(sfc_alb_dif_nir, (Ncol,), field_dtype_char)
+    sfc_flux_dir_nir = _get_cupy_from_gpu_ptr(
+        sfc_flux_dir_nir, (Ncol,), field_dtype_char
+    )
+    sfc_flux_dir_vis = _get_cupy_from_gpu_ptr(
+        sfc_flux_dir_vis, (Ncol,), field_dtype_char
+    )
+    sfc_flux_dif_nir = _get_cupy_from_gpu_ptr(
+        sfc_flux_dif_nir, (Ncol,), field_dtype_char
+    )
+    sfc_flux_dif_vis = _get_cupy_from_gpu_ptr(
+        sfc_flux_dif_vis, (Ncol,), field_dtype_char
+    )
     sfc_flux_sw_net = _get_cupy_from_gpu_ptr(sfc_flux_sw_net, (Ncol,), field_dtype_char)
     sfc_flux_lw_dn = _get_cupy_from_gpu_ptr(sfc_flux_lw_dn, (Ncol,), field_dtype_char)
-    current_datetime = datetime.datetime.strptime(current_time, "%Y-%m-%d %H:%M:%S")
-    cos_zenith = cos_zenith_angle(
-        current_datetime,
-        lon,
+
+    apply_ml_correction(
+        q_tracers,
+        qv,
+        T_mid,
+        u,
+        v,
         lat,
+        lon,
+        phis,
+        sw_flux_dn,
+        sfc_alb_dir_vis,
+        sfc_alb_dif_vis,
+        sfc_alb_dir_nir,
+        sfc_alb_dif_nir,
+        sfc_flux_dir_nir,
+        sfc_flux_dir_vis,
+        sfc_flux_dif_nir,
+        sfc_flux_dif_vis,
+        sfc_flux_sw_net,
+        sfc_flux_lw_dn,
+        Ncol,
+        Nlev,
+        num_tracers,
+        dt,
+        current_time,
+        tq_model_path,
+        t_model_path,
+        uv_model_path,
+        flux_model_path,
     )
-
-    # Kokkos crashes if I import tensorflow too early 
-    # (i.e., during MLCorrection::initialize_impl)
-    # so defer the import until it's needed for models here.
-    # models are loaded into global state so they are only loaded once
-    # despite being called each time we ask for a correction
-    model_tq = _load_model(TQ, tq_model_path)
-    model_t = _load_model(T_ONLY, t_model_path)
-    model_uv = _load_model(UV, uv_model_path)
-    model_sfc_fluxes = _load_model(FLUX, flux_model_path)
-    
-    device = qv.device.id
-    with cp.cuda.Device(device):
-        qv_0 = cp.ascontiguousarray(qv[:, 0, :])
-    
-    if model_tq is not None:
-        correction_tq = get_ML_correction_dQ1_dQ2(
-            model_tq, 
-            T_mid, 
-            qv_0, 
-            cos_zenith,
-            lat,
-            phis,
-            dt
-        )
-        T_mid[:, :] += correction_tq["dQ1"].data * dt
-        qv[:, 0, :] += correction_tq["dQ2"].data * dt
-    if model_t is not None:
-        correction_t = get_ML_correction_dQ1_only(
-            model_t, 
-            T_mid, 
-            qv_0, 
-            cos_zenith,
-            lat,
-            phis,
-        )
-        T_mid[:, :] += correction_t["dQ1"].data * dt        
-    if model_uv is not None:
-        correction_uv = get_ML_correction_dQu_dQv(
-            model_uv, T_mid, qv_0, cos_zenith, lat, phis, u, v, dt
-        )
-        u[:, :] += correction_uv["dQu"].data * dt
-        v[:, :] += correction_uv["dQv"].data * dt
-    if model_sfc_fluxes is not None:
-        correction_sfc_fluxes = get_ML_correction_sfc_fluxes(
-            model_sfc_fluxes,
-            T_mid,
-            qv_0,
-            cos_zenith,
-            lat,
-            phis,
-            # sfc_alb_dif_vis,
-            # sw_flux_dn,
-        )
-        # sfc_flux_sw_net[:] = correction_sfc_fluxes["net_shortwave_sfc_flux_via_transmissivity"].data
-        # sfc_flux_lw_dn[:] = correction_sfc_fluxes["override_for_time_adjusted_total_sky_downward_longwave_flux_at_surface"].data
-        sfc_flux_dir_nir[:] = correction_sfc_fluxes["sfc_flux_dir_nir"].data
-        sfc_flux_dir_vis[:] = correction_sfc_fluxes["sfc_flux_dir_vis"].data
-        sfc_flux_dif_nir[:] = correction_sfc_fluxes["sfc_flux_dif_nir"].data
-        sfc_flux_dif_vis[:] = correction_sfc_fluxes["sfc_flux_dif_vis"].data
-        sfc_flux_sw_net[:] = correction_sfc_fluxes["sfc_flux_sw_net"].data
-        sfc_flux_lw_dn[:] = correction_sfc_fluxes["sfc_flux_lw_dn"].data
-
     end = time.time()
-    logger.info(
-        "ML correction python timing (seconds):  {total: "
-        f"{end-start}"
-        "}")
+    logger.info("ML correction python timing (seconds):  {total: " f"{end-start}" "}")

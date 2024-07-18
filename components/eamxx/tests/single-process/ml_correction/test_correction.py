@@ -1,16 +1,19 @@
 import numpy as np
-import cupy as cp
+
+try:
+    import cupy as cp
+    import cupy_xarray
+except ImportError:
+    cp = np
 import h5py
 import xarray as xr
-import cupy_xarray
-import tensorflow as tf
 import fv3fit
 import logging
 from scream_run.steppers.machine_learning import (
     MachineLearningConfig,
     MultiModelAdapter,
     predict,
-    open_model
+    open_model,
 )
 from typing import Union
 
@@ -25,7 +28,7 @@ def get_ML_model(model_path):
     return model
 
 
-def sample_ML_prediction(nz, input_data: Union[cp.ndarray, np.ndarray], ML_model_tq: fv3fit.PureKerasModel):
+def sample_ML_prediction(nz, input_data, ML_model_tq: fv3fit.PureKerasModel):
     """
     This function is used to generate a sample ML prediction for the given input data.
     We use a constant output predictor to generate the prediction.
@@ -49,9 +52,12 @@ def sample_ML_prediction(nz, input_data: Union[cp.ndarray, np.ndarray], ML_model
     return output["dQ1"].data
 
 
-
 def sample_ML_prediction_dummy(
-    nz: int, input_data: cp.ndarray, ML_model_tq: str, ML_model_uv: str, ML_uses_GPU: bool,
+    nz: int,
+    input_data,
+    ML_model_tq: str,
+    ML_model_uv: str,
+    ML_uses_GPU: bool,
 ):
     """
     This function is used to generate a sample ML prediction for the given input data.
@@ -82,57 +88,33 @@ def sample_ML_prediction_dummy(
     return output["qv"].data
 
 
-def test_ptr(ptr, data, Ncol, Nlev):
-    # TODO: figure out how to move data in C++ onto a GPU and send it
-    #       and also send original np array to check data against
-    print(f"Pointer received: {ptr}")
-    print(f"Data received: {type(data)}")
-    print(f"Ncol: {Ncol}, Nlev: {Nlev}")
-    data_from_ptr = cp.ndarray(
-        (Ncol, Nlev), 
-        dtype=cp.float64,
-        memptr=cp.cuda.MemoryPointer(
-            cp.cuda.UnownedMemory(ptr, Ncol * Nlev * 8, None), 0
-        )
-    )
-    print(f"Data from pointer device: {data_from_ptr.device}")
-    print(f"Data type from pointer: {data_from_ptr.dtype}")
-    print(f"Data type from host (original): {data.dtype}")
-    print(f"Data from pointer: {data_from_ptr}")
-    print(f"Data from host (original): {data}")
-    pass
-
-
 def modify_view_gpu(ptr, dtype_char, Ncol, Nlev, model_tq, model_uv):
     # data comes in as 1D Numpy array, a view constructed from C++ memory
     dtype = cp.dtype(dtype_char)
     data_from_ptr = cp.ndarray(
-        (Ncol, Nlev), 
+        (Ncol, Nlev),
         dtype=dtype,
         memptr=cp.cuda.MemoryPointer(
             cp.cuda.UnownedMemory(ptr, Ncol * Nlev * dtype.itemsize, None), 0
-        )
+        ),
     )
-    prediction = sample_ML_prediction_dummy(Nlev, data_from_ptr, model_tq, model_uv, True)
+    prediction = sample_ML_prediction_dummy(
+        Nlev, data_from_ptr, model_tq, model_uv, True
+    )
     data_from_ptr[1, :] = prediction[1, :]
-    
+
+
 def build_gpu_array(ptr, dtype_char, Ncol, Nlev):
     dtype = cp.dtype(dtype_char)
     data_from_ptr = cp.ndarray(
-        (Ncol, Nlev), 
+        (Ncol, Nlev),
         dtype=dtype,
         memptr=cp.cuda.MemoryPointer(
             cp.cuda.UnownedMemory(ptr, Ncol * Nlev * dtype.itemsize, None), 0
-        )
+        ),
     )
     return data_from_ptr
 
-def build_cpu_array(ptr, dtype_char, Ncol, Nlev):
-    dtype = np.dtype(dtype_char)
-    import ctypes
-    test = (ctypes.c_double * Ncol * Nlev).from_address(ptr)
-    data_from_ptr = np.ctypeslib.as_array(test)
-    # this always seg fault
 
 def compare_cpu_gpu_arrays(cpu_data, gpu_ptr, dtype_char, Ncol, Nlev):
     cpu = cpu_data.reshape((-1, Nlev))
@@ -141,47 +123,9 @@ def compare_cpu_gpu_arrays(cpu_data, gpu_ptr, dtype_char, Ncol, Nlev):
     assert type(gpu) == cp.ndarray
     np.testing.assert_allclose(cpu, gpu.get())
 
+
 def modify_view_cpu(data, Ncol, Nlev, model_tq, model_uv):
     # data comes in as 1D Numpy array, a view constructed from C++ memory
     data = data.reshape((-1, Nlev))
     prediction = sample_ML_prediction_dummy(Nlev, data, model_tq, model_uv, False)
     data[1, :] = prediction[1, :]
-
-
-def gpu_handoff_real_model(ptr, dtype_char, Ncol, Nlev, model_path):
-    dtype = cp.dtype(dtype_char)
-    data_from_ptr = cp.ndarray(
-        (Ncol, Nlev), 
-        dtype=dtype,
-        memptr=cp.cuda.MemoryPointer(
-            cp.cuda.UnownedMemory(ptr, Ncol * Nlev * dtype.itemsize, None), 0
-        )
-    )
-    model = get_ML_model(model_path)
-    gpu_result = sample_ML_prediction(Nlev, data_from_ptr, model).get()
-
-    with tf.device("/cpu:0"):
-        cpu_data = data_from_ptr.get()
-        logger.info(f"CPU data type: {type(cpu_data)}")
-        cpu_result = sample_ML_prediction(Nlev, cpu_data, model)
-
-    cp.testing.assert_array_almost_equal(cpu_result, gpu_result, decimal=6)
-
-
-def gpu_handoff_real_model_local_test(data, Ncol, Nlev, model_path):
-    model = get_ML_model(model_path)
-    gpu_result = sample_ML_prediction(Nlev, data, model).get()
-
-    with tf.device("/cpu:0"):
-        cpu_data = data.get()
-        cpu_result = sample_ML_prediction(Nlev, cpu_data, model)
-
-    cp.testing.assert_array_almost_equal(cpu_result, gpu_result, decimal=6)
-
-
-if __name__ == "__main__":
-    Ncol = 2
-    Nlev = 128
-    model_tq_path = "/global/cfs/cdirs/m4492/corrective_ml/case_ne120_to_ne30_20240422_novertical_remap/2024-04-19-tq-test-1cc4324d6138/no-tapering"
-    data = np.random.rand(Ncol, Nlev)
-    gpu_handoff_real_model_local_test(cp.asarray(data), Ncol, Nlev, model_tq_path)
