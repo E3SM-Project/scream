@@ -475,11 +475,11 @@ void MAMMicrophysics::run_impl(const double dt) {
     Real surf_albedo = 0.0; // FIXME: surface albedo
     Real esfact = 0.0; // FIXME: earth-sun distance factor
     const auto& photo_rates_icol = ekat::subview(photo_rates, icol);
-#if 0
+
     mam4::mo_photo::table_photo(photo_rates_icol, atm.pressure, atm.hydrostatic_dp,
      atm.temperature, o3_col_dens_i, zenith_angle, surf_albedo, lwc_icol,
      atm.cloud_fraction, esfact, photo_table, photo_work_arrays_icol);
-#endif
+
     // compute external forcings at time t(n+1) [molecules/cm^3/s]
     constexpr int extcnt = mam4::gas_chemistry::extcnt;
     view_2d extfrc; // FIXME: where to allocate? (nlev, extcnt)
