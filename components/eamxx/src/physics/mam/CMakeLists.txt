@@ -42,7 +42,7 @@ add_subdirectory(${EXTERNALS_SOURCE_DIR}/mam4xx ${CMAKE_BINARY_DIR}/externals/ma
 # EAMxx mam4xx-based atmospheric processes
 add_library(mam
   eamxx_mam_microphysics_process_interface.cpp
-  ${PROJECT_SOURCE_DIR}/src/physics/rrtmgp/shr_orb_mod_c2f.F90
+  ${SCREAM_BASE_DIR}/src/physics/rrtmgp/shr_orb_mod_c2f.F90
   eamxx_mam_optics_process_interface.cpp
   eamxx_mam_dry_deposition_process_interface.cpp
   eamxx_mam_aci_process_interface.cpp
