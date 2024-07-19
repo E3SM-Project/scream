@@ -182,6 +182,8 @@ def buildlib(bldroot, installpath, case):
     if pio_hints:
         cmake_opts += f"-DPIO_FILESYSTEM_HINTS:STRING='$(PIO_FILESYSTEM_HINTS)' "
 
+    cmake_opts += "-DPIO_ENABLE_TOOLS=OFF " # WORKAROUND FOR FRONTIER. DO NOT MERGE TO UPSTREAM!!!
+
     # This runs the pio cmake command from the cime case Makefile
     logger.info("Configuring SCORPIO")
     cmd = f"FC={fc} CC={cc} CXX={cxx} LDFLAGS='{ldflags}' cmake {cmake_opts} {scorpio_src_dir}"
