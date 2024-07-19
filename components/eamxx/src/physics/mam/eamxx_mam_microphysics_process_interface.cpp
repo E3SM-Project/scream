@@ -75,8 +75,8 @@ void MAMMicrophysics::set_defaults_() {
   // e3smv2/bld/namelist_files/namelist_defaults_eam.xml
 
   // photolysis
-  set_file_location(config_.photolysis.rsf_file,         "../waccm/phot/RSF_GT200nm_v3.0_c080811.nc");
-  set_file_location(config_.photolysis.xs_long_file,     "../waccm/phot/temp_prs_GT200nm_JPL10_c130206.nc");
+  // set_file_location(config_.photolysis.rsf_file,         "../waccm/phot/RSF_GT200nm_v3.0_c080811.nc");
+  // set_file_location(config_.photolysis.xs_long_file,     "../waccm/phot/temp_prs_GT200nm_JPL10_c130206.nc");
 
   // stratospheric chemistry
   // set_file_location(config_.linoz.chlorine_loading_file, "../cam/chem/trop_mozart/ub/Linoz_Chlorine_Loading_CMIP6_0003-2017_c20171114.nc");
@@ -262,9 +262,12 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   }
 
   // create our photolysis rate calculation table
-  /*photo_table_ = impl::read_photo_table(get_comm(),
-                                        config_.photolysis.rsf_file,
-                                        config_.photolysis.xs_long_file);*/
+  const std::string rsf_file =
+      m_params.get<std::string>("mam4_rsf_file");
+  const std::string xs_long_file =
+      m_params.get<std::string>("mam4_xs_long_file");
+
+  photo_table_ = impl::read_photo_table(rsf_file, xs_long_file);
 
   // FIXME: read relevant land use data from drydep surface file
 
