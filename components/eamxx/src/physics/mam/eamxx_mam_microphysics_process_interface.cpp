@@ -19,6 +19,7 @@
 // For EKAT units package
 #include "ekat/util/ekat_units.hpp"
 
+#include <iostream>
 
 
 namespace scream
@@ -428,9 +429,6 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
 
     // here's where we store per-column photolysis rates
   photo_rates_ = view_3d("photo_rates", ncol_, nlev_, mam4::mo_photo::phtcnt);
-  //  liquid water cloud content
-  lwc_= view_2d("liquid_water_cloud_content", ncol_, nlev_);
-
 
   //
   // Load the first month into spa_end.
@@ -644,12 +642,10 @@ void MAMMicrophysics::run_impl(const double dt) {
   const auto& work_photo_table = work_photo_table_;
   const auto& photo_rates = photo_rates_;
 
-  const auto& lwc =lwc_;
-
 
   // Compute orbital parameters; these are used both for computing
   // the solar zenith angle.
-  auto ts = timestamp();
+  //auto ts = timestamp();
   double obliqr, lambm0, mvelpp;
   auto orbital_year = m_orbital_year;
   auto eccen = m_orbital_eccen;
@@ -688,13 +684,6 @@ void MAMMicrophysics::run_impl(const double dt) {
     auto z_iface = ekat::subview(dry_atm.z_iface, icol);
     Real phis = dry_atm.phis(icol);
 
-    // liquid water cloud content
-    const auto& lwc_icol = ekat::subview(lwc, icol);
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&](const int k) {
-    lwc_icol(k) = atm.ice_mixing_ratio(k) + atm.liquid_mixing_ratio(k);
-     });
-     team.team_barrier();
-
     // set surface state data
     haero::Surface sfc{};
 
@@ -710,13 +699,12 @@ void MAMMicrophysics::run_impl(const double dt) {
 
     // set up photolysis work arrays for this column.
     mam4::mo_photo::PhotoTableWorkArrays photo_work_arrays_icol;
-    // FIXME: set views here
-    // const auto& work_photo_table_icol = ekat::subview(work_photo_table, icol);
+    const auto& work_photo_table_icol = ekat::subview(work_photo_table, icol);
     // set work view using 1D photo_work_arrays_icol
+    /*mam4::mo_photo::set_photo_table_work_arrays(photo_table,
+                                                work_photo_table_icol,
+                                                photo_work_arrays_icol);*/
 
-    // mam4::mo_photo::set_photo_table_work_arrays(photo_table,
-    //                                             work_photo_table_icol,
-    //                                             photo_work_arrays_icol);
     // ... look up photolysis rates from our table
     // NOTE: the table interpolation operates on an entire column of data, so we
     // NOTE: must do it before dispatching to individual vertical levels
@@ -726,9 +714,9 @@ void MAMMicrophysics::run_impl(const double dt) {
     Real surf_albedo = d_sfc_alb_dir_vis(icol);
 
     const auto& photo_rates_icol = ekat::subview(photo_rates, icol);
-    mam4::mo_photo::table_photo(photo_rates_icol, atm.pressure, atm.hydrostatic_dp,
+    /*mam4::mo_photo::table_photo(photo_rates_icol, atm.pressure, atm.hydrostatic_dp,
      atm.temperature, o3_col_dens_i, zenith_angle, surf_albedo, atm.liquid_mixing_ratio,
-     atm.cloud_fraction, esfact, photo_table, photo_work_arrays_icol);
+     atm.cloud_fraction, eccf, photo_table, photo_work_arrays_icol);*/
 
     // compute aerosol microphysics on each vertical level within this column
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&](const int k) {
@@ -787,8 +775,8 @@ void MAMMicrophysics::run_impl(const double dt) {
       // NOTE: we compute invariants here and pass them out to use later with
       // NOTE: setsox
       Real invariants[nfs];
-      impl::gas_phase_chemistry(zm, zi, phis, temp, pmid, pdel, dt,
-                                  photo_rates_k, vmr, invariants);
+      /*impl::gas_phase_chemistry(zm, zi, phis, temp, pmid, pdel, dt,
+                                  photo_rates_k, vmr, invariants);*/
 
       //----------------------
       // Aerosol microphysics
@@ -800,7 +788,7 @@ void MAMMicrophysics::run_impl(const double dt) {
       const int loffset = 8; // offset of first tracer in work arrays
                              // (taken from mam4xx setsox validation test)
       const Real mbar = haero::Constants::molec_weight_dry_air;
-      constexpr int indexm = 0;  // FIXME: index of xhnm in invariants array (??)
+      constexpr int indexm = mam4::gas_chemistry::indexm;
       /*mam4::mo_setsox::setsox_single_level(loffset, dt, pmid, pdel, temp, mbar, lwc,
         cldfrac, cldnum, invariants[indexm], config.setsox, vmrcw, vmr);*/
 
