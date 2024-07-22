@@ -251,7 +251,6 @@ private_except_cuda:
   std::vector<Real> chlorine_values_;
   std::vector<int> chlorine_time_secs_;
   view_3d photo_rates_;
-  view_2d lwc_;
 
   // invariants members
   std::shared_ptr<AtmosphereInput>  TracerDataReader_;
