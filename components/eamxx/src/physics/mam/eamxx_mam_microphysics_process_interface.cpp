@@ -2,6 +2,7 @@
 #include <share/io/scream_scorpio_interface.hpp>
 #include <share/property_checks/field_lower_bound_check.hpp>
 #include <share/property_checks/field_within_interval_check.hpp>
+#include <cmath>
 #include "share/util/scream_common_physics_functions.hpp"
 
 #include "scream_config.h" // for SCREAM_CIME_BUILD
@@ -140,6 +141,7 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
   add_field<Required>("pseudo_density", scalar3d_layout_mid, Pa, grid_name); // p_del, hydrostatic pressure
   add_field<Required>("phis",           scalar2d_layout_col, m2/s2, grid_name);
   add_field<Required>("cldfrac_tot", scalar3d_layout_mid, nondim, grid_name); // cloud fraction
+  add_field<Required>("sfc_alb_dir_vis", scalar2d_layout_col, nondim, grid_name); // surface albedo shortwave, direct
 
   // droplet activation can alter cloud liquid and number mixing ratios
   add_field<Updated>("qc", scalar3d_layout_mid, kg/kg, grid_name, "tracers"); // cloud liquid wet mixing ratio
@@ -319,6 +321,9 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   dry_atm_.ni        = buffer_.ni_dry;
   dry_atm_.w_updraft = buffer_.w_updraft;
   dry_atm_.z_surf = 0.0; // FIXME: for now
+
+  // get surface albedo: shortwave, direct
+  d_sfc_alb_dir_vis_ = get_field_in("sfc_alb_dir_vis").get_view<const Real*>();
 
   // perform any initialization work
   if (run_type==RunType::Initial) {
@@ -624,6 +629,9 @@ void MAMMicrophysics::run_impl(const double dt) {
                       vert_emis_output);
     }
   const_view_1d &col_latitudes = col_latitudes_;
+  const_view_1d &col_longitudes = col_longitudes_; 
+  const_view_1d &d_sfc_alb_dir_vis = d_sfc_alb_dir_vis_;
+ 
   mam_coupling::DryAtmosphere &dry_atm =  dry_atm_;
   mam_coupling::AerosolState  &dry_aero = dry_aero_;
   mam4::mo_photo::PhotoTableData &photo_table = photo_table_;
@@ -659,7 +667,7 @@ void MAMMicrophysics::run_impl(const double dt) {
   shr_orb_params_c2f(&orbital_year, &eccen, &obliq, &mvelp,
                      &obliqr, &lambm0, &mvelpp);
   // Use the orbital parameters to calculate the solar declination and eccentricity factor
-  double delta, eccf;
+  Real delta, eccf;
   auto calday = ts.frac_of_year_in_days() + 1;  // Want day + fraction; calday 1 == Jan 1 0Z
   shr_orb_decl_c2f(calday, eccen, mvelpp, lambm0,
                      obliqr, &delta, &eccf);
@@ -669,7 +677,11 @@ void MAMMicrophysics::run_impl(const double dt) {
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const ThreadTeam& team) {
     const int icol = team.league_rank(); // column index
 
-    Real col_lat = col_latitudes(icol); // column latitude (degrees?)
+    Real col_lat = col_latitudes(icol);  // column latitude (degrees?)
+    Real col_lon = col_longitudes(icol); // column longitude
+
+    Real rlats = col_lat * M_PI / 180.0; // convert column latitude to radians
+    Real rlons = col_lon * M_PI / 180.0; // convert column longitude to radians
 
     // fetch column-specific atmosphere state data
     auto atm = mam_coupling::atmosphere_for_column(dry_atm, icol);
@@ -708,9 +720,10 @@ void MAMMicrophysics::run_impl(const double dt) {
     // ... look up photolysis rates from our table
     // NOTE: the table interpolation operates on an entire column of data, so we
     // NOTE: must do it before dispatching to individual vertical levels
-    Real zenith_angle = 0.0; // FIXME: need to get this from EAMxx [radians]
-    Real surf_albedo = 0.0; // FIXME: surface albedo
-    Real esfact = 0.0; // FIXME: earth-sun distance factor
+    Real zenith_angle = shr_orb_cosz_c2f(calday, rlats, rlons, delta, dt); // what's the aerosol microphys frequency?
+    zenith_angle      = acos(zenith_angle);
+
+    Real surf_albedo = d_sfc_alb_dir_vis(icol);
 
     const auto& photo_rates_icol = ekat::subview(photo_rates, icol);
     mam4::mo_photo::table_photo(photo_rates_icol, atm.pressure, atm.hydrostatic_dp,
@@ -817,7 +830,6 @@ void MAMMicrophysics::run_impl(const double dt) {
       Real do3_linoz, do3_linoz_psc, ss_o3, o3col_du_diag, o3clim_linoz_diag,
            zenith_angle_degrees;
 
-      Real rlats = col_lat * M_PI / 180.0; // convert column latitude to radians
       int o3_ndx = 0; // index of "O3" in solsym array (in EAM)
 #if 0
       mam4::lin_strat_chem::lin_strat_chem_solve_kk(o3_col_dens_i(k), temp,
