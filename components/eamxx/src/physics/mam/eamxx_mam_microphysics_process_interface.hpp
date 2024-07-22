@@ -230,6 +230,9 @@ private_except_cuda:
   // column areas, latitudes, longitudes
   const_view_1d col_areas_, col_latitudes_, col_longitudes_;
 
+  // surface albedo: shortwave, direct
+  const_view_1d d_sfc_alb_dir_vis_;
+
   // time step number
   int step_;
 
