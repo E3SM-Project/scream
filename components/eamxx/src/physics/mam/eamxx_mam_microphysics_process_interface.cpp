@@ -378,6 +378,11 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
     tracer_data_beg_.push_back(view_2d("",dim1,dim2));
   }
 
+  for (int ivar = 0; ivar < nvars ; ++ivar)
+  {
+    tracer_data_out_.push_back(view_2d("reader_out",dim1,dim2));
+  }
+
 
 }
 
@@ -456,6 +461,12 @@ void MAMMicrophysics::run_impl(const double dt) {
     linoz_time_state_,
     tracer_data_beg_,
     tracer_data_end_);
+
+  scream::mam_coupling::perform_time_interpolation(
+  linoz_time_state_,
+  tracer_data_beg_,
+  tracer_data_end_,
+  tracer_data_out_);
   }
 
   const_view_1d &col_latitudes = col_latitudes_;
