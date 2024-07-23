@@ -1534,7 +1534,7 @@ void mam_amicphys_1gridcell(
 
 KOKKOS_INLINE_FUNCTION
 void modal_aero_amicphys_intr(
-    const AmicPhysConfig& config, const int nstep, const Real deltat, const Real t, const Real pmid, const Real pdel,
+    const AmicPhysConfig& config, const int nstep, const Real deltat, const Real temp, const Real pmid, const Real pdel,
     const Real zm, const Real pblh, const Real qv, const Real cld,
     Real q[gas_pcnst()], Real qqcw[gas_pcnst()], const Real q_pregaschem[gas_pcnst()],
     const Real q_precldchem[gas_pcnst()], const Real qqcw_precldchem[gas_pcnst()],
@@ -1625,7 +1625,7 @@ void modal_aero_amicphys_intr(
   //               ev_sat(1:ncol,1:pver), qv_sat(1:ncol,1:pver) )
   const Real epsqs = haero::Constants::weight_ratio_h2o_air;
   // Saturation vapor pressure
-  const Real ev_sat = conversions::vapor_saturation_pressure_magnus(t, pmid);
+  const Real ev_sat = conversions::vapor_saturation_pressure_magnus(temp, pmid);
   // Saturation specific humidity
   const Real qv_sat = epsqs * ev_sat / (pmid - (1 - epsqs) * ev_sat);
 
@@ -1672,7 +1672,7 @@ void modal_aero_amicphys_intr(
   Real qsub_tendaa[gas_pcnst()][nqtendaa()][maxsubarea()] = {};
   Real qqcwsub_tendaa[gas_pcnst()][nqqcwtendaa()][maxsubarea()] = {};
   mam_amicphys_1gridcell(config, nstep, deltat,
-                         nsubarea, ncldy_subarea, iscldy_subarea, afracsub, t,
+                         nsubarea, ncldy_subarea, iscldy_subarea, afracsub, temp,
                          pmid, pdel, zm, pblh, relhumsub, dgn_a, dgn_awet,
                          wetdens, qsub1, qsub2, qqcwsub2, qsub3, qqcwsub3,
                          qaerwatsub3, qsub4, qqcwsub4, qaerwatsub4, qsub_tendaa,
