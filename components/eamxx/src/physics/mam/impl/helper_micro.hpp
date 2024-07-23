@@ -610,7 +610,7 @@ update_tracer_data_from_file(
     const util::TimeStamp&            ts,
     const int                         time_index, // zero-based
     AbstractRemapper&                 tracer_horiz_interp,
-    std::vector<const_view_2d>&             tracer_data,
+    const_view_2d tracer_data[],
     const int nvars)
 {
  // 1. read from field
@@ -633,8 +633,9 @@ update_tracer_timestate(
     const util::TimeStamp&            ts,
     AbstractRemapper&                 tracer_horiz_interp,
     LinozTimeState&                   time_state,
-    std::vector<view_2d>&             tracer_beg,
-    std::vector<const_view_2d>&       tracer_end)
+    const int nvars,
+    view_2d           tracer_beg[],
+    const_view_2d     tracer_end[])
 {
   // Now we check if we have to update the data that changes monthly
   // NOTE:  This means that SPA assumes monthly data to update.  Not
@@ -647,7 +648,6 @@ update_tracer_timestate(
     time_state.days_this_month = util::days_in_month(ts.get_year(),month+1);
 
     // Copy spa_end'data into spa_beg'data, and read in the new spa_end
-    const int nvars = tracer_beg.size();
     for (int ivar = 0; ivar < nvars ; ++ivar)
     {
       Kokkos::deep_copy(tracer_beg[ivar],  tracer_end[ivar]);
@@ -666,9 +666,10 @@ update_tracer_timestate(
 // This function is based on the SPA::perform_time_interpolation function.
  inline void perform_time_interpolation(
   const LinozTimeState& time_state,
-  const std::vector<view_2d>&  data_beg,
-  const std::vector<const_view_2d>&  data_end,
-  const std::vector<view_2d>&  data_out)
+  const int num_vars,
+  const view_2d data_beg[],
+  const const_view_2d data_end[],
+  const view_2d data_out[])
 {
   // NOTE: we *assume* data_beg and data_end have the *same* hybrid v coords.
   //       IF this ever ceases to be the case, you can interp those too.
@@ -678,7 +679,6 @@ update_tracer_timestate(
   auto& delta_t = time_state.days_this_month;
 
   // We can ||ize over columns as well as over variables and bands
-  const int num_vars = data_beg.size();
   const int ncol = data_beg[0].extent(0);
   const int num_vert = data_beg[0].extent(1);
 

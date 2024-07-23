@@ -366,23 +366,17 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   //       and spa_end will be reloaded from file with the new month.
   const int curr_month = timestamp().get_month()-1; // 0-based
   const int nvars = 4;
-  std::vector<const_view_2d> tracer_data_end(nvars);
   scream::mam_coupling::update_tracer_data_from_file(TracerDataReader_,
-  timestamp(),curr_month,*TracerHorizInterp_,tracer_data_end, nvars);
-  tracer_data_end_ = tracer_data_end;
+  timestamp(),curr_month, *TracerHorizInterp_, tracer_data_end_, nvars);
 
   const int dim1 = tracer_data_end_[0].extent(0);
   const int dim2 = tracer_data_end_[0].extent(1);
-  for (int ivar = 0; ivar < nvars ; ++ivar)
-  {
-    tracer_data_beg_.push_back(view_2d("",dim1,dim2));
-  }
 
   for (int ivar = 0; ivar < nvars ; ++ivar)
   {
-    tracer_data_out_.push_back(view_2d("reader_out",dim1,dim2));
+    tracer_data_beg_[ivar] = view_2d("",dim1,dim2);
+    tracer_data_out_[ivar] = view_2d("reader_out",dim1,dim2);
   }
-
 
 }
 
@@ -453,17 +447,19 @@ void MAMMicrophysics::run_impl(const double dt) {
   /* Update the SPATimeState to reflect the current time, note the addition of dt */
   linoz_time_state_.t_now = ts.frac_of_year_in_days();
   /* Update time state and if the month has changed, update the data.*/
-
+  const int nvars = 4;
   scream::mam_coupling::update_tracer_timestate(
     TracerDataReader_,
     ts,
     *TracerHorizInterp_,
     linoz_time_state_,
+    nvars,
     tracer_data_beg_,
     tracer_data_end_);
 
   scream::mam_coupling::perform_time_interpolation(
   linoz_time_state_,
+  nvars,
   tracer_data_beg_,
   tracer_data_end_,
   tracer_data_out_);
