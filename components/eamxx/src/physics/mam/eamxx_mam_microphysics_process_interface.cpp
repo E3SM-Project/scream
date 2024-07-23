@@ -171,7 +171,7 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
   linoz_params_, ncol_, col_latitudes_, m_comm);
 
   }
-  std::string my_file="tmp.screami_unit_tests_mam4xx_ne2np4L72_c20240722.nc";
+  std::string my_file="oxid_1.9x2.5_L26_1850-2015_ne2np4L72_c20240722_OD.nc";
   std::string spa_map_file="";
   std::vector<std::string> var_names{"O3","HO2","NO3","OH"};
   TracerHorizInterp_ = scream::mam_coupling::create_horiz_remapper(grid_,my_file,spa_map_file, var_names);
@@ -364,7 +364,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   // Load the first month into spa_end.
   // Note: At the first time step, the data will be moved into spa_beg,
   //       and spa_end will be reloaded from file with the new month.
-  const int curr_month = 0;//timestamp().get_month()-1; // 0-based
+  const int curr_month = timestamp().get_month()-1; // 0-based
   const int nvars = 4;
   std::vector<const_view_2d> tracer_data_end(nvars);
   scream::mam_coupling::update_tracer_data_from_file(TracerDataReader_,

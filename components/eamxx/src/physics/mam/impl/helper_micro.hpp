@@ -657,7 +657,7 @@ update_tracer_timestate(
     // NOTE: If the timestep is bigger than monthly this could cause the wrong values
     //       to be assigned.  A timestep greater than a month is very unlikely so we
     //       will proceed.
-    int next_month = 0;//(time_state.current_month + 1) % 12;
+    int next_month = (time_state.current_month + 1) % 12;
     update_tracer_data_from_file(scorpio_reader,ts,next_month,tracer_horiz_interp,tracer_end,nvars);
   }
 
