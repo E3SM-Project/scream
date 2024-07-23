@@ -244,6 +244,13 @@ private_except_cuda:
   view_3d photo_rates_;
   view_2d lwc_;
 
+  std::shared_ptr<AtmosphereInput>  TracerDataReader_;
+  std::shared_ptr<AbstractRemapper> TracerHorizInterp_;
+  std::vector<const_view_2d> tracer_data_end_;
+  std::vector<view_2d> tracer_data_beg_;
+
+
+
 }; // MAMMicrophysics
 
 } // namespace scream

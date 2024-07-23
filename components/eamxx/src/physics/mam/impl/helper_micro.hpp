@@ -3,6 +3,9 @@
 
 #include "share/io/scorpio_input.hpp"
 #include "share/io/scream_scorpio_interface.hpp"
+#include "share/grid/remap/coarsening_remapper.hpp"
+#include "share/grid/remap/refining_remapper_p2p.hpp"
+#include "share/grid/remap/identity_remapper.hpp"
 #include "share/grid/point_grid.hpp"
 #include <ekat/util/ekat_lin_interp.hpp>
 #include <ekat/kokkos/ekat_kokkos_utils.hpp>
@@ -521,6 +524,145 @@ view_1d get_var_column (const LinozData& data,
   const Real delt = ( current_time - time_secs[index] ) / ( time_secs[index+1] - time_secs[index] );
   return values[index] + delt*( values[index+1] - values[index] );
   }
+
+inline
+std::shared_ptr<AbstractRemapper>
+create_horiz_remapper (
+    const std::shared_ptr<const AbstractGrid>& model_grid,
+    const std::string& trace_data_file,
+    const std::string& map_file,
+    std::vector<std::string>& var_names
+    // ,
+    // const bool use_iop
+    )
+{
+  using namespace ShortFieldTagsNames;
+
+  scorpio::register_file(trace_data_file,scorpio::Read);
+  const int nlevs_data = scorpio::get_dimlen(trace_data_file,"lev");
+  const int ncols_data = scorpio::get_dimlen(trace_data_file,"ncol");
+  scorpio::release_file(trace_data_file);
+
+  // We could use model_grid directly if using same num levels,
+  // but since shallow clones are cheap, we may as well do it (less lines of code)
+  auto horiz_interp_tgt_grid = model_grid->clone("tracer_horiz_interp_tgt_grid",true);
+  horiz_interp_tgt_grid->reset_num_vertical_lev(nlevs_data);
+
+  const int ncols_model = model_grid->get_num_global_dofs();
+  std::shared_ptr<AbstractRemapper> remapper;
+  if (ncols_data==ncols_model
+      // or
+      // use_iop /*IOP class defines it's own remapper for file data*/
+      ) {
+    remapper = std::make_shared<IdentityRemapper>(horiz_interp_tgt_grid,IdentityRemapper::SrcAliasTgt);
+  } else {
+    EKAT_REQUIRE_MSG (ncols_data<=ncols_model,
+      "Error! We do not allow to coarsen spa data to fit the model. We only allow\n"
+      "       spa data to be at the same or coarser resolution as the model.\n");
+    // We must have a valid map file
+    EKAT_REQUIRE_MSG (map_file!="",
+        "ERROR: Spa data is on a different grid than the model one,\n"
+        "       but spa_remap_file is missing from SPA parameter list.");
+
+    remapper = std::make_shared<RefiningRemapperP2P>(horiz_interp_tgt_grid,map_file);
+  }
+
+  remapper->registration_begins();
+  const auto tgt_grid = remapper->get_tgt_grid();
+  const auto layout_2d   = tgt_grid->get_2d_scalar_layout();
+  const auto layout_3d_mid = tgt_grid->get_3d_scalar_layout(true);
+  const auto nondim = ekat::units::Units::nondimensional();
+
+  // Field ps          (FieldIdentifier("PS",        layout_2d,  nondim,tgt_grid->name()));
+  // ps.allocate_view();
+  // remapper->register_field_from_tgt (ps);
+  for(auto  var_name : var_names){
+    Field ifield(FieldIdentifier(var_name,  layout_3d_mid,  nondim,tgt_grid->name()));
+    ifield.allocate_view();
+    remapper->register_field_from_tgt (ifield);
+  }
+
+  remapper->registration_ends();
+
+  return remapper;
+
+} // create_horiz_remapper
+
+inline
+std::shared_ptr<AtmosphereInput>
+create_tracer_data_reader
+(
+    const std::shared_ptr<AbstractRemapper>& horiz_remapper,
+    const std::string& tracer_data_file)
+{
+  std::vector<Field> io_fields;
+  for (int i=0; i<horiz_remapper->get_num_fields(); ++i) {
+    io_fields.push_back(horiz_remapper->get_src_field(i));
+  }
+  const auto io_grid = horiz_remapper->get_src_grid();
+  return std::make_shared<AtmosphereInput>(tracer_data_file,io_grid,io_fields,true);
+} // create_tracer_data_reader
+
+inline
+void
+update_tracer_data_from_file(
+    std::shared_ptr<AtmosphereInput>& scorpio_reader,
+    const util::TimeStamp&            ts,
+    const int                         time_index, // zero-based
+    AbstractRemapper&                 tracer_horiz_interp,
+    std::vector<const_view_2d>&             tracer_data,
+    const int nvars)
+{
+ // 1. read from field
+ scorpio_reader->read_variables(time_index);
+ // 2. Run the horiz remapper (it is a do-nothing op if spa data is on same grid as model)
+ tracer_horiz_interp.remap(/*forward = */ true);
+
+ // Recall, the fields are registered in the order: ps, ccn3, g_sw, ssa_sw, tau_sw, tau_lw
+ // 3. Copy from the tgt field of the remapper into the spa_data
+//  auto ps          = tracer_horiz_interp.get_tgt_field (0).get_view<const Real*>();
+  //
+ for (int i = 0; i < nvars; ++i) {
+  tracer_data[i] = tracer_horiz_interp.get_tgt_field (i).get_view<const Real**>();
+ }
+
+} // update_tracer_data_from_file
+inline void
+update_tracer_timestate(
+    std::shared_ptr<AtmosphereInput>& scorpio_reader,
+    const util::TimeStamp&            ts,
+    AbstractRemapper&                 tracer_horiz_interp,
+    LinozTimeState&                   time_state,
+    std::vector<view_2d>&             tracer_beg,
+    std::vector<const_view_2d>&       tracer_end)
+{
+  // Now we check if we have to update the data that changes monthly
+  // NOTE:  This means that SPA assumes monthly data to update.  Not
+  //        any other frequency.
+  const auto month = ts.get_month() - 1; // Make it 0-based
+  if (month != time_state.current_month) {
+    // Update the SPA time state information
+    time_state.current_month = month;
+    time_state.t_beg_month = util::TimeStamp({ts.get_year(),month+1,1}, {0,0,0}).frac_of_year_in_days();
+    time_state.days_this_month = util::days_in_month(ts.get_year(),month+1);
+
+    // Copy spa_end'data into spa_beg'data, and read in the new spa_end
+    const int nvars = tracer_beg.size();
+    for (int ivar = 0; ivar < nvars ; ++ivar)
+    {
+      Kokkos::deep_copy(tracer_beg[ivar],  tracer_end[ivar]);
+    }
+    // Update the SPA forcing data for this month and next month
+    // Start by copying next months data to this months data structure.
+    // NOTE: If the timestep is bigger than monthly this could cause the wrong values
+    //       to be assigned.  A timestep greater than a month is very unlikely so we
+    //       will proceed.
+    int next_month = 0;//(time_state.current_month + 1) % 12;
+    update_tracer_data_from_file(scorpio_reader,ts,next_month,tracer_horiz_interp,tracer_end,nvars);
+  }
+
+} // END updata_spa_timestate
+
 
 } // namespace scream::mam_coupling
 #endif //EAMXX_MAM_HELPER_MICRO
