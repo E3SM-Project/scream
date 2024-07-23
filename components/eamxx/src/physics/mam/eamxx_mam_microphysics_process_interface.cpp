@@ -645,7 +645,7 @@ void MAMMicrophysics::run_impl(const double dt) {
 
   // Compute orbital parameters; these are used both for computing
   // the solar zenith angle.
-  //auto ts = timestamp();
+  auto ts2 = timestamp();
   double obliqr, lambm0, mvelpp;
   auto orbital_year = m_orbital_year;
   auto eccen = m_orbital_eccen;
@@ -658,13 +658,13 @@ void MAMMicrophysics::run_impl(const double dt) {
     orbital_year = shr_orb_undef_int_c2f;
   } else if (orbital_year < 0) {
     // compute orbital parameters based on current year
-    orbital_year = ts.get_year();
+    orbital_year = ts2.get_year();
   }
   shr_orb_params_c2f(&orbital_year, &eccen, &obliq, &mvelp,
                      &obliqr, &lambm0, &mvelpp);
   // Use the orbital parameters to calculate the solar declination and eccentricity factor
   Real delta, eccf;
-  auto calday = ts.frac_of_year_in_days() + 1;  // Want day + fraction; calday 1 == Jan 1 0Z
+  auto calday = ts2.frac_of_year_in_days() + 1;  // Want day + fraction; calday 1 == Jan 1 0Z
   shr_orb_decl_c2f(calday, eccen, mvelpp, lambm0,
                      obliqr, &delta, &eccf);
 
@@ -701,9 +701,9 @@ void MAMMicrophysics::run_impl(const double dt) {
     mam4::mo_photo::PhotoTableWorkArrays photo_work_arrays_icol;
     const auto& work_photo_table_icol = ekat::subview(work_photo_table, icol);
     // set work view using 1D photo_work_arrays_icol
-    /*mam4::mo_photo::set_photo_table_work_arrays(photo_table,
+    mam4::mo_photo::set_photo_table_work_arrays(photo_table,
                                                 work_photo_table_icol,
-                                                photo_work_arrays_icol);*/
+                                                photo_work_arrays_icol);
 
     // ... look up photolysis rates from our table
     // NOTE: the table interpolation operates on an entire column of data, so we
@@ -714,10 +714,11 @@ void MAMMicrophysics::run_impl(const double dt) {
     Real surf_albedo = d_sfc_alb_dir_vis(icol);
 
     const auto& photo_rates_icol = ekat::subview(photo_rates, icol);
-    /*mam4::mo_photo::table_photo(photo_rates_icol, atm.pressure, atm.hydrostatic_dp,
-     atm.temperature, o3_col_dens_i, zenith_angle, surf_albedo, atm.liquid_mixing_ratio,
-     atm.cloud_fraction, eccf, photo_table, photo_work_arrays_icol);*/
 
+    mam4::mo_photo::table_photo(photo_rates_icol, atm.pressure, atm.hydrostatic_dp,
+     atm.temperature, o3_col_dens_i, zenith_angle, surf_albedo, atm.liquid_mixing_ratio,
+     atm.cloud_fraction, eccf, photo_table, photo_work_arrays_icol);
+    
     // compute aerosol microphysics on each vertical level within this column
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&](const int k) {
 
@@ -775,8 +776,8 @@ void MAMMicrophysics::run_impl(const double dt) {
       // NOTE: we compute invariants here and pass them out to use later with
       // NOTE: setsox
       Real invariants[nfs];
-      /*impl::gas_phase_chemistry(zm, zi, phis, temp, pmid, pdel, dt,
-                                  photo_rates_k, vmr, invariants);*/
+      impl::gas_phase_chemistry(zm, zi, phis, temp, pmid, pdel, dt,
+                                  photo_rates_k, vmr, invariants);
 
       //----------------------
       // Aerosol microphysics
@@ -789,8 +790,8 @@ void MAMMicrophysics::run_impl(const double dt) {
                              // (taken from mam4xx setsox validation test)
       const Real mbar = haero::Constants::molec_weight_dry_air;
       constexpr int indexm = mam4::gas_chemistry::indexm;
-      /*mam4::mo_setsox::setsox_single_level(loffset, dt, pmid, pdel, temp, mbar, lwc,
-        cldfrac, cldnum, invariants[indexm], config.setsox, vmrcw, vmr);*/
+      mam4::mo_setsox::setsox_single_level(loffset, dt, pmid, pdel, temp, mbar, lwc,
+        cldfrac, cldnum, invariants[indexm], config.setsox, vmrcw, vmr);
 
       // calculate aerosol water content using water uptake treatment
       // * dry and wet diameters [m]
@@ -800,14 +801,14 @@ void MAMMicrophysics::run_impl(const double dt) {
       Real dgncur_awet[num_modes] = {};
       Real wetdens[num_modes]     = {};
       Real qaerwat[num_modes]     = {};
-      //impl::compute_water_content(progs, k, qv, temp, pmid, dgncur_a, dgncur_awet, wetdens, qaerwat);
+      impl::compute_water_content(progs, k, qv, temp, pmid, dgncur_a, dgncur_awet, wetdens, qaerwat);
 
       // do aerosol microphysics (gas-aerosol exchange, nucleation, coagulation)
-      /*impl::modal_aero_amicphys_intr(config.amicphys, step, dt, t, pmid, pdel,
+      impl::modal_aero_amicphys_intr(config.amicphys, step, dt, temp, pmid, pdel,
                                      zm, pblh, qv, cldfrac, vmr, vmrcw, vmr_pregaschem,
                                      vmr_precldchem, vmrcw_precldchem, vmr_tendbb,
                                      vmrcw_tendbb, dgncur_a, dgncur_awet,
-                                     wetdens, qaerwat); */
+                                     wetdens, qaerwat);
 
       //-----------------
       // LINOZ chemistry
