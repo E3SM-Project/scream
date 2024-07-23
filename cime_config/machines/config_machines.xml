@@ -391,6 +391,7 @@
       <modules compiler="gnugpu">
         <command name="load">cudatoolkit/12.2</command>
         <command name="load">craype-accel-nvidia80</command>
+        <command name="load">cudnn/8.9.3_cuda12</command>
       </modules>
 
       <modules compiler="nvidiagpu">
@@ -435,6 +436,8 @@
       <env name="NETCDF_PATH">$ENV{CRAY_NETCDF_HDF5PARALLEL_PREFIX}</env>
       <env name="PNETCDF_PATH">$ENV{CRAY_PARALLEL_NETCDF_PREFIX}</env>
       <env name="TF_FORCE_GPU_ALLOW_GROWTH">true</env>
+      <env name="XLA_FLAGS">--xla_gpu_cuda_data_dir=/opt/nvidia/hpc_sdk/Linux_x86_64/23.9/cuda/12.2</env>
+      <env name="TF_USE_LEGACY_KERAS">1</env>
     </environment_variables>
     <environment_variables compiler="gnugpu">
       <env name="MPICH_GPU_SUPPORT_ENABLED">1</env>
