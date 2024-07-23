@@ -663,6 +663,56 @@ update_tracer_timestate(
 
 } // END updata_spa_timestate
 
+// This function is based on the SPA::perform_time_interpolation function.
+ inline void perform_time_interpolation(
+  const LinozTimeState& time_state,
+  const std::vector<view_2d>&  data_beg,
+  const std::vector<const_view_2d>&  data_end,
+  const std::vector<view_2d>&  data_out)
+{
+  // NOTE: we *assume* data_beg and data_end have the *same* hybrid v coords.
+  //       IF this ever ceases to be the case, you can interp those too.
+  // Gather time stamp info
+  auto& t_now = time_state.t_now;
+  auto& t_beg = time_state.t_beg_month;
+  auto& delta_t = time_state.days_this_month;
+
+  // We can ||ize over columns as well as over variables and bands
+  const int num_vars = data_beg.size();
+  const int ncol = data_beg[0].extent(0);
+  const int num_vert = data_beg[0].extent(1);
+
+  const int outer_iters = ncol*num_vars;
+
+  const auto policy = ESU::get_default_team_policy(outer_iters, num_vert);
+
+  auto delta_t_fraction = (t_now-t_beg) / delta_t;
+
+  EKAT_REQUIRE_MSG (delta_t_fraction>=0 && delta_t_fraction<=1,
+      "Error! Convex interpolation with coefficient out of [0,1].\n"
+      "  t_now  : " + std::to_string(t_now) + "\n"
+      "  t_beg  : " + std::to_string(t_beg) + "\n"
+      "  delta_t: " + std::to_string(delta_t) + "\n");
+
+  Kokkos::parallel_for("linoz_time_interp_loop", policy,
+    KOKKOS_LAMBDA(const Team& team) {
+
+    // The policy is over ncols*num_vars, so retrieve icol/ivar
+    const int icol = team.league_rank() / num_vars;
+    const int ivar = team.league_rank() % num_vars;
+
+    // Get column of beg/end/out variable
+    auto var_beg = ekat::subview(data_beg[ivar],icol);
+    auto var_end = ekat::subview(data_end[ivar],icol);
+    auto var_out = ekat::subview(data_out[ivar],icol);
+
+    Kokkos::parallel_for (Kokkos::TeamVectorRange(team,num_vert),
+                          [&] (const int& k) {
+      var_out(k) = linear_interp(var_beg(k),var_end(k),delta_t_fraction);
+    });
+  });
+  Kokkos::fence();
+} // perform_time_interpolation
 
 } // namespace scream::mam_coupling
 #endif //EAMXX_MAM_HELPER_MICRO
