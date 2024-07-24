@@ -777,7 +777,7 @@ update_tracer_timestate(
   });
   Kokkos::fence();
 } // perform_time_interpolation
-#if 0
+
 inline void
 compute_source_pressure_levels(
   const view_1d& ps_src,
@@ -796,7 +796,7 @@ compute_source_pressure_levels(
   const auto policy = ESU::get_default_team_policy(ncols, num_vert_packs);
 
   Kokkos::parallel_for("tracer_compute_p_src_loop", policy,
-    KOKKOS_LAMBDA (const MemberType& team) {
+    KOKKOS_LAMBDA (const Team& team) {
     const int icol = team.league_rank();
     Kokkos::parallel_for(Kokkos::TeamVectorRange(team,num_vert_packs),
                          [&](const int k) {
@@ -804,6 +804,65 @@ compute_source_pressure_levels(
     });
   });
 } // compute_source_pressure_levels
+
+#if 1
+inline void
+perform_vertical_interpolation(
+  const view_2d p_src,
+  const view_2d p_tgt,
+  const TracerData& input,
+  const TracerData& output)
+{
+  using ExeSpace = typename KT::ExeSpace;
+  using ESU = ekat::ExeSpaceUtils<ExeSpace>;
+  using LIV = ekat::LinInterp<Real,1>;
+
+  // At this stage, begin/end must have the same horiz dimensions
+  EKAT_REQUIRE(input.ncol_==output.ncol_);
+
+  const int ncols     = input.ncol_;
+  const int nlevs_src = input.nlev_;
+  const int nlevs_tgt = output.nlev_;
+
+  LIV vert_interp(ncols,nlevs_src,nlevs_tgt);
+
+  // We can ||ize over columns as well as over variables and bands
+  const int num_vars = input.nvars_;
+  const int num_vert_packs = nlevs_tgt;
+  const auto policy_setup = ESU::get_default_team_policy(ncols, num_vert_packs);
+
+  // Setup the linear interpolation object
+  Kokkos::parallel_for("spa_vert_interp_setup_loop", policy_setup,
+    KOKKOS_LAMBDA(typename LIV::MemberType const& team) {
+
+    const int icol = team.league_rank();
+
+    // Setup
+    vert_interp.setup(team, ekat::subview(p_src,icol),
+                            ekat::subview(p_tgt,icol));
+  });
+  Kokkos::fence();
+
+  // Now use the interpolation object in || over all variables.
+  const int outer_iters = ncols*num_vars;
+  const auto policy_interp = ESU::get_default_team_policy(outer_iters, num_vert_packs);
+  Kokkos::parallel_for("spa_vert_interp_loop", policy_interp,
+    KOKKOS_LAMBDA(typename LIV::MemberType const& team) {
+
+    const int icol = team.league_rank() / num_vars;
+    const int ivar = team.league_rank() % num_vars;
+
+    const auto x1 = ekat::subview(p_src,icol);
+    const auto x2 = ekat::subview(p_tgt,icol);
+
+    const auto y1 = ekat::subview(input.data[ivar],icol);
+    const auto y2 = ekat::subview(output.data[ivar],icol);
+
+    vert_interp.lin_interp(team, x1, x2, y1, y2, icol);
+  });
+  Kokkos::fence();
+}
+
 #endif
 } // namespace scream::mam_coupling
 #endif //EAMXX_MAM_HELPER_MICRO
