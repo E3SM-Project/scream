@@ -177,6 +177,16 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
   TracerHorizInterp_ = scream::mam_coupling::create_horiz_remapper(grid_,my_file,spa_map_file, var_names);
   TracerDataReader_ = scream::mam_coupling::create_tracer_data_reader(TracerHorizInterp_,my_file);
 
+  // 3 Read in hyam/hybm in start/end data, and pad them
+   const auto io_grid = TracerHorizInterp_->get_src_grid();
+  Field hyam(FieldIdentifier("hyam",io_grid->get_vertical_layout(true),nondim,io_grid->name()));
+  Field hybm(FieldIdentifier("hybm",io_grid->get_vertical_layout(true),nondim,io_grid->name()));
+  hyam.allocate_view();
+  hybm.allocate_view();
+  AtmosphereInput hvcoord_reader(my_file,io_grid,{hyam,hybm},true);
+  hvcoord_reader.read_variables();
+  hvcoord_reader.finalize();
+
 }
 
 // this checks whether we have the tracers we expect
@@ -366,17 +376,19 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   //       and spa_end will be reloaded from file with the new month.
   const int curr_month = timestamp().get_month()-1; // 0-based
   const int nvars = 4;
+  const auto io_grid = TracerHorizInterp_->get_src_grid();
+  const int num_cols_io = io_grid->get_num_local_dofs(); // Number of columns on this rank
+  const int num_levs_io = io_grid->get_num_vertical_levels();  // Number of levels per column
+
+  tracer_data_end_.init(num_cols_io, num_levs_io, nvars);
   scream::mam_coupling::update_tracer_data_from_file(TracerDataReader_,
-  timestamp(),curr_month, *TracerHorizInterp_, tracer_data_end_, nvars);
+  timestamp(),curr_month, *TracerHorizInterp_, tracer_data_end_);
 
-  const int dim1 = tracer_data_end_[0].extent(0);
-  const int dim2 = tracer_data_end_[0].extent(1);
+  tracer_data_beg_.init(num_cols_io, num_levs_io, nvars);
+  tracer_data_beg_.allocate_data_views();
 
-  for (int ivar = 0; ivar < nvars ; ++ivar)
-  {
-    tracer_data_beg_[ivar] = view_2d("",dim1,dim2);
-    tracer_data_out_[ivar] = view_2d("reader_out",dim1,dim2);
-  }
+  tracer_data_out_.init(num_cols_io, num_levs_io, nvars);
+  tracer_data_out_.allocate_data_views();
 
 }
 
@@ -441,25 +453,21 @@ void MAMMicrophysics::run_impl(const double dt) {
                            chlorine_time_secs_);
 
   {
-
-    /* Gather time and state information for interpolation */
+  /* Gather time and state information for interpolation */
   auto ts = timestamp()+dt;
   /* Update the SPATimeState to reflect the current time, note the addition of dt */
   linoz_time_state_.t_now = ts.frac_of_year_in_days();
   /* Update time state and if the month has changed, update the data.*/
-  const int nvars = 4;
   scream::mam_coupling::update_tracer_timestate(
     TracerDataReader_,
     ts,
     *TracerHorizInterp_,
     linoz_time_state_,
-    nvars,
     tracer_data_beg_,
     tracer_data_end_);
 
   scream::mam_coupling::perform_time_interpolation(
   linoz_time_state_,
-  nvars,
   tracer_data_beg_,
   tracer_data_end_,
   tracer_data_out_);

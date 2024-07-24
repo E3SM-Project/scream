@@ -246,9 +246,9 @@ private_except_cuda:
 
   std::shared_ptr<AtmosphereInput>  TracerDataReader_;
   std::shared_ptr<AbstractRemapper> TracerHorizInterp_;
-  const_view_2d tracer_data_end_[4];
-  view_2d tracer_data_beg_[4];
-  view_2d tracer_data_out_[4];
+  mam_coupling::TracerData tracer_data_end_;
+  mam_coupling::TracerData tracer_data_beg_;
+  mam_coupling::TracerData tracer_data_out_;
 
 
 
