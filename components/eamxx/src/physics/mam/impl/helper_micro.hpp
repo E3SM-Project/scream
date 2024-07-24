@@ -85,6 +85,8 @@ namespace scream::mam_coupling {
     int nvars_{-1};
     view_2d data[MAX_NVARS_TRACER];
     view_1d ps;
+    const_view_1d hyam;
+    const_view_1d hybm;
 
     void allocate_data_views()
     {
@@ -100,6 +102,8 @@ namespace scream::mam_coupling {
 
     void allocate_ps()
     {
+      EKAT_REQUIRE_MSG (ncol_ != int(-1),
+      "Error! ncols has not been set. \n");
       ps = view_1d("ps",ncol_);
     }
 
@@ -117,6 +121,23 @@ namespace scream::mam_coupling {
       ps = ps_in;
     }
 
+    void set_hyam_n_hybm(const std::shared_ptr<AbstractRemapper>& horiz_remapper,
+                              const std::string& tracer_file_name)
+    {
+
+      // Read in hyam/hybm in start/end data, and pad them
+      auto nondim = ekat::units::Units::nondimensional();
+      const auto io_grid = horiz_remapper->get_src_grid();
+      Field hyam_f(FieldIdentifier("hyam",io_grid->get_vertical_layout(true),nondim,io_grid->name()));
+      Field hybm_f(FieldIdentifier("hybm",io_grid->get_vertical_layout(true),nondim,io_grid->name()));
+      hyam_f.allocate_view();
+      hybm_f.allocate_view();
+      AtmosphereInput hvcoord_reader(tracer_file_name,io_grid,{hyam_f,hybm_f},true);
+      hvcoord_reader.read_variables();
+      hvcoord_reader.finalize();
+      hyam = hyam_f.get_view<const Real*>();
+      hybm = hyam_f.get_view<const Real*>();
+    }
   };
 
   struct LinozData {
@@ -143,8 +164,9 @@ namespace scream::mam_coupling {
       "Error! nlevs has not been set. \n");
 
       for (int ivar = 0; ivar< nvars_; ++ivar) {
-        data[ivar] = view_2d("linoz_1",ncol_,nlev_);
+        data[ivar] = view_2d("data_tracer",ncol_,nlev_);
       }
+
     } //allocate_data_views
 
     void set_data_views(std::vector<view_2d>& list_of_views)
@@ -670,13 +692,15 @@ update_tracer_data_from_file(
  tracer_horiz_interp.remap(/*forward = */ true);
  //
  const int nvars =tracer_data.nvars_;
- // Recall, the fields are registered in the order: ps, ccn3, g_sw, ssa_sw, tau_sw, tau_lw
- // 3. Copy from the tgt field of the remapper into the spa_data
-//  auto ps          = tracer_horiz_interp.get_tgt_field (0).get_view<const Real*>();
+
   //
  for (int i = 0; i < nvars; ++i) {
   tracer_data.data[i] = tracer_horiz_interp.get_tgt_field (i).get_view< Real**>();
  }
+
+  // Recall, the fields are registered in the order: tracers, ps
+ // 3. Copy from the tgt field of the remapper into the spa_data
+ tracer_data.ps = tracer_horiz_interp.get_tgt_field(nvars).get_view< Real*>();
 
 } // update_tracer_data_from_file
 inline void
@@ -741,10 +765,16 @@ update_tracer_timestate(
   const auto data_beg = data_tracer_beg.data;
   const auto data_end = data_tracer_end.data;
   const auto data_out = data_tracer_out.data;
-   const int num_vars = data_tracer_end.nvars_;
 
-  const int ncol = data_beg[0].extent(0);
-  const int num_vert = data_beg[0].extent(1);
+
+  const auto ps_beg = data_tracer_beg.ps;
+  const auto ps_end = data_tracer_end.ps;
+  const auto ps_out = data_tracer_out.ps;
+
+  const int num_vars = data_tracer_end.nvars_;
+
+  const int ncol = data_tracer_beg.ncol_;
+  const int num_vert = data_tracer_beg.nlev_;
 
   const int outer_iters = ncol*num_vars;
 
@@ -766,14 +796,19 @@ update_tracer_timestate(
     const int ivar = team.league_rank() % num_vars;
 
     // Get column of beg/end/out variable
-    auto var_beg = ekat::subview(data_beg[ivar],icol);
-    auto var_end = ekat::subview(data_end[ivar],icol);
-    auto var_out = ekat::subview(data_out[ivar],icol);
+      auto var_beg = ekat::subview(data_beg[ivar],icol);
+      auto var_end = ekat::subview(data_end[ivar],icol);
+      auto var_out = ekat::subview(data_out[ivar],icol);
 
     Kokkos::parallel_for (Kokkos::TeamVectorRange(team,num_vert),
                           [&] (const int& k) {
       var_out(k) = linear_interp(var_beg(k),var_end(k),delta_t_fraction);
     });
+
+    if(ivar==1){
+       ps_out(icol) = linear_interp(ps_beg(icol), ps_end(icol),delta_t_fraction);
+    }
+
   });
   Kokkos::fence();
 } // perform_time_interpolation

@@ -249,6 +249,7 @@ private_except_cuda:
   mam_coupling::TracerData tracer_data_end_;
   mam_coupling::TracerData tracer_data_beg_;
   mam_coupling::TracerData tracer_data_out_;
+  view_2d p_src_invariant_;
 
 
 
