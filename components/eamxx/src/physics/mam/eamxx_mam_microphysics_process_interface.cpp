@@ -177,16 +177,7 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
   TracerHorizInterp_ = scream::mam_coupling::create_horiz_remapper(grid_,my_file,spa_map_file, var_names);
   TracerDataReader_ = scream::mam_coupling::create_tracer_data_reader(TracerHorizInterp_,my_file);
 
-  // 3 Read in hyam/hybm in start/end data, and pad them
-   const auto io_grid = TracerHorizInterp_->get_src_grid();
-  Field hyam(FieldIdentifier("hyam",io_grid->get_vertical_layout(true),nondim,io_grid->name()));
-  Field hybm(FieldIdentifier("hybm",io_grid->get_vertical_layout(true),nondim,io_grid->name()));
-  hyam.allocate_view();
-  hybm.allocate_view();
-  AtmosphereInput hvcoord_reader(my_file,io_grid,{hyam,hybm},true);
-  hvcoord_reader.read_variables();
-  hvcoord_reader.finalize();
-
+  tracer_data_out_.set_hyam_n_hybm(TracerHorizInterp_,my_file);
 }
 
 // this checks whether we have the tracers we expect
@@ -386,9 +377,13 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
 
   tracer_data_beg_.init(num_cols_io, num_levs_io, nvars);
   tracer_data_beg_.allocate_data_views();
+  tracer_data_beg_.allocate_ps();
 
   tracer_data_out_.init(num_cols_io, num_levs_io, nvars);
   tracer_data_out_.allocate_data_views();
+  tracer_data_out_.allocate_ps();
+
+  p_src_invariant_ = view_2d("pressure_src_invariant",num_cols_io, num_levs_io );
 
 }
 
@@ -471,6 +466,13 @@ void MAMMicrophysics::run_impl(const double dt) {
   tracer_data_beg_,
   tracer_data_end_,
   tracer_data_out_);
+
+  scream::mam_coupling::compute_source_pressure_levels(
+    tracer_data_out_.ps,
+    p_src_invariant_,
+    tracer_data_out_.hyam,
+    tracer_data_out_.hybm);
+
   }
 
   const_view_1d &col_latitudes = col_latitudes_;
