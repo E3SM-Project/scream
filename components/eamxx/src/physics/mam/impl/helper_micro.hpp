@@ -22,6 +22,7 @@ namespace scream::mam_coupling {
   using view_1d_host    = typename KT::view_1d<Real>::HostMirror;
 
   constexpr int NVARS_LINOZ=8;
+  constexpr int MAX_NVARS_TRACER=5;
   const std::vector<std::string>
   linoz_var_names={"o3_clim", "o3col_clim",
                    "t_clim", "PmL_clim", "dPmL_dO3",
@@ -62,6 +63,61 @@ namespace scream::mam_coupling {
     // Number of days in the current month, cast as a Real
     Real days_this_month;
   }; // LinozTimeState
+
+  struct TracerData{
+    TracerData() = default;
+    TracerData(const int ncol, const int nlev, const int nvars)
+    {
+      init (ncol,nlev, nvars);
+    }
+    void init (const int ncol,
+               const int nlev,
+               const int nvars){
+     ncol_=ncol;
+     nlev_=nlev;
+     nvars_=nvars;
+     EKAT_REQUIRE_MSG (nvars_ <= int(MAX_NVARS_TRACER),
+      "Error! Number of variables is bigger than NVARS_MAXTRACER. \n");
+    }
+
+    int ncol_{-1};
+    int nlev_{-1};
+    int nvars_{-1};
+    view_2d data[MAX_NVARS_TRACER];
+    view_1d ps;
+
+    void allocate_data_views()
+    {
+      EKAT_REQUIRE_MSG (ncol_ != int(-1),
+      "Error! ncols has not been set. \n");
+      EKAT_REQUIRE_MSG (nlev_ !=int(-1),
+      "Error! nlevs has not been set. \n");
+
+      for (int ivar = 0; ivar< nvars_; ++ivar) {
+        data[ivar] = view_2d("linoz_1",ncol_,nlev_);
+      }
+    } //allocate_data_views
+
+    void allocate_ps()
+    {
+      ps = view_1d("ps",ncol_);
+    }
+
+    void set_data_views(view_2d list_of_views[])
+    {
+     for (int ivar = 0; ivar< nvars_; ++ivar) {
+      EKAT_REQUIRE_MSG(list_of_views[ivar].data() != 0,
+                   "Error! Insufficient memory  size.\n");
+      data[ivar] =list_of_views[ivar];
+      }
+    }
+
+    void set_data_ps(const view_1d& ps_in)
+    {
+      ps = ps_in;
+    }
+
+  };
 
   struct LinozData {
 
@@ -532,8 +588,6 @@ create_horiz_remapper (
     const std::string& trace_data_file,
     const std::string& map_file,
     std::vector<std::string>& var_names
-    // ,
-    // const bool use_iop
     )
 {
   using namespace ShortFieldTagsNames;
@@ -550,10 +604,7 @@ create_horiz_remapper (
 
   const int ncols_model = model_grid->get_num_global_dofs();
   std::shared_ptr<AbstractRemapper> remapper;
-  if (ncols_data==ncols_model
-      // or
-      // use_iop /*IOP class defines it's own remapper for file data*/
-      ) {
+  if (ncols_data==ncols_model) {
     remapper = std::make_shared<IdentityRemapper>(horiz_interp_tgt_grid,IdentityRemapper::SrcAliasTgt);
   } else {
     EKAT_REQUIRE_MSG (ncols_data<=ncols_model,
@@ -573,15 +624,16 @@ create_horiz_remapper (
   const auto layout_3d_mid = tgt_grid->get_3d_scalar_layout(true);
   const auto nondim = ekat::units::Units::nondimensional();
 
-  // Field ps          (FieldIdentifier("PS",        layout_2d,  nondim,tgt_grid->name()));
-  // ps.allocate_view();
-  // remapper->register_field_from_tgt (ps);
+
   for(auto  var_name : var_names){
     Field ifield(FieldIdentifier(var_name,  layout_3d_mid,  nondim,tgt_grid->name()));
     ifield.allocate_view();
     remapper->register_field_from_tgt (ifield);
   }
 
+  Field ps (FieldIdentifier("PS",        layout_2d,  nondim,tgt_grid->name()));
+  ps.allocate_view();
+  remapper->register_field_from_tgt (ps);
   remapper->registration_ends();
 
   return remapper;
@@ -610,20 +662,20 @@ update_tracer_data_from_file(
     const util::TimeStamp&            ts,
     const int                         time_index, // zero-based
     AbstractRemapper&                 tracer_horiz_interp,
-    const_view_2d tracer_data[],
-    const int nvars)
+    TracerData& tracer_data)
 {
  // 1. read from field
  scorpio_reader->read_variables(time_index);
  // 2. Run the horiz remapper (it is a do-nothing op if spa data is on same grid as model)
  tracer_horiz_interp.remap(/*forward = */ true);
-
+ //
+ const int nvars =tracer_data.nvars_;
  // Recall, the fields are registered in the order: ps, ccn3, g_sw, ssa_sw, tau_sw, tau_lw
  // 3. Copy from the tgt field of the remapper into the spa_data
 //  auto ps          = tracer_horiz_interp.get_tgt_field (0).get_view<const Real*>();
   //
  for (int i = 0; i < nvars; ++i) {
-  tracer_data[i] = tracer_horiz_interp.get_tgt_field (i).get_view<const Real**>();
+  tracer_data.data[i] = tracer_horiz_interp.get_tgt_field (i).get_view< Real**>();
  }
 
 } // update_tracer_data_from_file
@@ -633,15 +685,19 @@ update_tracer_timestate(
     const util::TimeStamp&            ts,
     AbstractRemapper&                 tracer_horiz_interp,
     LinozTimeState&                   time_state,
-    const int nvars,
-    view_2d           tracer_beg[],
-    const_view_2d     tracer_end[])
+    TracerData&  data_tracer_beg,
+    TracerData&  data_tracer_end)
 {
   // Now we check if we have to update the data that changes monthly
   // NOTE:  This means that SPA assumes monthly data to update.  Not
   //        any other frequency.
   const auto month = ts.get_month() - 1; // Make it 0-based
   if (month != time_state.current_month) {
+    //
+    const auto tracer_beg = data_tracer_beg.data;
+    const auto tracer_end = data_tracer_end.data;
+    const int nvars=data_tracer_end.nvars_;
+
     // Update the SPA time state information
     time_state.current_month = month;
     time_state.t_beg_month = util::TimeStamp({ts.get_year(),month+1,1}, {0,0,0}).frac_of_year_in_days();
@@ -658,7 +714,10 @@ update_tracer_timestate(
     //       to be assigned.  A timestep greater than a month is very unlikely so we
     //       will proceed.
     int next_month = (time_state.current_month + 1) % 12;
-    update_tracer_data_from_file(scorpio_reader,ts,next_month,tracer_horiz_interp,tracer_end,nvars);
+    update_tracer_data_from_file(scorpio_reader, ts,
+                                 next_month,
+                                 tracer_horiz_interp,
+                                 data_tracer_end);
   }
 
 } // END updata_spa_timestate
@@ -666,10 +725,10 @@ update_tracer_timestate(
 // This function is based on the SPA::perform_time_interpolation function.
  inline void perform_time_interpolation(
   const LinozTimeState& time_state,
-  const int num_vars,
-  const view_2d data_beg[],
-  const const_view_2d data_end[],
-  const view_2d data_out[])
+
+  const TracerData& data_tracer_beg,
+  const TracerData& data_tracer_end,
+  const TracerData& data_tracer_out)
 {
   // NOTE: we *assume* data_beg and data_end have the *same* hybrid v coords.
   //       IF this ever ceases to be the case, you can interp those too.
@@ -679,6 +738,11 @@ update_tracer_timestate(
   auto& delta_t = time_state.days_this_month;
 
   // We can ||ize over columns as well as over variables and bands
+  const auto data_beg = data_tracer_beg.data;
+  const auto data_end = data_tracer_end.data;
+  const auto data_out = data_tracer_out.data;
+   const int num_vars = data_tracer_end.nvars_;
+
   const int ncol = data_beg[0].extent(0);
   const int num_vert = data_beg[0].extent(1);
 
@@ -713,6 +777,33 @@ update_tracer_timestate(
   });
   Kokkos::fence();
 } // perform_time_interpolation
+#if 0
+inline void
+compute_source_pressure_levels(
+  const view_1d& ps_src,
+  const view_2d& p_src,
+  const const_view_1d& hyam,
+  const const_view_1d& hybm)
+{
+  using ExeSpace = typename KT::ExeSpace;
+  using ESU = ekat::ExeSpaceUtils<ExeSpace>;
+  using C = scream::physics::Constants<Real>;
 
+  constexpr auto P0 = C::P0;
+
+  const int ncols = ps_src.extent(0);
+  const int num_vert_packs = p_src.extent(1);
+  const auto policy = ESU::get_default_team_policy(ncols, num_vert_packs);
+
+  Kokkos::parallel_for("tracer_compute_p_src_loop", policy,
+    KOKKOS_LAMBDA (const MemberType& team) {
+    const int icol = team.league_rank();
+    Kokkos::parallel_for(Kokkos::TeamVectorRange(team,num_vert_packs),
+                         [&](const int k) {
+      p_src(icol,k) = ps_src(icol) * hybm(k)  + P0 * hyam(k);
+    });
+  });
+} // compute_source_pressure_levels
+#endif
 } // namespace scream::mam_coupling
 #endif //EAMXX_MAM_HELPER_MICRO
