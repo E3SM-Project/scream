@@ -1,13 +1,17 @@
 # ML Correction in EAMxx
+
 Machine learning correction is used to emulate lower resolution simulation to behave like its higher resolution counterpart. This project is under development and is only supported on selected machines.
 
 ## Example setup
+
 To enable ML correction as a process:
+
 ```shell
 ./atmchange physics::atm_procs_list="mac_aero_mic,rrtmgp,mlcorrection"
 ```
 
 The following options can be specified:
+
 ```shell
 ./atmchange ML_model_path_tq=/path/to/pretrained/temperature_and_specific_humidity_model
 ./atmchange ML_model_path_uv=/path/to/pretrained/u_and_v_model
@@ -15,8 +19,10 @@ The following options can be specified:
 ```
 
 ## Supported Machines
+
 - Ruby: CPU only machine. Shared python environment can be loaded with `source /usr/WS1/climdat/python_venv/3.9.2/screamML/bin/activate`
 - Perlmutter: Both CPU and GPU supported. Shared python environment located in `/global/common/software/m4492/fv3net-shared-py39`. Additional modules and flags need to be specified:
+
 ```shell
 module load python
 conda activate /global/common/software/m4492/fv3net-shared-py39
