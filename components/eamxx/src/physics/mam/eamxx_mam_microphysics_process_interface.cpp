@@ -527,6 +527,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
     }// end i
   }
 
+  invariants_ = view_3d("invarians", ncol_, nlev_, mam4::gas_chemistry::nfs); 
 }
 
 void MAMMicrophysics::run_impl(const double dt) {
@@ -642,6 +643,9 @@ void MAMMicrophysics::run_impl(const double dt) {
   const auto& work_photo_table = work_photo_table_;
   const auto& photo_rates = photo_rates_;
 
+  const auto& invariants = invariants_;
+  const auto& cnst_offline = cnst_offline_;
+
 
   // Compute orbital parameters; these are used both for computing
   // the solar zenith angle.
@@ -693,9 +697,15 @@ void MAMMicrophysics::run_impl(const double dt) {
     // set up diagnostics
     mam4::Diagnostics diags(nlev);
 
+    // 
+    auto invariants_icol = ekat::subview(invariants,icol);
+    auto cnst_offline_icol = ekat::subview(cnst_offline,icol);
+    mam4::mo_setinv::setinv(team, invariants_icol, atm.temperature, atm.vapor_mixing_ratio, 
+                            cnst_offline_icol, atm.pressure);
+
     // calculate o3 column densities (first component of col_dens in Fortran code)
     auto o3_col_dens_i = ekat::subview(o3_col_dens, icol);
-    impl::compute_o3_column_density(team, atm, progs, o3_col_dens_i);
+    impl::compute_o3_column_density(team, atm, progs, invariants_icol, o3_col_dens_i);
 
     // set up photolysis work arrays for this column.
     mam4::mo_photo::PhotoTableWorkArrays photo_work_arrays_icol;
@@ -772,12 +782,14 @@ void MAMMicrophysics::run_impl(const double dt) {
       for (int i = 0; i < mam4::mo_photo::phtcnt; ++i) {
         photo_rates_k[i] = photo_rates_icol(k, i);
       }
-      constexpr int nfs = mam4::gas_chemistry::nfs; // number of "fixed species"
-      // NOTE: we compute invariants here and pass them out to use later with
-      // NOTE: setsox
-      Real invariants[nfs];
+      
+      Real invariants_k[mam4::gas_chemistry::nfs];
+      for (int i = 0; i < mam4::gas_chemistry::nfs; ++i) {
+        invariants_k[i] = invariants_icol(k, i);
+      }
+
       impl::gas_phase_chemistry(zm, zi, phis, temp, pmid, pdel, dt,
-                                  photo_rates_k, vmr, invariants);
+                                  photo_rates_k, invariants_k, vmr);
 
       //----------------------
       // Aerosol microphysics
@@ -791,7 +803,7 @@ void MAMMicrophysics::run_impl(const double dt) {
       const Real mbar = haero::Constants::molec_weight_dry_air;
       constexpr int indexm = mam4::gas_chemistry::indexm;
       mam4::mo_setsox::setsox_single_level(loffset, dt, pmid, pdel, temp, mbar, lwc,
-        cldfrac, cldnum, invariants[indexm], config.setsox, vmrcw, vmr);
+        cldfrac, cldnum, invariants_k[indexm], config.setsox, vmrcw, vmr);
 
       // calculate aerosol water content using water uptake treatment
       // * dry and wet diameters [m]
