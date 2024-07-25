@@ -371,8 +371,8 @@ mam4::mo_photo::PhotoTableData read_photo_table(const ekat::Comm& comm,
 KOKKOS_INLINE_FUNCTION
 void gas_phase_chemistry(Real zm, Real zi, Real phis, Real temp, Real pmid, Real pdel, Real dt,
                          const Real photo_rates[mam4::mo_photo::phtcnt], // in
-                         Real q[mam4::gas_chemistry::gas_pcnst], // VMRs, inout
-                         Real invariants[mam4::gas_chemistry::nfs]) { // out
+                         Real invariants[mam4::gas_chemistry::nfs], //in
+                         Real q[mam4::gas_chemistry::gas_pcnst]) { // VMRs, inout
   // constexpr Real rga = 1.0/haero::Constants::gravity;
   // constexpr Real m2km = 0.01; // converts m -> km
 
@@ -415,13 +415,6 @@ void gas_phase_chemistry(Real zm, Real zi, Real phis, Real temp, Real pmid, Real
   // xform geopotential height from m to km and pressure from Pa to mb
   // Real zsurf = rga * phis;
   // Real zmid = m2km * (zm + zsurf);
-
-  // ... compute the column's invariants
-  // Real h2ovmr = q[0];
-  // setinv(invariants, temp, h2ovmr, q, pmid); FIXME: not ported yet
-  for (int i = 0; i < nfs; ++i) {
-    invariants[i] = 0.1;
-  }
 
   // ... set rates for "tabular" and user specified reactions
   Real reaction_rates[rxntot];

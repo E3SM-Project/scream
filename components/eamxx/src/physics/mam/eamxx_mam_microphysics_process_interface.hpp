@@ -259,6 +259,7 @@ private_except_cuda:
   mam_coupling::TracerData tracer_data_beg_;
   mam_coupling::TracerData tracer_data_out_;
   view_2d p_src_invariant_;
+  view_3d invariants_;
   std::string oxid_file_name_;
   view_2d cnst_offline_[4];
 
@@ -280,11 +281,6 @@ private_except_cuda:
   std::vector<std::string> vert_emis_file_name_;
   std::vector<const_view_1d> vert_emis_altitude_int_;
   std::vector<view_2d> vert_emis_output_;
-
-
-
-
-
 
 }; // MAMMicrophysics
 
