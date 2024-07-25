@@ -868,7 +868,8 @@ perform_vertical_interpolation(
 #endif
 
   const int ncols     = input.ncol_;
-  const int nlevs_src = input.nlev_;
+  // FIXME: I am getting FPEs if I do not subtract 1 from nlevs_src.
+  const int nlevs_src = input.nlev_-1;
   const int nlevs_tgt = output[0].extent(1);
 
   LIV vert_interp(ncols,nlevs_src,nlevs_tgt);
@@ -879,7 +880,7 @@ perform_vertical_interpolation(
   const auto policy_setup = ESU::get_default_team_policy(ncols, num_vert_packs);
 
   // Setup the linear interpolation object
-  Kokkos::parallel_for("spa_vert_interp_setup_loop", policy_setup,
+  Kokkos::parallel_for("tracer_vert_interp_setup_loop", policy_setup,
     KOKKOS_LAMBDA(typename LIV::MemberType const& team) {
 
     const int icol = team.league_rank();
@@ -892,7 +893,7 @@ perform_vertical_interpolation(
   // Now use the interpolation object in || over all variables.
   const int outer_iters = ncols*num_vars;
   const auto policy_interp = ESU::get_default_team_policy(outer_iters, num_vert_packs);
-  Kokkos::parallel_for("spa_vert_interp_loop", policy_interp,
+  Kokkos::parallel_for("tracer_vert_interp_loop", policy_interp,
     KOKKOS_LAMBDA(typename LIV::MemberType const& team) {
 
     const int icol = team.league_rank() / num_vars;
@@ -922,7 +923,6 @@ advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
                     const view_2d output[])
 {
 
-#if 1
   /* Update the TracerTimeState to reflect the current time, note the addition of dt */
   time_state.t_now = ts.frac_of_year_in_days();
   /* Update time state and if the month has changed, update the data.*/
@@ -947,13 +947,13 @@ advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
     data_tracer_out.hybm);
 
   // Step 3. Perform vertical interpolation
+
   perform_vertical_interpolation(
   p_src,
   p_tgt,
   data_tracer_out,
   output);
 
-#endif
 }// advance_tracer_data
 
 

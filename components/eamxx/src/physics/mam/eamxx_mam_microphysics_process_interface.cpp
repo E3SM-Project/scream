@@ -274,7 +274,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   const std::string xs_long_file =
       m_params.get<std::string>("mam4_xs_long_file");
 
-  photo_table_ = impl::read_photo_table(rsf_file, xs_long_file);
+  // photo_table_ = impl::read_photo_table(rsf_file, xs_long_file);
 
   // FIXME: read relevant land use data from drydep surface file
 
@@ -332,13 +332,13 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   // Note: At the first time step, the data will be moved into spa_beg,
   //       and spa_end will be reloaded from file with the new month.
   const int curr_month = timestamp().get_month()-1; // 0-based
-  linoz_reader_->read_variables(curr_month);
-  perform_horizontal_interpolation(linoz_params_, LinozData_end_);
+  // linoz_reader_->read_variables(curr_month);
+  // perform_horizontal_interpolation(linoz_params_, LinozData_end_);
 
-  perform_vertical_interpolation(linoz_params_,
-                                 dry_atm_.p_mid,
-                                 LinozData_end_,
-                                 interpolated_Linoz_data_);
+  // perform_vertical_interpolation(linoz_params_,
+  //                                dry_atm_.p_mid,
+  //                                LinozData_end_,
+  //                                interpolated_Linoz_data_);
 
   // const std::string linoz_chlorine_file = "Linoz_Chlorine_Loading_CMIP6_0003-2017_c20171114.nc";
   // auto ts = timestamp();
@@ -423,38 +423,40 @@ void MAMMicrophysics::run_impl(const double dt) {
   // allocation perspective
   auto o3_col_dens = buffer_.scratch[8];
 
-  auto ts = timestamp()+dt;
-  {
-    /* Gather time and state information for interpolation */
+  // auto ts = timestamp()+dt;
+  // {
+  //   /* Gather time and state information for interpolation */
 
-  /* Update the LinozTimeState to reflect the current time, note the addition of dt */
-  linoz_time_state_.t_now = ts.frac_of_year_in_days();
-  /* Update time state and if the month has changed, update the data.*/
-  update_linoz_timestate(ts,
-                         linoz_time_state_,
-                         linoz_reader_,
-                         linoz_params_,
-                         LinozData_start_,
-                         LinozData_end_);
+  // /* Update the LinozTimeState to reflect the current time, note the addition of dt */
+  // linoz_time_state_.t_now = ts.frac_of_year_in_days();
+  // /* Update time state and if the month has changed, update the data.*/
+  // update_linoz_timestate(ts,
+  //                        linoz_time_state_,
+  //                        linoz_reader_,
+  //                        linoz_params_,
+  //                        LinozData_start_,
+  //                        LinozData_end_);
 
-  perform_time_interpolation(linoz_time_state_,
-                             LinozData_start_,
-                             LinozData_end_,
-                             LinozData_out_);
+  // perform_time_interpolation(linoz_time_state_,
+  //                            LinozData_start_,
+  //                            LinozData_end_,
+  //                            LinozData_out_);
 
-  perform_vertical_interpolation(linoz_params_,
-                                 dry_atm_.p_mid,
-                                 LinozData_out_,
-                                 interpolated_Linoz_data_);
+  // perform_vertical_interpolation(linoz_params_,
+  //                                dry_atm_.p_mid,
+  //                                LinozData_out_,
+  //                                interpolated_Linoz_data_);
 
 
-  }
+  // }
+
+
+  /* Gather time and state information for interpolation */
+  const auto ts = timestamp()+dt;
+
   const Real chlorine_loading = scream::mam_coupling::chlorine_loading_advance(ts, chlorine_values_,
                            chlorine_time_secs_);
 
-  {
-    /* Gather time and state information for interpolation */
-  const auto ts = timestamp()+dt;
   scream::mam_coupling::advance_tracer_data(TracerDataReader_,
                       *TracerHorizInterp_,
                       ts,
@@ -466,7 +468,6 @@ void MAMMicrophysics::run_impl(const double dt) {
                       dry_atm_.p_mid,
                       cnst_offline_);
 
-  }
 
   const_view_1d &col_latitudes = col_latitudes_;
   mam_coupling::DryAtmosphere &dry_atm =  dry_atm_;
@@ -516,6 +517,7 @@ void MAMMicrophysics::run_impl(const double dt) {
     // FIXME: set views here
     const auto& work_photo_table_icol = ekat::subview(work_photo_table, icol);
     // set work view using 1D photo_work_arrays_icol
+
     mam4::mo_photo::set_photo_table_work_arrays(photo_table,
                                                 work_photo_table_icol,
                                                 photo_work_arrays_icol);
@@ -527,11 +529,11 @@ void MAMMicrophysics::run_impl(const double dt) {
     Real surf_albedo = 0.0; // FIXME: surface albedo
     Real esfact = 0.0; // FIXME: earth-sun distance factor
     const auto& photo_rates_icol = ekat::subview(photo_rates, icol);
-
+#if 0
     mam4::mo_photo::table_photo(photo_rates_icol, atm.pressure, atm.hydrostatic_dp,
      atm.temperature, o3_col_dens_i, zenith_angle, surf_albedo, lwc_icol,
      atm.cloud_fraction, esfact, photo_table, photo_work_arrays_icol);
-
+#endif
     // compute external forcings at time t(n+1) [molecules/cm^3/s]
     constexpr int extcnt = mam4::gas_chemistry::extcnt;
     view_2d extfrc; // FIXME: where to allocate? (nlev, extcnt)
@@ -643,6 +645,7 @@ void MAMMicrophysics::run_impl(const double dt) {
 
       Real rlats = col_lat * M_PI / 180.0; // convert column latitude to radians
       int o3_ndx = 0; // index of "O3" in solsym array (in EAM)
+#if 0
       mam4::lin_strat_chem::lin_strat_chem_solve_kk(o3_col_dens_i(k), temp,
         zenith_angle, pmid, dt, rlats,
         linoz_o3_clim(icol, k), linoz_t_clim(icol, k), linoz_o3col_clim(icol, k),
@@ -651,7 +654,7 @@ void MAMMicrophysics::run_impl(const double dt) {
         chlorine_loading, config.linoz.psc_T, vmr[o3_ndx],
         do3_linoz, do3_linoz_psc, ss_o3,
         o3col_du_diag, o3clim_linoz_diag, zenith_angle_degrees);
-
+#endif
       // update source terms above the ozone decay threshold
       if (k > nlev - config.linoz.o3_lbl - 1) {
         Real do3_mass; // diagnostic, not needed
