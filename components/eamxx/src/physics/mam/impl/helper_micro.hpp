@@ -825,7 +825,6 @@ compute_source_pressure_levels(
   using C = scream::physics::Constants<Real>;
 
   constexpr auto P0 = C::P0;
-
   const int ncols = ps_src.extent(0);
   const int num_vert_packs = p_src.extent(1);
   const auto policy = ESU::get_default_team_policy(ncols, num_vert_packs);
@@ -840,24 +839,34 @@ compute_source_pressure_levels(
   });
 } // compute_source_pressure_levels
 
-#if 1
+
 inline void
 perform_vertical_interpolation(
-  const view_2d p_src,
-  const view_2d p_tgt,
+  const view_2d& p_src_c,
+  const const_view_2d& p_tgt_c,
   const TracerData& input,
-  const TracerData& output)
+  const view_2d output[])
 {
   using ExeSpace = typename KT::ExeSpace;
   using ESU = ekat::ExeSpaceUtils<ExeSpace>;
   using LIV = ekat::LinInterp<Real,1>;
 
   // At this stage, begin/end must have the same horiz dimensions
-  EKAT_REQUIRE(input.ncol_==output.ncol_);
+  EKAT_REQUIRE(input.ncol_==output[0].extent(0));
 
+  // Note: I am encountering a compilation error when using const_view_2d.
+  // The Ekat library is missing overloads for const data types.
+  // Luca is currently working on a fix for this issue. In the meantime,
+  // I converting const_view_2d to view_2d
+  auto p_src_ptr = (Real *)p_src_c.data();
+  view_2d p_src(p_src_ptr,p_src_c.extent(0),p_src_c.extent(1));
+  auto p_tgt_ptr = (Real *)p_tgt_c.data();
+  view_2d p_tgt(p_tgt_ptr,p_tgt_c.extent(0),p_tgt_c.extent(1));
+
+#if 1
   const int ncols     = input.ncol_;
   const int nlevs_src = input.nlev_;
-  const int nlevs_tgt = output.nlev_;
+  const int nlevs_tgt = output[0].extent(1);
 
   LIV vert_interp(ncols,nlevs_src,nlevs_tgt);
 
@@ -871,7 +880,6 @@ perform_vertical_interpolation(
     KOKKOS_LAMBDA(typename LIV::MemberType const& team) {
 
     const int icol = team.league_rank();
-
     // Setup
     vert_interp.setup(team, ekat::subview(p_src,icol),
                             ekat::subview(p_tgt,icol));
@@ -891,13 +899,14 @@ perform_vertical_interpolation(
     const auto x2 = ekat::subview(p_tgt,icol);
 
     const auto y1 = ekat::subview(input.data[ivar],icol);
-    const auto y2 = ekat::subview(output.data[ivar],icol);
+    const auto y2 = ekat::subview(output[ivar],icol);
 
     vert_interp.lin_interp(team, x1, x2, y1, y2, icol);
   });
   Kokkos::fence();
+#endif
 }
 
-#endif
+
 } // namespace scream::mam_coupling
 #endif //EAMXX_MAM_HELPER_MICRO
