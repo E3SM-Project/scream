@@ -749,7 +749,6 @@ update_tracer_timestate(
 // This function is based on the SPA::perform_time_interpolation function.
  inline void perform_time_interpolation(
   const LinozTimeState& time_state,
-
   const TracerData& data_tracer_beg,
   const TracerData& data_tracer_end,
   const TracerData& data_tracer_out)
@@ -853,17 +852,21 @@ perform_vertical_interpolation(
 
   // At this stage, begin/end must have the same horiz dimensions
   EKAT_REQUIRE(input.ncol_==output[0].extent(0));
-
-  // Note: I am encountering a compilation error when using const_view_2d.
-  // The Ekat library is missing overloads for const data types.
-  // Luca is currently working on a fix for this issue. In the meantime,
-  // I converting const_view_2d to view_2d
+#if 1
+  // FIXME: I was encountering a compilation error when using const_view_2d.
+  // The issue is fixed by https://github.com/E3SM-Project/EKAT/pull/346.
+  // I will keep this code until this PR is merged into the EKAT master branch and
+  // we update the EKAT version in our code.
+  // I am converting const_view_2d to view_2d.
   auto p_src_ptr = (Real *)p_src_c.data();
   view_2d p_src(p_src_ptr,p_src_c.extent(0),p_src_c.extent(1));
   auto p_tgt_ptr = (Real *)p_tgt_c.data();
   view_2d p_tgt(p_tgt_ptr,p_tgt_c.extent(0),p_tgt_c.extent(1));
+#else
+  const auto p_src = p_src_c;
+  const auto p_tgt = p_tgt_c;
+#endif
 
-#if 1
   const int ncols     = input.ncol_;
   const int nlevs_src = input.nlev_;
   const int nlevs_tgt = output[0].extent(1);
@@ -904,8 +907,54 @@ perform_vertical_interpolation(
     vert_interp.lin_interp(team, x1, x2, y1, y2, icol);
   });
   Kokkos::fence();
-#endif
 }
+
+inline void
+advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
+                    AbstractRemapper& tracer_horiz_interp,
+                    const util::TimeStamp& ts,
+                    LinozTimeState& time_state,
+                    TracerData& data_tracer_beg,
+                    TracerData& data_tracer_end,
+                    TracerData& data_tracer_out,
+                    const view_2d& p_src,
+                    const const_view_2d& p_tgt,
+                    const view_2d output[])
+{
+
+#if 1
+  /* Update the TracerTimeState to reflect the current time, note the addition of dt */
+  time_state.t_now = ts.frac_of_year_in_days();
+  /* Update time state and if the month has changed, update the data.*/
+  update_tracer_timestate(
+    scorpio_reader,
+    ts,
+    tracer_horiz_interp,
+    time_state,
+    data_tracer_beg,
+    data_tracer_end);
+  // Step 1. Perform time interpolation
+  perform_time_interpolation(
+  time_state,
+  data_tracer_beg,
+  data_tracer_end,
+  data_tracer_out);
+  // Step 2. Compute source pressure levels
+  compute_source_pressure_levels(
+    data_tracer_out.ps,
+    p_src,
+    data_tracer_out.hyam,
+    data_tracer_out.hybm);
+
+  // Step 3. Perform vertical interpolation
+  perform_vertical_interpolation(
+  p_src,
+  p_tgt,
+  data_tracer_out,
+  output);
+
+#endif
+}// advance_tracer_data
 
 
 } // namespace scream::mam_coupling
