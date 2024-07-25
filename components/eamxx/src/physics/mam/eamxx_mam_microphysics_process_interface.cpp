@@ -453,36 +453,18 @@ void MAMMicrophysics::run_impl(const double dt) {
                            chlorine_time_secs_);
 
   {
-  /* Gather time and state information for interpolation */
-  auto ts = timestamp()+dt;
-  /* Update the SPATimeState to reflect the current time, note the addition of dt */
-  linoz_time_state_.t_now = ts.frac_of_year_in_days();
-  /* Update time state and if the month has changed, update the data.*/
-  scream::mam_coupling::update_tracer_timestate(
-    TracerDataReader_,
-    ts,
-    *TracerHorizInterp_,
-    linoz_time_state_,
-    tracer_data_beg_,
-    tracer_data_end_);
-
-  scream::mam_coupling::perform_time_interpolation(
-  linoz_time_state_,
-  tracer_data_beg_,
-  tracer_data_end_,
-  tracer_data_out_);
-
-  scream::mam_coupling::compute_source_pressure_levels(
-    tracer_data_out_.ps,
-    p_src_invariant_,
-    tracer_data_out_.hyam,
-    tracer_data_out_.hybm);
-
-  scream::mam_coupling::perform_vertical_interpolation(
-  p_src_invariant_,
-  dry_atm_.p_mid,
-  tracer_data_out_,
-  cnst_offline_);
+    /* Gather time and state information for interpolation */
+  const auto ts = timestamp()+dt;
+  scream::mam_coupling::advance_tracer_data(TracerDataReader_,
+                      *TracerHorizInterp_,
+                      ts,
+                      linoz_time_state_,
+                      tracer_data_beg_,
+                      tracer_data_end_,
+                      tracer_data_out_,
+                      p_src_invariant_,
+                      dry_atm_.p_mid,
+                      cnst_offline_);
 
   }
 
