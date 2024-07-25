@@ -385,6 +385,11 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
 
   p_src_invariant_ = view_2d("pressure_src_invariant",num_cols_io, num_levs_io );
 
+  for (int ivar = 0; ivar< nvars; ++ivar) {
+    cnst_offline_[ivar] = view_2d("cnst_offline_",ncol_, nlev_ );
+  }
+
+
 }
 
 void MAMMicrophysics::run_impl(const double dt) {
@@ -472,6 +477,12 @@ void MAMMicrophysics::run_impl(const double dt) {
     p_src_invariant_,
     tracer_data_out_.hyam,
     tracer_data_out_.hybm);
+
+  scream::mam_coupling::perform_vertical_interpolation(
+  p_src_invariant_,
+  dry_atm_.p_mid,
+  tracer_data_out_,
+  cnst_offline_);
 
   }
 
