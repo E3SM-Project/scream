@@ -229,15 +229,7 @@ private_except_cuda:
   // sets defaults for "namelist parameters"
   void set_defaults_();
 
-  std::shared_ptr<AtmosphereInput> linoz_reader_;
-  mam_coupling::LinozReaderParams linoz_params_;
-  mam_coupling::view_1d col_latitudes_copy_;
   mam_coupling::LinozTimeState linoz_time_state_;
-  mam_coupling::LinozData LinozData_start_;
-  mam_coupling::LinozData LinozData_end_;
-  mam_coupling::LinozData LinozData_out_;
-  mam_coupling::LinozData interpolated_Linoz_data_;
-  //
   view_2d work_photo_table_;
   std::vector<Real> chlorine_values_;
   std::vector<int> chlorine_time_secs_;
