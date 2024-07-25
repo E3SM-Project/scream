@@ -167,17 +167,17 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
   // std::string linoz_file_name="linoz1850-2015_2010JPL_CMIP6_10deg_58km_c20171109.nc";
   std::string linoz_file_name =
       m_params.get<std::string>("mam4_linoz_file_name");
-  linoz_reader_ = create_linoz_data_reader(linoz_file_name,
-  linoz_params_, ncol_, col_latitudes_, m_comm);
-
   }
-  std::string my_file="oxid_1.9x2.5_L26_1850-2015_ne2np4L72_c20240722_OD.nc";
-  std::string spa_map_file="";
-  std::vector<std::string> var_names{"O3","HO2","NO3","OH"};
-  TracerHorizInterp_ = scream::mam_coupling::create_horiz_remapper(grid_,my_file,spa_map_file, var_names);
-  TracerDataReader_ = scream::mam_coupling::create_tracer_data_reader(TracerHorizInterp_,my_file);
+  {
+     std::string my_file="oxid_1.9x2.5_L26_1850-2015_ne2np4L72_c20240722_OD.nc";
+     std::string spa_map_file="";
+     std::vector<std::string> var_names{"O3","HO2","NO3","OH"};
+     TracerHorizInterp_ = scream::mam_coupling::create_horiz_remapper(grid_,my_file,spa_map_file, var_names);
+     TracerDataReader_ = scream::mam_coupling::create_tracer_data_reader(TracerHorizInterp_,my_file);
+     tracer_data_out_.set_hyam_n_hybm(TracerHorizInterp_,my_file);
+  }
 
-  tracer_data_out_.set_hyam_n_hybm(TracerHorizInterp_,my_file);
+
 }
 
 // this checks whether we have the tracers we expect
@@ -308,37 +308,10 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   auto linoz_dPmL_dO3col  = buffer_.scratch[6]; // sensitivity of P minus L to overhead O3 column [vmr/DU]
   auto linoz_cariolle_pscs = buffer_.scratch[7]; // Cariolle parameter for PSC loss of ozone [1/s]
 
-  LinozData_end_.init(ncol_,linoz_params_.nlevs);
-  LinozData_end_.allocate_data_views();
-
-  LinozData_start_.init(ncol_,linoz_params_.nlevs);
-  LinozData_start_.allocate_data_views();
-
-  LinozData_out_.init(ncol_,linoz_params_.nlevs);
-  LinozData_out_.allocate_data_views();
-
-  interpolated_Linoz_data_.init(ncol_,nlev_);
-
-  interpolated_Linoz_data_.set_data_views(linoz_o3_clim,
-                                          linoz_o3col_clim,
-                                          linoz_t_clim,
-                                          linoz_PmL_clim,
-                                          linoz_dPmL_dO3,
-                                          linoz_dPmL_dT,
-                                          linoz_dPmL_dO3col,
-                                          linoz_cariolle_pscs);
-
     // Load the first month into spa_end.
   // Note: At the first time step, the data will be moved into spa_beg,
   //       and spa_end will be reloaded from file with the new month.
   const int curr_month = timestamp().get_month()-1; // 0-based
-  // linoz_reader_->read_variables(curr_month);
-  // perform_horizontal_interpolation(linoz_params_, LinozData_end_);
-
-  // perform_vertical_interpolation(linoz_params_,
-  //                                dry_atm_.p_mid,
-  //                                LinozData_end_,
-  //                                interpolated_Linoz_data_);
 
   // const std::string linoz_chlorine_file = "Linoz_Chlorine_Loading_CMIP6_0003-2017_c20171114.nc";
   // auto ts = timestamp();
@@ -423,40 +396,16 @@ void MAMMicrophysics::run_impl(const double dt) {
   // allocation perspective
   auto o3_col_dens = buffer_.scratch[8];
 
-  // auto ts = timestamp()+dt;
-  // {
-  //   /* Gather time and state information for interpolation */
-
-  // /* Update the LinozTimeState to reflect the current time, note the addition of dt */
-  // linoz_time_state_.t_now = ts.frac_of_year_in_days();
-  // /* Update time state and if the month has changed, update the data.*/
-  // update_linoz_timestate(ts,
-  //                        linoz_time_state_,
-  //                        linoz_reader_,
-  //                        linoz_params_,
-  //                        LinozData_start_,
-  //                        LinozData_end_);
-
-  // perform_time_interpolation(linoz_time_state_,
-  //                            LinozData_start_,
-  //                            LinozData_end_,
-  //                            LinozData_out_);
-
-  // perform_vertical_interpolation(linoz_params_,
-  //                                dry_atm_.p_mid,
-  //                                LinozData_out_,
-  //                                interpolated_Linoz_data_);
-
-
-  // }
-
-
   /* Gather time and state information for interpolation */
   const auto ts = timestamp()+dt;
+
 
   const Real chlorine_loading = scream::mam_coupling::chlorine_loading_advance(ts, chlorine_values_,
                            chlorine_time_secs_);
 
+
+  // /* Update the LinozTimeState to reflect the current time, note the addition of dt */
+  linoz_time_state_.t_now = ts.frac_of_year_in_days();
   scream::mam_coupling::advance_tracer_data(TracerDataReader_,
                       *TracerHorizInterp_,
                       ts,
@@ -686,7 +635,6 @@ void MAMMicrophysics::run_impl(const double dt) {
 }
 
 void MAMMicrophysics::finalize_impl() {
-  // linoz_reader_->finalize();
 }
 
 } // namespace scream
