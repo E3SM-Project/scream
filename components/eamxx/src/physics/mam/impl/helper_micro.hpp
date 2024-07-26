@@ -13,13 +13,13 @@
 namespace scream::mam_coupling {
 
   using namespace ShortFieldTagsNames;
+  using view_1d_host    = typename KT::view_1d<Real>::HostMirror;
 
-  // using npack equal to 1.
-  using LIV = ekat::LinInterp<Real,1>;
   using ExeSpace = typename KT::ExeSpace;
   using ESU = ekat::ExeSpaceUtils<ExeSpace>;
+  using C = scream::physics::Constants<Real>;
+  using LIV = ekat::LinInterp<Real,1>;
 
-  using view_1d_host    = typename KT::view_1d<Real>::HostMirror;
 
   constexpr int MAX_NVARS_TRACER=10;
 
@@ -473,10 +473,6 @@ compute_source_pressure_levels(
   const const_view_1d& hyam,
   const const_view_1d& hybm)
 {
-  using ExeSpace = typename KT::ExeSpace;
-  using ESU = ekat::ExeSpaceUtils<ExeSpace>;
-  using C = scream::physics::Constants<Real>;
-
   constexpr auto P0 = C::P0;
   const int ncols = ps_src.extent(0);
   const int num_vert_packs = p_src.extent(1);
@@ -542,10 +538,6 @@ perform_vertical_interpolation(
   const TracerData& input,
   const view_2d output[])
 {
-  using ExeSpace = typename KT::ExeSpace;
-  using ESU = ekat::ExeSpaceUtils<ExeSpace>;
-  using LIV = ekat::LinInterp<Real,1>;
-
   // At this stage, begin/end must have the same horiz dimensions
   EKAT_REQUIRE(input.ncol_==output[0].extent(0));
 #if 1
