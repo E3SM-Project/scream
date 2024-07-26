@@ -135,11 +135,10 @@ namespace scream::mam_coupling {
     void set_hyam_n_hybm(const std::shared_ptr<AbstractRemapper>& horiz_remapper,
                               const std::string& tracer_file_name)
     {
-      std::cout << has_ps<<" has_ps" << "\n";
       EKAT_REQUIRE_MSG (has_ps,
       "Error! file does have the PS variable. \n");
 
-      // Read in hyam/hybm in start/end data, and pad them
+      // Read in hyam/hybm in start/end data
       auto nondim = ekat::units::Units::nondimensional();
       const auto io_grid = horiz_remapper->get_src_grid();
       Field hyam_f(FieldIdentifier("hyam",io_grid->get_vertical_layout(true),nondim,io_grid->name()));
@@ -152,6 +151,7 @@ namespace scream::mam_coupling {
       hyam = hyam_f.get_view<const Real*>();
       hybm = hyam_f.get_view<const Real*>();
     }
+
   };
 
   struct LinozData {
@@ -860,6 +860,48 @@ compute_source_pressure_levels(
 } // compute_source_pressure_levels
 
 
+// Linoz NetCDF files use levs instead of formula_terms.
+// This function allocates a view, so we need to do it during initialization.
+// Thus, we assume that source pressure is independent of time,
+// which is the case for Linoz files (zonal file).
+  inline void compute_p_src_zonal_files(const std::string& tracer_file_name,
+                                      const view_2d& p_src)
+   {
+      EKAT_REQUIRE_MSG (p_src.data()!=0 ,
+      "Error: p_src has not been allocated. \n");
+    // Read in levs in start/end data
+    // FIXME: units are mbar; how can I get units using scorpio interface
+      auto nondim = ekat::units::Units::nondimensional();
+      scorpio::register_file(tracer_file_name,scorpio::Read);
+      const int nlevs_data = scorpio::get_dimlen(tracer_file_name,"lev");
+      view_1d_host levs_h("levs_h", nlevs_data);
+      scorpio::read_var(tracer_file_name, "lev", levs_h.data());
+      scorpio::release_file(tracer_file_name);
+      view_1d levs("levs", nlevs_data);
+      Kokkos::deep_copy(levs, levs_h);
+
+      const int ncol = p_src.extent(0);
+      EKAT_REQUIRE_MSG (p_src.extent(1) == nlevs_data ,
+      "Error: p_src has a different number of levels than the source data. \n");
+
+      const auto policy_pressure = ESU::get_default_team_policy(ncol, nlevs_data);
+      const int pi =haero::Constants::pi;
+      Kokkos::parallel_for("pressure_computation", policy_pressure,
+        KOKKOS_LAMBDA(const Team& team) {
+        const int icol = team.league_rank();
+        Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlevs_data),
+         [&] (const Int& kk) {
+          // mbar->pascals
+          // FIXME: Does EAMxx have a better method to convert units?"
+          p_src(icol, kk) = levs(kk)*100;
+      });
+    });
+  Kokkos::fence();
+
+
+   }
+
+
 inline void
 perform_vertical_interpolation(
   const view_2d& p_src_c,
@@ -891,6 +933,7 @@ perform_vertical_interpolation(
   const int ncols     = input.ncol_;
   // FIXME: I am getting FPEs if I do not subtract 1 from nlevs_src.
   const int nlevs_src = input.nlev_-1;
+  std::cout << nlevs_src << " nlevs_src" << "\n";
   const int nlevs_tgt = output[0].extent(1);
 
   LIV vert_interp(ncols,nlevs_src,nlevs_tgt);
@@ -960,6 +1003,7 @@ advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
   data_tracer_beg,
   data_tracer_end,
   data_tracer_out);
+
   if (data_tracer_out.has_ps){
   // Step 2. Compute source pressure levels
   compute_source_pressure_levels(
@@ -972,7 +1016,6 @@ advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
 
 
   // Step 3. Perform vertical interpolation
-
   perform_vertical_interpolation(
   p_src,
   p_tgt,

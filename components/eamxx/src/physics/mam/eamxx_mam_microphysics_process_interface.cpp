@@ -165,16 +165,16 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
   // and configuring the necessary parameters for the Linoz model.
   {
     // std::string linoz_file_name="linoz1850-2015_2010JPL_CMIP6_10deg_58km_c20171109.nc";
-    std::string linoz_file_name =
+    linoz_file_name_ =
       m_params.get<std::string>("mam4_linoz_file_name");
     std::string spa_map_file="";
     std::vector<std::string> var_names{"o3_clim", "o3col_clim", "t_clim", "PmL_clim", "dPmL_dO3", "dPmL_dT", "dPmL_dO3col","cariolle_pscs"};
     bool has_ps=false;
-    LinozHorizInterp_ = scream::mam_coupling::create_horiz_remapper(grid_,linoz_file_name,spa_map_file, var_names, has_ps);
-    LinozDataReader_ = scream::mam_coupling::create_tracer_data_reader(LinozHorizInterp_,linoz_file_name);
+    LinozHorizInterp_ = scream::mam_coupling::create_horiz_remapper(grid_,linoz_file_name_,spa_map_file, var_names, has_ps);
+    LinozDataReader_ = scream::mam_coupling::create_tracer_data_reader(LinozHorizInterp_,linoz_file_name_);
     linoz_data_out_.set_has_ps(has_ps);
      if (has_ps) {
-       linoz_data_out_.set_hyam_n_hybm(LinozHorizInterp_,linoz_file_name);
+       linoz_data_out_.set_hyam_n_hybm(LinozHorizInterp_,linoz_file_name_);
      }
     linoz_data_beg_.set_has_ps(has_ps);
     linoz_data_end_.set_has_ps(has_ps);
@@ -389,6 +389,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
     const int num_cols_io_linoz = io_grid_linoz->get_num_local_dofs(); // Number of columns on this rank
     const int num_levs_io_linoz = io_grid_linoz->get_num_vertical_levels();  // Number of levels per column
     const int nvars = 8;
+    std::cout <<num_levs_io_linoz <<" num_levs_io_linoz" << "\n";
     linoz_data_end_.init(num_cols_io_linoz, num_levs_io_linoz, nvars);
     scream::mam_coupling::update_tracer_data_from_file(LinozDataReader_,
     timestamp(),curr_month, *LinozHorizInterp_, linoz_data_end_);
@@ -399,15 +400,16 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
       linoz_data_beg_.allocate_ps();
     }
 
-
     linoz_data_out_.init(num_cols_io_linoz, num_levs_io_linoz, nvars);
     linoz_data_out_.allocate_data_views();
     if (linoz_data_out_.has_ps)
     {
       linoz_data_out_.allocate_ps();
-    }
-
-    p_src_linoz_ = view_2d("pressure_src_invariant",num_cols_io_linoz, num_levs_io_linoz );
+    } else {
+      // we use ncremap and pythons scripts to convert zonal files to ne4pn4 grids.
+      p_src_linoz_ = view_2d("pressure_src_invariant",ncol_, num_levs_io_linoz );
+      scream::mam_coupling::compute_p_src_zonal_files(linoz_file_name_,p_src_linoz_);
+     }
   }
 #endif
 
@@ -421,8 +423,6 @@ void MAMMicrophysics::run_impl(const double dt) {
   // preprocess input -- needs a scan for the calculation of atm height
   Kokkos::parallel_for("preprocess", scan_policy, preprocess_);
   Kokkos::fence();
-
-
 
   // reset internal WSM variables
   //workspace_mgr_.reset_internals();

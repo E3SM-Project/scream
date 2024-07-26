@@ -252,6 +252,7 @@ private_except_cuda:
   mam_coupling::TracerData linoz_data_beg_;
   mam_coupling::TracerData linoz_data_out_;
   view_2d p_src_linoz_;
+  std::string linoz_file_name_;
 
 
 
