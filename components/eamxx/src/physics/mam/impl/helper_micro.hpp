@@ -20,6 +20,10 @@ namespace scream::mam_coupling {
   using C = scream::physics::Constants<Real>;
   using LIV = ekat::LinInterp<Real,1>;
 
+  /* Maximum number of tracers (or fields) that the tracer reader can handle.
+   Note: We are not allocating memory for MAX_NVARS_TRACER tracers.
+   Therefore, if a file contains more than this number, it is acceptable to increase this limit.
+    Currently, Linoz files have 8 fields. */
   constexpr int MAX_NVARS_TRACER=10;
 
   // Linoz structures to help manage all of the variables:
