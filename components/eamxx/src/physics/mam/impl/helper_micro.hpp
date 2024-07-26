@@ -60,6 +60,8 @@ namespace scream::mam_coupling {
     int ncol_{-1};
     int nlev_{-1};
     int nvars_{-1};
+    // We cannot use a std::vector<view_2d>
+    // because we need to access these views from device.
     view_2d data[MAX_NVARS_TRACER];
     view_1d ps;
     const_view_1d hyam;
@@ -132,6 +134,7 @@ namespace scream::mam_coupling {
   };
 
 // Direct port of components/eam/src/chemistry/utils/tracer_data.F90/vert_interp
+// FIXME: I need to convert for loops to Kokkos loops.
 KOKKOS_INLINE_FUNCTION
 void vert_interp(int ncol,
                  int levsiz,
@@ -529,10 +532,7 @@ compute_source_pressure_levels(
       });
     });
   Kokkos::fence();
-
-
    }
-
 
 inline void
 perform_vertical_interpolation(
@@ -640,7 +640,6 @@ advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
     data_tracer_out.hybm);
 
   }
-
 
   // Step 3. Perform vertical interpolation
   perform_vertical_interpolation(
