@@ -786,6 +786,7 @@ update_tracer_timestate(
   const auto data_end = data_tracer_end.data;
   const auto data_out = data_tracer_out.data;
 
+  const auto has_ps = data_tracer_out.has_ps;
 
   const auto ps_beg = data_tracer_beg.ps;
   const auto ps_end = data_tracer_end.ps;
@@ -824,8 +825,8 @@ update_tracer_timestate(
                           [&] (const int& k) {
       var_out(k) = linear_interp(var_beg(k),var_end(k),delta_t_fraction);
     });
-
-    if(ivar==1){
+    // linoz files do not have ps variables.
+    if(ivar==1 && has_ps){
        ps_out(icol) = linear_interp(ps_beg(icol), ps_end(icol),delta_t_fraction);
     }
 
@@ -933,7 +934,6 @@ perform_vertical_interpolation(
   const int ncols     = input.ncol_;
   // FIXME: I am getting FPEs if I do not subtract 1 from nlevs_src.
   const int nlevs_src = input.nlev_-1;
-  std::cout << nlevs_src << " nlevs_src" << "\n";
   const int nlevs_tgt = output[0].extent(1);
 
   LIV vert_interp(ncols,nlevs_src,nlevs_tgt);

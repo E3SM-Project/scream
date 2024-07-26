@@ -389,7 +389,6 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
     const int num_cols_io_linoz = io_grid_linoz->get_num_local_dofs(); // Number of columns on this rank
     const int num_levs_io_linoz = io_grid_linoz->get_num_vertical_levels();  // Number of levels per column
     const int nvars = 8;
-    std::cout <<num_levs_io_linoz <<" num_levs_io_linoz" << "\n";
     linoz_data_end_.init(num_cols_io_linoz, num_levs_io_linoz, nvars);
     scream::mam_coupling::update_tracer_data_from_file(LinozDataReader_,
     timestamp(),curr_month, *LinozHorizInterp_, linoz_data_end_);
@@ -477,7 +476,6 @@ void MAMMicrophysics::run_impl(const double dt) {
                       dry_atm_.p_mid,
                       cnst_offline_);
 
-   //
    scream::mam_coupling::advance_tracer_data(LinozDataReader_,
                       *LinozHorizInterp_,
                       ts,
