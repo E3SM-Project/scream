@@ -14,6 +14,7 @@ The following options can be specified:
 
 ```shell
 ./atmchange ML_model_path_tq=/path/to/pretrained/temperature_and_specific_humidity_model
+./atmchange ML_model_path_temperature=/path/to/pretrained/temperature_only_model
 ./atmchange ML_model_path_uv=/path/to/pretrained/u_and_v_model
 ./atmchange ML_model_path_sfc_fluxes=/path/to/pretrained/surface_fluxes_model
 ```

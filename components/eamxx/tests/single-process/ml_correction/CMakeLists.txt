@@ -12,13 +12,7 @@ else()
     message(FATAL_ERROR "pybind11 is missing. Use CMake >= 3.11 or download it")
 endif()
 
-message(STATUS "Python_EXECUTABLE: ${Python_EXECUTABLE}")
-message(STATUS "Python_INCLUDE_DIRS: ${Python_INCLUDE_DIRS}")
-message(STATUS "Python_LIBRARIES: ${Python_LIBRARIES}")
 find_package(Python REQUIRED COMPONENTS Interpreter Development)
-message(STATUS "Python_EXECUTABLE: ${Python_EXECUTABLE}")
-message(STATUS "Python_INCLUDE_DIRS: ${Python_INCLUDE_DIRS}")
-message(STATUS "Python_LIBRARIES: ${Python_LIBRARIES}")
 
 CreateUnitTest(ml_correction_standalone "ml_correction_standalone.cpp"
   LIBS pybind11::pybind11 Python::Python ml_correction scream_control scream_share
