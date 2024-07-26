@@ -463,7 +463,7 @@ void MAMMicrophysics::run_impl(const double dt) {
                            chlorine_time_secs_);
 
 
-  // /* Update the LinozTimeState to reflect the current time, note the addition of dt */
+  // /* Update the TracerTimeState to reflect the current time, note the addition of dt */
   linoz_time_state_.t_now = ts.frac_of_year_in_days();
   scream::mam_coupling::advance_tracer_data(TracerDataReader_,
                       *TracerHorizInterp_,

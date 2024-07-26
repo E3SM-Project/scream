@@ -20,11 +20,10 @@ namespace scream::mam_coupling {
   using C = scream::physics::Constants<Real>;
   using LIV = ekat::LinInterp<Real,1>;
 
-
   constexpr int MAX_NVARS_TRACER=10;
 
   // Linoz structures to help manage all of the variables:
-  struct LinozTimeState {
+  struct TracerTimeState {
     // Whether the timestate has been initialized.
     // The current month
     int current_month = -1;
@@ -36,7 +35,7 @@ namespace scream::mam_coupling {
     Real t_now;
     // Number of days in the current month, cast as a Real
     Real days_this_month;
-  }; // LinozTimeState
+  }; // TricerTimeState
 
   struct TracerData{
     TracerData() = default;
@@ -361,7 +360,7 @@ update_tracer_timestate(
     std::shared_ptr<AtmosphereInput>& scorpio_reader,
     const util::TimeStamp&            ts,
     AbstractRemapper&                 tracer_horiz_interp,
-    LinozTimeState&                   time_state,
+    TracerTimeState&                   time_state,
     TracerData&  data_tracer_beg,
     TracerData&  data_tracer_end)
 {
@@ -401,7 +400,7 @@ update_tracer_timestate(
 
 // This function is based on the SPA::perform_time_interpolation function.
  inline void perform_time_interpolation(
-  const LinozTimeState& time_state,
+  const TracerTimeState& time_state,
   const TracerData& data_tracer_beg,
   const TracerData& data_tracer_end,
   const TracerData& data_tracer_out)
@@ -602,7 +601,7 @@ inline void
 advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
                     AbstractRemapper& tracer_horiz_interp,
                     const util::TimeStamp& ts,
-                    LinozTimeState& time_state,
+                    TracerTimeState& time_state,
                     TracerData& data_tracer_beg,
                     TracerData& data_tracer_end,
                     TracerData& data_tracer_out,
