@@ -229,7 +229,7 @@ private_except_cuda:
   // sets defaults for "namelist parameters"
   void set_defaults_();
 
-  mam_coupling::LinozTimeState linoz_time_state_;
+  mam_coupling::TracerTimeState linoz_time_state_;
   view_2d work_photo_table_;
   std::vector<Real> chlorine_values_;
   std::vector<int> chlorine_time_secs_;
