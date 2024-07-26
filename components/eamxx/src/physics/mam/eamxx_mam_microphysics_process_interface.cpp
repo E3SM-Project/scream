@@ -181,15 +181,17 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
 
   }
   {
-     std::string my_file="oxid_1.9x2.5_L26_1850-2015_ne2np4L72_c20240722_OD.nc";
+     oxid_file_name_ =
+      m_params.get<std::string>("mam4_oxid_file_name");
      std::string spa_map_file="";
      std::vector<std::string> var_names{"O3","HO2","NO3","OH"};
      bool has_ps=false;
-     TracerHorizInterp_ = scream::mam_coupling::create_horiz_remapper(grid_,my_file,spa_map_file, var_names, has_ps);
-     TracerDataReader_ = scream::mam_coupling::create_tracer_data_reader(TracerHorizInterp_,my_file);
+     TracerHorizInterp_ = scream::mam_coupling::create_horiz_remapper(grid_,oxid_file_name_,
+     spa_map_file, var_names, has_ps);
+     TracerDataReader_ = scream::mam_coupling::create_tracer_data_reader(TracerHorizInterp_,oxid_file_name_);
      tracer_data_out_.set_has_ps(has_ps);
      if (has_ps) {
-       tracer_data_out_.set_hyam_n_hybm(TracerHorizInterp_,my_file);
+       tracer_data_out_.set_hyam_n_hybm(TracerHorizInterp_,oxid_file_name_);
      }
      tracer_data_beg_.set_has_ps(has_ps);
      tracer_data_end_.set_has_ps(has_ps);

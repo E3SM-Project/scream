@@ -243,6 +243,7 @@ private_except_cuda:
   mam_coupling::TracerData tracer_data_beg_;
   mam_coupling::TracerData tracer_data_out_;
   view_2d p_src_invariant_;
+  std::string oxid_file_name_;
   view_2d cnst_offline_[4];
 
   // linoz reader
