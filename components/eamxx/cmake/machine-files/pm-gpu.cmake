@@ -19,7 +19,6 @@ endif()
 include (${EKAT_MACH_FILES_PATH}/mpi/srun.cmake)
 
 set(PYBIND11_PYTHON_VERSION 3.9 CACHE STRING "")
-execute_process(COMMAND conda activate /global/common/software/m4492/fv3net-shared-py39)
 option (SCREAM_ENABLE_ML_CORRECTION "Whether to enable ML correction parametrization" ON)
 set(EKAT_MPI_EXTRA_ARGS "${EKAT_MPI_EXTRA_ARGS} --gpus-per-task=1" CACHE STRING "" FORCE)
 
