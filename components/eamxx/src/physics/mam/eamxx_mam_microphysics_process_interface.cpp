@@ -412,6 +412,34 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
       scream::mam_coupling::compute_p_src_zonal_files(linoz_file_name_,p_src_linoz_);
      }
   }
+
+    // linoz reader
+  {
+    const auto io_grid_emis = VertEmissionsHorizInterp_->get_src_grid();
+    const int num_cols_io_emis = io_grid_emis->get_num_local_dofs(); // Number of columns on this rank
+    const int num_levs_io_emis = io_grid_emis->get_num_vertical_levels();  // Number of levels per column
+    const int nvars = 1;
+    vert_emis_data_end_.init(num_cols_io_emis, num_levs_io_emis, nvars);
+    scream::mam_coupling::update_tracer_data_from_file(VertEmissionsDataReader_,
+    timestamp(),curr_month, *VertEmissionsHorizInterp_, vert_emis_data_end_);
+
+    vert_emis_data_beg_.init(num_cols_io_emis, num_levs_io_emis, nvars);
+    vert_emis_data_beg_.allocate_data_views();
+    if (vert_emis_data_beg_.has_ps){
+      vert_emis_data_beg_.allocate_ps();
+    }
+
+    vert_emis_data_out_.init(num_cols_io_emis, num_levs_io_emis, nvars);
+    vert_emis_data_out_.allocate_data_views();
+    if (vert_emis_data_out_.has_ps)
+    {
+      vert_emis_data_out_.allocate_ps();
+    } else {
+      // p_src_linoz_ = view_2d("pressure_src_invariant",ncol_, num_levs_io_linoz );
+      // scream::mam_coupling::compute_p_src_zonal_files(linoz_file_name_,p_src_linoz_);
+     }
+  }
+
 #endif
 
 }
@@ -516,6 +544,13 @@ void MAMMicrophysics::run_impl(const double dt) {
     auto z_iface = ekat::subview(dry_atm.z_iface, icol);
     Real phis = dry_atm.phis(icol);
 
+    // liquid water cloud content
+    const auto& lwc_icol = ekat::subview(lwc, icol);
+    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&](const int k) {
+    lwc_icol(k) = atm.ice_mixing_ratio(k) + atm.liquid_mixing_ratio(k);
+     });
+     team.team_barrier();
+
     // set surface state data
     haero::Surface sfc{};
 
@@ -527,11 +562,7 @@ void MAMMicrophysics::run_impl(const double dt) {
 
     // calculate o3 column densities (first component of col_dens in Fortran code)
     auto o3_col_dens_i = ekat::subview(o3_col_dens, icol);
-<<<<<<< HEAD
-    //impl::compute_o3_column_density(team, atm, progs, o3_col_dens_i);
-=======
     // impl::compute_o3_column_density(team, atm, progs, o3_col_dens_i);
->>>>>>> microphysics - Adding photo table paths to input file.
 
     // set up photolysis work arrays for this column.
     mam4::mo_photo::PhotoTableWorkArrays photo_work_arrays_icol;
@@ -542,7 +573,6 @@ void MAMMicrophysics::run_impl(const double dt) {
     mam4::mo_photo::set_photo_table_work_arrays(photo_table,
                                                 work_photo_table_icol,
                                                 photo_work_arrays_icol);
-
     // ... look up photolysis rates from our table
     // NOTE: the table interpolation operates on an entire column of data, so we
     // NOTE: must do it before dispatching to individual vertical levels
