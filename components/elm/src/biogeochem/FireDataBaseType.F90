@@ -8,8 +8,12 @@ module FireDataBaseType
      !
      ! !USES:
      use shr_kind_mod    , only : r8 => shr_kind_r8, CL => shr_kind_CL
+#if !defined SCREAM_SYSTEM_WORKAROUND || SCREAM_SYSTEM_WORKAROUND != 1
      use shr_strdata_mod , only : shr_strdata_type, shr_strdata_create, shr_strdata_print
      use shr_strdata_mod , only : shr_strdata_advance
+#else
+     use shr_strdata_mod , only : shr_strdata_type
+#endif
      use shr_log_mod     , only : errMsg => shr_log_errMsg
      use elm_varctl      , only : iulog, inst_name
      use spmdMod         , only : masterproc, mpicom, comp_id
@@ -36,10 +40,10 @@ module FireDataBaseType
          real(r8), public, pointer :: forc_hdm(:)     ! Human population density
 
          real(r8), public, pointer :: gdp_lf_col(:)   ! col global real gdp data (k US$/capita)
-   
-         type(shr_strdata_type) :: sdat_hdm           ! Human population density input data stream
-         type(shr_strdata_type) :: sdat_lnfm          ! Lightning input data stream
-   
+#if !defined SCREAM_SYSTEM_WORKAROUND || SCREAM_SYSTEM_WORKAROUND != 1
+         type(shr_strdata_type), private :: sdat_hdm           ! Human population density input data stream
+         type(shr_strdata_type), private :: sdat_lnfm          ! Lightning input data stream
+#endif
        contains
 
          ! !PUBLIC MEMBER FUNCTIONS:
@@ -219,7 +223,7 @@ module FireDataBaseType
       endif
    
       call elm_domain_mct (bounds, dom_elm)
-   
+#if !defined SCREAM_SYSTEM_WORKAROUND || SCREAM_SYSTEM_WORKAROUND != 1
       call shr_strdata_create(this%sdat_hdm,name="clmhdm", &
            pio_subsystem=pio_subsystem,                    &
            pio_iotype=shr_pio_getiotype(inst_name),        &
@@ -250,7 +254,7 @@ module FireDataBaseType
       if (masterproc) then
          call shr_strdata_print(this%sdat_hdm,'population density data')
       endif
-   
+#endif
       ! Add history fields
       call hist_addfld1d (fname='HDM', units='counts/km^2',      &
             avgflag='A', long_name='human population density',   &
@@ -282,7 +286,7 @@ module FireDataBaseType
    
       call get_curr_date(year, mon, day, sec)
       mcdate = year*10000 + mon*100 + day
-   
+#if !defined SCREAM_SYSTEM_WORKAROUND || SCREAM_SYSTEM_WORKAROUND != 1
       call shr_strdata_advance(this%sdat_hdm, mcdate, sec, mpicom, 'hdmdyn')
    
       ig = 0
@@ -290,7 +294,7 @@ module FireDataBaseType
          ig = ig+1
          this%forc_hdm(g) = this%sdat_hdm%avs(1)%rAttr(1,ig)
       end do
-   
+#endif
      end subroutine hdm_interp
    
      !-----------------------------------------------------------------------
@@ -375,7 +379,7 @@ module FireDataBaseType
       endif
    
       call elm_domain_mct (bounds, dom_elm)
-   
+#if !defined SCREAM_SYSTEM_WORKAROUND || SCREAM_SYSTEM_WORKAROUND != 1
       call shr_strdata_create(this%sdat_lnfm,name="clmlnfm", &
            pio_subsystem=pio_subsystem,                      &
            pio_iotype=shr_pio_getiotype(inst_name),          &
@@ -406,7 +410,7 @@ module FireDataBaseType
       if (masterproc) then
          call shr_strdata_print(this%sdat_lnfm,'Lightning data')
       endif
-   
+#endif
       ! Add history fields
       call hist_addfld1d (fname='LNFM', units='counts/km^2/hr',  &
             avgflag='A', long_name='Lightning frequency',        &
@@ -438,7 +442,7 @@ module FireDataBaseType
    
       call get_curr_date(year, mon, day, sec)
       mcdate = year*10000 + mon*100 + day
-   
+#if !defined SCREAM_SYSTEM_WORKAROUND || SCREAM_SYSTEM_WORKAROUND != 1
       call shr_strdata_advance(this%sdat_lnfm, mcdate, sec, mpicom, 'lnfmdyn')
    
       ig = 0
@@ -446,7 +450,7 @@ module FireDataBaseType
          ig = ig+1
          this%forc_lnfm(g) = this%sdat_lnfm%avs(1)%rAttr(1,ig)
       end do
-   
+#endif
      end subroutine lnfm_interp
    
      !-----------------------------------------------------------------------

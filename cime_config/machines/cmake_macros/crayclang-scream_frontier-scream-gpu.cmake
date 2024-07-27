@@ -17,7 +17,7 @@ if (compile_threaded)
   string(APPEND CMAKE_EXE_LINKER_FLAGS " -fopenmp")
 endif()
 
-string(APPEND CMAKE_Fortran_FLAGS " -hipa0 -hzero -f free")
+string(APPEND CMAKE_Fortran_FLAGS " -hipa0 -f free")
 
 string(APPEND CMAKE_EXE_LINKER_FLAGS " -L$ENV{ROCM_PATH}/lib -lamdhip64 -L/opt/gcc/12.2.0/snos/lib64")
 string(APPEND CMAKE_CXX_FLAGS " -I$ENV{ROCM_PATH}/include")
