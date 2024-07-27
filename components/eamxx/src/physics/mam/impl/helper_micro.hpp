@@ -143,6 +143,21 @@ namespace scream::mam_coupling {
 
   };
 
+  inline
+  const_view_1d get_altitude_int(const std::shared_ptr<AbstractRemapper>& horiz_remapper,
+                                 const std::string& tracer_file_name)
+  {
+      // Read in hyam/hybm in start/end data
+      auto nondim = ekat::units::Units::nondimensional();
+      const auto io_grid = horiz_remapper->get_src_grid();
+      Field altitude_int_f(FieldIdentifier("altitude_int",io_grid->get_vertical_layout(false),nondim,io_grid->name()));
+      altitude_int_f.allocate_view();
+      AtmosphereInput hvcoord_reader(tracer_file_name,io_grid,{altitude_int_f},true);
+      hvcoord_reader.read_variables();
+      hvcoord_reader.finalize();
+      return altitude_int_f.get_view<const Real*>();
+  }// set_altitude_int
+
 // Direct port of components/eam/src/chemistry/utils/tracer_data.F90/vert_interp
 // FIXME: I need to convert for loops to Kokkos loops.
 KOKKOS_INLINE_FUNCTION
@@ -357,6 +372,7 @@ create_horiz_remapper (
 
 
   for(auto  var_name : var_names){
+    std::cout << var_name << " var_name" << "\n";
     Field ifield(FieldIdentifier(var_name,  layout_3d_mid,  nondim,tgt_grid->name()));
     ifield.allocate_view();
     remapper->register_field_from_tgt (ifield);
@@ -364,6 +380,7 @@ create_horiz_remapper (
   // zonal files do not have the PS variable.
   if (tracer_file_type == FORMULA_PS)
   {
+    std::cout << "PS var_name" << "\n";
     Field ps (FieldIdentifier("PS",        layout_2d,  nondim,tgt_grid->name()));
     ps.allocate_view();
     remapper->register_field_from_tgt (ps);
@@ -381,6 +398,7 @@ create_tracer_data_reader
   const std::shared_ptr<AbstractRemapper>& horiz_remapper,
   const std::string& tracer_data_file)
 {
+  std::cout << horiz_remapper->get_num_fields() <<" horiz_remapper->get_num_fields()" << "\n";
   std::vector<Field> io_fields;
   for (int i=0; i<horiz_remapper->get_num_fields(); ++i) {
     io_fields.push_back(horiz_remapper->get_src_field(i));
@@ -404,6 +422,7 @@ update_tracer_data_from_file(
  tracer_horiz_interp.remap(/*forward = */ true);
  //
  const int nvars =tracer_data.nvars_;
+ std::cout << nvars << " nvars" << "\n";
 
   //
  for (int i = 0; i < nvars; ++i) {
@@ -598,6 +617,8 @@ perform_vertical_interpolation(
 {
   // At this stage, begin/end must have the same horiz dimensions
   EKAT_REQUIRE(input.ncol_==output[0].extent(0));
+  std::cout << FORMULA_PS <<" FORMULA_PS" << "\n";
+
 #if 1
   // FIXME: I was encountering a compilation error when using const_view_2d.
   // The issue is fixed by https://github.com/E3SM-Project/EKAT/pull/346.
@@ -656,6 +677,92 @@ perform_vertical_interpolation(
   Kokkos::fence();
 }
 
+// rebin is a port from: https://github.com/eagles-project/e3sm_mam4_refactor/blob/ee556e13762e41a82cb70a240c54dc1b1e313621/components/eam/src/chemistry/utils/mo_util.F90#L12
+inline void rebin(int nsrc, int ntrg,
+                  const const_view_1d& src_x,
+                  const Real trg_x[],
+                  const view_1d& src,
+                  const view_1d& trg) {
+
+    for (int i = 0; i < ntrg; ++i) {
+        Real tl = trg_x[i];
+        if (tl < src_x(nsrc)) {
+            int sil = 0;
+            for (; sil <= nsrc; ++sil) {
+                if (tl <= src_x(sil)) {
+                    break;
+                }
+            }
+            Real tu = trg_x[i + 1];
+            int siu = 0;
+            for (; siu <= nsrc; ++siu) {
+                if (tu <= src_x(siu)) {
+                    break;
+                }
+            }
+            Real y = 0.0;
+            sil = haero::max(sil, 1);
+            siu = haero::min(siu, nsrc);
+            for (int si = sil; si <= siu; ++si) {
+                int si1 = si - 1;
+                Real sl = haero::max(tl, src_x(si1));
+                Real su = haero::min(tu, src_x(si));
+                y += (su - sl) * src(si1);
+            }
+            trg(i) = y / (trg_x[i + 1] - trg_x[i]);
+        } else {
+            trg(i) = 0.0;
+        }
+    }
+}// rebin
+
+inline void perform_vertical_interpolation(const const_view_1d& altitude_int,
+                                           const const_view_2d& zi,
+                                           const TracerData& input,
+                                           const view_2d output[])
+{
+  EKAT_REQUIRE_MSG (input.file_type == VERT_EMISSION,
+      "Error! vertical interpolation only with altitude variable. \n");
+  const int ncols     = input.ncol_;
+  const int num_vars = input.nvars_;
+  const int ntrg = output[0].extent(1);
+  const int num_vert_packs = ntrg;
+  const int outer_iters = ncols*num_vars;
+  const auto policy_interp = ESU::get_default_team_policy(outer_iters, num_vert_packs);
+  // FIXME: Get m2km from emaxx.
+  const Real m2km =1e-3;
+  const auto& src_x = altitude_int;
+  const int nsrc = input.nlev_;
+  constexpr int pver = mam4::nlev;
+  const int pverp = pver + 1;
+
+  Kokkos::parallel_for("tracer_vert_interp_loop", policy_interp,
+    KOKKOS_LAMBDA(const Team& team) {
+
+      const int icol = team.league_rank() / num_vars;
+      const int ivar = team.league_rank() % num_vars;
+
+      const auto src = ekat::subview(input.data[ivar],icol);
+      const auto trg = ekat::subview(output[ivar],icol);
+
+      // trg_x
+      Real trg_x[pver+1];
+      // I am trying to do this:
+      // model_z(1:pverp) = m2km * state(c)%zi(i,pverp:1:-1)
+      for (int i = 0; i < pverp; ++i)
+      {
+        trg_x[pverp-i-1] = m2km * zi(icol,i);
+      }
+      team.team_barrier();
+
+      rebin(nsrc, ntrg,
+                  src_x,
+                  trg_x,
+                  src,
+                  trg);
+    });
+}
+
 inline void
 advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
                     AbstractRemapper& tracer_horiz_interp,
@@ -666,12 +773,15 @@ advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
                     TracerData& data_tracer_out,
                     const view_2d& p_src,
                     const const_view_2d& p_tgt,
+                    const const_view_1d& zi_src,
+                    const const_view_2d& zi_tgt,
                     const view_2d output[])
 {
 
   /* Update the TracerTimeState to reflect the current time, note the addition of dt */
   time_state.t_now = ts.frac_of_year_in_days();
   /* Update time state and if the month has changed, update the data.*/
+  std::cout << " update_tracer_timestate" << "\n";
   update_tracer_timestate(
     scorpio_reader,
     ts,
@@ -680,6 +790,7 @@ advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
     data_tracer_beg,
     data_tracer_end);
   // Step 1. Perform time interpolation
+  std::cout << " perform_time_interpolation" << "\n";
   perform_time_interpolation(
   time_state,
   data_tracer_beg,
@@ -688,6 +799,7 @@ advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
 
   if (data_tracer_out.file_type == FORMULA_PS )
   {
+    std::cout << " compute_source_pressure_levels" << "\n";
   // Step 2. Compute source pressure levels
   compute_source_pressure_levels(
     data_tracer_out.ps,
@@ -697,11 +809,24 @@ advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
   }
 
   // Step 3. Perform vertical interpolation
+  if (data_tracer_out.file_type == FORMULA_PS || data_tracer_out.file_type == ZONAL)
+  {
+    std::cout << " perform_vertical_interpolation FORMULA_PS or ZONAL" << "\n";
   perform_vertical_interpolation(
-  p_src,
-  p_tgt,
-  data_tracer_out,
-  output);
+     p_src,
+     p_tgt,
+     data_tracer_out,
+     output);
+  } else if (data_tracer_out.file_type == VERT_EMISSION) {
+    std::cout << " perform_vertical_interpolation VERT_EMISSION" << "\n";
+    perform_vertical_interpolation(
+     zi_src,
+     zi_tgt,
+     data_tracer_out,
+     output);
+
+  }
+
 
 }// advance_tracer_data
 

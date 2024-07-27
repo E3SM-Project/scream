@@ -265,6 +265,8 @@ private_except_cuda:
   mam_coupling::TracerData vert_emis_data_out_;
   // view_2d p_src_linoz_;
   std::string vert_emis_file_name_;
+  const_view_1d vert_emis_altitude_int_;
+  view_2d vert_emis_output_[1];
 
 
 

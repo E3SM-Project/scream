@@ -169,15 +169,15 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
       m_params.get<std::string>("mam4_linoz_file_name");
     std::string spa_map_file="";
     std::vector<std::string> var_names{"o3_clim", "o3col_clim", "t_clim", "PmL_clim", "dPmL_dO3", "dPmL_dT", "dPmL_dO3col","cariolle_pscs"};
-    bool has_ps=false;
-    LinozHorizInterp_ = scream::mam_coupling::create_horiz_remapper(grid_,linoz_file_name_,spa_map_file, var_names, has_ps);
+    TracerFileType tracer_file_type;
+    LinozHorizInterp_ = scream::mam_coupling::create_horiz_remapper(grid_,linoz_file_name_,spa_map_file, var_names, tracer_file_type);
     LinozDataReader_ = scream::mam_coupling::create_tracer_data_reader(LinozHorizInterp_,linoz_file_name_);
-    linoz_data_out_.set_has_ps(has_ps);
-     if (has_ps) {
+    linoz_data_out_.set_file_type(tracer_file_type);
+     if (tracer_file_type == TracerFileType::FORMULA_PS) {
        linoz_data_out_.set_hyam_n_hybm(LinozHorizInterp_,linoz_file_name_);
      }
-    linoz_data_beg_.set_has_ps(has_ps);
-    linoz_data_end_.set_has_ps(has_ps);
+    linoz_data_beg_.set_file_type(tracer_file_type);
+    linoz_data_end_.set_file_type(tracer_file_type);
 
   }
   {
@@ -185,16 +185,16 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
       m_params.get<std::string>("mam4_oxid_file_name");
      std::string spa_map_file="";
      std::vector<std::string> var_names{"O3","HO2","NO3","OH"};
-     bool has_ps=false;
+     TracerFileType tracer_file_type;
      TracerHorizInterp_ = scream::mam_coupling::create_horiz_remapper(grid_,oxid_file_name_,
-     spa_map_file, var_names, has_ps);
+     spa_map_file, var_names, tracer_file_type);
      TracerDataReader_ = scream::mam_coupling::create_tracer_data_reader(TracerHorizInterp_,oxid_file_name_);
-     tracer_data_out_.set_has_ps(has_ps);
-     if (has_ps) {
+     tracer_data_out_.set_file_type(tracer_file_type);
+     if (tracer_file_type == TracerFileType::FORMULA_PS) {
        tracer_data_out_.set_hyam_n_hybm(TracerHorizInterp_,oxid_file_name_);
      }
-     tracer_data_beg_.set_has_ps(has_ps);
-     tracer_data_end_.set_has_ps(has_ps);
+     tracer_data_beg_.set_file_type(tracer_file_type);
+     tracer_data_end_.set_file_type(tracer_file_type);
   }
 
 #if 1
@@ -408,17 +408,18 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
 
     linoz_data_beg_.init(num_cols_io_linoz, num_levs_io_linoz, nvars);
     linoz_data_beg_.allocate_data_views();
-    if (linoz_data_beg_.has_ps){
+    if (linoz_data_beg_.file_type == TracerFileType::FORMULA_PS){
       linoz_data_beg_.allocate_ps();
     }
 
     linoz_data_out_.init(num_cols_io_linoz, num_levs_io_linoz, nvars);
     linoz_data_out_.allocate_data_views();
-    if (linoz_data_out_.has_ps)
+    if (linoz_data_out_.file_type == TracerFileType::FORMULA_PS)
     {
       linoz_data_out_.allocate_ps();
-    } else {
-      // we use ncremap and pythons scripts to convert zonal files to ne4pn4 grids.
+    }
+    else if (linoz_data_out_.file_type == TracerFileType::ZONAL) {
+      // we use ncremap and python scripts to convert zonal files to ne4pn4 grids.
       p_src_linoz_ = view_2d("pressure_src_invariant",ncol_, num_levs_io_linoz );
       scream::mam_coupling::compute_p_src_zonal_files(linoz_file_name_,p_src_linoz_);
      }
@@ -433,22 +434,23 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
     vert_emis_data_end_.init(num_cols_io_emis, num_levs_io_emis, nvars);
     scream::mam_coupling::update_tracer_data_from_file(VertEmissionsDataReader_,
     timestamp(),curr_month, *VertEmissionsHorizInterp_, vert_emis_data_end_);
+    std::cout << "Done here in vertical emissiones" << "\n";
 
     vert_emis_data_beg_.init(num_cols_io_emis, num_levs_io_emis, nvars);
     vert_emis_data_beg_.allocate_data_views();
-    if (vert_emis_data_beg_.has_ps){
+    if (vert_emis_data_beg_.file_type == TracerFileType::FORMULA_PS){
       vert_emis_data_beg_.allocate_ps();
     }
 
     vert_emis_data_out_.init(num_cols_io_emis, num_levs_io_emis, nvars);
     vert_emis_data_out_.allocate_data_views();
-    if (vert_emis_data_out_.has_ps)
+    if (vert_emis_data_out_.file_type == TracerFileType::FORMULA_PS)
     {
       vert_emis_data_out_.allocate_ps();
     } else {
       // p_src_linoz_ = view_2d("pressure_src_invariant",ncol_, num_levs_io_linoz );
       // scream::mam_coupling::compute_p_src_zonal_files(linoz_file_name_,p_src_linoz_);
-     }
+    }
   }
 
 #endif
