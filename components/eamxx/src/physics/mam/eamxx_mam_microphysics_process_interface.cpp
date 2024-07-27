@@ -197,6 +197,17 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
      tracer_data_end_.set_has_ps(has_ps);
   }
 
+#if 1
+  {
+    vert_emis_file_name_= "cmip6_mam4_bc_a4_elev_ne2np4_2010_clim_c20240726_OD.nc";
+    std::string spa_map_file="";
+    std::vector<std::string> var_names{"BB"};
+    TracerFileType tracer_file_type;
+    VertEmissionsHorizInterp_ = scream::mam_coupling::create_horiz_remapper(grid_,vert_emis_file_name_,spa_map_file, var_names, tracer_file_type);
+    VertEmissionsDataReader_ = scream::mam_coupling::create_tracer_data_reader(VertEmissionsHorizInterp_,vert_emis_file_name_);
+    vert_emis_data_out_.set_file_type(tracer_file_type);
+  }
+#endif
 
 }
 
@@ -345,8 +356,8 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
    chlorine_values_, chlorine_time_secs_ );
   }
 
-  const int photo_table_len = get_photo_table_work_len(photo_table_);
-  work_photo_table_ = view_2d("work_photo_table", ncol_, photo_table_len);
+  // const int photo_table_len = get_photo_table_work_len(photo_table_);
+  // work_photo_table_ = view_2d("work_photo_table", ncol_, photo_table_len);
 
     // here's where we store per-column photolysis rates
   photo_rates_ = view_3d("photo_rates", ncol_, nlev_, mam4::mo_photo::phtcnt);
@@ -479,7 +490,7 @@ void MAMMicrophysics::run_impl(const double dt) {
   linoz_output[6] = linoz_dPmL_dO3col;
   linoz_output[7] = linoz_cariolle_pscs;
 
-
+  view_2d vert_emis_output[1];
 
   // it's a bit wasteful to store this for all columns, but simpler from an
   // allocation perspective
@@ -517,7 +528,20 @@ void MAMMicrophysics::run_impl(const double dt) {
                       dry_atm_.p_mid,
                       linoz_output);
 
+    //
+#if 0
+    scream::mam_coupling::advance_tracer_data(VertEmissionsDataReader_,
+                      *VertEmissionsHorizInterp_,
+                      ts,
+                      linoz_time_state_,
+                      vert_emis_data_beg_,
+                      vert_emis_data_end_,
+                      vert_emis_data_out_,
+                      p_src_linoz_,
+                      dry_atm_.p_mid,
+                      vert_emis_output);
 
+#endif
   const_view_1d &col_latitudes = col_latitudes_;
   mam_coupling::DryAtmosphere &dry_atm =  dry_atm_;
   mam_coupling::AerosolState  &dry_aero = dry_aero_;
@@ -567,12 +591,12 @@ void MAMMicrophysics::run_impl(const double dt) {
     // set up photolysis work arrays for this column.
     mam4::mo_photo::PhotoTableWorkArrays photo_work_arrays_icol;
     // FIXME: set views here
-    const auto& work_photo_table_icol = ekat::subview(work_photo_table, icol);
+    // const auto& work_photo_table_icol = ekat::subview(work_photo_table, icol);
     // set work view using 1D photo_work_arrays_icol
 
-    mam4::mo_photo::set_photo_table_work_arrays(photo_table,
-                                                work_photo_table_icol,
-                                                photo_work_arrays_icol);
+    // mam4::mo_photo::set_photo_table_work_arrays(photo_table,
+    //                                             work_photo_table_icol,
+    //                                             photo_work_arrays_icol);
     // ... look up photolysis rates from our table
     // NOTE: the table interpolation operates on an entire column of data, so we
     // NOTE: must do it before dispatching to individual vertical levels

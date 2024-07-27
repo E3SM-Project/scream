@@ -52,6 +52,8 @@ class MAMMicrophysics final : public scream::AtmosphereProcess {
   // a thread team dispatched to a single vertical column
   using ThreadTeam = mam4::ThreadTeam;
 
+  using TracerFileType = mam_coupling::TracerFileType;
+
 
 public:
 
