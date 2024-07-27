@@ -20,6 +20,15 @@ namespace scream::mam_coupling {
   using C = scream::physics::Constants<Real>;
   using LIV = ekat::LinInterp<Real,1>;
 
+  enum TracerFileType{
+      // file with PS ncol, lev, and time
+      FORMULA_PS,
+      // nc zonal file from ncremap
+      ZONAL,
+      // vertical emission files
+      VERT_EMISSION,
+  };
+
   /* Maximum number of tracers (or fields) that the tracer reader can handle.
    Note: We are not allocating memory for MAX_NVARS_TRACER tracers.
    Therefore, if a file contains more than this number, it is acceptable to increase this limit.
@@ -66,7 +75,8 @@ namespace scream::mam_coupling {
     view_1d ps;
     const_view_1d hyam;
     const_view_1d hybm;
-    bool has_ps{false};
+
+    TracerFileType file_type;
 
     void allocate_data_views()
     {
@@ -80,16 +90,16 @@ namespace scream::mam_coupling {
       }
     } //allocate_data_views
 
-    void set_has_ps(const bool has_ps_in)
+    void set_file_type (const TracerFileType file_type_in)
     {
-      has_ps=has_ps_in;
+      file_type=file_type_in;
     }
 
     void allocate_ps()
     {
       EKAT_REQUIRE_MSG (ncol_ != int(-1),
       "Error! ncols has not been set. \n");
-      EKAT_REQUIRE_MSG (has_ps,
+      EKAT_REQUIRE_MSG (file_type == FORMULA_PS,
       "Error! file does have the PS variable. \n");
 
       ps = view_1d("ps",ncol_);
@@ -106,7 +116,7 @@ namespace scream::mam_coupling {
 
     void set_data_ps(const view_1d& ps_in)
     {
-      EKAT_REQUIRE_MSG (has_ps,
+      EKAT_REQUIRE_MSG (file_type == FORMULA_PS,
       "Error! file does have the PS variable. \n");
       ps = ps_in;
     }
@@ -114,7 +124,7 @@ namespace scream::mam_coupling {
     void set_hyam_n_hybm(const std::shared_ptr<AbstractRemapper>& horiz_remapper,
                               const std::string& tracer_file_name)
     {
-      EKAT_REQUIRE_MSG (has_ps,
+      EKAT_REQUIRE_MSG (file_type == FORMULA_PS,
       "Error! file does have the PS variable. \n");
 
       // Read in hyam/hybm in start/end data
@@ -262,21 +272,49 @@ create_horiz_remapper (
     const std::string& trace_data_file,
     const std::string& map_file,
     const std::vector<std::string>& var_names,
-    bool& has_ps
+    TracerFileType& tracer_file_type
     )
 {
   using namespace ShortFieldTagsNames;
 
   scorpio::register_file(trace_data_file,scorpio::Read);
-  const int nlevs_data = scorpio::get_dimlen(trace_data_file,"lev");
+
+  // by default, I am assuming a zonal file.
+  tracer_file_type = ZONAL;
+
+  int nlevs_data =-1;
+  if (scorpio::has_var(trace_data_file,"lev")){
+    nlevs_data = scorpio::get_dimlen(trace_data_file,"lev");
+  }
+  const bool has_altitude = scorpio::has_var(trace_data_file,"altitude");
+
+  // This type of files use altitude (zi) for vertical interpolation
+  if (has_altitude){
+    nlevs_data = scorpio::get_dimlen(trace_data_file,"altitude");
+    tracer_file_type= VERT_EMISSION;
+  }
+
+  EKAT_REQUIRE_MSG (nlevs_data !=-1 ,
+      "Error: The file does not contain either lev or altitude.   \n");
+
   const int ncols_data = scorpio::get_dimlen(trace_data_file,"ncol");
-  has_ps = scorpio::has_var(trace_data_file,"PS");
+
+  // This type of files use model pressure (pmid) for vertical interpolation
+  if (scorpio::has_var(trace_data_file,"PS")) {
+    tracer_file_type= FORMULA_PS;
+  }
+
   scorpio::release_file(trace_data_file);
 
   // We could use model_grid directly if using same num levels,
   // but since shallow clones are cheap, we may as well do it (less lines of code)
   auto horiz_interp_tgt_grid = model_grid->clone("tracer_horiz_interp_tgt_grid",true);
   horiz_interp_tgt_grid->reset_num_vertical_lev(nlevs_data);
+
+  if ( has_altitude ) {
+   horiz_interp_tgt_grid->reset_field_tag_name(LEV,"altitude");
+   horiz_interp_tgt_grid->reset_field_tag_name(ILEV,"altitude_int");
+  }
 
   const int ncols_model = model_grid->get_num_global_dofs();
   std::shared_ptr<AbstractRemapper> remapper;
@@ -297,7 +335,24 @@ create_horiz_remapper (
   remapper->registration_begins();
   const auto tgt_grid = remapper->get_tgt_grid();
   const auto layout_2d   = tgt_grid->get_2d_scalar_layout();
+
   const auto layout_3d_mid = tgt_grid->get_3d_scalar_layout(true);
+  // FieldLayout  layout_3d_mid;
+  // if ( has_altitude ) {
+
+  //   auto make_layout = [](const std::vector<int>& extents,
+  //                       const std::vector<std::string>& names)
+  //   {
+  //     std::vector<FieldTag> tags(extents.size(),CMP);
+  //     return FieldLayout(tags,extents,names);
+  //   };
+  //   layout_3d_mid = make_layout({ncols_model, nlevs_data},
+  //                               {"ncol","altitude"});
+  //   // FieldLayout({FieldTag::Column,CMP},{ncols_model,nlevs_data});
+  // } else {
+  //   layout_3d_mid = tgt_grid->get_3d_scalar_layout(true);
+  // }
+
   const auto nondim = ekat::units::Units::nondimensional();
 
 
@@ -307,7 +362,7 @@ create_horiz_remapper (
     remapper->register_field_from_tgt (ifield);
   }
   // zonal files do not have the PS variable.
-  if (has_ps)
+  if (tracer_file_type == FORMULA_PS)
   {
     Field ps (FieldIdentifier("PS",        layout_2d,  nondim,tgt_grid->name()));
     ps.allocate_view();
@@ -355,7 +410,7 @@ update_tracer_data_from_file(
   tracer_data.data[i] = tracer_horiz_interp.get_tgt_field (i).get_view< Real**>();
  }
 
- if (tracer_data.has_ps) {
+ if (tracer_data.file_type == FORMULA_PS) {
      // Recall, the fields are registered in the order: tracers, ps
      // 3. Copy from the tgt field of the remapper into the spa_data
      tracer_data.ps = tracer_horiz_interp.get_tgt_field(nvars).get_view< Real*>();
@@ -424,7 +479,7 @@ update_tracer_timestate(
   const auto data_end = data_tracer_end.data;
   const auto data_out = data_tracer_out.data;
 
-  const auto has_ps = data_tracer_out.has_ps;
+  const auto file_type = data_tracer_out.file_type;
 
   const auto ps_beg = data_tracer_beg.ps;
   const auto ps_end = data_tracer_end.ps;
@@ -464,7 +519,7 @@ update_tracer_timestate(
       var_out(k) = linear_interp(var_beg(k),var_end(k),delta_t_fraction);
     });
     // linoz files do not have ps variables.
-    if(ivar==1 && has_ps){
+    if(ivar==1 && file_type == FORMULA_PS){
        ps_out(icol) = linear_interp(ps_beg(icol), ps_end(icol),delta_t_fraction);
     }
 
@@ -631,7 +686,8 @@ advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
   data_tracer_end,
   data_tracer_out);
 
-  if (data_tracer_out.has_ps) {
+  if (data_tracer_out.file_type == FORMULA_PS )
+  {
   // Step 2. Compute source pressure levels
   compute_source_pressure_levels(
     data_tracer_out.ps,
