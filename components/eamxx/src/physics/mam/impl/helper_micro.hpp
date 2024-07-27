@@ -631,14 +631,13 @@ advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
   data_tracer_end,
   data_tracer_out);
 
-  if (data_tracer_out.has_ps){
+  if (data_tracer_out.has_ps) {
   // Step 2. Compute source pressure levels
   compute_source_pressure_levels(
     data_tracer_out.ps,
     p_src,
     data_tracer_out.hyam,
     data_tracer_out.hybm);
-
   }
 
   // Step 3. Perform vertical interpolation

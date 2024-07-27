@@ -255,6 +255,16 @@ private_except_cuda:
   view_2d p_src_linoz_;
   std::string linoz_file_name_;
 
+  //
+  std::shared_ptr<AtmosphereInput>  VertEmissionsDataReader_;
+  std::shared_ptr<AbstractRemapper> VertEmissionsHorizInterp_;
+  mam_coupling::TracerData vert_emis_data_end_;
+  mam_coupling::TracerData vert_emis_data_beg_;
+  mam_coupling::TracerData vert_emis_data_out_;
+  // view_2d p_src_linoz_;
+  std::string vert_emis_file_name_;
+
+
 
 
 
