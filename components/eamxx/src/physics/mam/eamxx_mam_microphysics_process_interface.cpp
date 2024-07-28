@@ -197,17 +197,30 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
      tracer_data_end_.set_file_type(tracer_file_type);
   }
 
-#if 1
   {
     vert_emis_file_name_= "cmip6_mam4_bc_a4_elev_ne2np4_2010_clim_c20240726_OD.nc";
     std::string spa_map_file="";
     std::vector<std::string> var_names{"BB"};
+
+    for (auto file_name :vert_emis_file_name_)
+   {
     TracerFileType tracer_file_type;
-    VertEmissionsHorizInterp_ = scream::mam_coupling::create_horiz_remapper(grid_,vert_emis_file_name_,spa_map_file, var_names, tracer_file_type);
-    VertEmissionsDataReader_ = scream::mam_coupling::create_tracer_data_reader(VertEmissionsHorizInterp_,vert_emis_file_name_);
-    vert_emis_data_out_.set_file_type(tracer_file_type);
+    auto hor_rem = scream::mam_coupling::create_horiz_remapper(grid_,file_name,
+    spa_map_file, var_names, tracer_file_type);
+    auto file_reader = scream::mam_coupling::create_tracer_data_reader(hor_rem,
+    file_name);
+    scream::mam_coupling::TracerData data_out, data_beg, data_end;
+    data_out.set_file_type(tracer_file_type);
+    data_beg.set_file_type(tracer_file_type);
+    data_end.set_file_type(tracer_file_type);
+
+    VertEmissionsHorizInterp_.push_back(hor_rem);
+    VertEmissionsDataReader_.push_back(file_reader);
+    vert_emis_data_out_.push_back(data_out);
+    vert_emis_data_beg_.push_back(data_beg);
+    vert_emis_data_end_.push_back(data_end);
+   }
   }
-#endif
 
 }
 
@@ -395,7 +408,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
       cnst_offline_[ivar] = view_2d("cnst_offline_",ncol_, nlev_ );
     }
   }
-#if 1
+
   // linoz reader
   {
     const auto io_grid_linoz = LinozHorizInterp_->get_src_grid();
@@ -425,35 +438,42 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
      }
   }
 
-    // linoz reader
+  // vertical emissions
   {
-    const auto io_grid_emis = VertEmissionsHorizInterp_->get_src_grid();
-    const int num_cols_io_emis = io_grid_emis->get_num_local_dofs(); // Number of columns on this rank
-    const int num_levs_io_emis = io_grid_emis->get_num_vertical_levels();  // Number of levels per column
+    // FIXME: I am assuming 1 variable per file
     const int nvars = 1;
-    vert_emis_data_end_.init(num_cols_io_emis, num_levs_io_emis, nvars);
-    scream::mam_coupling::update_tracer_data_from_file(VertEmissionsDataReader_,
-    timestamp(),curr_month, *VertEmissionsHorizInterp_, vert_emis_data_end_);
-    std::cout << "Done here in vertical emissiones" << "\n";
-
-    vert_emis_data_beg_.init(num_cols_io_emis, num_levs_io_emis, nvars);
-    vert_emis_data_beg_.allocate_data_views();
-    if (vert_emis_data_beg_.file_type == TracerFileType::FORMULA_PS){
-      vert_emis_data_beg_.allocate_ps();
-    }
-
-    vert_emis_data_out_.init(num_cols_io_emis, num_levs_io_emis, nvars);
-    vert_emis_data_out_.allocate_data_views();
-    if (vert_emis_data_out_.file_type == TracerFileType::FORMULA_PS)
+    for (size_t i = 0; i < vert_emis_file_name_.size(); ++i)
     {
-      vert_emis_data_out_.allocate_ps();
-    } else {
-      // p_src_linoz_ = view_2d("pressure_src_invariant",ncol_, num_levs_io_linoz );
-      // scream::mam_coupling::compute_p_src_zonal_files(linoz_file_name_,p_src_linoz_);
-    }
-  }
+      const auto io_grid_emis = VertEmissionsHorizInterp_[i]->get_src_grid();
+      const int num_cols_io_emis = io_grid_emis->get_num_local_dofs(); // Number of columns on this rank
+      const int num_levs_io_emis = io_grid_emis->get_num_vertical_levels();  // Number of levels per column
+      vert_emis_data_end_[i].init(num_cols_io_emis, num_levs_io_emis, nvars);
+      scream::mam_coupling::update_tracer_data_from_file(VertEmissionsDataReader_[i],
+      timestamp(),curr_month, *VertEmissionsHorizInterp_[i], vert_emis_data_end_[i]);
 
-#endif
+      vert_emis_data_beg_[i].init(num_cols_io_emis, num_levs_io_emis, nvars);
+      vert_emis_data_beg_[i].allocate_data_views();
+      if (vert_emis_data_beg_[i].file_type == TracerFileType::FORMULA_PS){
+        vert_emis_data_beg_[i].allocate_ps();
+      }
+
+      vert_emis_data_out_[i].init(num_cols_io_emis, num_levs_io_emis, nvars);
+      vert_emis_data_out_[i].allocate_data_views();
+      if (vert_emis_data_out_[i].file_type == TracerFileType::FORMULA_PS)
+      {
+        vert_emis_data_out_[i].allocate_ps();
+      } else if (vert_emis_data_out_[i].file_type == TracerFileType::VERT_EMISSION)  {
+         auto zi_src = scream::mam_coupling::get_altitude_int(VertEmissionsHorizInterp_[i],
+                                 vert_emis_file_name_[i]);
+        vert_emis_altitude_int_.push_back(zi_src);
+      }
+
+       const auto emis_output = view_2d("vert_emis_output_",num_cols_io_emis, num_levs_io_emis );
+      vert_emis_output_.push_back(emis_output);
+
+
+    }// end i
+  }
 
 }
 
@@ -507,8 +527,9 @@ void MAMMicrophysics::run_impl(const double dt) {
 
 
   // /* Update the TracerTimeState to reflect the current time, note the addition of dt */
-  std::cout << " INV" << "\n";
   linoz_time_state_.t_now = ts.frac_of_year_in_days();
+  // FIXME: we do not need altitude_int for invariant tracers and linoz fields.
+  view_1d dummy_altitude_int;
   scream::mam_coupling::advance_tracer_data(TracerDataReader_,
                       *TracerHorizInterp_,
                       ts,
@@ -518,9 +539,10 @@ void MAMMicrophysics::run_impl(const double dt) {
                       tracer_data_out_,
                       p_src_invariant_,
                       dry_atm_.p_mid,
+                      dummy_altitude_int,
+                      dry_atm_.z_iface,
                       cnst_offline_);
 
-   std::cout << " LINOZ" << "\n";
    scream::mam_coupling::advance_tracer_data(LinozDataReader_,
                       *LinozHorizInterp_,
                       ts,
@@ -530,22 +552,28 @@ void MAMMicrophysics::run_impl(const double dt) {
                       linoz_data_out_,
                       p_src_linoz_,
                       dry_atm_.p_mid,
+                      dummy_altitude_int,
+                      dry_atm_.z_iface,
                       linoz_output);
 
-    //
-#if 0
-    scream::mam_coupling::advance_tracer_data(VertEmissionsDataReader_,
-                      *VertEmissionsHorizInterp_,
+    for (size_t i = 0; i < vert_emis_file_name_.size(); ++i)
+    {
+    // FIXME: Here I am assuming one output per file.
+    view_2d vert_emis_output[1];
+    vert_emis_output[0] = vert_emis_output_[i];
+    scream::mam_coupling::advance_tracer_data(VertEmissionsDataReader_[i],
+                      *VertEmissionsHorizInterp_[i],
                       ts,
                       linoz_time_state_,
-                      vert_emis_data_beg_,
-                      vert_emis_data_end_,
-                      vert_emis_data_out_,
+                      vert_emis_data_beg_[i],
+                      vert_emis_data_end_[i],
+                      vert_emis_data_out_[i],
                       p_src_linoz_,
                       dry_atm_.p_mid,
+                      vert_emis_altitude_int_[i],
+                      dry_atm_.z_iface,
                       vert_emis_output);
-
-#endif
+    }
   const_view_1d &col_latitudes = col_latitudes_;
   mam_coupling::DryAtmosphere &dry_atm =  dry_atm_;
   mam_coupling::AerosolState  &dry_aero = dry_aero_;
