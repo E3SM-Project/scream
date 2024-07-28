@@ -492,7 +492,7 @@ void MAMMicrophysics::run_impl(const double dt) {
   linoz_output[6] = linoz_dPmL_dO3col;
   linoz_output[7] = linoz_cariolle_pscs;
 
-  view_2d vert_emis_output[1];
+
 
   // it's a bit wasteful to store this for all columns, but simpler from an
   // allocation perspective
@@ -507,6 +507,7 @@ void MAMMicrophysics::run_impl(const double dt) {
 
 
   // /* Update the TracerTimeState to reflect the current time, note the addition of dt */
+  std::cout << " INV" << "\n";
   linoz_time_state_.t_now = ts.frac_of_year_in_days();
   scream::mam_coupling::advance_tracer_data(TracerDataReader_,
                       *TracerHorizInterp_,
@@ -519,6 +520,7 @@ void MAMMicrophysics::run_impl(const double dt) {
                       dry_atm_.p_mid,
                       cnst_offline_);
 
+   std::cout << " LINOZ" << "\n";
    scream::mam_coupling::advance_tracer_data(LinozDataReader_,
                       *LinozHorizInterp_,
                       ts,
