@@ -257,16 +257,15 @@ private_except_cuda:
   view_2d p_src_linoz_;
   std::string linoz_file_name_;
 
-  //
-  std::shared_ptr<AtmosphereInput>  VertEmissionsDataReader_;
-  std::shared_ptr<AbstractRemapper> VertEmissionsHorizInterp_;
-  mam_coupling::TracerData vert_emis_data_end_;
-  mam_coupling::TracerData vert_emis_data_beg_;
-  mam_coupling::TracerData vert_emis_data_out_;
-  // view_2d p_src_linoz_;
-  std::string vert_emis_file_name_;
-  const_view_1d vert_emis_altitude_int_;
-  view_2d vert_emis_output_[1];
+  // Vertical emission uses 9 files, here I am using std::vector to stote instance of each file.
+  std::vector<std::shared_ptr<AtmosphereInput>>  VertEmissionsDataReader_;
+  std::vector<std::shared_ptr<AbstractRemapper>> VertEmissionsHorizInterp_;
+  std::vector<mam_coupling::TracerData> vert_emis_data_end_;
+  std::vector<mam_coupling::TracerData> vert_emis_data_beg_;
+  std::vector<mam_coupling::TracerData> vert_emis_data_out_;
+  std::vector<std::string> vert_emis_file_name_;
+  std::vector<const_view_1d> vert_emis_altitude_int_;
+  std::vector<view_2d> vert_emis_output_;
 
 
 

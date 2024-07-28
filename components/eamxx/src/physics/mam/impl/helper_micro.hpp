@@ -371,8 +371,7 @@ create_horiz_remapper (
   const auto nondim = ekat::units::Units::nondimensional();
 
 
-  for(auto  var_name : var_names){
-    std::cout << var_name << " var_name" << "\n";
+  for (auto  var_name : var_names){
     Field ifield(FieldIdentifier(var_name,  layout_3d_mid,  nondim,tgt_grid->name()));
     ifield.allocate_view();
     remapper->register_field_from_tgt (ifield);
@@ -380,7 +379,6 @@ create_horiz_remapper (
   // zonal files do not have the PS variable.
   if (tracer_file_type == FORMULA_PS)
   {
-    std::cout << "PS var_name" << "\n";
     Field ps (FieldIdentifier("PS",        layout_2d,  nondim,tgt_grid->name()));
     ps.allocate_view();
     remapper->register_field_from_tgt (ps);
@@ -398,7 +396,6 @@ create_tracer_data_reader
   const std::shared_ptr<AbstractRemapper>& horiz_remapper,
   const std::string& tracer_data_file)
 {
-  std::cout << horiz_remapper->get_num_fields() <<" horiz_remapper->get_num_fields()" << "\n";
   std::vector<Field> io_fields;
   for (int i=0; i<horiz_remapper->get_num_fields(); ++i) {
     io_fields.push_back(horiz_remapper->get_src_field(i));
@@ -422,8 +419,6 @@ update_tracer_data_from_file(
  tracer_horiz_interp.remap(/*forward = */ true);
  //
  const int nvars =tracer_data.nvars_;
- std::cout << nvars << " nvars" << "\n";
-
   //
  for (int i = 0; i < nvars; ++i) {
   tracer_data.data[i] = tracer_horiz_interp.get_tgt_field (i).get_view< Real**>();
@@ -617,7 +612,6 @@ perform_vertical_interpolation(
 {
   // At this stage, begin/end must have the same horiz dimensions
   EKAT_REQUIRE(input.ncol_==output[0].extent(0));
-  std::cout << FORMULA_PS <<" FORMULA_PS" << "\n";
 
 #if 1
   // FIXME: I was encountering a compilation error when using const_view_2d.
@@ -781,7 +775,6 @@ advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
   /* Update the TracerTimeState to reflect the current time, note the addition of dt */
   time_state.t_now = ts.frac_of_year_in_days();
   /* Update time state and if the month has changed, update the data.*/
-  std::cout << " update_tracer_timestate" << "\n";
   update_tracer_timestate(
     scorpio_reader,
     ts,
@@ -790,7 +783,6 @@ advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
     data_tracer_beg,
     data_tracer_end);
   // Step 1. Perform time interpolation
-  std::cout << " perform_time_interpolation" << "\n";
   perform_time_interpolation(
   time_state,
   data_tracer_beg,
@@ -799,7 +791,6 @@ advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
 
   if (data_tracer_out.file_type == FORMULA_PS )
   {
-    std::cout << " compute_source_pressure_levels" << "\n";
   // Step 2. Compute source pressure levels
   compute_source_pressure_levels(
     data_tracer_out.ps,
@@ -811,14 +802,12 @@ advance_tracer_data(std::shared_ptr<AtmosphereInput>& scorpio_reader,
   // Step 3. Perform vertical interpolation
   if (data_tracer_out.file_type == FORMULA_PS || data_tracer_out.file_type == ZONAL)
   {
-    std::cout << " perform_vertical_interpolation FORMULA_PS or ZONAL" << "\n";
   perform_vertical_interpolation(
      p_src,
      p_tgt,
      data_tracer_out,
      output);
   } else if (data_tracer_out.file_type == VERT_EMISSION) {
-    std::cout << " perform_vertical_interpolation VERT_EMISSION" << "\n";
     perform_vertical_interpolation(
      zi_src,
      zi_tgt,
