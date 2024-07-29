@@ -1011,7 +1011,7 @@ void HommeDynamics::restart_homme_state () {
   auto qv_prev_ref = std::make_shared<Field>();
   auto Q_dyn = m_helper_fields.at("Q_dyn");
   if (params.ftype==Homme::ForcingAlg::FORCING_2) {
-    auto Q_old = *get_group_in("Q",pgn).m_bundle;
+    auto Q_old = *get_group_out("Q",pgn).m_bundle;
     m_ic_remapper->register_field(Q_old,Q_dyn);
 
     // Grab qv_ref_old from Q_old
