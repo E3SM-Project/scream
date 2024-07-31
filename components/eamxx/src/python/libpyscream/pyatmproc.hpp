@@ -104,7 +104,7 @@ struct PyAtmProc {
     ap->initialize(t0, RunType::Initial);
   }
 
-  nanobind::list read_ic(const std::string &ic_filename) {
+  std::vector<std::string> read_ic(const std::string &ic_filename) {
     // Get input fields, and read them from file (if present).
     // If field is not in the IC, user is responsible for setting
     // it to an initial value
@@ -131,11 +131,11 @@ struct PyAtmProc {
     }
     scorpio::release_file(ic_filename);
 
-    // FIXME
-    // return nanobind::cast<nanobind::list>(missing);
+    // FIXME? Double check if conversion to nb::list happens
+    return missing;
   }
 
-  nanobind::list list_fields(std::string ftype) {
+  std::vector<std::string> list_fields(std::string ftype) {
     std::vector<std::string> fields_list;
     for(const auto &field_pair : fields) {
       const auto &field_identifier =
@@ -150,15 +150,15 @@ struct PyAtmProc {
         fields_list.push_back(field_pair.first);
       }
     }
-    // FIXME
-    // return nanobind::cast<nanobind::list>(fields_list);
+    // FIXME? double check if conversion to nb::list happens 
+    return fields_list;
   }
 
-  nanobind::list list_all_fields() { return list_fields("all"); }
+  std::vector<std::string> list_all_fields() { return list_fields("all"); }
 
-  nanobind::list list_required_fields() { return list_fields("required"); }
+  std::vector<std::string> list_required_fields() { return list_fields("required"); }
 
-  nanobind::list list_computed_fields() { return list_fields("computed"); }
+  std::vector<std::string> list_computed_fields() { return list_fields("computed"); }
 
   void setup_output(const std::string &yaml_file) {
     auto comm = PySession::get().comm;
