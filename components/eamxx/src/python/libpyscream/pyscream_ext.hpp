@@ -1,18 +1,17 @@
 #ifndef PYSCREAM_HPP
 #define PYSCREAM_HPP
 
-#include "physics/register_physics.hpp"
+#include <ekat/mpi/ekat_comm.hpp>
+
 #include "diagnostics/register_diagnostics.hpp"
 #include "dynamics/register_dynamics.hpp"
-
+#include "physics/register_physics.hpp"
 #include "share/grid/grids_manager.hpp"
-
-#include <ekat/mpi/ekat_comm.hpp>
 
 namespace scream {
 
 struct PySession {
-  static PySession& get () {
+  static PySession &get() {
     static PySession s;
     return s;
   }
@@ -20,11 +19,11 @@ struct PySession {
   ekat::Comm comm;
   std::shared_ptr<GridsManager> gm;
   bool inited = false;
-private:
 
-  PySession () = default;
+ private:
+  PySession() = default;
 };
 
-} // namespace scream
+}  // namespace scream
 
-#endif // PYSCREAM_HPP
+#endif  // PYSCREAM_HPP
