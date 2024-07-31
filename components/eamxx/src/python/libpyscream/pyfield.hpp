@@ -4,9 +4,11 @@
 #include "share/field/field.hpp"
 #include "share/field/field_utils.hpp"
 
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-#include <pybind11/stl.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/ndarray.h>
+#include <nanobind/stl/list.h>
+
+namespace nb = nanobind;
 
 namespace scream {
 
@@ -24,7 +26,7 @@ struct PyField {
     f.allocate_view();
   }
 
-  pybind11::array get () const {
+  nb::ndarray<> get () const {
     const auto& fh  = f.get_header();
     const auto& fid = fh.get_identifier();
 
@@ -39,10 +41,11 @@ struct PyField {
     // NOTE: since the field may be padded, the strides do not necessarily
     //       match the dims. Also, the strides must be grabbed from the
     //       actual view, since the layout doesn't know them.
-    pybind11::array::ShapeContainer shape (fid.get_layout().dims());
+
+    int field_rank = f.rank();
     std::vector<ssize_t> strides;
 
-    pybind11::dtype dt;
+    nanobind::dlpack::dtype dt;
     switch (fid.data_type()) {
       case DataType::IntType:
         dt = get_dt_and_set_strides<int>(strides);
@@ -59,8 +62,8 @@ struct PyField {
 
     // NOTE: you MUST set the parent handle, or else you won't have view semantic
     auto data = f.get_internal_view_data_unsafe<void,Host>();
-    auto this_obj = pybind11::cast(this);
-    return pybind11::array(dt,shape,strides,data,pybind11::handle(this_obj));
+    auto this_obj = nanobind::cast(this);
+    // return nanobind::ndarray<>(dt,nb::ndim<field_rank>,strides,data,nanobind::handle(this_obj));
   }
 
   void sync_to_host () {
@@ -75,7 +78,7 @@ struct PyField {
 private:
 
   template<typename T>
-  pybind11::dtype get_dt_and_set_strides (std::vector<ssize_t>& strides) const
+  nb::dlpack::dtype get_dt_and_set_strides (std::vector<ssize_t>& strides) const
   {
     strides.resize(f.rank());
     switch (f.rank()) {
@@ -126,14 +129,14 @@ private:
             " - field rnak: " + std::to_string(f.rank()) + "\n");
     }
 
-    return pybind11::dtype::of<T>();
+    return nanobind::dtype<T>();
   }
 };
 
-inline void pybind_pyfield (pybind11::module& m) {
+inline void nanobind_pyfield (nanobind::module_& m) {
   // Field class
-  pybind11::class_<PyField>(m,"Field")
-    .def(pybind11::init<>())
+  nanobind::class_<PyField>(m,"Field")
+    .def(nanobind::init<>())
     .def("get",&PyField::get)
     .def("sync_to_host",&PyField::sync_to_host)
     .def("sync_to_dev",&PyField::sync_to_dev)

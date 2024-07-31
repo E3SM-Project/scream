@@ -12,8 +12,9 @@
 
 #include <ekat/io/ekat_yaml.hpp>
 
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/list.h>
+#include <nanobind/stl/vector.h>
 
 namespace scream {
 
@@ -26,7 +27,7 @@ struct PyAtmProc {
 
   std::shared_ptr<OutputManager> output_mgr;
 
-  PyAtmProc (const pybind11::dict& d, const std::string& name)
+  PyAtmProc (const nanobind::dict& d, const std::string& name)
   {
     PyParamList params(d,name);
 
@@ -102,7 +103,7 @@ struct PyAtmProc {
     ap->initialize(t0,RunType::Initial);
   }
 
-  pybind11::list read_ic (const std::string& ic_filename) {
+  nanobind::list read_ic (const std::string& ic_filename) {
     // Get input fields, and read them from file (if present).
     // If field is not in the IC, user is responsible for setting
     // it to an initial value
@@ -128,10 +129,10 @@ struct PyAtmProc {
     }
     scorpio::release_file(ic_filename);
 
-    return pybind11::cast(missing);
+    return nanobind::cast(missing);
   }
 
-  pybind11::list list_fields(std::string ftype) {
+  nanobind::list list_fields(std::string ftype) {
     std::vector<std::string> fields_list;
     for (const auto& field_pair : fields) {
       const auto& field_identifier = field_pair.second.f.get_header().get_identifier();
@@ -144,18 +145,18 @@ struct PyAtmProc {
         fields_list.push_back(field_pair.first);
       }
     }
-  return pybind11::cast(fields_list);
+  return nanobind::cast(fields_list);
   }
 
-  pybind11::list list_all_fields() {
+  nanobind::list list_all_fields() {
     return list_fields("all");
   }
 
-  pybind11::list list_required_fields() {
+  nanobind::list list_required_fields() {
     return list_fields("required");
   }
 
-  pybind11::list list_computed_fields() {
+  nanobind::list list_computed_fields() {
     return list_fields("computed");
   }
 
@@ -194,10 +195,10 @@ struct PyAtmProc {
 };
 
 // Register type in the py module
-inline void pybind_pyatmproc(pybind11::module& m)
+inline void pybind_pyatmproc(nanobind::module& m)
 {
-  pybind11::class_<PyAtmProc>(m,"AtmProc")
-    .def(pybind11::init<const pybind11::dict&,const std::string&>())
+  nanobind::class_<PyAtmProc>(m,"AtmProc")
+    .def(nanobind::init<const nanobind::dict&,const std::string&>())
     .def("get_field",&PyAtmProc::get_field)
     .def("initialize",&PyAtmProc::initialize)
     .def("get_params",&PyAtmProc::get_params)

@@ -5,7 +5,7 @@
 
 #include "pyscream_ext.hpp"
 
-#include <pybind11/pybind11.h>
+#include <nanobind/nanobind.h>
 
 #include <mpi.h>
 
@@ -38,9 +38,9 @@ inline void create_grids_manager (int ncols, int nlevs)
   create_grids_manager(ncols,nlevs,"");
 }
 
-inline void pybind_pygrid (pybind11::module& m) {
-  m.def("create_grids_manager",pybind11::overload_cast<int,int>(&create_grids_manager));
-  m.def("create_grids_manager",pybind11::overload_cast<int,int,const std::string&>(&create_grids_manager));
+inline void nanobind_pygrid (nanobind::module_& m) {
+  m.def("create_grids_manager",nanobind::overload_cast<int,int>(&create_grids_manager));
+  m.def("create_grids_manager",nanobind::overload_cast<int,int,const std::string&>(&create_grids_manager));
 }
 
 } // namespace scream

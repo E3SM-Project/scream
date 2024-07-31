@@ -71,7 +71,7 @@ if (NOT DEFINED ENV{SCREAM_FAKE_ONLY})
   # Testing multiple atm processes coupled together
   add_subdirectory(multi-process)
 
-  if (EAMXX_ENABLE_PYBIND)
+  if (EAMXX_ENABLE_PYSCREAM)
     add_subdirectory(python)
   endif()
 endif()

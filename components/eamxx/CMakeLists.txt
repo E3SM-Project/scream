@@ -272,9 +272,9 @@ set(SCREAM_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(SCREAM_SRC_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(SCREAM_BIN_DIR  ${CMAKE_CURRENT_BINARY_DIR})
 
-option (EAMXX_ENABLE_PYBIND "Whether to enable python interface to eamxx, via pybind11" OFF)
-if (EAMXX_ENABLE_PYBIND)
-  # Pybind11 requires shared libraries
+option (EAMXX_ENABLE_PYSCREAM "Whether to enable python interface to eamxx" OFF)
+if (EAMXX_ENABLE_PYSCREAM)
+  # We shared libraries
   set (BUILD_SHARED_LIBS ON)
 endif()
 
