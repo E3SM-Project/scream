@@ -24,7 +24,8 @@ struct PyField {
     f.allocate_view();
   }
 
-  nb::ndarray<> get() const {
+  // FIXME: how to return ndarray here?
+  void get() const {
     const auto &fh  = f.get_header();
     const auto &fid = fh.get_identifier();
 
@@ -46,19 +47,21 @@ struct PyField {
     //       match the dims. Also, the strides must be grabbed from the
     //       actual view, since the layout doesn't know them.
 
-    int field_rank = f.rank();
+    const auto field_shape = fid.get_layout().dims();
+    const long unsigned int field_rank = f.rank();
+    
     std::vector<ssize_t> strides;
 
-    nanobind::dlpack::dtype dt;
+    nanobind::dlpack::dtype data_type;
     switch(fid.data_type()) {
       case DataType::IntType:
-        dt = get_dt_and_set_strides<int>(strides);
+        data_type = get_dt_and_set_strides<int>(strides);
         break;
       case DataType::FloatType:
-        dt = get_dt_and_set_strides<float>(strides);
+        data_type = get_dt_and_set_strides<float>(strides);
         break;
       case DataType::DoubleType:
-        dt = get_dt_and_set_strides<double>(strides);
+        data_type = get_dt_and_set_strides<double>(strides);
         break;
       default:
         EKAT_ERROR_MSG("Unrecognized/unsupported data type.\n");
@@ -68,9 +71,8 @@ struct PyField {
     // semantic
     auto data     = f.get_internal_view_data_unsafe<void, Host>();
     auto this_obj = nanobind::cast(this);
-    // FIXME
+    // FIXME how to return the ndarray?
     // return
-    // nanobind::ndarray<>(dt,nb::ndim<field_rank>,strides,data,nanobind::handle(this_obj));
   }
 
   void sync_to_host() { f.sync_to_host(); }

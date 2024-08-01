@@ -131,7 +131,6 @@ struct PyAtmProc {
     }
     scorpio::release_file(ic_filename);
 
-    // FIXME? Double check if conversion to nb::list happens
     return missing;
   }
 
@@ -150,7 +149,7 @@ struct PyAtmProc {
         fields_list.push_back(field_pair.first);
       }
     }
-    // FIXME? double check if conversion to nb::list happens 
+
     return fields_list;
   }
 
