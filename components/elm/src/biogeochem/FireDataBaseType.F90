@@ -35,9 +35,9 @@ module FireDataBaseType
          real(r8), public, pointer :: forc_hdm(:)     ! Human population density
 
          real(r8), public, pointer :: gdp_lf_col(:)   ! col global real gdp data (k US$/capita)
-#ifdef CCE_17_COMPILER_BUG_FIXED
-         type(shr_strdata_type), private :: sdat_hdm           ! Human population density input data stream
-         type(shr_strdata_type), private :: sdat_lnfm          ! Lightning input data stream
+#ifndef SCREAM_SYSTEM_WORKAROUND || SCREAM_SYSTEM_WORKAROUND != 1
+         type(shr_strdata_type) :: sdat_hdm           ! Human population density input data stream
+         type(shr_strdata_type) :: sdat_lnfm          ! Lightning input data stream
 #endif
        contains
 
@@ -218,7 +218,7 @@ module FireDataBaseType
       endif
    
       call elm_domain_mct (bounds, dom_elm)
-#ifdef CCE_17_COMPILER_BUG_FIXED
+#ifndef SCREAM_SYSTEM_WORKAROUND || SCREAM_SYSTEM_WORKAROUND != 1
       call shr_strdata_create(this%sdat_hdm,name="clmhdm", &
            pio_subsystem=pio_subsystem,                    &
            pio_iotype=shr_pio_getiotype(inst_name),        &
@@ -281,7 +281,7 @@ module FireDataBaseType
    
       call get_curr_date(year, mon, day, sec)
       mcdate = year*10000 + mon*100 + day
-#ifdef CCE_17_COMPILER_BUG_FIXED
+#ifndef SCREAM_SYSTEM_WORKAROUND || SCREAM_SYSTEM_WORKAROUND != 1
       call shr_strdata_advance(this%sdat_hdm, mcdate, sec, mpicom, 'hdmdyn')
    
       ig = 0
@@ -374,7 +374,7 @@ module FireDataBaseType
       endif
    
       call elm_domain_mct (bounds, dom_elm)
-#ifdef CCE_17_COMPILER_BUG_FIXED
+#ifndef SCREAM_SYSTEM_WORKAROUND || SCREAM_SYSTEM_WORKAROUND != 1
       call shr_strdata_create(this%sdat_lnfm,name="clmlnfm", &
            pio_subsystem=pio_subsystem,                      &
            pio_iotype=shr_pio_getiotype(inst_name),          &
@@ -437,7 +437,7 @@ module FireDataBaseType
    
       call get_curr_date(year, mon, day, sec)
       mcdate = year*10000 + mon*100 + day
-#ifdef CCE_17_COMPILER_BUG_FIXED
+#ifndef SCREAM_SYSTEM_WORKAROUND || SCREAM_SYSTEM_WORKAROUND != 1
       call shr_strdata_advance(this%sdat_lnfm, mcdate, sec, mpicom, 'lnfmdyn')
    
       ig = 0
