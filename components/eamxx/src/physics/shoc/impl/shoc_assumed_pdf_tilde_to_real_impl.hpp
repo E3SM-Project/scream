@@ -16,7 +16,7 @@ namespace shoc {
  */
 
 template<typename S, typename D>
-KOKKOS_INLINE_FUNCTION
+KOKKOS_FUNCTION
 void Functions<S,D>::shoc_assumed_pdf_tilde_to_real(
   const Spack& w_first,
   const Spack& sqrtw2,

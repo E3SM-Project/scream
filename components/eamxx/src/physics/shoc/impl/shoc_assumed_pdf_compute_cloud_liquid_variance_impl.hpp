@@ -14,7 +14,7 @@ namespace shoc {
  */
 
 template<typename S, typename D>
-KOKKOS_INLINE_FUNCTION
+KOKKOS_FUNCTION
 void Functions<S,D>::shoc_assumed_pdf_compute_cloud_liquid_variance(
   const Spack& a,
   const Spack& s1,

@@ -14,7 +14,7 @@ namespace shoc {
  */
 
 template<typename S, typename D>
-KOKKOS_INLINE_FUNCTION
+KOKKOS_FUNCTION
 void Functions<S,D>::shoc_assumed_pdf_compute_buoyancy_flux(
   const Spack& wthlsec,
   const Spack& wqwsec,

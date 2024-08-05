@@ -780,7 +780,7 @@ struct Functions
     const view_2d<Spack>&       shoc_ql2);
 #endif
 
-  KOKKOS_INLINE_FUNCTION
+  KOKKOS_FUNCTION
   static void shoc_assumed_pdf_compute_buoyancy_flux(
     const Spack& wthlsec,
     const Spack& wqwsec,
@@ -788,7 +788,7 @@ struct Functions
     const Spack& wqls,
     Spack&       wthv_sec);
 
-  KOKKOS_INLINE_FUNCTION
+  KOKKOS_FUNCTION
   static void shoc_assumed_pdf_compute_cloud_liquid_variance(
     const Spack& a,
     const Spack& s1,
@@ -803,7 +803,7 @@ struct Functions
     Spack&       shoc_ql2);
 
 
-  KOKKOS_INLINE_FUNCTION
+  KOKKOS_FUNCTION
   static void shoc_assumed_pdf_compute_liquid_water_flux(
     const Spack& a,
     const Spack& w1_1,
@@ -813,7 +813,7 @@ struct Functions
     const Spack& ql2,
     Spack&       wqls);
 
-  KOKKOS_INLINE_FUNCTION
+  KOKKOS_FUNCTION
   static void shoc_assumed_pdf_compute_qs(
     const Spack& Tl1_1,
     const Spack& Tl1_2,
@@ -824,7 +824,7 @@ struct Functions
     Spack&       qs2,
     Spack&       beta2);
 
-  KOKKOS_INLINE_FUNCTION
+  KOKKOS_FUNCTION
   static void shoc_assumed_pdf_compute_s(
     const Spack& qw1,
     const Spack& qs,
@@ -840,20 +840,20 @@ struct Functions
     Spack&       qn,
     Spack&       C);
 
-  KOKKOS_INLINE_FUNCTION
+  KOKKOS_FUNCTION
   static void shoc_assumed_pdf_compute_sgs_liquid(
     const Spack& a,
     const Spack& ql1,
     const Spack& ql2,
     Spack&       shoc_ql);
 
-  KOKKOS_INLINE_FUNCTION
+  KOKKOS_FUNCTION
   static void shoc_assumed_pdf_compute_temperature(
     const Spack& thl1,
     const Spack& pval,
     Spack&       Tl1);
 
-  KOKKOS_INLINE_FUNCTION
+  KOKKOS_FUNCTION
   static void shoc_assumed_pdf_inplume_correlations(
     const Spack& sqrtqw2_1,
     const Spack& sqrtthl2_1,
@@ -869,7 +869,7 @@ struct Functions
     const Spack& thl1_2,
     Spack&       r_qwthl_1);
 
-  KOKKOS_INLINE_FUNCTION
+  KOKKOS_FUNCTION
   static void shoc_assumed_pdf_qw_parameters(
     const Spack& wqwsec,
     const Spack& sqrtw2,
@@ -889,7 +889,7 @@ struct Functions
     Spack&       sqrtqw2_1,
     Spack&       sqrtqw2_2);
 
-  KOKKOS_INLINE_FUNCTION
+  KOKKOS_FUNCTION
   static void shoc_assumed_pdf_thl_parameters(
     const Spack& wthlsec,
     const Spack& sqrtw2,
@@ -909,13 +909,13 @@ struct Functions
     Spack&       sqrtthl2_1,
     Spack&       sqrtthl2_2);
 
-  KOKKOS_INLINE_FUNCTION
+  KOKKOS_FUNCTION
   static void shoc_assumed_pdf_tilde_to_real(
     const Spack& w_first,
     const Spack& sqrtw2,
     Spack&       w1);
 
-  KOKKOS_INLINE_FUNCTION
+  KOKKOS_FUNCTION
   static void shoc_assumed_pdf_vv_parameters(
     const Spack& w_first,
     const Spack& w_sec,
