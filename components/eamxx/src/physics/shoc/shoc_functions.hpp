@@ -1394,19 +1394,6 @@ struct Functions
 # include "shoc_update_prognostics_implicit_impl.hpp"
 # include "shoc_diag_third_shoc_moments_impl.hpp"
 # include "shoc_assumed_pdf_impl.hpp"
-# include "shoc_assumed_pdf_compute_buoyancy_flux_impl.hpp"
-# include "shoc_assumed_pdf_compute_cloud_liquid_variance_impl.hpp"
-# include "shoc_assumed_pdf_compute_liquid_water_flux_impl.hpp"
-# include "shoc_assumed_pdf_compute_qs_impl.hpp"
-# include "shoc_assumed_pdf_compute_s_impl.hpp"
-# include "shoc_assumed_pdf_compute_sgs_liquid_impl.hpp"
-# include "shoc_assumed_pdf_compute_temperature_impl.hpp"
-# include "shoc_assumed_pdf_inplume_correlations_impl.hpp"
-# include "shoc_assumed_pdf_qw_parameters_impl.hpp"
-# include "shoc_assumed_pdf_compute_s_impl.hpp"
-# include "shoc_assumed_pdf_thl_parameters_impl.hpp"
-# include "shoc_assumed_pdf_tilde_to_real_impl.hpp"
-# include "shoc_assumed_pdf_vv_parameters_impl.hpp"
 # include "shoc_adv_sgs_tke_impl.hpp"
 # include "shoc_compute_tmpi_impl.hpp"
 # include "shoc_integ_column_stability_impl.hpp"
@@ -1424,5 +1411,20 @@ struct Functions
 # include "shoc_compute_shoc_temperature_impl.hpp"
 
 #endif // GPU && !KOKKOS_ENABLE_*_RELOCATABLE_DEVICE_CODE
+
+// Some functions should be inlined, thus do not use ETI
+# include "shoc_assumed_pdf_compute_buoyancy_flux_impl.hpp"
+# include "shoc_assumed_pdf_compute_cloud_liquid_variance_impl.hpp"
+# include "shoc_assumed_pdf_compute_liquid_water_flux_impl.hpp"
+# include "shoc_assumed_pdf_compute_qs_impl.hpp"
+# include "shoc_assumed_pdf_compute_s_impl.hpp"
+# include "shoc_assumed_pdf_compute_sgs_liquid_impl.hpp"
+# include "shoc_assumed_pdf_compute_temperature_impl.hpp"
+# include "shoc_assumed_pdf_inplume_correlations_impl.hpp"
+# include "shoc_assumed_pdf_qw_parameters_impl.hpp"
+# include "shoc_assumed_pdf_compute_s_impl.hpp"
+# include "shoc_assumed_pdf_thl_parameters_impl.hpp"
+# include "shoc_assumed_pdf_tilde_to_real_impl.hpp"
+# include "shoc_assumed_pdf_vv_parameters_impl.hpp"
 
 #endif // SHOC_FUNCTIONS_HPP
