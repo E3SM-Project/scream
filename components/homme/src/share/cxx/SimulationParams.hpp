@@ -23,7 +23,7 @@ struct SimulationParams
   void print(std::ostream& out = std::cout);
 
   TimeStepType  time_step_type;
-  MoistDry      moisture;
+  bool          use_moisture;
   RemapAlg      remap_alg;
   TestCase      test_case;
   ForcingAlg    ftype = ForcingAlg::FORCING_OFF;
@@ -42,7 +42,7 @@ struct SimulationParams
   bool      disable_diagnostics;
   int       transport_alg;
   bool      use_cpstar;
-  bool      theta_hydrostatic_mode;   // Only for theta model
+  int      theta_hydrostatic_mode;   // Only for theta model
 
   double    dcmip16_mu;               // Only for theta model
   double    nu;
@@ -77,7 +77,7 @@ inline void SimulationParams::print (std::ostream& out) {
 
   out << "\n************** CXX SimulationParams **********************\n\n";
   out << "   time_step_type: " << etoi(time_step_type) << "\n";
-  out << "   moisture: " << (moisture==MoistDry::DRY ? "dry" : "moist") << "\n";
+  out << "   use_moisture: " << (use_moisture ? "moist" : "dry") << "\n";
   out << "   remap_alg: " << etoi(remap_alg) << "\n";
   out << "   test case: " << etoi(test_case) << "\n";
   out << "   ftype: " << etoi(ftype) << "\n";
@@ -105,7 +105,7 @@ inline void SimulationParams::print (std::ostream& out) {
   out << "   use_cpstar: " << (use_cpstar ? "yes" : "no") << "\n";
   out << "   transport_alg: " << transport_alg << "\n";
   out << "   disable_diagnostics: " << (disable_diagnostics ? "yes" : "no") << "\n";
-  out << "   theta_hydrostatic_mode: " << (theta_hydrostatic_mode ? "yes" : "no") << "\n";
+  out << "   theta_hydrostatic_mode: " << ( (bool)theta_hydrostatic_mode ? "yes" : "no") << "\n";
   out << "   prescribed_wind: " << (prescribed_wind ? "yes" : "no") << "\n";
   out << "   nsplit: " << nsplit << "\n";
   out << "   scale_factor: " << scale_factor << "\n";

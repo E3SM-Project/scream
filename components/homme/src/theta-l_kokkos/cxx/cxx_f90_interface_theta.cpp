@@ -43,13 +43,24 @@ void init_simulation_params_c (const int& remap_alg, const int& limiter_option, 
                                const Real& nu, const Real& nu_p, const Real& nu_q, const Real& nu_s, const Real& nu_div, const Real& nu_top,
                                const int& hypervis_order, const int& hypervis_subcycle, const int& hypervis_subcycle_tom,
                                const double& hypervis_scaling, const double& dcmip16_mu,
-                               const int& ftype, const int& theta_adv_form, const bool& prescribed_wind, const bool& moisture, const bool& disable_diagnostics,
-                               const bool& use_cpstar, const int& transport_alg, const bool& theta_hydrostatic_mode, const char** test_case,
+                               const int& ftype, const int& theta_adv_form, const int& prescribed_wind, const int& use_moisture, const int& disable_diagnostics,
+                               const int& use_cpstar, const int& transport_alg, const int& theta_hydrostatic_mode, const char** test_case,
                                const int& dt_remap_factor, const int& dt_tracer_factor,
-                               const double& scale_factor, const double& laplacian_rigid_factor, const int& nsplit, const bool& pgrad_correction,
+                               const double& scale_factor, const double& laplacian_rigid_factor, const int& nsplit, const int& pgrad_correction,
                                const double& dp3d_thresh, const double& vtheta_thresh, const int& internal_diagnostics_level)
 {
-  // Check that the simulation options are supported. This helps us in the future, since we
+
+	std::cout << "In transfer routine theta_hydrostatic_mode =" << theta_hydrostatic_mode << "\n";
+
+
+if(theta_hydrostatic_mode){
+        std::cout << " HEEEEEEEEEEEtheta_hydrostatic_mode =TRUE \n";
+}else
+{
+        std::cout << " HEEEEEEEEEEEtheta_hydrostatic_mode =FALSE \n";
+}      
+
+	// Check that the simulation options are supported. This helps us in the future, since we
   // are currently 'assuming' some option have/not have certain values. As we support for more
   // options in the C++ build, we will remove some checks
   Errors::check_option("init_simulation_params_c","vert_remap_q_alg",remap_alg,{1,3,10});
@@ -69,6 +80,7 @@ void init_simulation_params_c (const int& remap_alg, const int& limiter_option, 
   Errors::check_option("init_simulation_params_c","vtheta_thresh",vtheta_thresh,0.0,Errors::ComparisonOp::GT);
   Errors::check_option("init_simulation_params_c","nu_div",nu_div,0.0,Errors::ComparisonOp::GT);
   Errors::check_option("init_simulation_params_c","theta_advection_form",theta_adv_form,{0,1});
+  Errors::check_option("init_simulation_params_c","theta_hydrostatic_mode",theta_hydrostatic_mode,{0,1});
 #ifndef SCREAM
   Errors::check_option("init_simulation_params_c","nsplit",nsplit,1,Errors::ComparisonOp::GE);
 #else
@@ -93,6 +105,13 @@ void init_simulation_params_c (const int& remap_alg, const int& limiter_option, 
     params.theta_adv_form = AdvectionForm::NonConservative;
   }
 
+//  if (theta_hydrostatic_mode==0) {
+//    params.theta_hydrostatic_mode = false;
+//  } else {
+//    params.theta_hydrostatic_mode = true;
+//  }
+
+
   params.limiter_option                = limiter_option;
   params.rsplit                        = rsplit;
   params.qsplit                        = qsplit;
@@ -111,19 +130,24 @@ void init_simulation_params_c (const int& remap_alg, const int& limiter_option, 
   params.hypervis_subcycle             = hypervis_subcycle;
   params.hypervis_subcycle_tom         = hypervis_subcycle_tom;
   params.hypervis_scaling              = hypervis_scaling;
-  params.disable_diagnostics           = disable_diagnostics;
-  params.moisture                      = (moisture ? MoistDry::MOIST : MoistDry::DRY);
-  params.use_cpstar                    = use_cpstar;
+  params.disable_diagnostics           = (bool)disable_diagnostics;
+  params.use_moisture                  = (bool)use_moisture;
+  params.use_cpstar                    = (bool)use_cpstar;
   params.transport_alg                 = transport_alg;
   params.theta_hydrostatic_mode        = theta_hydrostatic_mode;
   params.dcmip16_mu                    = dcmip16_mu;
   params.nsplit                        = nsplit;
   params.scale_factor                  = scale_factor;
   params.laplacian_rigid_factor        = laplacian_rigid_factor;
-  params.pgrad_correction              = pgrad_correction;
+  params.pgrad_correction              = (bool)pgrad_correction;
   params.dp3d_thresh                   = dp3d_thresh;
   params.vtheta_thresh                 = vtheta_thresh;
   params.internal_diagnostics_level    = internal_diagnostics_level;
+
+
+  std::cout << "In transfer routine AFTER ASSIGNMENT params.theta_hydrostatic_mode =" << params.theta_hydrostatic_mode << "\n";
+
+
 
   if (time_step_type==5) {
     //5 stage, 3rd order, explicit
@@ -304,7 +328,7 @@ void init_elements_c (const int& num_elems)
   c.create_ref<ElementsForcing>(e.m_forcing);
 }
 
-void init_functors_c (const bool& allocate_buffer)
+void init_functors_c (const int& allocate_buffer)
 {
   auto& c = Context::singleton();
 
@@ -359,7 +383,7 @@ void init_functors_c (const bool& allocate_buffer)
   auto& hvf     = c.create_if_not_there<HyperviscosityFunctor>();
   auto& ff      = c.create_if_not_there<ForcingFunctor>();
   auto& diag    = c.create_if_not_there<Diagnostics> (elems.num_elems(),tracers.num_tracers(),
-                                                      params.theta_hydrostatic_mode);
+                                                      (bool)params.theta_hydrostatic_mode);
   auto& vrm     = c.create_if_not_there<VerticalRemapManager>(elems.num_elems());
 
   auto& fbm     = c.create_if_not_there<FunctorsBuffersManager>();
