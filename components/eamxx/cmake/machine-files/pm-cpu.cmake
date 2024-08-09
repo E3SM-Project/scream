@@ -16,3 +16,5 @@ if ("${PROJECT_NAME}" STREQUAL "E3SM")
 else()
   set(CMAKE_Fortran_FLAGS "-fallow-argument-mismatch"  CACHE STRING "" FORCE) # only works with gnu v10 and above
 endif()
+
+option (SCREAM_ENABLE_ML_CORRECTION "Whether to enable ML correction parametrization" ON)
