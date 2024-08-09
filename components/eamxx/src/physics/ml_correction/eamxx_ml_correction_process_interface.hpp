@@ -42,10 +42,19 @@ class MLCorrection : public AtmosphereProcess {
   // Set the grid
   void set_grids(const std::shared_ptr<const GridsManager> grids_manager);
 
+#ifndef KOKKOS_ENABLE_CUDA
+  bool ML_uses_GPU = false;
+  // Cuda requires methods enclosing __device__ lambda's to be public
+ protected:
+#else
+  bool ML_uses_GPU = true; 
+#endif
+
+  void run_impl(const double dt);
+
  protected:
   // The three main overrides for the subcomponent
   void initialize_impl(const RunType run_type);
-  void run_impl(const double dt);
   void finalize_impl();
   void apply_tendency(Field& base, const Field& next, const int dt);
 
@@ -56,6 +65,7 @@ class MLCorrection : public AtmosphereProcess {
   Field m_lat;
   Field m_lon;
   std::string m_ML_model_path_tq;
+  std::string m_ML_model_path_t_only;
   std::string m_ML_model_path_uv;
   std::string m_ML_model_path_sfc_fluxes;
   std::vector<std::string> m_fields_ml_output_variables;

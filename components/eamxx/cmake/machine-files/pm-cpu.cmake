@@ -5,6 +5,9 @@ include (${EKAT_MACH_FILES_PATH}/kokkos/amd-zen3.cmake)
 include (${EKAT_MACH_FILES_PATH}/kokkos/openmp.cmake)
 
 set(CMAKE_CXX_FLAGS "-DTHRUST_IGNORE_CUB_VERSION_CHECK" CACHE STRING "" FORCE)
+set(PYBIND11_PYTHON_VERSION 3.9 CACHE STRING "")
+option (SCREAM_ENABLE_ML_CORRECTION "Whether to enable ML correction parametrization" ON)
+
 
 #message(STATUS "pm-cpu CMAKE_CXX_COMPILER_ID=${CMAKE_CXX_COMPILER_ID} CMAKE_Fortran_COMPILER_VERSION=${CMAKE_Fortran_COMPILER_VERSION}")
 if ("${PROJECT_NAME}" STREQUAL "E3SM")
