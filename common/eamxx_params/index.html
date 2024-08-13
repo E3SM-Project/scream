@@ -1401,6 +1401,41 @@ EAMxx is not supported yet.
 </ul>
 </li>
 </ul>
+<h2 id="mam4_drydep">mam4_drydep</h2>
+<ul>
+<li>mam4_drydep::number_of_subcycles:  <ul>
+<li>description: how many times to subcycle this atm process  </li>
+<li>type: <strong>MISSING</strong>  </li>
+<li>constraints: gt 0  </li>
+</ul>
+</li>
+<li>mam4_drydep::enable_precondition_checks:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: logical  </li>
+</ul>
+</li>
+<li>mam4_drydep::enable_postcondition_checks:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: logical  </li>
+</ul>
+</li>
+<li>mam4_drydep::repair_log_level:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: string  </li>
+<li>valid values: trace,debug,info,warn  </li>
+</ul>
+</li>
+<li>mam4_drydep::internal_diagnostics_level:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: integer  </li>
+</ul>
+</li>
+<li>mam4_drydep::compute_tendencies:  <ul>
+<li>description: list of computed fields for which this process will back out tendencies  </li>
+<li>type: array(string)  </li>
+</ul>
+</li>
+</ul>
 <h2 id="cldfraction">cldFraction</h2>
 <ul>
 <li>cldFraction::number_of_subcycles:  <ul>
@@ -2267,7 +2302,17 @@ EAMxx is not supported yet.
 </ul>
 </li>
 <li>initial_conditions::dgnum:  <ul>
-<li>description: Dry aerosol particles diameter in meters  </li>
+<li>description: Dry aerosol particles diameter [m]  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::dgnumwet:  <ul>
+<li>description: Wet aerosol particles diameter [m]  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>initial_conditions::wetdens:  <ul>
+<li>description: Wet density of interstitial aerosol [kg/m3]  </li>
 <li>type: real  </li>
 </ul>
 </li>
