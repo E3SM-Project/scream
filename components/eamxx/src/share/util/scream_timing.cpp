@@ -1,6 +1,7 @@
 #include "share/util/scream_timing.hpp"
 
 #include <gptl.h>
+#include <nvtx3/nvToolsExt.h>
 
 namespace scream {
 
@@ -18,10 +19,12 @@ void finalize_gptl () {
 
 void start_timer (const std::string& name) {
   GPTLstart(name.c_str());
+  nvtxRangePushA(name.c_str());
 }
 
 void stop_timer (const std::string& name) {
   GPTLstop(name.c_str());
+  nvtxRangePop();
 }
 
 void write_timers_to_file (const ekat::Comm& comm, const std::string& fname) {

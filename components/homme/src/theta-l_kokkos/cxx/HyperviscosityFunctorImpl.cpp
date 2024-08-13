@@ -14,6 +14,8 @@
 #include "mpi/MpiBuffersManager.hpp"
 #include "mpi/Connectivity.hpp"
 
+#include <nvtx3/nvToolsExt.h>
+
 namespace Homme
 {
 
@@ -268,7 +270,9 @@ void HyperviscosityFunctorImpl::run (const int np1, const Real dt, const Real et
 
   for (int icycle = 0; icycle < m_data.hypervis_subcycle; ++icycle) {
     GPTLstart("hvf-bhwk");
+    nvtxRangePushA("hvf-bhwk");
     biharmonic_wk_theta ();
+    nvtxRangePop();
     GPTLstop("hvf-bhwk");
 
     Kokkos::parallel_for(m_policy_pre_exchange, *this);
@@ -277,7 +281,9 @@ void HyperviscosityFunctorImpl::run (const int np1, const Real dt, const Real et
     // Exchange
     assert (m_be->is_registration_completed());
     GPTLstart("hvf-bexch");
+    nvtxRangePushA("hvf-bexch");
     m_be->exchange();
+    nvtxRangePop();
     GPTLstop("hvf-bexch");
 
     // Update states
@@ -341,7 +347,9 @@ void HyperviscosityFunctorImpl::run (const int np1, const Real dt, const Real et
       // exchange is done on ttens, dptens, vtens, etc.
       assert (m_be->is_registration_completed());
       GPTLstart("hvf-bexch");
+      nvtxRangePushA("hvf-bexch");
       m_be_tom->exchange();
+      nvtxRangePop();
       GPTLstop("hvf-bexch");
 
       Kokkos::parallel_for(m_policy_nutop_update_states, *this);
@@ -361,7 +369,9 @@ void HyperviscosityFunctorImpl::biharmonic_wk_theta() const
   // Exchange
   assert (m_be->is_registration_completed());
   GPTLstart("hvf-bexch");
+  nvtxRangePushA("hvf-bexch");
   m_be->exchange(m_geometry.m_rspheremp);
+  nvtxRangePop();
   GPTLstop("hvf-bexch");
 
   // Compute second laplacian, tensor or const hv

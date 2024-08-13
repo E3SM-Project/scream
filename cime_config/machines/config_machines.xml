@@ -218,6 +218,7 @@
         <command name="load">PrgEnv-gnu/8.3.3</command>
         <command name="load">gcc/11.2.0</command>
         <command name="load">cray-libsci/23.02.1.1</command>
+        <command name="load">cudatoolkit</command> <!-- ndk temporarily to allow use of nsys profile on CPU case -->
       </modules>
 
       <modules compiler="intel">
@@ -268,6 +269,7 @@
       <env name="NETCDF_PATH">$ENV{CRAY_NETCDF_HDF5PARALLEL_PREFIX}</env>
       <env name="PNETCDF_PATH">$ENV{CRAY_PARALLEL_NETCDF_PREFIX}</env>
       <env name="GATOR_INITIAL_MB">4000MB</env>
+      <env name="PAT_RT_CALLSTACK_MODE">frames</env> <!-- ndk: should only impact profiling with craypat -->
     </environment_variables>
     <environment_variables compiler="intel" mpilib="mpich">
       <env name="ADIOS2_ROOT">$SHELL{if [ -z "$ADIOS2_ROOT" ]; then echo /global/cfs/cdirs/e3sm/3rdparty/adios2/2.9.1/cray-mpich-8.1.25/intel-2023.1.0; else echo "$ADIOS2_ROOT"; fi}</env>
@@ -434,6 +436,9 @@
       <env name="MPICH_COLL_SYNC">MPI_Bcast</env>
       <env name="NETCDF_PATH">$ENV{CRAY_NETCDF_HDF5PARALLEL_PREFIX}</env>
       <env name="PNETCDF_PATH">$ENV{CRAY_PARALLEL_NETCDF_PREFIX}</env>
+      <!--env name="PAT_RT_CALLSTACK_MODE">frames</env--> <!-- ndk: should only impact profiling with craypat -->
+      <!--env name="KOKKOS_TOOLS_LIBS">/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64/libkp_kokkos_sampler.so;/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64/libkp_memory_events.so;/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64/libkp_nvtx_connector.so</env-->
+      <!--env name="KOKKOS_TOOLS_LIBS">pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64</env-->
     </environment_variables>
     <environment_variables compiler="gnugpu">
       <env name="MPICH_GPU_SUPPORT_ENABLED">1</env>

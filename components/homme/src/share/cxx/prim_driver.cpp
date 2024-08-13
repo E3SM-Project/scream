@@ -15,6 +15,7 @@
 #include "ErrorDefs.hpp"
 #include "CamForcing.hpp"
 #include "profiling.hpp"
+#include <nvtx3/nvToolsExt.h>
 
 namespace Homme
 {
@@ -61,6 +62,7 @@ void prim_run_subcycle_c (const Real& dt, int& nstep, int& nm1, int& n0, int& np
                           const int& next_output_step, const int& nsplit_iteration)
 {
   GPTLstart("tl-sc prim_run_subcycle_c");
+  nvtxRangePushA("tl-sc prim_run_subcycle_c");
 
   auto& context = Context::singleton();
 
@@ -131,11 +133,13 @@ void prim_run_subcycle_c (const Real& dt, int& nstep, int& nm1, int& n0, int& np
 
     // Loop over rsplit vertically lagrangian timesteps
     GPTLstart("tl-sc prim_step-loop");
+    nvtxRangePushA("tl-sc prim_step-loop");
     prim_step(dt,compute_diagnostics);
     for (int r=1; r<params.rsplit; ++r) {
       tl.update_dynamics_levels(UpdateType::LEAPFROG);
       prim_step(dt,false);
     }
+    nvtxRangePop();
     GPTLstop("tl-sc prim_step-loop");
 
     tl.update_tracers_levels(params.dt_tracer_factor);
@@ -151,7 +155,9 @@ void prim_run_subcycle_c (const Real& dt, int& nstep, int& nm1, int& n0, int& np
     // if rsplit>0:  also remap dynamics and compute reference level ps_v
     ////////////////////////////////////////////////////////////////////////
     GPTLstart("tl-sc vertical_remap");
+    nvtxRangePushA("tl-sc vertical_remap");
     vertical_remap(dt_remap);
+    nvtxRangePop();
     GPTLstop("tl-sc vertical_remap");
 
     ////////////////////////////////////////////////////////////////////////
@@ -177,6 +183,7 @@ void prim_run_subcycle_c (const Real& dt, int& nstep, int& nm1, int& n0, int& np
   n0    = tl.n0;
   np1   = tl.np1;
 
+  nvtxRangePop();
   GPTLstop("tl-sc prim_run_subcycle_c");
 }
 

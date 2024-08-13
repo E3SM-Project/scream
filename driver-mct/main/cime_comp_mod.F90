@@ -246,6 +246,9 @@ module cime_comp_mod
   private :: cime_write_performance_checkpoint
 
 #include <mpif.h>
+#if defined(CRAYPAT)
+#include <pat_apif.h>
+#endif
 
   !----------------------------------------------------------------------------
   ! temporary variables
@@ -690,7 +693,9 @@ module cime_comp_mod
   integer, parameter :: ens1=1         ! use first instance of ensemble only
   integer, parameter :: fix1=1         ! temporary hard-coding to first ensemble, needs to be fixed
   integer :: eai, eli, eoi, eii, egi, eri, ewi, eei, exi, efi, ezi  ! component instance counters
-
+#if defined(CRAYPAT)
+   integer :: istat_craypat
+#endif
   !----------------------------------------------------------------------------
   ! formats
   !----------------------------------------------------------------------------
@@ -739,11 +744,18 @@ contains
     
     beg_count = shr_sys_irtc(irtc_rate)
     
+#if defined(CRAYPAT)
+    call PAT_record(PAT_STATE_OFF, istat_craypat)  ! asap, start with craypat off ndk
+#endif
 #if defined(SCREAM_SYSTEM_WORKAROUND) && (SCREAM_SYSTEM_WORKAROUND == 1)
     call atm_init_hip_mct()
 #endif
     call mpi_init(ierr)
     call shr_mpi_chkerr(ierr,subname//' mpi_init')
+#if defined(CRAYPAT)
+    call PAT_record(PAT_STATE_OFF, istat_craypat)  ! after MPI init, start with craypat off
+    call PAT_record(PAT_STATE_OFF, istat_craypat)  ! after MPI init, start with craypat on
+#endif
 
     end_count = shr_sys_irtc(irtc_rate)
     mpi_init_time = real( (end_count-beg_count), r8)/real(irtc_rate, r8)
