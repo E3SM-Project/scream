@@ -254,6 +254,40 @@ IF (HOMMEXX_BFB_TESTING)
   TARGET_LINK_LIBRARIES(remap_theta_ut thetal_kokkos_ut_lib)
 ENDIF ()
 
+
+# ### Caar functor standalone test (for profiling purposes)
+
+SET (CAAR_SA_CXX_SRCS
+  ${THETA_UT_DIR}/caar_standalone.cpp
+  )
+
+SET (CAAR_SA_F90_SRCS
+  ${THETA_UT_DIR}/caar_interface.F90
+  ${THETA_UT_DIR}/thetal_test_interface.F90
+  ${SHARE_UT_DIR}/geometry_interface.F90
+  )
+
+SET (CAAR_SA_INCLUDE_DIRS
+  ${SRC_THETA_DIR}/cxx
+  ${SRC_SHARE_DIR}
+  ${SRC_SHARE_DIR}/cxx
+  ${THETA_UT_DIR}
+  ${THETA_LIB_MODULE_DIR}
+  ${UTILS_TIMING_SRC_DIR}
+  ${UTILS_TIMING_BIN_DIR}
+  ${CMAKE_CURRENT_BINARY_DIR}
+  ${CMAKE_BINARY_DIR}/src/share/cxx
+  ${HOMME_SOURCE_DIR}/test/unit_test
+  )
+
+IF (USE_NUM_PROCS)
+  SET (NUM_CPUS ${USE_NUM_PROCS})
+ELSE()
+  SET (NUM_CPUS 1)
+ENDIF()
+cxx_unit_test (caar_standalone "${CAAR_SA_F90_SRCS}" "${CAAR_SA_CXX_SRCS}" "${CAAR_SA_INCLUDE_DIRS}" "${CONFIG_DEFINES}" ${NUM_CPUS})
+TARGET_LINK_LIBRARIES(caar_standalone thetal_kokkos_ut_lib)
+
 # ### DIRK functor unit test
 
 SET (DIRK_UT_CXX_SRCS
