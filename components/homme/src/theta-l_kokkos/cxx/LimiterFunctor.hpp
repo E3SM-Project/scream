@@ -36,7 +36,6 @@ struct LimiterFunctor {
 
   int                 m_np1;
   const int           m_num_elems;
-  const bool          m_theta_hydrostatic_mode;
 
   HybridVCoord        m_hvcoord;
   ElementsState       m_state;
@@ -63,7 +62,6 @@ struct LimiterFunctor {
 
   LimiterFunctor(const Elements &elements, const HybridVCoord &hvcoord, const SimulationParams& params)
       : m_num_elems(elements.num_elems())
-      , m_theta_hydrostatic_mode(params.theta_hydrostatic_mode)
       , m_hvcoord(hvcoord)
       , m_state(elements.m_state)
       , m_geometry(elements.m_geometry)
@@ -130,8 +128,6 @@ struct LimiterFunctor {
         diff(ilev) = (dp(ilev) - m_dp3d_thresh*dp0(ilev))*spheremp;
       });
 
-      kv.team_barrier();
-
       Real min_diff = Kokkos::reduction_identity<Real>::min();
       auto diff_as_real = Homme::viewAsReal(diff);
       auto dp_as_real   = Homme::viewAsReal(dp);
@@ -167,8 +163,6 @@ struct LimiterFunctor {
             diff(ilev) *= -1.0;
           });
         }
-
-        kv.team_barrier();
 
         // This loop must be done over physical levels, unless we implement
         // masks, like it has been done in the E3SM/scream project
@@ -210,7 +204,6 @@ struct LimiterFunctor {
         }
       });
     });
-    kv.team_barrier();
   }
 
 };
