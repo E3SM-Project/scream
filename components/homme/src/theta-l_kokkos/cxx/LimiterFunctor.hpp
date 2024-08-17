@@ -97,15 +97,15 @@ struct LimiterFunctor {
 
   void run (const int& tl)
   {
-    profiling_resume();
+    // profiling_resume();
 
-    GPTLstart("caar limiter");
+    // GPTLstart("caar limiter");
     m_np1 = tl;
     Kokkos::parallel_for("caar loop dp3d limiter", m_policy_dp3d_lim, *this);
     Kokkos::fence();
-    GPTLstop("caar limiter");
+    // GPTLstop("caar limiter");
 
-    profiling_pause();
+    // profiling_pause();
   }
 
   KOKKOS_INLINE_FUNCTION
@@ -135,12 +135,12 @@ struct LimiterFunctor {
       Kokkos::Min<Real,ExecSpace> reducer(min_diff);
       Kokkos::parallel_reduce(Kokkos::ThreadVectorRange(kv.team,NUM_PHYSICAL_LEV),
                               [&](const int k,Real& result) {
-#ifndef HOMMEXX_BFB_TESTING
-        if(diff_as_real(k) < 0){
-          printf("WARNING:CAAR: dp3d too small. k=%d, dp3d(k)=%f, dp0=%f \n",
-           k+1,dp_as_real(k),dp0_as_real(k));
-        }
-#endif
+// #ifndef HOMMEXX_BFB_TESTING
+//         if(diff_as_real(k) < 0){
+//           printf("WARNING:CAAR: dp3d too small. k=%d, dp3d(k)=%f, dp0=%f \n",
+//            k+1,dp_as_real(k),dp0_as_real(k));
+//         }
+// #endif
         result = result<=diff_as_real(k) ? result : diff_as_real(k);
       }, reducer);
 
@@ -195,10 +195,10 @@ struct LimiterFunctor {
         // Note: another place where scream's masks could help
         for (int ivec=0; ivec<VECTOR_SIZE; ++ivec) {
           if ( (vtheta_dp(ilev)[ivec] - m_vtheta_thresh*dp(ilev)[ivec]) < 0) {
-#ifndef HOMMEXX_BFB_TESTING
-             printf("WARNING:CAAR: k=%d,theta(k)=%f<%f=th_thresh, applying limiter \n",
-               ilev*VECTOR_SIZE+ivec+1,vtheta_dp(ilev)[ivec]/dp(ilev)[ivec],m_vtheta_thresh);
-#endif
+// #ifndef HOMMEXX_BFB_TESTING
+//              printf("WARNING:CAAR: k=%d,theta(k)=%f<%f=th_thresh, applying limiter \n",
+//                ilev*VECTOR_SIZE+ivec+1,vtheta_dp(ilev)[ivec]/dp(ilev)[ivec],m_vtheta_thresh);
+// #endif
              vtheta_dp(ilev)[ivec]=m_vtheta_thresh*dp(ilev)[ivec];
           }
         }
