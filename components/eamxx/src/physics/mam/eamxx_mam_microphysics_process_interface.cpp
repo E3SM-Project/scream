@@ -19,6 +19,9 @@
 // For EKAT units package
 #include "ekat/util/ekat_units.hpp"
 
+//For EKAT subview
+#include <ekat/kokkos/ekat_subview_utils.hpp>
+
 #include <iostream>
 
 
@@ -579,11 +582,11 @@ void MAMMicrophysics::run_impl(const double dt) {
                            chlorine_time_secs_);
 
 
-  // /* Update the TracerTimeState to reflect the current time, note the addition of dt */
+  //Update the TracerTimeState to reflect the current time, note the addition of dt 
   linoz_time_state_.t_now = ts.frac_of_year_in_days();
   // FIXME: we do not need altitude_int for invariant tracers and linoz fields.
   view_1d dummy_altitude_int;
-  scream::mam_coupling::advance_tracer_data(TracerDataReader_,
+  /*scream::mam_coupling::advance_tracer_data(TracerDataReader_,
                       *TracerHorizInterp_,
                       ts,
                       linoz_time_state_,
@@ -699,9 +702,9 @@ void MAMMicrophysics::run_impl(const double dt) {
 
     // 
     auto invariants_icol = ekat::subview(invariants,icol);
-    auto cnst_offline_icol = ekat::subview(cnst_offline,icol);
-    mam4::mo_setinv::setinv(team, invariants_icol, atm.temperature, atm.vapor_mixing_ratio, 
-                            cnst_offline_icol, atm.pressure);
+    //auto cnst_offline_icol = ekat::subview(cnst_offline,icol);
+    //mam4::mo_setinv::setinv(team, invariants_icol, atm.temperature, atm.vapor_mixing_ratio, 
+    //                        cnst_offline_icol, atm.pressure);
 
     // calculate o3 column densities (first component of col_dens in Fortran code)
     auto o3_col_dens_i = ekat::subview(o3_col_dens, icol);
@@ -847,7 +850,7 @@ void MAMMicrophysics::run_impl(const double dt) {
         Real do3_mass; // diagnostic, not needed
         mam4::lin_strat_chem::lin_strat_sfcsink_kk(dt, pdel, vmr[o3_ndx], config.linoz.o3_sfc,
           config.linoz.o3_tau, do3_mass);
-      }*/
+      }*b/
 
       // ... check for negative values and reset to zero
       for (int i = 0; i < gas_pcnst; ++i) {
@@ -866,7 +869,7 @@ void MAMMicrophysics::run_impl(const double dt) {
       //mam_coupling::transfer_work_arrays_to_prognostics(q, qqcw, progs, k);
     });
   });
-
+*/
   // postprocess output
   Kokkos::parallel_for("postprocess", policy, postprocess_);
   Kokkos::fence();
