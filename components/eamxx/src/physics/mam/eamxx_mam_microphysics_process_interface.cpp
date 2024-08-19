@@ -890,6 +890,7 @@ void MAMMicrophysics::run_impl(const double dt) {
               Real dgncur_awet[num_modes] = {};
               Real wetdens[num_modes]     = {};
               Real qaerwat[num_modes]     = {};
+# if 0
               impl::compute_water_content(progs, k, qv, temp, pmid, dgncur_a,
                                           dgncur_awet, wetdens, qaerwat);
 
@@ -900,7 +901,7 @@ void MAMMicrophysics::run_impl(const double dt) {
                   cldfrac, vmr, vmrcw, vmr_pregaschem, vmr_precldchem,
                   vmrcw_precldchem, vmr_tendbb, vmrcw_tendbb, dgncur_a,
                   dgncur_awet, wetdens, qaerwat);
-
+#endif
               //-----------------
               // LINOZ chemistry
               //-----------------
@@ -911,7 +912,7 @@ void MAMMicrophysics::run_impl(const double dt) {
                   o3clim_linoz_diag, zenith_angle_degrees;
 
               int o3_ndx = 0;  // index of "O3" in solsym array (in EAM)
-#if 0
+
       mam4::lin_strat_chem::lin_strat_chem_solve_kk(o3_col_dens_i(k), temp,
         zenith_angle, pmid, dt, rlats,
         linoz_o3_clim(icol, k), linoz_t_clim(icol, k), linoz_o3col_clim(icol, k),
@@ -920,7 +921,7 @@ void MAMMicrophysics::run_impl(const double dt) {
         chlorine_loading, config.linoz.psc_T, vmr[o3_ndx],
         do3_linoz, do3_linoz_psc, ss_o3,
         o3col_du_diag, o3clim_linoz_diag, zenith_angle_degrees);
-#endif
+
               // update source terms above the ozone decay threshold
               /*if (k > nlev - config.linoz.o3_lbl - 1) {
                 Real do3_mass; // diagnostic, not needed
