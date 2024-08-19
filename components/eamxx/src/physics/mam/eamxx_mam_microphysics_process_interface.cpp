@@ -751,7 +751,7 @@ void MAMMicrophysics::run_impl(const double dt) {
 
         //
         auto invariants_icol = ekat::subview(invariants, icol);
-        
+
         view_1d cnst_offline_icol[mam4::mo_setinv::num_tracer_cnst];
         for (int i = 0; i < mam4::mo_setinv::num_tracer_cnst; ++i) {
             cnst_offline_icol[i] = ekat::subview(cnst_offline[i],icol);
@@ -769,7 +769,8 @@ void MAMMicrophysics::run_impl(const double dt) {
 
         // set up photolysis work arrays for this column.
         mam4::mo_photo::PhotoTableWorkArrays photo_work_arrays_icol;
-        const auto& work_photo_table_icol = ekat::subview(work_photo_table, icol);
+        const auto& work_photo_table_icol = ekat::subview(work_photo_table,
+        icol);
         //  set work view using 1D photo_work_arrays_icol
         mam4::mo_photo::set_photo_table_work_arrays(photo_table,
                                                     work_photo_table_icol,
@@ -788,11 +789,11 @@ void MAMMicrophysics::run_impl(const double dt) {
 
         const auto &photo_rates_icol = ekat::subview(photo_rates, icol);
 
-        // mam4::mo_photo::table_photo(photo_rates_icol, atm.pressure,
-        // atm.hydrostatic_dp,
-        //  atm.temperature, o3_col_dens_i, zenith_angle, surf_albedo,
-        //  atm.liquid_mixing_ratio, atm.cloud_fraction, eccf, photo_table,
-        //  photo_work_arrays_icol);
+        mam4::mo_photo::table_photo(photo_rates_icol, atm.pressure,
+        atm.hydrostatic_dp,
+         atm.temperature, o3_col_dens_i, zenith_angle, surf_albedo,
+         atm.liquid_mixing_ratio, atm.cloud_fraction, eccf, photo_table,
+         photo_work_arrays_icol);
 
         // compute aerosol microphysics on each vertical level within this
         // column
