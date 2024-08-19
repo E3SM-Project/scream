@@ -3,7 +3,8 @@
 namespace scream::impl {
 
 KOKKOS_INLINE_FUNCTION
-void compute_water_content(const mam4::Prognostics &progs, int k, Real qv,
+void compute_water_content(const mam4::Prognostics &progs,
+                           const haero::Atmosphere &atm, int k, Real qv,
                            Real temp, Real pmid,
                            Real dgncur_a[mam4::AeroConfig::num_modes()],
                            Real dgncur_awet[mam4::AeroConfig::num_modes()],
@@ -23,27 +24,12 @@ void compute_water_content(const mam4::Prognostics &progs, int k, Real qv,
   // extract aerosol tracers for this level into state_q, which is needed
   // for computing dry aerosol properties below
   // FIXME: we should eliminate this index translation stuff
+
   constexpr int nvars = aero_model::pcnst;
   Real state_q[nvars];  // aerosol tracers for level k
-  for(int imode = 0; imode < num_modes; ++imode) {
-    int la, lc;  // interstitial and cloudborne indices within state_q
-
-    // number mixing ratios
-    mam4::convproc::assign_la_lc(imode, -1, la, lc);
-    state_q[la] = progs.n_mode_i[imode](k);
-    state_q[lc] = progs.n_mode_c[imode](k);
-    // aerosol mass mixing ratios
-    for(int iaero = 0; iaero < num_aero_ids; ++iaero) {
-      mam4::convproc::assign_la_lc(imode, iaero, la, lc);
-      auto mode = static_cast<mam4::ModeIndex>(imode);
-      auto aero = static_cast<mam4::AeroId>(iaero);
-      int ispec = mam4::aerosol_index_for_mode(mode, aero);
-      if(ispec != -1) {
-        state_q[la] = progs.q_aero_i[imode][ispec](k);
-        state_q[lc] = progs.q_aero_c[imode][ispec](k);
-      }
-    }
-  }
+  mam4::utils::extract_stateq_from_prognostics(progs,
+                                  atm,state_q,
+                                  k);
 
   // compute the dry volume for each mode, and from it the current dry
   // geometric nominal particle diameter.

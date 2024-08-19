@@ -890,8 +890,8 @@ void MAMMicrophysics::run_impl(const double dt) {
               Real dgncur_awet[num_modes] = {};
               Real wetdens[num_modes]     = {};
               Real qaerwat[num_modes]     = {};
-# if 0
-              impl::compute_water_content(progs, k, qv, temp, pmid, dgncur_a,
+
+              impl::compute_water_content(progs, atm, k, qv, temp, pmid, dgncur_a,
                                           dgncur_awet, wetdens, qaerwat);
 
               // do aerosol microphysics (gas-aerosol exchange, nucleation,
@@ -901,7 +901,6 @@ void MAMMicrophysics::run_impl(const double dt) {
                   cldfrac, vmr, vmrcw, vmr_pregaschem, vmr_precldchem,
                   vmrcw_precldchem, vmr_tendbb, vmrcw_tendbb, dgncur_a,
                   dgncur_awet, wetdens, qaerwat);
-#endif
               //-----------------
               // LINOZ chemistry
               //-----------------
