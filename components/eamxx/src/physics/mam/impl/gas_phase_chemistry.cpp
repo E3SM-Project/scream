@@ -385,6 +385,7 @@ KOKKOS_INLINE_FUNCTION
 void gas_phase_chemistry(
     Real zm, Real zi, Real phis, Real temp, Real pmid, Real pdel, Real dt,
     const Real photo_rates[mam4::mo_photo::phtcnt],  // in
+    const Real extfrc[mam4::gas_chemistry::extcnt],  // in
     Real invariants[mam4::gas_chemistry::nfs],       // in
     Real q[mam4::gas_chemistry::gas_pcnst]) {        // VMRs, inout
   // constexpr Real rga = 1.0/haero::Constants::gravity;
@@ -396,6 +397,8 @@ void gas_phase_chemistry(
       mam4::gas_chemistry::gas_pcnst;  // number of gas phase species
   constexpr int rxntot =
       mam4::gas_chemistry::rxntot;  // number of chemical reactions
+  constexpr int extcnt = 
+      mam4::gas_chemistry::extcnt;  // number of species with external forcing
   constexpr int indexm =
       mam4::gas_chemistry::indexm;  // index of total atm density in invariant
                                     // array
@@ -455,6 +458,14 @@ void gas_phase_chemistry(
   // Photolysis rates at time = t(n+1)
   //===================================
 
+  // compute the rate of change from forcing
+  Real extfrc_rates[extcnt]; // [1/cm^3/s]
+  for (int mm = 0; mm < extcnt; ++mm) {
+    if (mm != synoz_ndx) {
+      extfrc_rates[mm] = extfrc[mm] / invariants[indexm];
+    }
+  }
+
   // ... Form the washout rates
   Real het_rates[gas_pcnst];
   // FIXME: not ported yet
@@ -486,7 +497,7 @@ void gas_phase_chemistry(
 
   // solve chemical system implicitly
   Real prod_out[clscnt4], loss_out[clscnt4];
-  mam4::gas_chemistry::imp_sol(q, reaction_rates, het_rates, dt, permute_4,
+  mam4::gas_chemistry::imp_sol(q, reaction_rates, het_rates, extfrc_rates, dt, permute_4,
                                clsmap_4, factor, epsilon, prod_out, loss_out);
 
   // save h2so4 change by gas phase chem (for later new particle nucleation)

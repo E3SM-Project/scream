@@ -847,13 +847,19 @@ void MAMMicrophysics::run_impl(const double dt) {
                 photo_rates_k[i] = photo_rates_icol(k, i);
               }
 
+              Real extfrc_k[mam4::gas_chemistry::extcnt];
+              for (int i = 0; i < mam4::gas_chemistry::extcnt; ++i) {
+                //extfrc_k[i] = extfrc_icol(k, i);
+                extfrc_k[i] = 0.0;
+              }
+
               Real invariants_k[mam4::gas_chemistry::nfs];
               for(int i = 0; i < mam4::gas_chemistry::nfs; ++i) {
                 invariants_k[i] = invariants_icol(k, i);
               }
 
               // impl::gas_phase_chemistry(zm, zi, phis, temp, pmid, pdel, dt,
-              //                             photo_rates_k, invariants_k, vmr);
+              //                             photo_rates_k, extfrc_k, invariants_k, vmr);
 
               //----------------------
               // Aerosol microphysics
