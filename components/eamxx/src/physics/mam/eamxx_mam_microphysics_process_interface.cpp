@@ -227,8 +227,17 @@ void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_
   }
 
   {
-    vert_emis_file_name_= "cmip6_mam4_bc_a4_elev_ne2np4_2010_clim_c20240726_OD.nc";
+    // cmip6_mam4_bc_a4_elev_ne2np4_2010_clim_c20240726_OD.nc
+    std::string  mam4_bc_a4_verti_emiss_file_name =
+      m_params.get<std::string>("mam4_bc_a4_verti_emiss_file_name");
+    std::string  mam4_so2_verti_emiss_file_name =
+    //"cmip6_mam4_so2_elev_ne2np4_2010_clim_c20240726_OD.nc"
+      m_params.get<std::string>("mam4_so2_verti_emiss_file_name");
+
+    vert_emis_file_name_.push_back(mam4_bc_a4_verti_emiss_file_name);
+    vert_emis_file_name_.push_back(mam4_so2_verti_emiss_file_name);
     std::string spa_map_file="";
+    // FIXME: I am assiming only one variable per file with name BB
     std::vector<std::string> var_names{"BB"};
 
     for (auto file_name :vert_emis_file_name_)
@@ -582,11 +591,11 @@ void MAMMicrophysics::run_impl(const double dt) {
                            chlorine_time_secs_);
 
 
-  //Update the TracerTimeState to reflect the current time, note the addition of dt 
+  // /* Update the TracerTimeState to reflect the current time, note the addition of dt */
   linoz_time_state_.t_now = ts.frac_of_year_in_days();
   // FIXME: we do not need altitude_int for invariant tracers and linoz fields.
   view_1d dummy_altitude_int;
-  /*scream::mam_coupling::advance_tracer_data(TracerDataReader_,
+  scream::mam_coupling::advance_tracer_data(TracerDataReader_,
                       *TracerHorizInterp_,
                       ts,
                       linoz_time_state_,
@@ -702,9 +711,9 @@ void MAMMicrophysics::run_impl(const double dt) {
 
     // 
     auto invariants_icol = ekat::subview(invariants,icol);
-    //auto cnst_offline_icol = ekat::subview(cnst_offline,icol);
-    //mam4::mo_setinv::setinv(team, invariants_icol, atm.temperature, atm.vapor_mixing_ratio, 
-    //                        cnst_offline_icol, atm.pressure);
+//    auto cnst_offline_icol = ekat::subview(cnst_offline,icol);
+//    mam4::mo_setinv::setinv(team, invariants_icol, atm.temperature, atm.vapor_mixing_ratio, 
+//                            cnst_offline_icol, atm.pressure);
 
     // calculate o3 column densities (first component of col_dens in Fortran code)
     auto o3_col_dens_i = ekat::subview(o3_col_dens, icol);
@@ -712,11 +721,11 @@ void MAMMicrophysics::run_impl(const double dt) {
 
     // set up photolysis work arrays for this column.
     mam4::mo_photo::PhotoTableWorkArrays photo_work_arrays_icol;
-    const auto& work_photo_table_icol = ekat::subview(work_photo_table, icol);
+    //const auto& work_photo_table_icol = ekat::subview(work_photo_table, icol);
     // set work view using 1D photo_work_arrays_icol
-    mam4::mo_photo::set_photo_table_work_arrays(photo_table,
-                                                work_photo_table_icol,
-                                                photo_work_arrays_icol);
+    //mam4::mo_photo::set_photo_table_work_arrays(photo_table,
+    //                                            work_photo_table_icol,
+    //                                            photo_work_arrays_icol);
 
     // ... look up photolysis rates from our table
     // NOTE: the table interpolation operates on an entire column of data, so we
@@ -728,9 +737,9 @@ void MAMMicrophysics::run_impl(const double dt) {
 
     const auto& photo_rates_icol = ekat::subview(photo_rates, icol);
 
-    mam4::mo_photo::table_photo(photo_rates_icol, atm.pressure, atm.hydrostatic_dp,
-     atm.temperature, o3_col_dens_i, zenith_angle, surf_albedo, atm.liquid_mixing_ratio,
-     atm.cloud_fraction, eccf, photo_table, photo_work_arrays_icol);
+    //mam4::mo_photo::table_photo(photo_rates_icol, atm.pressure, atm.hydrostatic_dp,
+    // atm.temperature, o3_col_dens_i, zenith_angle, surf_albedo, atm.liquid_mixing_ratio,
+    // atm.cloud_fraction, eccf, photo_table, photo_work_arrays_icol);
     
     // compute aerosol microphysics on each vertical level within this column
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&](const int k) {
@@ -791,8 +800,8 @@ void MAMMicrophysics::run_impl(const double dt) {
         invariants_k[i] = invariants_icol(k, i);
       }
 
-      impl::gas_phase_chemistry(zm, zi, phis, temp, pmid, pdel, dt,
-                                  photo_rates_k, invariants_k, vmr);
+      //impl::gas_phase_chemistry(zm, zi, phis, temp, pmid, pdel, dt,
+      //                            photo_rates_k, invariants_k, vmr);
 
       //----------------------
       // Aerosol microphysics
@@ -850,7 +859,7 @@ void MAMMicrophysics::run_impl(const double dt) {
         Real do3_mass; // diagnostic, not needed
         mam4::lin_strat_chem::lin_strat_sfcsink_kk(dt, pdel, vmr[o3_ndx], config.linoz.o3_sfc,
           config.linoz.o3_tau, do3_mass);
-      }*b/
+      }*/
 
       // ... check for negative values and reset to zero
       for (int i = 0; i < gas_pcnst; ++i) {
@@ -869,7 +878,7 @@ void MAMMicrophysics::run_impl(const double dt) {
       //mam_coupling::transfer_work_arrays_to_prognostics(q, qqcw, progs, k);
     });
   });
-*/
+
   // postprocess output
   Kokkos::parallel_for("postprocess", policy, postprocess_);
   Kokkos::fence();
