@@ -417,7 +417,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   const std::string xs_long_file =
       m_params.get<std::string>("mam4_xs_long_file");
 
-  // photo_table_ = impl::read_photo_table(rsf_file, xs_long_file);
+  photo_table_ = impl::read_photo_table(rsf_file, xs_long_file);
 
   // FIXME: read relevant land use data from drydep surface file
 
@@ -480,8 +480,8 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
         chlorine_time_secs_);
   }
 
-  // const int photo_table_len = get_photo_table_work_len(photo_table_);
-  // work_photo_table_ = view_2d("work_photo_table", ncol_, photo_table_len);
+  const int photo_table_len = get_photo_table_work_len(photo_table_);
+  work_photo_table_ = view_2d("work_photo_table", ncol_, photo_table_len);
 
   // here's where we store per-column photolysis rates
   photo_rates_ = view_3d("photo_rates", ncol_, nlev_, mam4::mo_photo::phtcnt);
@@ -751,10 +751,15 @@ void MAMMicrophysics::run_impl(const double dt) {
 
         //
         auto invariants_icol = ekat::subview(invariants, icol);
-        //    auto cnst_offline_icol = ekat::subview(cnst_offline,icol);
-        //    mam4::mo_setinv::setinv(team, invariants_icol, atm.temperature,
-        //    atm.vapor_mixing_ratio,
-        //                            cnst_offline_icol, atm.pressure);
+        
+        view_1d cnst_offline_icol[mam4::mo_setinv::num_tracer_cnst];
+        for (int i = 0; i < mam4::mo_setinv::num_tracer_cnst; ++i) {
+            cnst_offline_icol[i] = ekat::subview(cnst_offline[i],icol);
+        }
+
+        mam4::mo_setinv::setinv(team, invariants_icol, atm.temperature,
+                                atm.vapor_mixing_ratio,
+                                cnst_offline_icol, atm.pressure);
 
         // calculate o3 column densities (first component of col_dens in Fortran
         // code)
@@ -764,12 +769,11 @@ void MAMMicrophysics::run_impl(const double dt) {
 
         // set up photolysis work arrays for this column.
         mam4::mo_photo::PhotoTableWorkArrays photo_work_arrays_icol;
-        // const auto& work_photo_table_icol = ekat::subview(work_photo_table,
-        // icol);
+        const auto& work_photo_table_icol = ekat::subview(work_photo_table, icol);
         //  set work view using 1D photo_work_arrays_icol
-        // mam4::mo_photo::set_photo_table_work_arrays(photo_table,
-        //                                             work_photo_table_icol,
-        //                                             photo_work_arrays_icol);
+        mam4::mo_photo::set_photo_table_work_arrays(photo_table,
+                                                    work_photo_table_icol,
+                                                    photo_work_arrays_icol);
 
         // ... look up photolysis rates from our table
         // NOTE: the table interpolation operates on an entire column of data,
@@ -858,8 +862,8 @@ void MAMMicrophysics::run_impl(const double dt) {
                 invariants_k[i] = invariants_icol(k, i);
               }
 
-              // impl::gas_phase_chemistry(zm, zi, phis, temp, pmid, pdel, dt,
-              //                             photo_rates_k, extfrc_k, invariants_k, vmr);
+              impl::gas_phase_chemistry(zm, zi, phis, temp, pmid, pdel, dt,
+                                        photo_rates_k, extfrc_k, invariants_k, vmr);
 
               //----------------------
               // Aerosol microphysics
