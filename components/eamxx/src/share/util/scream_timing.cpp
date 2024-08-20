@@ -23,8 +23,8 @@ void start_timer (const std::string& name) {
 }
 
 void stop_timer (const std::string& name) {
-  GPTLstop(name.c_str());
   nvtxRangePop();
+  GPTLstop(name.c_str());
 }
 
 void write_timers_to_file (const ekat::Comm& comm, const std::string& fname) {
