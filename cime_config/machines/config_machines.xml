@@ -444,6 +444,7 @@
       <!--env name="KOKKOS_TOOLS_LIBS">/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4x111XX1.nocosp.MOFF.nvtx.osrt.mpi.ktc.cuda124/build/kokkos-tools/build/profiling/nvtx-connector/libkp_nvtx_connector.so</env-->
       <!--env name="KOKKOS_TOOLS_LIBS">/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64/libkp_kernel_logger.so</env-->
       <env name="KOKKOS_TOOLS_GLOBALFENCES">0</env>
+      <!--env name="NSYS_NVTX_PROFILER_REGISTER_ONLY">0</env-->
     </environment_variables>
     <environment_variables compiler="gnugpu">
       <env name="MPICH_GPU_SUPPORT_ENABLED">1</env>
