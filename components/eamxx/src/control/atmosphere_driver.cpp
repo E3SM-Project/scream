@@ -20,6 +20,7 @@
 #include "ekat/std_meta/ekat_std_utils.hpp"
 #include <nvtx3/nvToolsExt.h>
 
+// ndk temporary mechanism for controlling cuda profiling start/stop collection as a whole
 //#define CUDA_PROFILER_API
 #ifdef CUDA_PROFILER_API
 //ndk for cuda profile overall start/stop:
