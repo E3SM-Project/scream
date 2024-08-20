@@ -31,6 +31,7 @@
 #include "ErrorDefs.hpp"
 
 #include <assert.h>
+#include <nvtx3/nvToolsExt.h>
 
 namespace Homme {
 
@@ -345,24 +346,30 @@ struct CaarFunctorImpl {
 
     profiling_resume();
 
-    // GPTLstart("caar compute");
+    GPTLstart("caar compute");
+    nvtxRangePushA("caar compute");
     int nerr;
     Kokkos::parallel_reduce("caar loop pre-boundary exchange", m_policy_pre, *this, nerr);
     Kokkos::fence();
-    // GPTLstop("caar compute");
+    nvtxRangePop();
+    GPTLstop("caar compute");
     if (nerr > 0)
       check_print_abort_on_bad_elems("CaarFunctorImpl::run TagPreExchange", data.n0);
 
-    // GPTLstart("caar_bexchV");
+    GPTLstart("caar_bexchV");
+    nvtxRangePushA("caar_bexchV");
     m_bes[data.np1]->exchange(m_geometry.m_rspheremp);
     Kokkos::fence();
-    // GPTLstop("caar_bexchV");
+    nvtxRangePop();
+    GPTLstop("caar_bexchV");
 
     if (!m_theta_hydrostatic_mode) {
-      // GPTLstart("caar compute");
+      GPTLstart("caar compute");
+      nvtxRangePushA("caar compute2");
       Kokkos::parallel_for("caar loop post-boundary exchange", m_policy_post, *this);
       Kokkos::fence();
-      // GPTLstop("caar compute");
+      nvtxRangePop();
+      GPTLstop("caar compute");
     }
 
     limiter.run(data.np1);

@@ -28,6 +28,7 @@ static void set_tracer_transport_derived_values (
   // for use by advection
   // ===============
   GPTLstart("tl-s deep_copy+derived_dp");
+  nvtxRangePushA("tl-s deep_copy+derived_dp");
   {
     const auto eta_dot_dpdn = elements.m_derived.m_eta_dot_dpdn;
     const auto derived_vn0 = elements.m_derived.m_vn0;
@@ -61,12 +62,14 @@ static void set_tracer_transport_derived_values (
     });
   }
   Kokkos::fence();
+  nvtxRangePop();
   GPTLstop("tl-s deep_copy+derived_dp");  
 }
 
 void prim_step (const Real dt, const bool compute_diagnostics)
 {
   GPTLstart("tl-s prim_step");
+  nvtxRangePushA("tl-s prim_step");
   // Get control and simulation params
   SimulationParams& params = Context::singleton().get<SimulationParams>();
   assert(params.params_set);
@@ -83,6 +86,7 @@ void prim_step (const Real dt, const bool compute_diagnostics)
   // Dynamical Step
   // ===============
   GPTLstart("tl-s prim_advance_exp-loop");
+  nvtxRangePushA("tl-s prim_advance_exp-loop");
   prim_advance_exp(tl,dt,compute_diagnostics);
   tl.tevolve += dt;
   for (int n=1; n<params.dt_tracer_factor; ++n) {
@@ -90,6 +94,7 @@ void prim_step (const Real dt, const bool compute_diagnostics)
     prim_advance_exp(tl,dt,false);
     tl.tevolve += dt;
   }
+  nvtxRangePop();
   GPTLstop("tl-s prim_advance_exp-loop");
 
   // ===============
@@ -106,16 +111,20 @@ void prim_step (const Real dt, const bool compute_diagnostics)
   // not be advected.  This will be cleaned up when the physgrid is merged into CAM trunk
   // Currently advecting all species
   GPTLstart("tl-s prim_advec_tracers_remap");
+  nvtxRangePushA("tl-s prim_advec_tracers_remap");
   if (params.qsize>0) {
     prim_advec_tracers_remap(dt*params.dt_tracer_factor);
   }
+  nvtxRangePop();
   GPTLstop("tl-s prim_advec_tracers_remap");
+  nvtxRangePop();
   GPTLstop("tl-s prim_step");
 }
 
 void prim_step_flexible (const Real dt, const bool compute_diagnostics) {
 #ifdef MODEL_THETA_L
   GPTLstart("tl-s prim_step_flexible");
+  nvtxRangePushA("tl-s prim_step_flexible");
   const auto& context = Context::singleton();
   const SimulationParams& params = context.get<SimulationParams>();
   assert(params.params_set);
@@ -200,6 +209,7 @@ void prim_step_flexible (const Real dt, const bool compute_diagnostics) {
     Context::singleton().get<ComposeTransport>().remap_q(tl);
 #endif
 
+  nvtxRangePop();
   GPTLstop("tl-s prim_step_flexible");
 #else
   Errors::runtime_abort("prim_step_flexible not supported in non-theta-l builds.");

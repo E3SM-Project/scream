@@ -12,6 +12,7 @@
 #include "utilities/SubviewUtils.hpp"
 
 #include "profiling.hpp"
+#include <nvtx3/nvToolsExt.h>
 
 namespace Homme
 {
@@ -110,8 +111,10 @@ void Diagnostics::sync_diagnostics_to_host () {
 void Diagnostics::run_diagnostics (const bool before_advance, const int ivar)
 {
   GPTLstart("prim_diag");
+  nvtxRangePushA("prim_diag");
   prim_diag_scalars(before_advance, ivar);
   prim_energy_halftimes(before_advance, ivar);
+  nvtxRangePop();
   GPTLstop("prim_diag");
 }
 

@@ -180,32 +180,40 @@ void ComposeTransportImpl::init_boundary_exchanges () {
 
 void ComposeTransportImpl::run (const TimeLevel& tl, const Real dt) {
   GPTLstart("compose_transport");
-
+  nvtxRangePushA("compose_transport");
   calc_trajectory(tl.np1, dt);
   
   GPTLstart("compose_isl");
+  nvtxRangePushA("compose_isl");
   homme::compose::advect(tl.np1, tl.n0_qdp, tl.np1_qdp);
+  nvtxRangePop();
   GPTLstop("compose_isl");
   
   if (m_data.hv_q > 0 && m_data.nu_q > 0) {
     GPTLstart("compose_hypervis_scalar");
+    nvtxRangePushA("compose_hypervis_scalar");
     advance_hypervis_scalar(dt);
     Kokkos::fence();
+    nvtxRangePop();
     GPTLstop("compose_hypervis_scalar");
   }
   
   GPTLstart("compose_cedr_global");
+  nvtxRangePushA("compose_cedr_global");
   homme::compose::set_dp3d_np1(m_data.independent_time_steps ?
                                0 : // dp3d is actually divdp
                                tl.np1);
   const auto run_cedr = homme::compose::property_preserve_global();
   if (run_cedr) Kokkos::fence();
+  nvtxRangePop();
   GPTLstop("compose_cedr_global");
   GPTLstart("compose_cedr_local");
+  nvtxRangePushA("compose_cedr_local");
   if (run_cedr) {
     homme::compose::property_preserve_local(m_data.limiter_option);
     Kokkos::fence();
   }
+  nvtxRangePop();
   GPTLstop("compose_cedr_local");    
 
   const auto np1 = tl.np1;
@@ -229,6 +237,7 @@ void ComposeTransportImpl::run (const TimeLevel& tl, const Real dt) {
   
   { // DSS qdp and omega
     GPTLstart("compose_dss_q");
+    nvtxRangePushA("compose_dss_q");
     const auto qdp = m_tracers.qdp;
     const auto spheremp = m_geometry.m_spheremp;
     const auto f1 = KOKKOS_LAMBDA (const int idx) {
@@ -246,16 +255,19 @@ void ComposeTransportImpl::run (const TimeLevel& tl, const Real dt) {
     launch_ie_ij_nlev<num_lev_pack>(f2);
     m_qdp_dss_be[tl.np1_qdp]->exchange(m_geometry.m_rspheremp);
     Kokkos::fence();
+    nvtxRangePop();
     GPTLstop("compose_dss_q");
   }
   
   if (m_data.cdr_check) {
     GPTLstart("compose_cedr_check");
+    nvtxRangePushA("compose_cedr_check");
     homme::compose::property_preserve_check();
     Kokkos::fence();
+    nvtxRangePop();
     GPTLstop("compose_cedr_check");
   }
-  
+  nvtxRangePop();
   GPTLstop("compose_transport");
 }
 

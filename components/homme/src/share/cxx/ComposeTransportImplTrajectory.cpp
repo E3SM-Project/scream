@@ -347,6 +347,7 @@ KOKKOS_FUNCTION static void calc_vertically_lagrangian_levels (
  */
 void ComposeTransportImpl::calc_trajectory (const int np1, const Real dt) {
   GPTLstart("compose_calc_trajectory");
+  nvtxRangePushA("compose_calc_trajectory");
   const auto sphere_ops = m_sphere_ops;
   const auto geo = m_geometry;
   const auto m_vec_sph2cart = geo.m_vec_sph2cart;
@@ -370,6 +371,7 @@ void ComposeTransportImpl::calc_trajectory (const int np1, const Real dt) {
     const auto m_divdp = m_derived.m_divdp;
     if (m_data.independent_time_steps) {
       GPTLstart("compose_3d_levels");
+      nvtxRangePushA("compose_3d_levels");
       const auto copy_v = KOKKOS_LAMBDA (const int idx) {
         int ie, lev, i, j;
         cti::idx_ie_packlev_ij(idx, ie, lev, i, j);
@@ -409,9 +411,11 @@ void ComposeTransportImpl::calc_trajectory (const int np1, const Real dt) {
       Kokkos::fence();
       Kokkos::parallel_for(m_tp_ne, sphere);
       Kokkos::fence();
+      nvtxRangePop();
       GPTLstop("compose_3d_levels");
     }
     GPTLstart("compose_v_bexchv");
+    nvtxRangePushA("compose_v_bexchv");
     const auto calc_midpoint_velocity = KOKKOS_LAMBDA (const MT& team) {
       KernelVariables kv(team, tu_ne);
       const auto ie = kv.ie;
@@ -442,9 +446,11 @@ void ComposeTransportImpl::calc_trajectory (const int np1, const Real dt) {
     be->exchange();
     Kokkos::fence();
   }
+  nvtxRangePop();
   GPTLstop("compose_v_bexchv");
   { // Calculate departure point.
     GPTLstart("compose_v2x");
+    nvtxRangePushA("compose_v2x");
     const int packn = this->packn;
     const int num_phys_lev = this->num_phys_lev;
     const auto m_sphere_cart = geo.m_sphere_cart;
@@ -483,8 +489,10 @@ void ComposeTransportImpl::calc_trajectory (const int np1, const Real dt) {
     };
     Kokkos::parallel_for(m_tp_ne, calc_departure_point);
     Kokkos::fence();
+    nvtxRangePop();
     GPTLstop("compose_v2x");
   }
+  nvtxRangePop();
   GPTLstop("compose_calc_trajectory");
 }
 

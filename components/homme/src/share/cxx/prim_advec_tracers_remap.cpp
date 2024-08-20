@@ -32,6 +32,7 @@ void prim_advec_tracers_remap (const Real dt) {
 static void prim_advec_tracers_remap_RK2 (const Real dt)
 {
   GPTLstart("tl-at prim_advec_tracers_remap_RK2");
+  nvtxRangePushA("tl-at prim_advec_tracers_remap_RK2");
   // Get control and simulation params
   SimulationParams& params = Context::singleton().get<SimulationParams>();
   assert(params.params_set);
@@ -46,8 +47,10 @@ static void prim_advec_tracers_remap_RK2 (const Real dt)
 
   // Precompute divdp
   GPTLstart("tl-at precompute_divdp");
+  nvtxRangePushA("tl-at precompute_divdp");
   esf.precompute_divdp();
   Kokkos::fence();
+  nvtxRangePop();
   GPTLstop("tl-at precompute_divdp");
 
   // Euler steps
@@ -56,29 +59,37 @@ static void prim_advec_tracers_remap_RK2 (const Real dt)
 
   // Euler step 1
   GPTLstart("tl-at esf-0");
+  nvtxRangePushA("tl-at esf-0");
   rhs_multiplier = 0.0;
   DSSopt = DSSOption::DIV_VDP_AVE;
   esf.euler_step(tl.np1_qdp,tl.n0_qdp,dt/2.0,rhs_multiplier,DSSopt);
+  nvtxRangePop();
   GPTLstop("tl-at esf-0");
 
   // Euler step 2
   GPTLstart("tl-at esf-1");
+  nvtxRangePushA("tl-at esf-1");
   rhs_multiplier = 1.0;
   DSSopt = DSSOption::ETA;
   esf.euler_step(tl.np1_qdp,tl.np1_qdp,dt/2.0,rhs_multiplier,DSSopt);
+  nvtxRangePop();
   GPTLstop("tl-at esf-1");
 
   // Euler step 3
   GPTLstart("tl-at esf-2");
+  nvtxRangePushA("tl-at esf-2");
   rhs_multiplier = 2.0;
   DSSopt = DSSOption::OMEGA;
   esf.euler_step(tl.np1_qdp,tl.np1_qdp,dt/2.0,rhs_multiplier,DSSopt);
+  nvtxRangePop();
   GPTLstop("tl-at esf-2");
 
   // to finish the 2D advection step, we need to average the t and t+2 results to get a second order estimate for t+1.
   GPTLstart("tl-at qdp_time_avg");
+  nvtxRangePushA("tl-at qdp_time_avg");
   esf.qdp_time_avg(tl.n0_qdp,tl.np1_qdp);
   Kokkos::fence();
+  nvtxRangePop();
   GPTLstop("tl-at qdp_time_avg");
 
   if ( ! EulerStepFunctor::is_quasi_monotone(params.limiter_option)) {
@@ -86,12 +97,14 @@ static void prim_advec_tracers_remap_RK2 (const Real dt)
                           params.limiter_option);
     // call advance_hypervis_scalar(edgeadv,elem,hvcoord,hybrid,deriv,tl%np1,np1_qdp,nets,nete,dt)
   }
+  nvtxRangePop();
   GPTLstop("tl-at prim_advec_tracers_remap_RK2");
 }
 
 static void prim_advec_tracers_remap_compose (const Real dt) {
 #if defined MODEL_THETA_L && defined HOMME_ENABLE_COMPOSE
   GPTLstart("tl-at prim_advec_tracers_compose");
+  nvtxRangePushA("tl-at prim_advec_tracers_compose");
   const auto& params = Context::singleton().get<SimulationParams>();
   assert(params.params_set);
   auto& tl = Context::singleton().get<TimeLevel>();
@@ -99,6 +112,7 @@ static void prim_advec_tracers_remap_compose (const Real dt) {
   auto& ct = Context::singleton().get<ComposeTransport>();
   ct.reset(params);
   ct.run(tl, dt);
+  nvtxRangePop();
   GPTLstop("tl-at prim_advec_tracers_compose");
 #else
   Errors::runtime_abort("prim_advec_tracers_remap_compose: "

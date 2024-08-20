@@ -12,6 +12,7 @@
 #include "profiling.hpp"
 
 #include "utilities/MathUtils.hpp"
+#include <nvtx3/nvToolsExt.h>
 
 namespace Homme {
 
@@ -19,6 +20,7 @@ static void apply_cam_forcing_tracers(const Real dt, ForcingFunctor& ff,
                                       const TimeLevel& tl,
                                       const SimulationParams& p) {
   GPTLstart("ApplyCAMForcing_tracers");
+  nvtxRangePushA("ApplyCAMForcing_tracers");
 
   bool adjustment = false;
 
@@ -34,14 +36,16 @@ static void apply_cam_forcing_tracers(const Real dt, ForcingFunctor& ff,
 #endif
 
   ff.tracers_forcing(dt, tl.n0, tl.n0_qdp, adjustment, p.moisture);
-
+  nvtxRangePop();
   GPTLstop("ApplyCAMForcing_tracers"); 
 }
 
 static void apply_cam_forcing_dynamics(const Real dt, ForcingFunctor& ff,
                                        const TimeLevel& tl) {
   GPTLstart("ApplyCAMForcing_dynamics");
+  nvtxRangePushA("ApplyCAMForcing_dynamics");
   ff.states_forcing(dt, tl.n0);
+  nvtxRangePop();
   GPTLstop("ApplyCAMForcing_dynamics");
 }
 

@@ -570,10 +570,12 @@ private:
     const auto policy = remap_team_policy<FunctorTag>(num_exec);
     // Timers don't work on CUDA, so place them here
     GPTLstart(functor_name.c_str());
+    nvtxRangePushA(functor_name.c_str());
     profiling_resume();
     Kokkos::parallel_for("vertical remap", policy, *this);
     Kokkos::fence();
     profiling_pause();
+    nvtxRangePop();
     GPTLstop(functor_name.c_str());
   }
 

@@ -213,12 +213,16 @@ struct CaarFunctorImpl {
 
     profiling_resume();
     GPTLstart("caar compute");
+    nvtxRangePushA("caar compute");
     Kokkos::parallel_for("caar loop pre-boundary exchange", m_policy, *this);
     Kokkos::fence();
+    nvtxRangePop();
     GPTLstop("caar compute");
 
     GPTLstart("caar_bexchV");
+    nvtxRangePushA("caar_bexchV");
     m_bes[data.np1]->exchange(m_geometry.m_rspheremp);
+    nvtxRangePop();
     GPTLstop("caar_bexchV");
 
     profiling_pause();

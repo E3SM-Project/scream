@@ -16,6 +16,7 @@
 #include "TimeLevel.hpp"
 
 #include "profiling.hpp"
+#include <nvtx3/nvToolsExt.h>
 
 namespace Homme
 {
@@ -31,6 +32,7 @@ void ttype10_imex_timestep(const TimeLevel& tl, const Real dt, const Real eta_av
 void prim_advance_exp (TimeLevel& tl, const Real dt, const bool compute_diagnostics)
 {
   GPTLstart("tl-ae prim_advance_exp");
+  nvtxRangePushA("tl-ae prim_advance_exp");
 
 #ifdef ARKODE
   Errors::runtime_abort("'ARKODE' support not yet available in C++ build.\n",
@@ -110,7 +112,9 @@ void prim_advance_exp (TimeLevel& tl, const Real dt, const bool compute_diagnost
   if (params.hypervis_order==2 && params.nu>0) {
     HyperviscosityFunctor& functor = context.get<HyperviscosityFunctor>();
     GPTLstart("tl-ae advance_hypervis_dp");
+    nvtxRangePushA("tl-ae advance_hypervis_dp");
     functor.run(tl.np1,dt,eta_ave_w);
+    nvtxRangePop();
     GPTLstop("tl-ae advance_hypervis_dp");
   }
 
@@ -123,7 +127,7 @@ void prim_advance_exp (TimeLevel& tl, const Real dt, const bool compute_diagnost
     auto& diags = context.get<Diagnostics>();
     diags.run_diagnostics(false,5);
   }
-
+  nvtxRangePop();
   GPTLstop("tl-ae prim_advance_exp");
 }
 
@@ -131,6 +135,7 @@ void prim_advance_exp (TimeLevel& tl, const Real dt, const bool compute_diagnost
 void ttype5_timestep(const TimeLevel& tl, const Real dt, const Real eta_ave_w)
 {
   GPTLstart("ttype5_timestep");
+  nvtxRangePushA("ttype5_timestep");
   // Get elements structure
   Elements& elements = Context::singleton().get<Elements>();
   SimulationParams& params = Context::singleton().get<SimulationParams>();
@@ -199,6 +204,7 @@ void ttype5_timestep(const TimeLevel& tl, const Real dt, const Real eta_ave_w)
 
   // Stage 5: u5 = (5u1-u0)/4 + 3dt/4 RHS(u4), t_rhs = t + dt/5 + dt/5 + dt/3 + 2dt/3
   functor.run(RKStageData(nm1, np1, np1, qn0, 3.0*dt/4.0, 3.0*eta_ave_w/4.0));
+  nvtxRangePop();
   GPTLstop("ttype5_timestep");
 }
 
@@ -221,6 +227,7 @@ void ttype9_imex_timestep(const TimeLevel& tl,
 {
 
   GPTLstart("ttype9_imex_timestep");
+  nvtxRangePushA("ttype9_imex_timestep");
 
   // The context
   const auto& c = Context::singleton();
@@ -315,6 +322,7 @@ void ttype9_imex_timestep(const TimeLevel& tl,
   Real a3 = 8.0*dt_dyn/18.0;
   dirk.run(nm1, a2, n0, a1, np1, a3, elements, hvcoord);
 
+  nvtxRangePop();
   GPTLstop("ttype9_imex_timestep");
 
 }
@@ -325,6 +333,7 @@ void ttype10_imex_timestep(const TimeLevel& tl,
                          const Real eta_ave_w)
 {
   GPTLstart("ttype10_imex_timestep");
+  nvtxRangePushA("ttype10_imex_timestep");
 
   // The context
   const auto& c = Context::singleton();
@@ -381,6 +390,7 @@ void ttype10_imex_timestep(const TimeLevel& tl,
   caar.run(RKStageData(n0, np1, np1, qn0, dt, eta_ave_w, 1.0, 0.0, 1.0));
   dirk.run(nm1, a2*dt, n0, a1*dt, np1, a3*dt, elements, hvcoord);
 
+  nvtxRangePop();
   GPTLstop("ttype10_imex_timestep");
 }
 

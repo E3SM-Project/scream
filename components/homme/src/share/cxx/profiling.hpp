@@ -11,6 +11,7 @@
 #include <Types.hpp>
 
 #include "gptl.h"
+#include <nvtx3/nvToolsExt.h>
 
 #ifdef HOMMEXX_ENABLE_GPU
 #define start_timer(name) {}

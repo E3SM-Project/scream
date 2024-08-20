@@ -42,6 +42,7 @@ void ComposeTransportImpl
 
 void ComposeTransportImpl::remap_q (const TimeLevel& tl) {
   GPTLstart("compose_vertical_remap");
+  nvtxRangePushA("compose_vertical_remap");
   const auto np1 = tl.np1;
   const auto np1_qdp = tl.np1_qdp;
   const auto dp = m_derived.m_divdp;
@@ -61,6 +62,7 @@ void ComposeTransportImpl::remap_q (const TimeLevel& tl) {
   Kokkos::fence();
   Kokkos::parallel_for(policy, post);
   Kokkos::fence();
+  nvtxRangePop();
   GPTLstop("compose_vertical_remap");
 }
 

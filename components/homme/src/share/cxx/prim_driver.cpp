@@ -30,6 +30,7 @@ extern "C" {
 void initialize_dp3d_from_ps_c () {
   // Initialize dp3d from ps
   GPTLstart("tl-sc dp3d-from-ps");
+  nvtxRangePushA("tl-sc dp3d-from-ps");
 
   auto& context = Context::singleton();
   auto& tl = context.get<TimeLevel>();
@@ -55,6 +56,7 @@ void initialize_dp3d_from_ps_c () {
     });
   }
   Kokkos::fence();
+  nvtxRangePop();
   GPTLstop("tl-sc dp3d-from-ps");
 }
 

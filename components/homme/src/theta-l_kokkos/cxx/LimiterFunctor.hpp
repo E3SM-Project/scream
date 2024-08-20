@@ -24,6 +24,7 @@
 #include "ErrorDefs.hpp"
 
 #include <assert.h>
+#include <nvtx3/nvToolsExt.h>
 
 namespace Homme {
 
@@ -99,11 +100,13 @@ struct LimiterFunctor {
   {
     // profiling_resume();
 
-    // GPTLstart("caar limiter");
+    GPTLstart("caar limiter");
+    nvtxRangePushA("caar limiter");
     m_np1 = tl;
     Kokkos::parallel_for("caar loop dp3d limiter", m_policy_dp3d_lim, *this);
     Kokkos::fence();
-    // GPTLstop("caar limiter");
+    nvtxRangePop();
+    GPTLstop("caar limiter");
 
     // profiling_pause();
   }

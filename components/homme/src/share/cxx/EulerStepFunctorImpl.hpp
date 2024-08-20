@@ -602,8 +602,10 @@ public:
 
   void exchange_qdp_dss_var () {
     GPTLstart("eus_bexch");
+    nvtxRangePushA("eus_bexch");
     const int idx = 3*m_data.np1_qdp + static_cast<int>(m_data.DSSopt);
     m_bes[idx]->exchange(m_geometry.m_rspheremp);
+    nvtxRangePop();
     GPTLstop("eus_bexch");
   }
 

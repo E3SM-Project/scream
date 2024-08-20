@@ -31,12 +31,47 @@ void initialize_kokkos () {
   // This is in fact const char*, but Kokkos::initialize requires char*.
   std::vector<char*> args;
 
-  std::string kk_opts = "--kokkos-map-device-id-by=mpi_rank";
-  args.push_back(const_cast<char*>(kk_opts.data()));
+  //   This is the only way to get the round-robin rank assignment Kokkos
+  // provides, as that algorithm is hardcoded in Kokkos::initialize(int& narg,
+  // char* arg[]). Once the behavior is exposed in the InitArguments version of
+  // initialize, we can remove this string code.
+  //   If for some reason we're running on a GPU platform, have Cuda enabled,
+  // but are using a different execution space, this initialization is still
+  // OK. The rank gets a GPU assigned and simply will ignore it.
+#ifdef KOKKOS_ENABLE_CUDA
+  int nd;
+  const auto ret = cudaGetDeviceCount(&nd);
+  if (ret != cudaSuccess) {
+    // It isn't a big deal if we can't get the device count.
+    nd = 1;
+  }
+#elif defined(KOKKOS_ENABLE_HIP)
+  int nd;
+  const auto ret = hipGetDeviceCount(&nd);
+  if (ret != hipSuccess) {
+    // It isn't a big deal if we can't get the device count.
+    nd = 1;
+  }
+#endif
+
+#ifdef HOMMEXX_ENABLE_GPU
+  std::stringstream ss;
+  ss << "--kokkos-num-devices=" << nd;
+  const auto key = ss.str();
+  std::vector<char> str(key.size()+1);
+  std::copy(key.begin(), key.end(), str.begin());
+  str.back() = 0;
+  args.push_back(const_cast<char*>(str.data()));
+#endif
 
 
   const char* silence = "--kokkos-disable-warnings";
   args.push_back(const_cast<char*>(silence));
+
+  //const char* ktl = "--kokkos-tools-libs=/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64/libkp_kokkos_sampler.so;/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64/libkp_memory_events.so;/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64/libkp_nvtx_connector.so";
+  //ndk, we were trying this, but it's not clear it worked (the KOKKOS_TOOLS_LIB var was working)
+  //const char* ktl = "--kokkos-tools-libs=/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64/libkp_nvtx_connector.so";
+  //args.push_back(const_cast<char*>(ktl));
 
   int narg = args.size();
   Kokkos::initialize(narg, args.data());
