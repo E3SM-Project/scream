@@ -42,6 +42,7 @@ module cime_comp_mod
   use mct_mod            ! mct_ wrappers for mct lib
   use perf_mod
   use ESMF
+  use nvtx ! ndk
 
   !----------------------------------------------------------------------------
   ! component model interfaces (init, run, final methods)
@@ -1095,6 +1096,7 @@ contains
     !  cime_driver.
     !----------------------------------------------------------
     call t_startf('CPL:INIT')
+    call nvtxStartRange("CPL:INIT")
     call t_adj_detailf(+1)
 
     call t_startf('CPL:cime_pre_init1')
@@ -2511,6 +2513,7 @@ contains
     endif
 
     call t_adj_detailf(-1)
+    call nvtxEndRange
     call t_stopf('CPL:cime_init')
 
   end subroutine cime_init
@@ -2555,7 +2558,9 @@ contains
 112 format( A14, 999999999(:, ',', f13.3) )
 113 format( A14, 999999999(:, ',', f13.3) )
 
+
     call t_startf ('CPL:cime_run_init')
+    call nvtxStartRange("CPL:cime_run_init")
     hashint = 0
     drv_resume=.FALSE.
 
@@ -2727,6 +2732,7 @@ contains
     write(timing_file,'(a,i8.8,a1,i5.5)') &
           trim(tchkpt_dir)//"/model_timing"//trim(cpl_inst_tag)//"_",ymd,"_",tod
 
+    call nvtxEndRange
     call t_stopf ('CPL:cime_run_init')
 
     call t_set_prefixf("CPL:INIT_")
@@ -2889,6 +2895,7 @@ contains
        !  atm/ocn flux calculation
        !----------------------------------------------------------
        if (iamin_CPLID .and. (atm_c2_ocn .or. atm_c2_ice)) then
+          call nvtxStartRange("CPL:OCNPRE1")
           call cime_comp_barriers(mpicom=mpicom_CPLID, timer='CPL:OCNPRE1_BARRIER')
           call t_drvstartf ('CPL:OCNPRE1',cplrun=.true.,barrier=mpicom_CPLID,hashint=hashint(3))
           if (drv_threading) call seq_comm_setnthreads(nthreads_CPLID)
@@ -2897,6 +2904,7 @@ contains
 
           if (drv_threading) call seq_comm_setnthreads(nthreads_GLOID)
           call t_drvstopf  ('CPL:OCNPRE1',cplrun=.true.,hashint=hashint(3))
+          call nvtxEndRange
        endif
 
        !----------------------------------------------------------
@@ -2966,36 +2974,42 @@ contains
        !| RUN ICE MODEL
        !----------------------------------------------------------
        if (ice_present .and. icerun_alarm) then
+          call nvtxStartRange("CPL:ICE_RUN")
           call component_run(Eclock_i, ice, ice_run, infodata, &
                seq_flds_x2c_fluxes=seq_flds_x2i_fluxes, &
                seq_flds_c2x_fluxes=seq_flds_i2x_fluxes, &
                comp_prognostic=ice_prognostic, comp_num=comp_num_ice, &
                timer_barrier= 'CPL:ICE_RUN_BARRIER', timer_comp_run='CPL:ICE_RUN', &
                run_barriers=run_barriers, ymd=ymd, tod=tod,comp_layout=ice_layout)
+          call nvtxEndRange
        endif
 
        !----------------------------------------------------------
        !| RUN LND MODEL
        !----------------------------------------------------------
        if (lnd_present .and. lndrun_alarm) then
+          call nvtxStartRange("CPL:LND_RUN")
           call component_run(Eclock_l, lnd, lnd_run, infodata, &
                seq_flds_x2c_fluxes=seq_flds_x2l_fluxes, &
                seq_flds_c2x_fluxes=seq_flds_l2x_fluxes, &
                comp_prognostic=lnd_prognostic, comp_num=comp_num_lnd, &
                timer_barrier= 'CPL:LND_RUN_BARRIER', timer_comp_run='CPL:LND_RUN', &
                run_barriers=run_barriers, ymd=ymd, tod=tod,comp_layout=lnd_layout)
+          call nvtxEndRange
        endif
 
        !----------------------------------------------------------
        !| RUN ROF MODEL
        !----------------------------------------------------------
        if (rof_present .and. rofrun_alarm) then
+          call nvtxStartRange("CPL:ROF_RUN")
           call component_run(Eclock_r, rof, rof_run, infodata, &
                seq_flds_x2c_fluxes=seq_flds_x2r_fluxes, &
                seq_flds_c2x_fluxes=seq_flds_r2x_fluxes, &
                comp_prognostic=rof_prognostic, comp_num=comp_num_rof, &
                timer_barrier= 'CPL:ROF_RUN_BARRIER', timer_comp_run='CPL:ROF_RUN', &
                run_barriers=run_barriers, ymd=ymd, tod=tod,comp_layout=rof_layout)
+          call nvtxEndRange
        endif
 
        !----------------------------------------------------------
@@ -3014,6 +3028,7 @@ contains
        !| RUN OCN MODEL (cesm1_mod_tight, nuopc_tight)
        !----------------------------------------------------------
        if (ocn_present .and. ocnrun_alarm) then
+          call nvtxStartRange("CPL:OCNT_RUN")
           if (trim(cpl_seq_option) == 'CESM1_MOD_TIGHT' .or. trim(cpl_seq_option) == 'NUOPC_TIGHT') then
              call component_run(Eclock_o, ocn, ocn_run, infodata, &
                   seq_flds_x2c_fluxes=seq_flds_x2o_fluxes, &
@@ -3022,6 +3037,7 @@ contains
                   timer_barrier= 'CPL:OCNT_RUN_BARRIER', timer_comp_run='CPL:OCNT_RUN', &
                   run_barriers=run_barriers, ymd=ymd, tod=tod,comp_layout=ocn_layout)
           endif
+          call nvtxEndRange
        end if
 
        !----------------------------------------------------------
@@ -3179,12 +3195,14 @@ contains
        !| RUN ATM MODEL
        !----------------------------------------------------------
        if (atm_present .and. atmrun_alarm) then
+          call nvtxStartRange("CPL:ATM_RUN")
           call component_run(Eclock_a, atm, atm_run, infodata, &
                seq_flds_x2c_fluxes=seq_flds_x2a_fluxes, &
                seq_flds_c2x_fluxes=seq_flds_a2x_fluxes, &
                comp_prognostic=atm_prognostic, comp_num=comp_num_atm, &
                timer_barrier= 'CPL:ATM_RUN_BARRIER', timer_comp_run='CPL:ATM_RUN', &
                run_barriers=run_barriers, ymd=ymd, tod=tod, comp_layout=atm_layout)
+          call nvtxEndRange
        endif
 
        !----------------------------------------------------------
@@ -3541,6 +3559,7 @@ contains
 
        ! --- Write out performance data
        call t_startf  ('CPL:TPROF_WRITE')
+       call nvtxStartRange("CPL:TPROF_WRITE")
        if ((tprof_alarm) .or. ((tod == 0) .and. in_first_day)) then
 
           if ((tod == 0) .and. in_first_day) then
@@ -3555,6 +3574,7 @@ contains
           call t_unset_prefixf()
 
        endif
+       call nvtxEndRange
        call t_stopf  ('CPL:TPROF_WRITE')
 
        if (barrier_alarm) then
@@ -3888,6 +3908,7 @@ contains
     !----------------------------------------------------------
 
     if (iamin_CPLID .and. atm_prognostic) then
+       call nvtxStartRange('CPL:ATMPREP')
        call cime_comp_barriers(mpicom=mpicom_CPLID, timer='CPL:ATMPREP_BARRIER')
        call t_drvstartf ('CPL:ATMPREP',cplrun=.true.,barrier=mpicom_CPLID)
        if (drv_threading) call seq_comm_setnthreads(nthreads_CPLID)
@@ -3923,6 +3944,7 @@ contains
 
        call t_drvstopf  ('CPL:ATMPREP',cplrun=.true.)
        if (drv_threading) call seq_comm_setnthreads(nthreads_GLOID)
+       call nvtxEndRange
     endif
 
     !----------------------------------------------------------
@@ -3930,10 +3952,12 @@ contains
     !----------------------------------------------------------
 
     if (iamin_CPLALLATMID .and. atm_prognostic) then
+       call nvtxStartRange("CPL:C2A")
        call component_exch(atm, flow='x2c', infodata=infodata, infodata_string='cpl2atm_run', &
             mpicom_barrier=mpicom_CPLALLATMID, run_barriers=run_barriers, &
             timer_barrier='CPL:C2A_BARRIER', timer_comp_exch='CPL:C2A', &
             timer_map_exch='CPL:c2a_atmx2atmg', timer_infodata_exch='CPL:c2a_infoexch')
+       call nvtxEndRange
     endif
 
   end subroutine cime_run_atm_setup_send
@@ -3946,16 +3970,19 @@ contains
     !| atm -> cpl
     !----------------------------------------------------------
     if (iamin_CPLALLATMID) then
+       call nvtxStartRange("CPL:A2C")
        call component_exch(atm, flow='c2x', infodata=infodata, infodata_string='atm2cpl_run', &
             mpicom_barrier=mpicom_CPLALLATMID, run_barriers=run_barriers, &
             timer_barrier='CPL:A2C_BARRIER', timer_comp_exch='CPL:A2C', &
             timer_map_exch='CPL:a2c_atma2atmx', timer_infodata_exch='CPL:a2c_infoexch')
+       call nvtxEndRange
     endif
 
     !----------------------------------------------------------
     !| atm post
     !----------------------------------------------------------
     if (iamin_CPLID) then
+       call nvtxStartRange("CPL:ATMPOST")
        call cime_comp_barriers(mpicom=mpicom_CPLID, timer='CPL:ATMPOST_BARRIER')
        call t_drvstartf ('CPL:ATMPOST',cplrun=.true.,barrier=mpicom_CPLID)
        if (drv_threading) call seq_comm_setnthreads(nthreads_CPLID)
@@ -3969,6 +3996,7 @@ contains
 
        if (drv_threading) call seq_comm_setnthreads(nthreads_GLOID)
        call t_drvstopf  ('CPL:ATMPOST',cplrun=.true.)
+       call nvtxEndRange
     endif
 
   end subroutine cime_run_atm_recv_post
@@ -3981,6 +4009,7 @@ contains
     ! "startup" wait
     !----------------------------------------------------
     if (iamin_CPLALLOCNID) then
+       call nvtxStartRange("CPL:C2O_INITWAIT")
        ! want to know the time the ocean pes waited for the cpl pes
        ! at the first ocnrun_alarm, min ocean wait is wait time
        ! do not use t_barrierf here since it can be "off", use mpi_barrier
@@ -3992,6 +4021,7 @@ contains
           if (ocn(eoi)%iamin_compid) call t_drvstopf  ('CPL:C2O_INITWAIT')
        enddo
        cpl2ocn_first = .false.
+       call nvtxEndRange
     endif
 
     !----------------------------------------------------
@@ -4017,11 +4047,13 @@ contains
     ! cpl -> ocn
     !----------------------------------------------------
     if (iamin_CPLALLOCNID .and. ocn_prognostic) then
+       call nvtxStartRange("CPL:C2O")
        call component_exch(ocn, flow='x2c', &
             infodata=infodata, infodata_string='cpl2ocn_run', &
             mpicom_barrier=mpicom_CPLALLOCNID, run_barriers=run_barriers, &
             timer_barrier='CPL:C2O_BARRIER', timer_comp_exch='CPL:C2O', &
             timer_map_exch='CPL:c2o_ocnx2ocno', timer_infodata_exch='CPL:c2o_infoexch')
+       call nvtxEndRange
     endif
 
   end subroutine cime_run_ocn_setup_send
@@ -4034,17 +4066,20 @@ contains
     ! ocn -> cpl
     !----------------------------------------------------------
     if (iamin_CPLALLOCNID) then
+       call nvtxStartRange("CPL:O2CT")
        call component_exch(ocn, flow='c2x', &
             infodata=infodata, infodata_string='ocn2cpl_run', &
             mpicom_barrier=mpicom_CPLALLOCNID, run_barriers=run_barriers, &
             timer_barrier='CPL:O2CT_BARRIER', timer_comp_exch='CPL:O2CT', &
             timer_map_exch='CPL:o2c_ocno2ocnx', timer_infodata_exch='CPL:o2c_infoexch')
+       call nvtxEndRange
     endif
 
     !----------------------------------------------------------
     ! ocn post
     !----------------------------------------------------------
     if (iamin_CPLID) then
+       call nvtxStartRange("CPL:OCNPOSTT")
        call cime_comp_barriers(mpicom=mpicom_CPLID, timer='CPL:OCNPOSTT_BARRIER')
        call t_drvstartf  ('CPL:OCNPOSTT',cplrun=.true.,barrier=mpicom_CPLID)
        if (drv_threading) call seq_comm_setnthreads(nthreads_CPLID)
@@ -4058,6 +4093,7 @@ contains
 
        if (drv_threading) call seq_comm_setnthreads(nthreads_GLOID)
        call t_drvstopf  ('CPL:OCNPOSTT',cplrun=.true.)
+       call nvtxEndRange
     endif
 
   end subroutine cime_run_ocn_recv_post
@@ -4155,6 +4191,7 @@ contains
     integer, intent(inout) :: hashint(:)
 
     if (iamin_CPLID) then
+       call nvtxStartRange("CPL:ATMOCNP")
        call cime_comp_barriers(mpicom=mpicom_CPLID, timer='CPL:ATMOCNP_BARRIER')
        call t_drvstartf ('CPL:ATMOCNP',cplrun=.true.,barrier=mpicom_CPLID,hashint=hashint(7))
        if (drv_threading) call seq_comm_setnthreads(nthreads_CPLID)
@@ -4213,6 +4250,7 @@ contains
 
        if (drv_threading) call seq_comm_setnthreads(nthreads_GLOID)
        call t_drvstopf  ('CPL:ATMOCNP',cplrun=.true.,hashint=hashint(7))
+       call nvtxEndRange
     end if
 
   end subroutine cime_run_atmocn_setup
@@ -4270,6 +4308,7 @@ contains
     !| lnd prep-merge
     !----------------------------------------------------
     if (iamin_CPLID) then
+       call nvtxStartRange("CPL:LNDPREP")
        call cime_comp_barriers(mpicom=mpicom_CPLID, timer='CPL:LNDPREP_BARRIER')
        call t_drvstartf ('CPL:LNDPREP',cplrun=.true.,barrier=mpicom_CPLID)
        if (drv_threading) call seq_comm_setnthreads(nthreads_CPLID)
@@ -4293,17 +4332,20 @@ contains
 
        if (drv_threading) call seq_comm_setnthreads(nthreads_GLOID)
        call t_drvstopf  ('CPL:LNDPREP',cplrun=.true.)
+       call nvtxEndRange
     endif
 
     !----------------------------------------------------
     !| cpl -> lnd
     !----------------------------------------------------
     if (iamin_CPLALLLNDID) then
+       call nvtxStartRange("CPL:C2L")
        call component_exch(lnd, flow='x2c', &
             infodata=infodata, infodata_string='cpl2lnd_run', &
             mpicom_barrier=mpicom_CPLALLLNDID, run_barriers=run_barriers, &
             timer_barrier='CPL:C2L_BARRIER', timer_comp_exch='CPL:C2L', &
             timer_map_exch='CPL:c2l_lndx2lndl', timer_infodata_exch='CPL:c2l_infoexch')
+       call nvtxEndRange
     endif
 
   end subroutine cime_run_lnd_setup_send
@@ -4316,16 +4358,19 @@ contains
     !| lnd -> cpl
     !----------------------------------------------------------
     if (iamin_CPLALLLNDID) then
+       call nvtxStartRange("CPL:L2C")
        call component_exch(lnd, flow='c2x', infodata=infodata, infodata_string='lnd2cpl_run', &
             mpicom_barrier=mpicom_CPLALLLNDID, run_barriers=run_barriers, &
             timer_barrier='CPL:L2C_BARRIER', timer_comp_exch='CPL:L2C', &
             timer_map_exch='CPL:l2c_lndl2lndx', timer_infodata_exch='lnd2cpl_run')
+       call nvtxEndRange
     endif
 
     !----------------------------------------------------------
     !| lnd post
     !----------------------------------------------------------
     if (iamin_CPLID) then
+       call nvtxStartRange("CPL:LNDPOST")
        call cime_comp_barriers(mpicom=mpicom_CPLID, timer='CPL:LNDPOST_BARRIER')
        call t_drvstartf  ('CPL:LNDPOST',cplrun=.true.,barrier=mpicom_CPLID)
        if (drv_threading) call seq_comm_setnthreads(nthreads_CPLID)
@@ -4340,6 +4385,7 @@ contains
 
        if (drv_threading) call seq_comm_setnthreads(nthreads_GLOID)
        call t_drvstopf  ('CPL:LNDPOST',cplrun=.true.)
+       call nvtxEndRange
     endif
 
   end subroutine cime_run_lnd_recv_post
@@ -4472,6 +4518,7 @@ contains
     ! rof prep-merge
     !----------------------------------------------------
     if (iamin_CPLID .and. rof_prognostic) then
+       call nvtxStartRange("CPL:ROFPREP")
        call cime_comp_barriers(mpicom=mpicom_CPLID, timer='CPL:ROFPREP_BARRIER')
 
        call t_drvstartf ('CPL:ROFPREP', cplrun=.true., barrier=mpicom_CPLID)
@@ -4491,17 +4538,20 @@ contains
 
        if (drv_threading) call seq_comm_setnthreads(nthreads_GLOID)
        call t_drvstopf  ('CPL:ROFPREP',cplrun=.true.)
+       call nvtxEndRange
     endif
 
     !----------------------------------------------------
     ! cpl -> rof
     !----------------------------------------------------
     if (iamin_CPLALLROFID .and. rof_prognostic) then
+       call nvtxStartRange("CPL:C2R")
        call component_exch(rof, flow='x2c', &
             infodata=infodata, infodata_string='cpl2rof_run', &
             mpicom_barrier=mpicom_CPLALLLNDID, run_barriers=run_barriers, &
             timer_barrier='CPL:C2R_BARRIER', timer_comp_exch='CPL:C2R', &
             timer_map_exch='CPL:c2r_rofx2rofr', timer_infodata_exch='CPL:c2r_infoexch')
+       call nvtxEndRange
     endif
 
   end subroutine cime_run_rof_setup_send
@@ -4514,18 +4564,20 @@ contains
     ! rof -> cpl
     !----------------------------------------------------------
     if (iamin_CPLALLROFID) then
+       call nvtxStartRange("CPL:R2C")
        call component_exch(rof, flow='c2x', &
             infodata=infodata, infodata_string='rof2cpl_run', &
             mpicom_barrier=mpicom_CPLALLROFID, run_barriers=run_barriers, &
             timer_barrier='CPL:R2C_BARRIER', timer_comp_exch='CPL:R2C', &
             timer_map_exch='CPL:r2c_rofr2rofx', timer_infodata_exch='CPL:r2c_infoexch')
+       call nvtxEndRange
     endif
 
     !----------------------------------------------------------
     ! rof post
     !----------------------------------------------------------
     if (iamin_CPLID) then
-
+       call nvtxStartRange("CPL:ROFRUNPOST")
        call cime_comp_barriers(mpicom=mpicom_CPLID, timer='CPL:ROFRUNPOST_BARRIER')
        call t_drvstartf ('CPL:ROFRUNPOST',cplrun=.true.,barrier=mpicom_CPLID)
 
@@ -4541,7 +4593,7 @@ contains
        end if
 
        call t_drvstopf  ('CPL:ROFRUNPOST', cplrun=.true.)
-
+       call nvtxEndRange
     endif
 
   end subroutine cime_run_rof_recv_post
@@ -4558,6 +4610,7 @@ contains
     ! ice prep-merge
     !----------------------------------------------------
     if (iamin_CPLID .and. ice_prognostic) then
+       call nvtxStartRange("CPL:ICEPREP")
        call cime_comp_barriers(mpicom=mpicom_CPLID, timer='CPL:ICEPREP_BARRIER')
 
        call t_drvstartf ('CPL:ICEPREP',cplrun=.true.,barrier=mpicom_CPLID)
@@ -4583,17 +4636,20 @@ contains
 
        if (drv_threading) call seq_comm_setnthreads(nthreads_GLOID)
        call t_drvstopf  ('CPL:ICEPREP',cplrun=.true.)
+       call nvtxEndRange
     endif
 
     !----------------------------------------------------
     ! cpl -> ice
     !----------------------------------------------------
     if (iamin_CPLALLICEID .and. ice_prognostic) then
+       call nvtxStartRange("CPL:C2I")
        call component_exch(ice, flow='x2c', &
             infodata=infodata, infodata_string='cpl2ice_run', &
             mpicom_barrier=mpicom_CPLALLICEID, run_barriers=run_barriers, &
             timer_barrier='CPL:C2I_BARRIER', timer_comp_exch='CPL:C2I', &
             timer_map_exch='CPL:c2i_icex2icei', timer_infodata_exch='CPL:ice_infoexch')
+       call nvtxEndRange
     endif
 
   end subroutine cime_run_ice_setup_send
@@ -4606,17 +4662,20 @@ contains
     ! ice -> cpl
     !----------------------------------------------------------
     if (iamin_CPLALLICEID) then
+       call nvtxStartRange("CPL:I2C")
        call component_exch(ice, flow='c2x', &
             infodata=infodata, infodata_string='ice2cpl_run', &
             mpicom_barrier=mpicom_CPLALLICEID, run_barriers=run_barriers, &
             timer_barrier='CPL:I2C_BARRIER', timer_comp_exch='CPL:I2C', &
             timer_map_exch='CPL:i2c_icei2icex', timer_infodata_exch='CPL:i2c_infoexch')
+       call nvtxEndRange
     endif
 
     !----------------------------------------------------------
     ! ice post
     !----------------------------------------------------------
     if (iamin_CPLID) then
+       call nvtxStartRange("CPL:ICEPOST")
        call cime_comp_barriers(mpicom=mpicom_CPLID, timer='CPL:ICEPOST_BARRIER')
        call t_drvstartf  ('CPL:ICEPOST',cplrun=.true.,barrier=mpicom_CPLID)
        if (drv_threading) call seq_comm_setnthreads(nthreads_CPLID)
@@ -4626,6 +4685,7 @@ contains
 
        if (drv_threading) call seq_comm_setnthreads(nthreads_GLOID)
        call t_drvstopf  ('CPL:ICEPOST',cplrun=.true.)
+       call nvtxEndRange
     endif
 
   end subroutine cime_run_ice_recv_post
@@ -4705,6 +4765,7 @@ contains
   subroutine cime_run_update_fractions()
 
     if (iamin_CPLID) then
+       call nvtxStartRange("CPL:FRACSET")
        call cime_comp_barriers(mpicom=mpicom_CPLID, timer='CPL:FRACSET_BARRIER')
        call t_drvstartf ('CPL:FRACSET',cplrun=.true.,barrier=mpicom_CPLID)
        if (drv_threading) call seq_comm_setnthreads(nthreads_CPLID)
@@ -4718,6 +4779,7 @@ contains
 
        if (drv_threading) call seq_comm_setnthreads(nthreads_GLOID)
        call t_drvstopf  ('CPL:FRACSET',cplrun=.true.)
+       call nvtxEndRange
     endif
 
   end subroutine cime_run_update_fractions
