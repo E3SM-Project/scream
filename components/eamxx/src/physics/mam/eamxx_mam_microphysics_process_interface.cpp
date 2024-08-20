@@ -720,6 +720,20 @@ void MAMMicrophysics::run_impl(const double dt) {
   auto calday = ts2.frac_of_year_in_days() +
                 1;  // Want day + fraction; calday 1 == Jan 1 0Z
   shr_orb_decl_c2f(calday, eccen, mvelpp, lambm0, obliqr, &delta, &eccf);
+  constexpr int num_modes = mam4::AeroConfig::num_modes();
+  constexpr int gas_pcnst = mam_coupling::gas_pcnst();
+  constexpr int nqtendbb  = mam_coupling::nqtendbb();
+
+  // FIXME: I believe Balwinder add this array somewhere in mam4xx or eamxx.
+  const Real adv_mass[gas_pcnst] = {
+        47.998200,     34.013600,  98.078400,     64.064800, 62.132400,
+        12.011000,     115.107340, 12.011000,     12.011000, 12.011000,
+        135.064039,    58.442468,  250092.672000, 1.007400,  115.107340,
+        12.011000,     58.442468,  250092.672000, 1.007400,  135.064039,
+        58.442468,     115.107340, 12.011000,     12.011000, 12.011000,
+        250092.672000, 1.007400,   12.011000,     12.011000, 250092.672000,
+        1.007400};
+  constexpr int pcnst = mam4::pcnst;
 
   // loop over atmosphere columns and compute aerosol microphyscs
   Kokkos::parallel_for(
@@ -799,10 +813,6 @@ void MAMMicrophysics::run_impl(const double dt) {
         // column
         Kokkos::parallel_for(
             Kokkos::TeamThreadRange(team, nlev), [&](const int k) {
-              constexpr int num_modes = mam4::AeroConfig::num_modes();
-              constexpr int gas_pcnst = mam_coupling::gas_pcnst();
-              constexpr int nqtendbb  = mam_coupling::nqtendbb();
-
               // extract atm state variables (input)
               Real temp    = atm.temperature(k);
               Real pmid    = atm.pressure(k);
@@ -821,13 +831,27 @@ void MAMMicrophysics::run_impl(const double dt) {
               //  mozart/mo_gas_phase_chemdr.F90)
               Real q[gas_pcnst]    = {};
               Real qqcw[gas_pcnst] = {};
-              mam_coupling::transfer_prognostics_to_work_arrays(progs, k, q,
-                                                                qqcw);
+              // mam_coupling::transfer_prognostics_to_work_arrays(progs, k, q,
+              //                                                   qqcw);
+              Real state_q[pcnst]    = {};
+              Real qqcw_long[pcnst] = {};
+              mam4::utils::extract_stateq_from_prognostics(progs,atm, state_q, k);
 
+              mam4::utils::extract_qqcw_from_prognostics(progs,qqcw_long,k);
+              // FIXME: remove this hard-code value
+              const int offset_aerosol = 9;
+              for (int i = offset_aerosol; i < pcnst; ++i) {
+                q[i-offset_aerosol] =state_q[i];
+                qqcw[i-offset_aerosol] =qqcw_long[i];
+              }
               // convert mass mixing ratios to volume mixing ratios (VMR),
               // equivalent to tracer mixing ratios (TMR))
               Real vmr[gas_pcnst], vmrcw[gas_pcnst];
-              mam_coupling::convert_work_arrays_to_vmr(q, qqcw, vmr, vmrcw);
+              // CHECK: convert_work_arrays_to_vmr and mmr2vmr should produce the same ouputs
+              // However, in mmr2vmr we do not iterate to get species value.
+              // mam_coupling::convert_work_arrays_to_vmr(q, qqcw, vmr, vmrcw);
+              mam_coupling::mmr2vmr(q,adv_mass, vmr);
+              mam_coupling::mmr2vmr(qqcw,adv_mass,vmrcw);
 
               // aerosol/gas species tendencies (output)
               Real vmr_tendbb[gas_pcnst][nqtendbb]   = {};
@@ -940,6 +964,15 @@ void MAMMicrophysics::run_impl(const double dt) {
               // FIXME: C++ port in progress!
               // mam4::drydep::drydep_xactive(...);
 
+              mam_coupling::vmr2mmr(vmr,adv_mass, q);
+              mam_coupling::vmr2mmr(vmrcw,adv_mass,qqcw);
+
+              for (int i = offset_aerosol; i < pcnst; ++i) {
+                state_q[i] = q[i-offset_aerosol];
+                qqcw_long[i] = qqcw[i-offset_aerosol];
+              }
+              mam4::utils::inject_stateq_to_prognostics(state_q,progs,k);
+              mam4::utils::inject_qqcw_to_prognostics(qqcw_long, progs,k);
               // transfer updated prognostics from work arrays
               // mam_coupling::convert_work_arrays_to_mmr(vmr, vmrcw, q, qqcw);
               // mam_coupling::transfer_work_arrays_to_prognostics(q, qqcw,

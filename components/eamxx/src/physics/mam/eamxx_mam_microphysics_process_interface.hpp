@@ -282,6 +282,7 @@ private_except_cuda:
   std::vector<const_view_1d> vert_emis_altitude_int_;
   std::vector<view_2d> vert_emis_output_;
 
+
 }; // MAMMicrophysics
 
 } // namespace scream
