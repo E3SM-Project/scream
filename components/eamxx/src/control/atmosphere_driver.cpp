@@ -1605,11 +1605,11 @@ void AtmosphereDriver::run (const int dt) {
   // and --capture-range cudaProfilerApi -x false
   //std::cout<< "ndk step=" << m_current_ts.get_num_steps() << std::endl;
   if (m_current_ts.get_num_steps() == PROFILER_COLLECT_BEGIN_STEP) {
-    std::cout<< "ndk turn on cudaProfilerStart()" << std::endl;
+    std::cout<< "ndk turn on cudaProfilerStart() at step " << m_current_ts.get_num_steps() << std::endl;
     cudaProfilerStart(); //ndk
   }
   if (m_current_ts.get_num_steps() == PROFILER_COLLECT_END_STEP) {
-    std::cout<< "ndk turn off cudaProfilerStop()" << std::endl;
+    std::cout<< "ndk turn off cudaProfilerStop() at step " << m_current_ts.get_num_steps() << std::endl;
     cudaProfilerStop(); //ndk
   }
 #endif

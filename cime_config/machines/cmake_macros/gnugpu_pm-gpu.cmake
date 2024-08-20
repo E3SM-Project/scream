@@ -6,11 +6,11 @@ if (COMP_NAME STREQUAL gptl)
 endif()
 string(APPEND CPPDEFS " -DTHRUST_IGNORE_CUB_VERSION_CHECK")
 #string(APPEND CMAKE_CUDA_FLAGS " -ccbin CC -O2 -arch sm_80 --use_fast_math")
-string(APPEND CMAKE_CUDA_FLAGS " -ccbin CC -O2 -arch sm_80 --use_fast_math -lineinfo") # ndk, only beneficial when using ncu profiling
+string(APPEND CMAKE_CUDA_FLAGS " -ccbin CC -O2 -arch sm_80 --use_fast_math -lineinfo") # ndk, only beneficial when using ncu profiling *and* using "ncu --set full"
 string(APPEND KOKKOS_OPTIONS " -DKokkos_ARCH_AMPERE80=On -DKokkos_ENABLE_CUDA=On -DKokkos_ENABLE_CUDA_LAMBDA=On -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=Off -DKokkos_ENABLE_IMPL_CUDA_MALLOC_ASYNC=Off")
 set(CMAKE_CUDA_ARCHITECTURES "80")
-#string(APPEND CMAKE_CXX_FLAGS_RELEASE " -g -DNSIGHT")
-string(APPEND CMAKE_CXX_FLAGS_RELEASE " -g")
+
+string(APPEND CMAKE_CXX_FLAGS_RELEASE " -g -lineinfo")
 string(APPEND CMAKE_C_FLAGS_RELEASE " -O2 -g")
 string(APPEND CMAKE_Fortran_FLAGS_RELEASE " -O2 -g")
 set(MPICC "cc")
