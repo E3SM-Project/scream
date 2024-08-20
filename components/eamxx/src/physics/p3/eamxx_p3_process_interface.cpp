@@ -8,6 +8,7 @@
 
 #include "ekat/ekat_assert.hpp"
 #include "ekat/util/ekat_units.hpp"
+#include "share/util/scream_timing.hpp"
 
 #include <array>
 
@@ -26,6 +27,7 @@ void P3Microphysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
 {
   using namespace ekat::units;
   using namespace ekat::prefixes;
+  start_timer("p3::set_grids");
 
   // The units of mixing ratio Q are technically non-dimensional.
   // Nevertheless, for output reasons, we like to see 'kg/kg'.
@@ -119,6 +121,7 @@ void P3Microphysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
     add_field<Computed>("ice_flux",   scalar2d_layout, m/s,     grid_name);
     add_field<Computed>("heat_flux",  scalar2d_layout, W/m2,    grid_name);
   }
+  stop_timer("p3::set_grids");
 }
 
 // =========================================================================================
@@ -147,6 +150,7 @@ size_t P3Microphysics::requested_buffer_size_in_bytes() const
 // =========================================================================================
 void P3Microphysics::init_buffers(const ATMBufferManager &buffer_manager)
 {
+  start_timer("p3::init_buffers");
   EKAT_REQUIRE_MSG(buffer_manager.allocated_bytes() >= requested_buffer_size_in_bytes(), "Error! Buffers size not sufficient.\n");
 
   Real* mem = reinterpret_cast<Real*>(buffer_manager.get_memory());
@@ -199,11 +203,13 @@ void P3Microphysics::init_buffers(const ATMBufferManager &buffer_manager)
 
   size_t used_mem = (reinterpret_cast<Real*>(s_mem) - buffer_manager.get_memory())*sizeof(Real);
   EKAT_REQUIRE_MSG(used_mem==requested_buffer_size_in_bytes(), "Error! Used memory != requested memory for P3Microphysics.");
+  stop_timer("p3::init_buffers");
 }
 
 // =========================================================================================
 void P3Microphysics::initialize_impl (const RunType /* run_type */)
 {
+  start_timer("p3::initialize_impl");
   // Gather runtime options
   runtime_options.max_total_ni = m_params.get<double>("max_total_ni");
 
@@ -352,6 +358,7 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   // Setup WSM for internal local variables
   const auto policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nk_pack);
   workspace_mgr.setup(m_buffer.wsm_data, nk_pack_p1, 52, policy);
+  stop_timer("p3::initialize_impl");
 }
 
 // =========================================================================================
