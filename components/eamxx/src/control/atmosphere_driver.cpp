@@ -18,6 +18,19 @@
 #include "ekat/ekat_parameter_list.hpp"
 #include "ekat/ekat_parse_yaml_file.hpp"
 #include "ekat/std_meta/ekat_std_utils.hpp"
+#include <nvtx3/nvToolsExt.h>
+
+#define CUDA_PROFILER_API
+#ifdef CUDA_PROFILER_API
+#define PROFILER_COLLECT_BEGIN_STEP 7
+#define PROFILER_COLLECT_END_STEP 13
+
+//ndk for cuda profile overall start/stop:
+#include <cuda_profiler_api.h>
+//cudaProfilerStart();
+//myKernel<<<...>>>(...);
+//cudaProfilerStop();
+#endif
 
 // The global variable fvphyshack is used to help the initial pgN implementation
 // work around some current AD constraints. Search the code for "fvphyshack" to
@@ -1586,6 +1599,22 @@ initialize (const ekat::Comm& atm_comm,
 }
 
 void AtmosphereDriver::run (const int dt) {
+
+#ifdef CUDA_PROFILER_API
+  // also need #include <cuda_profiler_api.h> to allow use of these
+  // and --capture-range cudaProfilerApi -x false
+  //std::cout<< "ndk step=" << m_current_ts.get_num_steps() << std::endl;
+  if (m_current_ts.get_num_steps() == PROFILER_COLLECT_BEGIN_STEP) {
+    std::cout<< "ndk turn on cudaProfilerStart()" << std::endl;
+    cudaProfilerStart(); //ndk
+  }
+  if (m_current_ts.get_num_steps() == PROFILER_COLLECT_END_STEP) {
+    std::cout<< "ndk turn off cudaProfilerStop()" << std::endl;
+    cudaProfilerStop(); //ndk
+  }
+#endif
+
+  nvtxRangePushA(("step" + std::to_string(m_current_ts.get_num_steps())).c_str());
   start_timer("EAMxx::run");
 
   // Make sure the end of the time step is after the current start_time
@@ -1653,6 +1682,7 @@ void AtmosphereDriver::run (const int dt) {
   m_atm_logger->flush();
 
   stop_timer("EAMxx::run");
+  nvtxRangePop();
 }
 
 void AtmosphereDriver::finalize ( /* inputs? */ ) {
