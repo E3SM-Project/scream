@@ -392,6 +392,7 @@
 
       <modules compiler="gnugpu">
         <command name="load">cudatoolkit/12.2</command>
+        <!--command name="load">cudatoolkit/12.4</command-->
         <command name="load">craype-accel-nvidia80</command>
       </modules>
 
@@ -438,7 +439,11 @@
       <env name="PNETCDF_PATH">$ENV{CRAY_PARALLEL_NETCDF_PREFIX}</env>
       <!--env name="PAT_RT_CALLSTACK_MODE">frames</env--> <!-- ndk: should only impact profiling with craypat -->
       <!--env name="KOKKOS_TOOLS_LIBS">/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64/libkp_kokkos_sampler.so;/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64/libkp_memory_events.so;/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64/libkp_nvtx_connector.so</env-->
-      <!--env name="KOKKOS_TOOLS_LIBS">pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64</env-->
+      <!--env name="KOKKOS_TOOLS_LIBS">/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64/libkp_memory_events.so;/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64/libkp_nvtx_connector.so</env-->
+      <env name="KOKKOS_TOOLS_LIBS">/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64/libkp_nvtx_connector.so</env>
+      <!--env name="KOKKOS_TOOLS_LIBS">/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4x111XX1.nocosp.MOFF.nvtx.osrt.mpi.ktc.cuda124/build/kokkos-tools/build/profiling/nvtx-connector/libkp_nvtx_connector.so</env-->
+      <!--env name="KOKKOS_TOOLS_LIBS">/pscratch/sd/n/ndk/e3sm_scratch/pm-gpu/shk-aug7/tsys.ne30pg2_ne30pg2.F2010-SCREAMv1.shk-aug7.2d.n0001t4xX.nocosp.tracey/build/gnugpu/mpich/nodebug/threads/mct/kokkos/build/lib64/libkp_kernel_logger.so</env-->
+      <env name="KOKKOS_TOOLS_GLOBALFENCES">0</env>
     </environment_variables>
     <environment_variables compiler="gnugpu">
       <env name="MPICH_GPU_SUPPORT_ENABLED">1</env>
