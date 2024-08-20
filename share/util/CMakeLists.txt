@@ -8,6 +8,7 @@ sourcelist_to_parent(share_genf90_sources)
 list(APPEND share_sources "${share_genf90_sources}")
 
 list(APPEND share_sources
+  nvtx_cuda_profile.F90    # ndk temp
   shr_file_mod.F90
   shr_kind_mod.F90
   shr_const_mod.F90
