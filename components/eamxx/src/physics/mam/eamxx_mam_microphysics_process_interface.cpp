@@ -250,20 +250,24 @@ void MAMMicrophysics::set_grids(
   }
 
   {
+    std::string mam4_so2_verti_emiss_file_name =
+        //"cmip6_mam4_so2_elev_ne2np4_2010_clim_c20240726_OD.nc"
+    m_params.get<std::string>("mam4_so2_verti_emiss_file_name");
+    vert_emis_var_names_["SO2"] = {"BB","ENE_ELEV", "IND_ELEV", "contvolc"};
+    vert_emis_file_name_["SO2"] = mam4_so2_verti_emiss_file_name;
+
     // cmip6_mam4_bc_a4_elev_ne2np4_2010_clim_c20240726_OD.nc
     std::string mam4_bc_a4_verti_emiss_file_name =
         m_params.get<std::string>("mam4_bc_a4_verti_emiss_file_name");
-    std::string mam4_so2_verti_emiss_file_name =
-        //"cmip6_mam4_so2_elev_ne2np4_2010_clim_c20240726_OD.nc"
-        m_params.get<std::string>("mam4_so2_verti_emiss_file_name");
-
-    vert_emis_file_name_.push_back(mam4_bc_a4_verti_emiss_file_name);
-    vert_emis_file_name_.push_back(mam4_so2_verti_emiss_file_name);
+    vert_emis_file_name_["bc_a4"] = mam4_bc_a4_verti_emiss_file_name;
+    vert_emis_var_names_["bc_a4"] = {"BB"};
     std::string spa_map_file = "";
-    // FIXME: I am assiming only one variable per file with name BB
-    std::vector<std::string> var_names{"BB"};
 
-    for(auto file_name : vert_emis_file_name_) {
+    for (const auto& item : vert_emis_file_name_) {
+      const auto var_name = item.first;
+      const auto file_name = item.second;
+      const auto var_names = vert_emis_var_names_[var_name];
+
       TracerFileType tracer_file_type;
       auto hor_rem = scream::mam_coupling::create_horiz_remapper(
           grid_, file_name, spa_map_file, var_names, tracer_file_type);
@@ -557,9 +561,15 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
 
   // vertical emissions
   {
-    // FIXME: I am assuming 1 variable per file
-    const int nvars = 1;
-    for(size_t i = 0; i < vert_emis_file_name_.size(); ++i) {
+
+    int i=0;
+    int offset_emis_ver=0;
+    for (const auto& item : vert_emis_file_name_) {
+      const auto var_name = item.first;
+      const auto file_name = item.second;
+      const auto var_names = vert_emis_var_names_[var_name];
+      const int nvars = int(var_names.size());
+
       const auto io_grid_emis = VertEmissionsHorizInterp_[i]->get_src_grid();
       const int num_cols_io_emis =
           io_grid_emis->get_num_local_dofs();  // Number of columns on this rank
@@ -584,14 +594,17 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
       } else if(vert_emis_data_out_[i].file_type ==
                 TracerFileType::VERT_EMISSION) {
         auto zi_src = scream::mam_coupling::get_altitude_int(
-            VertEmissionsHorizInterp_[i], vert_emis_file_name_[i]);
+            VertEmissionsHorizInterp_[i], file_name);
         vert_emis_altitude_int_.push_back(zi_src);
       }
 
-      const auto emis_output =
+      for (int isp = 0; isp < nvars; ++isp)
+      {
+        vert_emis_output_[isp+offset_emis_ver] =
           view_2d("vert_emis_output_", num_cols_io_emis, num_levs_io_emis);
-      vert_emis_output_.push_back(emis_output);
-
+      }
+      i++;
+      offset_emis_ver+=nvars;
     }  // end i
   }
 
@@ -666,15 +679,25 @@ void MAMMicrophysics::run_impl(const double dt) {
       linoz_data_beg_, linoz_data_end_, linoz_data_out_, p_src_linoz_,
       dry_atm_.p_mid, dummy_altitude_int, dry_atm_.z_iface, linoz_output);
 
-  for(size_t i = 0; i < vert_emis_file_name_.size(); ++i) {
-    // FIXME: Here I am assuming one output per file.
-    view_2d vert_emis_output[1];
-    vert_emis_output[0] = vert_emis_output_[i];
+  int i=0;
+  int offset_emis_ver=0;
+  for (const auto& item : vert_emis_file_name_) {
+    const auto var_name = item.first;
+    const auto file_name = item.second;
+    const auto var_names = vert_emis_var_names_[var_name];
+    const int nvars = int(var_names.size());
+    view_2d vert_emis_output[nvars];
+    for (int isp = 0; isp < nvars; ++isp)
+    {
+    vert_emis_output[isp]= vert_emis_output_[isp+offset_emis_ver];
+    }
+    offset_emis_ver+=nvars;
     scream::mam_coupling::advance_tracer_data(
         VertEmissionsDataReader_[i], *VertEmissionsHorizInterp_[i], ts,
         linoz_time_state_, vert_emis_data_beg_[i], vert_emis_data_end_[i],
         vert_emis_data_out_[i], p_src_linoz_, dry_atm_.p_mid,
         vert_emis_altitude_int_[i], dry_atm_.z_iface, vert_emis_output);
+    i++;
   }
   const_view_1d &col_latitudes     = col_latitudes_;
   const_view_1d &col_longitudes    = col_longitudes_;
@@ -837,6 +860,11 @@ void MAMMicrophysics::run_impl(const double dt) {
               Real qqcw_long[pcnst] = {};
               mam4::utils::extract_stateq_from_prognostics(progs,atm, state_q, k);
 
+              // std::cout << "Before state_q: ";
+              // for (int i = 0; i < pcnst; ++i) {
+              //   std::cout << state_q[i] << " ";
+              // }
+
               mam4::utils::extract_qqcw_from_prognostics(progs,qqcw_long,k);
               // FIXME: remove this hard-code value
               const int offset_aerosol = 9;
@@ -971,7 +999,13 @@ void MAMMicrophysics::run_impl(const double dt) {
                 state_q[i] = q[i-offset_aerosol];
                 qqcw_long[i] = qqcw[i-offset_aerosol];
               }
-              mam4::utils::inject_stateq_to_prognostics(state_q,progs,k);
+              // mam4::utils::inject_stateq_to_prognostics(state_q,progs,k);
+    //           std::cout << "state_q: ";
+    // for (int i = 0; i < pcnst; ++i) {
+    //     std::cout << state_q[i] << " ";
+    // }
+    // std::cout << std::endl;
+
               mam4::utils::inject_qqcw_to_prognostics(qqcw_long, progs,k);
               // transfer updated prognostics from work arrays
               // mam_coupling::convert_work_arrays_to_mmr(vmr, vmrcw, q, qqcw);
