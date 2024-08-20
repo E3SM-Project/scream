@@ -20,12 +20,11 @@
 #include "ekat/std_meta/ekat_std_utils.hpp"
 #include <nvtx3/nvToolsExt.h>
 
-#define CUDA_PROFILER_API
+//#define CUDA_PROFILER_API
 #ifdef CUDA_PROFILER_API
+//ndk for cuda profile overall start/stop:
 #define PROFILER_COLLECT_BEGIN_STEP 7
 #define PROFILER_COLLECT_END_STEP 13
-
-//ndk for cuda profile overall start/stop:
 #include <cuda_profiler_api.h>
 //cudaProfilerStart();
 //myKernel<<<...>>>(...);
