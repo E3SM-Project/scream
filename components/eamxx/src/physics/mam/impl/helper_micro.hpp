@@ -35,7 +35,7 @@ enum TracerFileType {
  Therefore, if a file contains more than this number, it is acceptable to
  increase this limit. Currently, Linoz files have 8 fields. */
 constexpr int MAX_NVARS_TRACER = 10;
-constexpr int MAX_NUM_VERT_EMISSION_FIELDS = 10;
+constexpr int MAX_NUM_VERT_EMISSION_FIELDS = 25;
 
 // Linoz structures to help manage all of the variables:
 struct TracerTimeState {
