@@ -425,7 +425,7 @@ void gas_phase_chemistry(
       mam4::gas_chemistry::gas_pcnst;  // number of gas phase species
   constexpr int rxntot =
       mam4::gas_chemistry::rxntot;  // number of chemical reactions
-  constexpr int extcnt = 
+  constexpr int extcnt =
       mam4::gas_chemistry::extcnt;  // number of species with external forcing
   constexpr int indexm =
       mam4::gas_chemistry::indexm;  // index of total atm density in invariant
@@ -454,6 +454,7 @@ void gas_phase_chemistry(
   //                         "so4_a3", "bc_a3", "pom_a3", "soa_a3", "mom_a3",
   //                         "num_a3", "pom_a4", "bc_a4", "mom_a4", "num_a4"};
   constexpr int ndx_h2so4 = 2;
+  // Q: note that "num_a3" is not part of this list in the e3sm refactored code.
   // std::string extfrc_list[] = {"SO2", "so4_a1", "so4_a2", "pom_a4", "bc_a4",
   //                              "num_a1", "num_a2", "num_a3", "num_a4",
   //                              "SOAG"};
