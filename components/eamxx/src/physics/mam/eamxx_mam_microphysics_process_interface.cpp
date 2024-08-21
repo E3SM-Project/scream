@@ -250,18 +250,60 @@ void MAMMicrophysics::set_grids(
   }
 
   {
+    // FIXME: I will need to add this file per forcing file.
+    std::string spa_map_file = "";
+
     std::string mam4_so2_verti_emiss_file_name =
         //"cmip6_mam4_so2_elev_ne2np4_2010_clim_c20240726_OD.nc"
     m_params.get<std::string>("mam4_so2_verti_emiss_file_name");
-    vert_emis_var_names_["SO2"] = {"BB","ENE_ELEV", "IND_ELEV", "contvolc"};
-    vert_emis_file_name_["SO2"] = mam4_so2_verti_emiss_file_name;
+    vert_emis_var_names_["so2"] = {"BB","ENE_ELEV", "IND_ELEV", "contvolc"};
+    vert_emis_file_name_["so2"] = mam4_so2_verti_emiss_file_name;
+
+    //SOAG
+    // m_params.get<std::string>("mam4_soag_verti_emiss_file_name");
+    // FIXME: get this file from namelist
+    std::string base_path="/ascldap/users/odiazib/Documents/Oscar/CODE/eagles-project/scream_micro/ver_emis/";
+    std::string  mam4_soag_verti_emiss_file_name=base_path+"cmip6_mam4_soag_elev_ne2np4_2010_clim_c20190821_OD.nc";
+    vert_emis_var_names_["soag"] = {"SOAbb_src","SOAbg_src", "SOAff_src"};
+    vert_emis_file_name_["soag"] = mam4_soag_verti_emiss_file_name;
+
+    // so4_a1
+    std::string  mam4_so4_a1_verti_emiss_file_name=base_path+"cmip6_mam4_so4_a1_elev_ne2np4_2010_clim_c20190821_OD.nc";
+    vert_emis_var_names_["so4_a1"] = {"BB","ENE_ELEV", "IND_ELEV", "contvolc"};
+    vert_emis_file_name_["so4_a1"] = mam4_so4_a1_verti_emiss_file_name;
+
+    // num_a1
+    std::string  mam4_num_a1_verti_emiss_file_name=base_path+"cmip6_mam4_num_a1_elev_ne2np4_2010_clim_c20190821_OD.nc";
+    vert_emis_var_names_["num_a1"] = {"num_a1_SO4_ELEV_BB","num_a1_SO4_ELEV_ENE", "num_a1_SO4_ELEV_IND", "num_a1_SO4_ELEV_contvolc"};
+    vert_emis_file_name_["num_a1"] = mam4_num_a1_verti_emiss_file_name;
+
+    // so4_a2
+    std::string  mam4_so4_a2_verti_emiss_file_name=base_path+"cmip6_mam4_so4_a2_elev_ne2np4_2010_clim_c20190821_OD.nc";
+    vert_emis_var_names_["so4_a2"] = { "contvolc"};
+    vert_emis_file_name_["so4_a2"] = mam4_so4_a2_verti_emiss_file_name;
+
+    // num_a2
+    std::string  mam4_num_a2_verti_emiss_file_name=base_path+"cmip6_mam4_num_a2_elev_ne2np4_2010_clim_c20190821_OD.nc";
+    vert_emis_var_names_["num_a2"] = {"num_a2_SO4_ELEV_contvolc"};
+    vert_emis_file_name_["num_a2"] = mam4_num_a2_verti_emiss_file_name;
+
+    // pom_a4
+    std::string  mam4_pom_a4_verti_emiss_file_name=base_path+"cmip6_mam4_pom_a4_elev_ne2np4_2010_clim_c20190821_OD.nc";
+    vert_emis_var_names_["pom_a4"] = {"BB"};
+    vert_emis_file_name_["pom_a4"] = mam4_pom_a4_verti_emiss_file_name;
 
     // cmip6_mam4_bc_a4_elev_ne2np4_2010_clim_c20240726_OD.nc
     std::string mam4_bc_a4_verti_emiss_file_name =
         m_params.get<std::string>("mam4_bc_a4_verti_emiss_file_name");
     vert_emis_file_name_["bc_a4"] = mam4_bc_a4_verti_emiss_file_name;
     vert_emis_var_names_["bc_a4"] = {"BB"};
-    std::string spa_map_file = "";
+
+    // num_a4
+    // FIXME: why the sectors in this files are num_a1; I guess this should be num_a4? Is this a bug in the orginal nc files?
+    // QUESTION...
+    std::string  mam4_num_a4_verti_emiss_file_name=base_path+"cmip6_mam4_num_a4_elev_ne2np4_2010_clim_c20190821_OD.nc";
+    vert_emis_var_names_["num_a4"] = {"num_a1_BC_ELEV_BB", "num_a1_POM_ELEV_BB"};
+    vert_emis_file_name_["num_a4"] = mam4_num_a4_verti_emiss_file_name;
 
     for (const auto& item : vert_emis_file_name_) {
       const auto var_name = item.first;
@@ -600,6 +642,10 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
 
       for (int isp = 0; isp < nvars; ++isp)
       {
+        EKAT_REQUIRE_MSG(
+        mam_coupling::MAX_NUM_VERT_EMISSION_FIELDS <= int(offset_emis_ver),
+        "Error! Number of fields is bigger than MAX_NUM_VERT_EMISSION_FIELDS. Increase the MAX_NUM_VERT_EMISSION_FIELDS in helper_micro.hpp \n");
+
         vert_emis_output_[isp+offset_emis_ver] =
           view_2d("vert_emis_output_", num_cols_io_emis, num_levs_io_emis);
       }
