@@ -398,6 +398,10 @@ public:
       const int jgp = loop_idx % NP;
       auto g0 = Homme::subview(grad_s,0,igp,jgp);
       auto g1 = Homme::subview(grad_s,1,igp,jgp);
+      auto Dinv00 = D_inv(0,0,igp,jgp);
+      auto Dinv01 = D_inv(0,1,igp,jgp);
+      auto Dinv10 = D_inv(1,0,igp,jgp);
+      auto Dinv11 = D_inv(1,1,igp,jgp);
       Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV_REQUEST), [&] (const int& ilev) {
         Scalar v0, v1;
         for (int kgp = 0; kgp < NP; ++kgp) {
@@ -406,10 +410,12 @@ public:
         }
         v0 *= m_scale_factor_inv;
         v1 *= m_scale_factor_inv;
-        g0(ilev)  = D_inv(0,0,igp,jgp) * v0;
-        g1(ilev)  = D_inv(1,0,igp,jgp) * v0;
-        g0(ilev) += D_inv(0,1,igp,jgp) * v1;
-        g1(ilev) += D_inv(1,1,igp,jgp) * v1;
+        g0(ilev) = Dinv00 * v0;
+        g1(ilev) = Dinv10 * v0;
+        g0(ilev) += Dinv01 * v1;
+        g1(ilev) += Dinv11 * v1;
+        // g0(ilev) = D_inv(0,0,igp,jgp) * v0 + D_inv(0,1,igp,jgp) * v1;
+        // g1(ilev) = D_inv(1,0,igp,jgp) * v0 + D_inv(1,1,igp,jgp) * v1;
       });
     });
     kv.team_barrier();
@@ -512,15 +518,19 @@ public:
       const int igp = loop_idx / NP;
       const int jgp = loop_idx % NP;
       const auto mdet = metdet(igp,jgp);
+      const auto Dinv00 = D_inv(0,0,igp,jgp);
+      const auto Dinv01 = D_inv(0,1,igp,jgp);
+      const auto Dinv10 = D_inv(1,0,igp,jgp);
+      const auto Dinv11 = D_inv(1,1,igp,jgp);
       auto gv0 = Homme::subview(gv_buf,0,igp,jgp);
       auto gv1 = Homme::subview(gv_buf,1,igp,jgp);
-      auto v0 = Homme::subview(v,0, igp, jgp);
-      auto v1 = Homme::subview(v,1, igp, jgp);
       Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV_REQUEST), [&] (const int& ilev) {
-        gv0(ilev)  = D_inv(0,0,igp,jgp) * v0(ilev);
-        gv1(ilev)  = D_inv(0,1,igp,jgp) * v0(ilev);
-        gv0(ilev) += D_inv(1,0,igp,jgp) * v1(ilev);
-        gv1(ilev) += D_inv(1,1,igp,jgp) * v1(ilev);
+        const auto& v0 = v(0, igp, jgp, ilev);
+        const auto& v1 = v(1, igp, jgp, ilev);
+        gv0(ilev)  = Dinv00 * v0;
+        gv1(ilev)  = Dinv01 * v0;
+        gv0(ilev) += Dinv10 * v1;
+        gv1(ilev) += Dinv11 * v1;
         gv0(ilev) *= mdet;
         gv1(ilev) *= mdet;
         // gv_buf(0,igp,jgp,ilev) = (D_inv(0,0,igp,jgp) * v0 + D_inv(1,0,igp,jgp) * v1) * metdet(igp,jgp);
@@ -1180,6 +1190,7 @@ public:
   ExecViewManaged<Real   * [NUM_2D_VECTOR_BUFFERS][2][NP][NP]>                vector_buf_sl;
   ExecViewManaged<Scalar * [NUM_3D_SCALAR_BUFFERS][NP][NP][MAX_NUM_LEV]>      scalar_buf_ml;
   ExecViewManaged<Scalar * [NUM_3D_VECTOR_BUFFERS][2][NP][NP][MAX_NUM_LEV]>   vector_buf_ml;
+
 
   ExecViewManaged<const Real [NP][NP]>          dvv;
   ExecViewManaged<const Real [NP][NP]>          m_mp;

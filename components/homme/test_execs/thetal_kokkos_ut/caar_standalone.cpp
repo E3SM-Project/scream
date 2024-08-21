@@ -54,7 +54,7 @@ TEST_CASE("caar", "caar_testing") {
   // More precisely, I'm getting a copy of the existing Comm from the context,
   // and reset it back in it after the cleanup
 
-  constexpr int ne = 2;
+  constexpr int ne = 20;
 
   // The random numbers generator
   std::random_device rd;
@@ -226,6 +226,7 @@ TEST_CASE("caar", "caar_testing") {
     params.theta_hydrostatic_mode = hydrostatic;
     params.theta_adv_form = adv_form;
     params.rsplit = rsplit;
+    params.pgrad_correction = false;
 
     // Generate RK stage data
     Real dt = RPDF(1.0,10.0)(engine);

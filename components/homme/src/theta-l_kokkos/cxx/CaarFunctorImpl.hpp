@@ -141,6 +141,7 @@ struct CaarFunctorImpl {
       , m_policy_post (0,m_num_elems*NP*NP)
       , m_tu(m_policy_pre)
   {
+    m_policy_pre = m_policy_pre.set_scratch_size(0, Kokkos::PerTeam(sizeof(Scalar) * 2 * NP * NP * NUM_LEV));
     // Initialize equation of state
     m_eos.init(params.theta_hydrostatic_mode,m_hvcoord);
 
@@ -157,7 +158,9 @@ struct CaarFunctorImpl {
       , m_policy_pre (Homme::get_default_team_policy<ExecSpace,TagPreExchange>(m_num_elems))
       , m_policy_post (0,num_elems*NP*NP)
       , m_tu(m_policy_pre)
-  {}
+  {
+    m_policy_pre = m_policy_pre.set_scratch_size(0, Kokkos::PerTeam(sizeof(Scalar) * 2 * NP * NP * NUM_LEV));
+  }
 
   void setup (const Elements &elements, const Tracers &/*tracers*/,
               const ReferenceElement &ref_FE, const HybridVCoord &hvcoord,
@@ -210,6 +213,11 @@ struct CaarFunctorImpl {
          + num_scalar_int_buf  *NP*NP*NUM_LEV_P*VECTOR_SIZE*nslots
          + num_vector_mid_buf*2*NP*NP*NUM_LEV  *VECTOR_SIZE*nslots
          + num_vector_int_buf*2*NP*NP*NUM_LEV_P*VECTOR_SIZE*nslots;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static size_t shmem_size(int team_size) {
+    return 2*NP*NP*NUM_LEV*sizeof(Scalar);
   }
 
   void init_buffers (const FunctorsBuffersManager& fbm) {
@@ -494,6 +502,7 @@ struct CaarFunctorImpl {
   KOKKOS_INLINE_FUNCTION
   void compute_div_vdp(KernelVariables &kv) const {
     // Compute vdp
+    ScratchView<Scalar[2][NP][NP][NUM_LEV]> vdp_shared (kv.team.team_scratch(0));
     Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, NP * NP),
                          [&](const int idx) {
       const int igp = idx / NP;
@@ -506,15 +515,17 @@ struct CaarFunctorImpl {
       auto vdp = Homme::subview(m_buffers.vdp,kv.team_idx,1,igp,jgp);
       Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV),
                            [&] (const int& ilev) {
-        udp(ilev) = u(ilev)*dp3d(ilev);
-        vdp(ilev) = v(ilev)*dp3d(ilev);
+        // also copy vdp to scratch mem
+        vdp_shared(0,igp,jgp,ilev) = udp(ilev) = u(ilev)*dp3d(ilev);
+        vdp_shared(1,igp,jgp,ilev) = vdp(ilev) = v(ilev)*dp3d(ilev);
       });
     });
     kv.team_barrier();
-
+    
     // Compute div(vdp)
     m_sphere_ops.divergence_sphere(kv,
-        Homme::subview(m_buffers.vdp, kv.team_idx),
+        vdp_shared,
+        // Homme::subview(m_buffers.vdp, kv.team_idx),
         Homme::subview(m_buffers.div_vdp, kv.team_idx));
   }
 
@@ -991,15 +1002,31 @@ struct CaarFunctorImpl {
     auto vtheta_dp = Homme::subview(m_state.m_vtheta_dp,kv.ie,m_data.n0);
     auto dp        = Homme::subview(m_state.m_dp3d,kv.ie,m_data.n0);
 
-    auto vtheta = [&](const int igp,const int jgp,const int ilev)->Scalar {
-      return vtheta_dp(igp,jgp,ilev) / dp(igp,jgp,ilev);
-    };
+    // auto vtheta = [&](const int igp,const int jgp,const int ilev)->Scalar {
+    //   return vtheta_dp(igp,jgp,ilev) / dp(igp,jgp,ilev);
+    // };
 
-    auto v_vtheta_dp = [&](const int icomp, const int igp, const int jgp, const int ilev)->Scalar {
-      return v(icomp,igp,jgp,ilev) * vtheta_dp(igp,jgp,ilev);
-    };
+    // auto v_vtheta_dp = [&](const int icomp, const int igp, const int jgp, const int ilev)->Scalar {
+    //   return v(icomp,igp,jgp,ilev) * vtheta_dp(igp,jgp,ilev);
+    // };
 
+    decltype(Homme::subview(m_buffers.vort,kv.team_idx)) vtheta;
     if (m_theta_advection_form==AdvectionForm::Conservative) {
+      Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team,NP*NP),
+                           [&](const int idx) {
+        const int igp = idx / NP;
+        const int jgp = idx % NP;
+        auto v0_vtheta = Homme::subview(m_buffers.grad_tmp,kv.team_idx,0,igp,jgp);
+        auto v1_vtheta = Homme::subview(m_buffers.grad_tmp,kv.team_idx,1,igp,jgp);
+        Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team,NUM_LEV),
+                             [&](const int ilev) {
+          v0_vtheta(ilev) = v(0,igp,jgp,ilev)*vtheta_dp(igp,jgp,ilev);
+          v1_vtheta(ilev) = v(1,igp,jgp,ilev)*vtheta_dp(igp,jgp,ilev);
+        });
+      }); 
+      kv.team_barrier();
+      auto v_vtheta_dp = Homme::subview(m_buffers.grad_tmp,kv.team_idx);
+
       if (m_rsplit==0) {
         using CM = CombineMode;
         // If you want a CombineMode different than Replace, unfortunately you have to specify
@@ -1011,6 +1038,18 @@ struct CaarFunctorImpl {
                                           Homme::subview(m_buffers.theta_tens,kv.team_idx));
       }
     } else {
+      vtheta = Homme::subview(m_buffers.vort,kv.team_idx);
+      Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team,NP*NP),
+                           [&](const int idx) {
+        const int igp = idx / NP; 
+        const int jgp = idx % NP; 
+        Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team,NUM_LEV),
+                             [&](const int ilev) {
+          vtheta(igp,jgp,ilev) = vtheta_dp(igp,jgp,ilev) / dp(igp,jgp,ilev);
+        });
+      }); 
+      kv.team_barrier();
+
       m_sphere_ops.gradient_sphere(kv,vtheta,
                                       Homme::subview(m_buffers.grad_tmp,kv.team_idx));
     }
@@ -1240,8 +1279,20 @@ struct CaarFunctorImpl {
 
         Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team,NUM_LEV),
                              [&](const int ilev) {
-          mgrad_x(ilev) += cp*T0*(grad_tmp_i_x(ilev) - grad_exner_i_x(ilev)/exner_i(ilev));
-          mgrad_y(ilev) += cp*T0*(grad_tmp_i_y(ilev) - grad_exner_i_y(ilev)/exner_i(ilev));
+          auto tmp = grad_exner_i_x(ilev);
+          tmp /= exner_i(ilev);
+          tmp += grad_tmp_i_x(ilev);
+          tmp *= cp*T0;
+          mgrad_x(ilev) += tmp;
+
+          tmp = grad_exner_i_y(ilev);
+          tmp /= exner_i(ilev);
+          tmp += grad_tmp_i_y(ilev);
+          tmp *= cp*T0;
+          mgrad_y(ilev) += tmp;
+
+          // mgrad_x(ilev) += cp*T0*(grad_tmp_i_x(ilev) - grad_exner_i_x(ilev)/exner_i(ilev));
+          // mgrad_y(ilev) += cp*T0*(grad_tmp_i_y(ilev) - grad_exner_i_y(ilev)/exner_i(ilev));
         });
       }
       kv.team_barrier();

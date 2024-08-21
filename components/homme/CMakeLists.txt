@@ -465,6 +465,7 @@ IF (HOMME_USE_KOKKOS)
     # The following script checks if Kokkos is already available as a target, and if so does nothing.
     # For instance, if HOMME is built inside EAMxx, Kokkos will already be available
     include (EkatBuildKokkos)
+    target_compile_options(kokkoscore PUBLIC "-lineinfo")
   endif()
 ENDIF ()
 
