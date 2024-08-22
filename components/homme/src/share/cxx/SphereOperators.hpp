@@ -213,34 +213,42 @@ public:
     // Make sure the buffers have been created
     assert (vector_buf_sl.size()>0);
 
-    const auto& metdet = Homme::subview(m_metdet,kv.ie);
-    const auto& D_inv = Homme::subview(m_dinv,kv.ie);
-    const auto& gv_buf = Homme::subview(vector_buf_sl,kv.team_idx,0);
-    constexpr int np_squared = NP * NP;
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, np_squared),
-                         [&](const int loop_idx) {
-      const int igp = loop_idx / NP;
-      const int jgp = loop_idx % NP;
-      const auto& v0 = v(0,igp,jgp);
-      const auto& v1 = v(1,igp,jgp);
-      gv_buf(0,igp,jgp) = (D_inv(0,0,igp,jgp) * v0 + D_inv(1,0,igp,jgp) * v1) * metdet(igp,jgp);
-      gv_buf(1,igp,jgp) = (D_inv(0,1,igp,jgp) * v0 + D_inv(1,1,igp,jgp) * v1) * metdet(igp,jgp);
-    });
-    kv.team_barrier();
+    auto impl = [&] (auto gv_buf) {
+      const auto& metdet = Homme::subview(m_metdet,kv.ie);
+      const auto& D_inv = Homme::subview(m_dinv,kv.ie);
+      constexpr int np_squared = NP * NP;
+      Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, np_squared),
+                           [&](const int loop_idx) {
+        const int igp = loop_idx / NP;
+        const int jgp = loop_idx % NP;
+        const auto& v0 = v(0,igp,jgp);
+        const auto& v1 = v(1,igp,jgp);
+        gv_buf(0,igp,jgp) = (D_inv(0,0,igp,jgp) * v0 + D_inv(1,0,igp,jgp) * v1) * metdet(igp,jgp);
+        gv_buf(1,igp,jgp) = (D_inv(0,1,igp,jgp) * v0 + D_inv(1,1,igp,jgp) * v1) * metdet(igp,jgp);
+      });
+      kv.team_barrier();
 
-    constexpr int div_iters = NP * NP;
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, div_iters),
-                         [&](const int loop_idx) {
-      const int igp = loop_idx / NP;
-      const int jgp = loop_idx % NP;
-      Real dudx = 0.0, dvdy = 0.0;
-      for (int kgp = 0; kgp < NP; ++kgp) {
-        dudx += dvv(jgp, kgp) * gv_buf(0, igp, kgp);
-        dvdy += dvv(igp, kgp) * gv_buf(1, kgp, jgp);
-      }
-      div_v(igp,jgp) = (dudx + dvdy) * ((1.0 / metdet(igp,jgp)) *
-                                         m_scale_factor_inv);
-    });
+      constexpr int div_iters = NP * NP;
+      Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, div_iters),
+                           [&](const int loop_idx) {
+        const int igp = loop_idx / NP;
+        const int jgp = loop_idx % NP;
+        Real dudx = 0.0, dvdy = 0.0;
+        for (int kgp = 0; kgp < NP; ++kgp) {
+          dudx += dvv(jgp, kgp) * gv_buf(0, igp, kgp);
+          dvdy += dvv(igp, kgp) * gv_buf(1, kgp, jgp);
+        }
+        div_v(igp,jgp) = (dudx + dvdy) * ((1.0 / metdet(igp,jgp)) *
+                                           m_scale_factor_inv);
+      });
+    };
+    if (m_for_caar) {
+      ScratchView<Real[2][NP][NP]> gv_buf (reinterpret_cast<Real*>(kv.team_shmem));
+      impl(gv_buf);
+    } else {
+      const auto& gv_buf = Homme::subview(vector_buf_sl,kv.team_idx,0);
+      impl(gv_buf);
+    }
     kv.team_barrier();
   }
 
@@ -427,14 +435,14 @@ public:
     gradient_sphere<NUM_LEV_OUT, InputProvider>(kv, scalar, grad_s, NUM_LEV_REQUEST);
   }
 
-  template<int NUM_LEV_OUT, int NUM_LEV_IN = NUM_LEV_OUT, int NUM_LEV_REQUEST = NUM_LEV_OUT>
+  template<int NUM_LEV_OUT, typename ViewIn, int NUM_LEV_REQUEST = NUM_LEV_OUT>
   KOKKOS_INLINE_FUNCTION void
   gradient_sphere_update (const KernelVariables &kv,
-                          const typename ViewConst<ExecViewUnmanaged<Scalar [NP][NP][NUM_LEV_IN]>>::type& scalar,
+                          const ViewIn& scalar,
                           const ExecViewUnmanaged<Scalar [2][NP][NP][NUM_LEV_OUT]>& grad_s) const
   {
     static_assert(NUM_LEV_REQUEST>=0, "Error! Invalid value for NUM_LEV_REQUEST.\n");
-    static_assert(NUM_LEV_REQUEST<=NUM_LEV_IN, "Error! Input view does not have enough levels.\n");
+    static_assert(NUM_LEV_REQUEST<=scalar.static_extent(2), "Error! Input view does not have enough levels.\n");
     static_assert(NUM_LEV_REQUEST<=NUM_LEV_OUT, "Error! Output view does not have enough levels.\n");
 
     // Make sure the buffers have been created
@@ -503,54 +511,62 @@ public:
     // Make sure the buffers have been created
     assert (vector_buf_ml.size()>0);
 
-    const auto& D_inv = Homme::subview(m_dinv, kv.ie);
-    const auto& metdet = Homme::subview(m_metdet, kv.ie);
-    vector_buf<NUM_LEV_OUT> gv_buf(Homme::subview(vector_buf_ml,kv.team_idx, 0).data());
-    constexpr int np_squared = NP * NP;
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, np_squared),
-                         [&](const int loop_idx) {
-      const int igp = loop_idx / NP;
-      const int jgp = loop_idx % NP;
-      const auto mdet = metdet(igp,jgp);
-      auto gv0 = Homme::subview(gv_buf,0,igp,jgp);
-      auto gv1 = Homme::subview(gv_buf,1,igp,jgp);
-      auto v0 = Homme::subview(v,0, igp, jgp);
-      auto v1 = Homme::subview(v,1, igp, jgp);
-      Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV_REQUEST), [&] (const int& ilev) {
-        gv0(ilev)  = D_inv(0,0,igp,jgp) * v0(ilev);
-        gv1(ilev)  = D_inv(0,1,igp,jgp) * v0(ilev);
-        gv0(ilev) += D_inv(1,0,igp,jgp) * v1(ilev);
-        gv1(ilev) += D_inv(1,1,igp,jgp) * v1(ilev);
-        gv0(ilev) *= mdet;
-        gv1(ilev) *= mdet;
-        // gv_buf(0,igp,jgp,ilev) = (D_inv(0,0,igp,jgp) * v0 + D_inv(1,0,igp,jgp) * v1) * metdet(igp,jgp);
-        // gv_buf(1,igp,jgp,ilev) = (D_inv(0,1,igp,jgp) * v0 + D_inv(1,1,igp,jgp) * v1) * metdet(igp,jgp);
+    auto impl = [&] (auto& gv_buf) {
+      const auto& D_inv = Homme::subview(m_dinv, kv.ie);
+      const auto& metdet = Homme::subview(m_metdet, kv.ie);
+      constexpr int np_squared = NP * NP;
+      Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, np_squared),
+                           [&](const int loop_idx) {
+        const int igp = loop_idx / NP;
+        const int jgp = loop_idx % NP;
+        const auto mdet = metdet(igp,jgp);
+        auto gv0 = Homme::subview(gv_buf,0,igp,jgp);
+        auto gv1 = Homme::subview(gv_buf,1,igp,jgp);
+        Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV_REQUEST), [&] (const int& ilev) {
+          const auto& v0 = v(0,igp,jgp,ilev);
+          const auto& v1 = v(1,igp,jgp,ilev);
+          gv0(ilev)  = D_inv(0,0,igp,jgp) * v0;
+          gv1(ilev)  = D_inv(0,1,igp,jgp) * v0;
+          gv0(ilev) += D_inv(1,0,igp,jgp) * v1;
+          gv1(ilev) += D_inv(1,1,igp,jgp) * v1;
+          gv0(ilev) *= mdet;
+          gv1(ilev) *= mdet;
+          // gv_buf(0,igp,jgp,ilev) = (D_inv(0,0,igp,jgp) * v0 + D_inv(1,0,igp,jgp) * v1) * metdet(igp,jgp);
+          // gv_buf(1,igp,jgp,ilev) = (D_inv(0,1,igp,jgp) * v0 + D_inv(1,1,igp,jgp) * v1) * metdet(igp,jgp);
+        });
       });
-    });
-    kv.team_barrier();
+      kv.team_barrier();
 
-    // j, l, i -> i, j, k
-    constexpr int div_iters = NP * NP;
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, div_iters),
-                         [&](const int loop_idx) {
-      const int igp = loop_idx / NP;
-      const int jgp = loop_idx % NP;
-      auto factor = 1.0 / metdet(igp,jgp);
-      factor *= m_scale_factor_inv;
-      Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV_REQUEST), [&] (const int& ilev) {
-        Scalar dudx, dvdy;
-        for (int kgp = 0; kgp < NP; ++kgp) {
-          dudx += dvv(jgp, kgp) * gv_buf(0, igp, kgp, ilev);
-          dvdy += dvv(igp, kgp) * gv_buf(1, kgp, jgp, ilev);
-        }
-        // Recycle dudx to contain dudx+dvdy
-        dudx += dvdy;
-        dudx *= factor;
-        combine<CM>(dudx,div_v(igp, jgp, ilev), alpha, beta);
-        // combine<CM>((dudx + dvdy) * (1.0 / metdet(igp, jgp) * m_scale_factor_inv),
-        //              div_v(igp, jgp, ilev), alpha, beta);
+      // j, l, i -> i, j, k
+      constexpr int div_iters = NP * NP;
+      Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, div_iters),
+                           [&](const int loop_idx) {
+        const int igp = loop_idx / NP;
+        const int jgp = loop_idx % NP;
+        auto factor = 1.0 / metdet(igp,jgp);
+        factor *= m_scale_factor_inv;
+        Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV_REQUEST), [&] (const int& ilev) {
+          Scalar dudx, dvdy;
+          for (int kgp = 0; kgp < NP; ++kgp) {
+            dudx += dvv(jgp, kgp) * gv_buf(0, igp, kgp, ilev);
+            dvdy += dvv(igp, kgp) * gv_buf(1, kgp, jgp, ilev);
+          }
+          // Recycle dudx to contain dudx+dvdy
+          dudx += dvdy;
+          dudx *= factor;
+          combine<CM>(dudx,div_v(igp, jgp, ilev), alpha, beta);
+          // combine<CM>((dudx + dvdy) * (1.0 / metdet(igp, jgp) * m_scale_factor_inv),
+          //              div_v(igp, jgp, ilev), alpha, beta);
+        });
       });
-    });
+    };
+    if (m_for_caar) {
+      ScratchView<Scalar[2][NP][NP][NUM_LEV_OUT]> gv_buf (reinterpret_cast<Scalar*>(kv.team_shmem));
+      impl(gv_buf);
+    } else {
+      vector_buf<NUM_LEV_OUT> gv_buf(Homme::subview(vector_buf_ml,kv.team_idx, 0).data());
+      impl(gv_buf);
+    }
     kv.team_barrier();
   }
 
@@ -686,38 +702,46 @@ public:
     // Make sure the buffers have been created
     assert (vector_buf_ml.size()>0);
 
-    const auto& D = Homme::subview(m_d, kv.ie);
-    const auto& metdet = Homme::subview(m_metdet, kv.ie);
-    vector_buf<NUM_LEV_OUT> sphere_buf(Homme::subview(vector_buf_ml,kv.team_idx,0).data());
-    constexpr int np_squared = NP * NP;
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, np_squared),
-                         [&](const int loop_idx) {
-      const int igp = loop_idx / NP;
-      const int jgp = loop_idx % NP;
-      Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV_REQUEST), [&] (const int& ilev) {
-        const auto& v0 = v(0,igp,jgp,ilev);
-        const auto& v1 = v(1,igp,jgp,ilev);
-        sphere_buf(0,igp,jgp,ilev) = D(0,0,igp,jgp) * v0 + D(0,1,igp,jgp) * v1;
-        sphere_buf(1,igp,jgp,ilev) = D(1,0,igp,jgp) * v0 + D(1,1,igp,jgp) * v1;
+    auto impl = [&] (auto sphere_buf) {
+      const auto& D = Homme::subview(m_d, kv.ie);
+      const auto& metdet = Homme::subview(m_metdet, kv.ie);
+      constexpr int np_squared = NP * NP;
+      Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, np_squared),
+                           [&](const int loop_idx) {
+        const int igp = loop_idx / NP;
+        const int jgp = loop_idx % NP;
+        Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV_REQUEST), [&] (const int& ilev) {
+          const auto& v0 = v(0,igp,jgp,ilev);
+          const auto& v1 = v(1,igp,jgp,ilev);
+          sphere_buf(0,igp,jgp,ilev) = D(0,0,igp,jgp) * v0 + D(0,1,igp,jgp) * v1;
+          sphere_buf(1,igp,jgp,ilev) = D(1,0,igp,jgp) * v0 + D(1,1,igp,jgp) * v1;
+        });
       });
-    });
-    kv.team_barrier();
+      kv.team_barrier();
 
-    constexpr int vort_iters = NP * NP;
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, vort_iters),
-                         [&](const int loop_idx) {
-      const int igp = loop_idx / NP;
-      const int jgp = loop_idx % NP;
-      Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV_REQUEST), [&] (const int& ilev) {
-        Scalar dudy, dvdx;
-        for (int kgp = 0; kgp < NP; ++kgp) {
-          dvdx += dvv(jgp, kgp) * sphere_buf(1, igp, kgp, ilev);
-          dudy += dvv(igp, kgp) * sphere_buf(0, kgp, jgp, ilev);
-        }
-        vort(igp, jgp, ilev) = (dvdx - dudy) * (1.0 / metdet(igp, jgp) *
-                                                m_scale_factor_inv);
+      constexpr int vort_iters = NP * NP;
+      Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, vort_iters),
+                           [&](const int loop_idx) {
+        const int igp = loop_idx / NP;
+        const int jgp = loop_idx % NP;
+        Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV_REQUEST), [&] (const int& ilev) {
+          Scalar dudy, dvdx;
+          for (int kgp = 0; kgp < NP; ++kgp) {
+            dvdx += dvv(jgp, kgp) * sphere_buf(1, igp, kgp, ilev);
+            dudy += dvv(igp, kgp) * sphere_buf(0, kgp, jgp, ilev);
+          }
+          vort(igp, jgp, ilev) = (dvdx - dudy) * (1.0 / metdet(igp, jgp) *
+                                                  m_scale_factor_inv);
+        });
       });
-    });
+    };
+    if (m_for_caar) {
+      ScratchView<Scalar[2][NP][NP][NUM_LEV_OUT]> sphere_buf (reinterpret_cast<Scalar*>(kv.team_shmem));
+      impl (sphere_buf);
+    } else {
+      vector_buf<NUM_LEV_OUT> sphere_buf(Homme::subview(vector_buf_ml,kv.team_idx,0).data());
+      impl (sphere_buf);
+    }
     kv.team_barrier();
   }
 
@@ -1191,6 +1215,7 @@ public:
   ExecViewManaged<const Real * [2][2][NP][NP]>  m_d;
   ExecViewManaged<const Real * [2][2][NP][NP]>  m_dinv;
 
+  bool m_for_caar;
   Real m_scale_factor_inv, m_laplacian_rigid_factor;
 };
 

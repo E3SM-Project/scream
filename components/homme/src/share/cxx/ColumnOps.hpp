@@ -56,11 +56,12 @@ public:
   using DefaultMidProvider = ExecViewUnmanaged<const Scalar [NUM_LEV]>;
   using DefaultIntProvider = ExecViewUnmanaged<const Scalar [NUM_LEV_P]>;
 
-  template<CombineMode CM = CombineMode::Replace, typename InputProvider = DefaultIntProvider>
+  template<CombineMode CM = CombineMode::Replace, typename InputProvider = DefaultIntProvider,
+           typename MemorySpace = ExecMemSpace>
   KOKKOS_INLINE_FUNCTION
   static void compute_midpoint_values (const KernelVariables& kv,
                                 const InputProvider& x_i,
-                                const ExecViewUnmanaged<Scalar [NUM_LEV]>& x_m,
+                                const ViewUnmanaged<Scalar [NUM_LEV],MemorySpace>& x_m,
                                 const Real alpha = 1.0, const Real beta = 0.0)
   {
     // Compute midpoint quanitiy.
