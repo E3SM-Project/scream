@@ -282,7 +282,8 @@ private_except_cuda:
   std::map< std::string, std::string >vert_emis_file_name_;
   std::map< std::string, std::vector<std::string> > vert_emis_var_names_;
   view_2d vert_emis_output_[mam_coupling::MAX_NUM_VERT_EMISSION_FIELDS];
-
+  view_3d extfrc_;
+  mam_coupling::ForcingHelper forcings_[mam4::gas_chemistry::extcnt];
 
 
 }; // MAMMicrophysics

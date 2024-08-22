@@ -255,6 +255,11 @@ void MAMMicrophysics::set_grids(
     // NOTE: order of forcing species is important.
     // extfrc_lst(:  9) = {'SO2             ','so4_a1          ','so4_a2          ','pom_a4          ','bc_a4           ',
                           // 'num_a1          ','num_a2          ','num_a4          ','SOAG            ' }
+    // This order corresponds to files in namelist e3smv2
+    // Note that I change this order to match extfrc_lst
+    // 1,9,2,6,3,7,4,5,8
+    // FIXME: get this file from namelist
+    std::string base_path="/ascldap/users/odiazib/Documents/Oscar/CODE/eagles-project/scream_micro/ver_emis/";
 
     std::string mam4_so2_verti_emiss_file_name =
         //"cmip6_mam4_so2_elev_ne2np4_2010_clim_c20240726_OD.nc"
@@ -302,8 +307,6 @@ void MAMMicrophysics::set_grids(
 
         //SOAG
     // m_params.get<std::string>("mam4_soag_verti_emiss_file_name");
-    // FIXME: get this file from namelist
-    std::string base_path="/ascldap/users/odiazib/Documents/Oscar/CODE/eagles-project/scream_micro/ver_emis/";
     std::string  mam4_soag_verti_emiss_file_name=base_path+"cmip6_mam4_soag_elev_ne2np4_2010_clim_c20190821_OD.nc";
     vert_emis_var_names_["soag"] = {"SOAbb_src","SOAbg_src", "SOAff_src"};
     vert_emis_file_name_["soag"] = mam4_soag_verti_emiss_file_name;
@@ -616,6 +619,11 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
       const auto var_names = vert_emis_var_names_[var_name];
       const int nvars = int(var_names.size());
 
+      forcings_[i].nsectors = nvars;
+      // I am assuming the order of species in the above code.
+      // Indexing in mam4xx is fortran.
+      forcings_[i].frc_ndx = i+1;
+      // We may need to move this line where we read files.
       const auto io_grid_emis = VertEmissionsHorizInterp_[i]->get_src_grid();
       const int num_cols_io_emis =
           io_grid_emis->get_num_local_dofs();  // Number of columns on this rank
@@ -637,25 +645,32 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
       vert_emis_data_out_[i].allocate_data_views();
       if(vert_emis_data_out_[i].file_type == TracerFileType::FORMULA_PS) {
         vert_emis_data_out_[i].allocate_ps();
+        forcings_[i].file_alt_data=false;
       } else if(vert_emis_data_out_[i].file_type ==
                 TracerFileType::VERT_EMISSION) {
         auto zi_src = scream::mam_coupling::get_altitude_int(
             VertEmissionsHorizInterp_[i], file_name);
         vert_emis_altitude_int_.push_back(zi_src);
+
+        forcings_[i].file_alt_data=true;
       }
 
       for (int isp = 0; isp < nvars; ++isp)
       {
         EKAT_REQUIRE_MSG(
-        mam_coupling::MAX_NUM_VERT_EMISSION_FIELDS <= int(offset_emis_ver),
+        offset_emis_ver <= int(mam_coupling::MAX_NUM_VERT_EMISSION_FIELDS),
         "Error! Number of fields is bigger than MAX_NUM_VERT_EMISSION_FIELDS. Increase the MAX_NUM_VERT_EMISSION_FIELDS in helper_micro.hpp \n");
-
+        forcings_[i].offset=offset_emis_ver;
         vert_emis_output_[isp+offset_emis_ver] =
-          view_2d("vert_emis_output_", num_cols_io_emis, num_levs_io_emis);
+          view_2d("vert_emis_output_", ncol_, nlev_);
       }
       i++;
       offset_emis_ver+=nvars;
     }  // end i
+
+  constexpr int extcnt =
+      mam4::gas_chemistry::extcnt;
+  extfrc_=view_3d("extfrc_", ncol_, nlev_, extcnt);
   }
 
   invariants_ = view_3d("invarians", ncol_, nlev_, mam4::gas_chemistry::nfs);
@@ -730,18 +745,16 @@ void MAMMicrophysics::run_impl(const double dt) {
       dry_atm_.p_mid, dummy_altitude_int, dry_atm_.z_iface, linoz_output);
 
   int i=0;
-  int offset_emis_ver=0;
   for (const auto& item : vert_emis_file_name_) {
     const auto var_name = item.first;
     const auto file_name = item.second;
     const auto var_names = vert_emis_var_names_[var_name];
-    const int nvars = int(var_names.size());
-    view_2d vert_emis_output[nvars];
-    for (int isp = 0; isp < nvars; ++isp)
+    const int nsectors = int(var_names.size());
+    view_2d vert_emis_output[nsectors];
+    for (int isp = 0; isp < nsectors; ++isp)
     {
-    vert_emis_output[isp]= vert_emis_output_[isp+offset_emis_ver];
+      vert_emis_output[isp]= vert_emis_output_[isp+forcings_[i].offset];
     }
-    offset_emis_ver+=nvars;
     scream::mam_coupling::advance_tracer_data(
         VertEmissionsDataReader_[i], *VertEmissionsHorizInterp_[i], ts,
         linoz_time_state_, vert_emis_data_beg_[i], vert_emis_data_end_[i],
@@ -807,6 +820,10 @@ void MAMMicrophysics::run_impl(const double dt) {
         250092.672000, 1.007400,   12.011000,     12.011000, 250092.672000,
         1.007400};
   constexpr int pcnst = mam4::pcnst;
+  const auto vert_emis_output = vert_emis_output_;
+  const auto extfrc = extfrc_;
+  const auto forcings = forcings_;
+  constexpr int extcnt = mam4::gas_chemistry::extcnt;
 
   // loop over atmosphere columns and compute aerosol microphyscs
   Kokkos::parallel_for(
@@ -835,9 +852,27 @@ void MAMMicrophysics::run_impl(const double dt) {
 
         // set up diagnostics
         mam4::Diagnostics diags(nlev);
+        const auto invariants_icol = ekat::subview(invariants, icol);
+        mam4::mo_setext::Forcing forcings_in[extcnt];
+        for (int i = 0; i < extcnt; ++i)
+        {
+          int nsectors = forcings[i].nsectors;
+          int frc_ndx = forcings[i].frc_ndx;
+          auto file_alt_data= forcings[i].file_alt_data;
 
-        //
-        auto invariants_icol = ekat::subview(invariants, icol);
+          forcings_in[i].nsectors=nsectors;
+	        forcings_in[i].frc_ndx=frc_ndx;
+          // We may need to move this line where we read files.
+          forcings_in[i].file_alt_data=file_alt_data;
+          for (int isec = 0; isec < forcings[i].nsectors; ++isec)
+          {
+          const auto field = vert_emis_output[isec+forcings[i].offset];
+          forcings_in[i].fields_data[isec]=ekat::subview(field, icol);
+          }
+        }
+        const auto extfrc_icol = ekat::subview(extfrc, icol);
+
+        mam4::mo_setext::extfrc_set(forcings_in, extfrc_icol);
 
         view_1d cnst_offline_icol[mam4::mo_setinv::num_tracer_cnst];
         for (int i = 0; i < mam4::mo_setinv::num_tracer_cnst; ++i) {
@@ -954,11 +989,11 @@ void MAMMicrophysics::run_impl(const double dt) {
                 photo_rates_k[i] = photo_rates_icol(k, i);
               }
 
-              Real extfrc_k[mam4::gas_chemistry::extcnt];
-              for (int i = 0; i < mam4::gas_chemistry::extcnt; ++i) {
-                //extfrc_k[i] = extfrc_icol(k, i);
-                extfrc_k[i] = 0.0;
-              }
+              // Real extfrc_k[mam4::gas_chemistry::extcnt];
+              // for (int i = 0; i < mam4::gas_chemistry::extcnt; ++i) {
+              //   extfrc_k[i] = extfrc_icol(k, i);
+              // }
+                const auto& extfrc_k = ekat::subview(extfrc_icol,k);
 
               Real invariants_k[mam4::gas_chemistry::nfs];
               for(int i = 0; i < mam4::gas_chemistry::nfs; ++i) {
@@ -966,7 +1001,7 @@ void MAMMicrophysics::run_impl(const double dt) {
               }
 
               impl::gas_phase_chemistry(zm, zi, phis, temp, pmid, pdel, dt,
-                                        photo_rates_k, extfrc_k, invariants_k, vmr);
+                                        photo_rates_k, extfrc_k.data(), invariants_k, vmr);
 
               //----------------------
               // Aerosol microphysics
@@ -1049,7 +1084,7 @@ void MAMMicrophysics::run_impl(const double dt) {
                 state_q[i] = q[i-offset_aerosol];
                 qqcw_long[i] = qqcw[i-offset_aerosol];
               }
-              // mam4::utils::inject_stateq_to_prognostics(state_q,progs,k);
+              mam4::utils::inject_stateq_to_prognostics(state_q,progs,k);
     //           std::cout << "state_q: ";
     // for (int i = 0; i < pcnst; ++i) {
     //     std::cout << state_q[i] << " ";
