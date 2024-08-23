@@ -827,7 +827,7 @@ void MAMMicrophysics::run_impl(const double dt) {
   constexpr int extcnt = mam4::gas_chemistry::extcnt;
 
   // FIXME: remove this hard-code value
-  const int offset_aerosol = mam4::utils::gasses_start_ind;
+  const int offset_aerosol = mam4::utils::gasses_start_ind();
 
   // loop over atmosphere columns and compute aerosol microphyscs
   Kokkos::parallel_for(
