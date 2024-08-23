@@ -97,7 +97,6 @@ void MAMMicrophysics::set_defaults_() {
 
 void MAMMicrophysics::configure(const ekat::ParameterList &params) {
   set_defaults_();
-  // FIXME: implement "namelist" parsing
 }
 
 void MAMMicrophysics::set_grids(
@@ -785,9 +784,6 @@ void MAMMicrophysics::run_impl(const double dt) {
   const int nlev                              = nlev_;
   const Config &config                        = config_;
   const auto &step                            = step_;
-  // FIXME: read relevant linoz climatology data from file(s) based on time
-
-  // FIXME: read relevant chlorine loading data from file based on time
   const auto &work_photo_table = work_photo_table_;
   const auto &photo_rates      = photo_rates_;
 
@@ -823,20 +819,15 @@ void MAMMicrophysics::run_impl(const double dt) {
   constexpr int gas_pcnst = mam_coupling::gas_pcnst();
   constexpr int nqtendbb  = mam_coupling::nqtendbb();
 
-  // FIXME: I believe Balwinder add this array somewhere in mam4xx or eamxx.
-  const Real adv_mass[gas_pcnst] = {
-        47.998200,     34.013600,  98.078400,     64.064800, 62.132400,
-        12.011000,     115.107340, 12.011000,     12.011000, 12.011000,
-        135.064039,    58.442468,  250092.672000, 1.007400,  115.107340,
-        12.011000,     58.442468,  250092.672000, 1.007400,  135.064039,
-        58.442468,     115.107340, 12.011000,     12.011000, 12.011000,
-        250092.672000, 1.007400,   12.011000,     12.011000, 250092.672000,
-        1.007400};
+  constexpr auto adv_mass = mam4::gas_chemistry::adv_mass;
   constexpr int pcnst = mam4::pcnst;
   const auto vert_emis_output = vert_emis_output_;
   const auto extfrc = extfrc_;
   const auto forcings = forcings_;
   constexpr int extcnt = mam4::gas_chemistry::extcnt;
+
+  // FIXME: remove this hard-code value
+  const int offset_aerosol = mam4::utils::gasses_start_ind;
 
   // loop over atmosphere columns and compute aerosol microphyscs
   Kokkos::parallel_for(
@@ -964,8 +955,7 @@ void MAMMicrophysics::run_impl(const double dt) {
               // }
 
               mam4::utils::extract_qqcw_from_prognostics(progs,qqcw_long,k);
-              // FIXME: remove this hard-code value
-              const int offset_aerosol = 9;
+
               for (int i = offset_aerosol; i < pcnst; ++i) {
                 q[i-offset_aerosol] =state_q[i];
                 qqcw[i-offset_aerosol] =qqcw_long[i];
