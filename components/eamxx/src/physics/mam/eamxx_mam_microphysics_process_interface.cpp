@@ -300,7 +300,7 @@ void MAMMicrophysics::set_grids(
 
     // num_a2
     std::string  mam4_num_a2_verti_emiss_file_name =
-    m_params.get<std::string>("mam4_num_a1_verti_emiss_file_name");
+    m_params.get<std::string>("mam4_num_a2_verti_emiss_file_name");
     // "cmip6_mam4_num_a2_elev_ne2np4_2010_clim_c20190821_OD.nc";
     vert_emis_var_names_["num_a2"] = {"num_a2_SO4_ELEV_contvolc"};
     vert_emis_file_name_["num_a2"] = mam4_num_a2_verti_emiss_file_name;
