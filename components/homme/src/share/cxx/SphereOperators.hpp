@@ -71,7 +71,7 @@ public:
   void setup (const ElementsGeometry& geometry,
               const ReferenceElement& ref_FE) {
     // Get reference element stuff
-    dvv = ref_FE.get_deriv();
+    m_dvv = ref_FE.get_deriv();
     m_mp = ref_FE.get_mass();
 
     // Get all needed 2d fields from elements
@@ -118,7 +118,7 @@ public:
                   const ExecViewManaged<const Real *       [NP][NP]>  spheremp,
                   const ExecViewManaged<const Real         [NP][NP]>  mp)
   {
-    dvv = dvv_in;
+    m_dvv = dvv_in;
     m_d = d;
     m_dinv = dinv;
     m_metinv = metinv;
@@ -147,8 +147,8 @@ public:
       const int l = loop_idx % NP;
       Real dsdx(0), dsdy(0);
       for (int i = 0; i < NP; ++i) {
-        dsdx += dvv(l, i) * scalar(j, i);
-        dsdy += dvv(l, i) * scalar(i, j);
+        dsdx += m_dvv(l, i) * scalar(j, i);
+        dsdy += m_dvv(l, i) * scalar(i, j);
       }
       temp_v_buf(0, j, l) = dsdx * m_scale_factor_inv;
       temp_v_buf(1, l, j) = dsdy * m_scale_factor_inv;
@@ -184,8 +184,8 @@ public:
       const int l = loop_idx % NP;
       Real dsdx(0), dsdy(0);
       for (int i = 0; i < NP; ++i) {
-        dsdx += dvv(l, i) * scalar(j, i);
-        dsdy += dvv(l, i) * scalar(i, j);
+        dsdx += m_dvv(l, i) * scalar(j, i);
+        dsdy += m_dvv(l, i) * scalar(i, j);
       }
       temp_v_buf(0, j, l) = dsdx * m_scale_factor_inv;
       temp_v_buf(1, l, j) = dsdy * m_scale_factor_inv;
@@ -213,7 +213,7 @@ public:
     // Make sure the buffers have been created
     assert (vector_buf_sl.size()>0);
 
-    auto impl = [&] (auto gv_buf) {
+    auto impl = [&] (auto& gv_buf) {
       const auto& metdet = Homme::subview(m_metdet,kv.ie);
       const auto& D_inv = Homme::subview(m_dinv,kv.ie);
       constexpr int np_squared = NP * NP;
@@ -235,8 +235,8 @@ public:
         const int jgp = loop_idx % NP;
         Real dudx = 0.0, dvdy = 0.0;
         for (int kgp = 0; kgp < NP; ++kgp) {
-          dudx += dvv(jgp, kgp) * gv_buf(0, igp, kgp);
-          dvdy += dvv(igp, kgp) * gv_buf(1, kgp, jgp);
+          dudx += m_dvv(jgp, kgp) * gv_buf(0, igp, kgp);
+          dvdy += m_dvv(igp, kgp) * gv_buf(1, kgp, jgp);
         }
         div_v(igp,jgp) = (dudx + dvdy) * ((1.0 / metdet(igp,jgp)) *
                                            m_scale_factor_inv);
@@ -294,8 +294,8 @@ public:
       const int ngp = loop_idx / NP;
       Real dd = 0.0;
       for (int jgp = 0; jgp < NP; ++jgp) {
-        dd -= (spheremp(ngp, jgp) * gv_buf(0, ngp, jgp) * dvv(jgp, mgp) +
-               spheremp(jgp, mgp) * gv_buf(1, jgp, mgp) * dvv(jgp, ngp)) *
+        dd -= (spheremp(ngp, jgp) * gv_buf(0, ngp, jgp) * m_dvv(jgp, mgp) +
+               spheremp(jgp, mgp) * gv_buf(1, jgp, mgp) * m_dvv(jgp, ngp)) *
               m_scale_factor_inv;
       }
       div_v(ngp, mgp) = dd;
@@ -339,8 +339,8 @@ public:
       Real dudy = 0.0;
       Real dvdx = 0.0;
       for (int kgp = 0; kgp < NP; ++kgp) {
-        dvdx += dvv(jgp, kgp) * vcov_buf(1, igp, kgp);
-        dudy += dvv(igp, kgp) * vcov_buf(0, kgp, jgp);
+        dvdx += m_dvv(jgp, kgp) * vcov_buf(1, igp, kgp);
+        dudy += m_dvv(igp, kgp) * vcov_buf(0, kgp, jgp);
       }
 
       vort(igp, jgp) = (dvdx - dudy) * ((1.0 / metdet(igp, jgp)) *
@@ -391,13 +391,37 @@ public:
                    const ExecViewUnmanaged<Scalar [2][NP][NP][NUM_LEV_OUT]>& grad_s,
                    const int NUM_LEV_REQUEST) const
   {
+    gradient_sphere(kv,m_dvv,Homme::subview(m_dinv,kv.ie),scalar,grad_s,NUM_LEV_REQUEST);
+  }
+
+  template<typename DvvView, typename DinvView, int NUM_LEV_OUT, typename InputProvider, int NUM_LEV_REQUEST = NUM_LEV_OUT>
+  KOKKOS_INLINE_FUNCTION void
+  gradient_sphere (const KernelVariables &kv,
+                   const DvvView& dvv,
+                   const DinvView& D_inv,
+                   const InputProvider& scalar,
+                   const ExecViewUnmanaged<Scalar [2][NP][NP][NUM_LEV_OUT]>& grad_s) const
+  {
+    gradient_sphere(kv, dvv, D_inv, scalar, grad_s, NUM_LEV_REQUEST);
+  }
+
+
+  template<typename DvvView, typename DinvView, int NUM_LEV_OUT, typename InputProvider>
+  KOKKOS_INLINE_FUNCTION void
+  gradient_sphere (const KernelVariables &kv,
+                   const DvvView& dvv,
+                   const DinvView& D_inv,
+                   const InputProvider& scalar,
+                   const ExecViewUnmanaged<Scalar [2][NP][NP][NUM_LEV_OUT]>& grad_s,
+                   const int NUM_LEV_REQUEST) const
+  {
     assert(NUM_LEV_REQUEST>=0);
     assert(NUM_LEV_REQUEST<=NUM_LEV_OUT);
 
     // Make sure the buffers have been created
     assert (vector_buf_ml.size()>0);
 
-    const auto& D_inv = Homme::subview(m_dinv, kv.ie);
+    // const auto& D_inv = Homme::subview(m_dinv, kv.ie);
 
     constexpr int np_squared = NP * NP;
     Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, np_squared),
@@ -406,6 +430,7 @@ public:
       const int jgp = loop_idx % NP;
       auto g0 = Homme::subview(grad_s,0,igp,jgp);
       auto g1 = Homme::subview(grad_s,1,igp,jgp);
+      
       Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV_REQUEST), [&] (const int& ilev) {
         Scalar v0, v1;
         for (int kgp = 0; kgp < NP; ++kgp) {
@@ -432,12 +457,23 @@ public:
     static_assert(NUM_LEV_REQUEST>=0, "Error! Invalid value for NUM_LEV_REQUEST.\n");
     static_assert(NUM_LEV_REQUEST<=NUM_LEV_OUT, "Error! Output view does not have enough levels.\n");
 
-    gradient_sphere<NUM_LEV_OUT, InputProvider>(kv, scalar, grad_s, NUM_LEV_REQUEST);
+    gradient_sphere(kv, m_dvv, Homme::subview(m_dinv,kv.ie), scalar, grad_s, NUM_LEV_REQUEST);
   }
 
   template<int NUM_LEV_OUT, typename ViewIn, int NUM_LEV_REQUEST = NUM_LEV_OUT>
   KOKKOS_INLINE_FUNCTION void
   gradient_sphere_update (const KernelVariables &kv,
+                          const ViewIn& scalar,
+                          const ExecViewUnmanaged<Scalar [2][NP][NP][NUM_LEV_OUT]>& grad_s) const
+  {
+    gradient_sphere_update(kv,m_dvv,Homme::subview(m_dinv,kv.ie),scalar,grad_s);
+  }
+
+  template<typename DvvView, typename DinvView, typename ViewIn, int NUM_LEV_OUT, int NUM_LEV_REQUEST = NUM_LEV_OUT>
+  KOKKOS_INLINE_FUNCTION void
+  gradient_sphere_update (const KernelVariables &kv,
+                          const DvvView& dvv,
+                          const DinvView& D_inv,
                           const ViewIn& scalar,
                           const ExecViewUnmanaged<Scalar [2][NP][NP][NUM_LEV_OUT]>& grad_s) const
   {
@@ -448,7 +484,6 @@ public:
     // Make sure the buffers have been created
     assert (vector_buf_ml.size()>0);
 
-    const auto& D_inv = Homme::subview(m_dinv, kv.ie);
     constexpr int np_squared = NP * NP;
     Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, np_squared),
                          [&](const int loop_idx) {
@@ -467,6 +502,24 @@ public:
       });
     });
     kv.team_barrier();
+  }
+
+  template<int NUM_LEV_OUT, typename DvvView, typename DinvView, typename MetdetView, typename InputProvider, int NUM_LEV_REQUEST = NUM_LEV_OUT>
+  KOKKOS_INLINE_FUNCTION void
+  divergence_sphere (const KernelVariables &kv,
+                     const DvvView& dvv,
+                     const DinvView& Dinv,
+                     const MetdetView& metdet,
+                     const InputProvider& v,
+                     const ExecViewUnmanaged<Scalar [NP][NP][NUM_LEV_OUT]>& div_v,
+                     const Real alpha = 1.0, const Real beta = 0.0) const
+  {
+    divergence_sphere_cm<CombineMode::Replace,
+                         DvvView, DinvView, MetdetView,
+                         InputProvider,
+                         NUM_LEV_OUT,
+                         NUM_LEV_REQUEST>(kv,dvv,Dinv,metdet,v,div_v,alpha,beta);
+
   }
 
   template<int NUM_LEV_OUT, typename InputProvider, int NUM_LEV_REQUEST = NUM_LEV_OUT>
@@ -505,6 +558,21 @@ public:
                         const Real alpha, const Real beta,
                         const int NUM_LEV_REQUEST) const
   {
+    divergence_sphere_cm<CM>(kv,m_dvv,Homme::subview(m_dinv,kv.ie),
+                             Homme::subview(m_metdet,kv.ie),v,div_v,alpha,beta,NUM_LEV_REQUEST);
+  }
+
+  template<CombineMode CM, typename DvvView, typename DinvView, typename MetdetView, typename InputProvider, int NUM_LEV_OUT>
+  KOKKOS_INLINE_FUNCTION void
+  divergence_sphere_cm (const KernelVariables &kv,
+                        const DvvView& dvv,
+                        const DinvView& D_inv,
+                        const MetdetView& metdet,
+                        const InputProvider& v,
+                        const ExecViewUnmanaged<Scalar [NP][NP][NUM_LEV_OUT]>& div_v,
+                        const Real alpha, const Real beta,
+                        const int NUM_LEV_REQUEST) const
+  {
     assert(NUM_LEV_REQUEST>=0);
     assert(NUM_LEV_REQUEST<=NUM_LEV_OUT);
 
@@ -512,8 +580,6 @@ public:
     assert (vector_buf_ml.size()>0);
 
     auto impl = [&] (auto& gv_buf) {
-      const auto& D_inv = Homme::subview(m_dinv, kv.ie);
-      const auto& metdet = Homme::subview(m_metdet, kv.ie);
       constexpr int np_squared = NP * NP;
       Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, np_squared),
                            [&](const int loop_idx) {
@@ -568,6 +634,23 @@ public:
       impl(gv_buf);
     }
     kv.team_barrier();
+  }
+
+  template<CombineMode CM, typename DvvView, typename DinvView, typename MetdetView, typename InputProvider,
+           int NUM_LEV_OUT, int NUM_LEV_REQUEST = NUM_LEV_OUT>
+  KOKKOS_INLINE_FUNCTION void
+  divergence_sphere_cm (const KernelVariables &kv,
+                        const DvvView& dvv,
+                        const DinvView& D_inv,
+                        const MetdetView& metdet,
+                        const InputProvider& v,
+                        const ExecViewUnmanaged<Scalar [NP][NP][NUM_LEV_OUT]>& div_v,
+                        const Real alpha = 1.0, const Real beta = 0.0) const
+  {
+    static_assert(NUM_LEV_REQUEST>=0, "Error! Invalid value for NUM_LEV_REQUEST.\n");
+    static_assert(NUM_LEV_REQUEST<=NUM_LEV_OUT, "Error! Output view does not have enough levels.\n");
+
+    divergence_sphere_cm<CM, DvvView, DinvView, MetdetView, InputProvider, NUM_LEV_OUT>(kv, dvv, D_inv, metdet, v, div_v, alpha, beta, NUM_LEV_REQUEST);
   }
 
   template<CombineMode CM, typename InputProvider,
@@ -627,8 +710,8 @@ public:
       Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV_REQUEST), [&] (const int& ilev) {
         Scalar dudx, dvdy;
         for (int kgp = 0; kgp < NP; ++kgp) {
-          dudx += dvv(jgp, kgp) * gv(0, igp, kgp, ilev);
-          dvdy += dvv(igp, kgp) * gv(1, kgp, jgp, ilev);
+          dudx += m_dvv(jgp, kgp) * gv(0, igp, kgp, ilev);
+          dvdy += m_dvv(igp, kgp) * gv(1, kgp, jgp, ilev);
         }
         const Scalar qtensijk0 = add_hyperviscosity ? qtens(igp,jgp,ilev) : 0;
         qtens(igp,jgp,ilev) = (qdp(igp,jgp,ilev) +
@@ -678,8 +761,8 @@ public:
       Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV_REQUEST), [&] (const int& ilev) {
         Scalar dudy, dvdx;
         for (int kgp = 0; kgp < NP; ++kgp) {
-          dvdx += dvv(jgp, kgp) * vcov_buf(1, igp, kgp, ilev);
-          dudy += dvv(igp, kgp) * vcov_buf(0, kgp, jgp, ilev);
+          dvdx += m_dvv(jgp, kgp) * vcov_buf(1, igp, kgp, ilev);
+          dudy += m_dvv(igp, kgp) * vcov_buf(0, kgp, jgp, ilev);
         }
         vort(igp, jgp, ilev) = (dvdx - dudy) * (1.0 / metdet(igp, jgp) *
                                                 m_scale_factor_inv);
@@ -695,6 +778,19 @@ public:
                     const ExecViewUnmanaged<Scalar [NP][NP][NUM_LEV_OUT]>& vort,
                     const int NUM_LEV_REQUEST) const
   {
+    vorticity_sphere(kv,m_dvv,Homme::subview(m_d,kv.ie),Homme::subview(m_metdet,kv.ie),v,vort,NUM_LEV_REQUEST);
+  }
+
+  template<typename DvvView, typename DView, typename MetdetView, int NUM_LEV_OUT, int NUM_LEV_IN = NUM_LEV_OUT>
+  KOKKOS_INLINE_FUNCTION void
+  vorticity_sphere (const KernelVariables &kv,
+                    const DvvView& dvv,
+                    const DView& D,
+                    const MetdetView& metdet,
+                    const typename ViewConst<ExecViewUnmanaged<Scalar [2][NP][NP][NUM_LEV_IN]>>::type& v,
+                    const ExecViewUnmanaged<Scalar [NP][NP][NUM_LEV_OUT]>& vort,
+                    const int NUM_LEV_REQUEST) const
+  {
     assert(NUM_LEV_REQUEST>=0);
     assert(NUM_LEV_REQUEST<=NUM_LEV_IN);
     assert(NUM_LEV_REQUEST<=NUM_LEV_OUT);
@@ -702,9 +798,7 @@ public:
     // Make sure the buffers have been created
     assert (vector_buf_ml.size()>0);
 
-    auto impl = [&] (auto sphere_buf) {
-      const auto& D = Homme::subview(m_d, kv.ie);
-      const auto& metdet = Homme::subview(m_metdet, kv.ie);
+    auto impl = [&] (auto& sphere_buf) {
       constexpr int np_squared = NP * NP;
       Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, np_squared),
                            [&](const int loop_idx) {
@@ -713,8 +807,10 @@ public:
         Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV_REQUEST), [&] (const int& ilev) {
           const auto& v0 = v(0,igp,jgp,ilev);
           const auto& v1 = v(1,igp,jgp,ilev);
-          sphere_buf(0,igp,jgp,ilev) = D(0,0,igp,jgp) * v0 + D(0,1,igp,jgp) * v1;
-          sphere_buf(1,igp,jgp,ilev) = D(1,0,igp,jgp) * v0 + D(1,1,igp,jgp) * v1;
+          sphere_buf(0,igp,jgp,ilev)  = D(0,0,igp,jgp) * v0;
+          sphere_buf(0,igp,jgp,ilev)  = D(0,0,igp,jgp) * v0;
+          sphere_buf(1,igp,jgp,ilev) += D(1,1,igp,jgp) * v1;
+          sphere_buf(1,igp,jgp,ilev) += D(1,1,igp,jgp) * v1;
         });
       });
       kv.team_barrier();
@@ -724,14 +820,17 @@ public:
                            [&](const int loop_idx) {
         const int igp = loop_idx / NP;
         const int jgp = loop_idx % NP;
+        const auto& mdet = metdet(igp,jgp);
+        const auto factor = 1.0 /mdet * m_scale_factor_inv;
         Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV_REQUEST), [&] (const int& ilev) {
           Scalar dudy, dvdx;
           for (int kgp = 0; kgp < NP; ++kgp) {
             dvdx += dvv(jgp, kgp) * sphere_buf(1, igp, kgp, ilev);
             dudy += dvv(igp, kgp) * sphere_buf(0, kgp, jgp, ilev);
           }
-          vort(igp, jgp, ilev) = (dvdx - dudy) * (1.0 / metdet(igp, jgp) *
-                                                  m_scale_factor_inv);
+          auto& out = vort(igp, jgp, ilev) = dvdx;
+          out -= dudy;
+          out *= factor;
         });
       });
     };
@@ -751,11 +850,25 @@ public:
                     const typename ViewConst<ExecViewUnmanaged<Scalar [2][NP][NP][NUM_LEV_IN]>>::type& v,
                     const ExecViewUnmanaged<Scalar [NP][NP][NUM_LEV_OUT]>& vort) const
   {
+    vorticity_sphere(kv,
+         m_dvv, Homme::subview(m_d,kv.ie), Homme::subview(m_metdet,kv.ie),
+         v, vort, NUM_LEV_REQUEST);
+  }
+
+  template<typename DvvView, typename DView, typename MetdetView,int NUM_LEV_OUT, int NUM_LEV_IN = NUM_LEV_OUT, int NUM_LEV_REQUEST = NUM_LEV_OUT>
+  KOKKOS_INLINE_FUNCTION void
+  vorticity_sphere (const KernelVariables &kv,
+                    const DvvView& dvv,
+                    const DView& D,
+                    const MetdetView& metdet,
+                    const typename ViewConst<ExecViewUnmanaged<Scalar [2][NP][NP][NUM_LEV_IN]>>::type& v,
+                    const ExecViewUnmanaged<Scalar [NP][NP][NUM_LEV_OUT]>& vort) const
+  {
     static_assert(NUM_LEV_REQUEST>=0, "Error! Invalid value for NUM_LEV_REQUEST.\n");
     static_assert(NUM_LEV_REQUEST<=NUM_LEV_IN, "Error! Input view does not have enough levels.\n");
     static_assert(NUM_LEV_REQUEST<=NUM_LEV_OUT, "Error! Output view does not have enough levels.\n");
 
-    vorticity_sphere<NUM_LEV_OUT,NUM_LEV_IN>(kv, v, vort, NUM_LEV_REQUEST);
+    vorticity_sphere(kv, dvv, D, metdet, v, vort, NUM_LEV_REQUEST);
   }
 
   template<int NUM_LEV_OUT, int NUM_LEV_IN = NUM_LEV_OUT>
@@ -802,8 +915,8 @@ public:
         // TODO: move multiplication by scale_factor_inv outside the loop
         for (int jgp = 0; jgp < NP; ++jgp) {
           // Here, v is the temporary buffer, aliased on the input v.
-          dd -= (spheremp(ngp, jgp) * v(0, ngp, jgp, ilev) * dvv(jgp, mgp) +
-                 spheremp(jgp, mgp) * v(1, jgp, mgp, ilev) * dvv(jgp, ngp)) *
+          dd -= (spheremp(ngp, jgp) * v(0, ngp, jgp, ilev) * m_dvv(jgp, mgp) +
+                 spheremp(jgp, mgp) * v(1, jgp, mgp, ilev) * m_dvv(jgp, ngp)) *
                 m_scale_factor_inv;
         }
         div_v(ngp, mgp, ilev) = dd;
@@ -919,8 +1032,8 @@ public:
         sb0 = 0;
         sb1 = 0;
         for (int jgp = 0; jgp < NP; ++jgp) {
-          sb0 -= m_mp(jgp,mgp)*scalar(jgp,mgp,ilev)*dvv(jgp,ngp);
-          sb1 += m_mp(ngp,jgp)*scalar(ngp,jgp,ilev)*dvv(jgp,mgp);
+          sb0 -= m_mp(jgp,mgp)*scalar(jgp,mgp,ilev)*m_dvv(jgp,ngp);
+          sb1 += m_mp(ngp,jgp)*scalar(ngp,jgp,ilev)*m_dvv(jgp,mgp);
         }
       });
     });
@@ -975,8 +1088,8 @@ public:
       Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV_REQUEST), [&] (const int& ilev) {
         Scalar sb0, sb1;
         for (int jgp = 0; jgp < NP; ++jgp) {
-          sb0 -= m_mp(jgp,mgp)*scalar(jgp,mgp,ilev)*dvv(jgp,ngp);
-          sb1 += m_mp(ngp,jgp)*scalar(ngp,jgp,ilev)*dvv(jgp,mgp);
+          sb0 -= m_mp(jgp,mgp)*scalar(jgp,mgp,ilev)*m_dvv(jgp,ngp);
+          sb1 += m_mp(ngp,jgp)*scalar(ngp,jgp,ilev)*m_dvv(jgp,mgp);
         }
         curls(0,ngp,mgp,ilev) = beta*curls(0,ngp,mgp,ilev) + alpha *
                                 ( D(0,0,ngp,mgp)*sb0 + D(1,0,ngp,mgp)*sb1 )
@@ -1031,8 +1144,8 @@ public:
           const auto& md = metdet(ngp,mgp);
           const auto& snj = scalar(ngp,jgp,ilev);
           const auto& sjm = scalar(jgp,mgp,ilev);
-          const auto& djm = dvv(jgp,mgp);
-          const auto& djn = dvv(jgp,ngp);
+          const auto& djm = m_dvv(jgp,mgp);
+          const auto& djn = m_dvv(jgp,ngp);
           b0 -= (mpnj * metinv(0,0,ngp,mgp) * md * snj * djm +
                  mpjm * metinv(0,1,ngp,mgp) * md * sjm * djn);
           b1 -= (mpnj * metinv(1,0,ngp,mgp) * md * snj * djm +
@@ -1205,7 +1318,7 @@ public:
   ExecViewManaged<Scalar * [NUM_3D_SCALAR_BUFFERS][NP][NP][MAX_NUM_LEV]>      scalar_buf_ml;
   ExecViewManaged<Scalar * [NUM_3D_VECTOR_BUFFERS][2][NP][NP][MAX_NUM_LEV]>   vector_buf_ml;
 
-  ExecViewManaged<const Real [NP][NP]>          dvv;
+  ExecViewManaged<const Real [NP][NP]>          m_dvv;
   ExecViewManaged<const Real [NP][NP]>          m_mp;
 
   ExecViewManaged<const Real * [NP][NP]>        m_spheremp;

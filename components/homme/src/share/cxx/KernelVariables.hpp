@@ -121,21 +121,28 @@ public:
     return mem_size;
   }
 
-
   const TeamMember &team;
 
   KOKKOS_FORCEINLINE_FUNCTION void team_barrier() const {
     team.team_barrier();
   }
 
-  KOKKOS_FORCEINLINE_FUNCTION void init_team_shmem (int size) {
-    team_shmem = team.team_shmem().get_shmem(size);
+  KOKKOS_FORCEINLINE_FUNCTION void init_team_shmem (int geo_data_size, int scratch_data_size) {
+    geo_data_shmem = reinterpret_cast<Real*>(team.team_shmem().get_shmem(geo_data_size));
+    team_shmem = team.team_shmem().get_shmem(scratch_data_size);
   }
 
   int ie, iq;
   const int team_idx;
   const TeamUtils<ExecSpace>* team_utils;
   void* team_shmem = nullptr;
+  Real* geo_data_shmem = nullptr;
+
+  ScratchView<Real[NP][NP]> dvv;
+  ScratchView<Real[NP][NP]> metdet;
+  ScratchView<Real[2][2][NP][NP]> Dinv;
+  ScratchView<Real[2][2][NP][NP]> D;
+
 }; // KernelVariables
 
 } // Homme
