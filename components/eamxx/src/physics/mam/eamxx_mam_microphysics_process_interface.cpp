@@ -577,6 +577,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
     tracer_data_out_.init(num_cols_io, num_levs_io, nvars);
     tracer_data_out_.allocate_data_views();
     tracer_data_out_.allocate_ps();
+    tracer_data_out_.allocate_work_vert_inter();
 
     p_src_invariant_ =
         view_2d("pressure_src_invariant", num_cols_io, num_levs_io);
@@ -608,6 +609,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
 
     linoz_data_out_.init(num_cols_io_linoz, num_levs_io_linoz, nvars);
     linoz_data_out_.allocate_data_views();
+    linoz_data_out_.allocate_work_vert_inter();
     if(linoz_data_out_.file_type == TracerFileType::FORMULA_PS) {
       linoz_data_out_.allocate_ps();
     } else if(linoz_data_out_.file_type == TracerFileType::ZONAL) {

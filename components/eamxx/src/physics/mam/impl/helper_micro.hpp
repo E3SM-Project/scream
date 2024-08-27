@@ -91,7 +91,7 @@ struct TracerData {
   view_1d ps;
   const_view_1d hyam;
   const_view_1d hybm;
-
+  view_int_1d work_vert_inter[MAX_NVARS_TRACER];;
   TracerFileType file_type;
 
   void allocate_data_views() {
@@ -149,6 +149,19 @@ struct TracerData {
     hvcoord_reader.finalize();
     hyam = hyam_f.get_view<const Real *>();
     hybm = hyam_f.get_view<const Real *>();
+  }
+
+  void allocate_work_vert_inter()
+  {
+    if(file_type == FORMULA_PS ||
+        file_type == ZONAL) {
+    // we only need work array for FORMULA_PS or ZONAL
+    for(int ivar = 0; ivar < nvars_; ++ivar) {
+      work_vert_inter[ivar] =
+      view_int_1d("allocate_work_vertical_interpolation", ncol_);
+    }
+    }
+
   }
 };
 
@@ -598,6 +611,37 @@ inline void compute_p_src_zonal_files(const std::string &tracer_file_name,
 inline void perform_vertical_interpolation(const view_2d &p_src_c,
                                            const const_view_2d &p_tgt_c,
                                            const TracerData &input,
+                                           const view_2d output[])
+  {
+  // At this stage, begin/end must have the same horiz dimensions
+  EKAT_REQUIRE(input.ncol_ == output[0].extent(0));
+  const int ncol = input.ncol_;
+  const int levsiz =input.nlev_;
+  const int pver = mam4::nlev;
+
+  const int num_vars = input.nvars_;
+  const auto work = input.work_vert_inter;
+  EKAT_REQUIRE(work[num_vars-1].data() != 0);
+  // vert_interp is serial in col and lev.
+  const auto policy_setup = ESU::get_default_team_policy(num_vars, 1);
+
+  Kokkos::parallel_for(
+      "vert_interp", policy_setup,
+      KOKKOS_LAMBDA(typename LIV::MemberType const &team)
+  {
+       const int ivar = team.league_rank();
+       vert_interp(ncol, levsiz, pver, p_src_c,
+                 p_tgt_c, input.data[ivar],
+                 output[ivar],
+                 // work array
+                 work[ivar]);
+   });
+  }
+
+#if 0
+inline void perform_vertical_interpolation(const view_2d &p_src_c,
+                                           const const_view_2d &p_tgt_c,
+                                           const TracerData &input,
                                            const view_2d output[]) {
   // At this stage, begin/end must have the same horiz dimensions
   EKAT_REQUIRE(input.ncol_ == output[0].extent(0));
@@ -660,7 +704,7 @@ inline void perform_vertical_interpolation(const view_2d &p_src_c,
       });
   Kokkos::fence();
 }
-
+#endif
 // rebin is a port from:
 // https://github.com/eagles-project/e3sm_mam4_refactor/blob/ee556e13762e41a82cb70a240c54dc1b1e313621/components/eam/src/chemistry/utils/mo_util.F90#L12
 inline void rebin(int nsrc, int ntrg, const const_view_1d &src_x,
