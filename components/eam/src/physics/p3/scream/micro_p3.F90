@@ -960,7 +960,8 @@ contains
       inv_exner, cld_frac_l, cld_frac_r, cld_frac_i, &
       rho, inv_rho, rhofaci, qv, th_atm, qc, nc, qr, nr, qi, ni, qm, bm, latent_heat_vapor, latent_heat_sublim, &
       mu_c, nu, lamc, mu_r, lamr, vap_liq_exchange, &
-      ze_rain, ze_ice, diag_vm_qi, diag_eff_radius_qi, diag_diam_qi, rho_qi, diag_equiv_reflectivity, diag_eff_radius_qc)
+      ze_rain, ze_ice, diag_vm_qi, diag_eff_radius_qi, diag_diam_qi, rho_qi, diag_equiv_reflectivity, diag_eff_radius_qc,  & 
+      diag_ze_rain,diag_ze_ice)
 
    implicit none
 
@@ -974,7 +975,8 @@ contains
         qv, th_atm, qc, nc, qr, nr, qi, ni, qm, bm, latent_heat_vapor, latent_heat_sublim, &
         mu_c, nu, lamc, mu_r, &
         lamr, vap_liq_exchange, &
-        ze_rain, ze_ice, diag_vm_qi, diag_eff_radius_qi, diag_diam_qi, rho_qi, diag_equiv_reflectivity, diag_eff_radius_qc
+        ze_rain, ze_ice, diag_vm_qi, diag_eff_radius_qi, diag_diam_qi, rho_qi, diag_equiv_reflectivity, diag_eff_radius_qc, &
+        diag_ze_rain, diag_ze_ice
 
    ! locals
    integer :: k, dumi, dumii, dumjj, dumzz
@@ -1028,6 +1030,7 @@ contains
          ze_rain(k) = nr(k)*(mu_r(k)+6._rtype)*(mu_r(k)+5._rtype)*(mu_r(k)+4._rtype)*           &
               (mu_r(k)+3._rtype)*(mu_r(k)+2._rtype)*(mu_r(k)+1._rtype)/bfb_pow(lamr(k), 6._rtype)
          ze_rain(k) = max(ze_rain(k),1.e-22_rtype)
+         diag_ze_rain(k) = 10._rtype*bfb_log10(ze_rain(k)*1.e18_rtype)
       else
          qv(k) = qv(k)+qr(k)
          th_atm(k) = th_atm(k)-inv_exner(k)*qr(k)*latent_heat_vapor(k)*inv_cp
@@ -1092,7 +1095,7 @@ contains
 
          !above formula for ze only makes sense for in-cloud vals, but users expect cell-ave output.
          ze_ice(k) = ze_ice(k)*cld_frac_i(k)
-
+         diag_ze_ice(k) = 10._rtype*bfb_log10(ze_ice(k)*1.e18_rtype)
       else
 
          qv(k) = qv(k) + qi(k)
@@ -1125,7 +1128,7 @@ contains
        diag_eff_radius_qi,rho_qi,do_predict_nc, do_prescribed_CCN, &
        dpres,inv_exner,qv2qi_depos_tend,precip_total_tend,nevapr,qr_evap_tend,precip_liq_flux,precip_ice_flux,cld_frac_r,cld_frac_l,cld_frac_i,  &
        p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-       vap_ice_exchange,qv_prev,t_prev,col_location &
+       vap_ice_exchange,qv_prev,t_prev,col_location,diag_equiv_reflectivity,diag_ze_rain,diag_ze_ice &
 #ifdef SCREAM_CONFIG_IS_CMAKE
        ,elapsed_s &
 #endif
@@ -1210,6 +1213,7 @@ contains
     real(rtype), intent(out),   dimension(its:ite,kts:kte,49)   :: p3_tend_out ! micro physics tendencies
     real(rtype), intent(in),    dimension(its:ite,3)            :: col_location
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: inv_qc_relvar
+    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: diag_equiv_reflectivity,diag_ze_rain,diag_ze_ice  ! equivalent reflectivity [dBZ]
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
     real(rtype), optional, intent(out) :: elapsed_s ! duration of main loop in seconds
@@ -1220,7 +1224,6 @@ contains
     !
 
     ! These outputs are no longer provided by p3_main.
-    real(rtype), dimension(its:ite,kts:kte) :: diag_equiv_reflectivity  ! equivalent reflectivity          dBZ
     real(rtype), dimension(its:ite,kts:kte) :: diag_vm_qi ! mass-weighted fall speed of ice  m s-1
     real(rtype), dimension(its:ite,kts:kte) :: diag_diam_qi  ! mean diameter of ice             m
     real(rtype), dimension(its:ite,kts:kte) :: pratot   ! accretion of cloud by rain
@@ -1292,6 +1295,8 @@ contains
     prec      = 0._rtype
     mu_r      = 0._rtype
     diag_equiv_reflectivity   = -99._rtype
+    diag_ze_rain = -99.0_rtype 
+    diag_ze_ice  = -99.0_rtype
 
     ze_ice    = 1.e-22_rtype
     ze_rain   = 1.e-22_rtype
@@ -1452,7 +1457,8 @@ contains
             rho(i,:), inv_rho(i,:), rhofaci(i,:), qv(i,:), th_atm(i,:), qc(i,:), nc(i,:), qr(i,:), nr(i,:), qi(i,:), ni(i,:), &
             qm(i,:), bm(i,:), latent_heat_vapor(i,:), latent_heat_sublim(i,:), &
             mu_c(i,:), nu(i,:), lamc(i,:), mu_r(i,:), lamr(i,:), vap_liq_exchange(i,:), &
-            ze_rain(i,:), ze_ice(i,:), diag_vm_qi(i,:), diag_eff_radius_qi(i,:), diag_diam_qi(i,:), rho_qi(i,:), diag_equiv_reflectivity(i,:), diag_eff_radius_qc(i,:))
+            ze_rain(i,:), ze_ice(i,:), diag_vm_qi(i,:), diag_eff_radius_qi(i,:), diag_diam_qi(i,:), rho_qi(i,:), diag_equiv_reflectivity(i,:), diag_eff_radius_qc(i,:), &
+            diag_ze_rain(i,:),diag_ze_ice(i,:))
        !   if (debug_ON) call check_values(qv,Ti,it,debug_ABORT,800,col_location)
 
        !..............................................

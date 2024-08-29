@@ -532,7 +532,8 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    use time_mod,    only: tstep
    use hycoef,      only: hyam, hybm
    use dimensions_mod, only: nlev, nelemd, np, npsq
-   use se_iop_intr_mod, only: iop_setfield, iop_setinitial
+   !use se_iop_intr_mod, only: iop_setfield, iop_setinitial
+   use se_single_column_mod, only: scm_setfield, scm_setinitial
 !   use dyn_comp, only: TimeLevel
    use dyn_comp,        only: TimeLevel, hvcoord
    use cam_history,     only: outfld   

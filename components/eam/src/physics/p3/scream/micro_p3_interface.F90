@@ -562,8 +562,72 @@ end subroutine micro_p3_readnl
    call addfld('liq_ice_exchange',  (/ 'lev' /), 'A', 'kg/kg/s', 'Tendency for conversion from/to liquid phase to/from frozen phase')
    call addfld('cond_from_macro',  (/ 'lev' /), 'A', 'kg/kg/s', 'Tendency for conversion from/to liquid phase to/from frozen phase')
    call addfld('cond_from_macro_p',  (/ 'lev' /), 'A', 'kg/kg/s', 'Tendency for conversion from/to liquid phase to/from frozen phase')
+   call addfld('diag_equiv_reflectivity',  (/ 'lev' /), 'A', 'dBz', 'Equivalent reflectivity (rain + ice)')
+   call addfld('diag_ze_rain',      (/ 'lev' /), 'A', 'dBz', 'Equivalent reflectivity rain')
+   call addfld('diag_ze_ice',       (/ 'lev' /), 'A', 'dBz', 'Equivalent reflectivity ice')
 
    call addfld ('I_VAP_COND_EXCHANGE', horiz_only,    'A', 'kg/m2/s', 'Vertically-integrated all phase condensation rate'             )
+
+   ! Record of column integral microphysics tendencies
+   ! warm-phase process rates
+   call addfld('I_P3_qrcon',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for rain condensation   (Not in paper?)')
+   call addfld('I_P3_qc2qr_accret_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for cloud droplet accretion by rain')
+   call addfld('I_P3_qc2qr_autoconv_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for cloud droplet autoconversion to rain')
+   call addfld('I_P3_nc_accret_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for change in cloud droplet number from accretion by rain')
+   call addfld('I_P3_nc2nr_autoconv_tend', horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for change in cloud droplet number from autoconversion')
+   call addfld('I_P3_nc_selfcollect_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for change in cloud droplet number from self-collection  (Not in paper?)')
+   call addfld('I_P3_nr_selfcollect_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for change in rain number from self-collection  (Not in paper?)')
+   call addfld('I_P3_nc_nuceat_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for change in cloud droplet number from activation of CCN')
+   call addfld('I_P3_qccon',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for cloud droplet condensation')
+   call addfld('I_P3_qcnuc',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for activation of cloud droplets from CCN')
+   call addfld('I_P3_qr2qv_evap_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for rain evaporation')
+   call addfld('I_P3_qcevp',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for cloud droplet evaporation')
+   call addfld('I_P3_nr_evap_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for change in rain number from evaporation')
+   call addfld('I_P3_ncautr', horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for change in rain number from autoconversion of cloud water')
+   ! ice-phase process rates
+   call addfld('I_P3_qccol',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for collection of cloud water by ice')
+   call addfld('I_P3_qwgrth', horiz_only,    'A', 'kg/kg/s', 'P3 wet growth rate')
+   call addfld('I_P3_qidep',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for vapor deposition')
+   call addfld('I_P3_qrcol',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for collection rain mass by ice')
+   call addfld('I_P3_qinuc',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for deposition/condensation freezing nuc')
+   call addfld('I_P3_nc_collect_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for change in cloud droplet number from collection by ice')
+   call addfld('I_P3_nr_collect_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for change in rain number from collection by ice')
+   call addfld('I_P3_ni_nucleat_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for change in ice number from deposition/cond-freezing nucleation')
+   call addfld('I_P3_qi2qv_sublim_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for sublimation of ice')
+   call addfld('I_P3_qi2qr_melt_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for melting of ice')
+   call addfld('I_P3_ni2nr_melt_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for melting of ice')
+   call addfld('I_P3_ni_sublim_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for change in ice number from sublimation')
+   call addfld('I_P3_ni_selfcollect_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for change in ice number from collection within a category (Not in paper?)')
+   call addfld('I_P3_qc2qi_hetero_frz_tend', horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for immersion freezing droplets')
+   call addfld('I_P3_qr2qi_immers_frz_tend', horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for immersion freezing rain')
+   call addfld('I_P3_nc2ni_immers_frz_tend', horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for immersion freezing droplets')
+   call addfld('I_P3_nr2ni_immers_frz_tend', horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for immersion freezing rain')
+   call addfld('I_P3_nr_ice_shed_tend', horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for source for rain number from collision of rain/ice above freezing and shedding')
+   call addfld('I_P3_qc2qr_ice_shed_tend',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for source for rain mass due to cloud water/ice collision above freezing and shedding or wet growth and shedding')
+   call addfld('I_P3_ncshdc', horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for source for rain number due to cloud water/ice collision above freezing  and shedding (combined with NRSHD in the paper)')
+   ! Sedimentation
+   call addfld('I_P3_sed_CLDLIQ',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for liquid cloud content due to sedimentation')
+   call addfld('I_P3_sed_NUMLIQ',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for liquid cloud number due to sedimentation')
+   call addfld('I_P3_sed_CLDRAIN', horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for rain cloud content due to sedimentation')
+   call addfld('I_P3_sed_NUMRAIN', horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for rain cloud number due to sedimentation')
+   call addfld('I_P3_sed_CLDICE',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for ice cloud content due to sedimentation')
+   call addfld('I_P3_sed_NUMICE',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for ice cloud number due to sedimentation')
+   ! Microphysics Processes
+   call addfld('I_P3_mtend_CLDLIQ',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for liquid cloud content due to micro processes')
+   call addfld('I_P3_mtend_NUMLIQ',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for liquid cloud number due to micro processes')
+   call addfld('I_P3_mtend_CLDRAIN', horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for rain cloud content due to micro processes')
+   call addfld('I_P3_mtend_NUMRAIN', horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for rain cloud number due to micro processes')
+   call addfld('I_P3_mtend_CLDICE',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for ice cloud content due to micro processes')
+   call addfld('I_P3_mtend_NUMICE',  horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for ice cloud number due to micro processes')
+   call addfld('I_P3_mtend_Q',       horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for water vapor due to micro processes')
+   call addfld('I_P3_mtend_TH',      horiz_only,    'A', 'kg/m2/s', 'column integral P3 Tendency for potential temp. number due to micro processes')
+   ! phase change tendencies
+   call addfld('I_vap_liq_exchange',  horiz_only,    'A', 'kg/m2/s', 'column integral Tendency for conversion from/to vapor phase to/from liquid phase')
+   call addfld('I_vap_ice_exchange',  horiz_only,    'A', 'kg/m2/s', 'column integral Tendency for conversion from/to vapor phase to/from frozen phase')
+   call addfld('I_liq_ice_exchange',  horiz_only,    'A', 'kg/m2/s', 'column integral Tendency for conversion from/to liquid phase to/from frozen phase')
+   call addfld('I_cond_from_macro',  horiz_only,    'A', 'kg/m2/s', 'column integral Tendency for conversion from/to liquid phase to/from frozen phase')
+   call addfld('I_cond_from_macro_p',  horiz_only,    'A', 'kg/m2/s', 'column integral Tendency for conversion from/to liquid phase to/from frozen phase')
+
 
    ! determine the add_default fields
    call phys_getopts(history_amwg_out           = history_amwg         , &
@@ -603,6 +667,9 @@ end subroutine micro_p3_readnl
       call add_default('vap_ice_exchange',  1, ' ')
       call add_default('liq_ice_exchange',  1, ' ')
       call add_default('I_VAP_COND_EXCHANGE',  1, ' ')
+      call add_default('diag_equiv_reflectivity',  1, ' ')
+      call add_default('diag_ze_rain',  1, ' ')
+      call add_default('diag_ze_ice',  1, ' ')
 
       ! Microphysics tendencies
       ! warm-phase process rates
@@ -788,11 +855,18 @@ end subroutine micro_p3_readnl
     real(rtype) :: cld_frac_l(pcols,pver)      !liquid cloud fraction
     real(rtype) :: cld_frac_i(pcols,pver)      !ice cloud fraction
     real(rtype) :: tend_out(pcols,pver,49) !microphysical tendencies
+    real(rtype) :: I_tend_out(pcols,49) !column integral microphysical tendencies 
     real(rtype), dimension(pcols,pver) :: liq_ice_exchange ! sum of liq-ice phase change tendenices
     real(rtype), dimension(pcols,pver) :: vap_liq_exchange ! sum of vap-liq phase change tendenices
     real(rtype), dimension(pcols,pver) :: vap_ice_exchange ! sum of vap-ice phase change tendenices
     real(rtype), dimension(pcols,pver) :: cond_from_macro ! sum of vap-ice phase change tendenices
     real(rtype), dimension(pcols,pver) :: cond_from_macro_p ! sum of vap-ice phase change tendenices
+    real(rtype), dimension(pcols,pver) :: diag_equiv_reflectivity,diag_ze_rain,diag_ze_ice ! equivalent reflectivity [dBz]
+    real(rtype), dimension(pcols) :: I_liq_ice_exchange ! column integral sum of liq-ice phase change tendenices
+    real(rtype), dimension(pcols) :: I_vap_liq_exchange ! column integral sum of vap-liq phase change tendenices
+    real(rtype), dimension(pcols) :: I_vap_ice_exchange ! column integral sum of vap-ice phase change tendenices
+    real(rtype), dimension(pcols) :: I_cond_from_macro ! column integral sum of vap-ice phase change tendenices
+    real(rtype), dimension(pcols) :: I_cond_from_macro_p ! column integral sum of vap-ice phase change tendenices
 
     real(rtype) :: dummy_out(pcols,pver)    ! dummy_output variable for p3_main to replace unused variables.
 
@@ -877,6 +951,7 @@ end subroutine micro_p3_readnl
     integer :: icol, ncol, k
     integer :: psetcols, lchnk
     integer :: itim_old
+    integer :: itend
 
     ! For rrtmg optics. specified distribution.
     real(rtype), parameter :: dcon   = 25.e-6_rtype         ! Convective size distribution effective radius (um)
@@ -1148,8 +1223,9 @@ end subroutine micro_p3_readnl
          vap_ice_exchange(its:ite,kts:kte),& ! OUT sum of vap-ice phase change tendencies
          qv_prev_dry(its:ite,kts:kte),         & ! IN  qv at end of prev p3_main call   kg kg-1
          t_prev(its:ite,kts:kte),          & ! IN  t at end of prev p3_main call    K
-         col_location(its:ite,:3)          & ! IN column locations
-         )
+         col_location(its:ite,:3),         & ! IN column locations
+         diag_equiv_reflectivity(its:ite,kts:kte), & !OUT equivalent reflectivity (rain + ice) [dBz]
+         diag_ze_rain(its:ite,kts:kte),diag_ze_ice(its:ite,kts:kte)) !OUT equivalent reflectivity for rain and ice [dBz]
 
     p3_main_outputs(:,:,:) = -999._rtype
     do k = 1,pver
@@ -1427,6 +1503,16 @@ end subroutine micro_p3_readnl
     reffrain(:ncol,top_lev:pver) = reff_rain(:ncol,top_lev:pver)
     reffsnow(:ncol,top_lev:pver) = 1000._rtype !! dummy value, the choice here impacts the COSP output variable: CFAD_DBZE94_CS.  TODO: Figure out if this is ok, change if needed.
 
+!(zhang73) add column integral of P3_tend
+    do itend=1,49
+       I_tend_out(:ncol,itend) = sum(tend_out(:ncol,top_lev:pver,itend) * state%pdel(:ncol,top_lev:pver)/gravit, dim=2) 
+    end do
+    I_vap_ice_exchange = sum(vap_ice_exchange(:ncol,top_lev:pver) * state%pdel(:ncol,top_lev:pver)/gravit, dim=2)
+    I_vap_liq_exchange = sum(vap_liq_exchange(:ncol,top_lev:pver) * state%pdel(:ncol,top_lev:pver)/gravit, dim=2)
+    I_liq_ice_exchange = sum(liq_ice_exchange(:ncol,top_lev:pver) * state%pdel(:ncol,top_lev:pver)/gravit, dim=2)
+    I_cond_from_macro = sum(cond_from_macro(:ncol,top_lev:pver) * state%pdel(:ncol,top_lev:pver)/gravit, dim=2)
+    I_cond_from_macro_p = sum(cond_from_macro_p(:ncol,top_lev:pver) * state%pdel(:ncol,top_lev:pver)/gravit, dim=2)
+
 !====================== COSP Specific Outputs  END ======================!
 
     !WRITE OUTPUT
@@ -1509,6 +1595,70 @@ end subroutine micro_p3_readnl
    call outfld('cond_from_macro_p',      cond_from_macro_p,      pcols, lchnk)
 
    call outfld('I_VAP_COND_EXCHANGE',      I_VAP_COND_EXCHANGE,      pcols,    lchnk)
+
+   ! Write column integral p3 tendencies as output
+   call outfld('I_P3_qrcon',  I_tend_out(:, 1), pcols, lchnk)
+   call outfld('I_P3_qc2qr_accret_tend',  I_tend_out(:, 2), pcols, lchnk)
+   call outfld('I_P3_qc2qr_autoconv_tend',  I_tend_out(:, 3), pcols, lchnk)
+   call outfld('I_P3_nc_accret_tend',  I_tend_out(:, 4), pcols, lchnk)
+   call outfld('I_P3_nc2nr_autoconv_tend', I_tend_out(:, 5), pcols, lchnk)
+   call outfld('I_P3_nc_selfcollect_tend',  I_tend_out(:, 6), pcols, lchnk)
+   call outfld('I_P3_nr_selfcollect_tend',  I_tend_out(:, 7), pcols, lchnk)
+   call outfld('I_P3_nc_nuceat_tend',  I_tend_out(:, 8), pcols, lchnk)
+   call outfld('I_P3_qccon',  I_tend_out(:, 9), pcols, lchnk)
+   call outfld('I_P3_qcnuc',  I_tend_out(:,10), pcols, lchnk)
+   call outfld('I_P3_qr2qv_evap_tend',  I_tend_out(:,11), pcols, lchnk)
+   call outfld('I_P3_qcevp',  I_tend_out(:,12), pcols, lchnk)
+   call outfld('I_P3_nr_evap_tend',  I_tend_out(:,13), pcols, lchnk)
+   call outfld('I_P3_ncautr', I_tend_out(:,14), pcols, lchnk)
+   ! ice-phase process rate
+   call outfld('I_P3_qccol',  I_tend_out(:,15), pcols, lchnk)
+   call outfld('I_P3_qwgrth', I_tend_out(:,16), pcols, lchnk) ! Not a tendency in itself, it is used to build qccol and qrcol
+   call outfld('I_P3_qidep',  I_tend_out(:,17), pcols, lchnk)
+   call outfld('I_P3_qrcol',  I_tend_out(:,18), pcols, lchnk)
+   call outfld('I_P3_qinuc',  I_tend_out(:,19), pcols, lchnk)
+   call outfld('I_P3_nc_collect_tend',  I_tend_out(:,20), pcols, lchnk)
+   call outfld('I_P3_nr_collect_tend',  I_tend_out(:,21), pcols, lchnk)
+   call outfld('I_P3_ni_nucleat_tend',  I_tend_out(:,22), pcols, lchnk)
+   call outfld('I_P3_qi2qv_sublim_tend',  I_tend_out(:,23), pcols, lchnk)
+   call outfld('I_P3_qi2qr_melt_tend',  I_tend_out(:,24), pcols, lchnk)
+   call outfld('I_P3_ni2nr_melt_tend',  I_tend_out(:,25), pcols, lchnk)
+   call outfld('I_P3_ni_sublim_tend',  I_tend_out(:,26), pcols, lchnk)
+   call outfld('I_P3_ni_selfcollect_tend',  I_tend_out(:,27), pcols, lchnk)
+   call outfld('I_P3_qc2qi_hetero_frz_tend', I_tend_out(:,28), pcols, lchnk)
+   call outfld('I_P3_qr2qi_immers_frz_tend', I_tend_out(:,29), pcols, lchnk)
+   call outfld('I_P3_nc2ni_immers_frz_tend', I_tend_out(:,30), pcols, lchnk)
+   call outfld('I_P3_nr2ni_immers_frz_tend', I_tend_out(:,31), pcols, lchnk)
+   call outfld('I_P3_nr_ice_shed_tend', I_tend_out(:,32), pcols, lchnk)
+   call outfld('I_P3_qc2qr_ice_shed_tend',  I_tend_out(:,33), pcols, lchnk)
+!   call outfld('I_P3_qcmul',  I_tend_out(:,34), pcols, lchnk) ! Not actually used, so not actually recorded.  Commented out here for continuity of the array.
+   call outfld('I_P3_ncshdc', I_tend_out(:,35), pcols, lchnk)
+   ! sedimentation
+   call outfld('I_P3_sed_CLDLIQ',  I_tend_out(:,36), pcols, lchnk)
+   call outfld('I_P3_sed_NUMLIQ',  I_tend_out(:,37), pcols, lchnk)
+   call outfld('I_P3_sed_CLDRAIN', I_tend_out(:,38), pcols, lchnk)
+   call outfld('I_P3_sed_NUMRAIN', I_tend_out(:,39), pcols, lchnk)
+   call outfld('I_P3_sed_CLDICE',  I_tend_out(:,40), pcols, lchnk)
+   call outfld('I_P3_sed_NUMICE',  I_tend_out(:,41), pcols, lchnk)
+   ! microphysics processes
+   call outfld('I_P3_mtend_CLDLIQ',  I_tend_out(:,42), pcols, lchnk)
+   call outfld('I_P3_mtend_NUMLIQ',  I_tend_out(:,43), pcols, lchnk)
+   call outfld('I_P3_mtend_CLDRAIN', I_tend_out(:,44), pcols, lchnk)
+   call outfld('I_P3_mtend_NUMRAIN', I_tend_out(:,45), pcols, lchnk)
+   call outfld('I_P3_mtend_CLDICE',  I_tend_out(:,46), pcols, lchnk)
+   call outfld('I_P3_mtend_NUMICE',  I_tend_out(:,47), pcols, lchnk)
+   call outfld('I_P3_mtend_Q',       I_tend_out(:,48), pcols, lchnk)
+   call outfld('I_P3_mtend_TH',      I_tend_out(:,49), pcols, lchnk)
+   ! Phase change tendencies
+   call outfld('I_vap_ice_exchange',      I_vap_ice_exchange,      pcols, lchnk)
+   call outfld('I_vap_liq_exchange',      I_vap_liq_exchange,      pcols, lchnk)
+   call outfld('I_liq_ice_exchange',      I_liq_ice_exchange,      pcols, lchnk)
+   call outfld('I_cond_from_macro',      I_cond_from_macro,      pcols, lchnk)
+   call outfld('I_cond_from_macro_p',      I_cond_from_macro_p,      pcols, lchnk)
+   call outfld('diag_equiv_reflectivity', diag_equiv_reflectivity, pcols, lchnk)
+   call outfld('diag_ze_rain',            diag_ze_rain, pcols, lchnk)
+   call outfld('diag_ze_ice',             diag_ze_ice, pcols, lchnk)
+
 
    call t_stopf('micro_p3_tend_finish')
   end subroutine micro_p3_tend
