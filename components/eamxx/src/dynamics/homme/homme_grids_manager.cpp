@@ -170,6 +170,14 @@ void HommeGridsManager::build_dynamics_grid () {
   // Get (ie,igp,jgp,gid) data for each dof
   get_dyn_grid_data_f90 (dg_dofs_h.data(),cg_dofs_h.data(),elgpgp_h.data(),elgids_h.data(), lat_h.data(), lon_h.data());
 
+  constexpr int NGP = HOMMEXX_NP;
+  for (size_t i=0; i<lat_h.size(); ++i) {
+    const int ie  =  i/(NGP*NGP);
+    const int igp = (i/NGP)%NGP;
+    const int jgp =  i%NGP;
+    printf("%s: (LAT, LON)(%d)=(%.5e,      %.5e)\n", std::string("DYN").c_str(), (int)i, lat_h(ie, igp, jgp), lon_h(ie,igp,jgp));
+  }
+
   dg_dofs.sync_to_dev();
   cg_dofs.sync_to_dev();
   elgpgp.sync_to_dev();
@@ -237,6 +245,12 @@ build_physics_grid (const ci_string& type, const ci_string& rebalance) {
 
   // Get all specs of phys grid cols (gids, coords, area)
   get_phys_grid_data_f90 (pg_code, dofs_h.data(), lat_h.data(), lon_h.data(), area_h.data());
+
+  for (int i=0; i<lat_h.extent_int(0); ++i) {
+    printf("%s: (LAT, LON)(%d)=(%.5e,      %.5e)\n", type.c_str(), i, lat_h(i), lon_h(i));
+  }
+
+  EKAT_ASSERT(type!="PG2");
 
   dofs.sync_to_dev();
   lat.sync_to_dev();
