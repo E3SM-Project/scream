@@ -788,7 +788,6 @@ void MAMMicrophysics::run_impl(const double dt) {
   constexpr int gas_pcnst = mam_coupling::gas_pcnst();
   constexpr int nqtendbb  = mam_coupling::nqtendbb();
 
-  constexpr auto adv_mass = mam4::gas_chemistry::adv_mass;
   constexpr int pcnst = mam4::pcnst;
   const auto vert_emis_output = vert_emis_output_;
   const auto extfrc = extfrc_;
@@ -797,6 +796,12 @@ void MAMMicrophysics::run_impl(const double dt) {
 
   // FIXME: remove this hard-code value
   const int offset_aerosol = mam4::utils::gasses_start_ind();
+  Real adv_mass_kg_per_moles[gas_pcnst];
+  for(int i = 0; i < gas_pcnst; ++i)
+  {
+    adv_mass_kg_per_moles[i] = mam4::gas_chemistry::adv_mass[i]/1e3;
+  }
+
 
   // loop over atmosphere columns and compute aerosol microphyscs
   Kokkos::parallel_for(
@@ -935,8 +940,8 @@ void MAMMicrophysics::run_impl(const double dt) {
               // CHECK: convert_work_arrays_to_vmr and mmr2vmr should produce the same ouputs
               // However, in mmr2vmr we do not iterate to get species value.
               // mam_coupling::convert_work_arrays_to_vmr(q, qqcw, vmr, vmrcw);
-              mam_coupling::mmr2vmr(q,adv_mass, vmr);
-              mam_coupling::mmr2vmr(qqcw,adv_mass,vmrcw);
+              mam_coupling::mmr2vmr(q,adv_mass_kg_per_moles, vmr);
+              mam_coupling::mmr2vmr(qqcw,adv_mass_kg_per_moles,vmrcw);
 
               // aerosol/gas species tendencies (output)
               Real vmr_tendbb[gas_pcnst][nqtendbb]   = {};
@@ -1038,25 +1043,15 @@ void MAMMicrophysics::run_impl(const double dt) {
               // FIXME: C++ port in progress!
               // mam4::drydep::drydep_xactive(...);
 
-              mam_coupling::vmr2mmr(vmr,adv_mass, q);
-              mam_coupling::vmr2mmr(vmrcw,adv_mass,qqcw);
+              mam_coupling::vmr2mmr(vmr,adv_mass_kg_per_moles, q);
+              mam_coupling::vmr2mmr(vmrcw,adv_mass_kg_per_moles,qqcw);
 
               for (int i = offset_aerosol; i < pcnst; ++i) {
                 state_q[i] = q[i-offset_aerosol];
                 qqcw_long[i] = qqcw[i-offset_aerosol];
               }
               mam4::utils::inject_stateq_to_prognostics(state_q,progs,k);
-    //           std::cout << "state_q: ";
-    // for (int i = 0; i < pcnst; ++i) {
-    //     std::cout << state_q[i] << " ";
-    // }
-    // std::cout << std::endl;
-
               mam4::utils::inject_qqcw_to_prognostics(qqcw_long, progs,k);
-              // transfer updated prognostics from work arrays
-              // mam_coupling::convert_work_arrays_to_mmr(vmr, vmrcw, q, qqcw);
-              // mam_coupling::transfer_work_arrays_to_prognostics(q, qqcw,
-              // progs, k);
             });
       });
 
