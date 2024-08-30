@@ -43,6 +43,10 @@ initial_conditions:
   topography_filename: ${TOPO_DATA_DIR}/${EAMxx_tests_TOPO_FILE}
   phis : 1.0
   pbl_height: 1.0
+  dgncur_a : [1.37146e-07 ,3.45899e-08 ,1.00000e-06 ,9.99601e-08] 
+  dgnumwet : [1.37452e-07 ,3.46684e-08 ,1.00900e-06 ,9.99601e-08]
+  qaerwat : [1193.43 ,1188.03 ,1665.08 ,1044.58]
+  wetdens : [5.08262e-12 ,1.54035e-13 ,3.09018e-13 ,9.14710e-22]  
   #These should come from the input file
 
 # The parameters for I/O control
