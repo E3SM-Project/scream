@@ -253,7 +253,6 @@ void MAMMicrophysics::set_grids(
     std::vector<int>  linoz_dates;
     int cyclical_ymd_index=-1;
     scream::mam_coupling::get_time_from_ncfile(linoz_file_name_, linoz_cyclical_ymd, cyclical_ymd_index, linoz_dates);
-    trace_time_state_.offset_time_index=cyclical_ymd_index;
     linoz_time_state_.offset_time_index=cyclical_ymd_index;
   }
   {
