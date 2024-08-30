@@ -611,10 +611,9 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
       const int nvars = int(var_names.size());
 
       forcings_[i].nsectors = nvars;
-      // I am assuming the order of species in the above code.
+      // I am assuming the order of species in extfrc_lst_.
       // Indexing in mam4xx is fortran.
       forcings_[i].frc_ndx = i+1;
-      // We may need to move this line where we read files.
       const auto io_grid_emis = VertEmissionsHorizInterp_[i]->get_src_grid();
       const int num_cols_io_emis =
           io_grid_emis->get_num_local_dofs();  // Number of columns on this rank
@@ -721,17 +720,15 @@ void MAMMicrophysics::run_impl(const double dt) {
   // /* Update the TracerTimeState to reflect the current time, note the
   // addition of dt */
   trace_time_state_.t_now = ts.frac_of_year_in_days();
-  // FIXME: we do not need altitude_int for invariant tracers and linoz fields.
-  view_1d dummy_altitude_int;
   scream::mam_coupling::advance_tracer_data(
       TracerDataReader_, *TracerHorizInterp_, ts, trace_time_state_,
       tracer_data_beg_, tracer_data_end_, tracer_data_out_, p_src_invariant_,
-      dry_atm_.p_mid, dummy_altitude_int, dry_atm_.z_iface, cnst_offline_);
+      dry_atm_.p_mid, dry_atm_.z_iface, cnst_offline_);
 
   scream::mam_coupling::advance_tracer_data(
       LinozDataReader_, *LinozHorizInterp_, ts, linoz_time_state_,
       linoz_data_beg_, linoz_data_end_, linoz_data_out_, p_src_linoz_,
-      dry_atm_.p_mid, dummy_altitude_int, dry_atm_.z_iface, linoz_output);
+      dry_atm_.p_mid, dry_atm_.z_iface, linoz_output);
 
   vert_emiss_time_state_.t_now = ts.frac_of_year_in_days();
   int i=0;
@@ -749,7 +746,7 @@ void MAMMicrophysics::run_impl(const double dt) {
         VertEmissionsDataReader_[i], *VertEmissionsHorizInterp_[i], ts,
         vert_emiss_time_state_, vert_emis_data_beg_[i], vert_emis_data_end_[i],
         vert_emis_data_out_[i], p_src_linoz_, dry_atm_.p_mid,
-        vert_emis_altitude_int_[i], dry_atm_.z_iface, vert_emis_output);
+        dry_atm_.z_iface, vert_emis_output);
   }
   const_view_1d &col_latitudes     = col_latitudes_;
   const_view_1d &col_longitudes    = col_longitudes_;

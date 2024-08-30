@@ -812,7 +812,7 @@ inline void advance_tracer_data(
     TracerTimeState &time_state, TracerData &data_tracer_beg,
     TracerData &data_tracer_end, TracerData &data_tracer_out,
     const view_2d &p_src, const const_view_2d &p_tgt,
-    const const_view_1d &zi_src, const const_view_2d &zi_tgt,
+    const const_view_2d &zi_tgt,
     const view_2d output[]) {
   /* Update the TracerTimeState to reflect the current time, note the addition
    * of dt */
