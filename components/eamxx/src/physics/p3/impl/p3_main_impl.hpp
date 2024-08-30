@@ -162,10 +162,10 @@ Int Functions<S,D>
         &inv_dz, &inv_rho, &ze_ice, &ze_rain, &prec, &rho,
         &rhofacr, &rhofaci, &acn, &qv_sat_l, &qv_sat_i, &sup, &qv_supersat_i,
         &tmparr1, &exner, &diag_equiv_reflectivity, &diag_vm_qi, &diag_diam_qi,
-        &pratot, &prctot, &qtend_ignore, &ntend_ignore, 
+        &pratot, &prctot, &qtend_ignore, &ntend_ignore,
         &mu_c, &lamc, &qr_evap_tend
       });
-      
+
     // Get single-column subviews of all inputs, shouldn't need any i-indexing
     // after this.
     const auto opres               = ekat::subview(diagnostic_inputs.pres, i);
@@ -344,6 +344,9 @@ Int Functions<S,D>
   const P3Infrastructure& infrastructure,
   const P3HistoryOnly& history_only,
   const P3LookupTables& lookup_tables,
+#ifdef SCREAM_SMALL_KERNELS
+  const P3Temporaries& temporaries,
+#endif
   const WorkspaceManager& workspace_mgr,
   Int nj,
   Int nk,
@@ -359,7 +362,7 @@ Int Functions<S,D>
                          lookup_tables,
                          workspace_mgr,
                          nj, nk, p3constants);
-#else 
+#else
   return p3_main_internal_disp(runtime_options,
                                prognostic_state,
                                diagnostic_inputs,
@@ -367,6 +370,7 @@ Int Functions<S,D>
                                infrastructure,
                                history_only,
                                lookup_tables,
+                               temporaries,
                                workspace_mgr,
                                nj, nk, p3constants);
 #endif
