@@ -241,7 +241,8 @@ void MAMMicrophysics::set_grids(
   {
     oxid_file_name_          = m_params.get<std::string>("mam4_oxid_file_name");
     std::string spa_map_file = "";
-    std::vector<std::string> var_names{"O3", "HO2", "NO3", "OH"};
+    //NOTE: order matches mam4xx:
+    std::vector<std::string> var_names{"O3", "OH", "NO3", "HO2"};
     TracerFileType tracer_file_type;
     TracerHorizInterp_ = scream::mam_coupling::create_horiz_remapper(
         grid_, oxid_file_name_, spa_map_file, var_names, tracer_file_type);
