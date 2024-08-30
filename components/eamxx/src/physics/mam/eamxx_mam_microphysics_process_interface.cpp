@@ -813,6 +813,8 @@ void MAMMicrophysics::run_impl(const double dt) {
   const auto extfrc = extfrc_;
   const auto forcings = forcings_;
   constexpr int extcnt = mam4::gas_chemistry::extcnt;
+
+  // FIXME: remove this hard-code value
   const int offset_aerosol = mam4::utils::gasses_start_ind();
   Real adv_mass_kg_per_moles[gas_pcnst];
   for(int i = 0; i < gas_pcnst; ++i)
