@@ -505,11 +505,6 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
     auto linoz_cariolle_pscs =
         buffer_.scratch[7];  // Cariolle parameter for PSC loss of ozone [1/s]
 
-    // Load the first month into spa_end.
-    // Note: At the first time step, the data will be moved into spa_beg,
-    //       and spa_end will be reloaded from file with the new month.
-    const int curr_month = timestamp().get_month() - 1;  // 0-based
-
     // const std::string linoz_chlorine_file =
     // "Linoz_Chlorine_Loading_CMIP6_0003-2017_c20171114.nc"; auto ts =
     // timestamp(); int chlorine_loading_ymd=20100101;
@@ -544,7 +539,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
 
     tracer_data_end_.init(num_cols_io, num_levs_io, nvars);
     scream::mam_coupling::update_tracer_data_from_file(
-        TracerDataReader_, timestamp(), curr_month, *TracerHorizInterp_,
+        TracerDataReader_, curr_month, *TracerHorizInterp_,
         tracer_data_end_);
 
     tracer_data_beg_.init(num_cols_io, num_levs_io, nvars);
@@ -575,7 +570,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
     const int nvars = 8;
     linoz_data_end_.init(num_cols_io_linoz, num_levs_io_linoz, nvars);
     scream::mam_coupling::update_tracer_data_from_file(
-        LinozDataReader_, timestamp(), curr_month, *LinozHorizInterp_,
+        LinozDataReader_, curr_month, *LinozHorizInterp_,
         linoz_data_end_);
 
     linoz_data_beg_.init(num_cols_io_linoz, num_levs_io_linoz, nvars);
@@ -622,7 +617,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
               ->get_num_vertical_levels();  // Number of levels per column
       vert_emis_data_end_[i].init(num_cols_io_emis, num_levs_io_emis, nvars);
       scream::mam_coupling::update_tracer_data_from_file(
-          VertEmissionsDataReader_[i], timestamp(), curr_month,
+          VertEmissionsDataReader_[i], curr_month,
           *VertEmissionsHorizInterp_[i], vert_emis_data_end_[i]);
 
       vert_emis_data_beg_[i].init(num_cols_io_emis, num_levs_io_emis, nvars);
