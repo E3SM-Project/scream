@@ -487,6 +487,11 @@ inline void update_tracer_timestate(
     for(int ivar = 0; ivar < nvars; ++ivar) {
       Kokkos::deep_copy(tracer_beg[ivar], tracer_end[ivar]);
     }
+
+    // Following SPA to time-interpolate data in MAM4xx
+    // Assume the data is saved monthly and cycles in one year
+    // Add offset_time_index to support cases where data is saved
+    // from other periods of time.
     // Update the SPA forcing data for this month and next month
     // Start by copying next months data to this months data structure.
     // NOTE: If the timestep is bigger than monthly this could cause the wrong
