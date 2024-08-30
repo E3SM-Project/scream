@@ -923,11 +923,6 @@ void MAMMicrophysics::run_impl(const double dt) {
               Real qqcw_long[pcnst] = {};
               mam4::utils::extract_stateq_from_prognostics(progs,atm, state_q, k);
 
-              // std::cout << "Before state_q: ";
-              // for (int i = 0; i < pcnst; ++i) {
-              //   std::cout << state_q[i] << " ";
-              // }
-
               mam4::utils::extract_qqcw_from_prognostics(progs,qqcw_long,k);
 
               for (int i = offset_aerosol; i < pcnst; ++i) {
@@ -965,10 +960,8 @@ void MAMMicrophysics::run_impl(const double dt) {
               const auto& invariants_k = ekat::subview(invariants_icol,k);
               const auto& photo_rates_k = ekat::subview(photo_rates_icol,k);
               impl::gas_phase_chemistry(zm, zi, phis, temp, pmid, pdel, dt,
-                                        photo_rates_k.data(), extfrc_k.data(), invariants_k.data(), vmr);
-
-
-
+                                        photo_rates_k.data(), extfrc_k.data(),
+                                        invariants_k.data(), vmr);
               //----------------------
               // Aerosol microphysics
               //----------------------
@@ -989,14 +982,23 @@ void MAMMicrophysics::run_impl(const double dt) {
               // * dry and wet diameters [m]
               // * wet densities [kg/m3]
               // * aerosol water mass mixing ratio [kg/kg]
-              Real dgncur_a[num_modes]    = {};
-              Real dgncur_awet[num_modes] = {};
-              Real wetdens[num_modes]     = {};
-              Real qaerwat[num_modes]     = {};
-
-              impl::compute_water_content(progs, atm, k, qv, temp, pmid, dgncur_a,
+              // FIXME:!!! These values are inputs for this interface
+              // We need to get these values from the FM.
+              Real dgncur_a[num_modes]    = {1.37146e-07 ,3.45899e-08 ,1.00000e-06 ,9.99601e-08 };
+              Real dgncur_awet[num_modes] = {1.37452e-07 ,3.46684e-08 ,1.00900e-06 ,9.99601e-08};
+              Real wetdens[num_modes]     = {1193.43 ,1188.03 ,1665.08 ,1044.58 };
+              Real qaerwat[num_modes]     = {5.08262e-12 ,1.54035e-13 ,3.09018e-13 ,9.14710e-22};
+# if 0
+              Real n_mode_i[num_modes];
+              for (int i = 0; i < num_modes; ++i) {
+                n_mode_i[i] =   progs.n_mode_i[i](k);
+              }
+              // FIXME: We do not need to invoked this function in this interface.
+              impl::compute_water_content(state_q, qqcw_long, qv, temp, pmid,
+                                          n_mode_i, dgncur_a,
                                           dgncur_awet, wetdens, qaerwat);
 
+#endif
               // do aerosol microphysics (gas-aerosol exchange, nucleation,
               // coagulation)
               impl::modal_aero_amicphys_intr(
@@ -1043,15 +1045,15 @@ void MAMMicrophysics::run_impl(const double dt) {
               // FIXME: C++ port in progress!
               // mam4::drydep::drydep_xactive(...);
 
-              mam_coupling::vmr2mmr(vmr,adv_mass_kg_per_moles, q);
-              mam_coupling::vmr2mmr(vmrcw,adv_mass_kg_per_moles,qqcw);
+              mam_coupling::vmr2mmr(vmr, adv_mass_kg_per_moles,  q);
+              mam_coupling::vmr2mmr(vmrcw, adv_mass_kg_per_moles, qqcw);
 
               for (int i = offset_aerosol; i < pcnst; ++i) {
                 state_q[i] = q[i-offset_aerosol];
                 qqcw_long[i] = qqcw[i-offset_aerosol];
               }
-              mam4::utils::inject_stateq_to_prognostics(state_q,progs,k);
-              mam4::utils::inject_qqcw_to_prognostics(qqcw_long, progs,k);
+              mam4::utils::inject_stateq_to_prognostics(state_q, progs, k);
+              mam4::utils::inject_qqcw_to_prognostics(qqcw_long, progs, k);
             });
       });
 
