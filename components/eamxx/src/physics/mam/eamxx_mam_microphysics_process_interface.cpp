@@ -314,7 +314,7 @@ void MAMMicrophysics::set_grids(
     }// var_name vert emissions
 
     {
-    // NOTE: Here I am assuming all vert file have same times. 
+    // NOTE: Here I am assuming all vert file have same times.
     // FIXME: get this from input.yaml
     int cyclical_ymd=20100101; //in format YYYYMMDD
     std::vector<int>  vertical_emiss_dates;
@@ -639,11 +639,10 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
         forcings_[i].file_alt_data=false;
       } else if(vert_emis_data_out_[i].file_type ==
                 TracerFileType::VERT_EMISSION) {
-        auto zi_src = scream::mam_coupling::get_altitude_int(
-            VertEmissionsHorizInterp_[i], file_name);
-        vert_emis_altitude_int_.push_back(zi_src);
-
-        forcings_[i].file_alt_data=true;
+      forcings_[i].file_alt_data=true;
+      // FIXME: Do not open this file three times
+      // I am getting zeros for altitude_int if I use AtmosphereInput
+      scream::mam_coupling::get_altitude_int(file_name, vert_emis_data_end_[i].altitude_int);
       }
 
       for (int isp = 0; isp < nvars; ++isp)

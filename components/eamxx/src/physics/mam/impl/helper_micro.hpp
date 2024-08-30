@@ -95,6 +95,7 @@ struct TracerData {
   const_view_1d hybm;
   view_int_1d work_vert_inter[MAX_NVARS_TRACER];;
   TracerFileType file_type;
+  view_1d altitude_int;
 
   void allocate_data_views() {
     EKAT_REQUIRE_MSG(ncol_ != int(-1), "Error! ncols has not been set. \n");
@@ -167,21 +168,19 @@ struct TracerData {
   }
 };
 
-inline const_view_1d get_altitude_int(
-    const std::shared_ptr<AbstractRemapper> &horiz_remapper,
-    const std::string &tracer_file_name) {
-  // Read in hyam/hybm in start/end data
-  auto nondim        = ekat::units::Units::nondimensional();
-  const auto io_grid = horiz_remapper->get_src_grid();
-  Field altitude_int_f(FieldIdentifier("altitude_int",
-                                       io_grid->get_vertical_layout(false),
-                                       nondim, io_grid->name()));
-  altitude_int_f.allocate_view();
-  AtmosphereInput hvcoord_reader(tracer_file_name, io_grid, {altitude_int_f},
-                                 true);
-  hvcoord_reader.read_variables();
-  hvcoord_reader.finalize();
-  return altitude_int_f.get_view<const Real *>();
+// Given a filename, return altitude_int
+inline void get_altitude_int(
+    const std::string &tracer_file_name,
+    view_1d& altitude_int) {
+// in tracer_file_name: NC file name
+// out altitude_int: views of int altitude
+  scorpio::register_file(tracer_file_name, scorpio::Read);
+  const int nlevs_data = scorpio::get_dimlen(tracer_file_name, "altitude_int");
+  view_1d_host altitude_int_host("altitude_int_host", nlevs_data);
+  scorpio::read_var(tracer_file_name, "altitude_int", altitude_int_host.data());
+  scorpio::release_file(tracer_file_name);
+  altitude_int = view_1d("altitude_int",nlevs_data);
+  Kokkos::deep_copy(altitude_int, altitude_int_host);
 }  // set_altitude_int
 
 // Direct port of components/eam/src/chemistry/utils/tracer_data.F90/vert_interp
@@ -830,7 +829,7 @@ inline void advance_tracer_data(
      data_tracer_out.file_type == ZONAL) {
     perform_vertical_interpolation(p_src, p_tgt, data_tracer_out, output);
   } else if(data_tracer_out.file_type == VERT_EMISSION) {
-    perform_vertical_interpolation(zi_src, zi_tgt, data_tracer_out, output);
+    perform_vertical_interpolation(data_tracer_end.altitude_int, zi_tgt, data_tracer_out, output);
   }
 
 }  // advance_tracer_data
