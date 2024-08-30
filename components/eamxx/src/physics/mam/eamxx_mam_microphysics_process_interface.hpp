@@ -277,6 +277,7 @@ private_except_cuda:
   mam_coupling::TracerTimeState vert_emiss_time_state_;
   std::vector<std::shared_ptr<AtmosphereInput>>  VertEmissionsDataReader_;
   std::vector<std::shared_ptr<AbstractRemapper>> VertEmissionsHorizInterp_;
+  std::vector<std::string> extfrc_lst_;
   std::vector<mam_coupling::TracerData> vert_emis_data_end_;
   std::vector<mam_coupling::TracerData> vert_emis_data_beg_;
   std::vector<mam_coupling::TracerData> vert_emis_data_out_;

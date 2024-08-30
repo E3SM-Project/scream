@@ -271,76 +271,29 @@ void MAMMicrophysics::set_grids(
     // This order corresponds to files in namelist e3smv2
     // Note that I change this order to match extfrc_lst
     // 1,9,2,6,3,7,4,5,8
+    extfrc_lst_=std::vector<std::string>({"so2","so4_a1","so4_a2","pom_a4","bc_a4",
+                                         "num_a1","num_a2","num_a4","soag"});
 
-    std::string mam4_so2_verti_emiss_file_name =
-        //"cmip6_mam4_so2_elev_ne2np4_2010_clim_c20240726_OD.nc"
-    m_params.get<std::string>("mam4_so2_verti_emiss_file_name");
+    for (const auto& var_name : extfrc_lst_) {
+      std::string item_name= "mam4_"+var_name+"_verti_emiss_file_name";
+      const auto file_name = m_params.get<std::string>(item_name);
+      vert_emis_file_name_[var_name] = file_name;
+    }
     vert_emis_var_names_["so2"] = {"BB","ENE_ELEV", "IND_ELEV", "contvolc"};
-    vert_emis_file_name_["so2"] = mam4_so2_verti_emiss_file_name;
-
-    // so4_a1
-    // cmip6_mam4_so4_a1_elev_ne2np4_2010_clim_c20190821_OD.nc";
-    std::string  mam4_so4_a1_verti_emiss_file_name=
-    m_params.get<std::string>("mam4_so4_a1_verti_emiss_file_name");
     vert_emis_var_names_["so4_a1"] = {"BB","ENE_ELEV", "IND_ELEV", "contvolc"};
-    vert_emis_file_name_["so4_a1"] = mam4_so4_a1_verti_emiss_file_name;
-
-    // so4_a2
-    // "cmip6_mam4_so4_a2_elev_ne2np4_2010_clim_c20190821_OD.nc";
-    std::string  mam4_so4_a2_verti_emiss_file_name =
-    m_params.get<std::string>("mam4_so4_a2_verti_emiss_file_name");
     vert_emis_var_names_["so4_a2"] = { "contvolc"};
-    vert_emis_file_name_["so4_a2"] = mam4_so4_a2_verti_emiss_file_name;
-
-    // pom_a4
-    std::string  mam4_pom_a4_verti_emiss_file_name =
-    m_params.get<std::string>("mam4_pom_a4_verti_emiss_file_name");
-    //  base_path+"cmip6_mam4_pom_a4_elev_ne2np4_2010_clim_c20190821_OD.nc";
     vert_emis_var_names_["pom_a4"] = {"BB"};
-    vert_emis_file_name_["pom_a4"] = mam4_pom_a4_verti_emiss_file_name;
-
-    // cmip6_mam4_bc_a4_elev_ne2np4_2010_clim_c20240726_OD.nc
-    std::string mam4_bc_a4_verti_emiss_file_name =
-        m_params.get<std::string>("mam4_bc_a4_verti_emiss_file_name");
-    vert_emis_file_name_["bc_a4"] = mam4_bc_a4_verti_emiss_file_name;
     vert_emis_var_names_["bc_a4"] = {"BB"};
-
-    // num_a1
-    std::string  mam4_num_a1_verti_emiss_file_name =
-    m_params.get<std::string>("mam4_num_a1_verti_emiss_file_name");
-    // "cmip6_mam4_num_a1_elev_ne2np4_2010_clim_c20190821_OD.nc";
     vert_emis_var_names_["num_a1"] = {"num_a1_SO4_ELEV_BB","num_a1_SO4_ELEV_ENE", "num_a1_SO4_ELEV_IND", "num_a1_SO4_ELEV_contvolc"};
-    vert_emis_file_name_["num_a1"] = mam4_num_a1_verti_emiss_file_name;
-
-    // num_a2
-    std::string  mam4_num_a2_verti_emiss_file_name =
-    m_params.get<std::string>("mam4_num_a2_verti_emiss_file_name");
-    // "cmip6_mam4_num_a2_elev_ne2np4_2010_clim_c20190821_OD.nc";
     vert_emis_var_names_["num_a2"] = {"num_a2_SO4_ELEV_contvolc"};
-    vert_emis_file_name_["num_a2"] = mam4_num_a2_verti_emiss_file_name;
-
     // num_a4
     // FIXME: why the sectors in this files are num_a1;
     //  I guess this should be num_a4? Is this a bug in the orginal nc files?
-    // QUESTION...
-    std::string  mam4_num_a4_verti_emiss_file_name =
-    m_params.get<std::string>("mam4_num_a4_verti_emiss_file_name");
-    // "cmip6_mam4_num_a4_elev_ne2np4_2010_clim_c20190821_OD.nc";
     vert_emis_var_names_["num_a4"] = {"num_a1_BC_ELEV_BB", "num_a1_POM_ELEV_BB"};
-    vert_emis_file_name_["num_a4"] = mam4_num_a4_verti_emiss_file_name;
-
-    // SOAG
-    // m_params.get<std::string>("mam4_soag_verti_emiss_file_name");
-    std::string  mam4_soag_verti_emiss_file_name =
-    m_params.get<std::string>("mam4_soag_verti_emiss_file_name");
-    // base_path+"cmip6_mam4_soag_elev_ne2np4_2010_clim_c20190821_OD.nc";
     vert_emis_var_names_["soag"] = {"SOAbb_src","SOAbg_src", "SOAff_src"};
-    vert_emis_file_name_["soag"] = mam4_soag_verti_emiss_file_name;
 
-
-    for (const auto& item : vert_emis_file_name_) {
-      const auto var_name = item.first;
-      const auto file_name = item.second;
+    for (const auto& var_name : extfrc_lst_) {
+      const auto file_name = vert_emis_file_name_[var_name];
       const auto var_names = vert_emis_var_names_[var_name];
 
       TracerFileType tracer_file_type;
@@ -651,9 +604,9 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
 
     int i=0;
     int offset_emis_ver=0;
-    for (const auto& item : vert_emis_file_name_) {
-      const auto var_name = item.first;
-      const auto file_name = item.second;
+    for (auto it = extfrc_lst_.begin(); it != extfrc_lst_.end(); ++it, ++i) {
+      const auto var_name = *it;
+      const auto file_name = vert_emis_file_name_[var_name];
       const auto var_names = vert_emis_var_names_[var_name];
       const int nvars = int(var_names.size());
 
@@ -702,7 +655,6 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
         vert_emis_output_[isp+offset_emis_ver] =
           view_2d("vert_emis_output_", ncol_, nlev_);
       }
-      i++;
       offset_emis_ver+=nvars;
     }  // end i
 
@@ -782,10 +734,11 @@ void MAMMicrophysics::run_impl(const double dt) {
       linoz_data_beg_, linoz_data_end_, linoz_data_out_, p_src_linoz_,
       dry_atm_.p_mid, dummy_altitude_int, dry_atm_.z_iface, linoz_output);
 
+  vert_emiss_time_state_.t_now = ts.frac_of_year_in_days();
   int i=0;
-  for (const auto& item : vert_emis_file_name_) {
-    const auto var_name = item.first;
-    const auto file_name = item.second;
+  for (auto it = extfrc_lst_.begin(); it != extfrc_lst_.end(); ++it, ++i) {
+    const auto var_name = *it;
+    const auto file_name = vert_emis_file_name_[var_name];
     const auto var_names = vert_emis_var_names_[var_name];
     const int nsectors = int(var_names.size());
     view_2d vert_emis_output[nsectors];
@@ -798,7 +751,6 @@ void MAMMicrophysics::run_impl(const double dt) {
         vert_emiss_time_state_, vert_emis_data_beg_[i], vert_emis_data_end_[i],
         vert_emis_data_out_[i], p_src_linoz_, dry_atm_.p_mid,
         vert_emis_altitude_int_[i], dry_atm_.z_iface, vert_emis_output);
-    i++;
   }
   const_view_1d &col_latitudes     = col_latitudes_;
   const_view_1d &col_longitudes    = col_longitudes_;
