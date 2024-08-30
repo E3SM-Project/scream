@@ -66,6 +66,8 @@ struct TracerTimeState {
   Real t_now;
   // Number of days in the current month, cast as a Real
   Real days_this_month;
+  //
+  int offset_time_index{0};
 };  // TricerTimeState
 
 struct TracerData {
@@ -275,6 +277,34 @@ inline void create_linoz_chlorine_reader(
   scorpio::release_file(linoz_chlorine_file);
 }
 
+inline void get_time_from_ncfile(
+    const std::string &file_name,
+    // const util::TimeStamp &model_time,
+    const int cyclical_ymd,  // in format YYYYMMDD
+    // std::vector<Real> &values,
+     int & cyclical_ymd_index,
+     std::vector<int> &dates) {
+  // auto time_stamp_beg = convert_date(cyclical_ymd);
+
+  scorpio::register_file(file_name, scorpio::Read);
+  const int nlevs_time = scorpio::get_time_len(file_name);
+  cyclical_ymd_index=-1;
+  for(int itime = 0; itime < nlevs_time; ++itime) {
+    int date;
+    scorpio::read_var(file_name, "date", &date, itime);
+    // std::cout << itime << " date: " << date << "\n";
+    if(date >= cyclical_ymd && cyclical_ymd_index ==-1) {
+      cyclical_ymd_index=itime;
+    }
+    dates.push_back(date);
+  }  // end itime
+  scorpio::release_file(file_name);
+  EKAT_REQUIRE_MSG(cyclical_ymd_index>=0,
+                  "Error! Current model time ("+std::to_string(cyclical_ymd)+") is not within "+
+                  "Tracer time period: ["+std::to_string(dates[0])+", "+
+                  "("+std::to_string(dates[nlevs_time-1])+").\n");
+}
+
 inline Real chlorine_loading_advance(const util::TimeStamp &ts,
                                      std::vector<Real> &values,
                                      std::vector<int> &time_secs) {
@@ -368,21 +398,6 @@ inline std::shared_ptr<AbstractRemapper> create_horiz_remapper(
   const auto layout_2d = tgt_grid->get_2d_scalar_layout();
 
   const auto layout_3d_mid = tgt_grid->get_3d_scalar_layout(true);
-  // FieldLayout  layout_3d_mid;
-  // if ( has_altitude ) {
-
-  //   auto make_layout = [](const std::vector<int>& extents,
-  //                       const std::vector<std::string>& names)
-  //   {
-  //     std::vector<FieldTag> tags(extents.size(),CMP);
-  //     return FieldLayout(tags,extents,names);
-  //   };
-  //   layout_3d_mid = make_layout({ncols_model, nlevs_data},
-  //                               {"ncol","altitude"});
-  //   // FieldLayout({FieldTag::Column,CMP},{ncols_model,nlevs_data});
-  // } else {
-  //   layout_3d_mid = tgt_grid->get_3d_scalar_layout(true);
-  // }
 
   const auto nondim = ekat::units::Units::nondimensional();
 
@@ -471,7 +486,7 @@ inline void update_tracer_timestate(
     // values
     //       to be assigned.  A timestep greater than a month is very unlikely
     //       so we will proceed.
-    int next_month = (time_state.current_month + 1) % 12;
+    int next_month = time_state.offset_time_index + (time_state.current_month + 1) % 12;
     update_tracer_data_from_file(scorpio_reader, ts, next_month,
                                  tracer_horiz_interp, data_tracer_end);
   }

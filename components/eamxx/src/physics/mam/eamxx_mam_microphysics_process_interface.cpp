@@ -230,6 +230,13 @@ void MAMMicrophysics::set_grids(
     }
     linoz_data_beg_.set_file_type(tracer_file_type);
     linoz_data_end_.set_file_type(tracer_file_type);
+    // FIXME: get this from input.yaml
+    int cyclical_ymd=20100100; //in format YYYYMMDD
+    std::vector<int>  linoz_dates;
+    int cyclical_ymd_index=-1;
+    scream::mam_coupling::get_time_from_ncfile(linoz_file_name_, cyclical_ymd, cyclical_ymd_index,   linoz_dates);
+    trace_time_state_.offset_time_index=cyclical_ymd_index;
+    linoz_time_state_.offset_time_index=cyclical_ymd_index;
   }
   {
     oxid_file_name_          = m_params.get<std::string>("mam4_oxid_file_name");
@@ -246,6 +253,12 @@ void MAMMicrophysics::set_grids(
     }
     tracer_data_beg_.set_file_type(tracer_file_type);
     tracer_data_end_.set_file_type(tracer_file_type);
+    // FIXME: get this from input.yaml
+    int cyclical_ymd=20150101; //in format YYYYMMDD
+    std::vector<int>  oxi_dates;
+    int cyclical_ymd_index=-1;
+    scream::mam_coupling::get_time_from_ncfile(oxid_file_name_, cyclical_ymd, cyclical_ymd_index,   oxi_dates);
+    trace_time_state_.offset_time_index=cyclical_ymd_index;
   }
 
   {
@@ -344,6 +357,16 @@ void MAMMicrophysics::set_grids(
       vert_emis_data_out_.push_back(data_out);
       vert_emis_data_beg_.push_back(data_beg);
       vert_emis_data_end_.push_back(data_end);
+    }// var_name vert emissions
+
+    {
+    // NOTE: Here I am assuming all vert file have same times. 
+    // FIXME: get this from input.yaml
+    int cyclical_ymd=20100101; //in format YYYYMMDD
+    std::vector<int>  vertical_emiss_dates;
+    int cyclical_ymd_index=-1;
+    scream::mam_coupling::get_time_from_ncfile(vert_emis_file_name_["num_a4"], cyclical_ymd, cyclical_ymd_index,   vertical_emiss_dates);
+    vert_emiss_time_state_.offset_time_index=cyclical_ymd_index;
     }
   }
 }
@@ -745,11 +768,11 @@ void MAMMicrophysics::run_impl(const double dt) {
 
   // /* Update the TracerTimeState to reflect the current time, note the
   // addition of dt */
-  linoz_time_state_.t_now = ts.frac_of_year_in_days();
+  trace_time_state_.t_now = ts.frac_of_year_in_days();
   // FIXME: we do not need altitude_int for invariant tracers and linoz fields.
   view_1d dummy_altitude_int;
   scream::mam_coupling::advance_tracer_data(
-      TracerDataReader_, *TracerHorizInterp_, ts, linoz_time_state_,
+      TracerDataReader_, *TracerHorizInterp_, ts, trace_time_state_,
       tracer_data_beg_, tracer_data_end_, tracer_data_out_, p_src_invariant_,
       dry_atm_.p_mid, dummy_altitude_int, dry_atm_.z_iface, cnst_offline_);
 
@@ -771,7 +794,7 @@ void MAMMicrophysics::run_impl(const double dt) {
     }
     scream::mam_coupling::advance_tracer_data(
         VertEmissionsDataReader_[i], *VertEmissionsHorizInterp_[i], ts,
-        linoz_time_state_, vert_emis_data_beg_[i], vert_emis_data_end_[i],
+        vert_emiss_time_state_, vert_emis_data_beg_[i], vert_emis_data_end_[i],
         vert_emis_data_out_[i], p_src_linoz_, dry_atm_.p_mid,
         vert_emis_altitude_int_[i], dry_atm_.z_iface, vert_emis_output);
     i++;
