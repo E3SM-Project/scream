@@ -277,15 +277,17 @@ inline void create_linoz_chlorine_reader(
   scorpio::release_file(linoz_chlorine_file);
 }
 
+// Gets the times from the NC file
+// Given a date in the format YYYYMMDD, returns its index in the time dimension.
 inline void get_time_from_ncfile(
     const std::string &file_name,
-    // const util::TimeStamp &model_time,
     const int cyclical_ymd,  // in format YYYYMMDD
-    // std::vector<Real> &values,
      int & cyclical_ymd_index,
      std::vector<int> &dates) {
-  // auto time_stamp_beg = convert_date(cyclical_ymd);
-
+  // in file_name: name of the NC file
+  // in cyclical_ymd: date in the format YYYYMMDD
+  // out cyclical_ymd_index: time index for cyclical_ymd
+  // out dates: date in YYYYMMDD format
   scorpio::register_file(file_name, scorpio::Read);
   const int nlevs_time = scorpio::get_time_len(file_name);
   cyclical_ymd_index=-1;
