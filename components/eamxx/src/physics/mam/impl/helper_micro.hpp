@@ -90,11 +90,17 @@ struct TracerData {
   // We cannot use a std::vector<view_2d>
   // because we need to access these views from device.
   view_2d data[MAX_NVARS_TRACER];
+  // type of file
+  TracerFileType file_type;
+
+  // These views are employed in files with the PS variable
   view_1d ps;
   const_view_1d hyam;
   const_view_1d hybm;
   view_int_1d work_vert_inter[MAX_NVARS_TRACER];;
-  TracerFileType file_type;
+
+  // External forcing file (vertical emission)
+  // Uses altitude instead of pressure to interpolate data
   view_1d altitude_int;
 
   void allocate_data_views() {
@@ -131,7 +137,7 @@ struct TracerData {
                      "Error! file does have the PS variable. \n");
     ps = ps_in;
   }
-
+  // FIXME: The same file is being opened more than twice in the microphysics module..
   void set_hyam_n_hybm(const std::shared_ptr<AbstractRemapper> &horiz_remapper,
                        const std::string &tracer_file_name) {
     EKAT_REQUIRE_MSG(file_type == FORMULA_PS,
