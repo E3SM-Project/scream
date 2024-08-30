@@ -438,7 +438,7 @@ inline std::shared_ptr<AtmosphereInput> create_tracer_data_reader(
 }  // create_tracer_data_reader
 
 inline void update_tracer_data_from_file(
-    std::shared_ptr<AtmosphereInput> &scorpio_reader, const util::TimeStamp &ts,
+    std::shared_ptr<AtmosphereInput> &scorpio_reader,
     const int time_index,  // zero-based
     AbstractRemapper &tracer_horiz_interp, TracerData &tracer_data) {
   // 1. read from field
@@ -494,7 +494,7 @@ inline void update_tracer_timestate(
     //       to be assigned.  A timestep greater than a month is very unlikely
     //       so we will proceed.
     int next_month = time_state.offset_time_index + (time_state.current_month + 1) % 12;
-    update_tracer_data_from_file(scorpio_reader, ts, next_month,
+    update_tracer_data_from_file(scorpio_reader, next_month,
                                  tracer_horiz_interp, data_tracer_end);
   }
 
