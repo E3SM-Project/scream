@@ -667,7 +667,8 @@ inline void perform_vertical_interpolation(const view_2d &p_src_c,
 
 // rebin is a port from:
 // https://github.com/eagles-project/e3sm_mam4_refactor/blob/ee556e13762e41a82cb70a240c54dc1b1e313621/components/eam/src/chemistry/utils/mo_util.F90#L12
-inline void rebin(int nsrc, int ntrg, const const_view_1d &src_x,
+KOKKOS_INLINE_FUNCTION
+void rebin(int nsrc, int ntrg, const const_view_1d &src_x,
                   const Real trg_x[], const view_1d &src, const view_1d &trg) {
   for(int i = 0; i < ntrg; ++i) {
     Real tl = trg_x[i];
