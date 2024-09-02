@@ -36,11 +36,10 @@ inline void compute_p_src_zonal_files(const view_1d &levs,
   const int ncol = p_src.extent(0);
   const int nlevs_data = levs.extent(0);
   EKAT_REQUIRE_MSG(
-      p_src.extent(1) == nlevs_data,
+      int(p_src.extent(1)) == nlevs_data,
       "Error: p_src has a different number of levels than the source data. \n");
 
   const auto policy_pressure = ESU::get_default_team_policy(ncol, nlevs_data);
-  const int pi               = haero::Constants::pi;
   Kokkos::parallel_for(
       "pressure_computation", policy_pressure, KOKKOS_LAMBDA(const Team &team) {
         const int icol = team.league_rank();
@@ -666,7 +665,7 @@ inline void perform_vertical_interpolation(const view_2d &p_src_c,
                                            const view_2d output[])
   {
   // At this stage, begin/end must have the same horiz dimensions
-  EKAT_REQUIRE(input.ncol_ == output[0].extent(0));
+  EKAT_REQUIRE(input.ncol_ == int(output[0].extent(0)));
   const int ncol = input.ncol_;
   const int levsiz =input.nlev_;
   const int pver = mam4::nlev;

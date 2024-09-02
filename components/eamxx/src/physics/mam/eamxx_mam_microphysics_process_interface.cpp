@@ -613,7 +613,7 @@ void MAMMicrophysics::run_impl(const double dt) {
 
   // NOTE: nothing depends on simulation time (yet), so we can just use zero for
   // now
-  double t = 0.0;
+  // double t = 0.0;
 
   // climatology data for linear stratospheric chemistry
   auto linoz_o3_clim = buffer_.scratch[0];  // ozone (climatology) [vmr]
