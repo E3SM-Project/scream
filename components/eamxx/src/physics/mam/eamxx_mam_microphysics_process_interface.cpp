@@ -12,7 +12,6 @@
 
 // NOTE: see the impl/ directory for the contents of the impl namespace
 #include "impl/compute_o3_column_density.cpp"
-#include "impl/compute_water_content.cpp"
 #include "impl/gas_phase_chemistry.cpp"
 #include "physics/rrtmgp/shr_orb_mod_c2f.hpp"
 
