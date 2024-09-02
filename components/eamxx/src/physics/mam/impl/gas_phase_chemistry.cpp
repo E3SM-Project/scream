@@ -436,15 +436,6 @@ void gas_phase_chemistry(
 
   constexpr int itermax = mam4::gas_chemistry::itermax;
   constexpr int clscnt4 = mam4::gas_chemistry::clscnt4;
-  constexpr int nfs     = mam4::gas_chemistry::nfs;
-
-  // NOTE: vvv these arrays were copied from mam4xx/gas_chem_mechanism.hpp vvv
-  constexpr int permute_4[gas_pcnst] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-                                        10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-                                        20, 21, 22, 23, 24, 25, 26, 27, 28, 29};
-  constexpr int clsmap_4[gas_pcnst]  = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
-                                        11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-                                        21, 22, 23, 24, 25, 26, 27, 28, 29, 30};
 
   // These indices for species are fixed by the chemical mechanism
   // std::string solsym[] = {"O3", "H2O2", "H2SO4", "SO2", "DMS", "SOAG",
@@ -526,8 +517,8 @@ void gas_phase_chemistry(
 
   // solve chemical system implicitly
   Real prod_out[clscnt4], loss_out[clscnt4];
-  mam4::gas_chemistry::imp_sol(q, reaction_rates, het_rates, extfrc_rates, dt, permute_4,
-                               clsmap_4, factor, epsilon, prod_out, loss_out);
+  mam4::gas_chemistry::imp_sol(q, reaction_rates, het_rates, extfrc_rates, dt, mam4::gas_chemistry::permute_4,
+                               mam4::gas_chemistry::clsmap_4, factor, epsilon, prod_out, loss_out);
 
   // save h2so4 change by gas phase chem (for later new particle nucleation)
   if(ndx_h2so4 > 0) {
