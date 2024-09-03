@@ -201,9 +201,8 @@ Int Functions<S,D>
     const auto oqv_prev            = ekat::subview(diagnostic_inputs.qv_prev, i);
     const auto ot_prev             = ekat::subview(diagnostic_inputs.t_prev, i);
 
-    // Need to watch out for race conditions with these shared variables
-    bool &nucleationPossible  = bools(i, 0);
-    bool &hydrometeorsPresent = bools(i, 1);
+    bool nucleationPossible;
+    bool hydrometeorsPresent;
 
     view_1d_ptr_array<Spack, 36> zero_init = {
       &mu_r, &lamr, &logn0r, &nu, &cdist, &cdist1, &cdistr,
