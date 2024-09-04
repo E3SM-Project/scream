@@ -15,6 +15,7 @@ namespace scream::mam_coupling {
 
 using namespace ShortFieldTagsNames;
 using view_1d_host = typename KT::view_1d<Real>::HostMirror;
+using view_2d_host = typename KT::view_2d<Real>::HostMirror;
 
 using ExeSpace = typename KT::ExeSpace;
 using ESU      = ekat::ExeSpaceUtils<ExeSpace>;
