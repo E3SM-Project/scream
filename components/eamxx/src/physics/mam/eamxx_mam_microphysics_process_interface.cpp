@@ -591,6 +591,10 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   constexpr int extcnt =
       mam4::gas_chemistry::extcnt;
   extfrc_=view_3d("extfrc_", ncol_, nlev_, extcnt);
+
+  //
+  acos_cosine_zenith_host_ = view_1d_host("host_acos(cosine_zenith)", ncol_);
+  acos_cosine_zenith_ = view_1d("device_acos(cosine_zenith)", ncol_);
 }
 
 void MAMMicrophysics::run_impl(const double dt) {
@@ -684,10 +688,8 @@ void MAMMicrophysics::run_impl(const double dt) {
   }
 
   const_view_1d &col_latitudes     = col_latitudes_;
-  const_view_1d &col_longitudes    = col_longitudes_;
+  // const_view_1d &col_longitudes    = col_longitudes_;
   const_view_1d &d_sfc_alb_dir_vis = d_sfc_alb_dir_vis_;
-
-
 
   mam_coupling::DryAtmosphere &dry_atm        = dry_atm_;
   mam_coupling::AerosolState &dry_aero        = dry_aero_;
@@ -726,6 +728,26 @@ void MAMMicrophysics::run_impl(const double dt) {
   auto calday = ts2.frac_of_year_in_days() +
                 1;  // Want day + fraction; calday 1 == Jan 1 0Z
   shr_orb_decl_c2f(calday, eccen, mvelpp, lambm0, obliqr, &delta, &eccf);
+  {
+    const auto col_latitudes_host  = grid_->get_geometry_data("lat").get_view<const Real *, Host>();
+    const auto col_longitudes_host = grid_->get_geometry_data("lon").get_view<const Real *, Host>();
+    // get a host copy of lat/lon
+    // Determine the cosine zenith angle
+    // NOTE: Since we are bridging to F90 arrays this must be done on HOST and then
+    //       deep copied to a device view.
+
+    // Now use solar declination to calculate zenith angle for all points
+    for (int i=0;i<ncol_;i++) {
+      Real lat = col_latitudes_host(i)*M_PI/180.0;  // Convert lat/lon to radians
+      Real lon = col_longitudes_host(i)*M_PI/180.0;
+      // what's the aerosol microphys frequency?
+      Real temp=shr_orb_cosz_c2f(calday, lat, lon, delta, dt);
+      acos_cosine_zenith_host_(i) = acos(temp);
+    }
+    Kokkos::deep_copy(acos_cosine_zenith_,acos_cosine_zenith_host_);
+  }
+  const auto zenith_angle = acos_cosine_zenith_;
+
   constexpr int num_modes = mam4::AeroConfig::num_modes();
   constexpr int gas_pcnst = mam_coupling::gas_pcnst();
   constexpr int nqtendbb  = mam_coupling::nqtendbb();
@@ -753,12 +775,12 @@ void MAMMicrophysics::run_impl(const double dt) {
         const int icol = team.league_rank();  // column index
 
         Real col_lat = col_latitudes(icol);   // column latitude (degrees?)
-        Real col_lon = col_longitudes(icol);  // column longitude
+        // Real col_lon = col_longitudes(icol);  // column longitude
 
         Real rlats =
             col_lat * M_PI / 180.0;  // convert column latitude to radians
-        Real rlons =
-            col_lon * M_PI / 180.0;  // convert column longitude to radians
+        // Real rlons =
+        //     col_lon * M_PI / 180.0;  // convert column longitude to radians
 
         // fetch column-specific atmosphere state data
         auto atm     = mam_coupling::atmosphere_for_column(dry_atm, icol);
@@ -832,10 +854,12 @@ void MAMMicrophysics::run_impl(const double dt) {
         // NOTE: the table interpolation operates on an entire column of data,
         // so we NOTE: must do it before dispatching to individual vertical
         // levels
-        Real zenith_angle =
-            shr_orb_cosz_c2f(calday, rlats, rlons, delta,
-                             dt);  // what's the aerosol microphys frequency?
-        zenith_angle = acos(zenith_angle);
+        // Real zenith_angle =
+        //     shr_orb_cosz_c2f(calday, rlats, rlons, delta,
+        //                      dt);  // what's the aerosol microphys frequency?
+        // zenith_angle = acos(zenith_angle);
+
+        Real zenith_angle_icol = zenith_angle(icol);
 
         Real surf_albedo = d_sfc_alb_dir_vis(icol);
 
@@ -843,7 +867,7 @@ void MAMMicrophysics::run_impl(const double dt) {
 
         mam4::mo_photo::table_photo(photo_rates_icol, atm.pressure,
         atm.hydrostatic_dp,
-         atm.temperature, o3_col_dens_i, zenith_angle, surf_albedo,
+         atm.temperature, o3_col_dens_i, zenith_angle_icol, surf_albedo,
          atm.liquid_mixing_ratio, atm.cloud_fraction, eccf, photo_table,
          photo_work_arrays_icol);
 
@@ -964,7 +988,7 @@ void MAMMicrophysics::run_impl(const double dt) {
               int o3_ndx = 0;  // index of "O3" in solsym array (in EAM)
 
       mam4::lin_strat_chem::lin_strat_chem_solve_kk(o3_col_dens_i(k), temp,
-        zenith_angle, pmid, dt, rlats,
+        zenith_angle_icol, pmid, dt, rlats,
         linoz_o3_clim(icol, k), linoz_t_clim(icol, k), linoz_o3col_clim(icol, k),
         linoz_PmL_clim(icol, k), linoz_dPmL_dO3(icol, k), linoz_dPmL_dT(icol, k),
         linoz_dPmL_dO3col(icol, k), linoz_cariolle_pscs(icol, k),
