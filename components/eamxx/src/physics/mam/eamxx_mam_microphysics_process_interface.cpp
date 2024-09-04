@@ -736,7 +736,6 @@ void MAMMicrophysics::run_impl(const double dt) {
   const auto forcings = forcings_;
   constexpr int extcnt = mam4::gas_chemistry::extcnt;
 
-  // FIXME: remove this hard-code value
   const int offset_aerosol = mam4::utils::gasses_start_ind();
   Real adv_mass_kg_per_moles[gas_pcnst];
   // NOTE: Making copies of clsmap_4 and permute_4 to fix undefined arrays on the device.
@@ -817,7 +816,7 @@ void MAMMicrophysics::run_impl(const double dt) {
         // calculate o3 column densities (first component of col_dens in Fortran
         // code)
         auto o3_col_dens_i = ekat::subview(o3_col_dens, icol);
-        impl::compute_o3_column_density(team, atm, progs, invariants_icol,
+        impl::compute_o3_column_density(team, atm, progs, invariants_icol, adv_mass_kg_per_moles,
                                         o3_col_dens_i);
 
         // set up photolysis work arrays for this column.
