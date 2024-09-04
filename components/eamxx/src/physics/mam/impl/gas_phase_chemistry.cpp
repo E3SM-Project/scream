@@ -407,6 +407,7 @@ mam4::mo_photo::PhotoTableData read_photo_table(const ekat::Comm& comm,
   return table;
 }
 #endif
+
 // performs gas phase chemistry calculations on a single level of a single
 // atmospheric column
 KOKKOS_INLINE_FUNCTION
@@ -415,6 +416,8 @@ void gas_phase_chemistry(
     const Real photo_rates[mam4::mo_photo::phtcnt],  // in
     const Real extfrc[mam4::gas_chemistry::extcnt],  // in
     Real invariants[mam4::gas_chemistry::nfs],       // in
+    const int clsmap_4[mam4::gas_chemistry::gas_pcnst], // in
+    const int permute_4[mam4::gas_chemistry::gas_pcnst],// in
     Real q[mam4::gas_chemistry::gas_pcnst]) {        // VMRs, inout
   // constexpr Real rga = 1.0/haero::Constants::gravity;
   // constexpr Real m2km = 0.01; // converts m -> km
@@ -436,7 +439,6 @@ void gas_phase_chemistry(
 
   constexpr int itermax = mam4::gas_chemistry::itermax;
   constexpr int clscnt4 = mam4::gas_chemistry::clscnt4;
-
   // These indices for species are fixed by the chemical mechanism
   // std::string solsym[] = {"O3", "H2O2", "H2SO4", "SO2", "DMS", "SOAG",
   //                         "so4_a1", "pom_a1", "soa_a1", "bc_a1", "dst_a1",
@@ -517,8 +519,8 @@ void gas_phase_chemistry(
 
   // solve chemical system implicitly
   Real prod_out[clscnt4], loss_out[clscnt4];
-  mam4::gas_chemistry::imp_sol(q, reaction_rates, het_rates, extfrc_rates, dt, mam4::gas_chemistry::permute_4,
-                               mam4::gas_chemistry::clsmap_4, factor, epsilon, prod_out, loss_out);
+  mam4::gas_chemistry::imp_sol(q, reaction_rates, het_rates, extfrc_rates, dt, permute_4,
+                               clsmap_4, factor, epsilon, prod_out, loss_out);
 
   // save h2so4 change by gas phase chem (for later new particle nucleation)
   if(ndx_h2so4 > 0) {

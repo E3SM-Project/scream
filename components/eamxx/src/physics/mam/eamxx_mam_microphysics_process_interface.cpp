@@ -687,6 +687,8 @@ void MAMMicrophysics::run_impl(const double dt) {
   const_view_1d &col_longitudes    = col_longitudes_;
   const_view_1d &d_sfc_alb_dir_vis = d_sfc_alb_dir_vis_;
 
+
+
   mam_coupling::DryAtmosphere &dry_atm        = dry_atm_;
   mam_coupling::AerosolState &dry_aero        = dry_aero_;
   mam4::mo_photo::PhotoTableData &photo_table = photo_table_;
@@ -737,11 +739,14 @@ void MAMMicrophysics::run_impl(const double dt) {
   // FIXME: remove this hard-code value
   const int offset_aerosol = mam4::utils::gasses_start_ind();
   Real adv_mass_kg_per_moles[gas_pcnst];
+  // NOTE: Making copies of clsmap_4 and permute_4 to fix undefined arrays on the device.
+  int clsmap_4[gas_pcnst], permute_4[gas_pcnst];
   for(int i = 0; i < gas_pcnst; ++i)
   {
     adv_mass_kg_per_moles[i] = mam4::gas_chemistry::adv_mass[i]/1e3;
+    clsmap_4[i]=mam4::gas_chemistry::clsmap_4[i];
+    permute_4[i]=mam4::gas_chemistry::permute_4[i];
   }
-
 
   // loop over atmosphere columns and compute aerosol microphyscs
   Kokkos::parallel_for(
@@ -909,7 +914,7 @@ void MAMMicrophysics::run_impl(const double dt) {
               const auto& photo_rates_k = ekat::subview(photo_rates_icol,k);
               impl::gas_phase_chemistry(zm, zi, phis, temp, pmid, pdel, dt,
                                         photo_rates_k.data(), extfrc_k.data(),
-                                        invariants_k.data(), vmr);
+                                        invariants_k.data(), clsmap_4, permute_4, vmr);
               //----------------------
               // Aerosol microphysics
               //----------------------
