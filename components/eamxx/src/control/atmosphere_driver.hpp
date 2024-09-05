@@ -252,6 +252,9 @@ protected:
 
   // Current simulation casename
   std::string m_casename;
+
+  // TODO: might be a better place to put this?
+  std::map<std::string,std::vector<std::string>> m_fields_inited;
 };
 
 }  // namespace control

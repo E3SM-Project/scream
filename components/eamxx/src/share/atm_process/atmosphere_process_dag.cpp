@@ -5,6 +5,16 @@
 
 namespace scream {
 
+// this is an initial "DAG" with only atm_process nodes to at least provide
+// *some* information if we crash soon after this
+void AtmProcDAG::
+init_atm_proc_nodes(const group_type& atm_procs)
+{
+  cleanup ();
+  // Create the nodes
+  add_nodes(atm_procs);
+}
+
 void AtmProcDAG::
 create_dag(const group_type& atm_procs)
 {
@@ -502,6 +512,35 @@ void AtmProcDAG::add_edges () {
             m_nodes[fid_id].children.push_back(node.id);
           }
         }
+      }
+    }
+  }
+}
+
+void AtmProcDAG::process_initial_conditions(const grid_field_map &ic_inited) {
+  for (auto &node : m_nodes) {
+    if (m_unmet_deps.at(node.id).empty()) {
+      continue;
+    } else {
+      // NOTE: node_unmet_fields is a std::set<int>
+      auto &node_unmet_fields = m_unmet_deps.at(node.id);
+      for (auto &um_fid : node_unmet_fields) {
+        for (auto &it1 : ic_inited) {
+          const auto &grid_name = it1.first;
+          // if this unmet field's name is in the ic_inited map for the provided
+          // grid_name key, then we flip its value negative and break from the
+          // for (ic_inited) and for (node_unmet_fields) loops; otherwise,
+          // keep trying for the next grid_name
+          if (ekat::contains(ic_inited.at(grid_name), m_fids[um_fid].name())) {
+            auto now_met = node_unmet_fields.extract(um_fid);
+            now_met.value() = -now_met.value();
+            node_unmet_fields.insert(std::move(now_met));
+            goto endloop;
+          } else {
+            continue;
+          }
+        }
+      endloop:;
       }
     }
   }
