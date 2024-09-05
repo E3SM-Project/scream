@@ -662,12 +662,12 @@ void MAMMicrophysics::run_impl(const double dt) {
       TracerDataReader_, *TracerHorizInterp_, ts, trace_time_state_,
       tracer_data_,
       dry_atm_.p_mid, dry_atm_.z_iface, cnst_offline_);
-
+  Kokkos::fence();
   scream::mam_coupling::advance_tracer_data(
       LinozDataReader_, *LinozHorizInterp_, ts, linoz_time_state_,
       linoz_data_,
       dry_atm_.p_mid, dry_atm_.z_iface, linoz_output);
-
+  Kokkos::fence();
   vert_emiss_time_state_.t_now = ts.frac_of_year_in_days();
   int i=0;
   for (auto it = extfrc_lst_.begin(); it != extfrc_lst_.end(); ++it, ++i) {
@@ -685,6 +685,7 @@ void MAMMicrophysics::run_impl(const double dt) {
         vert_emiss_time_state_,
         vert_emis_data_[i], dry_atm_.p_mid,
         dry_atm_.z_iface, vert_emis_output);
+    Kokkos::fence();
   }
 
   const_view_1d &col_latitudes     = col_latitudes_;
@@ -1026,7 +1027,7 @@ void MAMMicrophysics::run_impl(const double dt) {
               mam4::utils::inject_qqcw_to_prognostics(qqcw_long, progs, k);
             });
       });
-
+  Kokkos::fence();
   // postprocess output
   Kokkos::parallel_for("postprocess", policy, postprocess_);
   Kokkos::fence();
