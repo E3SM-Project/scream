@@ -18,6 +18,7 @@ public:
 
   using grid_field_map = std::map<std::string,std::vector<std::string>>;
   void process_initial_conditions(const grid_field_map &ic_inited);
+  void process_IC_alt(const grid_field_map &ic_inited);
 
   void init_atm_proc_nodes(const group_type& atm_procs);
 
@@ -72,6 +73,7 @@ protected:
   // if value is negative, then that field is provided by the initial condition
   std::map<int,std::set<int>>     m_unmet_deps;
   bool                            m_has_unmet_deps;
+  bool                            m_IC_processed;
 
   // The nodes in the atm DAG
   std::vector<Node>               m_nodes;
