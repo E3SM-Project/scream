@@ -201,9 +201,9 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
 
       // Computed fields
       if (n.name=="Begin of atm time step") {
-        ofile << "      <tr><td align=\"left\"><font color=\"blue\">Atm input fields from previous time step:</font></td></tr>\n";
+        ofile << "      <tr><td align=\"left\"><font color=\"#00667E\">Atm input fields from previous time step:</font></td></tr>\n";
       } else if (n.name!="End of atm time step"){
-        ofile << "      <tr><td align=\"left\"><font color=\"blue\">Computed Fields:</font></td></tr>\n";
+        ofile << "      <tr><td align=\"left\"><font color=\"#00667E\">Computed Fields:</font></td></tr>\n";
       }
       for (const auto& fid : n.computed) {
         std::string fc = "<font color=\"";
@@ -214,17 +214,24 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
 
       // Required fields
       if (n.name=="End of atm time step") {
-        ofile << "      <tr><td align=\"left\"><font color=\"blue\">Atm output fields for next time step:</font></td></tr>\n";
+        ofile << "      <tr><td align=\"left\"><font color=\"#00667E\">Atm output fields for next time step:</font></td></tr>\n";
       } else if (n.name!="Begin of atm time step") {
-        ofile << "      <tr><td align=\"left\"><font color=\"blue\">Required Fields:</font></td></tr>\n";
+        ofile << "      <tr><td align=\"left\"><font color=\"#00667E\">Required Fields:</font></td></tr>\n";
       }
       for (const auto& fid : n.required) {
         std::string fc = "<font color=\"";
-        fc += (ekat::contains(unmet,fid) ? "red" : "black");
+        if (ekat::contains(unmet, fid)) {
+          fc += "red";
+        } else {
+          fc += (ekat::contains(unmet, -fid) ? "#006219" : "black");
+        }
+        // fc += (ekat::contains(unmet,fid) ? "red" : "black");
         fc += "\">  ";
         ofile << "      <tr><td align=\"left\">" << fc << html_fix(print_fid(m_fids[fid],fid_verb));
-        if (ekat::contains(m_unmet_deps.at(n.id),fid)) {
+        if (ekat::contains(m_unmet_deps.at(n.id), fid)) {
           ofile << "<b>  *** MISSING ***</b>";
+        } else if (ekat::contains(m_unmet_deps.at(n.id), -fid)) {
+          ofile << "<b>  (Init. Cond.)</b>";
         }
         ofile << "</font></td></tr>\n";
       }
@@ -232,9 +239,9 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
       // Computed groups
       if (n.gr_computed.size()>0) {
         if (n.name=="Begin of atm time step") {
-          ofile << "      <tr><td align=\"left\"><font color=\"blue\">Atm Input groups:</font></td></tr>\n";
+          ofile << "      <tr><td align=\"left\"><font color=\"#00667E\">Atm Input groups:</font></td></tr>\n";
         } else if (n.name!="End of atm time step"){
-          ofile << "      <tr><td align=\"left\"><font color=\"blue\">Computed Groups:</font></td></tr>\n";
+          ofile << "      <tr><td align=\"left\"><font color=\"#00667E\">Computed Groups:</font></td></tr>\n";
         }
         for (const auto& gr_fid : n.gr_computed) {
           std::string fc = "<font color=\"";
@@ -281,9 +288,9 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
       // Required groups
       if (n.gr_required.size()>0) {
         if (n.name=="End of atm time step") {
-          ofile << "      <tr><td align=\"left\"><font color=\"blue\">Atm Output Groups:</font></td></tr>\n";
+          ofile << "      <tr><td align=\"left\"><font color=\"#00667E\">Atm Output Groups:</font></td></tr>\n";
         } else if (n.name!="Begin of atm time step") {
-          ofile << "      <tr><td align=\"left\"><font color=\"blue\">Required Groups:</font></td></tr>\n";
+          ofile << "      <tr><td align=\"left\"><font color=\"#00667E\">Required Groups:</font></td></tr>\n";
         }
         for (const auto& gr_fid : n.gr_required) {
           std::string fc = "<font color=\"";
