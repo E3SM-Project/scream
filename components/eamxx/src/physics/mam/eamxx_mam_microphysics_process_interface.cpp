@@ -797,10 +797,6 @@ void MAMMicrophysics::run_impl(const double dt) {
         auto qaerwat_icol     = ekat::subview(qaerwat, icol);
         auto wetdens_icol     = ekat::subview(wetdens, icol);
 
-
-        // set surface state data
-        haero::Surface sfc{};
-
         // fetch column-specific subviews into aerosol prognostics
         mam4::Prognostics progs =
             mam_coupling::aerosols_for_column(dry_aero, icol);
