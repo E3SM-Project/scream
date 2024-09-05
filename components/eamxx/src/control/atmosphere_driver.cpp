@@ -238,6 +238,20 @@ void AtmosphereDriver::create_atm_processes()
   stop_timer("EAMxx::create_atm_processes");
   stop_timer("EAMxx::init");
   m_atm_logger->info("[EAMxx] create_atm_processes  ... done!");
+
+  auto &driver_options_pl = m_atm_params.sublist("driver_options");
+  const int verb_lvl =
+      driver_options_pl.get<int>("atmosphere_dag_verbosity_level", -1);
+  if (verb_lvl > 0) {
+    // create an initial DAG with only atm_process nodes
+    AtmProcDAG dag;
+
+    // First, add all atm processes
+    dag.init_atm_proc_nodes(*m_atm_process_group);
+
+    // Write a dot file for visualization
+    dag.write_dag("dag_createAtmProcs-nodesOnly.dot", std::max(verb_lvl, 0));
+  }
 }
 
 void AtmosphereDriver::create_grids()
@@ -685,6 +699,21 @@ void AtmosphereDriver::create_fields()
     fm->add_to_group(fid.name(),"RESTART");
   }
 
+  auto& driver_options_pl = m_atm_params.sublist("driver_options");
+  const int verb_lvl = driver_options_pl.get<int>("atmosphere_dag_verbosity_level",-1);
+  if (verb_lvl>0) {
+    // now that we've got fields, generate a DAG with fields and dependencies
+    // NOTE: at this point, fields provided by initial conditions may (will)
+    // appear as unment dependencies
+    AtmProcDAG dag;
+
+    // First, add all atm processes
+    dag.create_dag(*m_atm_process_group);
+
+    // Write a dot file for visualization
+    dag.write_dag("dag_createFields.dot",std::max(verb_lvl,0));
+  }
+
   m_ad_status |= s_fields_created;
 
   stop_timer("EAMxx::create_fields");
@@ -870,14 +899,18 @@ initialize_fields ()
   auto& driver_options_pl = m_atm_params.sublist("driver_options");
   const int verb_lvl = driver_options_pl.get<int>("atmosphere_dag_verbosity_level",-1);
   if (verb_lvl>0) {
-    // Check the atm DAG for missing stuff
+    // generate the full DAG, resolving any spurious unmet dependencies that
+    // may be provided by initial conditions
     AtmProcDAG dag;
 
     // First, add all atm processes
     dag.create_dag(*m_atm_process_group);
 
+    // process the initial conditions to maybe fulfill unmet dependencies
+    dag.process_initial_conditions(m_fields_inited);
+
     // Write a dot file for visualization
-    dag.write_dag("scream_atm_dag.dot",std::max(verb_lvl,0));
+    dag.write_dag("dag_init_fields-after_IC.dot",std::max(verb_lvl,0));
   }
 
   // Initialize fields
@@ -1057,7 +1090,6 @@ void AtmosphereDriver::set_initial_conditions ()
   // Check which fields need to have an initial condition.
   std::map<std::string,std::vector<std::string>> ic_fields_names;
   std::vector<FieldIdentifier> ic_fields_to_copy;
-  std::map<std::string,std::vector<std::string>> fields_inited;
 
   // Check which fields should be loaded from the topography file
   std::map<std::string,std::vector<std::string>> topography_file_fields_names;
@@ -1086,7 +1118,7 @@ void AtmosphereDriver::set_initial_conditions ()
         EKAT_ERROR_MSG ("ERROR: invalid assignment for variable " + fname + ", only scalar "
                         "double or string, or vector double arguments are allowed");
       }
-      fields_inited[grid_name].push_back(fname);
+      m_fields_inited[grid_name].push_back(fname);
     } else if (fname == "phis" or fname == "sgh30") {
       // Both phis and sgh30 need to be loaded from the topography file
       auto& this_grid_topo_file_fnames = topography_file_fields_names[grid_name];
@@ -1102,7 +1134,7 @@ void AtmosphereDriver::set_initial_conditions ()
                    grid_name == "Point Grid") {
           this_grid_topo_file_fnames.push_back("PHIS_d");
           this_grid_topo_eamxx_fnames.push_back(fname);
-          fields_inited[grid_name].push_back(fname);
+          m_fields_inited[grid_name].push_back(fname);
         } else {
           EKAT_ERROR_MSG ("Error! Requesting phis on an unknown grid: " + grid_name + ".\n");
         }
@@ -1114,7 +1146,7 @@ void AtmosphereDriver::set_initial_conditions ()
                         " topo file only has sgh30 for Physics PG2.\n");
         topography_file_fields_names[grid_name].push_back("SGH30");
         topography_eamxx_fields_names[grid_name].push_back(fname);
-	fields_inited[grid_name].push_back(fname);
+	      m_fields_inited[grid_name].push_back(fname);
       }
     } else if (not (fvphyshack and grid_name == "Physics PG2")) {
       // The IC file is written for the GLL grid, so we only load
@@ -1126,7 +1158,7 @@ void AtmosphereDriver::set_initial_conditions ()
         // If this field is the parent of other subfields, we only read from file the subfields.
         if (not ekat::contains(this_grid_ic_fnames,fname)) {
           this_grid_ic_fnames.push_back(fname);
-	  fields_inited[grid_name].push_back(fname);
+	        m_fields_inited[grid_name].push_back(fname);
         }
       } else if (fvphyshack and grid_name == "Physics GLL") {
         // [CGLL ICs in pg2] I tried doing something like this in
@@ -1143,7 +1175,7 @@ void AtmosphereDriver::set_initial_conditions ()
           } else {
             this_grid_ic_fnames.push_back(fname);
           }
-	  fields_inited[grid_name].push_back(fname);
+	        m_fields_inited[grid_name].push_back(fname);
         }
       }
     }
@@ -1189,7 +1221,7 @@ void AtmosphereDriver::set_initial_conditions ()
         auto p = f.get_header().get_parent().lock();
         if (p) {
           const auto& pname = p->get_identifier().name();
-          if (ekat::contains(fields_inited[grid_name],pname)) {
+          if (ekat::contains(m_fields_inited[grid_name],pname)) {
             // The parent is already inited. No need to init this field as well.
             names.erase(it2);
             run_again = true;
@@ -1412,7 +1444,7 @@ void AtmosphereDriver::set_initial_conditions ()
     // Loop through fields and apply perturbation.
     for (size_t f=0; f<perturbed_fields.size(); ++f) {
       const auto fname = perturbed_fields[f];
-      EKAT_REQUIRE_MSG(ekat::contains(fields_inited[fm->get_grid()->name()], fname),
+      EKAT_REQUIRE_MSG(ekat::contains(m_fields_inited[fm->get_grid()->name()], fname),
                        "Error! Attempting to apply perturbation to field not in initial_conditions.\n"
                        "  - Field: "+fname+"\n"
                        "  - Grid:  "+fm->get_grid()->name()+"\n");

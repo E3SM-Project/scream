@@ -16,6 +16,11 @@ public:
 
   void create_dag (const group_type& atm_procs);
 
+  using grid_field_map = std::map<std::string,std::vector<std::string>>;
+  void process_initial_conditions(const grid_field_map &ic_inited);
+
+  void init_atm_proc_nodes(const group_type& atm_procs);
+
   void add_surface_coupling (const std::set<FieldIdentifier>& imports,
                              const std::set<FieldIdentifier>& exports);
 
@@ -57,13 +62,14 @@ protected:
   // Assign an id to each field identifier
   std::vector<FieldIdentifier>            m_fids;
 
-  // Store groups so we can print info of their members if need be
+  // Store each field's groups so we can print members' info if need be
   std::map<FieldIdentifier,FieldGroup>    m_gr_fid_to_group;
 
   // Map each field id to its last provider
   std::map<int,int>               m_fid_to_last_provider;
 
   // Map a node id to a set of unmet field dependencies
+  // if value is negative, then that field is provided by the initial condition
   std::map<int,std::set<int>>     m_unmet_deps;
   bool                            m_has_unmet_deps;
 
