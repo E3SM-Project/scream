@@ -847,28 +847,15 @@ void MAMMicrophysics::run_impl(const double dt) {
         const auto& work_photo_table_icol = ekat::subview(work_photo_table,
         icol);
         //  set work view using 1D photo_work_arrays_icol
+        // Note: We are not allocating views here.
         mam4::mo_photo::set_photo_table_work_arrays(photo_table,
                                                     work_photo_table_icol,
                                                     photo_work_arrays_icol);
 
-        // ... look up photolysis rates from our table
-        // NOTE: the table interpolation operates on an entire column of data,
-        // so we NOTE: must do it before dispatching to individual vertical
-        // levels
-        // Real zenith_angle =
-        //     shr_orb_cosz_c2f(calday, rlats, rlons, delta,
-        //                      dt);  // what's the aerosol microphys frequency?
-        // zenith_angle = acos(zenith_angle);
-
-        Real zenith_angle_icol = zenith_angle(icol);
-
-        Real surf_albedo = d_sfc_alb_dir_vis(icol);
-
         const auto &photo_rates_icol = ekat::subview(photo_rates, icol);
-
         mam4::mo_photo::table_photo(photo_rates_icol, atm.pressure,
         atm.hydrostatic_dp,
-         atm.temperature, o3_col_dens_i, zenith_angle_icol, surf_albedo,
+         atm.temperature, o3_col_dens_i, zenith_angle(icol), d_sfc_alb_dir_vis(icol),
          atm.liquid_mixing_ratio, atm.cloud_fraction, eccf, photo_table,
          photo_work_arrays_icol);
 
@@ -899,7 +886,6 @@ void MAMMicrophysics::run_impl(const double dt) {
               Real state_q[pcnst]    = {};
               Real qqcw_long[pcnst] = {};
               mam4::utils::extract_stateq_from_prognostics(progs,atm, state_q, k);
-
               mam4::utils::extract_qqcw_from_prognostics(progs,qqcw_long,k);
 
               for (int i = offset_aerosol; i < pcnst; ++i) {
@@ -989,7 +975,7 @@ void MAMMicrophysics::run_impl(const double dt) {
               int o3_ndx = 0;  // index of "O3" in solsym array (in EAM)
 
       mam4::lin_strat_chem::lin_strat_chem_solve_kk(o3_col_dens_i(k), temp,
-        zenith_angle_icol, pmid, dt, rlats,
+        zenith_angle(icol), pmid, dt, rlats,
         linoz_o3_clim(icol, k), linoz_t_clim(icol, k), linoz_o3col_clim(icol, k),
         linoz_PmL_clim(icol, k), linoz_dPmL_dO3(icol, k), linoz_dPmL_dT(icol, k),
         linoz_dPmL_dO3col(icol, k), linoz_cariolle_pscs(icol, k),
