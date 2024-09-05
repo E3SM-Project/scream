@@ -706,6 +706,8 @@ void MAMMicrophysics::run_impl(const double dt) {
 
   // Compute orbital parameters; these are used both for computing
   // the solar zenith angle.
+  // Note: We are following the RRTMGP EAMxx interface to compute the zenith angle.
+  // This operation is performed on the host because the routine shr_orb_cosz_c2f has not been ported to C++.
   auto ts2 = timestamp();
   double obliqr, lambm0, mvelpp;
   auto orbital_year = m_orbital_year;
