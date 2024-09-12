@@ -283,6 +283,11 @@ public:
     m_iop = iop;
   }
 
+  // Set output parameters
+  void set_output_parameters(const std::vector<ekat::ParameterList>& params) {
+    m_output_params = params;
+  }
+
   std::shared_ptr<logger_t> get_logger () const {
     return m_atm_logger;
   }
@@ -591,6 +596,9 @@ protected:
 
   // IOP object
   iop_ptr m_iop;
+
+  // Output parameters
+  std::vector<ekat::ParameterList> m_output_params;
 };
 
 // ================= IMPLEMENTATION ================== //

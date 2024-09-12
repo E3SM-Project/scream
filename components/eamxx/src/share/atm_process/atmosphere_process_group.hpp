@@ -112,6 +112,13 @@ public:
     }
   }
 
+  // Loop through all processes in group and pass output fields information
+  void set_output_parameters(const std::vector<ekat::ParameterList>& params) {
+    for (auto& atm_proc : m_atm_processes) {
+      atm_proc->set_output_parameters(params);
+    }
+  }
+
 protected:
 
   // Adds fid to the list of required/computed fields of the group (as a whole).

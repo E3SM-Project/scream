@@ -283,6 +283,9 @@ void AtmosphereDriver::create_grids()
     setup_iop ();
   }
 
+  // The ATM processes (potentially) need output parameter file in set_grids()
+  m_atm_process_group->set_output_parameters(m_output_managers_params);
+
   // Set the grids in the processes. Do this by passing the grids manager.
   // Each process will grab what they need
   m_atm_process_group->set_grids(m_grids_manager);
@@ -671,10 +674,10 @@ void AtmosphereDriver::create_fields()
   m_atm_logger->info("[EAMxx] create_fields ... done!");
 }
 
-void AtmosphereDriver::init_output_params () {
-  m_atm_logger->info("[EAMxx] init_output_params ...");
+void AtmosphereDriver::initialize_output_parameters () {
+  m_atm_logger->info("[EAMxx] initialize_output_parameters ...");
   start_timer("EAMxx::init");
-  start_timer("EAMxx::init_output_params");
+  start_timer("EAMxx::initialize_output_parameters");
 
   check_ad_status (s_comm_set | s_params_set);
 
@@ -714,9 +717,9 @@ void AtmosphereDriver::init_output_params () {
     params.sublist("provenance") = m_atm_params.sublist("provenance");
   }
 
-  stop_timer("EAMxx::init_output_params");
+  stop_timer("EAMxx::initialize_output_parameters");
   stop_timer("EAMxx::init");
-  m_atm_logger->info("[EAMxx] init_output_params ... done!");
+  m_atm_logger->info("[EAMxx] initialize_output_parameters ... done!");
 }
 
 void AtmosphereDriver::initialize_output_managers () {
@@ -1588,7 +1591,7 @@ initialize (const ekat::Comm& atm_comm,
 
   init_scorpio ();
 
-  init_output_params ();
+  initialize_output_parameters ();
 
   init_time_stamps (run_t0, case_t0);
 

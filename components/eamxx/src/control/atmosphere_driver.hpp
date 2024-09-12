@@ -117,7 +117,7 @@ public:
   void initialize_fields ();
 
   // Create parameter lists for output managers
-  void init_output_params ();
+  void initialize_output_parameters ();
 
   // Initialie I/O structures for output
   void initialize_output_managers ();
