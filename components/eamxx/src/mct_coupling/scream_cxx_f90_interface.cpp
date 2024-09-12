@@ -157,6 +157,7 @@ void scream_create_atm_instance (const MPI_Fint f_comm, const int atm_id,
     ad.set_comm(atm_comm);
     ad.set_params(scream_params);
     ad.init_scorpio(atm_id);
+    ad.init_output_params ();
     ad.init_time_stamps(run_t0,case_t0);
     ad.create_atm_processes ();
     ad.create_grids ();

@@ -671,6 +671,54 @@ void AtmosphereDriver::create_fields()
   m_atm_logger->info("[EAMxx] create_fields ... done!");
 }
 
+void AtmosphereDriver::init_output_params () {
+  m_atm_logger->info("[EAMxx] init_output_params ...");
+  start_timer("EAMxx::init");
+  start_timer("EAMxx::init_output_params");
+
+  check_ad_status (s_comm_set | s_params_set);
+
+  auto& io_params = m_atm_params.sublist("Scorpio");
+
+  ekat::ParameterList checkpoint_params;
+  checkpoint_params.set("frequency_units",std::string("never"));
+  checkpoint_params.set("Frequency",-1);
+  if (io_params.isSublist("model_restart")) {
+    // Create model restart params
+    m_model_restart_output_params = io_params.sublist("model_restart");
+    m_model_restart_output_params.rename("model_restart_output_params");
+    m_model_restart_output_params.set<std::string>("Averaging Type","Instant");
+    m_model_restart_output_params.sublist("provenance") = m_atm_params.sublist("provenance");
+
+    // Store the "Output Control" pl of the model restart as the "Checkpoint Control" for all other output streams
+    checkpoint_params.set<std::string>("frequency_units",m_model_restart_output_params.sublist("output_control").get<std::string>("frequency_units"));
+    checkpoint_params.set("Frequency",m_model_restart_output_params.sublist("output_control").get<int>("Frequency"));
+  }
+
+  // Build one parameter list per output yaml file
+  using vos_t = std::vector<std::string>;
+  const auto& output_yaml_files = io_params.get<vos_t>("output_yaml_files",vos_t{});
+  int om_tally = 0;
+  for (const auto& fname : output_yaml_files) {
+    auto& params = m_output_managers_params.emplace_back();
+    ekat::parse_yaml_file(fname,params);
+    params.rename(ekat::split(fname,"/").back());
+    auto& checkpoint_pl = params.sublist("Checkpoint Control");
+    checkpoint_pl.set("frequency_units",checkpoint_params.get<std::string>("frequency_units"));
+    checkpoint_pl.set("Frequency",checkpoint_params.get<int>("Frequency"));
+
+    // Check if the filename prefix for this file has already been set.  If not, use the simulation casename.
+    if (not params.isParameter("filename_prefix")) {
+      params.set<std::string>("filename_prefix",m_casename+".scream.h"+std::to_string(om_tally++));
+    }
+    params.sublist("provenance") = m_atm_params.sublist("provenance");
+  }
+
+  stop_timer("EAMxx::init_output_params");
+  stop_timer("EAMxx::init");
+  m_atm_logger->info("[EAMxx] init_output_params ... done!");
+}
+
 void AtmosphereDriver::initialize_output_managers () {
   m_atm_logger->info("[EAMxx] initialize_output_managers ...");
   start_timer("EAMxx::init");
@@ -678,21 +726,15 @@ void AtmosphereDriver::initialize_output_managers () {
 
   check_ad_status (s_comm_set | s_params_set | s_grids_created | s_fields_created);
 
-  auto& io_params = m_atm_params.sublist("Scorpio");
-
   // IMPORTANT: create model restart OutputManager first! This OM will be in charge
   // of creating rpointer.atm, while other OM's will simply append to it.
   // If this assumption is not verified, we must always append to rpointer, which
   // can make the rpointer file a bit confusing.
 
-  // Check for model restart output
-  ekat::ParameterList checkpoint_params;
-  checkpoint_params.set("frequency_units",std::string("never"));
-  checkpoint_params.set("Frequency",-1);
-  if (io_params.isSublist("model_restart")) {
-    auto restart_pl = io_params.sublist("model_restart");
-    restart_pl.set<std::string>("Averaging Type","Instant");
-    restart_pl.sublist("provenance") = m_atm_params.sublist("provenance");
+  // Check for model restart output. The m_model_restart_output_params list will
+  // be setup if model_restart exists in the Scorpio sublist of input params. If
+  // not, m_model_restart_output_params.name() will be empty.
+  if (not m_model_restart_output_params.name().empty()) {
     auto& om = m_output_managers.emplace_back();
     if (fvphyshack) {
       // Don't save CGLL fields from ICs to the restart file.
@@ -702,44 +744,24 @@ void AtmosphereDriver::initialize_output_managers () {
         fms[it.first] = it.second;
       }
       om.set_logger(m_atm_logger);
-      om.setup(m_atm_comm,restart_pl,         fms,m_grids_manager,m_run_t0,m_case_t0,true);
+      om.setup(m_atm_comm,m_model_restart_output_params,         fms,m_grids_manager,m_run_t0,m_case_t0,true);
     } else {
       om.set_logger(m_atm_logger);
-      om.setup(m_atm_comm,restart_pl,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0,true);
+      om.setup(m_atm_comm,m_model_restart_output_params,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0,true);
     }
     om.set_logger(m_atm_logger);
     for (const auto& it : m_atm_process_group->get_restart_extra_data()) {
       om.add_global(it.first,it.second);
     }
-
-    // Store the "Output Control" pl of the model restart as the "Checkpoint Control" for all other output streams
-    checkpoint_params.set<std::string>("frequency_units",restart_pl.sublist("output_control").get<std::string>("frequency_units"));
-    checkpoint_params.set("Frequency",restart_pl.sublist("output_control").get<int>("Frequency"));
   }
 
   // Build one manager per output yaml file
-  using vos_t = std::vector<std::string>;
-  const auto& output_yaml_files = io_params.get<vos_t>("output_yaml_files",vos_t{});
-  int om_tally = 0;
-  for (const auto& fname : output_yaml_files) {
-    ekat::ParameterList params;
-    ekat::parse_yaml_file(fname,params);
-    params.rename(ekat::split(fname,"/").back());
-    auto& checkpoint_pl = params.sublist("Checkpoint Control");
-    checkpoint_pl.set("frequency_units",checkpoint_params.get<std::string>("frequency_units"));
-    checkpoint_pl.set("Frequency",checkpoint_params.get<int>("Frequency"));
-
-    // Check if the filename prefix for this file has already been set.  If not, use the simulation casename.
-    if (not params.isParameter("filename_prefix")) {
-      params.set<std::string>("filename_prefix",m_casename+".scream.h"+std::to_string(om_tally));
-      om_tally++;
-    }
-    params.sublist("provenance") = m_atm_params.sublist("provenance");
+  for (const auto& output_pl : m_output_managers_params) {
     // Add a new output manager
     m_output_managers.emplace_back();
     auto& om = m_output_managers.back();
     om.set_logger(m_atm_logger);
-    om.setup(m_atm_comm,params,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0,false);
+    om.setup(m_atm_comm,output_pl,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0,false);
   }
 
   m_ad_status |= s_output_inited;
@@ -1565,6 +1587,8 @@ initialize (const ekat::Comm& atm_comm,
   set_provenance_data ();
 
   init_scorpio ();
+
+  init_output_params ();
 
   init_time_stamps (run_t0, case_t0);
 

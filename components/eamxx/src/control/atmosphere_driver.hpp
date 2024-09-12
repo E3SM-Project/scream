@@ -116,6 +116,9 @@ public:
   // Load initial conditions for atm inputs
   void initialize_fields ();
 
+  // Create parameter lists for output managers
+  void init_output_params ();
+
   // Initialie I/O structures for output
   void initialize_output_managers ();
 
@@ -201,6 +204,8 @@ protected:
 
   ekat::ParameterList                       m_atm_params;
 
+  ekat::ParameterList                       m_model_restart_output_params;
+  std::vector<ekat::ParameterList>          m_output_managers_params;
   std::list<OutputManager>                  m_output_managers;
 
   std::shared_ptr<ATMBufferManager>         m_memory_buffer;
