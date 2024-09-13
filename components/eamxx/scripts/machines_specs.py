@@ -93,6 +93,19 @@ MACHINE_METADATA = {
     "linux-generic" :        ([],["mpicxx","mpifort","mpicc"],"", ""),
     "linux-generic-debug" :  ([],["mpicxx","mpifort","mpicc"],"", ""),
     "linux-generic-serial" : ([],["mpicxx","mpifort","mpicc"],"", ""),
+
+    "ghci-serial" : ([],
+                     ["mpicxx","mpifort","mpicc"],
+                      "",
+                      "/projects/e3sm/baselines"),
+    "ghci-openmp" : ([],
+                     ["mpicxx","mpifort","mpicc"],
+                      "",
+                      "/projects/e3sm/baselines"),
+    "ghci-cuda" : ([],
+                   ["mpicxx","mpifort","mpicc"],
+                    "",
+                    "/projects/e3sm/baselines"),
 }
 
 if pathlib.Path("~/.cime/scream_mach_specs.py").expanduser().is_file(): # pylint: disable=no-member
@@ -231,6 +244,9 @@ def is_salloc(machine):
 def is_cuda_machine(machine):
 ###############################################################################
     assert_machine_supported(machine)
+
+    if machine=="ghci-cuda":
+        return True
 
     env_setup_raw = MACHINE_METADATA[machine][0]
     env_setup_str = " ".join(env_setup_raw)
