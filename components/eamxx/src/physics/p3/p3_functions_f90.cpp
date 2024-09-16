@@ -176,8 +176,6 @@ void ice_cldliq_wet_growth_c(Real rho, Real temp, Real pres, Real rhofaci, Real 
                              Real qi_incld, Real ni_incld, Real qr_incld, bool* log_wetgrowth,
                              Real* qr2qi_collect_tend, Real* qc2qi_collect_tend, Real* qc_growth_rate, Real* nr_ice_shed_tend, Real* qc2qr_ice_shed_tend);
 
-void get_latent_heat_c(Int its, Int ite, Int kts, Int kte, Real* s, Real* v, Real* f);
-
 Real subgrid_variance_scaling_c(Real relvar, Real expon);
 
 void check_values_c(Real* qv, Real* temp, Int kts, Int kte, Int timestepcount,
@@ -345,20 +343,6 @@ void cldliq_immersion_freezing(CldliqImmersionFreezingData& d)
   p3_init();
   cldliq_immersion_freezing_c(d.T_atm, d.lamc, d.mu_c, d.cdist1, d.qc_incld, d.inv_qc_relvar,
                               &d.qc2qi_hetero_freeze_tend, &d.nc2ni_immers_freeze_tend);
-}
-
-LatentHeatData::LatentHeatData(Int kts_, Int kte_, Int its_, Int ite_) :
-  PhysicsTestData( { {(ite_ - its_) + 1, (kte_ - kts_) + 1} },
-                   { {&v, &s, &f} }),
-  its(its_), ite(ite_), kts(kts_), kte(kte_)
-{}
-
-void get_latent_heat(LatentHeatData& d)
-{
-  p3_init();
-  d.transpose<ekat::TransposeDirection::c2f>();
-  get_latent_heat_c(d.its, d.ite, d.kts, d.kte, d.v, d.s, d.f);
-  d.transpose<ekat::TransposeDirection::f2c>();
 }
 
 void droplet_self_collection(DropletSelfCollectionData& d)
@@ -1476,37 +1460,6 @@ void homogeneous_freezing_f(
   ekat::device_to_host({qc, nc, qr, nr, qi, ni, qm, bm, th_atm}, nk, inout_views);
 }
 
-void get_latent_heat_f(Int its, Int ite, Int kts, Int kte, Real* v, Real* s, Real* f)
-{
-  using P3F        = Functions<Real, DefaultDevice>;
-  using Spack      = typename P3F::Spack;
-  using view_2d    = typename P3F::view_2d<Spack>;
-
-  EKAT_REQUIRE_MSG(kte >= kts,
-                     "kte must be >= kts, kts=" << kts << " kte=" << kte);
-
-  EKAT_REQUIRE_MSG(ite >= its,
-                     "ite must be >= its, its=" << its << " ite=" << ite);
-
-  kts -= 1;
-  kte -= 1;
-  its -= 1;
-  ite -= 1;
-
-  Int nk = (kte - kts) + 1;
-  Int nj = (ite - its) + 1;
-
-  // Set up views
-  view_2d v_d("v_d", nj, nk),
-    s_d("s_d", nj, nk),
-    f_d("f_d", nj, nk);
-
-  P3F::get_latent_heat(nj, nk, v_d, s_d, f_d);
-
-  std::vector<view_2d> out_views = {v_d, s_d, f_d};
-  ekat::device_to_host({v, s, f}, nj, nk, out_views, true);
-}
-
 void check_values_f(Real* qv, Real* temp, Int kstart, Int kend,
                     Int timestepcount, bool force_abort, Int source_ind, Real* col_loc)
 {
@@ -2070,7 +2023,8 @@ Int p3_main_f(
     ntend_ignore("ntend_ignore", nj, nk_pack), mu_c("mu_c", nj, nk_pack), lamc("lamc", nj, nk_pack), qr_evap_tend("qr_evap_tend", nj, nk_pack),
     v_qc("v_qc", nj, nk_pack), v_nc("v_nc", nj, nk_pack), flux_qx("flux_qx", nj, nk_pack), flux_nx("flux_nx", nj, nk_pack), v_qit("v_qit", nj, nk_pack),
     v_nit("v_nit", nj, nk_pack), flux_nit("flux_nit", nj, nk_pack), flux_bir("flux_bir", nj, nk_pack), flux_qir("flux_qir", nj, nk_pack),
-    flux_qit("flux_qit", nj, nk_pack), v_qr("v_qr", nj, nk_pack), v_nr("v_nr", nj, nk_pack);
+    flux_qit("flux_qit", nj, nk_pack), v_qr("v_qr", nj, nk_pack), v_nr("v_nr", nj, nk_pack),
+    latent_heat_vapor("latent_heat_vapor", nj, nk_pack), latent_heat_sublim("latent_heat_sublim", nj, nk_pack), latent_heat_fusion("latent_heat_fusion", nj, nk_pack);
 
   P3F::P3Temporaries temporaries{
     mu_r, T_atm, lamr, logn0r, nu, cdist, cdist1, cdistr, inv_cld_frac_i,
@@ -2080,7 +2034,7 @@ Int p3_main_f(
     tmparr2, exner, diag_equiv_reflectivity, diag_vm_qi, diag_diam_qi,
     pratot, prctot, qtend_ignore, ntend_ignore, mu_c, lamc, qr_evap_tend,
     v_qc, v_nc, flux_qx, flux_nx, v_qit, v_nit, flux_nit, flux_bir, flux_qir,
-    flux_qit, v_qr, v_nr
+    flux_qit, v_qr, v_nr, latent_heat_vapor, latent_heat_sublim, latent_heat_fusion
   };
 #endif
 
@@ -2099,7 +2053,7 @@ Int p3_main_f(
 
   // Create local workspace
   const auto policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(nj, nk_pack);
-  ekat::WorkspaceManager<Spack, KT::Device> workspace_mgr(nk_pack, 52, policy);
+  ekat::WorkspaceManager<Spack, KT::Device> workspace_mgr(nk_pack, 55, policy);
 
   auto elapsed_microsec = P3F::p3_main(runtime_options, prog_state, diag_inputs, diag_outputs, infrastructure,
                                        history_only, lookup_tables,

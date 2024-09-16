@@ -22,6 +22,7 @@ void Functions<Real,DefaultDevice>
   const uview_2d<Spack>& diag_eff_radius_qr,
   const uview_2d<Spack>& inv_cld_frac_i, const uview_2d<Spack>& inv_cld_frac_l, const uview_2d<Spack>& inv_cld_frac_r,
   const uview_2d<Spack>& exner, const uview_2d<Spack>& T_atm, const uview_2d<Spack>& qv, const uview_2d<Spack>& inv_dz,
+  const uview_2d<Spack>& latent_heat_vapor, const uview_2d<Spack>& latent_heat_sublim, const uview_2d<Spack>& latent_heat_fusion,
   const uview_1d<Scalar>& precip_liq_surf, const uview_1d<Scalar>& precip_ice_surf,
   const uview_2d<Spack>& mu_r, const uview_2d<Spack>& lamr, const uview_2d<Spack>& logn0r, const uview_2d<Spack>& nu,
   const uview_2d<Spack>& cdist, const uview_2d<Spack>& cdist1, const uview_2d<Spack>& cdistr,
@@ -43,6 +44,9 @@ void Functions<Real,DefaultDevice>
     precip_liq_surf(i) = 0;
     precip_ice_surf(i) = 0;
 
+    constexpr Scalar latvap = C::LatVap;
+    constexpr Scalar latice = C::LatIce;
+
     Kokkos::parallel_for(
       Kokkos::TeamVectorRange(team, nk_pack), [&] (Int k) {
         diag_equiv_reflectivity(i,k) = -99;
@@ -58,6 +62,9 @@ void Functions<Real,DefaultDevice>
         T_atm(i,k)                 = th_atm(i,k) * exner(i,k);
         qv(i,k)                = max(qv(i,k), 0);
         inv_dz(i,k)            = 1 / dz(i,k);
+        latent_heat_vapor(i,k)  = latvap;
+        latent_heat_sublim(i,k) = latvap+latice;
+        latent_heat_fusion(i,k) = latice;
         mu_r(i,k)               = 0.;
         lamr(i,k)               = 0.;
         logn0r(i,k)             = 0.;
@@ -114,10 +121,6 @@ Int Functions<Real,DefaultDevice>
   const physics::P3_Constants<Real> & p3constants)
 {
   using ExeSpace = typename KT::ExeSpace;
-
-  view_2d<Spack> latent_heat_sublim("latent_heat_sublim", nj, nk), latent_heat_vapor("latent_heat_vapor", nj, nk), latent_heat_fusion("latent_heat_fusion", nj, nk);
-
-  get_latent_heat(nj, nk, latent_heat_vapor, latent_heat_sublim, latent_heat_fusion);
 
   const Int nk_pack = ekat::npack<Spack>(nk);
 
@@ -225,6 +228,9 @@ Int Functions<Real,DefaultDevice>
   auto flux_qit                = temporaries.flux_qit;
   auto v_qr                    = temporaries.v_qr;
   auto v_nr                    = temporaries.v_nr;
+  auto latent_heat_vapor       = temporaries.latent_heat_vapor;
+  auto latent_heat_sublim      = temporaries.latent_heat_sublim;
+  auto latent_heat_fusion      = temporaries.latent_heat_fusion;
 
   // we do not want to measure init stuff
   auto start = std::chrono::steady_clock::now();
@@ -234,6 +240,7 @@ Int Functions<Real,DefaultDevice>
       nj, nk_pack, cld_frac_i, cld_frac_l, cld_frac_r, inv_exner, th, dz, diag_equiv_reflectivity,
       ze_ice, ze_rain, diag_eff_radius_qc, diag_eff_radius_qi, diag_eff_radius_qr,
       inv_cld_frac_i, inv_cld_frac_l, inv_cld_frac_r, exner, T_atm, qv, inv_dz,
+      latent_heat_vapor, latent_heat_sublim, latent_heat_fusion,
       diagnostic_outputs.precip_liq_surf, diagnostic_outputs.precip_ice_surf,
       mu_r, lamr, logn0r, nu, cdist, cdist1, cdistr,
       qc_incld, qr_incld, qi_incld, qm_incld, nc_incld, nr_incld, ni_incld, bm_incld,

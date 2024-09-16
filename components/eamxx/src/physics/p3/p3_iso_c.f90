@@ -799,16 +799,6 @@ subroutine  update_prognostic_ice_c(qc2qi_hetero_freeze_tend,qc2qi_collect_tend,
                               log_wetgrowth, qr2qi_collect_tend, qc2qi_collect_tend, qc_growth_rate, nr_ice_shed_tend, qc2qr_ice_shed_tend)
  end subroutine ice_cldliq_wet_growth_c
 
- subroutine get_latent_heat_c(its,ite,kts,kte,v,s,f) bind(C)
-   use micro_p3, only: get_latent_heat
-
-   ! arguments
-   integer(kind=c_int), intent(in), value :: its, ite, kts, kte
-   real(kind=c_real), dimension(its:ite, kts:kte), intent(out) :: v, s, f
-
-   call get_latent_heat(its,ite,kts,kte,v,s,f)
- end subroutine get_latent_heat_c
-
  function subgrid_variance_scaling_c(relvar,expon) result(res) bind(C)
    use micro_p3, only: subgrid_variance_scaling
 

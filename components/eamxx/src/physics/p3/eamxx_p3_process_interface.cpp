@@ -139,7 +139,7 @@ size_t P3Microphysics::requested_buffer_size_in_bytes() const
 
   // Number of Reals needed by the WorkspaceManager passed to p3_main
   const auto policy       = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nk_pack);
-  const size_t wsm_request   = WSM::get_total_bytes_needed(nk_pack_p1, 52, policy);
+  const size_t wsm_request   = WSM::get_total_bytes_needed(nk_pack_p1, 55, policy);
 
   return interface_request + wsm_request;
 }
@@ -188,7 +188,7 @@ void P3Microphysics::init_buffers(const ATMBufferManager &buffer_manager)
     &m_buffer.ntend_ignore, &m_buffer.mu_c, &m_buffer.lamc, &m_buffer.qr_evap_tend, &m_buffer.v_qc,
     &m_buffer.v_nc, &m_buffer.flux_qx, &m_buffer.flux_nx, &m_buffer.v_qit, &m_buffer.v_nit,
     &m_buffer.flux_nit, &m_buffer.flux_bir, &m_buffer.flux_qir, &m_buffer.flux_qit, &m_buffer.v_qr,
-    &m_buffer.v_nr
+    &m_buffer.v_nr, &m_buffer.latent_heat_vapor, &m_buffer.latent_heat_sublim, &m_buffer.latent_heat_fusion
 #endif
   };
   for (int i=0; i<Buffer::num_2d_vector; ++i) {
@@ -210,7 +210,7 @@ void P3Microphysics::init_buffers(const ATMBufferManager &buffer_manager)
   // Compute workspace manager size to check used memory
   // vs. requested memory
   const auto policy  = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nk_pack);
-  const int wsm_size = WSM::get_total_bytes_needed(nk_pack_p1, 52, policy)/sizeof(Spack);
+  const int wsm_size = WSM::get_total_bytes_needed(nk_pack_p1, 55, policy)/sizeof(Spack);
   s_mem += wsm_size;
 
   size_t used_mem = (reinterpret_cast<Real*>(s_mem) - buffer_manager.get_memory())*sizeof(Real);
@@ -398,6 +398,9 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   temporaries.flux_qit                = m_buffer.flux_qit;
   temporaries.v_qr                    = m_buffer.v_qr;
   temporaries.v_nr                    = m_buffer.v_nr;
+  temporaries.latent_heat_vapor       = m_buffer.latent_heat_vapor;
+  temporaries.latent_heat_sublim      = m_buffer.latent_heat_sublim;
+  temporaries.latent_heat_fusion      = m_buffer.latent_heat_fusion;
 #endif
 
   // -- Set values for the post-amble structure
@@ -427,7 +430,7 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
 
   // Setup WSM for internal local variables
   const auto policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nk_pack);
-  workspace_mgr.setup(m_buffer.wsm_data, nk_pack_p1, 52, policy);
+  workspace_mgr.setup(m_buffer.wsm_data, nk_pack_p1, 55, policy);
 }
 
 // =========================================================================================
