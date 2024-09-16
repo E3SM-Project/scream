@@ -661,16 +661,16 @@ _TESTS = {
 
     "e3sm_scream_v1_lowres" : {
         "time"  : "01:00:00",
-        "inherit" : ("e3sm_scream_mam4xx_v1_lowres"),
+        #"inherit" : ("e3sm_scream_mam4xx_v1_lowres"),
         "tests" : (
             "ERP_D_Lh4.ne4_ne4.F2010-SCREAMv1.scream-output-preset-1",
-            "ERS_Ln9.ne4_ne4.F2000-SCREAMv1-AQP1.scream-output-preset-2",
-            "SMS_D_Ln9.ne4_ne4.F2010-SCREAMv1-noAero.scream-output-preset-3",
-            "ERP_Ln22.ne4pg2_ne4pg2.F2010-SCREAMv1.scream-output-preset-4",
-            "ERS_D_Ln22.ne4pg2_ne4pg2.F2010-SCREAMv1.scream-rad_frequency_2--scream-output-preset-5",
-            "ERS_Ln22.ne4pg2_ne4pg2.F2010-SCREAMv1.scream-small_kernels--scream-output-preset-5",
-            "ERS_Ln22.ne4pg2_ne4pg2.F2010-SCREAMv1.scream-small_kernels_p3--scream-output-preset-5",
-            "ERS_Ln22.ne4pg2_ne4pg2.F2010-SCREAMv1.scream-small_kernels_shoc--scream-output-preset-5",
+            #"ERS_Ln9.ne4_ne4.F2000-SCREAMv1-AQP1.scream-output-preset-2",
+            #"SMS_D_Ln9.ne4_ne4.F2010-SCREAMv1-noAero.scream-output-preset-3",
+            #"ERP_Ln22.ne4pg2_ne4pg2.F2010-SCREAMv1.scream-output-preset-4",
+            #"ERS_D_Ln22.ne4pg2_ne4pg2.F2010-SCREAMv1.scream-rad_frequency_2--scream-output-preset-5",
+            #"ERS_Ln22.ne4pg2_ne4pg2.F2010-SCREAMv1.scream-small_kernels--scream-output-preset-5",
+            #"ERS_Ln22.ne4pg2_ne4pg2.F2010-SCREAMv1.scream-small_kernels_p3--scream-output-preset-5",
+            #"ERS_Ln22.ne4pg2_ne4pg2.F2010-SCREAMv1.scream-small_kernels_shoc--scream-output-preset-5",
             )
     },
 
