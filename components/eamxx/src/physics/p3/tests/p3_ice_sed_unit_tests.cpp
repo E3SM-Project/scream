@@ -187,8 +187,6 @@ static void run_bfb_ice_sed()
 
 static void run_bfb_homogeneous_freezing()
 {
-  constexpr Scalar latice = C::LatIce;
-
   auto engine = setup_random_test();
 
   HomogeneousFreezingData hfds_fortran[] = {
@@ -205,12 +203,6 @@ static void run_bfb_homogeneous_freezing()
   for (auto& d : hfds_fortran) {
     const auto qsmall_r = std::make_pair(C::QSMALL/2, C::QSMALL*2);
     d.randomize(engine, { {d.T_atm, {C::T_homogfrz - 10, C::T_homogfrz + 10}}, {d.qc, qsmall_r}, {d.qr, qsmall_r} });
-
-    // C++ impl uses constants for latent_heat values. Manually set here
-    // so F90 can match
-    for (int k=0; k<d.kte; ++k) {
-      d.latent_heat_fusion[k] = latice;
-    }
   }
 
   // Create copies of data for use by cxx. Needs to happen before fortran calls so that
@@ -230,7 +222,7 @@ static void run_bfb_homogeneous_freezing()
   // Get data from cxx
   for (auto& d : hfds_cxx) {
     homogeneous_freezing_f(d.kts, d.kte, d.ktop, d.kbot, d.kdir,
-                           d.T_atm, d.inv_exner,
+                           d.T_atm, d.inv_exner, d.latent_heat_fusion,
                            d.qc, d.nc, d.qr, d.nr, d.qi, d.ni, d.qm, d.bm, d.th_atm);
   }
 
