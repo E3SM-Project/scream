@@ -40,10 +40,16 @@ void Functions<S,D>
   const uview_1d<Spack>& T_atm,
   const uview_1d<Spack>& qv,
   const uview_1d<Spack>& inv_dz,
+  const uview_1d<Spack>& latent_heat_vapor,
+  const uview_1d<Spack>& latent_heat_sublim,
+  const uview_1d<Spack>& latent_heat_fusion,
   Scalar& precip_liq_surf,
   Scalar& precip_ice_surf,
   view_1d_ptr_array<Spack, 36>& zero_init)
 {
+  constexpr Scalar latvap = C::LatVap;
+  constexpr Scalar latice = C::LatIce;
+
   precip_liq_surf = 0;
   precip_ice_surf = 0;
 
@@ -63,6 +69,10 @@ void Functions<S,D>
     T_atm(k)                 = th_atm(k) * exner(k);
     qv(k)                = max(qv(k), 0);
     inv_dz(k)            = 1 / dz(k);
+    // TODO: use constants througout P3 for latent_heat instead of views
+    latent_heat_vapor(k) = latvap;
+    latent_heat_sublim(k) = latvap+latice;
+    latent_heat_fusion(k) = latice;
 
     for (size_t j = 0; j < zero_init.size(); ++j) {
       (*zero_init[j])(k) = 0;
@@ -88,10 +98,6 @@ Int Functions<S,D>
 {
   using ExeSpace = typename KT::ExeSpace;
   using ScratchViewType = Kokkos::View<bool*, typename ExeSpace::scratch_memory_space>;
-
-  view_2d<Spack> latent_heat_sublim("latent_heat_sublim", nj, nk), latent_heat_vapor("latent_heat_vapor", nj, nk), latent_heat_fusion("latent_heat_fusion", nj, nk);
-
-  get_latent_heat(nj, nk, latent_heat_vapor, latent_heat_sublim, latent_heat_fusion);
 
   const Int nk_pack = ekat::npack<Spack>(nk);
   const auto scratch_size = ScratchViewType::shmem_size(2);
@@ -141,9 +147,12 @@ Int Functions<S,D>
       qtend_ignore, ntend_ignore,
 
       // Variables still used in F90 but removed from C++ interface
-      mu_c, lamc, qr_evap_tend;
+      mu_c, lamc, qr_evap_tend,
 
-    workspace.template take_many_and_reset<44>(
+      // TODO: use contants instead of WSM vars for these values
+      latent_heat_vapor, latent_heat_sublim, latent_heat_fusion;
+
+    workspace.template take_many_and_reset<47>(
       {
         "mu_r", "T_atm", "lamr", "logn0r", "nu", "cdist", "cdist1", "cdistr",
         "inv_cld_frac_i", "inv_cld_frac_l", "inv_cld_frac_r", "qc_incld", "qr_incld", "qi_incld", "qm_incld",
@@ -152,7 +161,7 @@ Int Functions<S,D>
         "rhofacr", "rhofaci", "acn", "qv_sat_l", "qv_sat_i", "sup", "qv_supersat_i",
         "tmparr1", "exner", "diag_equiv_reflectivity", "diag_vm_qi", "diag_diam_qi",
         "pratot", "prctot", "qtend_ignore", "ntend_ignore",
-        "mu_c", "lamc", "qr_evap_tend"
+        "mu_c", "lamc", "qr_evap_tend", "latent_heat_vapor", "latent_heat_sublim", "latent_heat_fusion"
       },
       {
         &mu_r, &T_atm, &lamr, &logn0r, &nu, &cdist, &cdist1, &cdistr,
@@ -162,7 +171,7 @@ Int Functions<S,D>
         &rhofacr, &rhofaci, &acn, &qv_sat_l, &qv_sat_i, &sup, &qv_supersat_i,
         &tmparr1, &exner, &diag_equiv_reflectivity, &diag_vm_qi, &diag_diam_qi,
         &pratot, &prctot, &qtend_ignore, &ntend_ignore,
-        &mu_c, &lamc, &qr_evap_tend
+        &mu_c, &lamc, &qr_evap_tend, &latent_heat_vapor, &latent_heat_sublim, &latent_heat_fusion
       });
 
     // Get single-column subviews of all inputs, shouldn't need any i-indexing
@@ -201,9 +210,6 @@ Int Functions<S,D>
     const auto oliq_ice_exchange   = ekat::subview(history_only.liq_ice_exchange, i);
     const auto ovap_liq_exchange   = ekat::subview(history_only.vap_liq_exchange, i);
     const auto ovap_ice_exchange   = ekat::subview(history_only.vap_ice_exchange, i);
-    const auto olatent_heat_vapor  = ekat::subview(latent_heat_vapor, i);
-    const auto olatent_heat_sublim = ekat::subview(latent_heat_sublim, i);
-    const auto olatent_heat_fusion = ekat::subview(latent_heat_fusion, i);
     const auto oqv_prev            = ekat::subview(diagnostic_inputs.qv_prev, i);
     const auto ot_prev             = ekat::subview(diagnostic_inputs.t_prev, i);
 
@@ -228,12 +234,13 @@ Int Functions<S,D>
       ocld_frac_i, ocld_frac_l, ocld_frac_r, oinv_exner, oth, odz, diag_equiv_reflectivity,
       ze_ice, ze_rain, odiag_eff_radius_qc, odiag_eff_radius_qi, odiag_eff_radius_qr,
       inv_cld_frac_i, inv_cld_frac_l, inv_cld_frac_r, exner, T_atm, oqv, inv_dz,
+      latent_heat_vapor, latent_heat_sublim, latent_heat_fusion,
       diagnostic_outputs.precip_liq_surf(i), diagnostic_outputs.precip_ice_surf(i), zero_init);
 
     p3_main_part1(
       team, nk, infrastructure.predictNc, infrastructure.prescribedCCN, infrastructure.dt,
       opres, odpres, odz, onc_nuceat_tend, onccn_prescribed, oinv_exner, exner, inv_cld_frac_l, inv_cld_frac_i,
-      inv_cld_frac_r, olatent_heat_vapor, olatent_heat_sublim, olatent_heat_fusion,
+      inv_cld_frac_r, latent_heat_vapor, latent_heat_sublim, latent_heat_fusion,
       T_atm, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr,
       rhofaci, acn, oqv, oth, oqc, onc, oqr, onr, oqi, oni, oqm,
       obm, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld, nr_incld,
@@ -252,8 +259,8 @@ Int Functions<S,D>
       lookup_tables.dnu_table_vals, lookup_tables.ice_table_vals, lookup_tables.collect_table_vals, lookup_tables.revap_table_vals, opres, odpres, odz, onc_nuceat_tend, oinv_exner,
       exner, inv_cld_frac_l, inv_cld_frac_i, inv_cld_frac_r, oni_activated, oinv_qc_relvar, ocld_frac_i,
       ocld_frac_l, ocld_frac_r, oqv_prev, ot_prev, T_atm, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn,
-      oqv, oth, oqc, onc, oqr, onr, oqi, oni, oqm, obm, olatent_heat_vapor,
-      olatent_heat_sublim, olatent_heat_fusion, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld,
+      oqv, oth, oqc, onc, oqr, onr, oqi, oni, oqm, obm, latent_heat_vapor,
+      latent_heat_sublim, latent_heat_fusion, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld,
       nr_incld, ni_incld, bm_incld, mu_c, nu, lamc, cdist, cdist1, cdistr,
       mu_r, lamr, logn0r, oqv2qi_depos_tend, oprecip_total_tend, onevapr, qr_evap_tend,
       ovap_liq_exchange, ovap_ice_exchange, oliq_ice_exchange,
@@ -296,7 +303,7 @@ Int Functions<S,D>
 
     // homogeneous freezing of cloud and rain
     homogeneous_freezing(
-      T_atm, oinv_exner, olatent_heat_fusion, team, nk, ktop, kbot, kdir, oqc, onc, oqr, onr, oqi,
+      T_atm, oinv_exner, latent_heat_fusion, team, nk, ktop, kbot, kdir, oqc, onc, oqr, onr, oqi,
       oni, oqm, obm, oth);
 
     //
@@ -306,7 +313,7 @@ Int Functions<S,D>
     p3_main_part3(
       team, nk_pack, runtime_options.max_total_ni, lookup_tables.dnu_table_vals, lookup_tables.ice_table_vals, oinv_exner, ocld_frac_l, ocld_frac_r, ocld_frac_i,
       rho, inv_rho, rhofaci, oqv, oth, oqc, onc, oqr, onr, oqi, oni,
-      oqm, obm, olatent_heat_vapor, olatent_heat_sublim, mu_c, nu, lamc, mu_r, lamr,
+      oqm, obm, latent_heat_vapor, latent_heat_sublim, mu_c, nu, lamc, mu_r, lamr,
       ovap_liq_exchange, ze_rain, ze_ice, diag_vm_qi, odiag_eff_radius_qi, diag_diam_qi,
       orho_qi, diag_equiv_reflectivity, odiag_eff_radius_qc, odiag_eff_radius_qr, p3constants);
 

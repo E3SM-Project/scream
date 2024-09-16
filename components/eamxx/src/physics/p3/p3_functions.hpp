@@ -282,6 +282,9 @@ struct Functions
     view_2d<Spack> flux_qir, flux_qit;
     // rain sedimentation
     view_2d<Spack> v_qr, v_nr;
+    // latent heat
+    // TODO: Remove and just use constants
+    view_2d<Spack> latent_heat_vapor, latent_heat_sublim, latent_heat_fusion;
   };
 #endif
 
@@ -899,9 +902,6 @@ struct Functions
                                     Smask& log_wetgrowth, Spack& qr2qi_collect_tend, Spack& qc2qi_collect_tend, Spack& qc_growth_rate,
 				    Spack& nr_ice_shed_tend, Spack& qc2qr_ice_shed_tend, const Smask& context = Smask(true));
 
-  // Note: not a kernel function
-  static void get_latent_heat(const Int& nj, const Int& nk, view_2d<Spack>& v, view_2d<Spack>& s, view_2d<Spack>& f);
-
   KOKKOS_FUNCTION
   static void check_values(const uview_1d<const Spack>& qv, const uview_1d<const Spack>& temp, const Int& ktop, const Int& kbot,
                            const Int& timestepcount, const bool& force_abort, const Int& source_ind, const MemberType& team,
@@ -949,6 +949,9 @@ struct Functions
     const uview_1d<Spack>& T_atm,
     const uview_1d<Spack>& qv,
     const uview_1d<Spack>& inv_dz,
+    const uview_1d<Spack>& latent_heat_vapor,
+    const uview_1d<Spack>& latent_heat_sublim,
+    const uview_1d<Spack>& latent_heat_fusion,
     Scalar& precip_liq_surf,
     Scalar& precip_ice_surf,
     view_1d_ptr_array<Spack, 36>& zero_init);
@@ -964,7 +967,9 @@ struct Functions
     const uview_2d<Spack>& diag_eff_radius_qi, const uview_2d<Spack>& diag_eff_radius_qr, const uview_2d<Spack>& inv_cld_frac_i,
     const uview_2d<Spack>& inv_cld_frac_l, const uview_2d<Spack>& inv_cld_frac_r,
     const uview_2d<Spack>& exner, const uview_2d<Spack>& T_atm, const uview_2d<Spack>& qv,
-    const uview_2d<Spack>& inv_dz, const uview_1d<Scalar>& precip_liq_surf, const uview_1d<Scalar>& precip_ice_surf,
+    const uview_2d<Spack>& inv_dz,
+    const uview_2d<Spack>& latent_heat_vapor, const uview_2d<Spack>& latent_heat_sublim, const uview_2d<Spack>& latent_heat_fusion,
+    const uview_1d<Scalar>& precip_liq_surf, const uview_1d<Scalar>& precip_ice_surf,
     const uview_2d<Spack>& mu_r, const uview_2d<Spack>& lamr, const uview_2d<Spack>& logn0r, const uview_2d<Spack>& nu,
     const uview_2d<Spack>& cdist, const uview_2d<Spack>& cdist1, const uview_2d<Spack>& cdistr,
     const uview_2d<Spack>& qc_incld, const uview_2d<Spack>& qr_incld, const uview_2d<Spack>& qi_incld,
@@ -1438,7 +1443,6 @@ void init_tables_from_f90_c(Real* vn_table_vals_data, Real* vm_table_vals_data,
 # include "p3_ice_melting_impl.hpp"
 # include "p3_calc_liq_relaxation_timescale_impl.hpp"
 # include "p3_ice_cldliq_wet_growth_impl.hpp"
-# include "p3_get_latent_heat_impl.hpp"
 # include "p3_check_values_impl.hpp"
 # include "p3_incloud_mixingratios_impl.hpp"
 # include "p3_subgrid_variance_scaling_impl.hpp"

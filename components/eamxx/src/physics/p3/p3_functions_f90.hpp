@@ -616,21 +616,6 @@ struct IceWetGrowthData
   Real qr2qi_collect_tend, qc2qi_collect_tend, qc_growth_rate, nr_ice_shed_tend, qc2qr_ice_shed_tend;
 };
 
-struct LatentHeatData : public PhysicsTestData
-{
-  static constexpr size_t NUM_ARRAYS = 3;
-
-  // Inputs
-  Int its, ite, kts, kte;
-
-  // Outputs
-  Real* v, *s, *f;
-
-  LatentHeatData(Int its_, Int ite_, Int kts_, Int kte_);
-
-  PTD_STD_DEF(LatentHeatData, 4, its, ite, kts, kte);
-};
-
 struct CheckValuesData : public PhysicsTestData
 {
   static constexpr size_t NUM_ARRAYS = 2;
@@ -864,7 +849,6 @@ void ice_relaxation_timescale(IceRelaxationData& d);
 void calc_liq_relaxation_timescale(CalcLiqRelaxationData& d);
 void ice_nucleation(IceNucleationData& d);
 void ice_cldliq_wet_growth(IceWetGrowthData& d);
-void get_latent_heat(LatentHeatData& d);
 void check_values(CheckValuesData& d);
 void calculate_incloud_mixingratios(IncloudMixingData& d);
 void p3_main_part1(P3MainPart1Data& d);
@@ -910,8 +894,6 @@ void homogeneous_freezing_f(
   Int kts, Int kte, Int ktop, Int kbot, Int kdir,
   Real* T_atm, Real* inv_exner, Real* latent_heat_fusion,
   Real* qc, Real* nc, Real* qr, Real* nr, Real* qi, Real* ni, Real* qm, Real* bm, Real* th_atm);
-
-void get_latent_heat_f(Int its, Int ite, Int kts, Int kte, Real* v, Real* s, Real* f);
 
 void check_values_f(Real* Qv, Real* temp, Int kstart, Int kend,
                     Int timestepcount, bool force_abort, Int source_ind, Real* col_loc);
