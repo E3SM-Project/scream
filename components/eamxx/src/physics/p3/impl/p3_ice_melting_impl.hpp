@@ -30,6 +30,8 @@ void Functions<S,D>
   const auto QSMALL = C::QSMALL;
   const auto Tmelt  = C::Tmelt;
 
+  constexpr Scalar latvap = C::LatVap;
+
   //Find cells above freezing AND which have ice
   const auto has_melt_qi = (qi_incld >= QSMALL ) && (T_atm > Tmelt) && context;
 
@@ -38,7 +40,7 @@ void Functions<S,D>
     const auto qsat0 = physics::qv_sat_dry(Spack(Tmelt), pres, false, context, physics::MurphyKoop, "p3::ice_melting"); //"false" here means NOT saturation w/ respect to ice.
 
     qi2qr_melt_tend.set(has_melt_qi, ( (table_val_qi2qr_melting+table_val_qi2qr_vent_melt*cbrt(sc)*sqrt(rhofaci*rho/mu))
-			     *((T_atm-Tmelt)*kap-rho*latent_heat_vapor*dv*(qsat0-qv))
+			     *((T_atm-Tmelt)*kap-rho*latvap*dv*(qsat0-qv))
 			     * 2 * Pi /latent_heat_fusion)*ni_incld );
 
     //make sure qi2qr_melt_tend is always negative

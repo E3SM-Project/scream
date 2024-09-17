@@ -104,6 +104,7 @@ void Functions<S,D>
   constexpr Scalar f2r          = C::f2r;
   constexpr Scalar nmltratio    = C::nmltratio;
   constexpr Scalar inv_cp       = C::INV_CP;
+  constexpr Scalar latvap       = C::LatVap;
 
   team.team_barrier();
   hydrometeorsPresent = false;
@@ -115,12 +116,12 @@ void Functions<S,D>
     //compute mask to identify padded values in packs, which shouldn't be used in calculations
     const auto range_pack = ekat::range<IntSmallPack>(k*Spack::n);
     const auto range_mask = range_pack < nk;
-      
+
     // if relatively dry and no hydrometeors at this level, skip to end of k-loop (i.e. skip this level)
     const auto skip_all = ( !range_mask ||
         (qc(k)<qsmall && qr(k)<qsmall && qi(k)<qsmall &&
          T_atm(k)<T_zerodegc && qv_supersat_i(k)< -0.05) );
-    
+
     if (skip_all.all()) {
       return; // skip all process rates
     }
@@ -399,7 +400,7 @@ void Functions<S,D>
 
     // ice
     ice_water_conservation(
-      qi(k), qv2qi_vapdep_tend, qv2qi_nucleat_tend, qc2qi_berg_tend, qr2qi_collect_tend, 
+      qi(k), qv2qi_vapdep_tend, qv2qi_nucleat_tend, qc2qi_berg_tend, qr2qi_collect_tend,
       qc2qi_collect_tend, qr2qi_immers_freeze_tend, qc2qi_hetero_freeze_tend, dt,
       qi2qv_sublim_tend, qi2qr_melt_tend, not_skip_all);
 
@@ -455,7 +456,7 @@ void Functions<S,D>
     const auto qi_not_small = qi(k) >= qsmall && not_skip_all;
 
     qv(k).set(qc_small, qv(k) + qc(k));
-    th_atm(k).set(qc_small, th_atm(k) - inv_exner(k) * qc(k) * latent_heat_vapor(k) * inv_cp);
+    th_atm(k).set(qc_small, th_atm(k) - inv_exner(k) * qc(k) * latvap * inv_cp);
     qc(k).set(qc_small, 0);
     nc(k).set(qc_small, 0);
 
@@ -464,7 +465,7 @@ void Functions<S,D>
     }
 
     qv(k).set(qr_small, qv(k) + qr(k));
-    th_atm(k).set(qr_small, th_atm(k) - inv_exner(k) * qr(k) * latent_heat_vapor(k) * inv_cp);
+    th_atm(k).set(qr_small, th_atm(k) - inv_exner(k) * qr(k) * latvap * inv_cp);
     qr(k).set(qr_small, 0);
     nr(k).set(qr_small, 0);
 

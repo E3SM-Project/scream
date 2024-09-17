@@ -23,14 +23,15 @@ void Functions<S,D>
 
   constexpr Scalar RV     = C::RV;
   constexpr Scalar INV_CP = C::INV_CP;
+  constexpr Scalar latvap = C::LatVap;
   constexpr Scalar tval1  = 253.15;
   constexpr Scalar tval2  = 273.15;
   constexpr Scalar dtval  = 20; //this is tval2-tval1, but specifying here as int to be BFB with F90.
 
   const auto dum = 1/(RV*square(T_atm));
-  dqsdt.set(context, latent_heat_vapor*qv_sat_l*dum);
+  dqsdt.set(context, latvap*qv_sat_l*dum);
   dqsidt.set(context, latent_heat_sublim*qv_sat_i*dum);
-  ab.set(context, 1+dqsdt*latent_heat_vapor*INV_CP);
+  ab.set(context, 1+dqsdt*latvap*INV_CP);
   abi.set(context, 1+dqsidt*latent_heat_sublim*INV_CP);
   kap.set(context, sp(1.414e+3)*mu);
 

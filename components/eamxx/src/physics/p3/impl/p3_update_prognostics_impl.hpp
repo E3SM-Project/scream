@@ -77,7 +77,7 @@ void Functions<S,D>
 
   constexpr Scalar INV_CP = C::INV_CP;
   th_atm.set(context, th_atm + inv_exner * ((qv2qi_vapdep_tend - qi2qv_sublim_tend + qv2qi_nucleat_tend) * latent_heat_sublim * INV_CP +
-                                (qr2qi_collect_tend + qc2qi_collect_tend + qc2qi_hetero_freeze_tend + qr2qi_immers_freeze_tend - 
+                                (qr2qi_collect_tend + qc2qi_collect_tend + qc2qi_hetero_freeze_tend + qr2qi_immers_freeze_tend -
                                 qi2qr_melt_tend + qc2qi_berg_tend) * latent_heat_fusion * INV_CP) * dt);
 }
 
@@ -95,6 +95,7 @@ void Functions<S,D>
   constexpr Scalar NCCNST = C::NCCNST;
   constexpr int IPARAM    = C::IPARAM;
   constexpr Scalar INV_CP = C::INV_CP;
+  constexpr Scalar latvap = C::LatVap;
 
   qc.set(context, qc + (-qc2qr_accret_tend-qc2qr_autoconv_tend)*dt);
   qr.set(context, qr + (qc2qr_accret_tend+qc2qr_autoconv_tend-qr2qv_evap_tend)*dt);
@@ -115,7 +116,7 @@ void Functions<S,D>
 
   qv.set(context, qv + qr2qv_evap_tend *dt);
 
-  th_atm.set(context, th_atm + inv_exner*(-qr2qv_evap_tend * latent_heat_vapor * INV_CP) * dt);
+  th_atm.set(context, th_atm + inv_exner*(-qr2qv_evap_tend * latvap * INV_CP) * dt);
 }
 
 } // namespace p3

@@ -26,6 +26,7 @@ void Functions<S,D>
   constexpr Scalar zero   = C::ZERO;
   constexpr Scalar one    = C::ONE;
   constexpr Scalar cpw    = C::CpLiq;
+  constexpr Scalar latvap = C::LatVap;
 
   const auto t_is_negative = temp < tmelt;
   const auto qi_incld_ge_small = qi_incld >= qsmall;
@@ -46,7 +47,7 @@ void Functions<S,D>
 
     qc_growth_rate.set(any_if,
                ((table_val_qi2qr_melting+table_val_qi2qr_vent_melt*cbrt(sc)*sqrt(rhofaci*rho/mu))*
-                twopi*(rho*latent_heat_vapor*dv*(qsat0-qv)-(temp-tmelt)*kap)/
+                twopi*(rho*latvap*dv*(qsat0-qv)-(temp-tmelt)*kap)/
                 (latent_heat_fusion+cpw*(temp-tmelt)))*ni_incld);
 
     qc_growth_rate.set(any_if,

@@ -80,6 +80,7 @@ void Functions<S,D>
   constexpr Scalar T_zerodegc   = C::T_zerodegc;
   constexpr Scalar qsmall       = C::QSMALL;
   constexpr Scalar inv_cp       = C::INV_CP;
+  constexpr Scalar latvap       = C::LatVap;
 
   const Scalar p3_spa_to_nc = p3constants.p3_spa_to_nc;
 
@@ -124,7 +125,7 @@ void Functions<S,D>
     auto drymass = qc(k) < qsmall;
     auto not_drymass = !drymass && range_mask;
     qv(k).set(drymass, qv(k) + qc(k));
-    th_atm(k).set(drymass, th_atm(k) - inv_exner(k) * qc(k) * latent_heat_vapor(k) * inv_cp);
+    th_atm(k).set(drymass, th_atm(k) - inv_exner(k) * qc(k) * latvap * inv_cp);
     qc(k).set(drymass, 0);
     nc(k).set(drymass, 0);
     if ( not_drymass.any() ) {
@@ -147,7 +148,7 @@ void Functions<S,D>
     drymass = qr(k) < qsmall;
     not_drymass = !drymass && range_mask;
     qv(k).set(drymass, qv(k) + qr(k));
-    th_atm(k).set(drymass, th_atm(k) - inv_exner(k) * qr(k) * latent_heat_vapor(k) * inv_cp);
+    th_atm(k).set(drymass, th_atm(k) - inv_exner(k) * qr(k) * latvap * inv_cp);
     qr(k).set(drymass, 0);
     nr(k).set(drymass, 0);
     if ( not_drymass.any() ) {
