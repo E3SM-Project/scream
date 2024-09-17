@@ -31,7 +31,6 @@ void Functions<S,D>
   const auto Tmelt  = C::Tmelt;
 
   constexpr Scalar latvap = C::LatVap;
-  constexpr Scalar latice = C::LatIce;
 
   //Find cells above freezing AND which have ice
   const auto has_melt_qi = (qi_incld >= QSMALL ) && (T_atm > Tmelt) && context;
@@ -42,7 +41,7 @@ void Functions<S,D>
 
     qi2qr_melt_tend.set(has_melt_qi, ( (table_val_qi2qr_melting+table_val_qi2qr_vent_melt*cbrt(sc)*sqrt(rhofaci*rho/mu))
 			     *((T_atm-Tmelt)*kap-rho*latvap*dv*(qsat0-qv))
-			     * 2 * Pi /latice)*ni_incld );
+			     * 2 * Pi /latent_heat_fusion)*ni_incld );
 
     //make sure qi2qr_melt_tend is always negative
     qi2qr_melt_tend = max(qi2qr_melt_tend, 0);

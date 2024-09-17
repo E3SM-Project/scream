@@ -23,7 +23,6 @@ void Functions<S,D>
 {
   constexpr Scalar QSMALL          = C::QSMALL;
   constexpr Scalar INV_RHO_RIMEMAX = C::INV_RHO_RIMEMAX;
-  constexpr Scalar latice          = C::LatIce;
 
   qc.set(context, qc + (-qc2qi_hetero_freeze_tend-qc2qi_collect_tend-qc2qr_ice_shed_tend-qc2qi_berg_tend)*dt);
   if ( do_predict_nc ){
@@ -79,7 +78,7 @@ void Functions<S,D>
   constexpr Scalar INV_CP = C::INV_CP;
   th_atm.set(context, th_atm + inv_exner * ((qv2qi_vapdep_tend - qi2qv_sublim_tend + qv2qi_nucleat_tend) * latent_heat_sublim * INV_CP +
                                 (qr2qi_collect_tend + qc2qi_collect_tend + qc2qi_hetero_freeze_tend + qr2qi_immers_freeze_tend -
-                                qi2qr_melt_tend + qc2qi_berg_tend) * latice * INV_CP) * dt);
+                                qi2qr_melt_tend + qc2qi_berg_tend) * latent_heat_fusion * INV_CP) * dt);
 }
 
 template<typename S, typename D>
