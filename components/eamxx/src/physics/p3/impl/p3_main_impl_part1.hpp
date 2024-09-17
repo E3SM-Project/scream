@@ -81,6 +81,7 @@ void Functions<S,D>
   constexpr Scalar qsmall       = C::QSMALL;
   constexpr Scalar inv_cp       = C::INV_CP;
   constexpr Scalar latvap       = C::LatVap;
+  constexpr Scalar latice       = C::LatIce;
 
   const Scalar p3_spa_to_nc = p3constants.p3_spa_to_nc;
 
@@ -169,7 +170,7 @@ void Functions<S,D>
 
     drymass = (qi(k) >= qsmall && qi(k) < 1.e-8 && T_atm(k) >= T_zerodegc);
     qr(k).set(drymass, qr(k) + qi(k));
-    th_atm(k).set(drymass, th_atm(k) - inv_exner(k) * qi(k) * latent_heat_fusion(k) * inv_cp);
+    th_atm(k).set(drymass, th_atm(k) - inv_exner(k) * qi(k) * latice * inv_cp);
     qi(k).set(drymass, 0);
     ni(k).set(drymass, 0);
     qm(k).set(drymass, 0);

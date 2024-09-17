@@ -105,6 +105,7 @@ void Functions<S,D>
   constexpr Scalar nmltratio    = C::nmltratio;
   constexpr Scalar inv_cp       = C::INV_CP;
   constexpr Scalar latvap       = C::LatVap;
+  constexpr Scalar latice       = C::LatIce;
 
   team.team_barrier();
   hydrometeorsPresent = false;

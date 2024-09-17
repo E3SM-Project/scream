@@ -228,6 +228,7 @@ void Functions<S,D>
   constexpr Scalar T_homogfrz       = C::T_homogfrz;
   constexpr Scalar inv_rho_rimeMax = C::INV_RHO_RIMEMAX;
   constexpr Scalar inv_cp          = C::INV_CP;
+  constexpr Scalar latice          = C::LatIce;
 
   const Int kmin_scalar = ( kdir == 1 ? kbot : ktop);
   const Int kmax_scalar = ( kdir == 1 ? ktop : kbot);
@@ -254,13 +255,13 @@ void Functions<S,D>
     qi(pk).set(qc_ge_small, qi(pk) + Qc_nuc);
     bm(pk).set(qc_ge_small, bm(pk) + Qc_nuc*inv_rho_rimeMax);
     ni(pk).set(qc_ge_small, ni(pk) + Nc_nuc);
-    th_atm(pk).set   (qc_ge_small, th_atm(pk) + inv_exner(pk)*Qc_nuc*latent_heat_fusion(pk)*inv_cp);
+    th_atm(pk).set   (qc_ge_small, th_atm(pk) + inv_exner(pk)*Qc_nuc*latice*inv_cp);
 
     qm(pk).set(qr_ge_small, qm(pk) + Qr_nuc);
     qi(pk).set(qr_ge_small, qi(pk) + Qr_nuc);
     bm(pk).set(qr_ge_small, bm(pk) + Qr_nuc*inv_rho_rimeMax);
     ni(pk).set(qr_ge_small, ni(pk) + Nr_nuc);
-    th_atm(pk).set   (qr_ge_small, th_atm(pk) + inv_exner(pk)*Qr_nuc*latent_heat_fusion(pk)*inv_cp);
+    th_atm(pk).set   (qr_ge_small, th_atm(pk) + inv_exner(pk)*Qr_nuc*latice*inv_cp);
 
     qc(pk).set(qc_ge_small, 0);
     nc(pk).set(qc_ge_small, 0);
