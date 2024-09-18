@@ -6,7 +6,10 @@ Fields:
   Physics:
     Field Names:
       - T_mid
-      
+      - oxi_fields
+      - linoz_fields
+      - vertical_emission_fields
+
 output_control:
   Frequency: 1
   frequency_units: nsteps
