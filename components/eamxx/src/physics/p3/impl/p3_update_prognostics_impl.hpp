@@ -83,7 +83,7 @@ void Functions<S,D>
   for (int p=0; p<Spack::n; ++p) {
     uint64_t latice_bits = *reinterpret_cast<const uint64_t*>(&latice);
     uint64_t fusion_bits = *reinterpret_cast<const uint64_t*>(&latent_heat_fusion[p]);
-    if (latice_bits != fusion_bits)
+    //if (latice_bits != fusion_bits)
       printf("latice:%.17f (%" PRIu64 "):"
             "latent_heat_fusion:%.17f (%" PRIu64 ")\n",
              latice,latice_bits,latent_heat_fusion[p],fusion_bits);
