@@ -79,7 +79,7 @@ void Functions<S,D>
   constexpr Scalar INV_CP = C::INV_CP;
   th_atm.set(context, th_atm + inv_exner * ((qv2qi_vapdep_tend - qi2qv_sublim_tend + qv2qi_nucleat_tend) * latent_heat_sublim * INV_CP +
                                 (qr2qi_collect_tend + qc2qi_collect_tend + qc2qi_hetero_freeze_tend + qr2qi_immers_freeze_tend -
-                                qi2qr_melt_tend + qc2qi_berg_tend) * latent_heat_fusion * INV_CP) * dt);
+                                qi2qr_melt_tend + qc2qi_berg_tend) * latice * INV_CP) * dt);
   for (int p=0; p<Spack::n; ++p) {
     uint64_t latice_bits = *reinterpret_cast<const uint64_t*>(&latice);
     uint64_t fusion_bits = *reinterpret_cast<const uint64_t*>(&latent_heat_fusion[p]);
