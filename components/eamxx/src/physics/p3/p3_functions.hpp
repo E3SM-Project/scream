@@ -20,6 +20,7 @@ namespace p3 {
  *  - Kokkos team policies have a vector length of 1
  */
 
+
 template <typename ScalarT, typename DeviceT>
 struct Functions
 {
