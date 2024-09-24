@@ -119,6 +119,30 @@ if( NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "[Cc]lang" )
 endif()
 
 ####################################################################
+# Set SCREAM_MACHINE and, if standalone, attempt to load mach file #
+####################################################################
+
+if (DEFINED ENV{SCREAM_MACHINE})
+  set(DEFAULT_SCREAM_MACHINE $ENV{SCREAM_MACHINE})
+elseif(MACH)
+  # MACH comes from CIME build system
+  set(DEFAULT_SCREAM_MACHINE ${MACH})
+endif()
+
+set(SCREAM_MACHINE ${DEFAULT_SCREAM_MACHINE} CACHE STRING "The CIME/SCREAM name for the current machine")
+
+if (NOT SCREAM_CIME_BUILD)
+  if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cmake/machine-files/${SCREAM_MACHINE}.cmake)
+    include (${CMAKE_CURRENT_SOURCE_DIR}/cmake/machine-files/${SCREAM_MACHINE}.cmake)
+  elseif(SCREAM_MACHINE STREQUAL "local")
+    get_filename_component(HOME_DIR "$ENV{HOME}" ABSOLUTE)
+    if (EXISTS ${HOME_DIR}/.cime/scream_mach_file.cmake)
+      include (${HOME_DIR}/.cime/scream_mach_file.cmake)
+    endif()
+  endif()
+endif()
+
+####################################################################
 #                EAMxx main configuration options                  #
 ####################################################################
 

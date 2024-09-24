@@ -313,20 +313,20 @@ class TestAllScream(object):
 
         return missing
 
-    ###############################################################################
-    def get_machine_file(self):
-    ###############################################################################
-        if self._local:
-            return Path("~/.cime/scream_mach_file.cmake").expanduser()
-        else:
-            return self._root_dir/"cmake"/"machine-files"/f"{self._machine}.cmake"
+    #  ###############################################################################
+    #  def get_machine_file(self):
+    #  ###############################################################################
+    #      if self._local:
+    #          return Path("~/.cime/scream_mach_file.cmake").expanduser()
+    #      else:
+    #          return self._root_dir/"cmake"/"machine-files"/f"{self._machine}.cmake"
 
     ###############################################################################
     def generate_cmake_config(self, test, for_ctest=False):
     ###############################################################################
 
         # Ctest only needs config options, and doesn't need the leading 'cmake '
-        result  = f"{'' if for_ctest else 'cmake '}-C {self.get_machine_file()}"
+        result  = f"{'' if for_ctest else 'cmake '}-D SCREAM_MACHINE={self._machine}"
 
         # Netcdf should be available. But if the user is doing a testing session
         # where all netcdf-related code is disabled, he/she should be able to run
