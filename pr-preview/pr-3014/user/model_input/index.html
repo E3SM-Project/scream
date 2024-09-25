@@ -1232,6 +1232,7 @@ ERROR:<span class="w"> </span>internal_diagnostics_level<span class="w"> </span>
 <span class="w">  </span>namelist_defaults::atmosphere_processes::physics::mac_aero_mic::tms::number_of_subcycles
 <span class="w">  </span>namelist_defaults::atmosphere_processes::physics::mac_aero_mic::shoc::number_of_subcycles
 <span class="w">  </span>namelist_defaults::atmosphere_processes::physics::mac_aero_mic::cldFraction::number_of_subcycles
+<span class="w">  </span>namelist_defaults::atmosphere_processes::physics::mac_aero_mic::spa::internal_diagnostics_level
 <span class="w">  </span>namelist_defaults::atmosphere_processes::physics::mac_aero_mic::p3::number_of_subcycles
 <span class="w">  </span>namelist_defaults::atmosphere_processes::physics::rrtmgp::number_of_subcycles
 <span class="w">  </span>namelist_defaults::atmosphere_processes::sc_export::number_of_subcycles
@@ -1242,7 +1243,7 @@ $<span class="w"> </span>./atmquery<span class="w"> </span>homme::number_of_subc
 </code></pre></div>
 <p>In some cases, the user may be interested in changing <em>all</em> nodes with a given name. In that case,
 you can use 'ANY' as a node name:</p>
-<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>--grep<span class="w"> </span>number_of_subcycles
+<p><div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>--grep<span class="w"> </span>number_of_subcycles
 <span class="w">    </span>atmosphere_processes::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
 <span class="w">    </span>sc_import::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
 <span class="w">    </span>homme::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
@@ -1271,6 +1272,23 @@ $<span class="w"> </span>./atmquery<span class="w"> </span>--grep<span class="w"
 <span class="w">    </span>rrtmgp::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
 <span class="w">    </span>sc_export::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
 </code></pre></div>
+In addition, "ANY" can be used in a "scoped" string, to limit the set of matches:
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmchange<span class="w"> </span>mac_aero_mic::ANY::number_of_subcycles<span class="o">=</span><span class="m">1</span>
+Regenerating<span class="w"> </span>/path/to/namelist_scream.xml.<span class="w"> </span>Manual<span class="w"> </span>edits<span class="w"> </span>will<span class="w"> </span>be<span class="w"> </span>lost.
+$<span class="w"> </span>./atmquery<span class="w"> </span>--grep<span class="w"> </span>number_of_subcycles
+<span class="w">    </span>atmosphere_processes::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>sc_import::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>homme::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>physics::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>mac_aero_mic::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>tms::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>shoc::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>cldFraction::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>spa::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>p3::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>rrtmgp::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>sc_export::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+</code></pre></div></p>
 <p>Since the XML file stores constraints on the parameter value (like its type or valid values), attempting to use the
 wrong type will cause an error:</p>
 <div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>--type<span class="w"> </span>se_ne
