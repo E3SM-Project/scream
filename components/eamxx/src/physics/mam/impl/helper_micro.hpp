@@ -203,22 +203,22 @@ void vert_interp(int ncol, int levsiz, int pver, const view_2d &pin,
                  const view_2d &dataout,
                  // work array
                  const view_int_1d &kupper) {
-  const int one = 1;
+  const int zero = 0;
   // Initialize index array
   for(int i = 0; i < ncol; ++i) {
-    kupper(i) = one;
+    kupper(i) = zero;
   }  // ncol
 
   for(int k = 0; k < pver; ++k) {
     // Top level we need to start looking is the top level for the previous k
     // for all column points
-    int kkstart = levsiz;
+    int kkstart = levsiz-1;
     for(int i = 0; i < ncol; ++i) {
       kkstart = haero::min(kkstart, kupper(i));
     }
 
     // Store level indices for interpolation
-    for(int kk = kkstart - 1; kk < levsiz - 1; ++kk) {
+    for(int kk = kkstart ; kk < levsiz - 1; ++kk) {
       for(int i = 0; i < ncol; ++i) {
         if(pin(i, kk) < pmid(i, k) && pmid(i, k) <= pin(i, kk + 1)) {
           kupper(i) = kk;
