@@ -236,7 +236,7 @@ void AtmosphereDriver::create_atm_processes()
     dag.init_atm_proc_nodes(*m_atm_process_group);
 
     // Write a dot file for visualization
-    dag.write_dag("dag_createAtmProcs-nodesOnly.dot", std::max(verb_lvl, 0));
+    dag.write_dag("scream_atm_dag.dot", std::max(verb_lvl, 0));
   }
 }
 
@@ -690,7 +690,7 @@ void AtmosphereDriver::create_fields()
     dag.create_dag(*m_atm_process_group);
 
     // Write a dot file for visualization
-    dag.write_dag("dag_createFields.dot",std::max(verb_lvl,0));
+    dag.write_dag("scream_atm_dag.dot", std::max(verb_lvl,0));
   }
 
   m_ad_status |= s_fields_created;
@@ -857,7 +857,7 @@ initialize_fields ()
     dag.process_initial_conditions(m_fields_inited);
 
     // Write a dot file for visualization
-    dag.write_dag("dag_init_fields-after_IC.dot",std::max(verb_lvl,0));
+    dag.write_dag("scream_atm_dag.dot", std::max(verb_lvl,0));
   }
 
   // Now that IC have been read, add U/V subfields of horiz_winds,

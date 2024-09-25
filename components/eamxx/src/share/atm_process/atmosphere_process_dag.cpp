@@ -186,13 +186,35 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
   for (const auto& n : m_nodes) {
     const auto& unmet = m_unmet_deps.at(n.id);
 
+    std::string box_fmt;
+    int id_IC, id_begin, id_end;
+    if (n.name == "Begin of atm time step") {
+      id_begin = n.id;
+      box_fmt = "  color=\"#00667E\"\n  fontcolor=\"#00667E\"\n  style=filled\n"
+                "  fillcolor=\"#b9d4dc\"\n";
+    } else if (n.name == "Initial Conditions") {
+      id_IC = n.id;
+      box_fmt = "  color=\"#006219\"\n  fontcolor=\"#006219\"\n  style=filled\n"
+                "  fillcolor=\"#b9dcc2\"\n";
+    } else if (n.name == "End of atm time step") {
+      id_end = n.id;
+      box_fmt = "  color=\"#88621e\"\n  fontcolor=\"#88621e\"\n  style=filled\n"
+                "  fillcolor=\"#dccfb9\"\n";
+    } else {
+      box_fmt = "penwidth=4\n fontsize=30";
+    }
+
     // Write node, with computed/required fields
     ofile << n.id
           << " [\n"
           << "  shape=box\n"
+          << box_fmt
+          << "  penwidth=4\n"
+          << "  fontsize=30\n"
           << "  label=<\n"
           << "    <table border=\"0\">\n"
-          << "      <tr><td><b>" << html_fix(n.name) << "</b></td></tr>";
+          << "      <tr><td><b><font point-size=\"40\">" << html_fix(n.name)
+          << "</font></b></td></tr>";
     if (verbosity>1) {
       // FieldIntentifier prints bare min with verb 0.
       // DAG starts printing fids with verb 2, so fid verb is verb-2;
@@ -200,32 +222,43 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
       ofile << "<hr/>\n";
 
       // Computed fields
-      if (n.name=="Begin of atm time step") {
-        ofile << "      <tr><td align=\"left\"><font color=\"#00667E\">Atm input fields from previous time step:</font></td></tr>\n";
-      } else if (n.name!="End of atm time step"){
-        ofile << "      <tr><td align=\"left\"><font color=\"#00667E\">Computed Fields:</font></td></tr>\n";
+      if (n.id == id_begin) {
+        ofile << "      <tr><td align=\"left\"><b><font color=\"#00667E\">"
+              << "Atm input fields from previous time step:</font></b></td></tr>\n";
+      } else if (n.id == id_IC) {
+        ofile << "      <tr><td align=\"left\"><b><font color=\"#00667E\">"
+              << "Initial Fields:</font></b></td></tr>\n";
+      } else if (n.id != id_end) {
+        ofile << "      <tr><td align=\"left\"><b><font color=\"#88621e\">"
+              << "Computed Fields:</font></b></td></tr>\n";
       }
+
       for (const auto& fid : n.computed) {
         std::string fc = "<font color=\"";
         fc += "black";
         fc += "\">  ";
-        ofile << "      <tr><td align=\"left\">" << fc << html_fix(print_fid(m_fids[fid],fid_verb)) << "</font></td></tr>\n";
+        ofile << "      <tr><td align=\"left\">" << fc
+              << html_fix(print_fid(m_fids[fid],fid_verb))
+              << "</font></td></tr>\n";
       }
 
       // Required fields
-      if (n.name=="End of atm time step") {
-        ofile << "      <tr><td align=\"left\"><font color=\"#00667E\">Atm output fields for next time step:</font></td></tr>\n";
-      } else if (n.name!="Begin of atm time step") {
-        ofile << "      <tr><td align=\"left\"><font color=\"#00667E\">Required Fields:</font></td></tr>\n";
+      if (n.id == id_end) {
+        ofile << "      <tr><td align=\"left\"><b><font color=\"#88621e\">"
+              << "Atm output fields for next time step:</font></b></td></tr>\n";
+      } else if (n.id != id_begin && n.id != id_IC) {
+        ofile << "      <tr><td align=\"left\"><b><font color=\"#00667E\">"
+              << "Required Fields:</font></b></td></tr>\n";
       }
       for (const auto& fid : n.required) {
         std::string fc = "<font color=\"";
         if (ekat::contains(unmet, fid)) {
           fc += "red";
+        } else if (ekat::contains(unmet, -fid)) {
+          fc +=  "#006219";
         } else {
-          fc += (ekat::contains(unmet, -fid) ? "#006219" : "black");
+          fc += "black";
         }
-        // fc += (ekat::contains(unmet,fid) ? "red" : "black");
         fc += "\">  ";
         ofile << "      <tr><td align=\"left\">" << fc << html_fix(print_fid(m_fids[fid],fid_verb));
         if (ekat::contains(m_unmet_deps.at(n.id), fid)) {
@@ -238,14 +271,17 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
 
       // Computed groups
       if (n.gr_computed.size()>0) {
-        if (n.name=="Begin of atm time step") {
-          ofile << "      <tr><td align=\"left\"><font color=\"#00667E\">Atm Input groups:</font></td></tr>\n";
-        } else if (n.name!="End of atm time step"){
-          ofile << "      <tr><td align=\"left\"><font color=\"#00667E\">Computed Groups:</font></td></tr>\n";
+        if (n.id == id_begin) {
+          ofile << "      <tr><td align=\"left\"><b><font color=\"#00667E\">Atm Input groups:</font></b></td></tr>\n";
+        } else if (n.id != id_end){
+          ofile << "      <tr><td align=\"left\"><b><font color=\"#88621e\">Computed Groups:</font></b></td></tr>\n";
         }
         for (const auto& gr_fid : n.gr_computed) {
           std::string fc = "<font color=\"";
-          fc += (ekat::contains(unmet,gr_fid) ? "red" : "black");
+          fc += "black";
+          // i suspect this, and the below, is a typo, since a computed group
+          // being marked unmet doesn't make sense to me
+          // fc += (ekat::contains(unmet,gr_fid) ? "red" : "black");
           fc += "\">  ";
           ofile << "      <tr><td align=\"left\">" << fc << html_fix(print_fid(m_fids[gr_fid],fid_verb));
           ofile << "</font></td></tr>\n";
@@ -259,10 +295,8 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
             size_t i = 0;
             for (const auto& fn : members_names) {
               const auto f = members.at(fn);
-              const auto& mfid = f->get_header().get_identifier();
-              const auto mfid_id = get_fid_index(mfid);
               std::string mfc = "<font color=\"";
-              mfc += (ekat::contains(unmet,mfid_id) ? "red" : "black");
+              mfc += "black";
               mfc += "\">";
               if (len>0) {
                 ofile << ",";
@@ -288,9 +322,9 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
       // Required groups
       if (n.gr_required.size()>0) {
         if (n.name=="End of atm time step") {
-          ofile << "      <tr><td align=\"left\"><font color=\"#00667E\">Atm Output Groups:</font></td></tr>\n";
+          ofile << "      <tr><td align=\"left\"><b><font color=\"#00667E\">Atm Output Groups:</font></b></td></tr>\n";
         } else if (n.name!="Begin of atm time step") {
-          ofile << "      <tr><td align=\"left\"><font color=\"#00667E\">Required Groups:</font></td></tr>\n";
+          ofile << "      <tr><td align=\"left\"><b><font color=\"#00667E\">Required Groups:</font></b></td></tr>\n";
         }
         for (const auto& gr_fid : n.gr_required) {
           std::string fc = "<font color=\"";
@@ -344,8 +378,24 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
 
     // Write all outgoing edges
     for (const auto c : n.children) {
-      ofile << n.id << "->" << c << "\n";
+      ofile << n.id << "->" << c << "[penwidth=4];\n";
     }
+  }
+
+  if (!m_IC_processed && m_has_unmet_deps) {
+    ofile << "9 [\n"
+          << "  shape=box\n"
+          << "  color=\"#605d57\"\n"
+          << "  fontcolor=\"#034a4a\"\n"
+          << "  penwidth=8\n"
+          << "  fontsize=40\n"
+          << "  style=filled\n"
+          << "  fillcolor=\"#999999\"\n"
+          << "  align=\"center\"\n"
+          << "  label=<<b><font color=\"#774006\">NOTE:</font> "
+             "Fields marked missing may be<br align=\"center\"/>provided by "
+             "the as-yet-unprocessed<br align=\"center\"/>initial condition</b>>\n"
+          << "];\n";
   }
 
   // Close the file
@@ -358,6 +408,7 @@ void AtmProcDAG::cleanup () {
   m_fid_to_last_provider.clear();
   m_unmet_deps.clear();
   m_has_unmet_deps = false;
+  m_IC_processed = false;
 }
 
 void AtmProcDAG::
@@ -381,10 +432,9 @@ add_nodes (const group_type& atm_procs)
       add_nodes(*group);
     } else {
       // Create a node for the process
-      // Node& node = m_nodes[proc->name()];
       int id = m_nodes.size();
       m_nodes.push_back(Node());
-      Node& node = m_nodes.back();;
+      Node& node = m_nodes.back();
       node.id = id;
       node.name = proc->name();
       m_unmet_deps[id].clear(); // Ensures an entry for this id is in the map
@@ -525,23 +575,35 @@ void AtmProcDAG::add_edges () {
 }
 
 void AtmProcDAG::process_initial_conditions(const grid_field_map &ic_inited) {
+  // Create a node for the ICs
+  int id = m_nodes.size();
+  m_nodes.push_back(Node());
+  Node& ic_node = m_nodes.back();
+  ic_node.id = id;
+  ic_node.name = "Initial Conditions";
+  m_unmet_deps[id].clear();
   for (auto &node : m_nodes) {
     if (m_unmet_deps.at(node.id).empty()) {
       continue;
     } else {
       // NOTE: node_unmet_fields is a std::set<int>
       auto &node_unmet_fields = m_unmet_deps.at(node.id);
-      for (auto &um_fid : node_unmet_fields) {
+      // add the current node as a child of the IC node
+      ic_node.children.push_back(node.id);
+      for (auto um_fid : node_unmet_fields) {
         for (auto &it1 : ic_inited) {
           const auto &grid_name = it1.first;
-          // if this unmet field's name is in the ic_inited map for the provided
-          // grid_name key, then we flip its value negative and break from the
-          // for (ic_inited) and for (node_unmet_fields) loops; otherwise,
-          // keep trying for the next grid_name
+          // if this unmet-dependency field's name is in the ic_inited map for
+          // the provided grid_name key, then we flip its value negative and
+          // break from the for (ic_inited) and for (node_unmet_fields) loops;
+          // otherwise, keep trying for the next grid_name
           if (ekat::contains(ic_inited.at(grid_name), m_fids[um_fid].name())) {
-            auto now_met = node_unmet_fields.extract(um_fid);
-            now_met.value() = -now_met.value();
-            node_unmet_fields.insert(std::move(now_met));
+            auto id_now_met = node_unmet_fields.extract(um_fid);
+            id_now_met.value() = -id_now_met.value();
+            node_unmet_fields.insert(std::move(id_now_met));
+            // add the fid of the formerly unmet dep to the initial condition
+            // node's computed list
+            ic_node.computed.insert(um_fid);
             goto endloop;
           } else {
             continue;
@@ -551,6 +613,7 @@ void AtmProcDAG::process_initial_conditions(const grid_field_map &ic_inited) {
       }
     }
   }
+  m_IC_processed = true;
 }
 
 int AtmProcDAG::add_fid (const FieldIdentifier& fid) {

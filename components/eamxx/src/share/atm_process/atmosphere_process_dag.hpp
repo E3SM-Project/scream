@@ -72,6 +72,7 @@ protected:
   // if value is negative, then that field is provided by the initial condition
   std::map<int,std::set<int>>     m_unmet_deps;
   bool                            m_has_unmet_deps;
+  bool                            m_IC_processed;
 
   // The nodes in the atm DAG
   std::vector<Node>               m_nodes;
