@@ -345,109 +345,52 @@ def evaluate_selectors(element, case, ez_selectors):
     CIME.utils.CIMEError: ERROR: child 'var1' element without selectors occurred after other parameter elements for this parameter
     """
 
-    selected_child = {} # elem_name -> evaluated XML element
+    # First, check if this element has selectors. If so, evaluate them, and decide if this node is to be kept
+    for ak,av in elem.attrib.itens():
+        if ak in ez_selectors.keys():
+            # This attribute is a selector. Compile the regex, then check if it matches
+            val_re = re.compile(av)
+            ez_env, ez_regex = ez_selectors[k]
+            case_val = case.get_value(ez_env)
+            expect(case_val is not None,
+                  "Bad easy selector '{}' definition. Relies on unknown case value '{}'".format(k, ez_env))
+
+            ez_regex_re = re.compile(ez_regex)
+            if not ez_regex_re.match(case_val):
+                return None
+
+    # If we got here, the element itself has either no ez selectors, or all ez selectors on it are active
+    # Now we can proceed to parse the children (if any)
+    name_2_children = {}
     children_to_remove = []
-    child_base_value = {} # map elme name to values to be appended to if append=="base"
-    child_type  = {} # map elme name to its type (since only first entry may have type specified)
     for child in element:
-        # Note: in our system, an XML element is either a "node" (has children)
-        # or a "leaf" (has a value).
-        has_children = len(child) > 0
-        if has_children:
-            evaluate_selectors(child, case, ez_selectors)
+        resolved = evaluate_selectors(child,case,ez_selectors)
+        if resolved is None:
+            # This child has selectors, and at least one is NOT active.
+            # We will remove it at the end (to avoid invalidating iterators)
+            children_to_remove.append(child)
         else:
-            child_name = child.tag
-            child.text = None if child.text is None else child.text.strip(' \n')
-            child_val = child.text
-            selectors = child.attrib
-
-            if child_name not in child_type:
-                child_type[child_name] = selectors["type"] if "type" in selectors.keys() else "unset"
-
-            is_array = child_type[child_name].startswith("array")
-            expect (is_array or "append" not in selectors.keys(),
-                    "The 'append' metadata attribute is only supported for entries of array type\n"
-                    f" param name: {child_name}\n"
-                    f" param type: {child_type[child_name]}")
-
-            append = selectors["append"] if "append" in selectors.keys() else "no"
-            expect (append in ["no","base","last"],
-                    "Unrecognized value for 'append' attribute\n" +
-                    f"  param name  : {child_name}\n" +
-                    f"  append value: {append}\n" +
-                     "  valid values: base, last\n")
-            if selectors:
-                all_match = True
-                had_case_selectors = False
-                for k, v in selectors.items():
-                    # Metadata attributes are used only when it's time to generate the input files
-                    if k in METADATA_ATTRIBS:
-                        if k=="type" and child_name in selected_child.keys():
-                            if "type" in selected_child[child_name].attrib:
-                                expect (v==selected_child[child_name].attrib["type"],
-                                        f"The 'type' attribute of {child_name} is not consistent across different selectors")
-                        continue
-
-                    had_case_selectors = True
-                    val_re = re.compile(v)
-
-                    if k in ez_selectors:
-                        ez_env, ez_regex = ez_selectors[k]
-                        case_val = case.get_value(ez_env)
-                        expect(case_val is not None,
-                              "Bad easy selector '{}' definition. Relies on unknown case value '{}'".format(k, ez_env))
-
-                        ez_regex_re = re.compile(ez_regex)
-                        m = ez_regex_re.match(case_val)
-                        if m:
-                            groups = m.groups()
-                            expect(len(groups) == 1,
-                                    "Selector '{}' has invalid custom regex '{}' which does not capture exactly 1 group".format(k, ez_regex))
-                            val = groups[0]
-                        else:
-                            # If the regex doesn't even match the case val, then we consider
-                            # string below should ensure the selector will never match.
-                            val = None
-
-                    else:
-                        val = case.get_value(k)
-                        expect(val is not None,
-                               "Bad selector '{0}' for child '{1}'. '{0}' is not a valid case value or easy selector".format(k, child_name))
-
-                    if val is None or val_re.match(val) is None:
-                        all_match = False
-                        children_to_remove.append(child)
-                        break
-
-                if all_match:
-                    if child_name in selected_child.keys():
-                        orig_child = selected_child[child_name]
-                        if append=="base":
-                            orig_child.text = child_base_value[child_name] + "," + child.text
-                        elif append=="last":
-                            orig_child.text = orig_child.text + "," + child.text
-                        else:
-                            orig_child.text = child.text
-                        children_to_remove.append(child)
-
-                    else:
-                        # If all selectors were the METADATA_ATTRIB ones, then this is the "base" value
-                        if not had_case_selectors:
-                            child_base_value[child_name] = child.text
-                        selected_child[child_name] = child
-                        # Make a copy of selectors.keys(), since selectors=child.attrib,
-                        # and we might delete an entry, causing the error
-                        #    RuntimeError: dictionary changed size during iteration
-
+            name = resolved.tag
+            # This child has no selectors, or all selectors are active
+            if name not in name_2_children.keys():
+                # First time we find a child with this name. Simply store it
+                name_2_children[name] = [resolved]
             else:
-                expect(child_name not in selected_child,
-                       "child '{}' element without selectors occurred after other parameter elements for this parameter".format(child_name))
-                child_base_value[child_name] = child.text
-                selected_child[child_name] = child
-                child.text = do_cime_vars(child_val, case)
+                # We already hit a child with this name. Perform some consistency check
+                #  1. if they both have the "type" attrib, it must match
+                #  2. if the "append" attrib is present, append to current child, otherwise replace
+                if "type" in child.attrib.keys():
+                    t = child.attrib["type"]
+                    for node in name_2_child[name]:
+                        expect ("type" not in node.attrib.keys() or t==node.attrib["type"],
+                                "Inconsistent 'type' attribute for node {name} across different selectors")
 
-    for child_to_remove in children_to_remove:
-        element.remove(child_to_remove)
+                name_2_children[name].append(resolved)
+
+    return elem
+
+    for child in children_to_remove:
+        element.remove(child)
 
 ###############################################################################
 def expand_cime_vars(element, case):
@@ -621,22 +564,26 @@ def _create_raw_xml_file_impl(case, xml, filepath=None):
     get_child(xml,"generated_files",remove=True)
     selectors = get_valid_selectors(xml)
 
-    # 1. Evaluate all selectors
     try:
+        # 1. Evaluate all XML-based selectors
         evaluate_selectors(xml, case, selectors)
 
         # 2. Apply all changes in the SCREAM_ATMCHANGE_BUFFER that may alter
         #    which atm processes are used
         apply_atm_procs_list_changes_from_buffer (case,xml)
 
-        # 3. Resolve all inheritances
-        resolve_all_inheritances(xml)
+        evaluate_atm_selectors (xml, case, 
+
+        # 3. Grab the atmosphere_processes macro list, with all the defaults
+        atm_procs_defaults = get_child(xml,"atmosphere_processes_defaults",remove=True)
+
+        # 4. Resolve all inheritances for atm procs
+        resolve_all_inheritances(atm_procs_defaults)
+
+        
 
         # 4. Expand any CIME var that appears inside XML nodes text
         expand_cime_vars(xml,case)
-
-        # 5. Grab the atmosphere_processes macro list, with all the defaults
-        atm_procs_defaults = get_child(xml,"atmosphere_processes_defaults",remove=True)
 
         # 6. Get atm procs list
         atm_procs_list = get_child(atm_procs_defaults,"atm_procs_list",remove=True)
@@ -660,6 +607,13 @@ def _create_raw_xml_file_impl(case, xml, filepath=None):
     perform_consistency_checks (case, xml)
 
     return xml
+
+###############################################################################
+def add_xml_section (root, output_name, defaults, section_name, case)
+###############################################################################
+    default_section = get_child(defaults,section_name)
+    evaluate_selectors(default_section,
+
 
 ###############################################################################
 def create_raw_xml_file(case, caseroot):
