@@ -518,7 +518,7 @@ def resolve_all_inheritances(root):
         resolve_inheritance(root,elem)
 
 ###############################################################################
-def get_valid_selectors(xml_root):
+def get_valid_case_selectors(xml_root):
 ###############################################################################
     """
     Extract the <selector> node from the xml root, verifying
@@ -534,7 +534,7 @@ def get_valid_selectors(xml_root):
     ... '''
     >>> import xml.etree.ElementTree as ET
     >>> root = ET.fromstring(xml)
-    >>> selectors = get_valid_selectors(root)
+    >>> selectors = get_valid_case_selectors(root)
     >>> len(selectors)
     2
     >>> xml = '''
@@ -546,13 +546,13 @@ def get_valid_selectors(xml_root):
     ... '''
     >>> import xml.etree.ElementTree as ET
     >>> root = ET.fromstring(xml)
-    >>> selectors = get_valid_selectors(root)
+    >>> selectors = get_valid_case_selectors(root)
     Traceback (most recent call last):
     CIME.utils.CIMEError: ERROR: Expected selector tag, not blah
     """
 
     # Get the right XML element, and iterate over its children
-    selectors_elem = get_child(xml_root,"selectors",remove=True)
+    selectors_elem = get_child(xml_root,"case_selectors",remove=True)
     selectors = {}
     for selector in selectors_elem:
         expect(selector.tag == "selector",
@@ -564,6 +564,28 @@ def get_valid_selectors(xml_root):
             selector_regex = selector.attrib["regex"]
         else:
             selector_regex = "(.*)" # Just grab the whole thing
+
+        selectors[selector_name] = (selector_env, selector_regex)
+
+    return selectors
+
+###############################################################################
+def get_valid_atm_selectors(xml_root):
+###############################################################################
+    """
+    Extract the <atm_selector> node from the xml root, verifying
+    its integrity, and returning selectors as a dict.
+    """
+
+    # Get the right XML element, and iterate over its children
+    selectors_elem = get_child(xml_root,"atm_selectors",remove=True)
+    selectors = {}
+    selectors["exists"]
+    for selector in selectors_elem:
+        expect(selector.tag == "selector",
+               "Expected selector tag, not {}".format(selector.tag))
+
+        selector_name  = selector.attrib["check"]
 
         selectors[selector_name] = (selector_env, selector_regex)
 

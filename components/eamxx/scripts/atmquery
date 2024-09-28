@@ -27,7 +27,8 @@ def atm_query(variables,listall=False,full=False,value=False, \
         tree = ET.parse(fd)
         xml_root = tree.getroot()
 
-    return atm_query_impl(xml_root,variables,listall,full,value,dtype,valid_values,grep)
+    out =  atm_query_impl(xml_root,variables,listall,full,value,dtype,valid_values,grep)
+    return out=="SUCCESS"
 
 ###############################################################################
 def parse_command_line(args, description):

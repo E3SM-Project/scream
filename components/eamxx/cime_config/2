@@ -16,8 +16,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__f
 # SCREAM imports
 from eamxx_buildnml_impl import get_valid_case_selectors, get_child, refine_type, \
         resolve_all_inheritances, gen_atm_proc_group, check_all_values, find_node
-#  from atm_manip import apply_atm_procs_list_changes_from_buffer, apply_non_atm_procs_list_changes_from_buffer
-from atm_manip import apply_changes_from_buffer
+from atm_manip import apply_atm_procs_list_changes_from_buffer, apply_non_atm_procs_list_changes_from_buffer
 
 from utils import ensure_yaml # pylint: disable=no-name-in-module
 ensure_yaml()
@@ -46,18 +45,6 @@ CIME_VAR_RE = re.compile(r'[$][{](\w+)[}]')
 #      - constraints="ge 0; lt 4" means the value V must satisfy V>=0 && V<4.
 #      - constraints="mod 2 eq 0" means the value V must be a multiple of 2.
 METADATA_ATTRIBS = ("type", "valid_values", "locked", "constraints", "inherit", "doc", "append")
-
-def print_xml (xml,indent):
-    if xml is None:
-        print("uh-oh...none xml!")
-        return
-    if len(xml)>0:
-        print(f"{indent}{xml.tag}:")
-        for c in xml:
-            print_xml(c,indent+"  ")
-        return
-    print(f"{indent}{xml.tag}={xml.text}")
-
 
 ###############################################################################
 def do_cime_vars(entry, case, refine=False, extra=None):
@@ -359,49 +346,19 @@ def evaluate_case_selectors(element, case, ez_selectors):
     """
 
     # First, check if this element has selectors. If so, evaluate them, and decide if this node is to be kept
-    #  print (f"check ez on node={element.tag}")
-    #  why = "noatts"
-    if element.tag=="spa":
-        print("processing selectors on SPA")
-
-    for ak,av in element.attrib.items():
-        if ak in METADATA_ATTRIBS:
-            print (f" skipping {ak}, in meta={METADATA_ATTRIBS}")
-            # We don't select based on these attribs
-            continue
-        val_re = re.compile(av)
+    for ak,av in elem.attrib.itens():
         if ak in ez_selectors.keys():
-
-            # This attribute is a selector. Compile the selector regex, then grab the case value
-            ez_env, ez_regex = ez_selectors[ak]
+            # This attribute is a selector. Compile the regex, then check if it matches
+            val_re = re.compile(av)
+            ez_env, ez_regex = ez_selectors[k]
             case_val = case.get_value(ez_env)
             expect(case_val is not None,
-                  f"Bad easy selector '{ak}' definition. Relies on unknown case value '{ez_env}'")
+                  "Bad easy selector '{}' definition. Relies on unknown case value '{}'".format(k, ez_env))
 
             ez_regex_re = re.compile(ez_regex)
-            m = ez_regex_re.match(case_val)
-            if m:
-                groups = m.groups()
-                expect(len(groups) == 1,
-                       f"Selector '{ak}' has invalid custom regex '{ez_regex}' which does not capture exactly 1 group")
-                val = groups[0]
-            else:
-                # If the regex doesn't even match the case val, then we discard this node
-                print (f"  FAIL: regex not matching case val, for elem={element.tag}")
+            if not ez_regex_re.match(case_val):
                 return None
-        else:
-            # Not a ez selector, so assume it's a case var. grab it
-            val = case.get_value(ak)
 
-        if val is None or val_re.match(val) is None:
-            # The value in the node attrib does not match the case
-            print (f"  FAIL:  regex matched case val, but output {val} does not match selector {av}, for elem={element.tag}")
-            return None
-
-        #  print (f"  MATCH! ez_regex={ez_regex}, case_val={case_val}, val_re={val_re}")
-        #  why = "match"
-
-    #  print (f"  text=<<{element.text if len(element)==0 else 'NON-LEAF'}>>, attribs={element.attrib.items()} good, b/c {why}")
     # If we got here, the element itself has either no ez selectors, or all ez selectors on it are active
     # Now we can proceed to parse the children (if any)
     name_2_children = {}
@@ -409,8 +366,6 @@ def evaluate_case_selectors(element, case, ez_selectors):
     for child in element:
         resolved = evaluate_case_selectors(child,case,ez_selectors)
         if resolved is None:
-            if element.tag=="spa":
-                print (f"  removing tag={child.tag}, atts={child.attrib}")
             # This child has selectors, and at least one is NOT active.
             # We will remove it at the end (to avoid invalidating iterators)
             children_to_remove.append(child)
@@ -421,7 +376,7 @@ def evaluate_case_selectors(element, case, ez_selectors):
     return element
 
 ###############################################################################
-def evaluate_atm_selectors(xml_root, elem):
+def evaluate_atm_selectors(xml_root, element):
 ###############################################################################
 
     # First, check if this element has selectors. If so, evaluate them, and decide if this node is to be kept
@@ -472,7 +427,7 @@ def evaluate_atm_selectors(xml_root, elem):
 
     # Ok, if we got here, the element either has no atm selectors, or they all are active. Let's proceed to check the children
     children_to_remove = []
-    for child in elem:
+    for child in element:
         resolved = evaluate_atm_selectors(xml_root,child)
         if resolved is None:
             # This child has selectors, and at least one is NOT active.
@@ -480,120 +435,13 @@ def evaluate_atm_selectors(xml_root, elem):
             children_to_remove.append(child)
 
     for child in children_to_remove:
-        elem.remove(child)
+        element.remove(child)
 
-    return elem
+    return element
 
 ###############################################################################
-def resolve_duplicate_nodes(xml_root,ez_selectors):
+def resolve_duplicate_nodes(xml_root, element):
 ###############################################################################
-
-    # First, group all children by name
-    name_2_children = {}
-    for c in xml_root:
-        if c.tag not in name_2_children.keys():
-            name_2_children[c.tag] = [c]
-        else:
-            name_2_children[c.tag].append(c)
-
-    # Remove selectors from attrib, if any
-    delete_atts = list(ez_selectors.keys()) + ['exists', 'proc_active', 'matches', 'contains', 'atm_param']
-    for att in delete_atts:
-        if att in xml_root.attrib.keys():
-            del xml_root.attrib[att]
-
-    # Then, resolve duplicates one name at a time
-    remove_these = []
-    for name,children in name_2_children.items():
-        if len(children)==1:
-            # No duplicates here call on the child, and be done
-            resolve_duplicate_nodes(children[0],ez_selectors)
-            continue
-
-
-        #  print(f"resolving dups inside root={xml_root.tag}")
-        #  if name=="spa_remap_file":
-        #      c_atts = []
-        #      for c in children:
-        #          s = []
-        #          for n,v in c.attrib.items():
-        #              s.append(f"{n}={v}")
-        #          c_atts.append(",".join(s))
-        #      print(f"  node name={name}, children_atts={c_atts}")
-        # Check the children with same name are either all leaves or all non-leaves
-        is_leaf = [len(i)==0 for i in children]
-        expect (len(set(is_leaf))==1,
-                f"Multiple matches for node '{name}', but of different kind: leaf and non-leaf")
-
-        leaf_type = ''
-        if is_leaf[0]:
-            # These are leaves, so we MUST have the type
-            types = [c.attrib['type'] if 'type' in c.attrib.keys() else 'unset' for c in children]
-            not_unset = [t for t in types if t!='unset']
-            expect (len(set(not_unset))<=1,
-                    f"Incongurent 'type' attribute for matches for node '{name}': {not_unset}")
-            leaf_type = not_unset[0] if len(not_unset)>0 else ''
-
-        # Determine the list of nodes that we need to merge (in case we append)
-        first = children[0]
-        merge = [children[0]]
-        for c in children[1:]:
-            append = c.attrib['append'] if 'append' in c.attrib.keys() else 'no'
-            if append=='base':
-                merge = [first, c]
-            elif append=='last':
-                merge.append(c)
-            else:
-                #  print (f"   {c.text} replaces {first.text}")
-                merge = [c]
-
-        # The children not selected will be removed
-        for c in children:
-            if c not in merge:
-                #  print (f"      prune {c.text}")
-                remove_these.append(c)
-
-        if len(merge)==1:
-            # We're keeping just one match, nothing to do
-            #  print (f"  final leaf content (no append, just replace): {merge[0].text}")
-            continue
-
-        if is_leaf:
-            # Leaf nodes MUST have array type
-            expect (leaf_type.startswith('array'),
-                    "The 'append' metadata attribute for leaf nodes requires array type\n"
-                    f" param name: {name}\n"
-                    f" param type: {leaf_type}")
-
-            first = merge[0]
-            for n in merge[1:]:
-                if first.text is None:
-                    first.text = n.text
-                elif n.text is not None:
-                    first.text += "," + n.text
-                remove_these.append(n)
-
-            #  print (f"  final leaf content: {first.text}")
-
-        else:
-            # Add all subnodes to the first
-            first = merge[0]
-            for n in merge[1:]:
-                first.extend(n)
-                remove_these(n)
-
-            # Resolve duplicates first
-            #  print(f"recursion, for first={first.tag}")
-            first = resolve_duplicate_nodes(first,ez_selectors)
-
-    for n in remove_these:
-        #  print (f" removing {n.tag} from {xml_root.tag}")
-        xml_root.remove(n)
-
-    #  print (f" leftover in {xml_root.tag}:")
-    #  print_xml(xml_root,"")
-    #  print (f"************************")
-    return xml_root
 
 ###############################################################################
 def expand_cime_vars(element, case):
@@ -616,7 +464,6 @@ def write_pretty_xml(filepath, xml):
 ###############################################################################
     with open(filepath, "w") as fd:
         # dom has better pretty printing than ET in older python versions < 3.9
-        #  print_xml(xml,"")
         dom = md.parseString(ET.tostring(xml, encoding="unicode"))
         pretty_xml = dom.toprettyxml(indent="  ")
         pretty_xml = os.linesep.join([s for s in pretty_xml.splitlines()
@@ -766,44 +613,32 @@ def _create_raw_xml_file_impl(case, xml, filepath=None):
     #    processed xml file.
     #    Note: get_valid_case_selectors also removes the section
     get_child(xml,"generated_files",remove=True)
-    selectors = get_valid_case_selectors(xml)
+    case_selectors = get_valid_case_selectors(xml)
 
     try:
-        # 0. Resolve all inheritances, so all non-leaf nodes have all childrens
-        resolve_all_inheritances(xml)
-        print("after inheritances, xml")
-        print_xml(xml,"  ")
-
         # 1. Apply all changes in the SCREAM_ATMCHANGE_BUFFER
         apply_changes_from_buffer (case,xml)
-        print("after atmchanges, xml")
-        print_xml(xml,"  ")
 
-        # 2. Evaluate all selectors
-        #  - First, case-based selectors (depend on XML settings)
-        #  - Second, atm-based selectors (depend on ATM settings)
-        #  - Third, reconcile multiple matches (or error out)
+        # 1. Evaluate all selectors
+
+        # 1.1 Case-based selectors
         xml = evaluate_case_selectors(xml,case,selectors)
-        print("after EZ, xml")
-        print_xml(xml,"  ")
-        #  print(f"after case sel, xml={xml}")
-        xml = evaluate_atm_selectors(xml,xml)
-        print("after ATM sel, xml")
-        print_xml(xml,"  ")
-        #  print(f"after atm sel, xml={xml}")
-        xml = resolve_duplicate_nodes(xml,selectors)
-        #  print(f"after dup res, xml={xml}")
+        # 1.2 Atm-based selectors
+        xml = evaluate_atm_selectors(xml,case)
+        # 1.3 We're done evaluating selectors, so if we have 2+ matches,
+        #     we either are appending, or it is an error
+        xml = resolve_duplicate_nodes(xml)
 
         # 3. Grab the atmosphere_processes macro list, with all the defaults
-        #  print("**********BEFORE get defaults ******************")
         atm_procs_defaults = get_child(xml,"atmosphere_processes_defaults",remove=True)
 
-        print("after resolve, AP def")
-        print_xml(atm_procs_defaults,"  ")
+        # 4. Resolve all inheritances for atm procs
+        resolve_all_inheritances(atm_procs_defaults)
+
+        
+
         # 4. Expand any CIME var that appears inside XML nodes text
         expand_cime_vars(xml,case)
-        print("after cime vars, XML")
-        print_xml(xml,"  ")
 
         # 6. Get atm procs list
         atm_procs_list = get_child(atm_procs_defaults,"atm_procs_list",remove=True)

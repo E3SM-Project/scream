@@ -2,7 +2,7 @@
 Retrieve nodes from EAMxx XML config file.
 """
 
-import sys, os, re
+import sys, os, re, io
 
 # Used for doctests
 import xml.etree.ElementTree as ET # pylint: disable=unused-import
@@ -37,6 +37,15 @@ def apply_non_atm_procs_list_changes_from_buffer(case, xml):
         for chg in atmchgs:
             if "atm_procs_list" not in chg:
                 atm_config_chg_impl(xml, chg)
+###############################################################################
+def apply_changes_from_buffer(case, xml):
+###############################################################################
+    atmchg_buffer = case.get_value(ATMCHANGE_BUFF_XML_NAME)
+    if atmchg_buffer:
+        atmchgs = unbuffer_changes(case)
+
+        for chg in atmchgs:
+            atm_config_chg_impl(xml, chg)
 
 ###############################################################################
 def buffer_changes(changes):
@@ -110,8 +119,6 @@ def get_xml_nodes(xml_root, name):
     tokens = name.split("::")
     expect (tokens[-1] != '', "Input query string ends with '::'. It should end with an actual node name")
     if 'ANY' in tokens:
-        multiple_hits_ok = True
-
         # Check there's only ONE 'ANY' token
         expect(tokens.count('ANY') == 1, "Invalid xml node name format, multiple 'ANY' tokens found.")
 
@@ -133,8 +140,6 @@ def get_xml_nodes(xml_root, name):
 
         # Use new_root to find all matches for whatever comes after 'ANY::'
         name = '*' if not after_any else '::'.join(after_any)
-    else:
-        multiple_hits_ok = False
 
     if name.startswith("::"):
         prefix = "./"  # search immediate children only
@@ -142,25 +147,11 @@ def get_xml_nodes(xml_root, name):
     else:
         prefix = ".//"  # search entire tree
 
-
-    # Handle case without ANY
     try:
         xpath_str = prefix + name.replace("::", "/")
         result = xml_root.findall(xpath_str)
     except SyntaxError as e:
         expect(False, f"Invalid syntax '{name}' -> {e}")
-
-    # Note: don't check that len(result)>0, since user may be ok with 0 matches
-    if not multiple_hits_ok and len(result)>1:
-        parent_map = create_parent_map(xml_root)
-        error_str = f"{name} is ambiguous. Use ANY in the node path to allow multiple matches. Matches:\n"
-        for node in result:
-            parents = get_parents(node, parent_map)
-            name = "::".join(e.tag for e in parents)
-            name = node.tag if name=="" else name + "::" + node.tag
-            error_str += "  " + name + "\n"
-
-        expect(False, error_str)
 
     return result
 
@@ -335,7 +326,7 @@ def parse_change(change):
     return node_name,new_value,append_this
 
 ###############################################################################
-def atm_config_chg_impl(xml_root, change):
+def atm_config_chg_impl(xml_root, change, multiple_matches_ok=False):
 ###############################################################################
     """
     >>> xml = '''
@@ -444,6 +435,17 @@ def atm_config_chg_impl(xml_root, change):
     matches = get_xml_nodes(xml_root, node_name)
 
     expect(len(matches) > 0, f"{node_name} did not match any items")
+
+    if len(matches)>1 and not multiple_matches_ok and 'ANY' not in change:
+        parent_map = create_parent_map(xml_root)
+        error_str = f"{node_name} is ambiguous. Use ANY in the node path to allow multiple matches. Matches:\n"
+        for node in matches:
+            parents = get_parents(node, parent_map)
+            name = "::".join(e.tag for e in parents)
+            name = node.tag if name=="" else name + "::" + node.tag
+            error_str += "  " + name + "\n"
+
+        raise RuntimeError(error_str)
 
     any_change = False
     for node in matches:
@@ -601,6 +603,16 @@ def print_var(xml_root,parent_map,var,full,dtype,value,valid_values,print_style=
     # Get matches
     matches = get_xml_nodes(xml_root,var)
 
+    if len(matches)>1 and 'ANY' not in var:
+        error_str = f"{var} is ambiguous. Use ANY in the node path to allow multiple matches. Matches:\n"
+        for node in matches:
+            parents = get_parents(node, parent_map)
+            name = "::".join(e.tag for e in parents)
+            name = node.tag if name=="" else name + "::" + node.tag
+            error_str += "  " + name + "\n"
+
+        raise RuntimeError(error_str)
+
     # If ANY is in the var name, we may hit the case where one of the matches
     # is a parent of another match. In this case, we want to get rid of 
     unique_matches = []
@@ -616,9 +628,11 @@ def print_var(xml_root,parent_map,var,full,dtype,value,valid_values,print_style=
     for node in unique_matches:
         print_var_impl(node,parent_map,full,dtype,value,valid_values,print_style,indent)
 
+    return len(unique_matches)>0
+
 ###############################################################################
 def atm_query_impl(xml_root,variables,listall=False,full=False,value=False,
-                   dtype=False, valid_values=False, grep=False,parent_map=None):
+                   dtype=False, valid_values=False, grep=False,print_to_screen=True,parent_map=None):
 ###############################################################################
     """
     >>> xml = '''
@@ -646,6 +660,11 @@ def atm_query_impl(xml_root,variables,listall=False,full=False,value=False,
         sub::prop1: two
     """
 
+    output = io.StringIO()
+    if not print_to_screen:
+        sys.stdout = output
+
+    success = True
     if not parent_map:
         parent_map = create_parent_map(xml_root)
     if listall:
@@ -663,7 +682,7 @@ def atm_query_impl(xml_root,variables,listall=False,full=False,value=False,
             else:
                 for elem in xml_root:
                     if len(elem)>0:
-                        atm_query_impl(elem,variables,listall,full,value,dtype,valid_values,grep,parent_map)
+                        atm_query_impl(elem,variables,listall,full,value,dtype,valid_values,grep,print_to_screen,parent_map)
                     else:
                         if var_re.search(elem.tag):
                             nodes = get_xml_nodes(xml_root, "::"+elem.tag)
@@ -673,6 +692,10 @@ def atm_query_impl(xml_root,variables,listall=False,full=False,value=False,
     else:
         for var in variables:
             pmap = {} if var=='ANY' else parent_map
-            print_var(xml_root,pmap,var,full,dtype,value,valid_values,"parent-scope","    ")
+            success &= print_var(xml_root,pmap,var,full,dtype,value,valid_values,"parent-scope","    ")
 
-    return True
+    # At the call site, 
+    if print_to_screen:
+        return "SUCCESS" if success else "FAIL"
+    else:
+        return output.getvalue()
