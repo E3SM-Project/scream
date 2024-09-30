@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.34">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.39">
     
     
       
@@ -24,7 +24,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.35f28582.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.8c3ca2c6.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -1223,7 +1223,7 @@ scoped name, which allows <code>atmchange</code> to uniquely identify the XML no
 <div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>homme::number_of_subcycles
 <span class="w">    </span>namelist_defaults::atmosphere_processes::homme::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
 $<span class="w"> </span>./atmchange<span class="w"> </span><span class="nv">number_of_subcycles</span><span class="o">=</span><span class="m">10</span>
-ERROR:<span class="w"> </span>number_of_subcycles<span class="w"> </span>is<span class="w"> </span>ambiguous<span class="w"> </span><span class="o">(</span>use<span class="w"> </span>--all<span class="w"> </span>to<span class="w"> </span>change<span class="w"> </span>all<span class="w"> </span>matches<span class="o">)</span>,<span class="w"> </span>matches:
+ERROR:<span class="w"> </span>internal_diagnostics_level<span class="w"> </span>is<span class="w"> </span>ambiguous.<span class="w"> </span>Use<span class="w"> </span>ANY<span class="w"> </span><span class="k">in</span><span class="w"> </span>the<span class="w"> </span>node<span class="w"> </span>path<span class="w"> </span>to<span class="w"> </span>allow<span class="w"> </span>multiple<span class="w"> </span>matches.<span class="w"> </span>Matches:
 <span class="w">  </span>namelist_defaults::atmosphere_processes::number_of_subcycles
 <span class="w">  </span>namelist_defaults::atmosphere_processes::sc_import::number_of_subcycles
 <span class="w">  </span>namelist_defaults::atmosphere_processes::homme::number_of_subcycles
@@ -1232,6 +1232,7 @@ ERROR:<span class="w"> </span>number_of_subcycles<span class="w"> </span>is<span
 <span class="w">  </span>namelist_defaults::atmosphere_processes::physics::mac_aero_mic::tms::number_of_subcycles
 <span class="w">  </span>namelist_defaults::atmosphere_processes::physics::mac_aero_mic::shoc::number_of_subcycles
 <span class="w">  </span>namelist_defaults::atmosphere_processes::physics::mac_aero_mic::cldFraction::number_of_subcycles
+<span class="w">  </span>namelist_defaults::atmosphere_processes::physics::mac_aero_mic::spa::internal_diagnostics_level
 <span class="w">  </span>namelist_defaults::atmosphere_processes::physics::mac_aero_mic::p3::number_of_subcycles
 <span class="w">  </span>namelist_defaults::atmosphere_processes::physics::rrtmgp::number_of_subcycles
 <span class="w">  </span>namelist_defaults::atmosphere_processes::sc_export::number_of_subcycles
@@ -1241,8 +1242,8 @@ $<span class="w"> </span>./atmquery<span class="w"> </span>homme::number_of_subc
 <span class="w">    </span>namelist_defaults::atmosphere_processes::homme::number_of_subcycles:<span class="w"> </span><span class="m">10</span>
 </code></pre></div>
 <p>In some cases, the user may be interested in changing <em>all</em> nodes with a given name. In that case,
-the <code>--all</code> flag can be used:</p>
-<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>--grep<span class="w"> </span>number_of_subcycles
+you can use 'ANY' as a node name:</p>
+<p><div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>--grep<span class="w"> </span>number_of_subcycles
 <span class="w">    </span>atmosphere_processes::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
 <span class="w">    </span>sc_import::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
 <span class="w">    </span>homme::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
@@ -1255,7 +1256,7 @@ the <code>--all</code> flag can be used:</p>
 <span class="w">    </span>p3::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
 <span class="w">    </span>rrtmgp::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
 <span class="w">    </span>sc_export::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
-$<span class="w"> </span>./atmchange<span class="w"> </span>--all<span class="w"> </span><span class="nv">number_of_subcycles</span><span class="o">=</span><span class="m">3</span>
+$<span class="w"> </span>./atmchange<span class="w"> </span>ANY::number_of_subcycles<span class="o">=</span><span class="m">3</span>
 Regenerating<span class="w"> </span>/path/to/namelist_scream.xml.<span class="w"> </span>Manual<span class="w"> </span>edits<span class="w"> </span>will<span class="w"> </span>be<span class="w"> </span>lost.
 $<span class="w"> </span>./atmquery<span class="w"> </span>--grep<span class="w"> </span>number_of_subcycles
 <span class="w">    </span>atmosphere_processes::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
@@ -1271,6 +1272,23 @@ $<span class="w"> </span>./atmquery<span class="w"> </span>--grep<span class="w"
 <span class="w">    </span>rrtmgp::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
 <span class="w">    </span>sc_export::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
 </code></pre></div>
+In addition, "ANY" can be used in a "scoped" string, to limit the set of matches:
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmchange<span class="w"> </span>mac_aero_mic::ANY::number_of_subcycles<span class="o">=</span><span class="m">1</span>
+Regenerating<span class="w"> </span>/path/to/namelist_scream.xml.<span class="w"> </span>Manual<span class="w"> </span>edits<span class="w"> </span>will<span class="w"> </span>be<span class="w"> </span>lost.
+$<span class="w"> </span>./atmquery<span class="w"> </span>--grep<span class="w"> </span>number_of_subcycles
+<span class="w">    </span>atmosphere_processes::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>sc_import::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>homme::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>physics::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>mac_aero_mic::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>tms::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>shoc::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>cldFraction::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>spa::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>p3::number_of_subcycles:<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>rrtmgp::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>sc_export::number_of_subcycles:<span class="w"> </span><span class="m">3</span>
+</code></pre></div></p>
 <p>Since the XML file stores constraints on the parameter value (like its type or valid values), attempting to use the
 wrong type will cause an error:</p>
 <div class="highlight"><pre><span></span><code>$<span class="w"> </span>./atmquery<span class="w"> </span>--type<span class="w"> </span>se_ne
@@ -1386,10 +1404,10 @@ the generated <code>namelist_defaults.xml</code> (and <code>scream_input.yaml</c
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.indices", "navigation.instant", "navigation.top"], "search": "../../assets/javascripts/workers/search.07f07601.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.indices", "navigation.instant", "navigation.top"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.56dfad97.min.js"></script>
+      <script src="../../assets/javascripts/bundle.525ec568.min.js"></script>
       
         <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
       
