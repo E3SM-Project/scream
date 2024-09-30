@@ -234,6 +234,55 @@ class CSS(TestProperty):
         )
 
 ###############################################################################
+class CSS(TestProperty):
+###############################################################################
+
+    def __init__(self, _):
+        TestProperty.__init__(
+            self,
+            "compute_sanitizer_synccheck",
+            "debug with compute sanitizer synccheck",
+            [("CMAKE_BUILD_TYPE", "Debug"),
+             ("EKAT_ENABLE_COMPUTE_SANITIZER", "True"),
+             ("EKAT_COMPUTE_SANITIZER_OPTIONS", "'--tool=synccheck'")],
+            uses_baselines=False,
+            on_by_default=False,
+            default_test_len="short"
+        )
+
+###############################################################################
+class ASAN(TestProperty):
+###############################################################################
+
+    def __init__(self, _):
+        TestProperty.__init__(
+            self,
+            "address_sanitizer",
+            "debug with address sanitizer",
+            [("CMAKE_BUILD_TYPE", "Debug"),
+             ("CMAKE_CXX_FLAGS", "-fsanitize=address")],
+            uses_baselines=False,
+            on_by_default=False,
+            default_test_len="short"
+        )
+
+###############################################################################
+class ASAN(TestProperty):
+###############################################################################
+
+    def __init__(self, _):
+        TestProperty.__init__(
+            self,
+            "address_sanitizer",
+            "debug with address sanitizer",
+            [("CMAKE_BUILD_TYPE", "Debug"),
+             ("CMAKE_CXX_FLAGS", "-fsanitize=address")],
+            uses_baselines=False,
+            on_by_default=False,
+            default_test_len="short"
+        )
+
+###############################################################################
 def create_tests(user_req_tests, tas):
 ###############################################################################
     testclasses = TestProperty.__subclasses__()
