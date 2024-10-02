@@ -15,15 +15,13 @@ PerturbTemp::PerturbTemp(const ekat::Comm &comm,
 void PerturbTemp::set_grids(
     const std::shared_ptr<const GridsManager> grids_manager) {
   using namespace ekat::units;
-  // The units of mixing ratio Q are technically non-dimensional.
-  // Nevertheless, for output reasons, we like to see 'kg/kg'.
+  
   auto q_unit = kg / kg;
   q_unit.set_string("kg/kg");
 
   auto n_unit = 1 / kg;  // units of number mixing ratios of tracers
   n_unit.set_string("#/kg");
 
-  auto m3 = m * m * m;  // meter cubed
 
   grid_ = grids_manager->get_grid("Physics");
 
@@ -59,9 +57,6 @@ void PerturbTemp::set_grids(
                      "tracers");  // cloud liquid wet number mixing ratio
   add_field<Required>("ni", scalar3d_layout_mid, n_unit, grid_name,
                       "tracers");  // ice number mixing ratio
-  add_field<Required>(
-      "omega", scalar3d_layout_mid, Pa / s,
-      grid_name);  // Vertical pressure velocity [Pa/s] at midpoints
 }
 
 // =========================================================================================
