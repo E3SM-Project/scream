@@ -104,6 +104,8 @@ void Functions<S,D>
   constexpr Scalar latvap       = C::LatVap;
   constexpr Scalar latice       = C::LatIce;
 
+  const bool p3_do_ice = p3constants.p3_do_ice;
+
   team.team_barrier();
   hydrometeorsPresent = false;
   team.team_barrier();
@@ -267,56 +269,65 @@ void Functions<S,D>
       // ......................................................................
 
       // collection of droplets
+      if (p3_do_ice){
       ice_cldliq_collection(
         rho(k), T_atm(k), rhofaci(k), table_val_qc2qi_collect, qi_incld(k), qc_incld(k), ni_incld(k), nc_incld(k),
         qc2qi_collect_tend, nc_collect_tend, qc2qr_ice_shed_tend, ncshdc, p3constants, not_skip_micro);
-
+       }
       // collection of rain
+      if (p3_do_ice){
       ice_rain_collection(
         rho(k), T_atm(k), rhofaci(k), logn0r(k), table_val_nr_collect, table_val_qr2qi_collect, qi_incld(k), ni_incld(k), qr_incld(k),
         qr2qi_collect_tend, nr_collect_tend, p3constants, not_skip_micro);
-
+       }
       // collection between ice categories
 
       // PMC nCat deleted lots of stuff here.
 
       // self-collection of ice
+      if (p3_do_ice){
       ice_self_collection(
         rho(k), rhofaci(k), table_val_ni_self_collect, eii, qm_incld(k), qi_incld(k), ni_incld(k),
         ni_selfcollect_tend, not_skip_micro);
-
+       }
       // melting
+      if (p3_do_ice){
       ice_melting(
         rho(k), T_atm(k), pres(k), rhofaci(k), table_val_qi2qr_melting, table_val_qi2qr_vent_melt, dv, sc, mu, kap, qv(k), qi_incld(k), ni_incld(k),
         qi2qr_melt_tend, ni2nr_melt_tend, not_skip_micro);
-
+       }
       // calculate wet growth
+      if (p3_do_ice){
       ice_cldliq_wet_growth(
         rho(k), T_atm(k), pres(k), rhofaci(k), table_val_qi2qr_melting, table_val_qi2qr_vent_melt,
         dv, kap, mu, sc, qv(k), qc_incld(k), qi_incld(k), ni_incld(k), qr_incld(k),
         wetgrowth, qr2qi_collect_tend, qc2qi_collect_tend, qc_growth_rate, nr_ice_shed_tend, qc2qr_ice_shed_tend, not_skip_micro);
-
+       }
       // calculate total inverse ice relaxation timescale combined for all ice categories
       // note 'f1pr' values are normalized, so we need to multiply by N
+      if (p3_do_ice){
       ice_relaxation_timescale(
         rho(k), T_atm(k), rhofaci(k), table_val_qi2qr_melting, table_val_qi2qr_vent_melt, dv, mu, sc, qi_incld(k), ni_incld(k),
         epsi, epsi_tot, not_skip_micro);
-
+      }
       // calculate rime density
+      if (p3_do_ice){
       calc_rime_density(
         T_atm(k), rhofaci(k), table_val_qi_fallspd, acn(k), lamc(k), mu_c(k), qc_incld(k), qc2qi_collect_tend,
         vtrmi1, rho_qm_cloud, not_skip_micro);
-
+       }
       // contact and immersion freezing droplets
+      if (p3_do_ice){
       cldliq_immersion_freezing(
         T_atm(k), lamc(k), mu_c(k), cdist1(k), qc_incld(k), inv_qc_relvar(k),
         qc2qi_hetero_freeze_tend, nc2ni_immers_freeze_tend, p3constants, not_skip_micro);
-
+       }
       // for future: get rid of log statements below for rain freezing
+      if (p3_do_ice){
       rain_immersion_freezing(
         T_atm(k), lamr(k), mu_r(k), cdistr(k), qr_incld(k),
         qr2qi_immers_freeze_tend, nr2ni_immers_freeze_tend, p3constants, not_skip_micro);
-
+       }
       //  rime splintering (Hallet-Mossop 1974)
       // PMC comment: Morrison and Milbrandt 2015 part 1 and 2016 part 3 both say
       // that Hallet-Mossop should be neglected if 1 category to compensate for
@@ -335,17 +346,19 @@ void Functions<S,D>
 		     cld_frac_l(k),cld_frac_r(k),qv(k),qv_prev(k),qv_sat_l(k),qv_sat_i(k),
 		     ab,abi,epsr,epsi_tot,T_atm(k),t_prev(k),dqsdt,dt,
 		     qr2qv_evap_tend,nr_evap_tend, not_skip_micro);
-
+      if (p3_do_ice){
       ice_deposition_sublimation(
 	qi_incld(k), ni_incld(k), T_atm(k), qv_sat_l(k), qv_sat_i(k), epsi, abi, qv(k), inv_dt,
         qv2qi_vapdep_tend, qi2qv_sublim_tend, ni_sublim_tend, qc2qi_berg_tend, not_skip_micro);
+     }
     }
 
     // deposition/condensation-freezing nucleation
+    if (p3_do_ice){
     ice_nucleation(
       T_atm(k), inv_rho(k), ni(k), ni_activated(k), qv_supersat_i(k), inv_dt, predictNc, do_prescribed_CCN,
       qv2qi_nucleat_tend, ni_nucleat_tend, p3constants, not_skip_all);
-
+     }
     // cloud water autoconversion
     // NOTE: cloud_water_autoconversion must be called before droplet_self_collection
     cloud_water_autoconversion(

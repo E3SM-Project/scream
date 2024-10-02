@@ -103,6 +103,8 @@ Int Functions<S,D>
   // we do not want to measure init stuff
   auto start = std::chrono::steady_clock::now();
 
+  const bool p3_do_ice = p3constants.p3_do_ice;
+
   // p3_main loop
   Kokkos::parallel_for(
     "p3 main loop",
@@ -288,10 +290,11 @@ Int Functions<S,D>
       lookup_tables.ice_table_vals, diagnostic_outputs.precip_ice_surf(i), p3constants);
 
     // homogeneous freezing of cloud and rain
+    if (p3_do_ice) {
     homogeneous_freezing(
       T_atm, oinv_exner, team, nk, ktop, kbot, kdir, oqc, onc, oqr, onr, oqi,
       oni, oqm, obm, oth);
-
+     }
     //
     // final checks to ensure consistency of mass/number
     // and compute diagnostic fields for output
