@@ -160,11 +160,11 @@ struct P3_Constants
 
     nname = "p3_accretion_qc_exp";
     if(params.isParameter(nname))
-       p3_autoconversion_qc_exp = params.get<double>(nname);
+       p3_accretion_qc_exp = params.get<double>(nname);
 
     nname = "p3_accretion_qr_exp";
     if(params.isParameter(nname))
-       p3_autoconversion_nc_exp = params.get<double>(nname);
+       p3_accretion_qr_exp = params.get<double>(nname);
  
     nname = "p3_mu_r_constant";
     if(params.isParameter(nname))
