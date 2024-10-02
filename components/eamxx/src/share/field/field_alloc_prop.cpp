@@ -51,12 +51,10 @@ subview (const int idim, const int k, const bool dynamic) const {
 
   // Output is contioguous if either
   //  - this->m_contiguous=true AND idim==0
-  //  - m_layout.dim(i)==1 for all i<idim
-  //  - m_layout.rank()==1 (we end up with a rank-0 subview)
+  //  - m_layout.rank()==0 (we end up with a rank-0 subview)
   auto is_one = [](int i) { return i==1; };
   props.m_contiguous = (m_contiguous and idim==0)
-                       || m_layout.rank()==1
-                       || std::all_of(m_layout.dims().begin(),m_layout.dims().begin()+idim,is_one);
+                       || m_layout.rank()==0;
 
   props.m_subview_info = SubviewInfo(idim,k,m_layout.dim(idim),dynamic);
 

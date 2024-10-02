@@ -215,9 +215,8 @@ protected:
   // is used inside other calculation and/or remap.
   float m_fill_value = constants::DefaultFillValue<float>().value;
 
-  // Local views of each field to be used for "averaging" output and writing to file.
-  std::map<std::string,view_1d_host>    m_host_views_1d;
-  std::map<std::string,view_1d_dev>     m_dev_views_1d;
+  // Local copy of each field to be used for "averaging" output and writing to file.
+  std::map<std::string,Field> m_tally_fields;
 
   bool m_add_time_dim;
   bool m_track_avg_cnt = false;

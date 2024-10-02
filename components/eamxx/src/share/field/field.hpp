@@ -210,12 +210,16 @@ public:
   // NOTE: the type ST  must be such that no narrowing happens when
   //       casting the values to whatever the data type of this field is.
   //       E.g., if data_type()=IntType, you can't pass double's.
-  template<HostOrDevice HD = Device, typename ST = void>
+  template<CombineMode CM = ScaleUpdate, HostOrDevice HD = Device, typename ST = void>
   void update (const Field& x, const ST alpha, const ST beta);
+  template<CombineMode CM = ScaleUpdate, HostOrDevice HD = Device, typename ST = void>
+  void update (const Field& x, const ST alpha, const ST beta, const ST fill_val);
 
   // Special case of update with alpha=0
   template<HostOrDevice HD = Device, typename ST = void>
   void scale (const ST beta);
+  template<HostOrDevice HD = Device, typename ST = void>
+  void scale (const ST beta, const ST fill_val);
 
   // Scale a field y as y=y*x where x is also a field
   template<HostOrDevice HD = Device>
@@ -289,7 +293,7 @@ protected:
   void deep_copy_impl (const Field& src);
 
   template<CombineMode CM, HostOrDevice HD, typename ST>
-  void update_impl (const Field& x, const ST alpha, const ST beta, const ST fill_val);
+  void update_impl (const Field& x, const ST alpha, const ST beta, const ST* fill_val = nullptr);
 
 protected:
 

@@ -94,5 +94,70 @@ util::TimeStamp read_timestamp (const std::string& filename,
                                 const std::string& ts_name,
                                 const bool read_nsteps = false);
 
+
+template<OutputAvgType AvgT, bool UseFill, typename SrcView, typename DstView, typename ExtView>
+void update_field_impl (const SrcView& src, const DstView& dst, const ExtView& ext, const int sz)
+{
+  using combine = Combine<AvgT,UseFill>;
+  Kokkos::RangePolicy<> policy(0,sz);
+  constexpr auto rank = SrcView::rank;
+  auto update = KOKKOS_LAMBDA (const int idx) {
+    if constexpr (rank==1) {
+      combine::apply(src(idx),dst(idx));
+    } else if constexpr (rank==2) {
+      int i = idx / ext(1);
+      int j = idx % ext(1);
+      combine::apply(src(i,j),dst(i,j));
+    } else if constexpr (rank==3) {
+      int i = (idx / ext(2)) / ext(1);
+      int j = (idx / ext(2)) % ext(1);
+      int k =  idx % ext(2);
+      combine::apply(src(i,j,k),dst(i,j,k));
+    } else if constexpr (rank==4) {
+      int i = ((idx / ext(3)) / ext(2)) / ext(1);
+      int j = ((idx / ext(3)) / ext(2)) % ext(1);
+      int k =  (idx / ext(3)) % ext(2);
+      int l =   idx % ext(3);
+      combine::apply(src(i,j,k,l),dst(i,j,k,l));
+    } else if constexpr (rank==5) {
+      int i = (((idx / ext(4)) / ext(3)) / ext(2)) / ext(1);
+      int j = (((idx / ext(4)) / ext(3)) / ext(2)) % ext(1);
+      int k =  ((idx / ext(4)) / ext(3)) % ext(2);
+      int l =   (idx / ext(4)) % ext(3);
+      int m =    idx % ext(4);
+      combine::apply(src(i,j,k,l,m),dst(i,j,k,l,m));
+    } else if constexpr (rank==6) {
+      int i = ((((idx / ext(5)) / ext(4)) / ext(3)) / ext(2)) / ext(1);
+      int j = ((((idx / ext(5)) / ext(4)) / ext(3)) / ext(2)) % ext(1);
+      int k =  (((idx / ext(5)) / ext(4)) / ext(3)) % ext(2);
+      int l =   ((idx / ext(5)) / ext(4)) % ext(3);
+      int m =    (idx / ext(5)) % ext(4);
+      int n =     idx % ext(5);
+      combine::apply(src(i,j,k,l,m),dst(i,j,k,l,m));
+    }
+  };
+  Kokkos::parallel_for(policy,update);
+}
+
+template<int Rank, HostOrDevice HD, OutputAvgType AvgT, bool UseFill>
+void update_field (const Field& src, const Field& dst)
+{
+  using DataT = typename ekat::DataND<Real,Rank>::type;
+
+  const auto& fap = src.get_header().get_alloc_properties();
+  const auto& fl = src.get_header().get_identifier().get_layout();
+
+  if (fap.contiguous()) {
+    auto src_v = src.get_view<const DataT,HD>();
+    auto dst_v = dst.get_view<      DataT,HD>();
+    update_field_impl<AvgT, UseFill> (src_v,dst_v,fl.extents(),fl.size());
+  } else {
+    auto src_v = src.get_strided_view<const DataT,HD>();
+    auto dst_v = dst.get_strided_view<      DataT,HD>();
+    update_field_impl<AvgT, UseFill> (src_v,dst_v,fl.extents(),fl.size());
+  }
+}
+
+
 } // namespace scream
 #endif // SCREAM_IO_UTILS_HPP

@@ -570,11 +570,11 @@ update (const Field& x, const ST alpha, const ST beta, const ST fill_val)
       " - coeff data type: " + e2str(dt_st) + "\n");
 
   if (dt==DataType::IntType) {
-    return update_impl<CM,HD,int>(x,alpha,beta,&fill_val);
+    return update_impl<CM,HD,int>(x,alpha,beta,fill_val);
   } else if (dt==DataType::FloatType) {
-    return update_impl<CM,HD,float>(x,alpha,beta,&fill_val);
+    return update_impl<CM,HD,float>(x,alpha,beta,fill_val);
   } else if (dt==DataType::DoubleType) {
-    return update_impl<CM,HD,double>(x,alpha,beta,&fill_val);
+    return update_impl<CM,HD,double>(x,alpha,beta,fill_val);
   } else {
     EKAT_ERROR_MSG ("Error! Unrecognized/unsupported field data type in Field::update.\n");
   }
@@ -587,9 +587,9 @@ scale (const ST beta)
   const auto& dt = data_type();
 
   // Determine if there is a FillValue that requires extra treatment.
+  ST fill_val = constants::DefaultFillValue<ST>().value;
   if (get_header().has_extra_data("mask_value")) {
-    auto fill_val = get_header().get_extra_data<ST>("mask_value");
-    scale (beta,fill_val);
+    fill_val = get_header().get_extra_data<ST>("mask_value");
   }
 
   // If user passes, say, double beta for an int field, we should error out, warning about
@@ -603,38 +603,11 @@ scale (const ST beta)
       " - coeff data type: " + e2str(dt_st) + "\n");
 
   if (dt==DataType::IntType) {
-    return update_impl<CombineMode::Rescale,HD,int>(*this,ST(0),beta);
+    return update_impl<CombineMode::Rescale,HD,int>(*this,ST(0),beta,fill_val);
   } else if (dt==DataType::FloatType) {
-    return update_impl<CombineMode::Rescale,HD,float>(*this,ST(0),beta);
+    return update_impl<CombineMode::Rescale,HD,float>(*this,ST(0),beta,fill_val);
   } else if (dt==DataType::DoubleType) {
-    return update_impl<CombineMode::Rescale,HD,double>(*this,ST(0),beta);
-  } else {
-    EKAT_ERROR_MSG ("Error! Unrecognized/unsupported field data type in Field::scale.\n");
-  }
-}
-
-template<HostOrDevice HD, typename ST>
-void Field::
-scale (const ST beta, const ST fill_val)
-{
-  const auto& dt = data_type();
-
-  // If user passes, say, double beta for an int field, we should error out, warning about
-  // a potential narrowing rounding. The other way around, otoh, is allowed (even though
-  // there's an upper limit to the int values that a double can store, it is unlikely the user
-  // will use such large factors).
-  const auto dt_st = get_data_type<ST>();
-  EKAT_REQUIRE_MSG (not is_narrowing_conversion(dt_st,dt),
-      "Error! Coefficients alpha/beta may be narrowed when converted to x/y data type.\n"
-      " - x/y data type  : " + e2str(dt) + "\n"
-      " - coeff data type: " + e2str(dt_st) + "\n");
-
-  if (dt==DataType::IntType) {
-    return update_impl<CombineMode::Rescale,HD,int>(*this,ST(0),beta,&fill_val);
-  } else if (dt==DataType::FloatType) {
-    return update_impl<CombineMode::Rescale,HD,float>(*this,ST(0),beta,&fill_val);
-  } else if (dt==DataType::DoubleType) {
-    return update_impl<CombineMode::Rescale,HD,double>(*this,ST(0),beta,&fill_val);
+    return update_impl<CombineMode::Rescale,HD,double>(*this,ST(0),beta,fill_val);
   } else {
     EKAT_ERROR_MSG ("Error! Unrecognized/unsupported field data type in Field::scale.\n");
   }
@@ -646,34 +619,33 @@ scale (const Field& x)
 {
   const auto& dt = data_type();
   if (dt==DataType::IntType) {
+    int fill_val = constants::DefaultFillValue<int>().value;
     if (get_header().has_extra_data("mask_value")) {
-      auto fill_val = get_header().get_extra_data<int>("mask_value");
-      update_impl<CombineMode::Multiply,HD,int>(x,0,0,&fill_val);
-    } else {
-      update_impl<CombineMode::Multiply,HD,int>(x,0,0);
+      fill_val = get_header().get_extra_data<int>("mask_value");
     }
+    return update_impl<CombineMode::Multiply,HD,int>(x,0,0,fill_val);
   } else if (dt==DataType::FloatType) {
+    float fill_val = constants::DefaultFillValue<float>().value;
     if (get_header().has_extra_data("mask_value")) {
-      auto  fill_val = get_header().get_extra_data<float>("mask_value");
-      update_impl<CombineMode::Multiply,HD,float>(x,0,0,&fill_val);
-    } else {
-      update_impl<CombineMode::Multiply,HD,float>(x,0,0);
+      fill_val = get_header().get_extra_data<float>("mask_value");
     }
+    return update_impl<CombineMode::Multiply,HD,float>(x,0,0,fill_val);
   } else if (dt==DataType::DoubleType) {
+    double fill_val = constants::DefaultFillValue<double>().value;
     if (get_header().has_extra_data("mask_value")) {
-      auto fill_val = get_header().get_extra_data<double>("mask_value");
-      update_impl<CombineMode::Multiply,HD,double>(x,0,0,&fill_val);
-    } else {
-      update_impl<CombineMode::Multiply,HD,double>(x,0,0);
+      fill_val = get_header().get_extra_data<double>("mask_value");
     }
+    return update_impl<CombineMode::Multiply,HD,double>(x,0,0,fill_val);
   } else {
     EKAT_ERROR_MSG ("Error! Unrecognized/unsupported field data type in Field::scale.\n");
   }
 }
 
+
+
 template<CombineMode CM, HostOrDevice HD,typename ST>
 void Field::
-update_impl (const Field& x, const ST alpha, const ST beta, const ST* fill_val)
+update_impl (const Field& x, const ST alpha, const ST beta, const ST fill_val)
 {
   // Check x/y are allocated
   EKAT_REQUIRE_MSG (is_allocated(),
@@ -727,22 +699,13 @@ update_impl (const Field& x, const ST alpha, const ST beta, const ST* fill_val)
       {
         auto xv = x.get_view<const ST,HD>();
         auto yv =   get_view<      ST,HD>();
-        if (fill_val) {
-          auto fv = *fill_val;
-          Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const int /*idx*/) {
-            combine_and_fill<CM>(xv(),yv(),fv,alpha,beta);
-          });
-        } else {
-          Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const int /*idx*/) {
-            combine<CM>(xv(),yv(),alpha,beta);
-          });
-        }
+        Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const int /*idx*/) {
+          combine_and_fill<CM>(xv(),yv(),fill_val,alpha,beta);
+        });
       }
       break;
     case 1:
       {
-        auto fv = fill_vall!=nullptr ? *fill_val : 0;
-
         // Must handle the case where one of the two views is strided
         if (x.get_header().get_alloc_properties().contiguous() and
               get_header().get_alloc_properties().contiguous()) {

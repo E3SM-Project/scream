@@ -1,4 +1,17 @@
-#include "share/io/scorpio_output.hpp"
+#ifndef SCREAM_OUTPUT_STREAM_HPP
+#define SCREAM_OUTPUT_STREAM_HPP
+
+#include "share/io/scream_scorpio_interface.hpp"
+#include "share/io/scream_io_utils.hpp"
+#include "share/field/field_manager.hpp"
+#include "share/grid/abstract_grid.hpp"
+#include "share/grid/grids_manager.hpp"
+#include "share/util//scream_time_stamp.hpp"
+#include "share/atm_process/atmosphere_diagnostic.hpp"
+
+#include "ekat/ekat_parameter_list.hpp"
+#include "ekat/mpi/ekat_comm.hpp"
+
 #include "share/io/scorpio_input.hpp"
 #include "share/util/scream_array_utils.hpp"
 #include "share/grid/remap/coarsening_remapper.hpp"
@@ -16,79 +29,148 @@
 namespace scream
 {
 
-// This helper function updates the current output val with a new one,
-// according to the "averaging" type, and according to the number of
-// model time steps since the last output step.
-KOKKOS_INLINE_FUNCTION
-void combine (const Real& new_val, Real& curr_val, const OutputAvgType avg_type)
-{
-  switch (avg_type) {
-    case OutputAvgType::Instant:
-      curr_val = new_val;
-      break;
-    case OutputAvgType::Max:
-      curr_val = ekat::impl::max(curr_val,new_val);
-      break;
-    case OutputAvgType::Min:
-      curr_val = ekat::impl::min(curr_val,new_val);
-      break;
-    case OutputAvgType::Average:
-      curr_val += new_val;
-      break;
-    default:
-      EKAT_KERNEL_ERROR_MSG ("Unexpected value for m_avg_type. Please, contact developers.\n");
-  }
-}
-// This one covers cases where a variable might be masked.
-KOKKOS_INLINE_FUNCTION
-void combine_and_fill (const Real& new_val, Real& curr_val, const OutputAvgType avg_type)
-{
-  constexpr Real fill_v = constants::DefaultFillValue<Real>::value;
-  const bool new_fill  = new_val  == fill_v;
-  const bool curr_fill = curr_val == fill_v;
-  if (curr_fill && new_fill) {
-    // Then the value is already set to be filled and the new value doesn't change things.
-    return;
-  } else if (curr_fill) {
-    // Then the current value is filled but the new value will replace that for all cases.
-    curr_val = new_val;
-  } else {
-    switch (avg_type) {
-      case OutputAvgType::Instant:
-        curr_val = new_val;
-        break;
-      case OutputAvgType::Max:
-        curr_val = new_fill ? curr_val : ekat::impl::max(curr_val,new_val);
-        break;
-      case OutputAvgType::Min:
-        curr_val = new_fill ? curr_val : ekat::impl::min(curr_val,new_val);
-        break;
-      case OutputAvgType::Average:
-        curr_val += (new_fill ? 0.0 : new_val);
-        break;
-      default:
-        EKAT_KERNEL_ERROR_MSG ("Unexpected value for m_avg_type. Please, contact developers.\n");
-    }
-  }
-}
+class OutputStreamBase {
+public:
+  virtual ~OutputStreamBase () = default;
+};
 
-// This helper function is used to make sure that the list of fields in
-// m_fields_names is a list of unique strings, otherwise throw an error.
-void sort_and_check(std::vector<std::string>& fields)
+template<typename AvgPolicy, template class<typename> FillPolicy>
+class OutputStream : public OutputStreamBase
 {
-  std::sort(fields.begin(),fields.end());
-  const bool hasDuplicates = std::adjacent_find(fields.begin(),fields.end()) != fields.end();
-  EKAT_REQUIRE_MSG(!hasDuplicates,"ERROR!!! scorpio_output::check_for_duplicates - One of the output yaml files has duplicate field entries.  Please check");
-}
+public:
+  using avg_policy    = AvgPolicy;
+  using fill_policy   = FilLPolicy<AvgPolicy>;
+  using prec_policy   = PrecisionPolicy;
 
-AtmosphereOutput::
-AtmosphereOutput (const ekat::Comm& comm,
+  using fm_type       = FieldManager;
+  using grid_type     = AbstractGrid;
+  using gm_type       = GridsManager;
+  using remapper_type = AbstractRemapper;
+  using atm_diag_type = AtmosphereDiagnostic;
+
+  using KT = KokkosTypes<DefaultDevice>;
+  template<int N>
+  using view_Nd_dev  = typename KT::template view_ND<Real,N>;
+  template<int N>
+  using view_Nd_host = typename KT::template view_ND<Real,N>::HostMirror;
+
+  using view_1d_dev  = view_Nd_dev<1>;
+  using view_1d_host = view_Nd_host<1>;
+
+  virtual ~OutputStream () = default;
+
+  // Constructor
+  OutputStream(const ekat::Comm& comm, const ekat::ParameterList& params,
+                   const std::shared_ptr<const fm_type>& field_mgr,
+                   const std::shared_ptr<const gm_type>& grids_mgr);
+
+  // Short version for outputing a list of fields (no remapping supported)
+  OutputStream(const ekat::Comm& comm,
+                   const std::vector<Field>& fields,
+                   const std::shared_ptr<const grid_type>& grid);
+
+  // Main Functions
+  void restart (const std::string& filename);
+  void init();
+  void reset_dev_views();
+  void update_avg_cnt_view(const Field&, view_1d_dev& dev_view);
+  void setup_output_file (const std::string& filename, const scorpio::FileMode mode);
+
+  void init_timestep (const util::TimeStamp& start_of_step);
+  void run (const std::string& filename,
+            const bool output_step, const bool checkpoint_step,
+            const int nsteps_since_last_output,
+            const bool allow_invalid_fields = false);
+
+  long long res_dep_memory_footprint () const;
+
+  std::shared_ptr<const AbstractGrid> get_io_grid () const {
+    return m_io_grid;
+  }
+
+  // Option to add a logger
+  void set_logger(const std::shared_ptr<ekat::logger::LoggerBase>& atm_logger) {
+      m_atm_logger = atm_logger;
+  }
+
+protected:
+  // Internal functions
+  void set_grid (const std::shared_ptr<const AbstractGrid>& grid);
+  void set_field_manager (const std::shared_ptr<const fm_type>& field_mgr, const std::string& mode);
+  void set_field_manager (const std::shared_ptr<const fm_type>& field_mgr, const std::vector<std::string>& modes);
+
+  std::shared_ptr<const fm_type> get_field_manager (const std::string& mode) const;
+
+  void register_dimensions(const std::string& name);
+  void register_variables(const std::string& filename, const scorpio::FileMode mode);
+  void set_decompositions(const std::string& filename);
+  std::vector<scorpio::offset_t> get_var_dof_offsets (const FieldLayout& layout);
+  void register_views();
+  Field get_field(const std::string& name, const std::string& mode) const;
+  void compute_diagnostic (const std::string& name, const bool allow_invalid_fields = false);
+  void set_diagnostics();
+  std::shared_ptr<AtmosphereDiagnostic>
+  create_diagnostic (const std::string& diag_name);
+
+  // Tracking the averaging of any filled values:
+  void set_avg_cnt_tracking(const std::string& name, const FieldLayout& layout);
+
+  // --- Internal variables --- //
+  ekat::Comm                          m_comm;
+
+  // We store two shared pointers for field managers:
+  // io_field_manager stores the fields in the layout for output
+  // sim_field_manager points to the simulation field manager
+  // when remapping horizontally these two field managers may be different.
+  std::map<std::string,std::shared_ptr<const fm_type>> m_field_mgrs;
+  std::shared_ptr<const grid_type>            m_io_grid;
+  std::shared_ptr<remapper_type>              m_horiz_remapper;
+  std::shared_ptr<remapper_type>              m_vert_remapper;
+  std::shared_ptr<const gm_type>              m_grids_manager;
+
+  // How to combine multiple snapshots in the output: Instant, Max, Min, Average
+  Real              m_avg_coeff_threshold = 0.5; // % of unfilled values required to not just assign value as FillValue
+
+  // Internal maps to the output fields, how the columns are distributed, the file dimensions and the global ids.
+  std::vector<std::string>                              m_fields_names;
+  std::vector<std::string>                              m_avg_cnt_names;
+  std::map<std::string,std::string>                     m_field_to_avg_cnt_map;
+  std::map<std::string,std::string>                     m_field_to_avg_cnt_suffix;
+  std::map<std::string,FieldLayout>                     m_layouts;
+  std::map<std::string,int>                             m_dims;
+  std::map<std::string,std::shared_ptr<atm_diag_type>>  m_diagnostics;
+  std::map<std::string,std::vector<std::string>>        m_diag_depends_on_diags;
+  std::map<std::string,bool>                            m_diag_computed;
+  LongNames                                             m_longnames;
+
+  // Use float, so that if output fp_precision=float, this is a representable value.
+  // Otherwise, you would get an error from Netcdf, like
+  //   NetCDF: Numeric conversion not representable
+  // Also, by default, don't pick max float, to avoid any overflow if the value
+  // is used inside other calculation and/or remap.
+  float m_fill_value = constants::DefaultFillValue<float>().value;
+
+  // Local views of each field to be used for "averaging" output and writing to file.
+  std::map<std::string,view_1d_host>    m_host_views_1d;
+  std::map<std::string,view_1d_dev>     m_dev_views_1d;
+
+  bool m_add_time_dim;
+  bool m_track_avg_cnt = false;
+
+  // The logger to be used throughout the ATM to log message
+  std::shared_ptr<ekat::logger::LoggerBase> m_atm_logger;
+};
+
+// ============================== IMPLEMENTATION ============================= //
+
+template<typename AvgPolicy>
+OutputStream<AvgPolicy>::
+OutputStream (const ekat::Comm& comm,
                   const std::vector<Field>& fields,
                   const std::shared_ptr<const grid_type>& grid)
  : m_comm (comm)
 {
-  // This version of AtmosphereOutput is for quick output of fields
-  m_avg_type = OutputAvgType::Instant;
+  // This version of OutputStream is for quick output of fields
   m_add_time_dim = false;
 
   // Create a FieldManager with the input fields
@@ -102,7 +184,10 @@ AtmosphereOutput (const ekat::Comm& comm,
   for (auto f : fields) {
     m_fields_names.push_back(f.name());
   }
-  sort_and_check(m_fields_names);
+  std::sort(m_fields_names.begin(),m_fields_names.end());
+  EKAT_REQUIRE_MSG(std::unique((m_fields.begin(),m_fields.end()==m_fields.end(),
+          "ERROR! The list of output fields contains duplicates.\n"
+          "  - fields names: " + ekat::join(m_fields_names,",") + "\n");
 
   set_grid (grid);
   set_field_manager (fm,"io");
@@ -111,8 +196,9 @@ AtmosphereOutput (const ekat::Comm& comm,
   init ();
 }
 
-AtmosphereOutput::
-AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
+template<typename AvgPolicy>
+OutputStream<AvgPolicy>::
+OutputStream (const ekat::Comm& comm, const ekat::ParameterList& params,
                   const std::shared_ptr<const fm_type>& field_mgr,
                   const std::shared_ptr<const gm_type>& grids_mgr)
  : m_comm         (comm)
@@ -168,7 +254,10 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
     EKAT_REQUIRE_MSG (grid_found,
         "Error! Bad formatting of output yaml file. Missing 'Fields->$grid_name` sublist.\n");
   }
-  sort_and_check(m_fields_names);
+  std::sort(m_fields_names.begin(),m_fields_names.end());
+  EKAT_REQUIRE_MSG(std::unique((m_fields.begin(),m_fields.end()==m_fields.end(),
+          "ERROR! The list of output fields contains duplicates.\n"
+          "  - fields names: " + ekat::join(m_fields_names,",") + "\n");
 
   // Check if remapping and if so create the appropriate remapper
   // Note: We currently support three remappers
@@ -205,6 +294,9 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
   if (use_vertical_remap_from_file) {
     m_track_avg_cnt = true;
   }
+  if (params.isParameter("fill_value")) {
+    m_fill_value = static_cast<float>(params.get<double>("fill_value"));
+  }
   if (params.isParameter("fill_threshold")) {
     m_avg_coeff_threshold = params.get<Real>("fill_threshold");
   }
@@ -227,7 +319,7 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
     auto vert_remap_file   = params.get<std::string>("vertical_remap_file");
     auto f_lev = get_field("p_mid","sim");
     auto f_ilev = get_field("p_int","sim");
-    m_vert_remapper = std::make_shared<VerticalRemapper>(io_grid,vert_remap_file,f_lev,f_ilev,constants::DefaultFilLValue<Real>::value);
+    m_vert_remapper = std::make_shared<VerticalRemapper>(io_grid,vert_remap_file,f_lev,f_ilev,m_fill_value);
     io_grid = m_vert_remapper->get_tgt_grid();
     set_grid(io_grid);
 
@@ -329,7 +421,9 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
 }
 
 /* ---------------------------------------------------------- */
-void AtmosphereOutput::restart (const std::string& filename)
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::
+restart (const std::string& filename)
 {
   // Create an input stream on the fly, and init averaging data
   ekat::ParameterList res_params("Input Parameters");
@@ -349,7 +443,8 @@ void AtmosphereOutput::restart (const std::string& filename)
   }
 }
 
-void AtmosphereOutput::init()
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::init()
 {
   for (const auto& var_name : m_fields_names) {
     register_dimensions(var_name);
@@ -359,7 +454,8 @@ void AtmosphereOutput::init()
   register_views();
 }
 
-void AtmosphereOutput::
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::
 init_timestep (const util::TimeStamp& start_of_step)
 {
   for (auto& it : m_diagnostics) {
@@ -367,7 +463,8 @@ init_timestep (const util::TimeStamp& start_of_step)
   }
 }
 
-void AtmosphereOutput::
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::
 run (const std::string& filename,
      const bool output_step, const bool checkpoint_step,
      const int nsteps_since_last_output,
@@ -459,7 +556,7 @@ run (const std::string& filename,
   // Take care of updating and possibly writing fields.
   // These are needed inside kernels, so crate local copies
   auto do_avg_cnt = m_track_avg_cnt;
-  auto avg_type = m_avg_type;
+  auto fill_value = m_fill_value;
   auto avg_coeff_threshold = m_avg_coeff_threshold;
   for (auto const& name : m_fields_names) {
     // Get all the info for this field.
@@ -471,7 +568,7 @@ run (const std::string& filename,
     if (not field.get_header().get_tracking().get_time_stamp().is_valid()) {
       // Safety check: make sure that the user is ok with this
       if (allow_invalid_fields) {
-        field.deep_copy(constants::DefaultFilLValue<Real>::value);
+        field.deep_copy(m_fill_value);
       } else {
         EKAT_REQUIRE_MSG (!m_add_time_dim,
             "Error! Time-dependent output field '" + name + "' has not been initialized yet\n.");
@@ -480,7 +577,7 @@ run (const std::string& filename,
 
     const bool is_diagnostic = (m_diagnostics.find(name) != m_diagnostics.end());
     const bool is_aliasing_field_view =
-        m_avg_type==OutputAvgType::Instant &&
+        avg_policy::type==OutputAvgType::Instant &&
         field.get_header().get_alloc_properties().get_padding()==0 &&
         field.get_header().get_parent().expired() &&
         not is_diagnostic;
@@ -488,39 +585,26 @@ run (const std::string& filename,
     // Manually update the 'running-tally' views with data from the field,
     // by combining new data with current avg values.
     // NOTE: this is skipped for instant output, if IO view is aliasing Field view.
-    auto tally = m_tally_fields.at(name);
+    auto view_dev = m_dev_views_1d.at(name);
+    auto data = view_dev.data();
     KT::RangePolicy policy(0,layout.size());
     const auto extents = layout.extents();
 
     // If the dev_view_1d is aliasing the field device view (must be Instant output),
     // then there's no point in copying from the field's view to dev_view
     if (not is_aliasing_field_view) {
-      switch (m_avg_type) {
-        case OutputAvgType::Instant:
-          tally.update<Replace,Device>(field);
-          break;
-        case OutputAvgType::Max:
-          tally.update<ReplaceMax,Device>(field);
-          break;
-        case OutputAvgType::Min:
-          tally.update<ReplaceMin,Device>(field);
-          break;
-        case OutputAvgType::Average:
-          tally.update<Replace,Device>(field);
-          break;
-
       switch (rank) {
         case 1:
         {
           // For rank-1 views, we use strided layout, since it helps us
           // handling a few more scenarios
           auto new_view_1d = field.get_strided_view<const Real*,Device>();
-          auto avg_view_1d = tally.get_view<Real*>();
+          auto avg_view_1d = view_Nd_dev<1>(data,dims[0]);
           Kokkos::parallel_for(policy, KOKKOS_LAMBDA(int i) {
             if (do_avg_cnt) {
-              combine_and_fill(new_view_1d(i),avg_view_1d(i),avg_type);
+              avg_policy::combine_and_fill(new_view_1d(i),avg_view_1d(i),fill_value);
             } else {
-              combine(new_view_1d(i),avg_view_1d(i),avg_type);
+              avg_policy::combine(new_view_1d(i),avg_view_1d(i));
             }
           });
           break;
@@ -528,15 +612,14 @@ run (const std::string& filename,
         case 2:
         {
           auto new_view_2d = field.get_view<const Real**,Device>();
-          auto avg_view_1d = tally.get_view<Real**>();
           auto avg_view_2d = view_Nd_dev<2>(data,dims[0],dims[1]);
           Kokkos::parallel_for(policy, KOKKOS_LAMBDA(int idx) {
             int i,j;
             unflatten_idx(idx,extents,i,j);
             if (do_avg_cnt) {
-              combine_and_fill(new_view_2d(i,j),avg_view_2d(i,j),avg_type);
+              avg_policy::combine_and_fill(new_view_2d(i,j),avg_view_2d(i,j),fill_value);
             } else {
-              combine(new_view_2d(i,j), avg_view_2d(i,j),avg_type);
+              avg_policy::combine(new_view_2d(i,j), avg_view_2d(i,j));
             }
           });
           break;
@@ -549,9 +632,9 @@ run (const std::string& filename,
             int i,j,k;
             unflatten_idx(idx,extents,i,j,k);
             if (do_avg_cnt) {
-              combine_and_fill(new_view_3d(i,j,k),avg_view_3d(i,j,k),avg_type);
+              avg_policy::combine_and_fill(new_view_3d(i,j,k),avg_view_3d(i,j,k),fill_value);
             } else {
-              combine(new_view_3d(i,j,k), avg_view_3d(i,j,k),avg_type);
+              avg_policy::combine(new_view_3d(i,j,k), avg_view_3d(i,j,k));
             }
           });
           break;
@@ -564,9 +647,9 @@ run (const std::string& filename,
             int i,j,k,l;
             unflatten_idx(idx,extents,i,j,k,l);
             if (do_avg_cnt) {
-              combine_and_fill(new_view_4d(i,j,k,l), avg_view_4d(i,j,k,l),avg_type);
+              avg_policy::combine_and_fill(new_view_4d(i,j,k,l), avg_view_4d(i,j,k,l),fill_value);
             } else {
-              combine(new_view_4d(i,j,k,l), avg_view_4d(i,j,k,l),avg_type);
+              avg_policy::combine(new_view_4d(i,j,k,l), avg_view_4d(i,j,k,l));
             }
           });
           break;
@@ -579,9 +662,9 @@ run (const std::string& filename,
             int i,j,k,l,m;
             unflatten_idx(idx,extents,i,j,k,l,m);
             if (do_avg_cnt) {
-              combine_and_fill(new_view_5d(i,j,k,l,m), avg_view_5d(i,j,k,l,m),avg_type);
+              avg_policy::combine_and_fill(new_view_5d(i,j,k,l,m), avg_view_5d(i,j,k,l,m),fill_value);
             } else {
-              combine(new_view_5d(i,j,k,l,m), avg_view_5d(i,j,k,l,m),avg_type);
+              avg_policy::combine(new_view_5d(i,j,k,l,m), avg_view_5d(i,j,k,l,m));
             }
           });
           break;
@@ -594,32 +677,31 @@ run (const std::string& filename,
             int i,j,k,l,m,n;
             unflatten_idx(idx,extents,i,j,k,l,m,n);
             if (do_avg_cnt) {
-              combine_and_fill(new_view_6d(i,j,k,l,m,n), avg_view_6d(i,j,k,l,m,n), avg_type);
+              avg_policy::combine_and_fill(new_view_6d(i,j,k,l,m,n), avg_view_6d(i,j,k,l,m,n), fill_value);
             } else {
-              combine(new_view_6d(i,j,k,l,m,n), avg_view_6d(i,j,k,l,m,n),avg_type);
+              avg_policy::combine(new_view_6d(i,j,k,l,m,n), avg_view_6d(i,j,k,l,m,n));
             }
           });
           break;
         }
         default:
-          EKAT_ERROR_MSG ("Error! Field rank (" + std::to_string(rank) + ") not supported by AtmosphereOutput.\n");
+          EKAT_ERROR_MSG ("Error! Field rank (" + std::to_string(rank) + ") not supported by OutputStream.\n");
       }
     }
 
     if (is_write_step) {
-      if (output_step and avg_type==OutputAvgType::Average) {
+      if (output_step and avg_policy::needs_count) {
         if (do_avg_cnt) {
           const auto avg_cnt_lookup = m_field_to_avg_cnt_map.at(name);
           const auto avg_cnt_view = m_dev_views_1d.at(avg_cnt_lookup);
           const auto avg_nsteps = avg_cnt_view.data();
           // Divide by steps count only when the summation is complete
-          const Real fill_v = DefaultFillValue<Real>::value;
           Kokkos::parallel_for(policy, KOKKOS_LAMBDA(int i) {
             Real coeff_percentage = Real(avg_nsteps[i])/nsteps_since_last_output;
-            if (data[i] != fill_v && coeff_percentage > avg_coeff_threshold) {
+            if (data[i] != fill_value && coeff_percentage > avg_coeff_threshold) {
               data[i] /= avg_nsteps[i];
             } else {
-              data[i] = fill_v;
+              data[i] = fill_value;
             }
           });
         } else {
@@ -630,7 +712,7 @@ run (const std::string& filename,
         }
       }
       // Bring data to host
-      auto view_host = m_tally_fields.at(name);
+      auto view_host = m_host_views_1d.at(name);
       Kokkos::deep_copy (view_host,view_dev);
       auto func_start = std::chrono::steady_clock::now();
       scorpio::write_var(filename,name,view_host.data());
@@ -660,7 +742,8 @@ run (const std::string& filename,
   }
 } // run
 
-long long AtmosphereOutput::
+template<typename AvgPolicy>
+long long OutputStream<AvgPolicy>::
 res_dep_memory_footprint () const {
   long long rdmf = 0;
   const auto sim_field_mgr = get_field_manager("sim");
@@ -704,7 +787,8 @@ res_dep_memory_footprint () const {
   return rdmf;
 }
 /* ---------------------------------------------------------- */
-void AtmosphereOutput::
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::
 set_field_manager (const std::shared_ptr<const fm_type>& field_mgr, const std::vector<std::string>& modes)
 {
 
@@ -724,25 +808,28 @@ set_field_manager (const std::shared_ptr<const fm_type>& field_mgr, const std::v
 
 }
 /* ---------------------------------------------------------- */
-void AtmosphereOutput::
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::
 set_field_manager (const std::shared_ptr<const fm_type>& field_mgr, const std::string& mode)
 {
   const std::vector<std::string> modes = {mode};
   set_field_manager(field_mgr,modes);
 }
 
-std::shared_ptr<const FieldManager>
-AtmosphereOutput::get_field_manager (const std::string& mode) const
+template<typename AvgPolicy>
+std::shared_ptr<const FieldManager> OutputStream<AvgPolicy>::
+get_field_manager (const std::string& mode) const
 {
   auto it = m_field_mgrs.find(mode);
   EKAT_REQUIRE_MSG (it!=m_field_mgrs.end(),
-    "ERROR! AtmosphereOutput::get_field_manager FM for mode = " + mode + " not found in list of available field managers!.");
+    "ERROR! OutputStream::get_field_manager FM for mode = " + mode + " not found in list of available field managers!.");
   return it->second;
 }
 
 /* ---------------------------------------------------------- */
 
-void AtmosphereOutput::
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::
 set_grid (const std::shared_ptr<const AbstractGrid>& grid)
 {
   // Sanity checks
@@ -758,7 +845,9 @@ set_grid (const std::shared_ptr<const AbstractGrid>& grid)
   m_io_grid = grid;
 }
 
-void AtmosphereOutput::register_dimensions(const std::string& name)
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::
+register_dimensions(const std::string& name)
 {
 /*
  * Checks that the dimensions associated with a specific variable will be registered with IO file.
@@ -800,7 +889,8 @@ void AtmosphereOutput::register_dimensions(const std::string& name)
   }
 } // register_dimensions
 /* ---------------------------------------------------------- */
-void AtmosphereOutput::register_views()
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::register_views()
 {
   // Cycle through all fields and register.
   for (auto const& name : m_fields_names) {
@@ -847,7 +937,9 @@ void AtmosphereOutput::register_views()
   reset_dev_views();
 }
 /* ---------------------------------------------------------- */
-void AtmosphereOutput::set_avg_cnt_tracking(const std::string& name, const FieldLayout& layout)
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::
+set_avg_cnt_tracking(const std::string& name, const FieldLayout& layout)
 {
   // Make sure this field "name" hasn't already been registered with avg_cnt tracking.
   // Note, we check this because some diagnostics need to have their own tracking which
@@ -894,29 +986,14 @@ void AtmosphereOutput::set_avg_cnt_tracking(const std::string& name, const Field
   }
 }
 /* ---------------------------------------------------------- */
-void AtmosphereOutput::
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::
 reset_dev_views()
 {
   // Reset the local device views depending on the averaging type
   // Init dev view with an "identity" for avg_type
-  const Real fill_for_average = m_track_avg_cnt ? constants::DefaultFilLValue<Real>::value : 0.0;
   for (auto const& name : m_fields_names) {
-    switch (m_avg_type) {
-      case OutputAvgType::Instant:
-        // No averaging
-        break;
-      case OutputAvgType::Max:
-        Kokkos::deep_copy(m_dev_views_1d[name],-std::numeric_limits<Real>::infinity());
-        break;
-      case OutputAvgType::Min:
-        Kokkos::deep_copy(m_dev_views_1d[name],std::numeric_limits<Real>::infinity());
-        break;
-      case OutputAvgType::Average:
-        Kokkos::deep_copy(m_dev_views_1d[name],fill_for_average);
-        break;
-      default:
-        EKAT_ERROR_MSG ("Unrecognized averaging type.\n");
-    }
+    FillPolicy<AvgPolicy>::reset_view(m_dev_views_1d[name]);
   }
   // Reset all views for averaging count to 0
   for (auto const& name : m_avg_cnt_names) {
@@ -924,18 +1001,13 @@ reset_dev_views()
   }
 }
 /* ---------------------------------------------------------- */
-void AtmosphereOutput::
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::
 register_variables(const std::string& filename,
-                   const std::string& fp_precision,
                    const scorpio::FileMode mode)
 {
   using namespace ShortFieldTagsNames;
   using strvec_t = std::vector<std::string>;
-
-  EKAT_REQUIRE_MSG (ekat::contains(strvec_t{"float","single","double","real"},fp_precision),
-      "Error! Invalid/unsupported value for fp_precision.\n"
-      "  - input value: " + fp_precision + "\n"
-      "  - supported values: float, single, double, real\n");
 
   // Helper lambdas
   auto set_vec_of_dims = [&](const FieldLayout& layout) {
@@ -998,18 +1070,11 @@ register_variables(const std::string& filename,
           "  - var time dep from file: " + (var.time_dep ? "yes" : "no") + "\n");
     } else {
       scorpio::define_var (filename, name, units, vec_of_dims,
-                            "real",fp_precision, m_add_time_dim);
+                            "real",prec_policy::name, m_add_time_dim);
 
       // Add FillValue as an attribute of each variable
       // FillValue is a protected metadata, do not add it if it already existed
-      if (fp_precision=="double" or
-          (fp_precision=="real" and std::is_same<Real,double>::value)) {
-        double fill_v = constants::DefaultFilLValue<Real>::value;
-        scorpio::set_attribute(filename, name, "_FillValue",fill_v);
-      } else {
-        float fill_v = constants::DefaultFilLValue<Real>::value;
-        scorpio::set_attribute(filename, name, "_FillValue",fill_v);
-      }
+      scorpio::set_attribute(filename, name, "_FillValue",DefaultFillValue<prec_policy::type>::value);
 
       // If this is has subfields, add list of its children
       const auto& children = field.get_header().get_children();
@@ -1084,14 +1149,16 @@ register_variables(const std::string& filename,
 	// variables we don't need to add all of the extra metadata.  So we simply
 	// define the variable.
         scorpio::define_var(filename, name, unitless, vec_of_dims,
-                            "real",fp_precision, m_add_time_dim);
+                            "real",prec_policy::name, m_add_time_dim);
       }
     }
   }
 } // register_variables
 /* ---------------------------------------------------------- */
-std::vector<scorpio::offset_t>
-AtmosphereOutput::get_var_dof_offsets(const FieldLayout& layout)
+
+template<typename AvgPolicy>
+std::vector<scorpio::offset_t> OutputStream<AvgPolicy>::
+get_var_dof_offsets(const FieldLayout& layout)
 {
   using namespace ShortFieldTagsNames;
 
@@ -1173,7 +1240,9 @@ AtmosphereOutput::get_var_dof_offsets(const FieldLayout& layout)
   return var_dof;
 }
 
-void AtmosphereOutput::set_decompositions(const std::string& filename)
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::
+set_decompositions(const std::string& filename)
 {
   using namespace ShortFieldTagsNames;
 
@@ -1208,9 +1277,9 @@ void AtmosphereOutput::set_decompositions(const std::string& filename)
   scorpio::set_dim_decomp(filename,decomp_dim,offsets);
 }
 
-void AtmosphereOutput::
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::
 setup_output_file(const std::string& filename,
-                  const std::string& fp_precision,
                   const scorpio::FileMode mode)
 {
   // Register dimensions with netCDF file.
@@ -1233,7 +1302,7 @@ setup_output_file(const std::string& filename,
   }
 
   // Register variables with netCDF file.  Must come after dimensions are registered.
-  register_variables(filename,fp_precision,mode);
+  register_variables(filename,mode);
 
   // Set the offsets of the local dofs in the global vector.
   set_decompositions(filename);
@@ -1241,7 +1310,8 @@ setup_output_file(const std::string& filename,
 /* ---------------------------------------------------------- */
 // This routine will evaluate the diagnostics stored in this
 // output instance.
-void AtmosphereOutput::
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::
 compute_diagnostic(const std::string& name, const bool allow_invalid_fields)
 {
   auto skip_diag = m_diag_computed[name];
@@ -1263,7 +1333,7 @@ compute_diagnostic(const std::string& name, const bool allow_invalid_fields)
     for (auto f : diag->get_fields_in()) {
       if (not f.get_header().get_tracking().get_time_stamp().is_valid()) {
         // Fill diag with invalid data and return
-        diag->get_diagnostic().deep_copy(constants::DefaultFilLValue<Real>::value);
+        diag->get_diagnostic().deep_copy(m_fill_value);
         return;
       }
     }
@@ -1273,11 +1343,11 @@ compute_diagnostic(const std::string& name, const bool allow_invalid_fields)
   diag->compute_diagnostic();
 
   // The diag may have failed to compute (e.g., t=0 output with a flux-like diag).
-  // If we're allowing invalid fields, then we should simply set diag=fill_value
+  // If we're allowing invalid fields, then we should simply set diag=m_fill_value
   if (allow_invalid_fields) {
     auto d = diag->get_diagnostic();
     if (not d.get_header().get_tracking().get_time_stamp().is_valid()) {
-      d.deep_copy(constants::DefaultFilLValue<Real>::value);
+      d.deep_copy(m_fill_value);
     }
   }
 }
@@ -1287,7 +1357,8 @@ compute_diagnostic(const std::string& name, const bool allow_invalid_fields)
 // manager.  If not it will next check to see if it is in the list
 // of available diagnostics.  If neither of these two options it
 // will throw an error.
-Field AtmosphereOutput::
+template<typename AvgPolicy>
+Field OutputStream<AvgPolicy>::
 get_field(const std::string& name, const std::string& mode) const
 {
   const auto field_mgr = get_field_manager(mode);
@@ -1299,11 +1370,13 @@ get_field(const std::string& name, const std::string& mode) const
     const auto& diag = m_diagnostics.at(name);
     return diag->get_diagnostic();
   } else {
-    EKAT_ERROR_MSG ("ERROR::AtmosphereOutput::get_field Field " + name + " not found in " + mode + " field manager or diagnostics list.");
+    EKAT_ERROR_MSG ("ERROR::OutputStream::get_field Field " + name + " not found in " + mode + " field manager or diagnostics list.");
   }
 }
 /* ---------------------------------------------------------- */
-void AtmosphereOutput::set_diagnostics()
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::
+set_diagnostics()
 {
   const auto sim_field_mgr = get_field_manager("sim");
   // Create all diagnostics
@@ -1322,8 +1395,10 @@ void AtmosphereOutput::set_diagnostics()
 }
 
 /* ---------------------------------------------------------- */
-std::shared_ptr<AtmosphereDiagnostic>
-AtmosphereOutput::create_diagnostic (const std::string& diag_field_name) {
+
+template<typename AvgPolicy>
+std::shared_ptr<AtmosphereDiagnostic> OutputStream<AvgPolicy>::
+create_diagnostic (const std::string& diag_field_name) {
   auto& diag_factory = AtmosphereDiagnosticFactory::instance();
 
   // Construct a diagnostic by this name
@@ -1347,7 +1422,7 @@ AtmosphereOutput::create_diagnostic (const std::string& diag_field_name) {
     params.set("grid_name",get_field_manager("sim")->get_grid()->name());
 
     params.set("vertical_location", tokens[1]);
-    params.set<double>("mask_value",constants::DefaultFilLValue<double>::value);
+    params.set<double>("mask_value",m_fill_value);
 
     // Conventions on notation (N=any integer):
     // FieldAtLevel        : var_at_lev_N, var_at_model_top, var_at_model_bot
@@ -1481,13 +1556,14 @@ AtmosphereOutput::create_diagnostic (const std::string& diag_field_name) {
 }
 
 // Helper function to mark filled points in a specific layout
-void AtmosphereOutput::
+template<typename AvgPolicy>
+void OutputStream<AvgPolicy>::
 update_avg_cnt_view(const Field& field, view_1d_dev& dev_view) {
   const auto& name   = field.name();
   const auto& layout = m_layouts.at(name);
   const auto& dims   = layout.dims();
         auto  data   = dev_view.data();
-  const auto fill_v = constants::DefaultFilLValue<Real>::value;
+  const auto fill_value = m_fill_value;
 
   KT::RangePolicy policy(0,layout.size());
   const auto extents = layout.extents();
@@ -1499,7 +1575,7 @@ update_avg_cnt_view(const Field& field, view_1d_dev& dev_view) {
       auto src_view_1d = field.get_strided_view<const Real*,Device>();
       auto tgt_view_1d = view_Nd_dev<1>(data,dims[0]);
       Kokkos::parallel_for(policy, KOKKOS_LAMBDA(int i) {
-        if (src_view_1d(i)!=fill_v) {
+        if (src_view_1d(i)!=fill_value) {
           tgt_view_1d(i) += 1;
         }
       });
@@ -1512,7 +1588,7 @@ update_avg_cnt_view(const Field& field, view_1d_dev& dev_view) {
       Kokkos::parallel_for(policy, KOKKOS_LAMBDA(int idx) {
         int i,j;
         unflatten_idx(idx,extents,i,j);
-        if (src_view_2d(i,j)!=fill_v) {
+        if (src_view_2d(i,j)!=fill_value) {
           tgt_view_2d(i,j) += 1;
         }
       });
@@ -1525,7 +1601,7 @@ update_avg_cnt_view(const Field& field, view_1d_dev& dev_view) {
       Kokkos::parallel_for(policy, KOKKOS_LAMBDA(int idx) {
         int i,j,k;
         unflatten_idx(idx,extents,i,j,k);
-        if (src_view_3d(i,j,k)!=fill_v) {
+        if (src_view_3d(i,j,k)!=fill_value) {
           tgt_view_3d(i,j,k) += 1;
         }
       });
@@ -1538,7 +1614,7 @@ update_avg_cnt_view(const Field& field, view_1d_dev& dev_view) {
       Kokkos::parallel_for(policy, KOKKOS_LAMBDA(int idx) {
         int i,j,k,l;
         unflatten_idx(idx,extents,i,j,k,l);
-        if (src_view_4d(i,j,k,l)!=fill_v) {
+        if (src_view_4d(i,j,k,l)!=fill_value) {
           tgt_view_4d(i,j,k,l) += 1;
         }
       });
@@ -1551,7 +1627,7 @@ update_avg_cnt_view(const Field& field, view_1d_dev& dev_view) {
       Kokkos::parallel_for(policy, KOKKOS_LAMBDA(int idx) {
         int i,j,k,l,m;
         unflatten_idx(idx,extents,i,j,k,l,m);
-        if (src_view_5d(i,j,k,l,m)!=fill_v) {
+        if (src_view_5d(i,j,k,l,m)!=fill_value) {
           tgt_view_5d(i,j,k,l,m) += 1;
         }
       });
@@ -1564,7 +1640,7 @@ update_avg_cnt_view(const Field& field, view_1d_dev& dev_view) {
       Kokkos::parallel_for(policy, KOKKOS_LAMBDA(int idx) {
         int i,j,k,l,m,n;
         unflatten_idx(idx,extents,i,j,k,l,m,n);
-        if (src_view_6d(i,j,k,l,m,n)!=fill_v) {
+        if (src_view_6d(i,j,k,l,m,n)!=fill_value) {
           tgt_view_6d(i,j,k,l,m,n) += 1;
         }
       });
@@ -1572,10 +1648,16 @@ update_avg_cnt_view(const Field& field, view_1d_dev& dev_view) {
     }
     default:
       EKAT_ERROR_MSG (
-            "Error! Field rank not not supported by AtmosphereOutput.\n"
+            "Error! Field rank not not supported by OutputStream.\n"
           "  - field name:   " + field.name() + "\n"
           "  - field layout: " + layout.to_string() + "\n");
   }
 }
 
+std::shared_ptr<OutputStreamBase>
+create_output_stream (const ekat::ParameterList& params,
+                      const ekat::Comm& comm);
+
 } // namespace scream
+
+#endif // SCREAM_OUTPUT_STREAM_HPP
