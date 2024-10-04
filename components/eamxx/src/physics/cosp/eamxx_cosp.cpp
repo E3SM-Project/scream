@@ -93,6 +93,8 @@ void Cosp::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   add_field<Computed>("modis_ctptau", scalar4d_ctptau, percent, grid_name, 1);
   add_field<Computed>("misr_cthtau", scalar4d_cthtau, percent, grid_name, 1);
   add_field<Computed>("cosp_sunlit", scalar2d, nondim, grid_name);
+
+  add_group<Required>("tracers", grid_name, 1, Bundling::Required);
 }
 
 // =========================================================================================
@@ -140,9 +142,10 @@ void Cosp::run_impl (const double dt)
   // F90.
   //
   // Need to make sure device data is synced to host?
-  get_field_in("qv").sync_to_host();
-  get_field_in("qc").sync_to_host();
-  get_field_in("qi").sync_to_host();
+  //get_field_in("qv").sync_to_host();
+  //get_field_in("qc").sync_to_host();
+  //get_field_in("qi").sync_to_host();
+  get_group_in("tracers").m_bundle->sync_to_host();
   get_field_in("sunlit").sync_to_host();
   get_field_in("surf_radiative_T").sync_to_host();
   get_field_in("T_mid").sync_to_host();
