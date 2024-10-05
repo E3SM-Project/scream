@@ -977,19 +977,6 @@ void MAMMicrophysics::run_impl(const double dt) {
               // output (vmrcw)
               mam_coupling::mmr2vmr(qqcw, adv_mass_kg_per_moles, vmrcw);
 
-              // aerosol/gas species tendencies (output)
-              Real vmr_tendbb[gas_pcnst][nqtendbb]   = {};
-              Real vmrcw_tendbb[gas_pcnst][nqtendbb] = {};
-
-              // create work array copies to retain "pre-chemistry" values
-              Real vmr_pregaschem[gas_pcnst]   = {};
-              Real vmr_precldchem[gas_pcnst]   = {};
-              Real vmrcw_precldchem[gas_pcnst] = {};
-              for(int i = 0; i < gas_pcnst; ++i) {
-                vmr_pregaschem[i]   = vmr[i];
-                vmr_precldchem[i]   = vmr[i];
-                vmrcw_precldchem[i] = vmrcw[i];
-              }
 
               //---------------------
               // Gas Phase Chemistry
@@ -1016,13 +1003,14 @@ void MAMMicrophysics::run_impl(const double dt) {
               // subroutine in eam/src/chemistry/modal_aero/aero_model.F90
 
               // aqueous chemistry ...
-              // offset of first tracer in work arrays
-              constexpr int loffset = 8;
               const Real mbar       = haero::Constants::molec_weight_dry_air;
               constexpr int indexm  = mam4::gas_chemistry::indexm;
               mam4::mo_setsox::setsox_single_level(
-                  loffset, dt, pmid, pdel, temp, mbar, lwc, cldfrac, cldnum,
-                  invariants_k[indexm], config.setsox, vmrcw, vmr);
+                  // in
+                  offset_aerosol, dt, pmid, pdel, temp, mbar, lwc, cldfrac,
+                  cldnum, invariants_k[indexm], config.setsox,
+                  // out
+                  vmrcw, vmr);
 
               // calculate aerosol water content using water uptake treatment
               // * dry and wet diameters [m]
@@ -1038,6 +1026,20 @@ void MAMMicrophysics::run_impl(const double dt) {
                 dgncur_a_kk[imode]    = dry_diameter_icol(imode, kk);
                 qaerwat_kk[imode]     = qaerwat_icol(imode, kk);
                 wetdens_kk[imode]     = wetdens_icol(imode, kk);
+              }
+
+              // aerosol/gas species tendencies (output)
+              Real vmr_tendbb[gas_pcnst][nqtendbb]   = {};
+              Real vmrcw_tendbb[gas_pcnst][nqtendbb] = {};
+
+              // create work array copies to retain "pre-chemistry" values
+              Real vmr_pregaschem[gas_pcnst]   = {};
+              Real vmr_precldchem[gas_pcnst]   = {};
+              Real vmrcw_precldchem[gas_pcnst] = {};
+              for(int i = 0; i < gas_pcnst; ++i) {
+                vmr_pregaschem[i]   = vmr[i];
+                vmr_precldchem[i]   = vmr[i];
+                vmrcw_precldchem[i] = vmrcw[i];
               }
               // do aerosol microphysics (gas-aerosol exchange, nucleation,
               // coagulation)
