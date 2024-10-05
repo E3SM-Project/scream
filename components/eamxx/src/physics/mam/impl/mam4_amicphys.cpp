@@ -801,19 +801,17 @@ void mam_amicphys_1subarea_clear(
       Real dnh4dt_ait          = 0;
       Nucleation nucleation;
       Nucleation::Config config;
-      // config.dens_so4a_host   = 1770;
-      config.mw_nh4a_host = 115;
-      config.mw_so4a_host = 115;
-      // config.accom_coef_h2so4 = 0.65;
+      config.dens_so4a_host   = 1770;
+      config.mw_nh4a_host     = 115;
+      config.mw_so4a_host     = 115;
+      config.accom_coef_h2so4 = 0.65;
       AeroConfig aero_config;
       nucleation.init(aero_config, config);
-#if 0
       nucleation.compute_tendencies_(
           dtsubstep, temp, pmid, aircon, zmid, pblh, relhum, uptkrate_h2so4,
           del_h2so4_gasprod, del_h2so4_aeruptk, qgas_cur, qgas_avg, qnum_cur,
           qaer_cur_tmp, qwtr_cur, dndt_ait, dmdt_ait, dso4dt_ait, dnh4dt_ait,
           dnclusterdt_substep);
-#endif
       for(int j = 0; j < num_aerosol_ids; ++j)
         for(int i = 0; i < num_modes; ++i) qaer_cur[j][i] = qaer_cur_tmp[i][j];
 
