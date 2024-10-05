@@ -3,12 +3,11 @@ namespace scream::impl {
 using View2D = DeviceType::view_2d<Real>;
 
 KOKKOS_INLINE_FUNCTION
-void compute_o3_column_density(const ThreadTeam &team,
-                               const haero::Atmosphere &atm,
-                               const mam4::Prognostics &progs,
-                               const View2D &invariants,
-                               const Real adv_mass_kg_per_moles[mam4::gas_chemistry::gas_pcnst],
-                               ColumnView o3_col_dens) {
+void compute_o3_column_density(
+    const ThreadTeam &team, const haero::Atmosphere &atm,
+    const mam4::Prognostics &progs, const View2D &invariants,
+    const Real adv_mass_kg_per_moles[mam4::gas_chemistry::gas_pcnst],
+    ColumnView o3_col_dens) {
   constexpr int gas_pcnst =
       mam4::gas_chemistry::gas_pcnst;            // number of gas phase species
   constexpr int nfs = mam4::gas_chemistry::nfs;  // number of "fixed species"
@@ -24,18 +23,18 @@ void compute_o3_column_density(const ThreadTeam &team,
         // mixing ratios) (in EAM, this is done in the gas_phase_chemdr
         // subroutine defined within
         //  mozart/mo_gas_phase_chemdr.F90)
-        Real q[gas_pcnst]    = {};
-        Real state_q[pcnst]    = {};
-        mam4::utils::extract_stateq_from_prognostics(progs,atm, state_q, k);
+        Real q[gas_pcnst]   = {};
+        Real state_q[pcnst] = {};
+        mam4::utils::extract_stateq_from_prognostics(progs, atm, state_q, k);
 
-        for (int i = offset_aerosol; i < pcnst; ++i) {
-          q[i-offset_aerosol] =state_q[i];
+        for(int i = offset_aerosol; i < pcnst; ++i) {
+          q[i - offset_aerosol] = state_q[i];
         }
 
         // convert mass mixing ratios to volume mixing ratios (VMR),
         // equivalent to tracer mixing ratios (TMR))
         Real vmr[gas_pcnst];
-        mam_coupling::mmr2vmr(q,adv_mass_kg_per_moles, vmr);
+        mam_coupling::mmr2vmr(q, adv_mass_kg_per_moles, vmr);
         // ... compute invariants for this level
         Real invariants_k[nfs];
         for(int i = 0; i < nfs; ++i) {
