@@ -692,7 +692,7 @@ void MAMMicrophysics::run_impl(const double dt) {
 
   const Real chlorine_loading = scream::mam_coupling::chlorine_loading_advance(
       ts, chlorine_values_, chlorine_time_secs_);
-
+#if 0
   // /* Update the TracerTimeState to reflect the current time, note the
   // addition of dt */
   trace_time_state_.t_now = ts.frac_of_year_in_days();
@@ -754,7 +754,7 @@ void MAMMicrophysics::run_impl(const double dt) {
     Kokkos::deep_copy(field_at_i, vert_emis_output_[ifield]);
   }
 #endif
-
+#endif
   const_view_1d &col_latitudes = col_latitudes_;
   // const_view_1d &col_longitudes    = col_longitudes_;
   const_view_1d &d_sfc_alb_dir_vis = d_sfc_alb_dir_vis_;
@@ -1056,7 +1056,7 @@ void MAMMicrophysics::run_impl(const double dt) {
                   o3clim_linoz_diag, zenith_angle_degrees;
 
               int o3_ndx = 0;  // index of "O3" in solsym array (in EAM)
-
+#if 0
               mam4::lin_strat_chem::lin_strat_chem_solve_kk(
                   o3_col_dens_i(kk), temp, zenith_angle(icol), pmid, dt, rlats,
                   linoz_o3_clim(icol, kk), linoz_t_clim(icol, kk),
@@ -1095,6 +1095,7 @@ void MAMMicrophysics::run_impl(const double dt) {
               }
               mam4::utils::inject_stateq_to_prognostics(state_q, progs, kk);
               mam4::utils::inject_qqcw_to_prognostics(qqcw_pcnst, progs, kk);
+#endif
             });  // parallel_for for vertical levels
       });        // parallel_for for the column loop
   Kokkos::fence();
