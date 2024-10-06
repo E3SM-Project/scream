@@ -641,43 +641,6 @@ inline void perform_vertical_interpolation(const view_2d &p_src_c,
       });
 }
 
-// rebin is a port from:
-// https://github.com/eagles-project/e3sm_mam4_refactor/blob/ee556e13762e41a82cb70a240c54dc1b1e313621/components/eam/src/chemistry/utils/mo_util.F90#L12
-KOKKOS_INLINE_FUNCTION
-void rebin(int nsrc, int ntrg, const const_view_1d &src_x, const Real trg_x[],
-           const view_1d &src, const view_1d &trg) {
-  for(int i = 0; i < ntrg; ++i) {
-    Real tl = trg_x[i];
-    if(tl < src_x(nsrc)) {
-      int sil = 0;
-      for(; sil <= nsrc; ++sil) {
-        if(tl <= src_x(sil)) {
-          break;
-        }
-      }
-      Real tu = trg_x[i + 1];
-      int siu = 0;
-      for(; siu <= nsrc; ++siu) {
-        if(tu <= src_x(siu)) {
-          break;
-        }
-      }
-      Real y = 0.0;
-      sil    = haero::max(sil, 1);
-      siu    = haero::min(siu, nsrc);
-      for(int si = sil; si <= siu; ++si) {
-        int si1 = si - 1;
-        Real sl = haero::max(tl, src_x(si1));
-        Real su = haero::min(tu, src_x(si));
-        y += (su - sl) * src(si1);
-      }
-      trg(i) = y / (trg_x[i + 1] - trg_x[i]);
-    } else {
-      trg(i) = 0.0;
-    }
-  }
-}  // rebin
-
 inline void perform_vertical_interpolation(const const_view_1d &altitude_int,
                                            const const_view_2d &zi,
                                            const TracerData &input,
@@ -708,7 +671,7 @@ inline void perform_vertical_interpolation(const const_view_1d &altitude_int,
 
         const auto src = ekat::subview(data[TracerDataIndex::OUT][ivar], icol);
         const auto trg = ekat::subview(output[ivar], icol);
-
+        // FIXME: Try to avoid copy of trg_x by modifying rebin
         // trg_x
         Real trg_x[pver + 1];
         // I am trying to do this:
@@ -717,8 +680,9 @@ inline void perform_vertical_interpolation(const const_view_1d &altitude_int,
           trg_x[pverp - i - 1] = m2km * zi(icol, i);
         }
         team.team_barrier();
+        mam4::vertical_interpolation::rebin(team, nsrc, ntrg, src_x, trg_x,
+                                        src, trg);
 
-        rebin(nsrc, ntrg, src_x, trg_x, src, trg);
       });
 }
 
