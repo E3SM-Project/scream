@@ -187,53 +187,6 @@ struct TracerData {
   }
 };
 
-// Direct port of components/eam/src/chemistry/utils/tracer_data.F90/vert_interp
-// FIXME: I need to convert for loops to Kokkos loops.
-KOKKOS_INLINE_FUNCTION
-void vert_interp(int ncol, int levsiz, int pver, const view_2d &pin,
-                 const const_view_2d &pmid, const view_2d &datain,
-                 const view_2d &dataout,
-                 // work array
-                 const view_int_1d &kupper) {
-  const int zero = 0;
-  // Initialize index array
-  for(int i = 0; i < ncol; ++i) {
-    kupper(i) = zero;
-  }  // ncol
-
-  for(int k = 0; k < pver; ++k) {
-    // Top level we need to start looking is the top level for the previous k
-    // for all column points
-    int kkstart = levsiz - 1;
-    for(int i = 0; i < ncol; ++i) {
-      kkstart = haero::min(kkstart, kupper(i));
-    }
-
-    // Store level indices for interpolation
-    for(int kk = kkstart; kk < levsiz - 1; ++kk) {
-      for(int i = 0; i < ncol; ++i) {
-        if(pin(i, kk) < pmid(i, k) && pmid(i, k) <= pin(i, kk + 1)) {
-          kupper(i) = kk;
-        }  // end if
-      }    // end for
-    }      // end kk
-    // Interpolate or extrapolate...
-    for(int i = 0; i < ncol; ++i) {
-      if(pmid(i, k) < pin(i, 0)) {
-        dataout(i, k) = datain(i, 0) * pmid(i, k) / pin(i, 0);
-      } else if(pmid(i, k) > pin(i, levsiz - 1)) {
-        dataout(i, k) = datain(i, levsiz - 1);
-      } else {
-        Real dpu = pmid(i, k) - pin(i, kupper(i));
-        Real dpl = pin(i, kupper(i) + 1) - pmid(i, k);
-        dataout(i, k) =
-            (datain(i, kupper(i)) * dpl + datain(i, kupper(i) + 1) * dpu) /
-            (dpl + dpu);
-      }  // end if
-    }    // end col
-  }      // end k
-
-}  // vert_interp
 
 KOKKOS_INLINE_FUNCTION
 Real linear_interp(const Real &x0, const Real &x1, const Real &t) {
@@ -661,20 +614,30 @@ inline void perform_vertical_interpolation(const view_2d &p_src_c,
   const int pver   = mam4::nlev;
 
   const int num_vars = input.nvars_;
+    // FIXME:delete  work[ivar]
   const auto work    = input.work_vert_inter;
   EKAT_REQUIRE(work[num_vars - 1].data() != 0);
   // vert_interp is serial in col and lev.
-  const auto policy_setup = ESU::get_default_team_policy(num_vars, 1);
+  const int outer_iters = ncol*num_vars;
+  const auto policy_setup = ESU::get_default_team_policy(outer_iters, pver);
   const auto data         = input.data;
 
   Kokkos::parallel_for(
       "vert_interp", policy_setup,
       KOKKOS_LAMBDA(typename LIV::MemberType const &team) {
-        const int ivar = team.league_rank();
-        vert_interp(ncol, levsiz, pver, p_src_c, p_tgt_c,
-                    data[TracerDataIndex::OUT][ivar], output[ivar],
-                    // work array
-                    work[ivar]);
+         // The policy is over ncols*num_vars, so retrieve icol/ivar
+        const int icol = team.league_rank() / num_vars;
+        const int ivar = team.league_rank() % num_vars;
+        const auto pin_at_icol = ekat::subview(p_src_c, icol);
+        const auto pmid_at_icol = ekat::subview(p_tgt_c, icol);
+        const auto datain = data[TracerDataIndex::OUT][ivar];
+        const auto datain_at_icol = ekat::subview(datain, icol);
+        const auto dataout = output[ivar];
+        const auto dataout_at_icol = ekat::subview(dataout, icol);
+
+        mam4::vertical_interpolation::vert_interp(
+              team, levsiz, pver, pin_at_icol, pmid_at_icol, datain_at_icol,
+              dataout_at_icol);
       });
 }
 
