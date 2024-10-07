@@ -131,6 +131,7 @@ module seq_flds_mod
   use shr_ndep_mod      , only : shr_ndep_readnl
   use shr_dust_mod      , only : shr_dust_readnl
   use shr_flds_mod      , only : seq_flds_dom_coord=>shr_flds_dom_coord, seq_flds_dom_other=>shr_flds_dom_other
+  use shr_fan_mod       , only : shr_fan_readnl
 
   implicit none
   public
@@ -146,18 +147,20 @@ module seq_flds_mod
   character(len=CXX) :: fire_emis_fields    ! List of fire emission fields
   character(len=CX)  :: carma_fields        ! List of CARMA fields from lnd->atm
   character(len=CX)  :: ndep_fields         ! List of nitrogen deposition fields from atm->lnd/ocn
+  character(len=CX)  :: fan_fields          ! List of NH3 emission fields from lnd->atm
   integer            :: ice_ncat            ! number of sea ice thickness categories
   logical            :: seq_flds_i2o_per_cat! .true. if select per ice thickness category fields are passed from ice to ocean
 
   logical            :: rof_heat            ! .true. if river model includes temperature
   logical            :: add_ndep_fields     ! .true. => add ndep fields
-
+  logical            :: fan_have_fields     ! .true. if FAN coupled to atmosphere
   character(len=CS)  :: atm_flux_method     ! explicit => no extra fields needed
                                             ! implicit_stress => atm provides wsresp and tau_est
   logical            :: atm_gustiness       ! .true. if the atmosphere model produces gustiness
   logical            :: rof2ocn_nutrients   ! .true. if the runoff model passes nutrient fields to the ocn
   logical            :: lnd_rof_two_way     ! .true. if land-river two-way coupling turned on
   logical            :: ocn_rof_two_way     ! .true. if river-ocean two-way coupling turned on
+  logical            :: rof_sed             ! .true. if river model includes sediment
 
   !----------------------------------------------------------------------------
   ! metadata
@@ -376,13 +379,14 @@ contains
     logical :: flds_co2_dmsa
     logical :: flds_bgc_oi
     logical :: flds_wiso
+    logical :: flds_polar
     integer :: glc_nec
 
     namelist /seq_cplflds_inparm/  &
-         flds_co2a, flds_co2b, flds_co2c, flds_co2_dmsa, flds_wiso, glc_nec, &
+         flds_co2a, flds_co2b, flds_co2c, flds_co2_dmsa, flds_wiso, flds_polar, glc_nec, &
          ice_ncat, seq_flds_i2o_per_cat, flds_bgc_oi, &
          nan_check_component_fields, rof_heat, atm_flux_method, atm_gustiness, &
-         rof2ocn_nutrients, lnd_rof_two_way, ocn_rof_two_way
+         rof2ocn_nutrients, lnd_rof_two_way, ocn_rof_two_way, rof_sed
 
     ! user specified new fields
     integer,  parameter :: nfldmax = 200
@@ -413,6 +417,7 @@ contains
        flds_co2_dmsa = .false.
        flds_bgc_oi   = .false.
        flds_wiso = .false.
+       flds_polar = .false.
        glc_nec   = 0
        ice_ncat  = 1
        seq_flds_i2o_per_cat = .false.
@@ -423,6 +428,7 @@ contains
        rof2ocn_nutrients = .false.
        lnd_rof_two_way   = .false.
        ocn_rof_two_way   = .false.
+       rof_sed   = .false.
 
        unitn = shr_file_getUnit()
        write(logunit,"(A)") subname//': read seq_cplflds_inparm namelist from: '&
@@ -445,6 +451,7 @@ contains
     call shr_mpi_bcast(flds_co2_dmsa, mpicom)
     call shr_mpi_bcast(flds_bgc_oi  , mpicom)
     call shr_mpi_bcast(flds_wiso    , mpicom)
+    call shr_mpi_bcast(flds_polar   , mpicom)
     call shr_mpi_bcast(glc_nec      , mpicom)
     call shr_mpi_bcast(ice_ncat     , mpicom)
     call shr_mpi_bcast(seq_flds_i2o_per_cat, mpicom)
@@ -455,6 +462,7 @@ contains
     call shr_mpi_bcast(rof2ocn_nutrients, mpicom)
     call shr_mpi_bcast(lnd_rof_two_way,   mpicom)
     call shr_mpi_bcast(ocn_rof_two_way,   mpicom)
+    call shr_mpi_bcast(rof_sed,   mpicom)
 
     call glc_elevclass_init(glc_nec)
 
@@ -1275,8 +1283,19 @@ contains
     call seq_flds_add(x2a_states,"Sx_u10")
     longname = '10m wind'
     stdname  = '10m_wind'
-    units    = 'm'
+    units    = 'm s-1'
     attname  = 'u10'
+    call metadata_set(attname, longname, stdname, units)
+
+    ! 10 meter wind with gustiness
+    call seq_flds_add(i2x_states,"Si_u10withgusts")
+    call seq_flds_add(xao_states,"So_u10withgusts")
+    call seq_flds_add(l2x_states,"Sl_u10withgusts")
+    call seq_flds_add(x2a_states,"Sx_u10withgusts")
+    longname = '10m wind with gustiness'
+    stdname  = ''
+    units    = 'm s-1'
+    attname  = 'u10withgusts'
     call metadata_set(attname, longname, stdname, units)
 
     ! Zonal surface stress"
@@ -1566,6 +1585,70 @@ contains
     units    = 'kg m-2 s-1'
     attname  = 'PFioi_bergw'
     call metadata_set(attname, longname, stdname, units)
+
+    !--------------------------------
+    ! ocn<->cpl only exchange - Polar
+    !--------------------------------
+
+    if (flds_polar) then
+
+       ! Ocean Land ice freeze potential
+       call seq_flds_add(o2x_fluxes,"Foxo_q_li")
+       longname = 'Ocean land ice freeze potential'
+       stdname  = 'ice_shelf_cavity_ice_heat_flux'
+       units    = 'W m-2'
+       attname  = 'Foxo_q_li'
+       call metadata_set(attname, longname, stdname, units)
+
+       ! Ocean land ice frazil production
+       call seq_flds_add(o2x_fluxes,"Foxo_frazil_li")
+       longname = 'Ocean land ice frazil production'
+       stdname  = 'ocean_land_ice_frazil_ice_production'
+       units    = 'kg m-2 s-1'
+       attname  = 'Foxo_frazil_li'
+       call metadata_set(attname, longname, stdname, units)
+
+       ! Water flux from ice shelf melt
+       call seq_flds_add(o2x_fluxes,"Foxo_ismw")
+       longname = 'Water flux due to basal melting of ice shelves'
+       stdname  = 'basal_iceshelf_melt_flux'
+       units    = 'kg m-2 s-1'
+       attname  = 'Foxo_ismw'
+       call metadata_set(attname, longname, stdname, units)
+
+       ! Heat flux from ice shelf melt
+       call seq_flds_add(o2x_fluxes,"Foxo_ismh")
+       longname = 'Heat flux due to basal melting of ice shelves'
+       stdname  = 'basal_iceshelf_heat_flux'
+       units    = 'W m-2'
+       attname  = 'Foxo_ismh'
+       call metadata_set(attname, longname, stdname, units)
+
+       ! Water flux from removed liquid runoff
+       call seq_flds_add(o2x_fluxes,"Foxo_rrofl")
+       longname = 'Water flux due to removed liqiud runoff'
+       stdname  = 'removed_liquid_runoff_flux'
+       units    = 'kg m-2 s-1'
+       attname  = 'Foxo_rrofl'
+       call metadata_set(attname, longname, stdname, units)
+
+       ! Water flux from removed solid runoff
+       call seq_flds_add(o2x_fluxes,"Foxo_rrofi")
+       longname = 'Water flux due to removed solid runoff'
+       stdname  = 'removed_solid_runoff_flux'
+       units    = 'kg m-2 s-1'
+       attname  = 'Foxo_rrofi'
+       call metadata_set(attname, longname, stdname, units)
+
+       ! Heat flux from removed solid runoff
+       call seq_flds_add(o2x_fluxes,"Foxo_rrofih")
+       longname = 'Heat flux due to removed solid runoff'
+       stdname  = 'removed_solid_runoff_heat_flux'
+       units    = 'W m-2'
+       attname  = 'Foxo_rrofih'
+       call metadata_set(attname, longname, stdname, units)
+
+    end if
 
     ! Salt flux
     call seq_flds_add(i2x_fluxes,"Fioi_salt")
@@ -2185,8 +2268,21 @@ contains
        units    = ' '
        attname  = 'coszen_str'
        call metadata_set(attname, longname, stdname, units)
+       
+	   if (rof_sed) then
+          call seq_flds_add(l2x_fluxes,'Flrl_rofmud')
+          call seq_flds_add(l2x_fluxes_to_rof,'Flrl_rofmud')
+          call seq_flds_add(x2r_fluxes,'Flrl_rofmud')
+          longname = 'Sediment flux from land (mud)'
+          stdname  = 'mud_flux_into_runoff_surface'
+          units    = 'kg m-2 s-1'
+          attname  = 'Flrl_rofmud'
+          call metadata_set(attname, longname, stdname, units)
+	   end if
+
     endif
 
+	
     !-----------------------------
     ! rof->ocn (runoff) and rof->lnd (flooding)
     !-----------------------------
@@ -3757,6 +3853,21 @@ contains
 
        call metadata_set(shr_fire_emis_ztop_token, longname, stdname, units)
     endif
+
+    !-----------------------------------------------------------------------------
+    ! Read namelist for FAN NH3 emissions
+    ! If specified, the NH3 surface emission is sent to CAM. 
+    !-----------------------------------------------------------------------------
+
+    call shr_fan_readnl(nlfilename='drv_flds_in', ID=ID, fan_fields=fan_fields, have_fields=fan_have_fields)
+    if (fan_have_fields) then
+       call seq_flds_add(l2x_fluxes, trim(fan_fields))
+       call seq_flds_add(x2a_fluxes, trim(fan_fields))
+       longname = 'NH3 emission flux'
+       stdname = 'nh3_emis'
+       units = 'gN/m2/sec'
+       call metadata_set(fan_fields, longname, stdname, units)
+    end if
 
     !-----------------------------------------------------------------------------
     ! Dry Deposition fields

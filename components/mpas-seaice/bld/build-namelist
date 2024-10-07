@@ -13,7 +13,7 @@
 #
 # The simplest use of build-namelist is to execute it from the build directory where configure
 # was run.  By default it will use the config_cache.xml file that was written by configure to
-# determine the build time properties of the executable, and will write the files that contain 
+# determine the build time properties of the executable, and will write the files that contain
 # the output namelists in that same directory.
 #
 #
@@ -35,14 +35,14 @@ SYNOPSIS
      build-namelist [options]
 OPTIONS
      -infile "filepath"    Specify a file containing namelists to read values from.
-     -namelist "namelist"  Specify namelist settings directly on the commandline by supplying 
+     -namelist "namelist"  Specify namelist settings directly on the commandline by supplying
                            a string containing FORTRAN namelist syntax, e.g.,
                               -namelist "&mpas-seaice_nml dt=1800 /"
      -help [or -h]         Print usage to STDOUT.
      -test                 Enable checking that input datasets exist on local filesystem.
      -verbose              Turn on verbose echoing of informational messages.
      -caseroot             CASEROOT directory variable
-     -casebuild            CASEBUILD directory variable          
+     -casebuild            CASEBUILD directory variable
      -cimeroot             CIMEROOT directory variable
      -ice_grid             ICE_GRID variable
      -decomp_prefix        decomp_prefix variable
@@ -60,6 +60,8 @@ OPTIONS
                            Options are: none, data, prognostic
      -prognostic_mode      variable for prognostic mode
                            Options are: full, prescribed
+     -column_mode          variable for column-only mode
+                           Options are: true, false
      -ntasks_ice           NTASKS_ICE for this case
      -ninst_ice            NINST_ICE for this case
 
@@ -67,7 +69,7 @@ NOTE: The precedence for setting the values of namelist variables is (highest to
       1. namelist values set by specific command-line options, i.e. (none right now)
       2. values set on the command-line using the -namelist option,
       3. values read from the file specified by -infile,
-      4. values from the namelist defaults file - or values specifically set in build-namelist 
+      4. values from the namelist defaults file - or values specifically set in build-namelist
 EOF
 }
 
@@ -82,7 +84,7 @@ my $ProgDir = $1;                      # name of directory containing this scrip
                                        # the user's PATH
 my $cwd = getcwd();                    # current working directory
 my $cfgdir;                            # absolute pathname of directory that contains this script
-if ($ProgDir) { 
+if ($ProgDir) {
     $cfgdir = absolute_path($ProgDir);
 } else {
     $cfgdir = $cwd;
@@ -108,6 +110,7 @@ my %opts = ( help            => 0,
              surface_mode    => undef,
              iceberg_mode    => undef,
              prognostic_mode => undef,
+             column_mode => undef,
              cfg_dir         => $cfgdir,
              ntasks_ice      => 0,
              ninst_ice       => 0,
@@ -130,6 +133,7 @@ GetOptions(
     "surface_mode=s"    => \$opts{'surface_mode'},
     "iceberg_mode=s"    => \$opts{'iceberg_mode'},
     "prognostic_mode=s" => \$opts{'prognostic_mode'},
+    "column_mode=s"     => \$opts{'column_mode'},
     "cfg_dir=s"         => \$opts{'cfg_dir'},
     "preview"           => \$opts{'preview'},
     "ntasks_ice=i"      => \$opts{'ntasks_ice'},
@@ -169,11 +173,12 @@ my $ice_bgc         = $opts{'ice_bgc'};
 my $surface_mode    = $opts{'surface_mode'};
 my $iceberg_mode    = $opts{'iceberg_mode'};
 my $prognostic_mode = $opts{'prognostic_mode'};
+my $column_mode     = $opts{'column_mode'};
 my $NINST_ICE       = $opts{'ninst_ice'};
 my $NTASKS_ICE      = $opts{'ntasks_ice'};
 $cfgdir             = $opts{'cfg_dir'};
 
-my $CIMEROOT;     
+my $CIMEROOT;
 if ( defined $opts{'cimeroot'} ) {
     $CIMEROOT = $opts{'cimeroot'};
 }
@@ -191,6 +196,7 @@ print $fh  <<"EOF";
 <config_definition>
 <entry id="ice_grid" value="$ICE_GRID">
 <entry id="prognostic_mode" value="$prognostic_mode">
+<entry id="column_mode" value="$column_mode">
 <entry id="decomp_prefix" value="$decomp_prefix">
 <entry id="date_stamp" value="$date_stamp">
 </config_definition>
@@ -246,7 +252,7 @@ EOF
 # The namelist definition file contains entries for all namelist variables that
 # can be output by build-namelist.  The version of the file that is associate with a
 # fixed MPASSI tag is $cfgdir/namelist_files/namelist_definition.xml.  To aid developers
-# who make use of the SourceMods/src.mpassi directory - we allow the definition file 
+# who make use of the SourceMods/src.mpassi directory - we allow the definition file
 # to come from that directory
 my $nl_definition_file;
 if (-f "${CASEROOT}/SourceMods/src.mpassi/namelist_definition_mpassi.xml") {
@@ -285,7 +291,7 @@ require Build::Namelist;
 require Config::SetupTools;
 
 #-----------------------------------------------------------------------------------------------
-# Create a configuration object from the MPASSI config_cache.xml file-  created by 
+# Create a configuration object from the MPASSI config_cache.xml file-  created by
 # mpassi.cpl7.template in $CASEBUILD/mpassiconf
 my $cfg = Build::Config->new('config_cache.xml');
 
@@ -439,13 +445,13 @@ if ($inst_string) {
     $output_r = "./${CASE}.mpassi${inst_string}.r";
     $output_h = "./${CASE}.mpassi${inst_string}.h";
     $output_d = "./${CASE}.mpassi${inst_string}.d";
-} 
+}
 
 # Environment variables set in mpassi.buildnml.csh that are not xml variables
-my $RESTART_INPUT_TS_FMT = "$ENV{'RESTART_INPUT_TS_FMT'}"; 
+my $RESTART_INPUT_TS_FMT = "$ENV{'RESTART_INPUT_TS_FMT'}";
 my $LID = $ENV{'LID'};
 
-my $ntasks = $NTASKS_ICE / $NINST_ICE; 
+my $ntasks = $NTASKS_ICE / $NINST_ICE;
 
 print "MPASSI build-namelist: ice_grid is $ICE_GRID \n";
 
@@ -487,7 +493,7 @@ add_default($nl, 'config_full_abort_write');
 # Namelist group: decomposition #
 #################################
 
-add_default($nl, 'config_block_decomp_file_prefix', 'val'=>"'${DIN_LOC_ROOT}/ice/mpas-cice/${ICE_GRID}/${decomp_prefix}${date_stamp}.part.'");
+add_default($nl, 'config_block_decomp_file_prefix', 'val'=>"'${DIN_LOC_ROOT}/ice/mpas-seaice/${ICE_GRID}/${decomp_prefix}${date_stamp}.part.'");
 add_default($nl, 'config_number_of_blocks');
 add_default($nl, 'config_explicit_proc_decomp');
 add_default($nl, 'config_proc_decomp_file_prefix');
@@ -522,6 +528,7 @@ add_default($nl, 'config_restart_timestamp_name');
 ##############################
 
 add_default($nl, 'config_nCategories');
+add_default($nl, 'config_nFloeCategories');
 add_default($nl, 'config_nIceLayers');
 add_default($nl, 'config_nSnowLayers');
 
@@ -553,7 +560,7 @@ add_default($nl, 'config_use_dynamics');
 add_default($nl, 'config_use_velocity_solver');
 add_default($nl, 'config_use_advection');
 add_default($nl, 'config_use_forcing');
-add_default($nl, 'config_use_column_package');
+add_default($nl, 'config_use_column_physics');
 add_default($nl, 'config_use_prescribed_ice');
 add_default($nl, 'config_use_prescribed_ice_forcing');
 
@@ -567,7 +574,9 @@ add_default($nl, 'config_forcing_cycle_start');
 add_default($nl, 'config_forcing_cycle_duration');
 add_default($nl, 'config_forcing_precipitation_units');
 add_default($nl, 'config_forcing_sst_type');
+add_default($nl, 'config_forcing_bgc_type');
 add_default($nl, 'config_update_ocean_fluxes');
+add_default($nl, 'config_frazil_coupling_type');
 add_default($nl, 'config_include_pond_freshwater_feedback');
 
 ###########################
@@ -620,6 +629,11 @@ add_default($nl, 'config_recover_tracer_means_check');
 # Namelist group: column_package #
 ##################################
 
+if ($ice_bgc eq 'ice_bgc') {
+        add_default($nl, 'config_column_physics_type', 'val'=>"column_package");
+} else {
+        add_default($nl, 'config_column_physics_type');
+}
 add_default($nl, 'config_use_column_shortwave');
 add_default($nl, 'config_use_column_vertical_thermodynamics');
 if ($ice_bgc eq 'ice_bgc') {
@@ -645,6 +659,7 @@ add_default($nl, 'config_use_aerosols');
 add_default($nl, 'config_use_effective_snow_density');
 add_default($nl, 'config_use_snow_grain_radius');
 add_default($nl, 'config_use_special_boundaries_tracers');
+add_default($nl, 'config_use_floe_size_distribution');
 
 ###################################
 # Namelist group: biogeochemistry #
@@ -666,6 +681,7 @@ if ($ice_bgc eq 'ice_bgc') {
         add_default($nl, 'config_use_humics', 'val'=>".true.");
         add_default($nl, 'config_use_DON', 'val'=>".true.");
         add_default($nl, 'config_use_iron', 'val'=>".true.");
+        add_default($nl, 'config_couple_biogeochemistry_fields');
 } else {
         add_default($nl, 'config_use_vertical_biochemistry', 'val'=>".false.");
         add_default($nl, 'config_use_vertical_tracers', 'val'=>".false.");
@@ -679,11 +695,14 @@ if ($ice_bgc eq 'ice_bgc') {
         add_default($nl, 'config_use_humics', 'val'=>".false.");
         add_default($nl, 'config_use_DON', 'val'=>".false.");
         add_default($nl, 'config_use_iron', 'val'=>".false.");
+        add_default($nl, 'config_couple_biogeochemistry_fields', 'val'=>".false.");
 }
 add_default($nl, 'config_use_chlorophyll');
 add_default($nl, 'config_use_macromolecules');
 add_default($nl, 'config_use_modal_aerosols');
 add_default($nl, 'config_use_zaerosols');
+add_default($nl, 'config_use_atm_dust_file');
+add_default($nl, 'config_use_iron_solubility_file');
 add_default($nl, 'config_skeletal_bgc_flux_type');
 add_default($nl, 'config_scale_initial_vertical_bgc');
 add_default($nl, 'config_biogrid_bottom_molecular_sublayer');
@@ -828,6 +847,9 @@ add_default($nl, 'config_snow_shortwave_tuning_parameter');
 add_default($nl, 'config_temp_change_snow_grain_radius_change');
 add_default($nl, 'config_max_melting_snow_grain_radius');
 add_default($nl, 'config_algae_absorption_coefficient');
+add_default($nl, 'config_use_shortwave_redistribution');
+add_default($nl, 'config_shortwave_redistribution_fraction');
+add_default($nl, 'config_shortwave_redistribution_threshold');
 
 ########################
 # Namelist group: snow #
@@ -840,7 +862,9 @@ add_default($nl, 'config_new_snow_density');
 add_default($nl, 'config_max_snow_density');
 add_default($nl, 'config_minimum_wind_compaction');
 add_default($nl, 'config_wind_compaction_factor');
+add_default($nl, 'config_snow_redistribution_factor');
 add_default($nl, 'config_max_dry_snow_radius');
+add_default($nl, 'config_snow_thermal_conductivity');
 
 #############################
 # Namelist group: meltponds #
@@ -848,7 +872,7 @@ add_default($nl, 'config_max_dry_snow_radius');
 
 add_default($nl, 'config_snow_to_ice_transition_depth');
 add_default($nl, 'config_pond_refreezing_type');
-add_default($nl, 'config_pond_flushing_timescale');
+add_default($nl, 'config_pond_flushing_factor');
 add_default($nl, 'config_min_meltwater_retained_fraction');
 add_default($nl, 'config_max_meltwater_retained_fraction');
 add_default($nl, 'config_pond_depth_to_fraction_ratio');
@@ -866,6 +890,7 @@ add_default($nl, 'config_rapid_model_critical_Ra');
 add_default($nl, 'config_rapid_mode_aspect_ratio');
 add_default($nl, 'config_slow_mode_drainage_strength');
 add_default($nl, 'config_slow_mode_critical_porosity');
+add_default($nl, 'config_macro_drainage_timescale');
 add_default($nl, 'config_congelation_ice_porosity');
 
 #######################
@@ -875,6 +900,12 @@ add_default($nl, 'config_congelation_ice_porosity');
 add_default($nl, 'config_itd_conversion_type');
 add_default($nl, 'config_category_bounds_type');
 
+############################
+# Namelist group: floesize #
+############################
+add_default($nl, 'config_floeshape');
+add_default($nl, 'config_floediam');
+
 ###########################
 # Namelist group: ridging #
 ###########################
@@ -882,7 +913,7 @@ add_default($nl, 'config_category_bounds_type');
 add_default($nl, 'config_ice_strength_formulation');
 add_default($nl, 'config_ridging_participation_function');
 add_default($nl, 'config_ridging_redistribution_function');
-add_default($nl, 'config_ridiging_efolding_scale');
+add_default($nl, 'config_ridging_efolding_scale');
 add_default($nl, 'config_ratio_ridging_work_to_PE');
 
 ##############################
@@ -910,12 +941,13 @@ if ($surface_mode eq 'non-free') {
 } else {
         add_default($nl, 'config_ocean_surface_type', 'val'=>"free");
 }
-add_default($nl, 'config_couple_biogeochemistry_fields');
 if ($iceberg_mode eq 'data') {
-        add_default($nl, 'config_use_data_icebergs', 'val'=>"true");
+    add_default($nl, 'config_use_data_icebergs', 'val'=>"true");
 } else {
-        add_default($nl, 'config_use_data_icebergs', 'val'=>"false");
+    add_default($nl, 'config_use_data_icebergs', 'val'=>"false");
 }
+add_default($nl, 'config_salt_flux_coupling_type');
+add_default($nl, 'config_ice_ocean_drag_coefficient');
 
 ###############################
 # Namelist group: diagnostics #
@@ -1233,6 +1265,7 @@ my @groups = qw(seaice_model
                 meltponds
                 thermodynamics
                 itd
+                floesize
                 ridging
                 atmosphere
                 ocean
@@ -1379,7 +1412,7 @@ sub add_default {
     # The default values for input pathnames are relative.  If the namelist
     # variable is defined to be an absolute pathname, then prepend
     # the CCSM inputdata root directory.
-    # TODO: unless ignore_abs is passed as argument 
+    # TODO: unless ignore_abs is passed as argument
     if ($is_input_pathname eq 'abs') {
       unless ($opts{'noprepend'}){
         $val = set_abs_filepath($val, $DIN_LOC_ROOT);
@@ -1587,8 +1620,8 @@ sub expand_env_xml {
 	my $subst = $xmlvars{$1};
 	$value =~ s/\$${1}/$subst/g;
     }
-    return $value; 
-}	 
+    return $value;
+}
 
 #-------------------------------------------------------------------------------
 
@@ -1617,7 +1650,7 @@ sub print_nl_to_screen {
 sub valid_date {
 # return 1 if given date ($$month/$$day/$$year) exists in calendar $cal
 # otherwise subtract number of days in $$month from $$day, and increment
-# $$month by 1 (also incrementing $$year if going from Dec to Jan) and 
+# $$month by 1 (also incrementing $$year if going from Dec to Jan) and
 # then return 0.
 
   my $day = shift;

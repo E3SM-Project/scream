@@ -11,9 +11,11 @@ set(CLDFRAC_HEADERS
 
 add_library(cld_fraction ${CLDFRAC_SRCS})
 target_compile_definitions(cld_fraction PUBLIC EAMXX_HAS_CLD_FRACTION)
-target_include_directories(cld_fraction PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../share)
 target_link_libraries(cld_fraction physics_share scream_share)
 target_compile_options(cld_fraction PUBLIC)
+
+# Add this library to eamxx_physics
+target_link_libraries(eamxx_physics INTERFACE cld_fraction)
 
 # Cloud fraction does not yet have a set of unit tests or a BFB test comparing with the F90
 # code.

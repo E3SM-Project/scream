@@ -260,7 +260,7 @@ module cam_history
   !        logic in the routine that optimizes character strings of length 8.
   !
 
-  integer, parameter :: gen_hash_key_offset = z'000053db'
+  integer, parameter :: gen_hash_key_offset = int(z'000053db')
 
   integer, parameter :: tbl_max_idx = 15  ! 2**N - 1
   integer, dimension(0:tbl_max_idx) :: tbl_gen_hash_key = &
@@ -2727,7 +2727,7 @@ end subroutine print_active_fldlst
         end if
         do i = 1, size(tape(t)%grid_ids)
           call cam_grid_compute_patch(tape(t)%grid_ids(i), patchptr%patches(i),&
-               beglon, endlon, beglat, endlat)
+               beglon, endlon, beglat, endlat, collect_column_output(t))
         end do
         nullify(patchptr)
       end do
@@ -3848,7 +3848,7 @@ end subroutine print_active_fldlst
     &Mailing address: LLNL Climate Program, c/o David C. Bader, &
     &Principal Investigator, L-103, 7000 East Avenue, Livermore, CA 94550, USA')
     ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'contact',  &
-                      'e3sm-data-support@listserv.llnl.gov')
+                      'e3sm-data-support@llnl.gov')
     ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'initial_file', ncdata)
     ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'topography_file', bnd_topo)
 

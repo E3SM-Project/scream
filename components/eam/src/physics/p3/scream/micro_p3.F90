@@ -60,8 +60,8 @@ module micro_p3
 
   ! Bit-for-bit math functions.
 #ifdef SCREAM_CONFIG_IS_CMAKE
-  use physics_share_f2c, only: cxx_pow, cxx_sqrt, cxx_cbrt, cxx_gamma, cxx_log, &
-                                 cxx_log10, cxx_exp, cxx_expm1, cxx_tanh
+  use physics_share_f2c, only: scream_pow, scream_sqrt, scream_cbrt, scream_gamma, scream_log, &
+                               scream_log10, scream_exp, scream_expm1, scream_tanh
 #endif
 
   implicit none
@@ -961,7 +961,7 @@ contains
       rho, inv_rho, rhofaci, qv, th_atm, qc, nc, qr, nr, qi, ni, qm, bm, latent_heat_vapor, latent_heat_sublim, &
       mu_c, nu, lamc, mu_r, lamr, vap_liq_exchange, &
       ze_rain, ze_ice, diag_vm_qi, diag_eff_radius_qi, diag_diam_qi, rho_qi, diag_equiv_reflectivity, diag_eff_radius_qc,  & 
-      diag_ze_rain,diag_ze_ice)
+      diag_ze_rain,diag_ze_ice,diag_eff_radius_qr)
 
    implicit none
 
@@ -976,7 +976,7 @@ contains
         mu_c, nu, lamc, mu_r, &
         lamr, vap_liq_exchange, &
         ze_rain, ze_ice, diag_vm_qi, diag_eff_radius_qi, diag_diam_qi, rho_qi, diag_equiv_reflectivity, diag_eff_radius_qc, &
-        diag_ze_rain, diag_ze_ice
+        diag_ze_rain, diag_ze_ice, diag_eff_radius_qr
 
    ! locals
    integer :: k, dumi, dumii, dumjj, dumzz
@@ -1031,6 +1031,7 @@ contains
               (mu_r(k)+3._rtype)*(mu_r(k)+2._rtype)*(mu_r(k)+1._rtype)/bfb_pow(lamr(k), 6._rtype)
          ze_rain(k) = max(ze_rain(k),1.e-22_rtype)
          diag_ze_rain(k) = 10._rtype*bfb_log10(ze_rain(k)*1.e18_rtype)
+         diag_eff_radius_qr(k) = 1.5_rtype/lamr(k)
       else
          qv(k) = qv(k)+qr(k)
          th_atm(k) = th_atm(k)-inv_exner(k)*qr(k)*latent_heat_vapor(k)*inv_cp
@@ -1125,7 +1126,7 @@ contains
 
   SUBROUTINE p3_main(qc,nc,qr,nr,th_atm,qv,dt,qi,qm,ni,bm,   &
        pres,dz,nc_nuceat_tend,nccn_prescribed,ni_activated,inv_qc_relvar,it,precip_liq_surf,precip_ice_surf,its,ite,kts,kte,diag_eff_radius_qc,     &
-       diag_eff_radius_qi,rho_qi,do_predict_nc, do_prescribed_CCN, &
+       diag_eff_radius_qi,diag_eff_radius_qr,rho_qi,do_predict_nc, do_prescribed_CCN, &
        dpres,inv_exner,qv2qi_depos_tend,precip_total_tend,nevapr,qr_evap_tend,precip_liq_flux,precip_ice_flux,cld_frac_r,cld_frac_l,cld_frac_i,  &
        p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
        vap_ice_exchange,qv_prev,t_prev,col_location,diag_equiv_reflectivity,diag_ze_rain,diag_ze_ice &
@@ -1176,6 +1177,7 @@ contains
     real(rtype), intent(out),   dimension(its:ite)              :: precip_ice_surf    ! precipitation rate, solid        m s-1
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: diag_eff_radius_qc  ! effective radius, cloud          m
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: diag_eff_radius_qi  ! effective radius, ice            m
+    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: diag_eff_radius_qr  ! effective radius, rain           m
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: rho_qi  ! bulk density of ice              kg m-3
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: mu_c       ! Size distribution shape parameter for radiation
     real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: lamc       ! Size distribution slope parameter for radiation
@@ -1302,6 +1304,7 @@ contains
     ze_rain   = 1.e-22_rtype
     diag_eff_radius_qc = 10.e-6_rtype ! default value
     diag_eff_radius_qi = 25.e-6_rtype ! default value
+    diag_eff_radius_qr = 500.e-6_rtype ! default value
     diag_vm_qi  = 0._rtype
     diag_diam_qi   = 0._rtype
     rho_qi = 0._rtype
@@ -1458,7 +1461,7 @@ contains
             qm(i,:), bm(i,:), latent_heat_vapor(i,:), latent_heat_sublim(i,:), &
             mu_c(i,:), nu(i,:), lamc(i,:), mu_r(i,:), lamr(i,:), vap_liq_exchange(i,:), &
             ze_rain(i,:), ze_ice(i,:), diag_vm_qi(i,:), diag_eff_radius_qi(i,:), diag_diam_qi(i,:), rho_qi(i,:), diag_equiv_reflectivity(i,:), diag_eff_radius_qc(i,:), &
-            diag_ze_rain(i,:),diag_ze_ice(i,:))
+            diag_ze_rain(i,:),diag_ze_ice(i,:), diag_eff_radius_qr(i,:))
        !   if (debug_ON) call check_values(qv,Ti,it,debug_ABORT,800,col_location)
 
        !..............................................
@@ -1846,7 +1849,8 @@ contains
     real(rtype),     intent(out)           :: lamr,mu_r,cdistr,logn0r
 
     !local variables:
-    real(rtype)                            :: inv_dum,lammax,lammin
+    real(rtype)                            :: lammax,lammin
+    real(rtype)                            :: mass_to_d3_factor
 
     !--------------------------------------------------------------------------
 
@@ -1858,25 +1862,25 @@ contains
        ! find spot in lookup table
        ! (scaled N/q for lookup table parameter space_
        nr      = max(nr,nsmall)
-       inv_dum = bfb_cbrt(qr/(cons1*nr*6._rtype))
 
        ! Apply constant mu_r:  Recall the switch to v4 tables means constant mu_r
        mu_r = mu_r_constant
-       lamr   = bfb_cbrt(cons1*nr*(mu_r+3._rtype)*(mu_r+2._rtype)*(mu_r+1._rtype)/(qr))  ! recalculate slope based on mu_r
+       mass_to_d3_factor = cons1*(mu_r+3._rtype)*(mu_r+2._rtype)*(mu_r+1._rtype)
+       lamr   = bfb_cbrt(mass_to_d3_factor*nr/qr)  ! recalculate slope based on mu_r
        lammax = (mu_r+1._rtype)*1.e+5_rtype   ! check for slope
        lammin = (mu_r+1._rtype)*500._rtype  !500=1/(2mm) is inverse of max allowed number-weighted mean raindrop diameter
        
        ! apply lambda limiters for rain
        if (lamr.lt.lammin) then
           lamr = lammin
-          nr   = bfb_exp(3._rtype*bfb_log(lamr)+bfb_log(qr)+bfb_log(bfb_gamma(mu_r+1._rtype))-bfb_log(bfb_gamma(mu_r+4._rtype)))/(cons1)
+          nr   = lamr * lamr * lamr * qr / mass_to_d3_factor
        elseif (lamr.gt.lammax) then
           lamr = lammax
-          nr   = bfb_exp(3._rtype*bfb_log(lamr)+bfb_log(qr)+bfb_log(bfb_gamma(mu_r+1._rtype))-bfb_log(bfb_gamma(mu_r+4._rtype)))/(cons1)
+          nr   = lamr * lamr * lamr * qr / mass_to_d3_factor
        endif
 
        cdistr  = nr/bfb_gamma(mu_r+1._rtype)
-       logn0r  = bfb_log10(nr)+(mu_r+1._rtype)*bfb_log10(lamr)-bfb_log10(bfb_gamma(mu_r+1._rtype)) !note: logn0r is calculated as log10(n0r)
+       logn0r  = bfb_log10(cdistr)+(mu_r+1._rtype)*bfb_log10(lamr) !note: logn0r is calculated as log10(n0r)
 
     else
 

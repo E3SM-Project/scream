@@ -4,6 +4,7 @@
 #include "ekat/ekat_assert.hpp"
 
 #include <string>
+#include <vector>
 
 namespace scream
 {
@@ -33,12 +34,6 @@ enum class FieldTag {
   GaussPoint,
   Component,
   TimeLevel,
-  // Added for RRTMGP, TODO: Revisit this approach, is there a better way than adding more field tags?
-  Gases,
-  ShortWaveBand,
-  ShortWaveGpoint,
-  LongWaveBand,
-  LongWaveGpoint
 };
 
 // If using tags a lot, consider adding 'using namespace ShortFieldTagsNames'
@@ -47,6 +42,7 @@ enum class FieldTag {
 //   using enum FieldTag;
 namespace ShortFieldTagsNames {
 
+  constexpr auto INV  = FieldTag::Invalid;
   constexpr auto EL   = FieldTag::Element;
   constexpr auto COL  = FieldTag::Column;
   constexpr auto GP   = FieldTag::GaussPoint;
@@ -54,12 +50,6 @@ namespace ShortFieldTagsNames {
   constexpr auto LEV  = FieldTag::LevelMidPoint;
   constexpr auto ILEV = FieldTag::LevelInterface;
   constexpr auto CMP  = FieldTag::Component;
-  // Added for rrtmgp - see TODO item above
-  constexpr auto NGAS = FieldTag::Gases;
-  constexpr auto SWBND = FieldTag::ShortWaveBand;
-  constexpr auto LWBND = FieldTag::LongWaveBand;
-  constexpr auto SWGPT = FieldTag::ShortWaveGpoint;
-  constexpr auto LWGPT = FieldTag::LongWaveGpoint;
 }
 
 inline std::string e2str (const FieldTag ft) {
@@ -90,26 +80,19 @@ inline std::string e2str (const FieldTag ft) {
     case FieldTag::Component:
       name = "dim";
       break;
-    // Added for rrtmgp - see TODO item above
-    case FieldTag::Gases:
-      name = "ngas";
-      break;
-    case FieldTag::ShortWaveBand:
-      name = "swband";
-      break;
-    case FieldTag::ShortWaveGpoint:
-      name = "swgpt";
-      break;
-    case FieldTag::LongWaveBand:
-      name = "lwband";
-      break;
-    case FieldTag::LongWaveGpoint:
-      name = "lwgpt";
-      break;
     default:
       EKAT_ERROR_MSG("Error! Unrecognized field tag.");
   }
   return name;
+}
+
+inline std::vector<std::string> tags2str (const std::vector<FieldTag>& tags) {
+  std::vector<std::string> names;
+  names.reserve(tags.size());
+  for (auto t : tags) {
+    names.push_back(e2str(t));
+  }
+  return names;
 }
 
 // Allow to stream FieldTag values as strings.

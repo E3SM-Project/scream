@@ -1,15 +1,15 @@
 #ifndef SCREAM_EXPORTER_HPP
 #define SCREAM_EXPORTER_HPP
 
+#include "surface_coupling_utils.hpp"
+
 #include "share/atm_process/atmosphere_process.hpp"
-#include "ekat/ekat_parameter_list.hpp"
 #include "share/util/scream_common_physics_functions.hpp"
 #include "share/util/eamxx_time_interpolation.hpp"
 #include "share/atm_process/ATMBufferManager.hpp"
 #include "share/atm_process/SCDataManager.hpp"
 
-#include "surface_coupling_utils.hpp"
-
+#include <ekat/ekat_parameter_list.hpp>
 #include <string>
 
 namespace scream
@@ -86,7 +86,6 @@ public:
 
   // Take and store data from SCDataManager
   void setup_surface_coupling_data(const SCDataManager &sc_data_manager);
-
 protected:
 
   // The three main overrides for the subcomponent
@@ -142,6 +141,13 @@ protected:
   view_2d <DefaultDevice, Real> m_cpl_exports_view_d;
   uview_2d<HostDevice,    Real> m_cpl_exports_view_h;
 
+#ifdef HAVE_MOAB
+  // Views storing a 2d array with dims (num_fields, num_cols) for moab cpl export data.
+  // The field cols strides faster, since that's what moab does (so we can "view" the
+  // pointer to the whole a2x_am(:,:) array from Fortran)
+  view_2d <DefaultDevice, Real> m_moab_cpl_exports_view_d;
+  uview_2d<HostDevice,    Real> m_moab_cpl_exports_view_h;
+#endif
   // Array storing the field names for exports
   name_t*                   m_export_field_names;
   std::vector<std::string>  m_export_field_names_vector;

@@ -35,6 +35,7 @@ if (NOT EAMXX_ENABLE_GPU)
     eti/shoc_compute_l_inf_shoc_length.cpp
     eti/shoc_compute_shoc_mix_shoc_length.cpp
     eti/shoc_compute_shoc_vapor.cpp
+    eti/shoc_compute_shoc_temperature.cpp
     eti/shoc_compute_shr_prod.cpp
     eti/shoc_compute_tmpi.cpp
     eti/shoc_diag_obklen.cpp
@@ -74,6 +75,7 @@ set(SHOC_SK_SRCS
     disp/shoc_check_tke_disp.cpp
     disp/shoc_grid_disp.cpp
     disp/shoc_compute_shoc_vapor_disp.cpp
+    disp/shoc_compute_shoc_temperature_disp.cpp
     disp/shoc_diag_obklen_disp.cpp
     disp/shoc_pblintd_disp.cpp
     disp/shoc_length_disp.cpp
@@ -102,14 +104,14 @@ if (HIP_BUILD)
 endif()
 
 set(SHOC_LIBS "shoc")
-if (SCREAM_SMALL_KERNELS)
+if (SCREAM_SHOC_SMALL_KERNELS)
   add_library(shoc ${SHOC_SRCS} ${SHOC_SK_SRCS})
 else()
   add_library(shoc ${SHOC_SRCS})
-  if (NOT SCREAM_LIBS_ONLY AND NOT SCREAM_BASELINES_ONLY)
+  if (NOT SCREAM_LIBS_ONLY AND NOT SCREAM_ONLY_GENERATE_BASELINES)
     add_library(shoc_sk ${SHOC_SRCS} ${SHOC_SK_SRCS})
-    # Always build shoc_sk with SCREAM_SMALL_KERNELS on
-    target_compile_definitions(shoc_sk PUBLIC "SCREAM_SMALL_KERNELS")
+    # Always build shoc_sk with SCREAM_SHOC_SMALL_KERNELS on
+    target_compile_definitions(shoc_sk PUBLIC "SCREAM_SHOC_SMALL_KERNELS")
     list(APPEND SHOC_LIBS "shoc_sk")
   endif()
 endif()
@@ -120,7 +122,6 @@ foreach (SHOC_LIB IN LISTS SHOC_LIBS)
     Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${SHOC_LIB}_modules
   )
   target_include_directories(${SHOC_LIB} PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/../share
     ${CMAKE_CURRENT_BINARY_DIR}/${SHOC_LIB}_modules
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/impl
@@ -131,3 +132,6 @@ endforeach()
 if (NOT SCREAM_LIB_ONLY)
   add_subdirectory(tests)
 endif()
+
+# Add this library to eamxx_physics
+target_link_libraries(eamxx_physics INTERFACE shoc)

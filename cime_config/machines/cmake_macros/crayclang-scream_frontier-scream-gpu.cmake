@@ -1,30 +1,38 @@
-if (compile_threaded)
-  string(APPEND CFLAGS " -fopenmp")
-  string(APPEND FFLAGS " -fopenmp")
-  string(APPEND CXXFLAGS " -fopenmp")
-  string(APPEND LDFLAGS " -fopenmp")
+set(MPICC "mpicc")
+set(MPICXX "mpicxx") # Needs MPICH_CXX to use hipcc
+set(MPIFC "ftn") # Linker needs to be the Cray wrapper ftn, not mpif90
+set(SCC "cc")
+set(SCXX "hipcc")
+set(SFC "ftn")
+
+string(APPEND CPPDEFS " -DLINUX -DSCREAM_SYSTEM_WORKAROUND=0")
+if (COMP_NAME STREQUAL gptl)
+    string(APPEND CPPDEFS " -DHAVE_NANOTIME -DBIT64 -DHAVE_SLASHPROC -DHAVE_COMM_F2C -DHAVE_TIMES -DHAVE_GETTIMEOFDAY")
 endif()
 
-string(APPEND SLIBS " -L$ENV{PNETCDF_PATH}/lib -lpnetcdf")
-set(NETCDF_PATH "$ENV{NETCDF_DIR}")
-set(PNETCDF_PATH "$ENV{PNETCDF_DIR}")
-set(PIO_FILESYSTEM_HINTS "gpfs")
-string(APPEND CXX_LIBS " -lstdc++")
+if (compile_threaded)
+  string(APPEND CMAKE_C_FLAGS " -fopenmp")
+  string(APPEND CMAKE_Fortran_FLAGS " -fopenmp")
+  string(APPEND CMAKE_CXX_FLAGS " -fopenmp")
+  string(APPEND CMAKE_EXE_LINKER_FLAGS " -fopenmp")
+endif()
 
-string(APPEND SLIBS " -L$ENV{ROCM_PATH}/lib -lamdhip64 $ENV{OLCF_LIBUNWIND_ROOT}/lib/libunwind.a /sw/frontier/spack-envs/base/opt/cray-sles15-zen3/clang-14.0.0-rocm5.2.0/gperftools-2.10-6g5acp4pcilrl62tddbsbxlut67pp7qn/lib/libtcmalloc.a")
-string(APPEND FFLAGS " -hipa0 -hzero -hsystem_alloc -f free -N 255 -h byteswapio")
+string(APPEND CMAKE_Fortran_FLAGS " -hipa0 -hzero -f free")
 
-SET(CMAKE_C_COMPILER "mpicc" CACHE STRING "")
-SET(CMAKE_Fortran_COMPILER "ftn" CACHE STRING "")
-SET(CMAKE_CXX_COMPILER "hipcc" CACHE STRING "")
-
-string(APPEND LDFLAGS " -L$ENV{ROCM_PATH}/lib -lamdhip64")
-string(APPEND CXXFLAGS " -I$ENV{ROCM_PATH}/include")
+string(APPEND CMAKE_EXE_LINKER_FLAGS " -L$ENV{ROCM_PATH}/lib -lamdhip64 -L/opt/gcc/12.2.0/snos/lib64")
+string(APPEND CMAKE_CXX_FLAGS " -I$ENV{ROCM_PATH}/include")
 
 # Crusher: this resolves a crash in mct in docn init
-if (NOT DEBUG)
-  string(APPEND CFLAGS " -O2 -hnoacc -hfp0 -hipa0")
-  string(APPEND FFLAGS " -O2 -hnoacc -hfp0 -hipa0")
-endif()
+string(APPEND CMAKE_C_FLAGS_RELEASE " -O2 -hnoacc -hfp0 -hipa0")
+string(APPEND CMAKE_Fortran_FLAGS_RELEASE " -O2 -hnoacc -hfp0 -hipa0")
+string(APPEND CMAKE_CXX_FLAGS_RELEASE " -O2 ")
 
 string(APPEND CPPDEFS " -DCPRCRAY")
+
+if (COMP_NAME STREQUAL gptl)
+  string(APPEND CPPDEFS " -DHAVE_NANOTIME -DBIT64 -DHAVE_VPRINTF -DHAVE_BACKTRACE -DHAVE_SLASHPROC -DHAVE_COMM_F2C -DHAVE_TIMES -DHAVE_GETTIMEOFDAY")
+endif()
+set(PIO_FILESYSTEM_HINTS "lustre")
+
+string(APPEND KOKKOS_OPTIONS " -DKokkos_ENABLE_HIP=On -DKokkos_ARCH_VEGA90A=On -DCMAKE_CXX_FLAGS='-std=gnu++14' -DKokkos_ENABLE_OPENMP=OFF")
+set(USE_HIP "TRUE")

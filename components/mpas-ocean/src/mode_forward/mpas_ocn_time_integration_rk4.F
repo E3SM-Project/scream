@@ -44,6 +44,9 @@ module ocn_time_integration_rk4
    use ocn_surface_land_ice_fluxes
    use ocn_transport_tests
 
+   use ocn_subgrid
+
+
    implicit none
    private
    save
@@ -61,6 +64,7 @@ module ocn_time_integration_rk4
    !--------------------------------------------------------------------
 
    public :: ocn_time_integrator_rk4
+   public :: ocn_time_integration_rk4_init
 
    contains
 
@@ -194,6 +198,9 @@ module ocn_time_integration_rk4
 
       real (kind=RKIND), dimension(:,:,:), pointer :: activeTracersCur, activeTracersNew
 
+      real(kind=RKIND), dimension(:,:), pointer :: subgridSshCellTableRange, subgridWetVolumeCellTable
+
+
       ! Get config options
       call mpas_pool_get_config(domain % configs, 'config_mom_del4', config_mom_del4)
       call mpas_pool_get_config(domain % configs, 'config_filter_btr_mode', config_filter_btr_mode)
@@ -227,10 +234,9 @@ module ocn_time_integration_rk4
          call mpas_pool_get_subpool(block % structs, 'mesh', meshPool)
          call mpas_pool_get_subpool(block % structs, 'diagnostics', diagnosticsPool)
 
-         call mpas_pool_create_pool(provisStatePool)
+         call mpas_pool_get_subpool(block % structs, 'provis_state', provisStatePool)
 
-         call mpas_pool_clone_pool(statePool, provisStatePool, 1)
-         call mpas_pool_add_subpool(block % structs, 'provis_state', provisStatePool)
+         call mpas_pool_copy_pool(statePool, provisStatePool, 1)
 
          call mpas_pool_get_dimension(block % dimensions, 'nCells', nCells)
          call mpas_pool_get_dimension(block % dimensions, 'nEdges', nEdges)
@@ -247,6 +253,13 @@ module ocn_time_integration_rk4
 
          call mpas_pool_get_array(meshPool, 'maxLevelCell', maxLevelCell)
          call mpas_pool_get_array(meshPool, 'maxLevelEdgeTop', maxLevelEdgeTop)
+
+         call mpas_pool_get_array(meshPool, 'subgridWetVolumeCellTable', &
+                                subgridWetVolumeCellTable)
+
+         call mpas_pool_get_array(meshPool, 'subgridSshCellTableRange', &
+                                subgridSshCellTableRange)
+
 
          ! Lower k-loop limit of 1 rather than minLevel* needed in *New = *Cur
          ! assignments below are needed to maintain bit-for-bit results
@@ -310,37 +323,6 @@ module ocn_time_integration_rk4
               !$omp end do
               !$omp end parallel
          end if
-
-         block => block % next
-      end do
-
-      block => domain % blocklist
-      do while(associated(block))
-         if (associated(block % prev)) then
-            call mpas_pool_get_subpool(block % prev % structs, 'provis_state', prevProvisPool)
-         else
-            nullify(prevProvisPool)
-         end if
-
-         if (associated(block % next)) then
-            call mpas_pool_get_subpool(block % next % structs, 'provis_state', nextProvisPool)
-         else
-            nullify(nextProvisPool)
-         end if
-
-         call mpas_pool_get_subpool(block % structs, 'provis_state', provisStatePool)
-
-         if (associated(prevProvisPool) .and. associated(nextProvisPool)) then
-            call mpas_pool_link_pools(provisStatePool, prevProvisPool, nextProvisPool)
-         else if (associated(prevProvisPool)) then
-            call mpas_pool_link_pools(provisStatePool, prevProvisPool)
-         else if (associated(nextProvisPool)) then
-            call mpas_pool_link_pools(provisStatePool, nextPool=nextProvisPool)
-         else
-            call mpas_pool_link_pools(provisStatePool)
-         end if
-
-         call mpas_pool_link_parinfo(block, provisStatePool)
 
          block => block % next
       end do
@@ -480,7 +462,7 @@ module ocn_time_integration_rk4
              if (config_prevent_drying) then
                block => domain % blocklist
                  do while (associated(block))
-                   call ocn_prevent_drying_rk4(block, dt, rk_substep_weights(rk_step), config_zero_drying_velocity, err)
+                   call ocn_prevent_drying_rk4(domain, block, dt, rk_substep_weights(rk_step), config_zero_drying_velocity, err)
                    block => block % next
                  end do
                ! exchange fields for parallelization
@@ -602,7 +584,7 @@ module ocn_time_integration_rk4
       ! Rescale tracers
       block => domain % blocklist
       do while(associated(block))
-        call ocn_time_integrator_rk4_cleanup(block, dt, err)
+        call ocn_time_integrator_rk4_cleanup(domain, block, dt, err)
 
         block => block % next
       end do
@@ -669,7 +651,7 @@ module ocn_time_integration_rk4
          end if
 
          if (config_disable_tr_all_tend) then
-            num_tracers = size(activeTracersNew, dim=2)
+            num_tracers = size(activeTracersNew, dim=1)
             do iTracer = 1, num_tracers
                !$omp parallel
                !$omp do schedule(runtime)
@@ -707,6 +689,15 @@ module ocn_time_integration_rk4
                  layerThicknessNew(k, iCell) = tidalInputMask(iCell)*(tidalBCValue(iCell) + bottomDepth(iCell))*(restingThickness(k,iCell)/totalDepth)
                  !(1.0_RKIND - tidalInputMask(iCell))*layerThicknessNew(k, iCell)  ! generalized tappered assumption code
                end do
+
+               if ( config_use_subgrid_wetting_drying ) then
+                  call ocn_subgrid_layer_thickness_lookup( tidalBCValue(iCell), & 
+                                         subgridWetVolumeCellTable(:,iCell), &
+                                         subgridSshCellTableRange(:,iCell),&
+                                         bottomDepth(iCell), &
+                                         layerThicknessNew(1,iCell) )
+               end if
+
              end if
            end do
          end if
@@ -741,9 +732,9 @@ module ocn_time_integration_rk4
             !$acc enter data copyin(landIceDraft)
          endif
 #endif
-         call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, 2)
+         call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, verticalMeshPool, scratchPool, tracersPool, 2)
 
-         ! Update the effective desnity in land ice if we're coupling to land ice
+         ! Update the effective density in land ice if we're coupling to land ice
          call ocn_effective_density_in_land_ice_update(forcingPool, &
                                                        statePool, err)
 
@@ -851,16 +842,6 @@ module ocn_time_integration_rk4
       end if
 
       call mpas_timer_stop("RK4-cleanup phase")
-
-      block => domain % blocklist
-      do while(associated(block))
-         call mpas_pool_get_subpool(block % structs, 'provis_state', provisStatePool)
-
-         call mpas_pool_destroy_pool(provisStatePool)
-
-         call mpas_pool_remove_subpool(block % structs, 'provis_state')
-         block => block % next
-      end do
 
    end subroutine ocn_time_integrator_rk4!}}}
 
@@ -1167,7 +1148,7 @@ module ocn_time_integration_rk4
       integer, pointer :: nCells, nEdges, nVertLevels
       integer :: iCell, iEdge, k
 
-      type (mpas_pool_type), pointer :: statePool, tendPool, meshPool, scratchPool
+      type (mpas_pool_type), pointer :: statePool, tendPool, meshPool, verticalMeshPool, scratchPool
       type (mpas_pool_type), pointer :: provisStatePool, forcingPool
       type (mpas_pool_type), pointer :: tracersPool, tracersTendPool, provisTracersPool
 
@@ -1207,6 +1188,7 @@ module ocn_time_integration_rk4
       call mpas_pool_get_subpool(block % structs, 'state', statePool)
       call mpas_pool_get_subpool(block % structs, 'tend', tendPool)
       call mpas_pool_get_subpool(block % structs, 'mesh', meshPool)
+      call mpas_pool_get_subpool(block % structs, 'verticalMesh', verticalMeshPool)
       call mpas_pool_get_subpool(block % structs, 'scratch', scratchPool)
       call mpas_pool_get_subpool(block % structs, 'provis_state', provisStatePool)
       call mpas_pool_get_subpool(block % structs, 'forcing', forcingPool)
@@ -1350,7 +1332,7 @@ module ocn_time_integration_rk4
          !$acc enter data copyin(landIceDraft)
       endif
 #endif
-      call ocn_diagnostic_solve(dt, provisStatePool, forcingPool, meshPool, scratchPool, tracersPool, 1)
+      call ocn_diagnostic_solve(dt, provisStatePool, forcingPool, meshPool, verticalMeshPool, scratchPool, tracersPool, 1)
 #ifdef MPAS_OPENACC
       !$acc update host(layerThickEdgeFlux, layerThickEdgeMean)
       !$acc update host(relativeVorticity, circulation)
@@ -1547,7 +1529,8 @@ module ocn_time_integration_rk4
 
    end subroutine ocn_time_integrator_rk4_accumulate_update!}}}
 
-   subroutine ocn_time_integrator_rk4_cleanup(block, dt, err)!{{{
+   subroutine ocn_time_integrator_rk4_cleanup(domain, block, dt, err)!{{{
+      type (domain_type), intent(inout) :: domain !< Input/Output: domain information
       type (block_type), intent(in) :: block
       real (kind=RKIND), intent(in) :: dt
       integer, intent(out) :: err
@@ -1555,7 +1538,7 @@ module ocn_time_integration_rk4
       integer, pointer :: nCells, nEdges
       integer :: iCell, iEdge, k
 
-      type (mpas_pool_type), pointer :: statePool, meshPool, forcingPool
+      type (mpas_pool_type), pointer :: statePool, meshPool, verticalMeshPool, forcingPool
       type (mpas_pool_type), pointer :: scratchPool
       type (mpas_pool_type), pointer :: tracersPool
 
@@ -1590,6 +1573,7 @@ module ocn_time_integration_rk4
 
       call mpas_pool_get_subpool(block % structs, 'state', statePool)
       call mpas_pool_get_subpool(block % structs, 'mesh', meshPool)
+      call mpas_pool_get_subpool(block % structs, 'verticalMesh', verticalMeshPool)
       call mpas_pool_get_subpool(block % structs, 'forcing', forcingPool)
       call mpas_pool_get_subpool(block % structs, 'scratch', scratchPool)
 
@@ -1652,7 +1636,9 @@ module ocn_time_integration_rk4
          !$acc enter data copyin(landIceDraft)
       endif
 #endif
-      call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, 2)
+      call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, verticalMeshPool, scratchPool, tracersPool, 2)
+      call mpas_dmpar_field_halo_exch(domain, 'tangentialVelocity')
+
 #ifdef MPAS_OPENACC
       !$acc update host(layerThickEdgeFlux, layerThickEdgeMean)
       !$acc update host(relativeVorticity, circulation)
@@ -1701,6 +1687,83 @@ module ocn_time_integration_rk4
       call ocn_vmix_implicit(dt, meshPool, statePool, forcingPool, scratchPool, err, 2)
 
    end subroutine ocn_time_integrator_rk4_cleanup!}}}
+
+!***********************************************************************
+!
+!  routine ocn_time_integration_rk4_init
+!
+!> \brief   Initialize RK4 time stepping within ocean
+!> \author  Carolyn Begeman
+!> \date    April 2023
+!> \details
+!>  This routine checks config options for RK4 integrator
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_time_integration_rk4_init(domain)!{{{
+
+      !-----------------------------------------------------------------
+      ! input/output variables
+      !-----------------------------------------------------------------
+      type (domain_type), intent(in) :: &
+         domain      !< [inout] data structure containing most variables
+      !-----------------------------------------------------------------
+      ! local variables
+      !-----------------------------------------------------------------
+      type (block_type), pointer :: block
+      type (mpas_pool_type), pointer :: meshPool, statePool, provisStatePool
+      type (mpas_pool_type), pointer :: nextProvisPool, prevProvisPool
+      logical, pointer :: config_use_debugTracers
+      integer, pointer :: nVertLevels
+      ! End preamble
+      !-----------------------------------------------------------------
+      ! Begin code
+
+      call mpas_pool_get_config(domain % configs, 'config_use_debugTracers', config_use_debugTracers)
+      block => domain % blocklist
+      do while (associated(block))
+         call mpas_pool_get_subpool(block % structs, 'mesh', meshPool)
+         call mpas_pool_get_subpool(block % structs, 'state', statePool)
+         call mpas_pool_get_dimension(meshPool, 'nVertLevels', nVertLevels)
+         if (config_use_debugTracers .and. nVertLevels == 1) then
+            call mpas_log_write('Debug tracers may cause failures in a ' &
+               // 'single layer case. Consider setting ' &
+               // 'config_use_debugTracers to .false.', MPAS_LOG_WARN)
+         endif
+
+         call mpas_pool_create_pool(provisStatePool)
+         call mpas_pool_clone_pool(statePool, provisStatePool, 1)
+         call mpas_pool_add_subpool(block % structs, 'provis_state', provisStatePool)
+
+         if (associated(block % prev)) then
+            call mpas_pool_get_subpool(block % prev % structs, 'provis_state', prevProvisPool)
+         else
+            nullify(prevProvisPool)
+         end if
+
+         if (associated(block % next)) then
+            call mpas_pool_get_subpool(block % next % structs, 'provis_state', nextProvisPool)
+         else
+            nullify(nextProvisPool)
+         end if
+
+         call mpas_pool_get_subpool(block % structs, 'provis_state', provisStatePool)
+
+         if (associated(prevProvisPool) .and. associated(nextProvisPool)) then
+            call mpas_pool_link_pools(provisStatePool, prevProvisPool, nextProvisPool)
+         else if (associated(prevProvisPool)) then
+            call mpas_pool_link_pools(provisStatePool, prevProvisPool)
+         else if (associated(nextProvisPool)) then
+            call mpas_pool_link_pools(provisStatePool, nextPool=nextProvisPool)
+         else
+            call mpas_pool_link_pools(provisStatePool)
+         end if
+
+         call mpas_pool_link_parinfo(block, provisStatePool)
+         block => block % next
+      end do
+
+   end subroutine ocn_time_integration_rk4_init
 
 end module ocn_time_integration_rk4
 

@@ -72,7 +72,12 @@ if [ $skip_testing -eq 0 ]; then
   # IF such dir is not found, then the default (ctest-build/baselines) is used
   BASELINES_DIR=AUTO
 
-  TAS_ARGS="--baseline-dir $BASELINES_DIR \$compiler -c EKAT_DISABLE_TPL_WARNINGS=ON -p -i -m \$machine"
+  TAS_ARGS="--baseline-dir $BASELINES_DIR \$compiler -p -c EKAT_DISABLE_TPL_WARNINGS=ON -m \$machine"
+  # pm-gpu needs to do work in scratch area in order not to fill home quota
+  if [[ "$SCREAM_MACHINE" == "pm-gpu" ]]; then
+      TAS_ARGS="${TAS_ARGS} -w /pscratch/sd/e/e3smtest/e3sm_scratch/pm-gpu/ctest-build"
+  fi
+
   # Now that we are starting to run things that we expect could fail, we
   # do not want the script to exit on any fail since this will prevent
   # later tests from running.
@@ -88,12 +93,17 @@ if [ $skip_testing -eq 0 ]; then
       fi
   fi
 
+  SA_FAILURES_DETAILS=""
   # Run scream stand-alone tests (SA)
   if [ $test_SA -eq 1 ]; then
-    ./scripts/gather-all-data "./scripts/test-all-scream ${TAS_ARGS}" -l -m $SCREAM_MACHINE
+    this_output=$(./scripts/gather-all-data "./scripts/test-all-scream ${TAS_ARGS}" -l -m $SCREAM_MACHINE)
     if [[ $? != 0 ]]; then
       fails=$fails+1;
       sa_fail=1
+      if [[ $is_at_run == 1 ]]; then
+        errors=$(echo "$this_output" | grep -m1 -A 100000 'Build type ')
+        SA_FAILURES_DETAILS+="$errors"
+      fi
     fi
 
     # Add memcheck and coverage tests for nightlies on specific machines
@@ -115,7 +125,9 @@ if [ $skip_testing -eq 0 ]; then
         fi
       fi
 
-      if [[ "$SCREAM_MACHINE" == "weaver" ]]; then
+      if [[ -z "$SCREAM_FAKE_ONLY" && "$SCREAM_MACHINE" == "weaver" ]]; then
+        # The fake-only tests don't launch any kernels which will cause all
+        # the compute-sanitizer runs to fail.
         ./scripts/gather-all-data "./scripts/test-all-scream -t csm -t csr -t csi -t css ${TAS_ARGS}" -l -m $SCREAM_MACHINE
         if [[ $? != 0 ]]; then
           fails=$fails+1;
@@ -133,20 +145,6 @@ if [ $skip_testing -eq 0 ]; then
 
     # Run scripts-tests
     if [[ $test_scripts == 1 ]]; then
-      # JGF: I'm not sure there's much value in these dry-run comparisons
-      # since we aren't changing HEADs
-      ./scripts/scripts-tests -g -m $SCREAM_MACHINE
-      if [[ $? != 0 ]]; then
-        fails=$fails+1;
-        scripts_fail=1
-      fi
-
-      ./scripts/scripts-tests -c -m $SCREAM_MACHINE
-      if [[ $? != 0 ]]; then
-        fails=$fails+1;
-        scripts_fail=1
-      fi
-
       ./scripts/scripts-tests -f -m $SCREAM_MACHINE
       if [[ $? != 0 ]]; then
         fails=$fails+1;
@@ -168,18 +166,6 @@ if [ $skip_testing -eq 0 ]; then
     # Also, for the nightlies, we use a separate job to run CIME tests
     if [[ -z "$SCREAM_FAKE_ONLY" && $is_at_run == 1 ]]; then
 
-      if [[ $test_v0 == 1 || $test_v1 == 1 ]]; then
-        # AT CIME runs may need an upstream merge in order to ensure that any DIFFs
-        # are caused by this PR and not simply because the PR is too far behind master.
-        if [ -n "$PULLREQUESTNUM" ]; then
-          ./scripts/git-merge-ref origin/master
-          if [[ $? != 0 ]]; then
-              echo "MERGE FAILED! Please resolve conflicts"
-              exit 1
-          fi
-        fi
-      fi
-
       if [[ $test_v0 == 1 ]]; then
         ../../cime/scripts/create_test e3sm_scream_v0 -c -b master --wait
         if [[ $? != 0 ]]; then
@@ -190,10 +176,14 @@ if [ $skip_testing -eq 0 ]; then
 
       if [[ $test_v1 == 1 ]]; then
         # AT runs should be fast. => run only low resolution
-        ../../cime/scripts/create_test e3sm_scream_v1_lowres --compiler=gnu9 -c -b master --wait
+        this_output=$(../../cime/scripts/create_test e3sm_scream_v1_at -c -b master --wait)
         if [[ $? != 0 ]]; then
           fails=$fails+1;
           v1_fail=1
+          if [[ $is_at_run == 1 ]]; then
+            errors=$(echo "$this_output" | grep -m1 -A 100000 'Waiting for tests to finish')
+            V1_FAILURES_DETAILS+="$errors"
+          fi
         fi
       else
           echo "SCREAM v1 tests were skipped, since the Github label 'AT: Skip v1 Testing' was found.\n"
@@ -209,9 +199,11 @@ if [ $skip_testing -eq 0 ]; then
     echo "FAILS DETECTED:"
     if [[ $sa_fail == 1 ]]; then
       echo "  SCREAM STANDALONE TESTING FAILED!"
+      echo "$SA_FAILURES_DETAILS"
     fi
     if [[ $v1_fail == 1 ]]; then
       echo "  SCREAM V1 TESTING FAILED!"
+      echo "$V1_FAILURES_DETAILS"
     fi
     if [[ $v0_fail == 1 ]]; then
       echo "  SCREAM V0 TESTING FAILED!"

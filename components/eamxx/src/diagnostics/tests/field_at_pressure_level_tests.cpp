@@ -104,8 +104,7 @@ TEST_CASE("field_at_pressure_level_p2")
       diag_f.sync_to_host();
       auto test2_diag_v = diag_f.get_view<const Real*, Host>();
       // Check the mask field inside the diag_f
-      auto mask_tmp = diag_f.get_header().get_extra_data().at("mask_data");
-      auto mask_f   = ekat::any_cast<Field>(mask_tmp);
+      auto mask_f = diag_f.get_header().get_extra_data<Field>("mask_data");
       mask_f.sync_to_host();
       auto test2_mask_v = mask_f.get_view<const Real*, Host>();
       //
@@ -126,12 +125,10 @@ TEST_CASE("field_at_pressure_level_p2")
       diag_f.sync_to_host();
       auto test2_diag_v = diag_f.get_view<const Real*, Host>();
       // Check the mask field inside the diag_f
-      auto mask_tmp = diag_f.get_header().get_extra_data().at("mask_data");
-      auto mask_f   = ekat::any_cast<Field>(mask_tmp);
+      auto mask_f = diag_f.get_header().get_extra_data<Field>("mask_data");
       mask_f.sync_to_host();
       auto test2_mask_v = mask_f.get_view<const Real*, Host>();
-      auto mask_val_tmp = diag_f.get_header().get_extra_data().at("mask_value");
-      Real mask_val = ekat::any_cast<Real>(mask_val_tmp);
+      auto mask_val = diag_f.get_header().get_extra_data<Real>("mask_value");
       //
       for (int icol=0;icol<ncols;icol++) {
         REQUIRE(approx(test2_diag_v(icol),Real(mask_val)));
@@ -225,11 +222,11 @@ get_test_diag(const ekat::Comm& comm, std::shared_ptr<const FieldManager> fm, st
     auto field = fm->get_field(fname);
     auto fid = field.get_header().get_identifier();
     ekat::ParameterList params;
-    params.set("Field",field);
-    params.set("Field Level Location",std::to_string(plevel) + "Pa");
+    params.set("field_name",field.name());
+    params.set("grid_name",fm->get_grid()->name());
+    params.set("vertical_location",std::to_string(plevel) + "Pa");
     auto diag = std::make_shared<FieldAtPressureLevel>(comm,params);
     diag->set_grids(gm);
-    diag->set_required_field(field);
     for (const auto& req : diag->get_required_field_requests()) {
       auto req_field = fm->get_field(req.fid);
       diag->set_required_field(req_field);
