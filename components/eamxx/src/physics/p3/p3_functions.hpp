@@ -282,6 +282,9 @@ struct Functions
     view_2d<Spack> flux_qir, flux_qit;
     // rain sedimentation
     view_2d<Spack> v_qr, v_nr;
+    // latent heat
+    // TODO: Remove and just use constants
+    view_2d<Spack> latent_heat_vapor, latent_heat_sublim, latent_heat_fusion;
   };
 #endif
 
@@ -588,6 +591,7 @@ struct Functions
   static void homogeneous_freezing(
     const uview_1d<const Spack>& T_atm,
     const uview_1d<const Spack>& inv_exner,
+    const uview_1d<const Spack>& latent_heat_fusion,
     const MemberType& team,
     const Int& nk, const Int& ktop, const Int& kbot, const Int& kdir,
     const uview_1d<Spack>& qc,
@@ -604,6 +608,7 @@ struct Functions
   static void homogeneous_freezing_disp(
     const uview_2d<const Spack>& T_atm,
     const uview_2d<const Spack>& inv_exner,
+    const uview_2d<const Spack>& latent_heat_fusion,
     const Int& nj, const Int& nk, const Int& ktop, const Int& kbot, const Int& kdir,
     const uview_2d<Spack>& qc,
     const uview_2d<Spack>& nc,
@@ -765,8 +770,8 @@ struct Functions
     const Spack& qr2qi_collect_tend,  const Spack& nr_collect_tend,  const Spack& qr2qi_immers_freeze_tend, const Spack& nr2ni_immers_freeze_tend,
     const Spack& nr_ice_shed_tend, const Spack& qi2qr_melt_tend,  const Spack& ni2nr_melt_tend,  const Spack& qi2qv_sublim_tend,
     const Spack& qv2qi_vapdep_tend,  const Spack& qv2qi_nucleat_tend,  const Spack& ni_nucleat_tend,  const Spack& ni_selfcollect_tend,
-    const Spack& ni_sublim_tend,  const Spack& qc2qi_berg_tend, const Spack& inv_exner,
-    const bool do_predict_nc, const Smask& log_wetgrowth, const Scalar dt,
+    const Spack& ni_sublim_tend,  const Spack& qc2qi_berg_tend, const Spack& inv_exner,  const Spack& latent_heat_sublim,
+    const Spack& latent_heat_fusion,    const bool do_predict_nc, const Smask& log_wetgrowth, const Scalar dt,
     const Scalar& nmltratio, const Spack& rho_qm_cloud, Spack& th_atm, Spack& qv, Spack& qi,
     Spack& ni, Spack& qm, Spack& bm, Spack& qc,  Spack& nc, Spack& qr, Spack& nr,
     const Smask& context = Smask(true));
@@ -774,6 +779,7 @@ struct Functions
   // TODO (comments)
   KOKKOS_FUNCTION
   static void get_time_space_phys_variables(const Spack& T_atm, const Spack& pres, const Spack& rho,
+					    const Spack& latent_heat_vapor, const Spack& latent_heat_sublim,
 					    const Spack& qv_sat_l, const Spack& qv_sat_i, Spack& mu,
 					    Spack& dv, Spack& sc, Spack& dqsdt, Spack& dqsidt,
 					    Spack& ab, Spack& abi, Spack& kap, Spack& eii,
@@ -832,14 +838,14 @@ struct Functions
 			     const Spack& cld_frac_l, const Spack& cld_frac_r, const Spack& qv, const Spack& qv_prev,
 			     const Spack& qv_sat_l, const Spack& qv_sat_i, const Spack& ab, const Spack& abi,
 			     const Spack& epsr, const Spack & epsi_tot, const Spack& t, const Spack& t_prev,
-			     const Spack& dqsdt, const Scalar& dt,
+			     const Spack& latent_heat_sublim, const Spack& dqsdt, const Scalar& dt,
 			     Spack& qr2qv_evap_tend, Spack& nr_evap_tend,
 			     const Smask& context = Smask(true));
 
   //get number and mass tendencies due to melting ice
   KOKKOS_FUNCTION
   static void ice_melting(const Spack& rho, const Spack& T_atm, const Spack& pres, const Spack& rhofaci,
-			  const Spack& table_val_qi2qr_melting, const Spack& table_val_qi2qr_vent_melt,
+			  const Spack& table_val_qi2qr_melting, const Spack& table_val_qi2qr_vent_melt, const Spack& latent_heat_vapor, const Spack& latent_heat_fusion,
 			  const Spack& dv, const Spack& sc, const Spack& mu, const Spack& kap,
 			  const Spack& qv, const Spack& qi_incld, const Spack& ni_incld,
 			  Spack& qi2qr_melt_tend, Spack& ni2nr_melt_tend, const Smask& context = Smask(true));
@@ -849,7 +855,7 @@ struct Functions
   static void update_prognostic_liquid(const Spack& qc2qr_accret_tend, const Spack& nc_accret_tend,
     const Spack& qc2qr_autoconv_tend,const Spack& nc2nr_autoconv_tend, const Spack& ncautr,
     const Spack& nc_selfcollect_tend, const Spack& qr2qv_evap_tend, const Spack& nr_evap_tend, const Spack& nr_selfcollect_tend,
-    const bool do_predict_nc, const bool do_prescribed_CCN, const Spack& inv_rho, const Spack& inv_exner,
+    const bool do_predict_nc, const bool do_prescribed_CCN, const Spack& inv_rho, const Spack& inv_exner, const Spack& latent_heat_vapor,
     const Scalar dt, Spack& th_atm, Spack& qv, Spack& qc, Spack& nc, Spack& qr, Spack& nr,
     const Smask& context = Smask(true));
 
@@ -890,7 +896,7 @@ struct Functions
 
   KOKKOS_FUNCTION
   static void ice_cldliq_wet_growth(const Spack& rho, const Spack& temp, const Spack& pres, const Spack& rhofaci, const Spack& table_val_qi2qr_melting,
-                                    const Spack& table_val_qi2qr_vent_melt, const Spack& dv,
+                                    const Spack& table_val_qi2qr_vent_melt, const Spack& latent_heat_vapor, const Spack& latent_heat_fusion, const Spack& dv,
                                     const Spack& kap, const Spack& mu, const Spack& sc, const Spack& qv, const Spack& qc_incld,
                                     const Spack& qi_incld, const Spack& ni_incld, const Spack& qr_incld,
                                     Smask& log_wetgrowth, Spack& qr2qi_collect_tend, Spack& qc2qi_collect_tend, Spack& qc_growth_rate,
@@ -943,6 +949,9 @@ struct Functions
     const uview_1d<Spack>& T_atm,
     const uview_1d<Spack>& qv,
     const uview_1d<Spack>& inv_dz,
+    const uview_1d<Spack>& latent_heat_vapor,
+    const uview_1d<Spack>& latent_heat_sublim,
+    const uview_1d<Spack>& latent_heat_fusion,
     Scalar& precip_liq_surf,
     Scalar& precip_ice_surf,
     view_1d_ptr_array<Spack, 36>& zero_init);
@@ -958,7 +967,9 @@ struct Functions
     const uview_2d<Spack>& diag_eff_radius_qi, const uview_2d<Spack>& diag_eff_radius_qr, const uview_2d<Spack>& inv_cld_frac_i,
     const uview_2d<Spack>& inv_cld_frac_l, const uview_2d<Spack>& inv_cld_frac_r,
     const uview_2d<Spack>& exner, const uview_2d<Spack>& T_atm, const uview_2d<Spack>& qv,
-    const uview_2d<Spack>& inv_dz, const uview_1d<Scalar>& precip_liq_surf, const uview_1d<Scalar>& precip_ice_surf,
+    const uview_2d<Spack>& inv_dz,
+    const uview_2d<Spack>& latent_heat_vapor, const uview_2d<Spack>& latent_heat_sublim, const uview_2d<Spack>& latent_heat_fusion,
+    const uview_1d<Scalar>& precip_liq_surf, const uview_1d<Scalar>& precip_ice_surf,
     const uview_2d<Spack>& mu_r, const uview_2d<Spack>& lamr, const uview_2d<Spack>& logn0r, const uview_2d<Spack>& nu,
     const uview_2d<Spack>& cdist, const uview_2d<Spack>& cdist1, const uview_2d<Spack>& cdistr,
     const uview_2d<Spack>& qc_incld, const uview_2d<Spack>& qr_incld, const uview_2d<Spack>& qi_incld,
@@ -987,6 +998,9 @@ struct Functions
     const uview_1d<const Spack>& inv_cld_frac_l,
     const uview_1d<const Spack>& inv_cld_frac_i,
     const uview_1d<const Spack>& inv_cld_frac_r,
+    const uview_1d<const Spack>& latent_heat_vapor,
+    const uview_1d<const Spack>& latent_heat_sublim,
+    const uview_1d<const Spack>& latent_heat_fusion,
     const uview_1d<Spack>& T_atm,
     const uview_1d<Spack>& rho,
     const uview_1d<Spack>& inv_rho,
@@ -1035,6 +1049,9 @@ struct Functions
     const uview_2d<const Spack>& inv_cld_frac_l,
     const uview_2d<const Spack>& inv_cld_frac_i,
     const uview_2d<const Spack>& inv_cld_frac_r,
+    const uview_2d<const Spack>& latent_heat_vapor,
+    const uview_2d<const Spack>& latent_heat_sublim,
+    const uview_2d<const Spack>& latent_heat_fusion,
     const uview_2d<Spack>& T_atm,
     const uview_2d<Spack>& rho,
     const uview_2d<Spack>& inv_rho,
@@ -1115,6 +1132,9 @@ struct Functions
     const uview_1d<Spack>& ni,
     const uview_1d<Spack>& qm,
     const uview_1d<Spack>& bm,
+    const uview_1d<Spack>& latent_heat_vapor,
+    const uview_1d<Spack>& latent_heat_sublim,
+    const uview_1d<Spack>& latent_heat_fusion,
     const uview_1d<Spack>& qc_incld,
     const uview_1d<Spack>& qr_incld,
     const uview_1d<Spack>& qi_incld,
@@ -1193,6 +1213,9 @@ struct Functions
     const uview_2d<Spack>& ni,
     const uview_2d<Spack>& qm,
     const uview_2d<Spack>& bm,
+    const uview_2d<Spack>& latent_heat_vapor,
+    const uview_2d<Spack>& latent_heat_sublim,
+    const uview_2d<Spack>& latent_heat_fusion,
     const uview_2d<Spack>& qc_incld,
     const uview_2d<Spack>& qr_incld,
     const uview_2d<Spack>& qi_incld,
@@ -1248,6 +1271,8 @@ struct Functions
     const uview_1d<Spack>& ni,
     const uview_1d<Spack>& qm,
     const uview_1d<Spack>& bm,
+    const uview_1d<Spack>& latent_heat_vapor,
+    const uview_1d<Spack>& latent_heat_sublim,
     const uview_1d<Spack>& mu_c,
     const uview_1d<Spack>& nu,
     const uview_1d<Spack>& lamc,
@@ -1289,6 +1314,8 @@ struct Functions
     const uview_2d<Spack>& ni,
     const uview_2d<Spack>& qm,
     const uview_2d<Spack>& bm,
+    const uview_2d<Spack>& latent_heat_vapor,
+    const uview_2d<Spack>& latent_heat_sublim,
     const uview_2d<Spack>& mu_c,
     const uview_2d<Spack>& nu,
     const uview_2d<Spack>& lamc,
@@ -1356,7 +1383,7 @@ struct Functions
 #endif
 
   KOKKOS_FUNCTION
-  static void ice_supersat_conservation(Spack& qidep, Spack& qinuc, const Spack& cld_frac_i, const Spack& qv, const Spack& qv_sat_i, const Spack& t_atm, const Real& dt, const Spack& qi2qv_sublim_tend, const Spack& qr2qv_evap_tend, const Smask& context = Smask(true));
+  static void ice_supersat_conservation(Spack& qidep, Spack& qinuc, const Spack& cld_frac_i, const Spack& qv, const Spack& qv_sat_i, const Spack& latent_heat_sublim, const Spack& t_atm, const Real& dt, const Spack& qi2qv_sublim_tend, const Spack& qr2qv_evap_tend, const Smask& context = Smask(true));
 
   KOKKOS_FUNCTION
   static void nc_conservation(const Spack& nc, const Spack& nc_selfcollect_tend, const Real& dt, Spack& nc_collect_tend, Spack& nc2ni_immers_freeze_tend, Spack& nc_accret_tend, Spack& nc2nr_autoconv_tend, const Smask& context = Smask(true));
@@ -1368,7 +1395,7 @@ struct Functions
   static void ni_conservation(const Spack& ni, const Spack& ni_nucleat_tend, const Spack& nr2ni_immers_freeze_tend, const Spack& nc2ni_immers_freeze_tend, const Real& dt, Spack& ni2nr_melt_tend, Spack& ni_sublim_tend, Spack& ni_selfcollect_tend, const Smask& context = Smask(true));
 
   KOKKOS_FUNCTION
-  static void prevent_liq_supersaturation(const Spack& pres, const Spack& t_atm, const Spack& qv, const Scalar& dt, const Spack& qidep, const Spack& qinuc, Spack& qi2qv_sublim_tend, Spack& qr2qv_evap_tend, const Smask& context = Smask(true) );
+  static void prevent_liq_supersaturation(const Spack& pres, const Spack& t_atm, const Spack& qv, const Spack& latent_heat_vapor, const Spack& latent_heat_sublim, const Scalar& dt, const Spack& qidep, const Spack& qinuc, Spack& qi2qv_sublim_tend, Spack& qr2qv_evap_tend, const Smask& context = Smask(true) );
 }; // struct Functions
 
 template <typename ScalarT, typename DeviceT>

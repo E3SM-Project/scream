@@ -22,6 +22,7 @@ void Functions<Real,DefaultDevice>
   const uview_2d<Spack>& diag_eff_radius_qr,
   const uview_2d<Spack>& inv_cld_frac_i, const uview_2d<Spack>& inv_cld_frac_l, const uview_2d<Spack>& inv_cld_frac_r,
   const uview_2d<Spack>& exner, const uview_2d<Spack>& T_atm, const uview_2d<Spack>& qv, const uview_2d<Spack>& inv_dz,
+  const uview_2d<Spack>& latent_heat_vapor, const uview_2d<Spack>& latent_heat_sublim, const uview_2d<Spack>& latent_heat_fusion,
   const uview_1d<Scalar>& precip_liq_surf, const uview_1d<Scalar>& precip_ice_surf,
   const uview_2d<Spack>& mu_r, const uview_2d<Spack>& lamr, const uview_2d<Spack>& logn0r, const uview_2d<Spack>& nu,
   const uview_2d<Spack>& cdist, const uview_2d<Spack>& cdist1, const uview_2d<Spack>& cdistr,
@@ -43,6 +44,9 @@ void Functions<Real,DefaultDevice>
     precip_liq_surf(i) = 0;
     precip_ice_surf(i) = 0;
 
+    constexpr Scalar latvap = C::LatVap;
+    constexpr Scalar latice = C::LatIce;
+
     Kokkos::parallel_for(
       Kokkos::TeamVectorRange(team, nk_pack), [&] (Int k) {
         diag_equiv_reflectivity(i,k) = -99;
@@ -58,6 +62,9 @@ void Functions<Real,DefaultDevice>
         T_atm(i,k)                 = th_atm(i,k) * exner(i,k);
         qv(i,k)                = max(qv(i,k), 0);
         inv_dz(i,k)            = 1 / dz(i,k);
+        latent_heat_vapor(i,k)  = latvap;
+        latent_heat_sublim(i,k) = latvap+latice;
+        latent_heat_fusion(i,k) = latice;
         mu_r(i,k)               = 0.;
         lamr(i,k)               = 0.;
         logn0r(i,k)             = 0.;
@@ -221,6 +228,9 @@ Int Functions<Real,DefaultDevice>
   auto flux_qit                = temporaries.flux_qit;
   auto v_qr                    = temporaries.v_qr;
   auto v_nr                    = temporaries.v_nr;
+  auto latent_heat_vapor       = temporaries.latent_heat_vapor;
+  auto latent_heat_sublim      = temporaries.latent_heat_sublim;
+  auto latent_heat_fusion      = temporaries.latent_heat_fusion;
 
   // we do not want to measure init stuff
   auto start = std::chrono::steady_clock::now();
@@ -230,6 +240,7 @@ Int Functions<Real,DefaultDevice>
       nj, nk_pack, cld_frac_i, cld_frac_l, cld_frac_r, inv_exner, th, dz, diag_equiv_reflectivity,
       ze_ice, ze_rain, diag_eff_radius_qc, diag_eff_radius_qi, diag_eff_radius_qr,
       inv_cld_frac_i, inv_cld_frac_l, inv_cld_frac_r, exner, T_atm, qv, inv_dz,
+      latent_heat_vapor, latent_heat_sublim, latent_heat_fusion,
       diagnostic_outputs.precip_liq_surf, diagnostic_outputs.precip_ice_surf,
       mu_r, lamr, logn0r, nu, cdist, cdist1, cdistr,
       qc_incld, qr_incld, qi_incld, qm_incld, nc_incld, nr_incld, ni_incld, bm_incld,
@@ -240,7 +251,7 @@ Int Functions<Real,DefaultDevice>
   p3_main_part1_disp(
       nj, nk, infrastructure.predictNc, infrastructure.prescribedCCN, infrastructure.dt,
       pres, dpres, dz, nc_nuceat_tend, nccn_prescribed, inv_exner, exner, inv_cld_frac_l, inv_cld_frac_i,
-      inv_cld_frac_r,
+      inv_cld_frac_r, latent_heat_vapor, latent_heat_sublim, latent_heat_fusion,
       T_atm, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr,
       rhofaci, acn, qv, th, qc, nc, qr, nr, qi, ni, qm,
       bm, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld, nr_incld,
@@ -255,7 +266,8 @@ Int Functions<Real,DefaultDevice>
       lookup_tables.revap_table_vals, pres, dpres, dz, nc_nuceat_tend, inv_exner,
       exner, inv_cld_frac_l, inv_cld_frac_i, inv_cld_frac_r, ni_activated, inv_qc_relvar, cld_frac_i,
       cld_frac_l, cld_frac_r, qv_prev, t_prev, T_atm, rho, inv_rho, qv_sat_l, qv_sat_i, qv_supersat_i, rhofacr, rhofaci, acn,
-      qv, th, qc, nc, qr, nr, qi, ni, qm, bm, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld,
+      qv, th, qc, nc, qr, nr, qi, ni, qm, bm, latent_heat_vapor,
+      latent_heat_sublim, latent_heat_fusion, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld,
       nr_incld, ni_incld, bm_incld, mu_c, nu, lamc, cdist, cdist1, cdistr,
       mu_r, lamr, logn0r, qv2qi_depos_tend, precip_total_tend, nevapr, qr_evap_tend,
       vap_liq_exchange, vap_ice_exchange, liq_ice_exchange,
@@ -296,7 +308,7 @@ Int Functions<Real,DefaultDevice>
 
   // homogeneous freezing f cloud and rain
   homogeneous_freezing_disp(
-      T_atm, inv_exner, nj, nk, ktop, kbot, kdir, qc, nc, qr, nr, qi,
+      T_atm, inv_exner, latent_heat_fusion, nj, nk, ktop, kbot, kdir, qc, nc, qr, nr, qi,
       ni, qm, bm, th, nucleationPossible, hydrometeorsPresent);
 
   //
@@ -306,7 +318,7 @@ Int Functions<Real,DefaultDevice>
   p3_main_part3_disp(
       nj, nk_pack, runtime_options.max_total_ni, lookup_tables.dnu_table_vals, lookup_tables.ice_table_vals, inv_exner, cld_frac_l, cld_frac_r, cld_frac_i,
       rho, inv_rho, rhofaci, qv, th, qc, nc, qr, nr, qi, ni,
-      qm, bm, mu_c, nu, lamc, mu_r, lamr,
+      qm, bm, latent_heat_vapor, latent_heat_sublim, mu_c, nu, lamc, mu_r, lamr,
       vap_liq_exchange, ze_rain, ze_ice, diag_vm_qi, diag_eff_radius_qi, diag_diam_qi,
       rho_qi, diag_equiv_reflectivity, diag_eff_radius_qc, diag_eff_radius_qr, nucleationPossible, hydrometeorsPresent,
       p3constants);

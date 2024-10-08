@@ -616,21 +616,6 @@ struct IceWetGrowthData
   Real qr2qi_collect_tend, qc2qi_collect_tend, qc_growth_rate, nr_ice_shed_tend, qc2qr_ice_shed_tend;
 };
 
-struct LatentHeatData : public PhysicsTestData
-{
-  static constexpr size_t NUM_ARRAYS = 3;
-
-  // Inputs
-  Int its, ite, kts, kte;
-
-  // Outputs
-  Real* v, *s, *f;
-
-  LatentHeatData(Int its_, Int ite_, Int kts_, Int kte_);
-
-  PTD_STD_DEF(LatentHeatData, 4, its, ite, kts, kte);
-};
-
 struct CheckValuesData : public PhysicsTestData
 {
   static constexpr size_t NUM_ARRAYS = 2;
@@ -864,7 +849,6 @@ void ice_relaxation_timescale(IceRelaxationData& d);
 void calc_liq_relaxation_timescale(CalcLiqRelaxationData& d);
 void ice_nucleation(IceNucleationData& d);
 void ice_cldliq_wet_growth(IceWetGrowthData& d);
-void get_latent_heat(LatentHeatData& d);
 void check_values(CheckValuesData& d);
 void calculate_incloud_mixingratios(IncloudMixingData& d);
 void p3_main_part1(P3MainPart1Data& d);
@@ -908,7 +892,7 @@ void rain_sedimentation_f(
 
 void homogeneous_freezing_f(
   Int kts, Int kte, Int ktop, Int kbot, Int kdir,
-  Real* T_atm, Real* inv_exner,
+  Real* T_atm, Real* inv_exner, Real* latent_heat_fusion,
   Real* qc, Real* nc, Real* qr, Real* nr, Real* qi, Real* ni, Real* qm, Real* bm, Real* th_atm);
 
 void check_values_f(Real* Qv, Real* temp, Int kstart, Int kend,
@@ -919,7 +903,7 @@ void p3_main_part1_f(
   bool do_predict_nc, bool do_prescribed_CCN,
   Real dt,
   Real* pres, Real* dpres, Real* dz, Real* nc_nuceat_tend, Real* nccn_prescribed, Real* inv_exner, Real* exner, Real* inv_cld_frac_l, Real* inv_cld_frac_i,
-  Real* inv_cld_frac_r,
+  Real* inv_cld_frac_r, Real* latent_heat_vapor, Real* latent_heat_sublim, Real* latent_heat_fusion,
   Real* T_atm, Real* rho, Real* inv_rho, Real* qv_sat_l, Real* qv_sat_i, Real* qv_supersat_i, Real* rhofacr, Real* rhofaci,
   Real* acn, Real* qv, Real* th_atm, Real* qc, Real* nc, Real* qr, Real* nr, Real* qi, Real* ni, Real* qm, Real* bm, Real* qc_incld, Real* qr_incld, Real* qi_incld,
   Real* qm_incld, Real* nc_incld, Real* nr_incld, Real* ni_incld, Real* bm_incld,
@@ -929,7 +913,7 @@ void p3_main_part2_f(
   Int kts, Int kte, Int kbot, Int ktop, Int kdir, bool do_predict_nc, bool do_prescribed_CCN, Real dt, Real inv_dt,
   Real* pres, Real* dpres, Real* dz, Real* nc_nuceat_tend, Real* inv_exner, Real* exner, Real* inv_cld_frac_l, Real* inv_cld_frac_i, Real* inv_cld_frac_r, Real* ni_activated, Real* inv_qc_relvar, Real* cld_frac_i, Real* cld_frac_l, Real* cld_frac_r, Real* qv_prev, Real* t_prev,
   Real* T_atm, Real* rho, Real* inv_rho, Real* qv_sat_l, Real* qv_sat_i, Real* qv_supersat_i, Real* rhofacr, Real* rhofaci, Real* acn, Real* qv, Real* th_atm, Real* qc, Real* nc, Real* qr, Real* nr, Real* qi, Real* ni,
-  Real* qm, Real* bm, Real* qc_incld, Real* qr_incld, Real* qi_incld, Real* qm_incld, Real* nc_incld, Real* nr_incld,
+  Real* qm, Real* bm, Real* latent_heat_vapor, Real* latent_heat_sublim, Real* latent_heat_fusion, Real* qc_incld, Real* qr_incld, Real* qi_incld, Real* qm_incld, Real* nc_incld, Real* nr_incld,
   Real* ni_incld, Real* bm_incld, Real* mu_c, Real* nu, Real* lamc, Real* cdist, Real* cdist1, Real* cdistr, Real* mu_r, Real* lamr, Real* logn0r, Real* qv2qi_depos_tend, Real* precip_total_tend,
   Real* nevapr, Real* qr_evap_tend, Real* vap_liq_exchange, Real* vap_ice_exchange, Real* liq_ice_exchange, Real* pratot,
   Real* prctot, bool* is_hydromet_present);
@@ -937,7 +921,7 @@ void p3_main_part2_f(
 void p3_main_part3_f(
   Int kts, Int kte, Int kbot, Int ktop, Int kdir,
   Real* inv_exner, Real* cld_frac_l, Real* cld_frac_r, Real* cld_frac_i,
-  Real* rho, Real* inv_rho, Real* rhofaci, Real* qv, Real* th_atm, Real* qc, Real* nc, Real* qr, Real* nr, Real* qi, Real* ni, Real* qm, Real* bm,
+  Real* rho, Real* inv_rho, Real* rhofaci, Real* qv, Real* th_atm, Real* qc, Real* nc, Real* qr, Real* nr, Real* qi, Real* ni, Real* qm, Real* bm, Real* latent_heat_vapor, Real* latent_heat_sublim,
   Real* mu_c, Real* nu, Real* lamc, Real* mu_r, Real* lamr, Real* vap_liq_exchange,
   Real*  ze_rain, Real* ze_ice, Real* diag_vm_qi, Real* diag_eff_radius_qi, Real* diag_diam_qi, Real* rho_qi, Real* diag_equiv_reflectivity, Real* diag_eff_radius_qc, Real* diag_eff_radius_qr);
 
