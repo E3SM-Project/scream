@@ -20,12 +20,20 @@ void Functions<S,D>
 
   // Khroutdinov and Kogan (2000)
   const auto qc_not_small = qc_incld >= 1e-8 && context;
-  constexpr Scalar CONS2 = C::CONS2;
 
   const Scalar p3_autoconversion_prefactor = p3constants.p3_autoconversion_prefactor;
   const Scalar p3_autoconversion_qc_exp = p3constants.p3_autoconversion_qc_exp;
   const Scalar p3_autoconversion_nc_exp = p3constants.p3_autoconversion_nc_exp;
   const Scalar p3_autoconversion_radius = p3constants.p3_autoconversion_radius;
+
+  Scalar scale_nc2nr_tend;
+  constexpr Scalar CONS2 = C::CONS2;
+  constexpr Scalar CONS3 = C::CONS3;
+  if (p3_autoconversion_radius == 0.000025) {
+    scale_nc2nr_tend = CONS3;
+  } else {
+    scale_nc2nr_tend = sp(1.)/(CONS2 * pow(p3_autoconversion_radius, 3));
+  }
 
   if(qc_not_small.any()){
     Spack sgs_var_coef;
@@ -40,7 +48,7 @@ void Functions<S,D>
     // note: ncautr is change in Nr; nc2nr_autoconv_tend is change in Nc
     ncautr.set(
         qc_not_small,
-        qc2qr_autoconv_tend / (CONS2 * pow(p3_autoconversion_radius, 3)));
+        qc2qr_autoconv_tend * scale_nc2nr_tend);
     nc2nr_autoconv_tend.set(
         qc_not_small,
         qc2qr_autoconv_tend * nc_incld / qc_incld);
