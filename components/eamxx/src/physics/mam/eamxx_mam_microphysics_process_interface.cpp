@@ -69,14 +69,14 @@ void MAMMicrophysics::set_defaults_() {
   config_.amicphys.do_newnuc = true;
   config_.amicphys.do_coag   = true;
 
-  config_.amicphys.nucleation                              = {};
-  config_.amicphys.nucleation.dens_so4a_host               = 1770.0;
-  config_.amicphys.nucleation.mw_so4a_host                 = 115.0;
-  config_.amicphys.nucleation.newnuc_method_user_choice    = 2;
-  config_.amicphys.nucleation.pbl_nuc_wang2008_user_choice = 1;
-  config_.amicphys.nucleation.adjust_factor_pbl_ratenucl   = 1.0;
-  config_.amicphys.nucleation.accom_coef_h2so4             = 1.0;
-  config_.amicphys.nucleation.newnuc_adjust_factor_dnaitdt = 1.0;
+  config_.amicphys.nucleation = {};
+  /*  config_.amicphys.nucleation.dens_so4a_host               = 1770.0;
+    config_.amicphys.nucleation.mw_so4a_host                 = 115.0;
+    config_.amicphys.nucleation.newnuc_method_user_choice    = 2;
+    config_.amicphys.nucleation.pbl_nuc_wang2008_user_choice = 1;
+    config_.amicphys.nucleation.adjust_factor_pbl_ratenucl   = 1.0;
+    config_.amicphys.nucleation.accom_coef_h2so4             = 1.0;
+    config_.amicphys.nucleation.newnuc_adjust_factor_dnaitdt = 1.0;*/
 
   // these parameters guide the coupling between parameterizations
   // NOTE: mam4xx was ported with these parameters fixed, so it's probably not
@@ -152,9 +152,6 @@ void MAMMicrophysics::set_grids(
 
   // Wet aerosol density [kg/m3]
   add_field<Required>("wetdens", scalar3d_mid_nmodes, kg / m3, grid_name);
-
-  // Aerosol water [kg/kg]
-  add_field<Required>("qaerwat", scalar3d_mid_nmodes, kg / kg, grid_name);
 
   // Wet Required diameter [m]
   add_field<Required>("dgnumwet", scalar3d_mid_nmodes, m, grid_name);
@@ -655,7 +652,6 @@ void MAMMicrophysics::run_impl(const double dt) {
       get_field_in("dgnumwet").get_view<const Real ***>();
   const auto dry_geometric_mean_diameter_i =
       get_field_in("dgncur_a").get_view<const Real ***>();
-  const auto qaerwat = get_field_in("qaerwat").get_view<const Real ***>();
   const auto wetdens = get_field_in("wetdens").get_view<const Real ***>();
 
   // climatology data for linear stratospheric chemistry
@@ -872,7 +868,6 @@ void MAMMicrophysics::run_impl(const double dt) {
             ekat::subview(wet_geometric_mean_diameter_i, icol);
         auto dry_diameter_icol =
             ekat::subview(dry_geometric_mean_diameter_i, icol);
-        auto qaerwat_icol = ekat::subview(qaerwat, icol);
         auto wetdens_icol = ekat::subview(wetdens, icol);
 
         // fetch column-specific subviews into aerosol prognostics
@@ -977,7 +972,6 @@ void MAMMicrophysics::run_impl(const double dt) {
               // output (vmrcw)
               mam_coupling::mmr2vmr(qqcw, adv_mass_kg_per_moles, vmrcw);
 
-
               //---------------------
               // Gas Phase Chemistry
               //---------------------
@@ -996,6 +990,15 @@ void MAMMicrophysics::run_impl(const double dt) {
                   // out
                   vmr, vmr0);
 
+              // create work array copies to retain "pre-chemistry (aqueous)"
+              // values
+              Real vmr_pregas[gas_pcnst] = {};
+              Real vmr_precld[gas_pcnst] = {};
+              for(int i = 0; i < gas_pcnst; ++i) {
+                vmr_pregas[i] = vmr[i];
+                vmr_precld[i] = vmrcw[i];
+              }
+
               //----------------------
               // Aerosol microphysics
               //----------------------
@@ -1003,8 +1006,8 @@ void MAMMicrophysics::run_impl(const double dt) {
               // subroutine in eam/src/chemistry/modal_aero/aero_model.F90
 
               // aqueous chemistry ...
-              const Real mbar       = haero::Constants::molec_weight_dry_air;
-              constexpr int indexm  = mam4::gas_chemistry::indexm;
+              const Real mbar      = haero::Constants::molec_weight_dry_air;
+              constexpr int indexm = mam4::gas_chemistry::indexm;
               mam4::mo_setsox::setsox_single_level(
                   // in
                   offset_aerosol, dt, pmid, pdel, temp, mbar, lwc, cldfrac,
@@ -1024,30 +1027,22 @@ void MAMMicrophysics::run_impl(const double dt) {
               for(int imode = 0; imode < num_modes; imode++) {
                 dgncur_awet_kk[imode] = wet_diameter_icol(imode, kk);
                 dgncur_a_kk[imode]    = dry_diameter_icol(imode, kk);
-                qaerwat_kk[imode]     = qaerwat_icol(imode, kk);
                 wetdens_kk[imode]     = wetdens_icol(imode, kk);
-              }
-
-              // aerosol/gas species tendencies (output)
-              Real vmr_tendbb[gas_pcnst][nqtendbb]   = {};
-              Real vmrcw_tendbb[gas_pcnst][nqtendbb] = {};
-
-              // create work array copies to retain "pre-chemistry" values
-              Real vmr_pregaschem[gas_pcnst]   = {};
-              Real vmr_precldchem[gas_pcnst]   = {};
-              Real vmrcw_precldchem[gas_pcnst] = {};
-              for(int i = 0; i < gas_pcnst; ++i) {
-                vmr_pregaschem[i]   = vmr[i];
-                vmr_precldchem[i]   = vmr[i];
-                vmrcw_precldchem[i] = vmrcw[i];
               }
               // do aerosol microphysics (gas-aerosol exchange, nucleation,
               // coagulation)
+              // FIXME: Verify cldfrac is the right one by looking at EAM
+              // variable
               impl::modal_aero_amicphys_intr(
-                  config.amicphys, step, dt, temp, pmid, pdel, zm, pblh, qv,
-                  cldfrac, vmr, vmrcw, vmr_pregaschem, vmr_precldchem,
-                  vmrcw_precldchem, vmr_tendbb, vmrcw_tendbb, dgncur_a_kk,
-                  dgncur_awet_kk, wetdens_kk, qaerwat_kk);
+                  // in
+                  kk, config.amicphys, dt, temp, pmid, pdel, zm, pblh, qv,
+                  cldfrac,
+                  // out
+                  vmr, vmrcw,
+                  // in
+                  vmr0, vmr_pregas, vmr_precld, dgncur_a_kk, dgncur_awet_kk,
+                  wetdens_kk);
+
               //-----------------
               // LINOZ chemistry
               //-----------------
