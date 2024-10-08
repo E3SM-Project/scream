@@ -69,15 +69,6 @@ void MAMMicrophysics::set_defaults_() {
   config_.amicphys.do_newnuc = true;
   config_.amicphys.do_coag   = true;
 
-  config_.amicphys.nucleation = {};
-  /*  config_.amicphys.nucleation.dens_so4a_host               = 1770.0;
-    config_.amicphys.nucleation.mw_so4a_host                 = 115.0;
-    config_.amicphys.nucleation.newnuc_method_user_choice    = 2;
-    config_.amicphys.nucleation.pbl_nuc_wang2008_user_choice = 1;
-    config_.amicphys.nucleation.adjust_factor_pbl_ratenucl   = 1.0;
-    config_.amicphys.nucleation.accom_coef_h2so4             = 1.0;
-    config_.amicphys.nucleation.newnuc_adjust_factor_dnaitdt = 1.0;*/
-
   // these parameters guide the coupling between parameterizations
   // NOTE: mam4xx was ported with these parameters fixed, so it's probably not
   // NOTE: safe to change these without code modifications.
@@ -1035,8 +1026,7 @@ void MAMMicrophysics::run_impl(const double dt) {
               // variable
               impl::modal_aero_amicphys_intr(
                   // in
-                  kk, config.amicphys, dt, temp, pmid, pdel, zm, pblh, qv,
-                  cldfrac,
+                  config.amicphys, dt, temp, pmid, pdel, zm, pblh, qv, cldfrac,
                   // out
                   vmr, vmrcw,
                   // in

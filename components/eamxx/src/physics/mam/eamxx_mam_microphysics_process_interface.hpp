@@ -109,6 +109,7 @@ private_except_cuda:
 
   // configuration data (for the moment, we plan to be able to move this to
   // the device, so we can't use C++ strings)
+#define MAX_FILENAME_LEN 256
   struct Config {
     // photolysis parameters
     struct {
