@@ -219,7 +219,7 @@ be lost if SCREAM_HACK_XML is not enabled.
       <p3_dep_nucleation_exponent type="real" doc="P3 dep_nucleation_exponent (deposition nucleation)">0.304</p3_dep_nucleation_exponent>
       <p3_ice_sed_knob type="real" doc="P3 ice_sed_knob (ice fall speed)">1.0</p3_ice_sed_knob>
       <p3_d_breakup_cutoff type="real" doc="P3 d_breakup_cutoff (rain self collection and breakup)">0.00028</p3_d_breakup_cutoff>
-      <p3_do_ice>true</p3_do_ice>
+      <p3_do_ice type="logical" doc="P3 does ice process or not">true</p3_do_ice>
     </p3>
 
     <!-- SHOC macrophysics -->

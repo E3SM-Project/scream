@@ -290,11 +290,10 @@ Int Functions<S,D>
       lookup_tables.ice_table_vals, diagnostic_outputs.precip_ice_surf(i), p3constants);
 
     // homogeneous freezing of cloud and rain
-    if (p3_do_ice) {
-    homogeneous_freezing(
-      T_atm, oinv_exner, team, nk, ktop, kbot, kdir, oqc, onc, oqr, onr, oqi,
-      oni, oqm, obm, oth);
-     }
+    if(p3_do_ice) {
+      homogeneous_freezing(T_atm, oinv_exner, team, nk, ktop, kbot, kdir, oqc,
+                           onc, oqr, onr, oqi, oni, oqm, obm, oth);
+    }
     //
     // final checks to ensure consistency of mass/number
     // and compute diagnostic fields for output
