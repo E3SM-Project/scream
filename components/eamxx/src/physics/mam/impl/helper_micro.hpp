@@ -187,7 +187,6 @@ struct TracerData {
   }
 };
 
-
 KOKKOS_INLINE_FUNCTION
 Real linear_interp(const Real &x0, const Real &x1, const Real &t) {
   return (1 - t) * x0 + t * x1;
@@ -614,30 +613,30 @@ inline void perform_vertical_interpolation(const view_2d &p_src_c,
   const int pver   = mam4::nlev;
 
   const int num_vars = input.nvars_;
-    // FIXME:delete  work[ivar]
-  const auto work    = input.work_vert_inter;
+  // FIXME:delete  work[ivar]
+  const auto work = input.work_vert_inter;
   EKAT_REQUIRE(work[num_vars - 1].data() != 0);
   // vert_interp is serial in col and lev.
-  const int outer_iters = ncol*num_vars;
+  const int outer_iters   = ncol * num_vars;
   const auto policy_setup = ESU::get_default_team_policy(outer_iters, pver);
   const auto data         = input.data;
 
   Kokkos::parallel_for(
       "vert_interp", policy_setup,
       KOKKOS_LAMBDA(typename LIV::MemberType const &team) {
-         // The policy is over ncols*num_vars, so retrieve icol/ivar
-        const int icol = team.league_rank() / num_vars;
-        const int ivar = team.league_rank() % num_vars;
-        const auto pin_at_icol = ekat::subview(p_src_c, icol);
-        const auto pmid_at_icol = ekat::subview(p_tgt_c, icol);
-        const auto datain = data[TracerDataIndex::OUT][ivar];
-        const auto datain_at_icol = ekat::subview(datain, icol);
-        const auto dataout = output[ivar];
+        // The policy is over ncols*num_vars, so retrieve icol/ivar
+        const int icol             = team.league_rank() / num_vars;
+        const int ivar             = team.league_rank() % num_vars;
+        const auto pin_at_icol     = ekat::subview(p_src_c, icol);
+        const auto pmid_at_icol    = ekat::subview(p_tgt_c, icol);
+        const auto datain          = data[TracerDataIndex::OUT][ivar];
+        const auto datain_at_icol  = ekat::subview(datain, icol);
+        const auto dataout         = output[ivar];
         const auto dataout_at_icol = ekat::subview(dataout, icol);
 
         mam4::vertical_interpolation::vert_interp(
-              team, levsiz, pver, pin_at_icol, pmid_at_icol, datain_at_icol,
-              dataout_at_icol);
+            team, levsiz, pver, pin_at_icol, pmid_at_icol, datain_at_icol,
+            dataout_at_icol);
       });
 }
 
@@ -680,9 +679,8 @@ inline void perform_vertical_interpolation(const const_view_1d &altitude_int,
           trg_x[pverp - i - 1] = m2km * zi(icol, i);
         }
         team.team_barrier();
-        mam4::vertical_interpolation::rebin(team, nsrc, ntrg, src_x, trg_x,
-                                        src, trg);
-
+        mam4::vertical_interpolation::rebin(team, nsrc, ntrg, src_x, trg_x, src,
+                                            trg);
       });
 }
 
