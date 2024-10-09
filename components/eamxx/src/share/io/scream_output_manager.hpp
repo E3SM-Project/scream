@@ -104,6 +104,12 @@ public:
   long long res_dep_memory_footprint () const;
 
   bool is_restart () const { return m_is_model_restart_output; }
+
+  bool has_field (const std::string& fname) const {
+    const auto& fields_pl = m_params.sublist("Fields");
+    if (fields_pl.isParameter(fname)) return true;
+    return false;
+  }
 protected:
 
   std::string compute_filename (const IOFileSpecs& file_specs,

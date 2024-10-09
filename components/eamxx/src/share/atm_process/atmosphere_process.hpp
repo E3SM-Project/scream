@@ -176,10 +176,11 @@ public:
   // These methods allow the AD to figure out what each process needs, with very fine
   // grain detail. See field_request.hpp for more info on what FieldRequest and GroupRequest
   // are, and field_group.hpp for what groups of fields are.
-  const std::set<FieldRequest>& get_required_field_requests () const { return m_required_field_requests; }
-  const std::set<FieldRequest>& get_computed_field_requests () const { return m_computed_field_requests; }
-  const std::set<GroupRequest>& get_required_group_requests () const { return m_required_group_requests; }
-  const std::set<GroupRequest>& get_computed_group_requests () const { return m_computed_group_requests; }
+  const std::set<FieldRequest>& get_required_field_requests   () const { return m_required_field_requests;   }
+  const std::set<FieldRequest>& get_computed_field_requests   () const { return m_computed_field_requests;   }
+  const std::set<FieldRequest>& get_diagnostic_field_requests () const { return m_diagnostic_field_requests; }
+  const std::set<GroupRequest>& get_required_group_requests   () const { return m_required_group_requests;   }
+  const std::set<GroupRequest>& get_computed_group_requests   () const { return m_computed_group_requests;   }
 
   // These sets allow to get all the actual in/out fields stored by the atm proc
   // Note: if an atm proc requires a group, then all the fields in the group, as well as
@@ -369,7 +370,7 @@ protected:
   void add_field (const FieldRequest& req)
   {
     // Since we use C-style enum, let's avoid invalid integers casts
-    static_assert(RT==Required || RT==Computed || RT==Updated,
+    static_assert(RT==Required || RT==Computed || RT==Updated || RT==OptionalDiagnostic,
                   "Error! Invalid request type in call to add_field.\n");
 
     switch (RT) {
@@ -381,6 +382,9 @@ protected:
         break;
       case Updated:
         m_required_field_requests.emplace(req);
+        m_computed_field_requests.emplace(req);
+        break;
+      case OptionalDiagnostic:
         m_computed_field_requests.emplace(req);
         break;
     }
@@ -544,6 +548,7 @@ private:
   // The list of in/out field/group requests.
   std::set<FieldRequest>   m_required_field_requests;
   std::set<FieldRequest>   m_computed_field_requests;
+  std::set<FieldRequest>   m_diagnostic_field_requests;
   std::set<GroupRequest>   m_required_group_requests;
   std::set<GroupRequest>   m_computed_group_requests;
 

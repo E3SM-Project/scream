@@ -91,24 +91,19 @@ void SHOCMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids
   add_field<Computed>("ustar",            scalar2d,     m/s,         grid_name, ps);
   add_field<Computed>("obklen",           scalar2d,     m,           grid_name, ps);
 
-  // Extra SHOC output diagnostics
-  if (m_params.get<bool>("extra_shoc_diags", false)) {
+  // Diagnostic output - mid point grid
+  add_field<OptionalDiagnostic>("brunt", scalar3d_mid, pow(s,-1), grid_name, ps);
+  add_field<OptionalDiagnostic>("shoc_mix", scalar3d_mid, m, grid_name, ps);
+  add_field<OptionalDiagnostic>("isotropy", scalar3d_mid, s, grid_name, ps);
 
-    // Diagnostic output - mid point grid
-    add_field<Computed>("brunt", scalar3d_mid, pow(s,-1), grid_name, ps);
-    add_field<Computed>("shoc_mix", scalar3d_mid, m, grid_name, ps);
-    add_field<Computed>("isotropy", scalar3d_mid, s, grid_name, ps);
-
-    // Diagnostic output - interface grid
-    add_field<Computed>("wthl_sec", scalar3d_int, K*(m/s), grid_name, ps);
-    add_field<Computed>("thl_sec", scalar3d_int, pow(K,2), grid_name, ps);
-    add_field<Computed>("wqw_sec", scalar3d_int, (kg/kg)*(m/s), grid_name, ps);
-    add_field<Computed>("qw_sec", scalar3d_int, pow(kg/kg,2), grid_name, ps);
-    add_field<Computed>("uw_sec", scalar3d_int, pow(m/s,2), grid_name, ps);
-    add_field<Computed>("vw_sec", scalar3d_int, pow(m/s,2), grid_name, ps);
-    add_field<Computed>("w3", scalar3d_int, pow(m/s,3), grid_name, ps);
-
-  } // Extra SHOC output diagnostics
+  // Diagnostic output - interface grid
+  add_field<OptionalDiagnostic>("wthl_sec", scalar3d_int, K*(m/s), grid_name, ps);
+  add_field<OptionalDiagnostic>("thl_sec", scalar3d_int, pow(K,2), grid_name, ps);
+  add_field<OptionalDiagnostic>("wqw_sec", scalar3d_int, (kg/kg)*(m/s), grid_name, ps);
+  add_field<OptionalDiagnostic>("qw_sec", scalar3d_int, pow(kg/kg,2), grid_name, ps);
+  add_field<OptionalDiagnostic>("uw_sec", scalar3d_int, pow(m/s,2), grid_name, ps);
+  add_field<OptionalDiagnostic>("vw_sec", scalar3d_int, pow(m/s,2), grid_name, ps);
+  add_field<OptionalDiagnostic>("w3", scalar3d_int, pow(m/s,3), grid_name, ps);
 
   // Tracer group
   add_group<Updated>("tracers", grid_name, ps, Bundling::Required);

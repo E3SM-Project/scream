@@ -28,6 +28,7 @@ Fields:
       - shoc_eddy_diff_mom_tend
       - shoc_qc_tend
       - shoc_cldfrac_liq_tend
+      - brunt
 
 output_control:
   Frequency: 1

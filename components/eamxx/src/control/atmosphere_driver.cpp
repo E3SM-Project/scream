@@ -527,6 +527,15 @@ void AtmosphereDriver::create_fields()
     m_field_mgrs.at(req.fid.get_grid_name())->register_field(req);
   }
 
+  // Register optional diagnostics if they exist in the output manager. If not,
+  // remove from the request list.
+  for (const auto& req : m_atm_process_group->get_diagnostic_field_requests()) {
+    for (const auto& om : m_output_managers) {
+      if (om.has_field(req.fid.name()))
+      m_field_mgrs.at(req.fid.get_grid_name())->register_field(req);
+    }
+  }
+
   // Register required/updated groups
   // IMPORTANT: Some group requests might be formulated in terms of another
   //   group request (see field_requests.hpp). The FieldManager class is able
@@ -1632,10 +1641,10 @@ void AtmosphereDriver::run (const int dt) {
   start_timer("EAMxx::run");
 
   // DEBUG option: Check if user has set the run to fail at a specific timestep.
-  auto& debug = m_atm_params.sublist("driver_debug_options"); 
-  auto fail_step = debug.get<int>("force_crash_nsteps",-1); 
-  if (fail_step==m_current_ts.get_num_steps()) { 
-    std::abort(); 
+  auto& debug = m_atm_params.sublist("driver_debug_options");
+  auto fail_step = debug.get<int>("force_crash_nsteps",-1);
+  if (fail_step==m_current_ts.get_num_steps()) {
+    std::abort();
   }
 
   // Make sure the end of the time step is after the current start_time
