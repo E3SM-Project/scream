@@ -642,7 +642,7 @@ void MAMMicrophysics::run_impl(const double dt) {
   const auto wet_geometric_mean_diameter_i =
       get_field_in("dgnumwet").get_view<const Real ***>();
   const auto dry_geometric_mean_diameter_i =
-      get_field_in("dgncur_a").get_view<const Real ***>();
+      get_field_in("dgnum").get_view<const Real ***>();
   const auto wetdens = get_field_in("wetdens").get_view<const Real ***>();
 
   // climatology data for linear stratospheric chemistry
