@@ -139,7 +139,7 @@ void MAMMicrophysics::set_grids(
 
   static constexpr auto m3 = m * m * m;
   // Aerosol dry particle diameter [m]
-  add_field<Required>("dgncur_a", scalar3d_mid_nmodes, m, grid_name);
+  add_field<Required>("dgnum", scalar3d_mid_nmodes, m, grid_name);
 
   // Wet aerosol density [kg/m3]
   add_field<Required>("wetdens", scalar3d_mid_nmodes, kg / m3, grid_name);
