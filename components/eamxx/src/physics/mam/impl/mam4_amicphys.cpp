@@ -159,8 +159,8 @@ KOKKOS_INLINE_FUNCTION Real fcvt_gas(const int gas_id) {
 //--------------------------------------------------------------------------------
 
 KOKKOS_INLINE_FUNCTION
-void copy_1d_array(const int arr_len, const Real (&arr_in)[arr_len],  // in
-                   Real (&arr_out)[arr_len]) {                        // out
+void copy_1d_array(const int arr_len, const Real* arr_in,  // in
+                   Real* arr_out) {                        // out
   for(int ii = 0; ii < arr_len; ++ii) {
     arr_out[ii] = arr_in[ii];
   }
@@ -169,12 +169,12 @@ void copy_1d_array(const int arr_len, const Real (&arr_in)[arr_len],  // in
 KOKKOS_INLINE_FUNCTION
 void copy_2d_array(const int first_dimlen,                             // in
                    const int second_dimlen,                            // in
-                   const Real (&arr_in)[first_dimlen][second_dimlen],  // in
-                   Real (&arr_out)[first_dimlen][second_dimlen]) {     // out
+                   const Real* arr_in,  // in
+                   Real* arr_out){     // out
 
   for(int ifd = 0; ifd < first_dimlen; ++ifd) {
     for(int isd = 0; isd < second_dimlen; ++isd) {
-      arr_out[ifd][isd] = arr_in[ifd][isd];
+      arr_out[ifd * second_dimlen + isd] = arr_in[ifd * second_dimlen + isd];
     }
   }
 }
@@ -191,10 +191,10 @@ KOKKOS_INLINE_FUNCTION
 void assign_2d_array(const int first_dimlen,                          // in
                      const int second_dimlen,                         // in
                      const Real num,                                  // in
-                     Real (&arr_out)[first_dimlen][second_dimlen]) {  // out
+                     Real* arr_out) {  // out
   for(int ifd = 0; ifd < first_dimlen; ++ifd) {
     for(int isd = 0; isd < second_dimlen; ++isd) {
-      arr_out[ifd][isd] = num;
+      arr_out[ifd * second_dimlen + isd] = num;
     }
   }
 }
@@ -205,11 +205,12 @@ void assign_3d_array(
     const int second_dimlen,                                       // in
     const int third_dimlen,                                        // in
     const Real num,                                                // in
-    Real (&arr_out)[first_dimlen][second_dimlen][third_dimlen]) {  // out
+    Real* arr_out) {  // out
   for(int ifd = 0; ifd < first_dimlen; ++ifd) {
     for(int isd = 0; isd < second_dimlen; ++isd) {
       for(int itd = 0; itd < third_dimlen; ++itd) {
-        arr_out[ifd][isd][itd] = num;
+        const int index = ifd * second_dimlen * third_dimlen + isd * third_dimlen + itd;
+        arr_out[index] = num;
       }
     }
   }
@@ -1256,8 +1257,8 @@ void mam_amicphys_1subarea(
   constexpr int nspecies = num_aerosol_ids;
   constexpr int nmodes   = num_modes;
 
-  copy_2d_array(nspecies, nmodes, qaer3,  // in
-                qaer_cur);                // out
+  copy_2d_array(nspecies, nmodes, &qaer3[0][0],  // in
+                &qaer_cur[0][0]);                // out
 
   copy_1d_array(nmodes, qnum3,  // in
                 qnum_cur);      // out
@@ -1268,8 +1269,8 @@ void mam_amicphys_1subarea(
   if(iscldy_subarea) {
     copy_1d_array(nmodes, qnumcw3,            // in
                   qnumcw_cur);                // out
-    copy_2d_array(nspecies, nmodes, qaercw3,  // in
-                  qaercw_cur);                // out
+    copy_2d_array(nspecies, nmodes, &qaercw3[0][0],  // in
+                  &qaercw_cur[0][0]);                // out
   }                                           // iscldy_subarea
 
   //---------------------------------------------------------------------
@@ -1303,19 +1304,19 @@ void mam_amicphys_1subarea(
   //-----------------------------------
 
   assign_2d_array(max_gas(), nqtendaa(), 0,  // in
-                  qgas_delaa);               // out
+                  &qgas_delaa[0][0]);               // out
 
   assign_2d_array(nmodes, nqtendaa(), 0,  // in
-                  qnum_delaa);            // out
+                  &qnum_delaa[0][0]);            // out
 
   assign_3d_array(nspecies, nmodes, nqtendaa(), 0,  // in
-                  qaer_delaa);                      // out
+                  &qaer_delaa[0][0][0]);                      // out
 
   assign_2d_array(nmodes, nqqcwtendaa(), 0,  // in
-                  qnumcw_delaa);             // out
+                  &qnumcw_delaa[0][0]);             // out
 
   assign_3d_array(nspecies, nmodes, nqqcwtendaa(), 0,  // in
-                  qaercw_delaa);                       // out
+                  &qaercw_delaa[0][0][0]);                       // out
 
   Real ncluster_tend_nnuc_1grid = 0;
 
@@ -1358,8 +1359,8 @@ void mam_amicphys_1subarea(
       copy_1d_array(nmodes, qnum_cur,     // in
                     qnum_sv1);            // out
 
-      copy_2d_array(nspecies, nmodes, qaer_cur,  // in
-                    qaer_sv1);                   // out
+      copy_2d_array(nspecies, nmodes, &qaer_cur[0][0],  // in
+                    &qaer_sv1[0][0]);                   // out
 
       // max_mode in MAM4 is different from nmodes(max_mode = nmodes+1)
       // Here we create temporary arrays for now, but we should make
@@ -1430,7 +1431,7 @@ void mam_amicphys_1subarea(
                     qgas_avg);            // out
 
       assign_2d_array(nspecies, nmodes, 0,  // in
-                      qaer_delsub_cond);    // out
+                      &qaer_delsub_cond[0][0]);    // out
 
       assign_1d_array(nmodes, 0.0,        // in
                       qnum_delsub_cond);  // out
@@ -1449,8 +1450,8 @@ void mam_amicphys_1subarea(
       //  - gas condensation/evaporation
       //  - cloud chemistry (if the subarea is cloudy)
       //---------------------------------------------------------
-      copy_2d_array(nspecies, nmodes, qaer_delsub_cond,  // in
-                    qaer_delsub_grow4rnam);              // out
+      copy_2d_array(nspecies, nmodes, &qaer_delsub_cond[0][0],  // in
+                    &qaer_delsub_grow4rnam[0][0]);              // out
 
       if(iscldy_subarea) {
         for(int is = 0; is < nspecies; ++is) {
@@ -1470,15 +1471,15 @@ void mam_amicphys_1subarea(
       copy_1d_array(nmodes, qnum_cur,  // in
                     qnum_sv1);         // out
 
-      copy_2d_array(nspecies, nmodes, qaer_cur,  // in
-                    qaer_sv1);                   // out
+      copy_2d_array(nspecies, nmodes, &qaer_cur[0][0],  // in
+                    &qaer_sv1[0][0]);                   // out
 
       Real qnumcw_sv1[nmodes];
       copy_1d_array(nmodes, qnumcw_cur,  // in
                     qnumcw_sv1);         // out
       Real qaercw_sv1[nspecies][nmodes];
-      copy_2d_array(nspecies, nmodes, qaercw_cur,  // in
-                    qaercw_sv1);                   // out
+      copy_2d_array(nspecies, nmodes, &qaercw_cur[0][0],  // in
+                    &qaercw_sv1[0][0]);                   // out
 
       Real mean_std_dev[nmodes];
       Real fmode_dist_tail_fac[nmodes];
@@ -1580,8 +1581,8 @@ void mam_amicphys_1subarea(
       copy_1d_array(nmodes, qnum_cur,     // in
                     qnum_sv1);            // out
 
-      copy_2d_array(nspecies, nmodes, qaer_cur,  // in
-                    qaer_sv1);                   // out
+      copy_2d_array(nspecies, nmodes, &qaer_cur[0][0],  // in
+                    &qaer_sv1[0][0]);                   // out
 
       Real dnclusterdt_substep;
       mam_newnuc_1subarea(igas_h2so4, gaexch_h2so4_uptake_optaa,
@@ -1619,8 +1620,8 @@ void mam_amicphys_1subarea(
       copy_1d_array(nmodes, qnum_cur,  // in
                     qnum_sv1);         // out
 
-      copy_2d_array(nspecies, nmodes, qaer_cur,  // in
-                    qaer_sv1);                   // out
+      copy_2d_array(nspecies, nmodes, &qaer_cur[0][0],  // in
+                    &qaer_sv1[0][0]);                   // out
 
       mam4::coagulation::mam_coag_1subarea(
           dtsubstep, temp, pmid, aircon,             // in
@@ -1648,9 +1649,9 @@ void mam_amicphys_1subarea(
 
     } else {
       assign_2d_array(nspecies, max_agepair, 0.0,  // in
-                      qaer_delsub_coag_in);        // out
+                      &qaer_delsub_coag_in[0][0]);        // out
       assign_2d_array(nspecies, nmodes, 0.0,       // in
-                      qaer_delsub_coag);           // out
+                      &qaer_delsub_coag[0][0]);           // out
       assign_1d_array(nmodes, 0.0,                 // in
                       qnum_delsub_coag);           // out
 
@@ -1750,10 +1751,10 @@ void mam_amicphys_1gridcell(
   }
 
   assign_3d_array(num_gas_ids, nqtendaa(), maxsubarea(), 0.0,  // in
-                  qsub_tendaa);                                // out
+                  &qsub_tendaa[0][0][0]);                                // out
 
   assign_3d_array(num_gas_ids, nqqcwtendaa(), maxsubarea(), 0.0,  // in
-                  qqcwsub_tendaa);                                // out
+                  &qqcwsub_tendaa[0][0][0]);                                // out
 
   EKAT_KERNEL_ASSERT_MSG(nsubarea < maxsubarea(),
                          "Error! mam_amicphys_1gridcell: "
@@ -1812,11 +1813,11 @@ void mam_amicphys_1gridcell(
     Real qwtr4[num_modes]                  = {0};
 
     assign_2d_array(num_aerosol_ids, num_modes, 0.0,  // in
-                    qaer2);                           // out
+                    &qaer2[0][0]);                           // out
     assign_2d_array(num_aerosol_ids, num_modes, 0.0,  // in
-                    qaer3);                           // out
+                    &qaer3[0][0]);                           // out
     assign_2d_array(num_aerosol_ids, num_modes, 0.0,  // in
-                    qaer4);                           // out
+                    &qaer4[0][0]);                           // out
 
     assign_1d_array(num_modes, 0.0,  // in
                     qnum2);          // out
@@ -1854,11 +1855,11 @@ void mam_amicphys_1gridcell(
     Real qnumcw4[num_modes]                  = {0};
 
     assign_2d_array(num_aerosol_ids, num_modes, 0.0,  // in
-                    qaercw2);                         // out
+                    &qaercw2[0][0]);                         // out
     assign_2d_array(num_aerosol_ids, num_modes, 0.0,  // in
-                    qaercw3);                         // out
+                    &qaercw3[0][0]);                         // out
     assign_2d_array(num_aerosol_ids, num_modes, 0.0,  // in
-                    qaercw4);                         // out
+                    &qaercw4[0][0]);                         // out
 
     assign_1d_array(num_modes, 0.0,  // in
                     qnumcw2);        // out
@@ -2076,7 +2077,7 @@ void get_gcm_tend_diags_from_subareas(
 
   // Gases and interstitial aerosols
   assign_2d_array(gas_pcnst, nqtendaa(), 0.0,  // in
-                  qgcm_tendaa);                // out
+                  &qgcm_tendaa[0][0]);                // out
 
   EKAT_KERNEL_ASSERT_MSG(nsubarea < maxsubarea(),
                          "Error! get_gcm_tend_diags_from_subareas: "
@@ -2093,7 +2094,7 @@ void get_gcm_tend_diags_from_subareas(
   // Cloud-borne aerosols
 
   assign_2d_array(gas_pcnst, nqqcwtendaa(), 0.0,  // in
-                  qqcwgcm_tendaa);                // out
+                  &qqcwgcm_tendaa[0][0]);                // out
   if(ncldy_subarea > 0) {
     for(int jsub = 1; jsub <= nsubarea; ++jsub) {
       for(int iq = 0; iq < nqqcwtendaa(); ++iq) {
@@ -2233,7 +2234,7 @@ void modal_aero_amicphys_intr(
   // mix-rates and the clear-area RH. aerosol water mixing ratios (mol/mol)
   Real qaerwatsub3[num_modes][maxsubarea()];
   assign_2d_array(num_modes, maxsubarea(), 0.0,  // in
-                  qaerwatsub3);                  // out
+                  &qaerwatsub3[0][0]);                  // out
 
   //-------------------------------------------------------------------------
   // Set gases, interstitial aerosols, and cloud-borne aerosols in subareas
