@@ -699,7 +699,7 @@ void AtmosphereDriver::initialize_output_managers () {
     auto restart_pl = io_params.sublist("model_restart");
     restart_pl.set<std::string>("Averaging Type","Instant");
     restart_pl.sublist("provenance") = m_atm_params.sublist("provenance");
-    auto& om = m_output_managers.emplace_back();
+    auto& om = m_output_managers.emplace_back(m_atm_comm, restart_pl, m_run_t0, m_case_t0, true);
     if (fvphyshack) {
       // Don't save CGLL fields from ICs to the restart file.
       std::map<std::string,field_mgr_ptr> fms;
@@ -708,10 +708,10 @@ void AtmosphereDriver::initialize_output_managers () {
         fms[it.first] = it.second;
       }
       om.set_logger(m_atm_logger);
-      om.setup(m_atm_comm,restart_pl,         fms,m_grids_manager,m_run_t0,m_case_t0,true);
+      om.setup(         fms,m_grids_manager);
     } else {
       om.set_logger(m_atm_logger);
-      om.setup(m_atm_comm,restart_pl,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0,true);
+      om.setup(m_field_mgrs,m_grids_manager);
     }
     om.set_logger(m_atm_logger);
     for (const auto& it : m_atm_process_group->get_restart_extra_data()) {
@@ -742,10 +742,9 @@ void AtmosphereDriver::initialize_output_managers () {
     }
     params.sublist("provenance") = m_atm_params.sublist("provenance");
     // Add a new output manager
-    m_output_managers.emplace_back();
-    auto& om = m_output_managers.back();
+    auto& om = m_output_managers.emplace_back(m_atm_comm, params, m_run_t0, m_case_t0, false);
     om.set_logger(m_atm_logger);
-    om.setup(m_atm_comm,params,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0,false);
+    om.setup(m_field_mgrs,m_grids_manager);
   }
 
   m_ad_status |= s_output_inited;
@@ -1595,10 +1594,10 @@ void AtmosphereDriver::run (const int dt) {
   start_timer("EAMxx::run");
 
   // DEBUG option: Check if user has set the run to fail at a specific timestep.
-  auto& debug = m_atm_params.sublist("driver_debug_options"); 
-  auto fail_step = debug.get<int>("force_crash_nsteps",-1); 
-  if (fail_step==m_current_ts.get_num_steps()) { 
-    std::abort(); 
+  auto& debug = m_atm_params.sublist("driver_debug_options");
+  auto fail_step = debug.get<int>("force_crash_nsteps",-1);
+  if (fail_step==m_current_ts.get_num_steps()) {
+    std::abort();
   }
 
   // Make sure the end of the time step is after the current start_time
