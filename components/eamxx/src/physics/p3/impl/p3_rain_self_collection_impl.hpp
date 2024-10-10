@@ -23,6 +23,7 @@ void Functions<S,D>
   constexpr Scalar pi       = C::Pi;
 
   const Scalar p3_d_breakup_cutoff = p3constants.p3_d_breakup_cutoff;
+  const Scalar p3_rain_selfcollection_prefactor = p3constants.p3_rain_selfcollection_prefactor;
 
   const auto qr_incld_not_small = qr_incld >= qsmall && context;
 
@@ -38,7 +39,7 @@ void Functions<S,D>
       dum.set(dum2_gt_dum1, 2 - exp(2300 * (dum2-p3_d_breakup_cutoff)));
     }
 
-    nr_selfcollect_tend.set(qr_incld_not_small, dum*sp(5.78)*nr_incld*qr_incld*rho);
+    nr_selfcollect_tend.set(qr_incld_not_small, dum*sp(p3_rain_selfcollection_prefactor)*nr_incld*qr_incld*rho);
   }
 }
 

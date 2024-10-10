@@ -208,6 +208,7 @@ be lost if SCREAM_HACK_XML is not enabled.
       <p3_autoconversion_radius type="real" doc="P3 autoconversion radius of new rain drops">0.000025</p3_autoconversion_radius>
       <p3_accretion_qc_exp type="real" doc="P3 accretion qc exponent">1.15</p3_accretion_qc_exp>
       <p3_accretion_qr_exp type="real" doc="P3 accretion qr exponent">1.15</p3_accretion_qr_exp>
+      <p3_rain_selfcollection_prefactor type="real" doc="P3 qr selfcollection prefactor">5.78</p3_rain_selfcollection_prefactor>
       <p3_mu_r_constant type="real" doc="P3 mu_r_constant (rain shape parameter in gamma drop-size distribution)">1.0</p3_mu_r_constant>
       <p3_spa_to_nc type="real" doc="P3 spa_to_nc (scaling factor for turning CCN into nc in SPA)">1.0</p3_spa_to_nc>
       <p3_k_accretion type="real" doc="P3 k_accretion (scaling factor on accretion)">67.0</p3_k_accretion>
