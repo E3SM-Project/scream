@@ -13,11 +13,9 @@
 
 // For calling MAM4 processes
 #include <mam4xx/mam4.hpp>
-
 #include <string>
 
-namespace scream
-{
+namespace scream {
 
 // The process responsible for handling MAM4 aerosol microphysics. The AD
 // stores exactly ONE instance of this class in its list of subcomponents.
@@ -36,10 +34,9 @@ class MAMMicrophysics final : public scream::AtmosphereProcess {
   // a thread team dispatched to a single vertical column
   using ThreadTeam = mam4::ThreadTeam;
 
-public:
-
+ public:
   // Constructor
-  MAMMicrophysics(const ekat::Comm& comm, const ekat::ParameterList& params);
+  MAMMicrophysics(const ekat::Comm &comm, const ekat::ParameterList &params);
 
   // --------------------------------------------------------------------------
   // AtmosphereProcess overrides (see share/atm_process/atmosphere_process.hpp)
@@ -52,16 +49,17 @@ public:
   std::string name() const const { return "mam_aero_microphysics"; }
 
   // set aerosol microphysics configuration parameters (called by constructor)
-  void configure(const ekat::ParameterList& params);
+  void configure(const ekat::ParameterList &params);
 
   // grid
-  void set_grids(const std::shared_ptr<const GridsManager> grids_manager) override;
+  void set_grids(
+      const std::shared_ptr<const GridsManager> grids_manager) override;
 
   // management of common atm process memory
   size_t requested_buffer_size_in_bytes() const override;
   void init_buffers(const ATMBufferManager &buffer_manager) override;
 
-    // Initialize variables
+  // Initialize variables
   void initialize_impl(const RunType run_type) override;
 
   // Run the process by one time step
@@ -71,9 +69,9 @@ public:
   void finalize_impl(){/*Do nothing*/};
 
   // performs some checks on the tracers group
-  void set_computed_group_impl(const FieldGroup& group) override;
+  void set_computed_group_impl(const FieldGroup &group) override;
 
-private:
+ private:
   // number of horizontal columns and vertical levels
   int ncol_, nlev_;
 
@@ -101,10 +99,10 @@ private:
 
     // stratospheric chemistry parameters
     struct {
-      int o3_lbl; // number of layers with ozone decay from the surface
-      int o3_sfc; // set from namelist input linoz_sfc
-      int o3_tau; // set from namelist input linoz_tau
-      Real psc_T; // set from namelist input linoz_psc_T
+      int o3_lbl;  // number of layers with ozone decay from the surface
+      int o3_sfc;  // set from namelist input linoz_sfc
+      int o3_tau;  // set from namelist input linoz_tau
+      Real psc_T;  // set from namelist input linoz_psc_T
       char chlorine_loading_file[MAX_FILENAME_LEN];
     } linoz;
 
@@ -129,29 +127,31 @@ private:
 
     // on host: initializes preprocess functor with necessary state data
     void initialize(const int ncol, const int nlev,
-                    const mam_coupling::WetAtmosphere& wet_atm,
-                    const mam_coupling::AerosolState& wet_aero,
-                    const mam_coupling::DryAtmosphere& dry_atm,
-                    const mam_coupling::AerosolState& dry_aero) {
-      ncol_pre_ = ncol;
-      nlev_pre_ = nlev;
-      wet_atm_pre_ = wet_atm;
+                    const mam_coupling::WetAtmosphere &wet_atm,
+                    const mam_coupling::AerosolState &wet_aero,
+                    const mam_coupling::DryAtmosphere &dry_atm,
+                    const mam_coupling::AerosolState &dry_aero) {
+      ncol_pre_     = ncol;
+      nlev_pre_     = nlev;
+      wet_atm_pre_  = wet_atm;
       wet_aero_pre_ = wet_aero;
-      dry_atm_pre_ = dry_atm;
+      dry_atm_pre_  = dry_atm;
       dry_aero_pre_ = dry_aero;
     }
 
     KOKKOS_INLINE_FUNCTION
-    void operator()(const Kokkos::TeamPolicy<KT::ExeSpace>::member_type& team) const {
-      const int i = team.league_rank(); // column index
+    void operator()(
+        const Kokkos::TeamPolicy<KT::ExeSpace>::member_type &team) const {
+      const int i = team.league_rank();  // column index
 
       compute_dry_mixing_ratios(team, wet_atm_pre_, dry_atm_pre_, i);
-      compute_dry_mixing_ratios(team, wet_atm_pre_, wet_aero_pre_, dry_aero_pre_, i);
+      compute_dry_mixing_ratios(team, wet_atm_pre_, wet_aero_pre_,
+                                dry_aero_pre_, i);
       team.team_barrier();
 
       compute_vertical_layer_heights(team, dry_atm_pre_, i);
       compute_updraft_velocities(team, wet_atm_pre_, dry_atm_pre_, i);
-    } // operator()
+    }  // operator()
 
     // number of horizontal columns and vertical levels
     int ncol_pre_, nlev_pre_;
@@ -159,9 +159,9 @@ private:
     // local atmospheric and aerosol state data
     mam_coupling::WetAtmosphere wet_atm_pre_;
     mam_coupling::DryAtmosphere dry_atm_pre_;
-    mam_coupling::AerosolState  wet_aero_pre_, dry_aero_pre_;
+    mam_coupling::AerosolState wet_aero_pre_, dry_aero_pre_;
 
-  }; // MAMMicrophysics::Preprocess
+  };  // MAMMicrophysics::Preprocess
 
   // Postprocessing functor
   struct Postprocess {
@@ -169,24 +169,26 @@ private:
 
     // on host: initializes postprocess functor with necessary state data
     void initialize(const int ncol, const int nlev,
-                    const mam_coupling::WetAtmosphere& wet_atm,
-                    const mam_coupling::AerosolState& wet_aero,
-                    const mam_coupling::DryAtmosphere& dry_atm,
-                    const mam_coupling::AerosolState& dry_aero) {
-      ncol_post_ = ncol;
-      nlev_post_ = nlev;
-      wet_atm_post_ = wet_atm;
+                    const mam_coupling::WetAtmosphere &wet_atm,
+                    const mam_coupling::AerosolState &wet_aero,
+                    const mam_coupling::DryAtmosphere &dry_atm,
+                    const mam_coupling::AerosolState &dry_aero) {
+      ncol_post_     = ncol;
+      nlev_post_     = nlev;
+      wet_atm_post_  = wet_atm;
       wet_aero_post_ = wet_aero;
-      dry_atm_post_ = dry_atm;
+      dry_atm_post_  = dry_atm;
       dry_aero_post_ = dry_aero;
     }
 
     KOKKOS_INLINE_FUNCTION
-    void operator()(const Kokkos::TeamPolicy<KT::ExeSpace>::member_type& team) const {
-      const int i = team.league_rank(); // column index
-      compute_wet_mixing_ratios(team, dry_atm_post_, dry_aero_post_, wet_aero_post_, i);
+    void operator()(
+        const Kokkos::TeamPolicy<KT::ExeSpace>::member_type &team) const {
+      const int i = team.league_rank();  // column index
+      compute_wet_mixing_ratios(team, dry_atm_post_, dry_aero_post_,
+                                wet_aero_post_, i);
       team.team_barrier();
-    } // operator()
+    }  // operator()
 
     // number of horizontal columns and vertical levels
     int ncol_post_, nlev_post_;
@@ -194,8 +196,8 @@ private:
     // local atmospheric and aerosol state data
     mam_coupling::WetAtmosphere wet_atm_post_;
     mam_coupling::DryAtmosphere dry_atm_post_;
-    mam_coupling::AerosolState  wet_aero_post_, dry_aero_post_;
-  }; // MAMMicrophysics::Postprocess
+    mam_coupling::AerosolState wet_aero_post_, dry_aero_post_;
+  };  // MAMMicrophysics::Postprocess
 
   // MAM4 aerosol particle size description
   mam4::AeroConfig aero_config_;
@@ -207,7 +209,7 @@ private:
   // atmospheric and aerosol state variables
   mam_coupling::WetAtmosphere wet_atm_;
   mam_coupling::DryAtmosphere dry_atm_;
-  mam_coupling::AerosolState  wet_aero_, dry_aero_;
+  mam_coupling::AerosolState wet_aero_, dry_aero_;
 
   // photolysis rate table (column-independent)
   mam4::mo_photo::PhotoTableData photo_table_;
@@ -219,7 +221,7 @@ private:
   const_view_1d d_sfc_alb_dir_vis_;
 
   // workspace manager for internal local variables
-  //ekat::WorkspaceManager<Real, KT::Device> workspace_mgr_;
+  // ekat::WorkspaceManager<Real, KT::Device> workspace_mgr_;
   mam_coupling::Buffer buffer_;
 
   // physics grid for column information
@@ -236,7 +238,7 @@ private:
 
   // invariants members
   mam_coupling::TracerTimeState trace_time_state_;
-  std::shared_ptr<AtmosphereInput>  TracerDataReader_;
+  std::shared_ptr<AtmosphereInput> TracerDataReader_;
   std::shared_ptr<AbstractRemapper> TracerHorizInterp_;
   mam_coupling::TracerData tracer_data_;
   view_3d invariants_;
@@ -244,19 +246,20 @@ private:
   view_2d cnst_offline_[4];
 
   // linoz reader
-  std::shared_ptr<AtmosphereInput>  LinozDataReader_;
+  std::shared_ptr<AtmosphereInput> LinozDataReader_;
   std::shared_ptr<AbstractRemapper> LinozHorizInterp_;
   mam_coupling::TracerData linoz_data_;
   std::string linoz_file_name_;
 
-  // Vertical emission uses 9 files, here I am using std::vector to stote instance of each file.
+  // Vertical emission uses 9 files, here I am using std::vector to stote
+  // instance of each file.
   mam_coupling::TracerTimeState vert_emiss_time_state_;
-  std::vector<std::shared_ptr<AtmosphereInput>>  VertEmissionsDataReader_;
+  std::vector<std::shared_ptr<AtmosphereInput>> VertEmissionsDataReader_;
   std::vector<std::shared_ptr<AbstractRemapper>> VertEmissionsHorizInterp_;
   std::vector<std::string> extfrc_lst_;
   std::vector<mam_coupling::TracerData> vert_emis_data_;
-  std::map< std::string, std::string >vert_emis_file_name_;
-  std::map< std::string, std::vector<std::string> > vert_emis_var_names_;
+  std::map<std::string, std::string> vert_emis_file_name_;
+  std::map<std::string, std::vector<std::string>> vert_emis_var_names_;
   view_2d vert_emis_output_[mam_coupling::MAX_NUM_VERT_EMISSION_FIELDS];
   view_3d extfrc_;
   mam_coupling::ForcingHelper forcings_[mam4::gas_chemistry::extcnt];
@@ -264,8 +267,8 @@ private:
   view_1d_host acos_cosine_zenith_host_;
   view_1d acos_cosine_zenith_;
 
-}; // MAMMicrophysics
+};  // MAMMicrophysics
 
-} // namespace scream
+}  // namespace scream
 
-#endif // EAMXX_MAM_MICROPHYSICS_HPP
+#endif  // EAMXX_MAM_MICROPHYSICS_HPP
