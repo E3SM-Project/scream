@@ -46,8 +46,6 @@ AtmosphereProcessType MAMMicrophysics::type() const {
   return AtmosphereProcessType::Physics;
 }
 
-std::string MAMMicrophysics::name() const { return "mam4_micro"; }
-
 namespace {
 
 void set_data_file(const char *name, const char *path,
@@ -117,7 +115,6 @@ void MAMMicrophysics::set_grids(
   nlev_ = grid_->get_num_vertical_levels();  // number of levels per column
 
   // get column geometry and locations
-  col_areas_      = grid_->get_geometry_data("area").get_view<const Real *>();
   col_latitudes_  = grid_->get_geometry_data("lat").get_view<const Real *>();
   col_longitudes_ = grid_->get_geometry_data("lon").get_view<const Real *>();
 
@@ -440,8 +437,6 @@ void MAMMicrophysics::init_buffers(const ATMBufferManager &buffer_manager) {
 }
 
 void MAMMicrophysics::initialize_impl(const RunType run_type) {
-  step_ = 0;
-
   // Determine orbital year. If orbital_year is negative, use current year
   // from timestamp for orbital year; if positive, use provided orbital year
   // for duration of simulation.
@@ -753,7 +748,6 @@ void MAMMicrophysics::run_impl(const double dt) {
   mam4::mo_photo::PhotoTableData &photo_table = photo_table_;
   const int nlev                              = nlev_;
   const Config &config                        = config_;
-  const auto &step                            = step_;
   const auto &work_photo_table                = work_photo_table_;
   const auto &photo_rates                     = photo_rates_;
 
@@ -1090,7 +1084,5 @@ void MAMMicrophysics::run_impl(const double dt) {
   Kokkos::fence();
 
 }  // MAMMicrophysics::run_impl
-
-void MAMMicrophysics::finalize_impl() {}
 
 }  // namespace scream
