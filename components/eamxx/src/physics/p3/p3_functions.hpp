@@ -240,6 +240,11 @@ struct Functions
     view_2d<Spack> vap_liq_exchange;
     // Sum of vap-ice phase change tendencies
     view_2d<Spack> vap_ice_exchange;
+    // Rain evaporation tendency
+    view_2d<Spack> P3_qr2qv_evap;
+    // Rain sedimentation tendency
+    view_2d<Spack> P3_qr_sed;
+
   };
 
   // This struct stores kokkos views for the lookup tables needed in p3_main()
@@ -1149,6 +1154,7 @@ struct Functions
     const uview_1d<Spack>& vap_liq_exchange,
     const uview_1d<Spack>& vap_ice_exchange,
     const uview_1d<Spack>& liq_ice_exchange,
+    const uview_1d<Spack>& P3_qr2qv_evap,
     const uview_1d<Spack>& pratot,
     const uview_1d<Spack>& prctot,
     bool& is_hydromet_present,
@@ -1227,6 +1233,7 @@ struct Functions
     const uview_2d<Spack>& vap_liq_exchange,
     const uview_2d<Spack>& vap_ice_exchange,
     const uview_2d<Spack>& liq_ice_exchange,
+    const uview_2d<Spack>& P3_qr2qv_evap,
     const uview_2d<Spack>& pratot,
     const uview_2d<Spack>& prctot,
     const uview_1d<bool>& is_nucleat_possible,

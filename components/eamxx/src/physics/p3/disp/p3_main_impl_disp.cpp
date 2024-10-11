@@ -164,6 +164,8 @@ Int Functions<Real,DefaultDevice>
   auto liq_ice_exchange        = history_only.liq_ice_exchange;
   auto vap_liq_exchange        = history_only.vap_liq_exchange;
   auto vap_ice_exchange        = history_only.vap_ice_exchange;
+  auto P3_qr2qv_evap           = history_only.P3_qr2qv_evap;
+  auto P3_qr_sed               = history_only.P3_qr_sed;
   auto mu_r                    = temporaries.mu_r;
   auto T_atm                   = temporaries.T_atm;
   auto lamr                    = temporaries.lamr;
@@ -257,7 +259,7 @@ Int Functions<Real,DefaultDevice>
       qv, th, qc, nc, qr, nr, qi, ni, qm, bm, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld,
       nr_incld, ni_incld, bm_incld, mu_c, nu, lamc, cdist, cdist1, cdistr,
       mu_r, lamr, logn0r, qv2qi_depos_tend, precip_total_tend, nevapr, qr_evap_tend,
-      vap_liq_exchange, vap_ice_exchange, liq_ice_exchange,
+      vap_liq_exchange, vap_ice_exchange, liq_ice_exchange,P3_qr2qv_evap,
       pratot, prctot, nucleationPossible, hydrometeorsPresent, runtime_options);
 
   //NOTE: At this point, it is possible to have negative (but small) nc, nr, ni.  This is not
@@ -283,8 +285,9 @@ Int Functions<Real,DefaultDevice>
   rain_sedimentation_disp(
       rho, inv_rho, rhofacr, cld_frac_r, inv_dz, qr_incld, workspace_mgr,
       lookup_tables.vn_table_vals, lookup_tables.vm_table_vals, nj, nk, ktop, kbot, kdir, infrastructure.dt, inv_dt, qr,
-      nr, nr_incld, mu_r, lamr, precip_liq_flux, qtend_ignore, ntend_ignore,
+      nr, nr_incld, mu_r, lamr, precip_liq_flux, P3_qr_sed, ntend_ignore,
       diagnostic_outputs.precip_liq_surf, nucleationPossible, hydrometeorsPresent, runtime_options);
+
 
   // Ice sedimentation:  (adaptive substepping)
   ice_sedimentation_disp(

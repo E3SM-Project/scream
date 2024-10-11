@@ -196,6 +196,8 @@ Int Functions<S,D>
     const auto oliq_ice_exchange   = ekat::subview(history_only.liq_ice_exchange, i);
     const auto ovap_liq_exchange   = ekat::subview(history_only.vap_liq_exchange, i);
     const auto ovap_ice_exchange   = ekat::subview(history_only.vap_ice_exchange, i);
+    const auto oP3_qr2qv_evap      = ekat::subview(history_only.P3_qr2qv_evap, i);
+    const auto oP3_qr_sed          = ekat::subview(history_only.P3_qr_sed, i);
     const auto oqv_prev            = ekat::subview(diagnostic_inputs.qv_prev, i);
     const auto ot_prev             = ekat::subview(diagnostic_inputs.t_prev, i);
 
@@ -248,7 +250,7 @@ Int Functions<S,D>
       qc_incld, qr_incld, qi_incld, qm_incld, nc_incld,
       nr_incld, ni_incld, bm_incld, mu_c, nu, lamc, cdist, cdist1, cdistr,
       mu_r, lamr, logn0r, oqv2qi_depos_tend, oprecip_total_tend, onevapr, qr_evap_tend,
-      ovap_liq_exchange, ovap_ice_exchange, oliq_ice_exchange,
+      ovap_liq_exchange, ovap_ice_exchange, oliq_ice_exchange,oP3_qr2qv_evap,
       pratot, prctot, hydrometeorsPresent, nk, runtime_options);
 
     //NOTE: At this point, it is possible to have negative (but small) nc, nr, ni.  This is not
@@ -276,7 +278,7 @@ Int Functions<S,D>
     rain_sedimentation(
       rho, inv_rho, rhofacr, ocld_frac_r, inv_dz, qr_incld, team, workspace,
       lookup_tables.vn_table_vals, lookup_tables.vm_table_vals, nk, ktop, kbot, kdir, infrastructure.dt, inv_dt, oqr,
-      onr, nr_incld, mu_r, lamr, oprecip_liq_flux, qtend_ignore, ntend_ignore,
+      onr, nr_incld, mu_r, lamr, oprecip_liq_flux, oP3_qr_sed, ntend_ignore,
       diagnostic_outputs.precip_liq_surf(i), runtime_options);
 
     // Ice sedimentation:  (adaptive substepping)

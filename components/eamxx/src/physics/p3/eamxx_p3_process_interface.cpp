@@ -111,6 +111,13 @@ void P3Microphysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
   add_field<Computed>("micro_vap_ice_exchange", scalar3d_layout_mid, kg/kg,  grid_name, ps);
   add_field<Computed>("rainfrac",               scalar3d_layout_mid, nondim, grid_name, ps);
 
+  // P3 process rate diagnostics, use convetion P3_<process_rate>
+  add_field<Computed>("P3_qr2qv_evap", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
+
+  add_field<Computed>("P3_qr_sed", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
+
+
+
   // Boundary flux fields for energy and mass conservation checks
   if (has_column_conservation_check()) {
     add_field<Computed>("vapor_flux", scalar2d_layout, kg/m2/s, grid_name);
@@ -346,6 +353,9 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   history_only.liq_ice_exchange = get_field_out("micro_liq_ice_exchange").get_view<Pack**>();
   history_only.vap_liq_exchange = get_field_out("micro_vap_liq_exchange").get_view<Pack**>();
   history_only.vap_ice_exchange = get_field_out("micro_vap_ice_exchange").get_view<Pack**>();
+  history_only.P3_qr2qv_evap = get_field_out("P3_qr2qv_evap").get_view<Pack**>();
+  history_only.P3_qr_sed = get_field_out("P3_qr_sed").get_view<Pack**>();
+
 #ifdef SCREAM_P3_SMALL_KERNELS
   // Temporaries
   temporaries.mu_r                    = m_buffer.mu_r;

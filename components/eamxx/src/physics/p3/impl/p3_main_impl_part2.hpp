@@ -89,6 +89,7 @@ void Functions<S,D>
   const uview_1d<Spack>& vap_liq_exchange,
   const uview_1d<Spack>& vap_ice_exchange,
   const uview_1d<Spack>& liq_ice_exchange,
+  const uview_1d<Spack>& P3_qr2qv_evap,
   const uview_1d<Spack>& pratot,
   const uview_1d<Spack>& prctot,
   bool& hydrometeorsPresent, const Int& nk,
@@ -443,6 +444,9 @@ void Functions<S,D>
     vap_ice_exchange(k).set(not_skip_all, qv2qi_vapdep_tend - qi2qv_sublim_tend + qv2qi_nucleat_tend);
     vap_liq_exchange(k).set(not_skip_all, -qr2qv_evap_tend);
     liq_ice_exchange(k).set(not_skip_all, qc2qi_hetero_freeze_tend + qr2qi_immers_freeze_tend - qi2qr_melt_tend + qc2qi_berg_tend + qc2qi_collect_tend + qr2qi_collect_tend);
+
+   // set tendencies
+    P3_qr2qv_evap(k).set(not_skip_all, qr2qv_evap_tend);
 
     // clipping for small hydrometeor values
     const auto qc_small    = qc(k) < qsmall    && not_skip_all;
