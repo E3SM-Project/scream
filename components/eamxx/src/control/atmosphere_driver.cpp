@@ -677,6 +677,28 @@ void AtmosphereDriver::create_fields()
   m_atm_logger->info("[EAMxx] create_fields ... done!");
 }
 
+void AtmosphereDriver::create_output_managers () {
+  m_atm_logger->info("[EAMxx] create_output_managers ...");
+  start_timer("EAMxx::init");
+  start_timer("EAMxx::create_output_managers");
+
+  auto& io_params = m_atm_params.sublist("Scorpio");
+
+  if (io_params.isSublist("model_restart")) {
+    auto& om = m_output_managers.emplace_back();
+  }
+
+  using vos_t = std::vector<std::string>;
+  const auto& output_yaml_files = io_params.get<vos_t>("output_yaml_files",vos_t{});
+  for (int i=0; i<output_yaml_files.size(); ++i) {
+    auto& om = m_output_managers.emplace_back();
+  }
+
+  stop_timer("EAMxx::create_output_managers");
+  stop_timer("EAMxx::init");
+  m_atm_logger->info("[EAMxx] create_output_managers ... done!");
+}
+
 void AtmosphereDriver::initialize_output_managers () {
   m_atm_logger->info("[EAMxx] initialize_output_managers ...");
   start_timer("EAMxx::init");
@@ -695,11 +717,11 @@ void AtmosphereDriver::initialize_output_managers () {
   ekat::ParameterList checkpoint_params;
   checkpoint_params.set("frequency_units",std::string("never"));
   checkpoint_params.set("Frequency",-1);
-  if (io_params.isSublist("model_restart")) {
+  if (m_output_managers[0].is_model_restart_output()) {
     auto restart_pl = io_params.sublist("model_restart");
     restart_pl.set<std::string>("Averaging Type","Instant");
     restart_pl.sublist("provenance") = m_atm_params.sublist("provenance");
-    auto& om = m_output_managers.emplace_back();
+    auto& om = m_output_managers[0];
     if (fvphyshack) {
       // Don't save CGLL fields from ICs to the restart file.
       std::map<std::string,field_mgr_ptr> fms;
@@ -727,7 +749,9 @@ void AtmosphereDriver::initialize_output_managers () {
   using vos_t = std::vector<std::string>;
   const auto& output_yaml_files = io_params.get<vos_t>("output_yaml_files",vos_t{});
   int om_tally = 0;
-  for (const auto& fname : output_yaml_files) {
+  for (int i=0; i<output_yaml_files.size(); ++i) {
+    auto fname = output_yaml_files[i];
+
     ekat::ParameterList params;
     ekat::parse_yaml_file(fname,params);
     params.rename(ekat::split(fname,"/").back());
@@ -741,9 +765,8 @@ void AtmosphereDriver::initialize_output_managers () {
       om_tally++;
     }
     params.sublist("provenance") = m_atm_params.sublist("provenance");
-    // Add a new output manager
-    m_output_managers.emplace_back();
-    auto& om = m_output_managers.back();
+
+    auto& om = m_output_managers[(m_output_managers[0].is_model_restart_output() ? i+1 : i)];
     om.set_logger(m_atm_logger);
     om.setup(m_atm_comm,params,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0,false);
   }
@@ -1588,6 +1611,7 @@ initialize (const ekat::Comm& atm_comm,
   // so the fields are valid if outputing at t=0
   reset_accumulated_fields();
 
+  create_output_managers ();
   initialize_output_managers ();
 }
 
@@ -1595,10 +1619,10 @@ void AtmosphereDriver::run (const int dt) {
   start_timer("EAMxx::run");
 
   // DEBUG option: Check if user has set the run to fail at a specific timestep.
-  auto& debug = m_atm_params.sublist("driver_debug_options"); 
-  auto fail_step = debug.get<int>("force_crash_nsteps",-1); 
-  if (fail_step==m_current_ts.get_num_steps()) { 
-    std::abort(); 
+  auto& debug = m_atm_params.sublist("driver_debug_options");
+  auto fail_step = debug.get<int>("force_crash_nsteps",-1);
+  if (fail_step==m_current_ts.get_num_steps()) {
+    std::abort();
   }
 
   // Make sure the end of the time step is after the current start_time

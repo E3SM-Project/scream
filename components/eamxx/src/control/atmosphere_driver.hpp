@@ -119,6 +119,9 @@ public:
   // Load initial conditions for atm inputs
   void initialize_fields ();
 
+  // Create I/O structures for output
+  void create_output_managers ();
+
   // Initialie I/O structures for output
   void initialize_output_managers ();
 
@@ -204,7 +207,7 @@ protected:
 
   ekat::ParameterList                       m_atm_params;
 
-  std::list<OutputManager>                  m_output_managers;
+  std::vector<OutputManager>                  m_output_managers;
 
   std::shared_ptr<ATMBufferManager>         m_memory_buffer;
   std::shared_ptr<SCDataManager>            m_surface_coupling_import_data_manager;

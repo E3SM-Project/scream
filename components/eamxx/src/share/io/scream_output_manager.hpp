@@ -118,6 +118,8 @@ public:
   void finalize();
 
   long long res_dep_memory_footprint () const;
+
+  bool is_model_restart_output () { return m_is_model_restart_output; }
 protected:
 
   std::string compute_filename (const IOFileSpecs& file_specs,
