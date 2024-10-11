@@ -738,6 +738,13 @@ set_grid (const std::shared_ptr<const AbstractGrid>& grid)
   EKAT_REQUIRE_MSG (grid->is_unique(),
       "Error! I/O only supports grids which are 'unique', meaning that the\n"
       "       map dof_gid->proc_id is well defined.\n");
+
+  if (m_comm.am_i_root()) {
+    printf("CHECKING NAME: %s, get_global_min_dof_gid: %d, get_global_min_dof_gid: %d, get_num_global_dofs: %d\n",
+           grid->name().c_str(), grid->get_global_max_dof_gid(), grid->get_global_min_dof_gid(), grid->get_num_global_dofs());
+  }
+  m_comm.barrier();
+
   EKAT_REQUIRE_MSG (
       (grid->get_global_max_dof_gid()-grid->get_global_min_dof_gid()+1)==grid->get_num_global_dofs(),
       "Error! In order for IO to work, the grid must (globally) have dof gids in interval [gid_0,gid_0+num_global_dofs).\n");
@@ -1179,7 +1186,7 @@ void AtmosphereOutput::set_decompositions(const std::string& filename)
     // If none of the vars are decomposed on this grid,
     // then there's nothing to do here
     return;
-  } 
+  }
 
   // Set the decomposition for the partitioned dimension
   const int local_dim = m_io_grid->get_partitioned_dim_local_size();
