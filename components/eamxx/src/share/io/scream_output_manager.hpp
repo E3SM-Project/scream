@@ -67,7 +67,8 @@ public:
   using globals_map_t = std::map<std::string,ekat::any>;
 
   // Constructor(s) & Destructor
-  OutputManager () = default;
+  OutputManager (const bool is_a_restart)
+    : m_is_model_restart_output(is_a_restart) {};
   virtual ~OutputManager ();
 
   // Set up the manager, creating all output streams. Inputs:
@@ -83,29 +84,25 @@ public:
               const std::shared_ptr<fm_type>& field_mgr,
               const std::shared_ptr<const gm_type>& grids_mgr,
               const util::TimeStamp& run_t0,
-              const util::TimeStamp& case_t0,
-              const bool is_model_restart_output);
+              const util::TimeStamp& case_t0);
   void setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
               const std::shared_ptr<fm_type>& field_mgr,
               const std::shared_ptr<const gm_type>& grids_mgr,
-              const util::TimeStamp& run_t0,
-              const bool is_model_restart_output) {
-    setup (io_comm,params,field_mgr,grids_mgr,run_t0,run_t0,is_model_restart_output);
+              const util::TimeStamp& run_t0) {
+    setup (io_comm,params,field_mgr,grids_mgr,run_t0,run_t0);
   }
 
   void setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
               const std::map<std::string,std::shared_ptr<fm_type>>& field_mgrs,
               const std::shared_ptr<const gm_type>& grids_mgr,
               const util::TimeStamp& run_t0,
-              const util::TimeStamp& case_t0,
-              const bool is_model_restart_output);
+              const util::TimeStamp& case_t0);
 
   void setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
               const std::map<std::string,std::shared_ptr<fm_type>>& field_mgrs,
               const std::shared_ptr<const gm_type>& grids_mgr,
-              const util::TimeStamp& run_t0,
-              const bool is_model_restart_output) {
-    setup (io_comm,params,field_mgrs,grids_mgr,run_t0,run_t0,is_model_restart_output);
+              const util::TimeStamp& run_t0) {
+    setup (io_comm,params,field_mgrs,grids_mgr,run_t0,run_t0);
   }
 
   void set_logger(const std::shared_ptr<ekat::logger::LoggerBase>& atm_logger) {

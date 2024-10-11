@@ -28,13 +28,12 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
        const std::shared_ptr<fm_type>& field_mgr,
        const std::shared_ptr<const gm_type>& grids_mgr,
        const util::TimeStamp& run_t0,
-       const util::TimeStamp& case_t0,
-       const bool is_model_restart_output)
+       const util::TimeStamp& case_t0)
 {
   using map_t = std::map<std::string,std::shared_ptr<fm_type>>;
   map_t fms;
   fms[field_mgr->get_grid()->name()] = field_mgr;
-  setup(io_comm,params,fms,grids_mgr,run_t0,case_t0,is_model_restart_output);
+  setup(io_comm,params,fms,grids_mgr,run_t0,case_t0);
 }
 
 void OutputManager::
@@ -42,8 +41,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
        const std::map<std::string,std::shared_ptr<fm_type>>& field_mgrs,
        const std::shared_ptr<const gm_type>& grids_mgr,
        const util::TimeStamp& run_t0,
-       const util::TimeStamp& case_t0,
-       const bool is_model_restart_output)
+       const util::TimeStamp& case_t0)
 {
   // Sanity checks
   EKAT_REQUIRE_MSG (run_t0.is_valid(),
@@ -59,7 +57,6 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
   m_run_t0 = run_t0;
   m_case_t0 = case_t0;
   m_is_restarted_run = (case_t0<run_t0);
-  m_is_model_restart_output = is_model_restart_output;
 
   // Read input parameters and setup internal data
   set_params(params,field_mgrs);

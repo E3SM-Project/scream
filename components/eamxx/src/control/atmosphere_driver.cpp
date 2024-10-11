@@ -685,13 +685,13 @@ void AtmosphereDriver::create_output_managers () {
   auto& io_params = m_atm_params.sublist("Scorpio");
 
   if (io_params.isSublist("model_restart")) {
-    auto& om = m_output_managers.emplace_back();
+    auto& om = m_output_managers.emplace_back(true);
   }
 
   using vos_t = std::vector<std::string>;
   const auto& output_yaml_files = io_params.get<vos_t>("output_yaml_files",vos_t{});
   for (int i=0; i<output_yaml_files.size(); ++i) {
-    auto& om = m_output_managers.emplace_back();
+    auto& om = m_output_managers.emplace_back(false);
   }
 
   stop_timer("EAMxx::create_output_managers");
@@ -705,6 +705,11 @@ void AtmosphereDriver::initialize_output_managers () {
   start_timer("EAMxx::initialize_output_managers");
 
   check_ad_status (s_comm_set | s_params_set | s_grids_created | s_fields_created);
+
+  printf("OUTPUTS: %d\n", m_output_managers.size());
+
+  // Early return if no output managers exist
+  if (m_output_managers.empty()) return;
 
   auto& io_params = m_atm_params.sublist("Scorpio");
 
@@ -730,10 +735,10 @@ void AtmosphereDriver::initialize_output_managers () {
         fms[it.first] = it.second;
       }
       om.set_logger(m_atm_logger);
-      om.setup(m_atm_comm,restart_pl,         fms,m_grids_manager,m_run_t0,m_case_t0,true);
+      om.setup(m_atm_comm,restart_pl,         fms,m_grids_manager,m_run_t0,m_case_t0);
     } else {
       om.set_logger(m_atm_logger);
-      om.setup(m_atm_comm,restart_pl,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0,true);
+      om.setup(m_atm_comm,restart_pl,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0);
     }
     om.set_logger(m_atm_logger);
     for (const auto& it : m_atm_process_group->get_restart_extra_data()) {
@@ -768,7 +773,7 @@ void AtmosphereDriver::initialize_output_managers () {
 
     auto& om = m_output_managers[(m_output_managers[0].is_model_restart_output() ? i+1 : i)];
     om.set_logger(m_atm_logger);
-    om.setup(m_atm_comm,params,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0,false);
+    om.setup(m_atm_comm,params,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0);
   }
 
   m_ad_status |= s_output_inited;
