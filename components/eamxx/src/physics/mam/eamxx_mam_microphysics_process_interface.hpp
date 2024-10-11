@@ -46,7 +46,7 @@ class MAMMicrophysics final : public scream::AtmosphereProcess {
   AtmosphereProcessType type() const override;
 
   // The name of the subcomponent
-  std::string name() const const { return "mam_aero_microphysics"; }
+  std::string name() const { return "mam_aero_microphysics"; }
 
   // set aerosol microphysics configuration parameters (called by constructor)
   void configure(const ekat::ParameterList &params);
