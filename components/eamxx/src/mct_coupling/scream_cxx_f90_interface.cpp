@@ -259,6 +259,8 @@ void scream_init_atm (const char* caseid,
     // Do this before init-ing the output managers,
     // so the fields are valid if outputing at t=0
     ad.reset_accumulated_fields();
+
+    ad.create_output_managers ();
     ad.initialize_output_managers ();
   });
 }
