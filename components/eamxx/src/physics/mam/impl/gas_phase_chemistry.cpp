@@ -253,9 +253,10 @@ void gas_phase_chemistry(
 
   // solve chemical system implicitly
   Real prod_out[clscnt4], loss_out[clscnt4];
-  mam4::gas_chemistry::imp_sol(qq, reaction_rates, het_rates, extfrc_rates, dt,
-                               permute_4, clsmap_4, factor, epsilon, prod_out,
-                               loss_out);
+  mam4::gas_chemistry::imp_sol(qq,                                       // out
+                               reaction_rates, het_rates, extfrc_rates,  // in
+                               dt, permute_4, clsmap_4, factor,          // in
+                               epsilon, prod_out, loss_out);             // out
 
   // save h2so4 change by gas phase chem (for later new particle nucleation)
   if(ndx_h2so4 > 0) {

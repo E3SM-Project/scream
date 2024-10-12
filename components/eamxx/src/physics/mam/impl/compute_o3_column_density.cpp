@@ -18,7 +18,7 @@ void compute_o3_column_density(
   // NOTE: if we need o2 column densities, set_ub_col and setcol must be changed
   Kokkos::parallel_for(
       Kokkos::TeamThreadRange(team, mam4::nlev), [&](const int k) {
-        Real pdel = atm.hydrostatic_dp(k);
+        const Real pdel = atm.hydrostatic_dp(k);
         // extract aerosol state variables into "working arrays" (mass
         // mixing ratios) (in EAM, this is done in the gas_phase_chemdr
         // subroutine defined within
@@ -41,11 +41,12 @@ void compute_o3_column_density(
           invariants_k[i] = invariants(k, i);
         }
         // compute the change in o3 density for this column above its neighbor
-        mam4::mo_photo::set_ub_col(o3_col_deltas[k + 1], vmr, invariants_k,
-                                   pdel);
+        mam4::mo_photo::set_ub_col(o3_col_deltas[k + 1],      // out
+                                   vmr, invariants_k, pdel);  // out
       });
   // sum the o3 column deltas to densities
-  mam4::mo_photo::setcol(o3_col_deltas, o3_col_dens);
+  mam4::mo_photo::setcol(o3_col_deltas,  // in
+                         o3_col_dens);   // out
 }
 
 }  // namespace scream::impl
