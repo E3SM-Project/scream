@@ -48,9 +48,6 @@ class MAMMicrophysics final : public scream::AtmosphereProcess {
   // The name of the subcomponent
   std::string name() const { return "mam_aero_microphysics"; }
 
-  // set aerosol microphysics configuration parameters (called by constructor)
-  void configure(const ekat::ParameterList &params);
-
   // grid
   void set_grids(
       const std::shared_ptr<const GridsManager> grids_manager) override;
@@ -68,12 +65,13 @@ class MAMMicrophysics final : public scream::AtmosphereProcess {
   // Finalize
   void finalize_impl(){/*Do nothing*/};
 
-  // performs some checks on the tracers group
-  void set_computed_group_impl(const FieldGroup &group) override;
-
  private:
   // number of horizontal columns and vertical levels
   int ncol_, nlev_;
+
+  // Namelist for LINOZ
+  int o3_lbl_;
+  Real o3_tau_, o3_sfc_;
 
   // The orbital year, used for zenith angle calculations:
   // If > 0, use constant orbital year for duration of simulation
@@ -228,7 +226,7 @@ class MAMMicrophysics final : public scream::AtmosphereProcess {
   std::shared_ptr<const AbstractGrid> grid_;
 
   // sets defaults for "namelist parameters"
-  void set_defaults_();
+  void set_namelist_params_();
 
   mam_coupling::TracerTimeState linoz_time_state_;
   view_2d work_photo_table_;
