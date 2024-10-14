@@ -71,6 +71,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
 
   // For each grid, create a separate output stream.
   if (field_mgrs.size()==1) {
+    printf("TRYING GRID 1\n");
     auto output = std::make_shared<output_type>(m_io_comm,m_params,field_mgrs.begin()->second,grids_mgr);
     output->set_logger(m_atm_logger);
     m_output_streams.push_back(output);
@@ -104,6 +105,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
       EKAT_REQUIRE_MSG (field_mgrs.find(gname)!=field_mgrs.end(),
           "Error! Output requested on grid '" + gname + "', but no field manager is available for such grid.\n");
 
+      printf("TRYING GRID 2\n");
       auto output = std::make_shared<output_type>(m_io_comm,m_params,field_mgrs.at(gname),grids_mgr);
       output->set_logger(m_atm_logger);
       m_output_streams.push_back(output);
@@ -149,6 +151,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
         grid_nonconst->reset_field_tag_name(ShortFieldTagsNames::COL,"ncol_d");
       }
 
+      printf("TRYING GRID 3\n");
       auto output = std::make_shared<output_type>(m_io_comm,fields,grid_nonconst);
       m_geo_data_streams.push_back(output);
     }
