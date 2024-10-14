@@ -93,7 +93,7 @@ void MAMMicrophysics::set_grids(
   nlev_ = grid_->get_num_vertical_levels();  // number of levels per column
 
   // get column geometry and locations
-  col_latitudes_  = grid_->get_geometry_data("lat").get_view<const Real *>();
+  col_latitudes_ = grid_->get_geometry_data("lat").get_view<const Real *>();
 
   // define the different field layouts that will be used for this process
   using namespace ShortFieldTagsNames;
@@ -271,7 +271,7 @@ void MAMMicrophysics::set_grids(
   }  // LINOZ reader
 
   {
-    oxid_file_name_          = m_params.get<std::string>("mam4_oxid_file_name");
+    oxid_file_name_ = m_params.get<std::string>("mam4_oxid_file_name");
     std::string oxid_map_file = "";
     // NOTE: order matches mam4xx:
     std::vector<std::string> var_names{"O3", "OH", "NO3", "HO2"};
@@ -457,10 +457,10 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   wet_atm_.qi = get_field_in("qi").get_view<const Real **>();
   wet_atm_.ni = get_field_in("ni").get_view<const Real **>();
 
-  dry_atm_.T_mid   = get_field_in("T_mid").get_view<const Real **>();
-  dry_atm_.p_mid   = get_field_in("p_mid").get_view<const Real **>();
-  dry_atm_.p_int   = get_field_in("p_int").get_view<const Real **>();
-  dry_atm_.p_del   = get_field_in("pseudo_density").get_view<const Real **>();
+  dry_atm_.T_mid     = get_field_in("T_mid").get_view<const Real **>();
+  dry_atm_.p_mid     = get_field_in("p_mid").get_view<const Real **>();
+  dry_atm_.p_int     = get_field_in("p_int").get_view<const Real **>();
+  dry_atm_.p_del     = get_field_in("pseudo_density").get_view<const Real **>();
   dry_atm_.cldfrac   = get_field_in("cldfrac_liq").get_view<const Real **>();
   dry_atm_.pblh      = get_field_in("pbl_height").get_view<const Real *>();
   dry_atm_.phis      = get_field_in("phis").get_view<const Real *>();
@@ -633,7 +633,7 @@ void MAMMicrophysics::run_impl(const double dt) {
   auto linoz_o3_clim = buffer_.scratch[0];
   // column o3 above box (climatology) [Dobson Units (DU)]
   auto linoz_o3col_clim = buffer_.scratch[1];
-  auto linoz_t_clim   = buffer_.scratch[2];  // temperature (climatology) [K]
+  auto linoz_t_clim     = buffer_.scratch[2];  // temperature (climatology) [K]
   auto linoz_PmL_clim = buffer_.scratch[3];  // P minus L (climatology) [vmr/s]
   // sensitivity of P minus L to O3 [1/s]
   auto linoz_dPmL_dO3 = buffer_.scratch[4];
@@ -733,7 +733,7 @@ void MAMMicrophysics::run_impl(const double dt) {
   }
 #endif
 
-  const_view_1d &col_latitudes = col_latitudes_;
+  const_view_1d &col_latitudes     = col_latitudes_;
   const_view_1d &d_sfc_alb_dir_vis = d_sfc_alb_dir_vis_;
 
   mam_coupling::DryAtmosphere &dry_atm = dry_atm_;
@@ -829,11 +829,10 @@ void MAMMicrophysics::run_impl(const double dt) {
   const Real o3_tau = o3_tau_;
   const Real o3_sfc = o3_sfc_;
 
-
   // loop over atmosphere columns and compute aerosol microphyscs
   Kokkos::parallel_for(
       policy, KOKKOS_LAMBDA(const ThreadTeam &team) {
-        const int icol = team.league_rank();  // column index
+        const int icol     = team.league_rank();   // column index
         const Real col_lat = col_latitudes(icol);  // column latitude (degrees?)
 
         // convert column latitude to radians
