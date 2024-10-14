@@ -67,7 +67,7 @@ public:
   using globals_map_t = std::map<std::string,ekat::any>;
 
   // Constructor(s) & Destructor
-  OutputManager ();
+  OutputManager () {}
   virtual ~OutputManager ();
 
   // Set up the manager, creating all output streams. Inputs:
