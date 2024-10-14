@@ -686,12 +686,14 @@ void AtmosphereDriver::create_output_managers () {
 
   if (io_params.isSublist("model_restart")) {
     auto& om = m_output_managers.emplace_back();
+    om.set_model_restart_output(true);
   }
 
   using vos_t = std::vector<std::string>;
   const auto& output_yaml_files = io_params.get<vos_t>("output_yaml_files",vos_t{});
   for (int i=0; i<output_yaml_files.size(); ++i) {
     auto& om = m_output_managers.emplace_back();
+    om.set_model_restart_output(false);
   }
 
   stop_timer("EAMxx::create_output_managers");

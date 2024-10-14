@@ -119,7 +119,8 @@ public:
 
   long long res_dep_memory_footprint () const;
 
-  bool is_model_restart_output () { return m_is_model_restart_output; }
+  void set_model_restart_output (const bool restart) { m_is_model_restart_output = restart; }
+  bool is_model_restart_output () const { return m_is_model_restart_output; }
 protected:
 
   std::string compute_filename (const IOFileSpecs& file_specs,
