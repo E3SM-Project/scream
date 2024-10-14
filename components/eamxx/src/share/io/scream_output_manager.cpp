@@ -113,6 +113,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
   // For normal output, setup the geometry data streams, which we used to write the
   // geo data in the output file when we create it.
   if (m_save_grid_data) {
+    printf("M_SAVE_GRID_DATA\n");
     std::map<std::string, std::shared_ptr<const AbstractGrid>> grids;
     for (const auto& it : m_output_streams) {
       grids[it->get_io_grid()->name()] = it->get_io_grid();
