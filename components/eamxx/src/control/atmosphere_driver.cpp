@@ -706,6 +706,10 @@ void AtmosphereDriver::initialize_output_managers () {
   start_timer("EAMxx::init");
   start_timer("EAMxx::initialize_output_managers");
 
+  // FOR NOW, ERROR OUT IF NO OUTPUT EXISTS (DEBUG)
+  // Check for early return if no output managers exist
+  if (m_output_managers.empty()) EKAT_ASSERT_MSG(false, "WHY ISNT OUTPUT SET?\n");
+
   check_ad_status (s_comm_set | s_params_set | s_grids_created | s_fields_created);
 
   auto& io_params = m_atm_params.sublist("Scorpio");
