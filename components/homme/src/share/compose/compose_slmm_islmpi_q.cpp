@@ -412,8 +412,9 @@ void calc_own_q (IslMpi<MT>& cm, const Int& nets, const Int& nete,
       }
     }
   };
-  ko::parallel_for(
+  ko::parallel_for("compose calc_own_q",
     ko::RangePolicy<typename MT::DES>(0, cm.own_dep_list_len), f);
+  //ndk: how to change LaunchBounds here?  register level is over 64 currently, want to try 64
 }
 
 template <typename MT>
@@ -445,7 +446,7 @@ void copy_q (IslMpi<MT>& cm, const Int& nets,
       q_tgt(tci, iq, e.k, e.lev) = recvbuf(e.q_ptr + iq);
     }
   };
-  ko::parallel_for(ko::RangePolicy<typename MT::DES>(0, nlid*np2*nlev), f);
+  ko::parallel_for("compose copy_q", ko::RangePolicy<typename MT::DES>(0, nlid*np2*nlev), f);
 }
 
 template <typename Buffer> SLMM_KIF
@@ -550,7 +551,7 @@ void calc_rmt_q_pass2 (IslMpi<MT>& cm) {
         qs(qos + 2*iq + i) = ed.q_extrema(iq, lev, i);
   };
   ko::fence();
-  ko::parallel_for(ko::RangePolicy<typename MT::DES>(0, cm.nrmt_qs_extrema), fqe);
+  ko::parallel_for("compose calc_rmt_q_pass2a", ko::RangePolicy<typename MT::DES>(0, cm.nrmt_qs_extrema), fqe);
 
   const auto& s2r = cm.advecter->s2r();
   const auto& local_meshes = cm.advecter->local_meshes();
@@ -587,7 +588,7 @@ void calc_rmt_q_pass2 (IslMpi<MT>& cm) {
       }
     }
   };
-  ko::parallel_for(ko::RangePolicy<typename MT::DES>(0, cm.nrmt_xs), fx);
+  ko::parallel_for("compose calc_rmt_q_pass2b", ko::RangePolicy<typename MT::DES>(0, cm.nrmt_xs), fx);
   ko::fence();
 }
 

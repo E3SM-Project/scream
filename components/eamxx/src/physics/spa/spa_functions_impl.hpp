@@ -542,7 +542,7 @@ void SPAFunctions<S,D>
     });
   };
   auto policy = ESU::get_default_team_policy(ncols,nlevs);
-  Kokkos::parallel_for("", policy, copy_and_pad);
+  Kokkos::parallel_for("update_spa_data_from_file", policy, copy_and_pad);
   Kokkos::fence();
   stop_timer("EAMxx::SPA::update_spa_data_from_file::copy_and_pad");
 

@@ -93,7 +93,17 @@ Int Functions<S,D>
   get_latent_heat(nj, nk, latent_heat_vapor, latent_heat_sublim, latent_heat_fusion);
 
   const Int nk_pack = ekat::npack<Spack>(nk);
-  const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(nj, nk_pack);
+  //const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(nj, nk_pack);
+  //const auto policy = ekat::ExeSpaceUtils<ExeSpace,Kokkos::LaunchBounds<512,2>>::get_default_team_policy(nj, nk_pack); //ndk
+  //using TeamPolicyType = Kokkos::TeamPolicy<ExeSpace,Kokkos::LaunchBounds<512,2>>; // 7.58 vs 8.22
+  //#define NDK_P3_LB_OPT
+#ifdef NDK_P3_LB_OPT
+  using TeamPolicyType = Kokkos::TeamPolicy<ExeSpace,Kokkos::LaunchBounds<128,8>>;
+#else
+  using TeamPolicyType = Kokkos::TeamPolicy<ExeSpace>;
+#endif
+  //TeamPolicyType policy;
+  TeamPolicyType policy(nj, nk_pack);
 
   // load constants into local vars
   const     Scalar inv_dt          = 1 / infrastructure.dt;
@@ -109,6 +119,7 @@ Int Functions<S,D>
   auto start = std::chrono::steady_clock::now();
 
   // p3_main loop
+  //__launch_bounds__(512,2)
   Kokkos::parallel_for(
     "p3 main loop",
     policy,
@@ -349,7 +360,7 @@ Int Functions<S,D>
   Int nk,
   const physics::P3_Constants<S> & p3constants)
 {
-#ifndef SCREAM_SMALL_KERNELS
+#ifndef SCREAM_P3_SMALL_KERNELS
   return p3_main_internal(runtime_options,
                          prognostic_state,
                          diagnostic_inputs,

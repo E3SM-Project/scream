@@ -18,7 +18,7 @@ void Functions<Real,DefaultDevice>
 
   const auto nlev_packs = ekat::npack<Spack>(nlev);
   const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs);
-  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+  Kokkos::parallel_for("compute_shoc_vapor_disp", policy, KOKKOS_LAMBDA(const MemberType& team) {
     const Int i = team.league_rank();
 
     compute_shoc_vapor(team, nlev,

@@ -136,9 +136,11 @@ extern int GPTLprefix_unset (void);
 extern int GPTLstart (const char *);
 extern int GPTLstart_handle (const char *, void **);
 extern int GPTLstartf (const char *, const int);
+extern int GPTLstartfx (const char *, const int); //ndk
 extern int GPTLstartf_handle (const char *, const int, void **);
 extern int GPTLstop (const char *);
 extern int GPTLstopf (const char *, const int);
+extern int GPTLstopfx (const char *, const int); //ndk
 extern int GPTLstop_handle (const char *, void **);
 extern int GPTLstopf_handle (const char *, const int, void **);
 extern int GPTLstartstop_vals (const char *, double, int);

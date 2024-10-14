@@ -212,6 +212,7 @@ option (SCREAM_RRTMGP_DEBUG "Turn on extra debug checks in RRTMGP" ${SCREAM_DEBU
 
 option(SCREAM_RRTMGP_ENABLE_YAKL "Use YAKL under rrtmgp" TRUE)
 option(SCREAM_RRTMGP_ENABLE_KOKKOS "Use Kokkos under rrtmgp" FALSE)
+
 if (SCREAM_RRTMGP_ENABLE_YAKL)
   add_definitions("-DRRTMGP_ENABLE_YAKL")
 endif()
@@ -534,6 +535,26 @@ else()
     ENABLE_FPE   ON
     ENABLE_FPE_DEFAULT_MASK OFF)
 endif()
+
+#target_compile_options (ekat PUBLIC "-lineinfo --use_fast_math") # ndk  --maxrregcount 64
+#target_compile_options (ekat PUBLIC -lineinfo --use_fast_math --maxrregcount 64)
+
+#target_compile_options (ekat PUBLIC
+#  $<$<COMPILE_LANGUAGE:CXX>:-lineinfo --use_fast_math>)
+
+#target_compile_options (ekat PUBLIC
+#  $<$<COMPILE_LANGUAGE:CXX>:-lineinfo --use_fast_math --maxrregcount=64>)
+
+#target_compile_options (ekat PUBLIC
+#  $<$<COMPILE_LANGUAGE:CXX>:-lineinfo --use_fast_math>)
+#target_compile_options (kokkoscore PUBLIC
+#  $<$<COMPILE_LANGUAGE:CXX>:-lineinfo>) # ndk
+#target_compile_options (kokkoscore PUBLIC
+#  $<$<COMPILE_LANGUAGE:CXX>:-g>) # ndk
+#target_compile_options (kokkoscore PUBLIC
+#  $<$<COMPILE_LANGUAGE:CXX>:-lineinfo --maxrregcount=64>) # ndk
+
+set(NVCC_WRAPPER_SHOW_COMMANDS_BEING_RUN 1) # ndk, LB suggested to try this to see more compiler output
 
 # Set compiler-specific flags
 include(EkatSetCompilerFlags)

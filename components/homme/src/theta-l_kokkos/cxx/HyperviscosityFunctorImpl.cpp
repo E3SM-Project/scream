@@ -249,7 +249,7 @@ void HyperviscosityFunctorImpl::run (const int np1, const Real dt, const Real et
 
   // Convert vtheta_dp -> theta
   auto state = m_state;
-  Kokkos::parallel_for(Homme::get_default_team_policy<ExecSpace>(state.num_elems()),
+  Kokkos::parallel_for("HyperviscosityFunctorImpl1", Homme::get_default_team_policy<ExecSpace>(state.num_elems()),
                        KOKKOS_LAMBDA(const TeamMember& team) {
     const int ie = team.league_rank();
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team,NP*NP),
@@ -294,7 +294,7 @@ void HyperviscosityFunctorImpl::run (const int np1, const Real dt, const Real et
   // Convert theta back to vtheta, and adjust w at surface
   auto geo = m_geometry;
   auto process_nh_vars = m_process_nh_vars;
-  Kokkos::parallel_for(Homme::get_default_team_policy<ExecSpace>(state.num_elems()),
+  Kokkos::parallel_for("HyperviscosityFunctorImpl2", Homme::get_default_team_policy<ExecSpace>(state.num_elems()),
                        KOKKOS_LAMBDA(const TeamMember& team) {
     const int ie = team.league_rank();
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team,NP*NP),

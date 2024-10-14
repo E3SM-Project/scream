@@ -28,7 +28,7 @@ Int Functions<S,D>::shoc_init(
   view_1d<Int> npbl_d("npbl",1);
 
   const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, 1);
-  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+  Kokkos::parallel_for("shoc_init", policy, KOKKOS_LAMBDA(const MemberType& team) {
 
     const Scalar pblmaxp = SC::pblmaxp;
 
@@ -614,7 +614,7 @@ Int Functions<S,D>::shoc_main(
   // SHOC main loop
   const auto nlev_packs = ekat::npack<Spack>(nlev);
   const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nlev_packs);
-  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+  Kokkos::parallel_for("shoc_main monolith", policy, KOKKOS_LAMBDA(const MemberType& team) {
     const Int i = team.league_rank();
 
     auto workspace = workspace_mgr.get_workspace(team);

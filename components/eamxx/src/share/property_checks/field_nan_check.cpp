@@ -3,6 +3,7 @@
 #include "share/util//scream_array_utils.hpp"
 
 #include "ekat/util/ekat_math_utils.hpp"
+#include "share/util/scream_timing.hpp"
 
 namespace scream
 {
@@ -12,6 +13,7 @@ FieldNaNCheck (const Field& f,
                const std::shared_ptr<const AbstractGrid>& grid)
  : m_grid (grid)
 {
+  start_timer("FieldNaNCheck");
   // Sanity checks
   EKAT_REQUIRE_MSG (f.rank()<=6,
       "Error in FieldNaNCheck constructor: unsupported field rank.\n"
@@ -30,12 +32,14 @@ FieldNaNCheck (const Field& f,
 
   // We can't repair NaN's.
   set_fields ({f},{false});
+  stop_timer("FieldNaNCheck");
 }
 
 template<typename ST>
 PropertyCheck::ResultAndMsg FieldNaNCheck::check_impl() const {
   using const_ST    = typename std::add_const<ST>::type;
 
+  start_timer("PropertyCheck::ResultAndMsg check_impl");
   const auto& f = fields().front();
 
   const auto& layout = f.get_header().get_identifier().get_layout();
@@ -50,7 +54,7 @@ PropertyCheck::ResultAndMsg FieldNaNCheck::check_impl() const {
     case 1:
       {
         auto v = f.template get_strided_view<const_ST*>();
-        Kokkos::parallel_reduce(size, KOKKOS_LAMBDA(int i, int& result) {
+        Kokkos::parallel_reduce("PropertyCheck FieldNaNCheck::check_impl1", size, KOKKOS_LAMBDA(int i, int& result) {
           if (ekat::is_invalid(v(i))) {
             result = i;
           }
@@ -60,7 +64,7 @@ PropertyCheck::ResultAndMsg FieldNaNCheck::check_impl() const {
     case 2:
       {
         auto v = f.template get_strided_view<const_ST**>();
-        Kokkos::parallel_reduce(size, KOKKOS_LAMBDA(int idx, int& result) {
+        Kokkos::parallel_reduce("PropertyCheck FieldNaNCheck::check_impl2", size, KOKKOS_LAMBDA(int idx, int& result) {
           int i,j;
           unflatten_idx(idx,extents,i,j);
           if (ekat::is_invalid(v(i,j))) {
@@ -72,7 +76,7 @@ PropertyCheck::ResultAndMsg FieldNaNCheck::check_impl() const {
     case 3:
       {
         auto v = f.template get_strided_view<const_ST***>();
-        Kokkos::parallel_reduce(size, KOKKOS_LAMBDA(int idx, int& result) {
+        Kokkos::parallel_reduce("PropertyCheck FieldNaNCheck::check_impl3", size, KOKKOS_LAMBDA(int idx, int& result) {
           int i,j,k;
           unflatten_idx(idx,extents,i,j,k);
           if (ekat::is_invalid(v(i,j,k))) {
@@ -84,7 +88,7 @@ PropertyCheck::ResultAndMsg FieldNaNCheck::check_impl() const {
     case 4:
       {
         auto v = f.template get_strided_view<const_ST****>();
-        Kokkos::parallel_reduce(size, KOKKOS_LAMBDA(int idx, int& result) {
+        Kokkos::parallel_reduce("PropertyCheck FieldNaNCheck::check_impl4", size, KOKKOS_LAMBDA(int idx, int& result) {
           int i,j,k,l;
           unflatten_idx(idx,extents,i,j,k,l);
           if (ekat::is_invalid(v(i,j,k,l))) {
@@ -96,7 +100,7 @@ PropertyCheck::ResultAndMsg FieldNaNCheck::check_impl() const {
     case 5:
       {
         auto v = f.template get_strided_view<const_ST*****>();
-        Kokkos::parallel_reduce(size, KOKKOS_LAMBDA(int idx, int& result) {
+        Kokkos::parallel_reduce("PropertyCheck FieldNaNCheck::check_impl5", size, KOKKOS_LAMBDA(int idx, int& result) {
           int i,j,k,l,m;
           unflatten_idx(idx,extents,i,j,k,l,m);
           if (ekat::is_invalid(v(i,j,k,l,m))) {
@@ -108,7 +112,7 @@ PropertyCheck::ResultAndMsg FieldNaNCheck::check_impl() const {
     case 6:
       {
         auto v = f.template get_strided_view<const_ST******>();
-        Kokkos::parallel_reduce(size, KOKKOS_LAMBDA(int idx, int& result) {
+        Kokkos::parallel_reduce("PropertyCheck FieldNaNCheck::check_impl6", size, KOKKOS_LAMBDA(int idx, int& result) {
           int i,j,k,l,m,n;
           unflatten_idx(idx,extents,i,j,k,l,m,n);
           if (ekat::is_invalid(v(i,j,k,l,m,n))) {
@@ -168,10 +172,12 @@ PropertyCheck::ResultAndMsg FieldNaNCheck::check_impl() const {
   } else {
     res_and_msg.msg = "FieldNaNCheck passed.\n";
   }
+  stop_timer("PropertyCheck::ResultAndMsg check_impl");
   return res_and_msg;
 }
 
 PropertyCheck::ResultAndMsg FieldNaNCheck::check() const {
+  //start_timer("PropertyCheck::ResultAndMsg check"); #ndk called too much
   const auto& f = fields().front();
 
   switch (f.data_type()) {
@@ -186,6 +192,7 @@ PropertyCheck::ResultAndMsg FieldNaNCheck::check() const {
           "Internal error in FieldNaNCheck: unsupported field data type.\n"
           "You should not have reached this line. Please, contact developers.\n");
   }
+  //stop_timer("PropertyCheck::ResultAndMsg check");
 }
 
 } // namespace scream

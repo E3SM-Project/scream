@@ -113,7 +113,16 @@ struct CaarFunctorImpl {
   using TeamPolicyType = Kokkos::TeamPolicy<ExecSpace,Kokkos::LaunchBounds<512,1>,Tag>;
 #else
   template<typename Tag>
+  //using TeamPolicyType = Kokkos::TeamPolicy<ExecSpace,Tag>;
+  //using TeamPolicyType = Kokkos::TeamPolicy<ExecSpace,Kokkos::LaunchBounds<256,6>,Tag>; //# maybe with 8x32
+  //using TeamPolicyType = Kokkos::TeamPolicy<ExecSpace,Kokkos::LaunchBounds<512,2>,Tag>; //# maybe with 16x32 was faster ndk
+  //#define NDK_CAAR_LB_OPT
+#ifdef NDK_CAAR_LB_OPT
+  using TeamPolicyType = Kokkos::TeamPolicy<ExecSpace,Kokkos::LaunchBounds<512,2>,Tag>; // ndk 512=max number thread per block, 2=min numb blocks per SM (compiler hint)
+#else
   using TeamPolicyType = Kokkos::TeamPolicy<ExecSpace,Tag>;
+#endif
+
 #endif
 
   TeamPolicyType<TagPreExchange>   m_policy_pre;
@@ -142,6 +151,8 @@ struct CaarFunctorImpl {
       , m_policy_post (0,m_num_elems*NP*NP)
       , m_tu(m_policy_pre)
   {
+    //m_policy_pre = Kokkos::TeamPolicy<ExecSpace,TagPreExchange>(m_num_elems,32,32); //LB/NDK  # default is 16,32
+
     // Initialize equation of state
     m_eos.init(params.theta_hydrostatic_mode,m_hvcoord);
 
@@ -158,7 +169,8 @@ struct CaarFunctorImpl {
       , m_policy_pre (Homme::get_default_team_policy<ExecSpace,TagPreExchange>(m_num_elems))
       , m_policy_post (0,num_elems*NP*NP)
       , m_tu(m_policy_pre)
-  {}
+  {   // m_policy_pre = Kokkos::TeamPolicy<ExecSpace,TagPreExchange>(m_num_elems,32,32); //LB/NDK
+  }
 
   void setup (const Elements &elements, const Tracers &/*tracers*/,
               const ReferenceElement &ref_FE, const HybridVCoord &hvcoord,
@@ -347,7 +359,7 @@ struct CaarFunctorImpl {
     profiling_resume();
 
     GPTLstart("caar compute");
-    nvtxRangePushA("caar compute");
+    nvtxRangePushA("caar compute pre-boundary");
     int nerr;
     Kokkos::parallel_reduce("caar loop pre-boundary exchange", m_policy_pre, *this, nerr);
     Kokkos::fence();
@@ -365,7 +377,7 @@ struct CaarFunctorImpl {
 
     if (!m_theta_hydrostatic_mode) {
       GPTLstart("caar compute");
-      nvtxRangePushA("caar compute2");
+      nvtxRangePushA("caar compute post-boundary");
       Kokkos::parallel_for("caar loop post-boundary exchange", m_policy_post, *this);
       Kokkos::fence();
       nvtxRangePop();

@@ -253,7 +253,7 @@ rescale_masked_fields (const Field& x, const Field& mask) const
       // along the 2nd dimension.
       auto x_view =    x.get_strided_view<      Real*>();
       auto m_view = mask.get_strided_view<const Real*>();
-      Kokkos::parallel_for(RangePolicy(0,ncols),
+      Kokkos::parallel_for("rescale_masked_fields1", RangePolicy(0,ncols),
                            KOKKOS_LAMBDA(const int& icol) {
         if (m_view(icol)>mask_threshold) {
           x_view(icol) /= m_view(icol);
@@ -278,7 +278,7 @@ rescale_masked_fields (const Field& x, const Field& mask) const
       }
       const int dim1 = PackInfo::num_packs(layout.dim(1));
       auto policy = ESU::get_default_team_policy(ncols,dim1);
-      Kokkos::parallel_for(policy,
+      Kokkos::parallel_for("rescale_masked_fields2", policy,
                            KOKKOS_LAMBDA(const MemberType& team) {
         const auto icol = team.league_rank();
         auto x_sub = ekat::subview(x_view,icol);
@@ -320,7 +320,7 @@ rescale_masked_fields (const Field& x, const Field& mask) const
       const int dim1 = layout.dim(1);
       const int dim2 = PackInfo::num_packs(layout.dim(2));
       auto policy = ESU::get_default_team_policy(ncols,dim1*dim2);
-      Kokkos::parallel_for(policy,
+      Kokkos::parallel_for("rescale_masked_fields3", policy,
                            KOKKOS_LAMBDA(const MemberType& team) {
         const auto icol = team.league_rank();
         if (mask1d) {
@@ -369,7 +369,7 @@ rescale_masked_fields (const Field& x, const Field& mask) const
       const int dim2 = layout.dim(2);
       const int dim3 = PackInfo::num_packs(layout.dim(3));
       auto policy = ESU::get_default_team_policy(ncols,dim1*dim2*dim3);
-      Kokkos::parallel_for(policy,
+      Kokkos::parallel_for("rescale_masked_fields4", policy,
                            KOKKOS_LAMBDA(const MemberType& team) {
         const auto icol = team.league_rank();
         if (mask1d) {
@@ -434,7 +434,7 @@ local_mat_vec (const Field& x, const Field& y, const Field& mask) const
       auto x_view = x.get_strided_view<const Real*>();
       auto y_view = y.get_strided_view<      Real*>();
       auto mask_view = mask.get_strided_view<Real*>();
-      Kokkos::parallel_for(RangePolicy(0,nrows),
+      Kokkos::parallel_for("local_mat_vec1", RangePolicy(0,nrows),
                            KOKKOS_LAMBDA(const int& row) {
         const auto beg = row_offsets(row);
         const auto end = row_offsets(row+1);
@@ -461,7 +461,7 @@ local_mat_vec (const Field& x, const Field& y, const Field& mask) const
       }
       const int dim1 = PackInfo::num_packs(src_layout.dim(1));
       auto policy = ESU::get_default_team_policy(nrows,dim1);
-      Kokkos::parallel_for(policy,
+      Kokkos::parallel_for("local_mat_vec2", policy,
                            KOKKOS_LAMBDA(const MemberType& team) {
         const auto row = team.league_rank();
 
@@ -497,7 +497,7 @@ local_mat_vec (const Field& x, const Field& y, const Field& mask) const
       const int dim1 = src_layout.dim(1);
       const int dim2 = PackInfo::num_packs(src_layout.dim(2));
       auto policy = ESU::get_default_team_policy(nrows,dim1*dim2);
-      Kokkos::parallel_for(policy,
+      Kokkos::parallel_for("local_mat_vec3", policy,
                            KOKKOS_LAMBDA(const MemberType& team) {
         const auto row = team.league_rank();
 
@@ -536,7 +536,7 @@ local_mat_vec (const Field& x, const Field& y, const Field& mask) const
       const int dim2 = src_layout.dim(2);
       const int dim3 = PackInfo::num_packs(src_layout.dim(3));
       auto policy = ESU::get_default_team_policy(nrows,dim1*dim2*dim3);
-      Kokkos::parallel_for(policy,
+      Kokkos::parallel_for("local_mat_vec4", policy,
                            KOKKOS_LAMBDA(const MemberType& team) {
         const auto row = team.league_rank();
 

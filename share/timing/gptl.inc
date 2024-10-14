@@ -115,10 +115,12 @@
       integer gptlstart
       integer gptlstart_handle
       integer gptlstartf
+      integer gptlstartfx !ndk
       integer gptlstartf_handle
       integer gptlstop
       integer gptlstop_handle
       integer gptlstopf
+      integer gptlstopfx !ndk
       integer gptlstopf_handle
       integer gptlstartstop_vals
       integer gptlstartstop_valsf
@@ -155,10 +157,12 @@
       external gptlstart
       external gptlstart_handle
       external gptlstartf
+      external gptlstartfx !ndk
       external gptlstartf_handle
       external gptlstop
       external gptlstop_handle
       external gptlstopf
+      external gptlstopfx !ndk
       external gptlstopf_handle
       external gptlstartstop_vals
       external gptlstartstop_valsf

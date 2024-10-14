@@ -483,7 +483,7 @@ struct RemapFunctor : public Remapper {
     }
 
     auto update_dp_policy = Kokkos::RangePolicy<ExecSpace,UpdateThicknessTag>(0,m_state.num_elems()*NP*NP*NUM_LEV);
-    Kokkos::parallel_for(update_dp_policy, *this);
+    Kokkos::parallel_for("run_remap homme", update_dp_policy, *this);
   }
 
   void remap1 (
@@ -502,14 +502,14 @@ struct RemapFunctor : public Remapper {
       remap.compute_grids_phase(kv, Homme::subview(dp_src, kv.ie, np1),
                                 Homme::subview(dp_tgt, kv.ie));
     };
-    Kokkos::parallel_for(get_default_team_policy<ExecSpace>(ne), g);
+    Kokkos::parallel_for("remap1a homme", get_default_team_policy<ExecSpace>(ne), g);
     const auto tu_ne_ntr = m_tu_ne_ntr;
     const auto r = KOKKOS_LAMBDA (const TeamMember& team) {
       KernelVariables kv(team, nv, tu_ne_ntr);
       remap.compute_remap_phase(kv, Kokkos::subview(v, kv.ie, kv.iq, ALL(), ALL(), ALL()));
     };
     Kokkos::fence();
-    Kokkos::parallel_for(get_default_team_policy<ExecSpace>(ne*nv), r);
+    Kokkos::parallel_for("remap1b homme", get_default_team_policy<ExecSpace>(ne*nv), r);
   }
 
   void remap1 (
@@ -528,14 +528,14 @@ struct RemapFunctor : public Remapper {
       remap.compute_grids_phase(kv, Homme::subview(dp_src, kv.ie),
                                 Homme::subview(dp_tgt, kv.ie, np1));
     };
-    Kokkos::parallel_for(get_default_team_policy<ExecSpace>(ne), g);
+    Kokkos::parallel_for("remap1c homme", get_default_team_policy<ExecSpace>(ne), g);
     const auto tu_ne_ntr = m_tu_ne_ntr;
     const auto r = KOKKOS_LAMBDA (const TeamMember& team) {
       KernelVariables kv(team, nv, tu_ne_ntr);
       remap.compute_remap_phase(kv, Kokkos::subview(v, kv.ie, n_v, kv.iq, ALL(), ALL(), ALL()));
     };
     Kokkos::fence();
-    Kokkos::parallel_for(get_default_team_policy<ExecSpace>(ne*nv), r);
+    Kokkos::parallel_for("remap1d homme", get_default_team_policy<ExecSpace>(ne*nv), r);
   }
 
   int requested_buffer_size () const override {
@@ -557,6 +557,7 @@ private:
   template <typename FunctorTag>
   typename std::enable_if<OnGpu<ExecSpace>::value == true,
                           Kokkos::TeamPolicy<ExecSpace, FunctorTag> >::type
+                          //Kokkos::TeamPolicy<ExecSpace, FunctorTag, Kokkos::LaunchBounds<512,2>> >::type //ndk, try? seemed to work
   remap_team_policy(int num_exec) {
     ThreadPreferences tp;
     tp.max_threads_usable = 16;
@@ -567,7 +568,13 @@ private:
 
   template <typename FunctorTag>
   void run_functor(const std::string functor_name, int num_exec) {
+    //#define NDK_TRY_LB_OPT4
+#ifdef NDK_TRY_LB_OPT4
+    using TeamPolicyType = Kokkos::TeamPolicy<ExecSpace,Kokkos::LaunchBounds<512,2>>; //ndk
+    TeamPolicyType policy=remap_team_policy<FunctorTag>(num_exec);
+#else
     const auto policy = remap_team_policy<FunctorTag>(num_exec);
+#endif
     // Timers don't work on CUDA, so place them here
     GPTLstart(functor_name.c_str());
     nvtxRangePushA(functor_name.c_str());

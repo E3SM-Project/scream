@@ -44,8 +44,14 @@ struct DirkFunctorImpl {
   static_assert(num_lev_aligned >= 3,
                 "We use wrk(0:2,:) and so need num_lev_aligned >= 3");
 
-  using TeamPolicy = Kokkos::TeamPolicy<ExecSpace>;
-  using MT = typename TeamPolicy::member_type;
+  //using TeamPolicy = Kokkos::TeamPolicy<ExecSpace>;
+  //#define NDK_DIRK_LB_OPT
+#ifdef NDK_DIRK_LB_OPT
+  using TeamPolicyType = Kokkos::TeamPolicy<ExecSpace,Kokkos::LaunchBounds<512,2>>; // ndk
+#else
+  using TeamPolicyType = Kokkos::TeamPolicy<ExecSpace>;
+#endif
+  using MT = typename TeamPolicyType::member_type;
 
   using Work
     = Kokkos::View<Scalar*[num_work][num_lev_aligned][npack],
@@ -85,9 +91,10 @@ struct DirkFunctorImpl {
 
   Work m_work;
   LinearSystem m_ls;
-  TeamPolicy m_policy, m_ig_policy;
+  TeamPolicyType m_policy,m_ig_policy;
   TeamUtils<ExecSpace> m_tu, m_tu_ig;
   int nslot;
+
 
   DirkFunctorImpl (const int nelem)
     : m_policy(1,1,1), m_ig_policy(1,1,1), m_tu(m_policy), m_tu_ig(m_ig_policy) // throwaway settings
@@ -108,7 +115,8 @@ struct DirkFunctorImpl {
         nhwthr = p.first*p.second,
         nvec = std::min(NP*NP, nhwthr),
         nthr = nhwthr/nvec;
-      m_policy = TeamPolicy(nelem, nthr, nvec);
+      //m_policy = TeamPolicy(nelem, nthr, nvec);
+      m_policy = Kokkos::TeamPolicy(nelem, nthr, nvec);
     } else {
       ThreadPreferences tp;
       tp.max_threads_usable = NUM_PHYSICAL_LEV;
@@ -116,7 +124,7 @@ struct DirkFunctorImpl {
       tp.prefer_threads = true;
       const auto p = DefaultThreadsDistribution<ExecSpace>
         ::team_num_threads_vectors(nelem, tp);
-      m_policy = TeamPolicy(nelem, p.first, 1);
+      m_policy = Kokkos::TeamPolicy(nelem, p.first, 1);
     }
     m_tu = TeamUtils<ExecSpace>(m_policy);
     nslot = std::min(nelem, m_tu.get_num_ws_slots());
@@ -196,7 +204,7 @@ struct DirkFunctorImpl {
       };
       parallel_for(Kokkos::TeamThreadRange(kv.team, NP*NP), f);
     };
-    Kokkos::parallel_for(m_ig_policy, toplevel);
+    Kokkos::parallel_for("DIRK run_initial_guess", m_ig_policy, toplevel);
   }
 
   void run_newton (int nm1, Real alphadt_nm1, int n0, Real alphadt_n0, int np1, Real dt2,
@@ -396,7 +404,7 @@ struct DirkFunctorImpl {
     };
 
     int nerr;
-    Kokkos::parallel_reduce(m_policy, toplevel, nerr);
+    Kokkos::parallel_reduce("DIRK run_newton reduce", m_policy, toplevel, nerr);
     if (nerr > 0) {
       const int nt[] = {nm1, n0, np1};
       const char* ntname[] = {"nm1", "n0", "np1"};

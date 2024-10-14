@@ -73,16 +73,20 @@ set(P3_SK_SRCS
     disp/p3_rain_sed_impl_disp.cpp
     )
 
+MESSAGE(STATUS "ndk SCREAM_SMALL_KERNELS=${SCREAM_SMALL_KERNELS}")
+MESSAGE(STATUS "ndk SCREAM_P3_SMALL_KERNELS=${SCREAM_P3_SMALL_KERNELS}")
+MESSAGE(STATUS "ndk in P3 effectively TURN OFF small kernels manually")
 set(P3_LIBS "p3")
-if (SCREAM_SMALL_KERNELS)
+if (SCREAM_P3_SMALL_KERNELS) # ndk, dont build with p3 small_kernels -- SMALL_KERNEL only impacts SHOC
   add_library(p3 ${P3_SRCS} ${P3_SK_SRCS})
 else()
   add_library(p3 ${P3_SRCS})
   if (NOT SCREAM_LIBS_ONLY AND NOT SCREAM_ONLY_GENERATE_BASELINES)
-    add_library(p3_sk ${P3_SRCS} ${P3_SK_SRCS})
-    # Always build shoc_sk with SCREAM_SMALL_KERNELS on
-    target_compile_definitions(p3_sk PUBLIC "SCREAM_SMALL_KERNELS")
-    list(APPEND P3_LIBS "p3_sk")
+    MESSAGE(STATUS "ndk here")
+  #  add_library(p3_sk ${P3_SRCS} ${P3_SK_SRCS})
+  #  # Always build shoc_sk with SCREAM_SMALL_KERNELS on
+  #  target_compile_definitions(p3_sk PUBLIC "SCREAM_SMALL_KERNELS") #ndk
+  #  list(APPEND P3_LIBS "p3_sk")
   endif()
 endif()
 

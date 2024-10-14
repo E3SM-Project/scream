@@ -114,6 +114,7 @@ public:
 
     KernelVariables kv(team, m_tu);
     // Subtract the reference states from the states
+    //ndk Kokkos::parallel_for("first iter of laplace, const hv in HyperviscosityFunctorImpl", Kokkos::TeamThreadRange(kv.team,NP*NP),
     Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team,NP*NP),
                          [&](const int idx) {
       const int igp = idx / NP;
@@ -260,6 +261,7 @@ public:
 
     using MidColumn = decltype(Homme::subview(m_buffers.wtens,0,0,0));
     using IntColumn = decltype(Homme::subview(m_state.m_w_i,0,0,0,0));
+    //ndk Kokkos::parallel_for("operator() TagUpdateStates in HyperviscosityFunctorImpl", Kokkos::TeamThreadRange(kv.team,NP*NP),
     Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team,NP*NP),
                          [&](const int idx) {
       const int igp = idx / NP;
@@ -316,6 +318,7 @@ public:
     using IntColumn = decltype(Homme::subview(m_state.m_w_i,0,0,0,0));
 
     KernelVariables kv(team, m_tu);
+    //ndk Kokkos::parallel_for("operator() TagHyperPreExchange in HyperviscosityFunctorImpl", Kokkos::TeamThreadRange(kv.team, NP * NP),
     Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, NP * NP),
                          [&](const int &point_idx) {
       const int igp = point_idx / NP;

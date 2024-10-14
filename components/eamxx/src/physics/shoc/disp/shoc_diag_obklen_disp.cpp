@@ -21,7 +21,7 @@ void Functions<Real,DefaultDevice>
   const view_1d<Scalar>&       kbfs,
   const view_1d<Scalar>&       obklen)
 {
-  Kokkos::parallel_for(shcol, KOKKOS_LAMBDA(const Int& i) {
+  Kokkos::parallel_for("shoc_diag_obklen_disp", shcol, KOKKOS_LAMBDA(const Int& i) {
     shoc_diag_obklen(uw_sfc(i), vw_sfc(i), wthl_sfc(i), wqw_sfc(i),
                      ekat::subview(thl_sfc, i)(nlev-1),
                      ekat::subview(cldliq_sfc, i)(nlev-1),

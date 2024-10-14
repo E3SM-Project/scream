@@ -61,7 +61,7 @@ void prim_advance_exp (TimeLevel& tl, const Real dt, const bool compute_diagnost
     constexpr auto LAST_LEV   = ColInfo<NUM_PHYSICAL_LEV>::LastPack;
     constexpr auto LAST_INTERFACE_VEC_IDX = ColInfo<NUM_INTERFACE_LEV>::LastPackEnd;
     constexpr auto LAST_MIDPOINT_VEC_IDX  = ColInfo<NUM_PHYSICAL_LEV>::LastPackEnd;
-    Kokkos::parallel_for(Kokkos::RangePolicy<ExecSpace>(0,NP*NP*e.m_geometry.num_elems()),
+    Kokkos::parallel_for("prim_advance_exp", Kokkos::RangePolicy<ExecSpace>(0,NP*NP*e.m_geometry.num_elems()),
                          KOKKOS_LAMBDA(const int idx) {
       const int ie  = idx / (NP*NP);
       const int igp = (idx / NP) % NP;
@@ -171,7 +171,7 @@ void ttype5_timestep(const TimeLevel& tl, const Real dt, const Real eta_ave_w)
     const auto dp3d      = elements.m_state.m_dp3d;
     const auto hydrostatic_mode = params.theta_hydrostatic_mode;
 
-    Kokkos::parallel_for(
+    Kokkos::parallel_for("ttype5_timestep A",
       Kokkos::RangePolicy<ExecSpace>(0, elements.num_elems()*NP*NP*NUM_LEV),
       KOKKOS_LAMBDA(const int it) {
         const int ie = it / (NP*NP*NUM_LEV);
@@ -190,7 +190,7 @@ void ttype5_timestep(const TimeLevel& tl, const Real dt, const Real eta_ave_w)
     // If NUM_LEV==NUM_LEV_P, the code above will take care also of the last interface
     if (NUM_LEV_P>NUM_LEV && !hydrostatic_mode) {
       const int LAST_INT = NUM_LEV_P-1;
-      Kokkos::parallel_for(
+      Kokkos::parallel_for("ttype5_timestep B",
         Kokkos::RangePolicy<ExecSpace>(0, elements.num_elems()*NP*NP),
         KOKKOS_LAMBDA(const int it) {
            const int ie  =  it / (NP*NP);
@@ -286,7 +286,7 @@ void ttype9_imex_timestep(const TimeLevel& tl,
     const auto dp3d      = elements.m_state.m_dp3d;
     const auto hydrostatic_mode = params.theta_hydrostatic_mode;
     
-    Kokkos::parallel_for(
+    Kokkos::parallel_for("ttype9_imex_timestep A",
       Kokkos::RangePolicy<ExecSpace>(0, elements.num_elems()*NP*NP*NUM_LEV),
       KOKKOS_LAMBDA(const int it) {
         const int ie = it / (NP*NP*NUM_LEV);
@@ -304,7 +304,7 @@ void ttype9_imex_timestep(const TimeLevel& tl,
     });
     if (NUM_LEV_P>NUM_LEV && !hydrostatic_mode) {
       const int LAST_INT = NUM_LEV_P-1;
-      Kokkos::parallel_for(
+      Kokkos::parallel_for("ttype9_imex_timestep B",
         Kokkos::RangePolicy<ExecSpace>(0, elements.num_elems()*NP*NP),
         KOKKOS_LAMBDA(const int it) {
            const int ie  =  it / (NP*NP);

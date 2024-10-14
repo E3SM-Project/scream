@@ -15,7 +15,7 @@ using bfbhash::HashType;
 void hash (const Field::view_dev_t<const Real*>& v,
            const FieldLayout& lo, HashType& accum_out) {
   HashType accum = 0;
-  Kokkos::parallel_reduce(
+  Kokkos::parallel_reduce("hash1",
     Kokkos::RangePolicy<ExeSpace>(0, lo.size()),
     KOKKOS_LAMBDA(const int idx, HashType& accum) {
       bfbhash::hash(v(idx), accum);
@@ -28,7 +28,7 @@ void hash (const Field::view_dev_t<const Real**>& v,
            const FieldLayout& lo, HashType& accum_out) {
   HashType accum = 0;
   const auto& dims = lo.extents();
-  Kokkos::parallel_reduce(
+  Kokkos::parallel_reduce("hash2",
     Kokkos::RangePolicy<ExeSpace>(0, lo.size()),
     KOKKOS_LAMBDA(const int idx, HashType& accum) {
       int i, j;
@@ -43,7 +43,7 @@ void hash (const Field::view_dev_t<const Real***>& v,
            const FieldLayout& lo, HashType& accum_out) {
   HashType accum = 0;
   const auto& dims = lo.extents();
-  Kokkos::parallel_reduce(
+  Kokkos::parallel_reduce("hash3",
     Kokkos::RangePolicy<ExeSpace>(0, lo.size()),
     KOKKOS_LAMBDA(const int idx, HashType& accum) {
       int i, j, k;
@@ -58,7 +58,7 @@ void hash (const Field::view_dev_t<const Real****>& v,
            const FieldLayout& lo, HashType& accum_out) {
   HashType accum = 0;
   const auto& dims = lo.extents();
-  Kokkos::parallel_reduce(
+  Kokkos::parallel_reduce("hash4",
     Kokkos::RangePolicy<ExeSpace>(0, lo.size()),
     KOKKOS_LAMBDA(const int idx, HashType& accum) {
       int i, j, k, m;
@@ -73,7 +73,7 @@ void hash (const Field::view_dev_t<const Real*****>& v,
            const FieldLayout& lo, HashType& accum_out) {
   HashType accum = 0;
   const auto& dims = lo.extents();
-  Kokkos::parallel_reduce(
+  Kokkos::parallel_reduce("hash5",
     Kokkos::RangePolicy<ExeSpace>(0, lo.size()),
     KOKKOS_LAMBDA(const int idx, HashType& accum) {
       int i, j, k, m, n;

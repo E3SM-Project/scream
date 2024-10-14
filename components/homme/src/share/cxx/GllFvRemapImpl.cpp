@@ -529,7 +529,7 @@ void GllFvRemapImpl
            evus2(&omega(ie,0,0), nf2, nlevpk));
   };
   Kokkos::fence();
-  Kokkos::parallel_for(m_tp_ne, fe);
+  Kokkos::parallel_for("GllFvRemapImpl::run_dyn_to_fv_phys", m_tp_ne, fe);
 
   const auto dp_g = m_state.m_dp3d;
   const auto tu_ne_qsize = m_tu_ne_qsize;
@@ -553,7 +553,7 @@ void GllFvRemapImpl
       evus3(&q(ie,0,0,0), q.extent_int(1), q.extent_int(2), q.extent_int(3)));
   };
   Kokkos::fence();
-  Kokkos::parallel_for(m_tp_ne_qsize, feq);
+  Kokkos::parallel_for("GllFvRemapImpl::run_dyn_to_fv_phys g2f_mixing_ratio", m_tp_ne_qsize, feq);
 #endif
 }
 
@@ -803,7 +803,7 @@ void GllFvRemapImpl::run_fv_phys_to_dyn_dss () {
     loop_ik(ttrg, tvr, [&] (int i, int k) { f_ie(i,k) *= s(i); });
   };
   Kokkos::fence();
-  Kokkos::parallel_for(m_tp_ne_dss, f);
+  Kokkos::parallel_for("GllFvRemapImpl::run_fv_phys_to_dyn_dss", m_tp_ne_dss, f);
   m_dss_be->exchange(m_geometry.m_rspheremp);
 }
 
@@ -875,7 +875,7 @@ void GllFvRemapImpl
     }
   };
   Kokkos::fence();
-  Kokkos::parallel_for(m_tp_ne, fe);
+  Kokkos::parallel_for("GllFvRemapImpl::remap_tracer_dyn_to_fv_phys", m_tp_ne, fe);
 
   // q
   const auto dp_g = m_state.m_dp3d;
@@ -900,7 +900,7 @@ void GllFvRemapImpl
       evus3(&q_fv(ie,0,0,0), q_fv.extent_int(1), q_fv.extent_int(2), q_fv.extent_int(3)));
   };
   Kokkos::fence();
-  Kokkos::parallel_for(tp_ne_nq, feq);
+  Kokkos::parallel_for("GllFvRemapImpl::remap_tracer_dyn_to_fv_phys g2f_mixing_ratio", tp_ne_nq, feq);
 #endif  
 }
 

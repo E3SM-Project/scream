@@ -132,7 +132,7 @@ void HyperviscosityFunctorImpl::run (const int np1, const Real dt, const Real et
     biharmonic_wk_dp3d ();
     GPTLstop("hvf-bhwk");
     // dispatch parallel_for for first kernel
-    Kokkos::parallel_for(m_policy_pre_exchange, *this);
+    Kokkos::parallel_for("HyperviscosityFunctorImpl::run1", m_policy_pre_exchange, *this);
     Kokkos::fence();
 
     // Exchange
@@ -142,7 +142,7 @@ void HyperviscosityFunctorImpl::run (const int np1, const Real dt, const Real et
     GPTLstop("hvf-bexch");
 
     // Update states
-    Kokkos::parallel_for(m_policy_update_states, *this);
+    Kokkos::parallel_for("HyperviscosityFunctorImpl::run2", m_policy_update_states, *this);
     Kokkos::fence();
   }
 }
@@ -165,10 +165,10 @@ void HyperviscosityFunctorImpl::biharmonic_wk_dp3d() const
   // Compute second laplacian, tensor or const hv
   if ( m_data.consthv ) {
     auto policy_second_laplace = Homme::get_default_team_policy<ExecSpace,TagSecondLaplaceConstHV>(m_state.num_elems());
-    Kokkos::parallel_for(policy_second_laplace, *this);
+    Kokkos::parallel_for("HyperviscosityFunctorImpl::biharmonic_wk_dp3d A", policy_second_laplace, *this);
   }else{
     auto policy_second_laplace = Homme::get_default_team_policy<ExecSpace,TagSecondLaplaceTensorHV>(m_state.num_elems());
-    Kokkos::parallel_for(policy_second_laplace, *this);
+    Kokkos::parallel_for("HyperviscosityFunctorImpl::biharmonic_wk_dp3d B", policy_second_laplace, *this);
   }
   Kokkos::fence();
 }

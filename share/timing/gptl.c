@@ -16,6 +16,7 @@
 #include <sys/types.h>     /* u_int8_t, u_int16_t */
 #include <float.h>         /* FLT_MAX */
 #include <assert.h>
+#include <nvtx3/nvToolsExt.h>
 
 #ifndef HAVE_C99_INLINE
 #define inline
@@ -974,6 +975,7 @@ int GPTLstart (const char *timername)                  /* timer name */
     name = timername;
     numchars = MIN (strlen (name), MAX_CHARS);
   }
+  nvtxRangePushA(name); //ndk GPTLstart
 
   /*
   ** ptr will point to the requested timer in the current list,
@@ -1245,6 +1247,134 @@ int GPTLstartf (const char *timername, const int namelen)    /* timer name and l
     numchars = MIN (namelen, MAX_CHARS);
     name = timername;
   }
+  //nvtxRangePushA(name); //ndk GPTLstartf
+
+  /*
+  ** ptr will point to the requested timer in the current list,
+  ** or NULL if this is a new entry
+  */
+
+  ptr = getentryf (hashtable[t], name, numchars, &indx);
+
+  /*
+  ** Recursion => increment depth in recursion and return.  We need to return
+  ** because we don't want to restart the timer.  We want the reported time for
+  ** the timer to reflect the outermost layer of recursion.
+  */
+
+  if (ptr && ptr->onflg) {
+    ++ptr->recurselvl;
+
+    if (wallstats.enabled && profileovhd.enabled){
+      if (t == 0){
+        /* second caliper timestamp */
+        tpb = (*ptr2wtimefunc) ();
+        /* subtract out additional overhead from caliper timing calls */
+        overhead_est += ((tpb - tpa) - overhead_utr);
+        /* add in additional overhead due to caliper timing calls (probaby 2X what necessary) */
+        overhead_bound += ((tpb - tpa) + 2*overhead_utr);
+      }
+    }
+
+    return 0;
+  }
+
+  /*
+  ** Increment stackidx[t] unconditionally. This is necessary to ensure the correct
+  ** behavior when GPTLstop decrements stackidx[t] unconditionally.
+  */
+
+  if (++stackidx[t].val > MAX_STACK-1)
+    return GPTLerror ("%s: stack too big\n", thisfunc);
+
+  if ( ! ptr) { /* Add a new entry and initialize */
+    ptr = (Timer *) GPTLallocate (sizeof (Timer));
+    memset (ptr, 0, sizeof (Timer));
+
+    //pw    numchars = MIN (namelen, MAX_CHARS);
+    //pw    strncpy (ptr->name, name, numchars);
+    for (c = 0; c < numchars; c++) {
+      ptr->name[c] = name[c];
+    }
+    ptr->name[numchars] = '\0';
+
+    if (update_ll_hash (ptr, t, indx) != 0)
+      return GPTLerror ("%s: update_ll_hash error\n", thisfunc);
+  }
+
+  if (update_parent_info (ptr, callstack[t], stackidx[t].val) != 0)
+    return GPTLerror ("%s: update_parent_info error\n", thisfunc);
+
+  if (update_ptr (ptr, t) != 0)
+    return GPTLerror ("%s: update_ptr error\n", thisfunc);
+
+  if (wallstats.enabled && profileovhd.enabled){
+    if (t == 0){
+      /* second caliper timestamp */
+      tpb = (*ptr2wtimefunc) ();
+      /* subtract out additional overhead from caliper timing calls */
+      overhead_est += ((tpb - tpa) - overhead_utr);
+      /* add in additional overhead due to caliper timing calls (probaby 2X what necessary) */
+      overhead_bound += ((tpb - tpa) + 2*overhead_utr);
+    }
+  }
+
+  return (0);
+}
+
+int GPTLstartfx (const char *timername, const int namelen)    /* timer name and length */ //ndk with nvtx
+{
+  Timer *ptr;                 /* linked list pointer */
+  int t;                      /* thread index (of this thread) */
+  int c;                      /* character index */
+  int numchars;               /* number of characters to copy */
+  unsigned int indx;          /* hash table index */
+  double tpa = 0.0;           /* time stamp */
+  double tpb = 0.0;           /* time stamp */
+  char new_name[MAX_CHARS+1]; /* timer name with prefix, if there is one */
+  const char *name;           /* pointer to timer name */
+  static const char *thisfunc = "GPTLstartfx";
+
+  if (disabled)
+    return 0;
+
+  if ( ! initialized)
+    return 0;
+
+  if ((t = get_thread_num ()) < 0)
+    return GPTLerror ("%s: bad return from get_thread_num\n", thisfunc);
+
+  /*
+  ** If current depth exceeds a user-specified limit for print, just
+  ** increment and return
+  */
+
+  if (stackidx[t].val >= depthlimit) {
+    ++stackidx[t].val;
+    return 0;
+  }
+
+  if (wallstats.enabled && profileovhd.enabled){
+    if (t == 0){
+      /* first caliper timestamp */
+      tpa = (*ptr2wtimefunc) ();
+    }
+  }
+
+  /*
+  ** If prefix string is defined, prepend it to timername
+  ** and assign the name pointer to the new string. 
+  ** Otherwise assign the name pointer to the original string.
+  */
+
+  if ((prefix_len[t] > 0) || (prefix_len_nt > 0)){
+    numchars = add_prefix(new_name, timername, namelen, t);
+    name = new_name;
+  } else {
+    numchars = MIN (namelen, MAX_CHARS);
+    name = timername;
+  }
+  nvtxRangePushA(name); //ndk GPTLstartfx
 
   /*
   ** ptr will point to the requested timer in the current list,
@@ -1778,6 +1908,7 @@ int GPTLstop (const char *timername)         /* timer name */
 
   if (stackidx[t].val > depthlimit) {
     --stackidx[t].val;
+    //nvtxRangePop();//ndk GPTLstop
     return 0;
   }
 
@@ -1831,6 +1962,7 @@ int GPTLstop (const char *timername)         /* timer name */
       }
     }
 
+    nvtxRangePop();//ndk GPTLstop
     return 0;
   }
 
@@ -1847,7 +1979,7 @@ int GPTLstop (const char *timername)         /* timer name */
       overhead_bound += ((tpb - tp1) + 2*overhead_utr);
     }
   }
-
+  nvtxRangePop();//ndk GPTLstop
   return 0;
 }
 
@@ -2098,6 +2230,7 @@ int GPTLstopf (const char *timername, const int namelen) /* timer name and lengt
     }
 
     return 0;
+    //nvtxRangePop();//ndk GPTLstopf
   }
 
   if (update_stats (ptr, tp1, usr, sys, t) != 0)
@@ -2115,6 +2248,131 @@ int GPTLstopf (const char *timername, const int namelen) /* timer name and lengt
   }
 
   return 0;
+  //nvtxRangePop();//ndk GPTLstopf
+}
+
+int GPTLstopfx (const char *timername, const int namelen) /* timer name and length */ //ndk with nvtx
+{
+  double tp1 = 0.0;           /* time stamp */
+  Timer *ptr;                 /* linked list pointer */
+  int t;                      /* thread number for this process */
+  int c;                      /* character index */
+  int numchars;               /* number of characters to copy */
+  unsigned int indx;          /* index into hash table */
+  long usr = 0;               /* user time (returned from get_cpustamp) */
+  long sys = 0;               /* system time (returned from get_cpustamp) */
+  char strname[MAX_CHARS+1];  /* null terminated version of name */
+  double tpa = 0.0;           /* time stamp */
+  double tpb = 0.0;           /* time stamp */
+  char new_name[MAX_CHARS+1]; /* timer name with prefix, if there is one */
+  const char *name;           /* pointer to timer name */
+  static const char *thisfunc = "GPTLstopfx";
+
+  if (disabled)
+    return 0;
+
+  if ( ! initialized)
+    return 0;
+
+  /* Get the timestamp */
+
+  if (wallstats.enabled) {
+    tp1 = (*ptr2wtimefunc) ();
+  }
+
+  if (cpustats.enabled && get_cpustamp (&usr, &sys) < 0)
+    return GPTLerror ("%s: get_cpustamp error", thisfunc);
+
+  if ((t = get_thread_num ()) < 0)
+    return GPTLerror ("%s: bad return from get_thread_num\n", thisfunc);
+
+  /*
+  ** If current depth exceeds a user-specified limit for print, just
+  ** decrement and return
+  */
+
+  if (stackidx[t].val > depthlimit) {
+    --stackidx[t].val;
+    return 0;
+  }
+
+  if (wallstats.enabled && profileovhd.enabled){
+    if (t == 0){
+      /* dummy clock call, to capture earlier tp1 call */
+      tpa = (*ptr2wtimefunc) ();
+    }
+  }
+
+  /*
+  ** If prefix string is defined, prepend it to timername
+  ** and assign the name pointer to the new string. 
+  ** Otherwise assign the name pointer to the original string.
+  */
+
+  if ((prefix_len[t] > 0) || (prefix_len_nt > 0)){
+    numchars = add_prefix(new_name, timername, namelen, t);
+    name = new_name;
+  } else {
+    numchars = MIN (namelen, MAX_CHARS);
+    name = timername;
+  }
+
+  if ( ! (ptr = getentryf (hashtable[t], name, numchars, &indx))){
+    //pw    numchars = MIN (namelen, MAX_CHARS);
+    //pw    strncpy (strname, name, numchars);
+    for (c = 0; c < numchars; c++) {
+      strname[c] = name[c];
+    }
+    strname[numchars] = '\0';
+    return GPTLerror ("%s thread %d: timer for %s had not been started.\n", thisfunc, t, strname);
+  }
+
+  if ( ! ptr->onflg )
+    return GPTLerror ("%s: timer %s was already off.\n", thisfunc, ptr->name);
+
+  ++ptr->count;
+
+  /*
+  ** Recursion => decrement depth in recursion and return.  We need to return
+  ** because we don't want to stop the timer.  We want the reported time for
+  ** the timer to reflect the outermost layer of recursion.
+  */
+
+  if (ptr->recurselvl > 0) {
+    ++ptr->nrecurse;
+    --ptr->recurselvl;
+
+    if (wallstats.enabled && profileovhd.enabled){
+      if (t == 0){
+        /* second caliper timestamp */
+        tpb = (*ptr2wtimefunc) ();
+        /* subtract out additional overhead from caliper timing calls */
+        overhead_est += ((tpb - tp1) - overhead_utr);
+        /* add in additional overhead due to caliper timing calls (probaby 2X what necessary) */
+        overhead_bound += ((tpb - tp1) + 2*overhead_utr);
+      }
+    }
+
+    return 0;
+    nvtxRangePop();//ndk GPTLstopfx
+  }
+
+  if (update_stats (ptr, tp1, usr, sys, t) != 0)
+    return GPTLerror ("%s: error from update_stats\n", thisfunc);
+
+  if (wallstats.enabled && profileovhd.enabled){
+    if (t == 0){
+      /* second caliper timestamp */
+      tpb = (*ptr2wtimefunc) ();
+      /* subtract out additional overhead from caliper timing calls */
+      overhead_est += ((tpb - tp1) - overhead_utr);
+      /* add in additional overhead due to caliper timing calls (probaby 2X what necessary) */
+      overhead_bound += ((tpb - tp1) + 2*overhead_utr);
+    }
+  }
+
+  return 0;
+  nvtxRangePop();//ndk GPTLstopfx
 }
 
 /*

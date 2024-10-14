@@ -45,21 +45,25 @@ contains
     endif
 
     if (lcplrun) then
-       call t_startf   (trim(strcpl), cpl_run_hash)
+       !ndk call t_startf   (trim(strcpl), cpl_run_hash)
+       call t_startfx   (strcpl, cpl_run_hash)
        call t_adj_detailf(+1)
     endif
 
     if (lcplcom) then
-       call t_startf   (trim(strcom), cpl_comm_hash)
+       !ndk call t_startf   (trim(strcom), cpl_comm_hash)
+       call t_startfx   (strcom, cpl_comm_hash)
        call t_adj_detailf(+1)
     endif
 
     if (lbudget) then
-       call t_startf   (trim(strbud), cpl_budget_hash)
+       !ndk call t_startf   (trim(strbud), cpl_budget_hash)
+       call t_startfx   (strbud, cpl_budget_hash)
        call t_adj_detailf(+1)
     endif
 
-    call t_startf   (trim(string),hashint)
+    !ndk call t_startf   (trim(string),hashint)
+    call t_startfx   (string,hashint)
     call t_adj_detailf(+1)
 
   end subroutine t_drvstartf
@@ -93,21 +97,25 @@ contains
     endif
 
     call t_adj_detailf(-1)
-    call t_stopf   (trim(string), hashint)
+    !ndk call t_stopf   (trim(string), hashint)
+    call t_stopfx   (string, hashint)
 
     if (lbudget) then
        call t_adj_detailf(-1)
-       call t_stopf   (trim(strbud), cpl_budget_hash)
+       !ndk call t_stopf   (trim(strbud), cpl_budget_hash)
+       call t_stopfx   (strbud, cpl_budget_hash)
     endif
 
     if (lcplrun) then
        call t_adj_detailf(-1)
-       call t_stopf   (trim(strcpl), cpl_run_hash)
+       !ndk call t_stopf   (trim(strcpl), cpl_run_hash)
+       call t_stopfx   (strcpl, cpl_run_hash)
     endif
 
     if (lcplcom) then
        call t_adj_detailf(-1)
-       call t_stopf   (trim(strcom),cpl_comm_hash)
+       !ndk call t_stopf   (trim(strcom),cpl_comm_hash)
+       call t_stopfx   (strcom,cpl_comm_hash)
     endif
 
   end subroutine t_drvstopf

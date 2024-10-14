@@ -6,6 +6,7 @@
 #include "share/util/scream_universal_constants.hpp"
 
 #include <ekat/ekat_type_traits.hpp>
+#include "share/util/scream_timing.hpp"
 
 namespace scream
 {
@@ -225,6 +226,7 @@ get_strided_view_type<DT, HD> {
 template<HostOrDevice HD>
 void Field::
 deep_copy (const Field& src) {
+  start_timer("deep_copy Field src");
   EKAT_REQUIRE_MSG (not m_is_read_only,
       "Error! Cannot call deep_copy on read-only fields.\n");
 
@@ -244,11 +246,13 @@ deep_copy (const Field& src) {
     default:
       EKAT_ERROR_MSG ("Error! Unrecognized field data type in Field::deep_copy.\n");
   }
+  stop_timer("deep_copy Field src");
 }
 
 template<typename ST, HostOrDevice HD>
 void Field::
 deep_copy (const ST value) {
+  start_timer("deep_copy Field value");
   EKAT_REQUIRE_MSG (not m_is_read_only,
       "Error! Cannot call deep_copy on read-only fields.\n");
 
@@ -278,6 +282,7 @@ deep_copy (const ST value) {
     default:
       EKAT_ERROR_MSG ("Error! Unrecognized field data type in Field::deep_copy.\n");
   }
+  stop_timer("deep_copy Field value");
 }
 
 template<HostOrDevice HD, typename ST>

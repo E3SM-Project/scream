@@ -198,13 +198,12 @@ public:
   KOKKOS_INLINE_FUNCTION
   void operator()(const TagHyperPreExchange, const TeamMember &team) const {
     KernelVariables kv(team);
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, NP * NP),
+    Kokkos::parallel_for("TagHyperPreExchange in HyperviscosityFunctorImpl part1", Kokkos::TeamThreadRange(kv.team, NP * NP),
                          [&](const int &point_idx) {
       const int igp = point_idx / NP;
       const int jgp = point_idx % NP;
       Kokkos::parallel_for(Kokkos::ThreadVectorRange(kv.team, NUM_LEV),
                            [&](const int &lev) {
-
         m_derived.m_dpdiss_ave(kv.ie, igp, jgp, lev) +=
             m_data.eta_ave_w * m_state.m_dp3d(kv.ie, m_data.np1, igp, jgp, lev) /
             m_data.hypervis_subcycle;
@@ -243,7 +242,8 @@ public:
     }//if nu_top>0
     kv.team_barrier();
 
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(kv.team, NP * NP),
+    Kokkos::parallel_for("TagHyperPreExchange in HyperviscosityFunctorImpl part2",
+                         Kokkos::TeamThreadRange(kv.team, NP * NP),
                          [&](const int &point_idx) {
       const int igp = point_idx / NP;
       const int jgp = point_idx % NP;

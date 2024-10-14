@@ -24,7 +24,8 @@ program cime_driver
   use shr_kind_mod,  only : i8 => SHR_KIND_I8
   use shr_kind_mod,  only : CS => SHR_KIND_CS
   use shr_sys_mod,   only : shr_sys_irtc, shr_sys_abort
-  use perf_mod,      only : t_startf, t_adj_detailf, t_stopf, t_startstop_valsf
+  !use perf_mod,      only : t_startf, t_adj_detailf, t_stopf, t_startstop_valsf
+  use perf_mod !ndk include all
   use ESMF,          only : ESMF_Initialize, ESMF_Finalize
   use ESMF,          only : ESMF_LogKind_Flag, ESMF_LOGKIND_NONE
   use ESMF,          only : ESMF_LOGKIND_SINGLE, ESMF_LOGKIND_MULTI
@@ -137,7 +138,8 @@ program cime_driver
                          callcount = 0)
 
   ! CPL:INIT timer started in cime_pre_init2
-  call t_stopf('CPL:INIT')
+  !call t_stopf('CPL:INIT') ! ndk
+  call t_stopfx('CPL:INIT') ! ndk
 
   ! Add in the time that was not captured by the CPL:INIT timer (because it was
   ! started inside of cime_pre_init2 instead of before cime_pre_init1).

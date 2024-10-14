@@ -1,3 +1,4 @@
+! ndk i think this used by fortran
 module perf_mod
 
 !-----------------------------------------------------------------------
@@ -21,6 +22,8 @@ module perf_mod
 #else
 #define TIMERSTART ierr = GPTLstart
 #define TIMERSTOP  ierr = GPTLstop
+#define TIMERSTARTX ierr = GPTLstart
+#define TIMERSTOPX  ierr = GPTLstop
 #endif
 
 #ifndef USE_CSM_SHARE
@@ -58,6 +61,8 @@ module perf_mod
    public t_stampf
    public t_startf
    public t_stopf
+   public t_startfx !ndk
+   public t_stopfx !ndk
    public t_startstop_valsf
    public t_enablef
    public t_disablef
@@ -842,6 +847,164 @@ contains
 !$OMP END MASTER
    return
    end subroutine t_stopf
+
+ !ndk nvtx versions
+   subroutine t_startfx(event, handle)
+!-----------------------------------------------------------------------
+! Purpose: Start an event timer
+! Author: P. Worley
+!-----------------------------------------------------------------------
+!---------------------------Input arguments-----------------------------
+!
+   ! performance timer event name
+   character(len=*), intent(in) :: event
+!
+!---------------------------Input/Output arguments----------------------
+!
+   ! GPTL event handle
+   integer,  optional :: handle
+!
+!---------------------------Local workspace-----------------------------
+!
+   integer  ierr                          ! GPTL error return
+   integer  str_length, i                 ! support for adding
+                                          !  detail suffix
+   character(len=2) cdetail               ! char variable for detail
+   real(shr_kind_r8) ovhd_start, ovhd_stop, usr, sys
+                                          ! for overhead calculation
+!
+!-----------------------------------------------------------------------
+!
+   if (.not. timing_initialized) return
+   if (timing_disable_depth > 0) return
+#ifdef NUOPC_INTERFACE
+#if ( defined _OPENMP )
+   if (omp_in_parallel()) return
+#endif
+   cur_timing_depth = cur_timing_depth + 1
+   if(cur_timing_depth > timer_depth_limit) return
+#ifdef DEBUG
+!   print *, 'start timer ',trim(event), cur_timing_depth, timer_depth_limit
+#endif
+#endif
+
+!$OMP MASTER
+   if (perf_ovhd_measurement) then
+#ifdef HAVE_MPI
+      ovhd_start = mpi_wtime()
+#else
+      usr = 0.0
+      sys = 0.0
+      ierr = GPTLstamp(ovhd_start, usr, sys)
+#endif
+      perf_timing_ovhd = perf_timing_ovhd - ovhd_start
+   endif
+#ifndef NUOPC_INTERFACE
+!$OMP END MASTER
+#endif
+
+   if ((perf_add_detail) .AND. (cur_timing_detail < 100)) then
+      write(cdetail,'(i2.2)') cur_timing_detail
+      str_length = min(SHR_KIND_CM-3,len_trim(event))
+      TIMERSTARTX(event(1:str_length)//'_'//cdetail)
+      print*, "ndk share t_startfx ", event(1:str_length)//'_'//cdetail ! ndk remove!
+   else
+      str_length = min(SHR_KIND_CM,len_trim(event))
+      TIMERSTARTX(event(1:str_length))
+      print*, "ndk share t_startfx ", event(1:str_length)  ! ndk remove!
+   endif
+#ifndef NUOPC_INTERFACE
+!$OMP MASTER
+#endif
+   if (perf_ovhd_measurement) then
+#ifdef HAVE_MPI
+      ovhd_stop = mpi_wtime()
+#else
+      ierr = GPTLstamp(ovhd_stop, usr, sys)
+#endif
+      perf_timing_ovhd = perf_timing_ovhd + ovhd_stop
+   endif
+!$OMP END MASTER
+   return
+   end subroutine t_startfx
+!
+!========================================================================
+!
+   subroutine t_stopfx(event, handle)
+!-----------------------------------------------------------------------
+! Purpose: Stop an event timer
+! Author: P. Worley
+!-----------------------------------------------------------------------
+!---------------------------Input arguments-----------------------------
+!
+   ! performance timer event name
+   character(len=*), intent(in) :: event
+!
+!---------------------------Input/Output arguments----------------------
+!
+   ! GPTL event handle
+   integer, optional :: handle
+!
+!---------------------------Local workspace-----------------------------
+!
+   integer  ierr                          ! GPTL error return
+   integer  str_length, i                 ! support for adding
+                                          !  detail suffix
+   character(len=2) cdetail               ! char variable for detail
+   real(shr_kind_r8) ovhd_start, ovhd_stop, usr, sys
+                                          ! for overhead calculation
+!
+!-----------------------------------------------------------------------
+!
+   if (.not. timing_initialized) return
+   if (timing_disable_depth > 0) return
+#ifdef NUOPC_INTERFACE
+#if ( defined _OPENMP )
+   if (omp_in_parallel()) return
+#endif
+#endif
+!$OMP MASTER
+   if (perf_ovhd_measurement) then
+#ifdef HAVE_MPI
+      ovhd_start = mpi_wtime()
+#else
+      usr = 0.0
+      sys = 0.0
+      ierr = GPTLstamp(ovhd_start, usr, sys)
+#endif
+      perf_timing_ovhd = perf_timing_ovhd - ovhd_start
+   endif
+#ifdef NUOPC_INTERFACE
+   cur_timing_depth = cur_timing_depth - 1
+   if(cur_timing_depth < timer_depth_limit) then
+#else
+!$OMP END MASTER
+#endif
+      if ((perf_add_detail) .AND. (cur_timing_detail < 100)) then
+         write(cdetail,'(i2.2)') cur_timing_detail
+         str_length = min(SHR_KIND_CM-3,len_trim(event))
+         TIMERSTOPX(event(1:str_length)//'_'//cdetail)
+      else
+         str_length = min(SHR_KIND_CM,len_trim(event))
+         TIMERSTOPX(event(1:str_length))
+      endif
+#ifndef NUOPC_INTERFACE
+!$OMP MASTER
+#endif
+      if (perf_ovhd_measurement) then
+#ifdef HAVE_MPI
+         ovhd_stop = mpi_wtime()
+#else
+         ierr = GPTLstamp(ovhd_stop, usr, sys)
+#endif
+         perf_timing_ovhd = perf_timing_ovhd + ovhd_stop
+      endif
+#ifdef NUOPC_INTERFACE
+   endif
+#endif
+!$OMP END MASTER
+   return
+   end subroutine t_stopfx
 !
 !========================================================================
 !

@@ -95,7 +95,7 @@ PropertyCheck::ResultAndMsg FieldWithinIntervalCheck::check_impl () const
     case 1:
       {
         auto v = f.template get_view<const_ST*>();
-        Kokkos::parallel_reduce(size, KOKKOS_LAMBDA(int i, minmaxloc_value_t& result) {
+        Kokkos::parallel_reduce("FieldWithinIntervalCheck::check_impl1", size, KOKKOS_LAMBDA(int i, minmaxloc_value_t& result) {
           if (v(i)<result.min_val) {
             result.min_val = v(i);
             result.min_loc = i;
@@ -110,7 +110,7 @@ PropertyCheck::ResultAndMsg FieldWithinIntervalCheck::check_impl () const
     case 2:
       {
         auto v = f.template get_view<const_ST**>();
-        Kokkos::parallel_reduce(size, KOKKOS_LAMBDA(int idx, minmaxloc_value_t& result) {
+        Kokkos::parallel_reduce("FieldWithinIntervalCheck::check_impl2", size, KOKKOS_LAMBDA(int idx, minmaxloc_value_t& result) {
           int i,j;
           unflatten_idx(idx,extents,i,j);
           if (v(i,j)<result.min_val) {
@@ -127,7 +127,7 @@ PropertyCheck::ResultAndMsg FieldWithinIntervalCheck::check_impl () const
     case 3:
       {
         auto v = f.template get_view<const_ST***>();
-        Kokkos::parallel_reduce(size, KOKKOS_LAMBDA(int idx, minmaxloc_value_t& result) {
+        Kokkos::parallel_reduce("FieldWithinIntervalCheck::check_impl3", size, KOKKOS_LAMBDA(int idx, minmaxloc_value_t& result) {
           int i,j,k;
           unflatten_idx(idx,extents,i,j,k);
           if (v(i,j,k)<result.min_val) {
@@ -144,7 +144,7 @@ PropertyCheck::ResultAndMsg FieldWithinIntervalCheck::check_impl () const
     case 4:
       {
         auto v = f.template get_view<const_ST****>();
-        Kokkos::parallel_reduce(size, KOKKOS_LAMBDA(int idx, minmaxloc_value_t& result) {
+        Kokkos::parallel_reduce("FieldWithinIntervalCheck::check_impl4", size, KOKKOS_LAMBDA(int idx, minmaxloc_value_t& result) {
           int i,j,k,l;
           unflatten_idx(idx,extents,i,j,k,l);
           if (v(i,j,k,l)<result.min_val) {
@@ -161,7 +161,7 @@ PropertyCheck::ResultAndMsg FieldWithinIntervalCheck::check_impl () const
     case 5:
       {
         auto v = f.template get_view<const_ST*****>();
-        Kokkos::parallel_reduce(size, KOKKOS_LAMBDA(int idx, minmaxloc_value_t& result) {
+        Kokkos::parallel_reduce("FieldWithinIntervalCheck::check_impl5", size, KOKKOS_LAMBDA(int idx, minmaxloc_value_t& result) {
           int i,j,k,l,m;
           unflatten_idx(idx,extents,i,j,k,l,m);
           if (v(i,j,k,l,m)<result.min_val) {
@@ -178,7 +178,7 @@ PropertyCheck::ResultAndMsg FieldWithinIntervalCheck::check_impl () const
     case 6:
       {
         auto v = f.template get_view<const_ST******>();
-        Kokkos::parallel_reduce(size, KOKKOS_LAMBDA(int idx, minmaxloc_value_t& result) {
+        Kokkos::parallel_reduce("FieldWithinIntervalCheck::check_impl6", size, KOKKOS_LAMBDA(int idx, minmaxloc_value_t& result) {
           int i,j,k,l,m,n;
           unflatten_idx(idx,extents,i,j,k,l,m,n);
           if (v(i,j,k,l,m,n)<result.min_val) {

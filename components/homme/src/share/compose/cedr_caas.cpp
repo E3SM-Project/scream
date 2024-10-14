@@ -165,7 +165,7 @@ void CAAS<ES>::reduce_locally () {
       }
       send(nlclaccum*k + bi) = accum_ext;
     };
-    Kokkos::parallel_for(Kokkos::RangePolicy<ES>(0, 2*nt*nlclaccum), set_Qm_minmax);
+    Kokkos::parallel_for("CAAS<ES>::reduce_locally1", Kokkos::RangePolicy<ES>(0, 2*nt*nlclaccum), set_Qm_minmax);
   } else {
     using ESU = cedr::impl::ExeSpaceUtils<ES>;
     const auto calc_Qm_clip = KOKKOS_LAMBDA (const typename ESU::Member& t) {
@@ -184,7 +184,7 @@ void CAAS<ES>::reduce_locally () {
       send(     k) = accum.v[0];
       send(nt + k) = accum.v[1];
     };
-    Kokkos::parallel_for(ESU::get_default_team_policy(nt, nlclcells),
+    Kokkos::parallel_for("CAAS<ES>::reduce_locally2", ESU::get_default_team_policy(nt, nlclcells),
                          calc_Qm_clip);
     const auto set_Qm_minmax = KOKKOS_LAMBDA (const typename ESU::Member& t) {
       const auto k = 2*nt + t.league_rank();
@@ -195,7 +195,7 @@ void CAAS<ES>::reduce_locally () {
                               Kokkos::Sum<Real>(accum));
       send(k) = accum;
     };
-    Kokkos::parallel_for(ESU::get_default_team_policy(2*nt, nlclcells),
+    Kokkos::parallel_for("CAAS<ES>::reduce_locally accum", ESU::get_default_team_policy(2*nt, nlclcells),
                          set_Qm_minmax);
   }
 }
@@ -248,7 +248,7 @@ void CAAS<ES>::finish_locally () {
       }
     }
   };
-  Kokkos::parallel_for(ESU::get_default_team_policy(nt, nlclcells),
+  Kokkos::parallel_for("CAAS<ES>::finish_locally", ESU::get_default_team_policy(nt, nlclcells),
                        adjust_Qm);
 }
 

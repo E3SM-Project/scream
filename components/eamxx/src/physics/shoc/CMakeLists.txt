@@ -103,6 +103,7 @@ if (HIP_BUILD)
   set_source_files_properties(shoc_diag_second_shoc_moments_disp.cpp  PROPERTIES COMPILE_FLAGS -O1)
 endif()
 
+MESSAGE(STATUS "ndk SCREAM_SMALL_KERNELS=${SCREAM_SMALL_KERNELS}")
 set(SHOC_LIBS "shoc")
 if (SCREAM_SMALL_KERNELS)
   add_library(shoc ${SHOC_SRCS} ${SHOC_SK_SRCS})

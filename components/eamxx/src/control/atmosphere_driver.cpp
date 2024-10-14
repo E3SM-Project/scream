@@ -1614,7 +1614,7 @@ void AtmosphereDriver::run (const int dt) {
   }
 #endif
 
-  nvtxRangePushA(("step" + std::to_string(m_current_ts.get_num_steps())).c_str());
+  nvtxRangePushA(("atmstep" + std::to_string(m_current_ts.get_num_steps())).c_str());
   start_timer("EAMxx::run");
 
   // Make sure the end of the time step is after the current start_time

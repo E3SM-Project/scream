@@ -19,11 +19,11 @@ void finalize_gptl () {
 
 void start_timer (const std::string& name) {
   GPTLstart(name.c_str());
-  nvtxRangePushA(name.c_str());
+  nvtxRangePushA(name.c_str()); //ndk
 }
 
 void stop_timer (const std::string& name) {
-  nvtxRangePop();
+  nvtxRangePop(); //ndk
   GPTLstop(name.c_str());
 }
 

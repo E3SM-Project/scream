@@ -1251,7 +1251,7 @@ void cloud_sedimentation_f(
   // Call core function from kernel
   auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, nk_pack);
   ekat::WorkspaceManager<Spack> wsm(rho_d.extent(0), 4, policy);
-  Kokkos::parallel_reduce(policy, KOKKOS_LAMBDA(const MemberType& team, Real& precip_liq_surf_k) {
+  Kokkos::parallel_reduce("P3F::cloud_sedimentation", policy, KOKKOS_LAMBDA(const MemberType& team, Real& precip_liq_surf_k) {
 
     P3F::cloud_sedimentation(
       qc_incld_d, rho_d, inv_rho_d, cld_frac_l_d, acn_d, inv_dz_d, dnu,
@@ -1321,7 +1321,7 @@ void ice_sedimentation_f(
   auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, nk_pack);
   ekat::WorkspaceManager<Spack> wsm(rho_d.extent(0), 6, policy);
   Real my_precip_ice_surf = 0;
-  Kokkos::parallel_reduce(policy, KOKKOS_LAMBDA(const MemberType& team, Real& precip_ice_surf_k) {
+  Kokkos::parallel_reduce("P3F::ice_sedimentation", policy, KOKKOS_LAMBDA(const MemberType& team, Real& precip_ice_surf_k) {
 
     P3F::ice_sedimentation(
       rho_d, inv_rho_d, rhofaci_d, cld_frac_i_d, inv_dz_d,
@@ -1395,7 +1395,7 @@ void rain_sedimentation_f(
   auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, nk_pack);
   ekat::WorkspaceManager<Spack> wsm(rho_d.extent(0), 4, policy);
   Real my_precip_liq_surf = 0;
-  Kokkos::parallel_reduce(policy, KOKKOS_LAMBDA(const MemberType& team, Real& precip_liq_surf_k) {
+  Kokkos::parallel_reduce("P3F::rain_sedimentation", policy, KOKKOS_LAMBDA(const MemberType& team, Real& precip_liq_surf_k) {
 
     P3F::rain_sedimentation(
       rho_d, inv_rho_d, rhofacr_d, cld_frac_r_d, inv_dz_d, qr_incld_d,
@@ -1461,7 +1461,7 @@ void homogeneous_freezing_f(
 
   // Call core function from kernel
   auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, nk_pack);
-  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+  Kokkos::parallel_for("P3F::homogeneous_freezing", policy, KOKKOS_LAMBDA(const MemberType& team) {
 
     P3F::homogeneous_freezing(
       t_d, inv_exner_d, latent_heat_fusion_d,
@@ -1625,7 +1625,7 @@ void p3_main_part1_f(
   // Call core function from kernel
   bview_1d bools_d("bools", 2);
   auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(1, nk_pack);
-  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+  Kokkos::parallel_for("P3F::p3_main_part1", policy, KOKKOS_LAMBDA(const MemberType& team) {
 
     P3F::p3_main_part1(
       team, nk, do_predict_nc, do_prescribed_CCN, dt,
