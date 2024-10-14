@@ -157,13 +157,13 @@ protected:
 
   // Frequency of output and checkpointing
   // See scream_io_utils.hpp for details.
-  IOControl m_output_control;
-  IOControl m_checkpoint_control;
+  IOControl m_output_control = IOControl();
+  IOControl m_checkpoint_control = IOControl();
 
   // The specs (name, capacity, size) of output and checkpoint file.
   // See scream_io_utils.hpp for details.
-  IOFileSpecs m_output_file_specs;
-  IOFileSpecs m_checkpoint_file_specs;
+  IOFileSpecs m_output_file_specs = IOFileSpecs();
+  IOFileSpecs m_checkpoint_file_specs = IOFileSpecs();
 
   // Whether this run is the restart of a previous run, in which case
   // we might have to load an output checkpoint file (depending on avg type)
