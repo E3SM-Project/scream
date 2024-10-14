@@ -732,10 +732,10 @@ void AtmosphereDriver::initialize_output_managers () {
         fms[it.first] = it.second;
       }
       om.set_logger(m_atm_logger);
-      om.setup(m_atm_comm,restart_pl,         fms,m_grids_manager,m_run_t0,m_case_t0,true);
+      om.setup(m_atm_comm,restart_pl,         fms,m_grids_manager,m_run_t0,m_case_t0);
     } else {
       om.set_logger(m_atm_logger);
-      om.setup(m_atm_comm,restart_pl,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0,true);
+      om.setup(m_atm_comm,restart_pl,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0);
     }
     om.set_logger(m_atm_logger);
     for (const auto& it : m_atm_process_group->get_restart_extra_data()) {
@@ -770,7 +770,7 @@ void AtmosphereDriver::initialize_output_managers () {
 
     auto& om = m_output_managers[(m_output_managers[0].is_model_restart_output() ? i+1 : i)];
     om.set_logger(m_atm_logger);
-    om.setup(m_atm_comm,params,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0,false);
+    om.setup(m_atm_comm,params,m_field_mgrs,m_grids_manager,m_run_t0,m_case_t0);
   }
 
   m_ad_status |= s_output_inited;

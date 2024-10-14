@@ -78,34 +78,29 @@ public:
   //  - run_t0: the timestamp of the start of the current simulation
   //  - case_t0: the timestamp of the start of the overall simulation (precedes run_r0 for
   //             a restarted simulation. Restart logic is triggered *only* if case_t0<run_t0.
-  //  - is_model_restart_output: whether this output stream is to write a model restart file
   void setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
               const std::shared_ptr<fm_type>& field_mgr,
               const std::shared_ptr<const gm_type>& grids_mgr,
               const util::TimeStamp& run_t0,
-              const util::TimeStamp& case_t0,
-              const bool is_model_restart_output);
+              const util::TimeStamp& case_t0);
   void setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
               const std::shared_ptr<fm_type>& field_mgr,
               const std::shared_ptr<const gm_type>& grids_mgr,
-              const util::TimeStamp& run_t0,
-              const bool is_model_restart_output) {
-    setup (io_comm,params,field_mgr,grids_mgr,run_t0,run_t0,is_model_restart_output);
+              const util::TimeStamp& run_t0) {
+    setup (io_comm,params,field_mgr,grids_mgr,run_t0,run_t0);
   }
 
   void setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
               const std::map<std::string,std::shared_ptr<fm_type>>& field_mgrs,
               const std::shared_ptr<const gm_type>& grids_mgr,
               const util::TimeStamp& run_t0,
-              const util::TimeStamp& case_t0,
-              const bool is_model_restart_output);
+              const util::TimeStamp& case_t0);
 
   void setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
               const std::map<std::string,std::shared_ptr<fm_type>>& field_mgrs,
               const std::shared_ptr<const gm_type>& grids_mgr,
-              const util::TimeStamp& run_t0,
-              const bool is_model_restart_output) {
-    setup (io_comm,params,field_mgrs,grids_mgr,run_t0,run_t0,is_model_restart_output);
+              const util::TimeStamp& run_t0) {
+    setup (io_comm,params,field_mgrs,grids_mgr,run_t0,run_t0);
   }
 
   void set_logger(const std::shared_ptr<ekat::logger::LoggerBase>& atm_logger) {
