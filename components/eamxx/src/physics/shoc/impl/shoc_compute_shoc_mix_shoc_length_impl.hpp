@@ -35,7 +35,7 @@ void Functions<S,D>
 
     if (tke_1p5_closure){
        shoc_mix(k) = dz_zt(k) // may need to add possible stability correction
-       const auto stable_mask = brunt > 0
+       const auto stable_mask = brunt > 0;
        if (stable_mas.any()){
          shoc_mix(k) = ekat::min(dz_zt(k),ekat::max(0.1*dz_zt,ekat::sqrt(0.76
 	                        *tk(k)/0.1/ekat::sqrt(brunt+1.e-10))));

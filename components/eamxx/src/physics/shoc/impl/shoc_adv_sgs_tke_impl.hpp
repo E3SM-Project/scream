@@ -51,7 +51,7 @@ void Functions<S,D>
        // If 1.5 closure then buoyancy flux is closed as a function
        //   of the local moist brunt vaisalla frequency since there is
        //   no SGS variability and wthv_sec is not computed.
-       a_prod_bu = -tke(k)*brunt(k)
+       a_prod_bu = -tke(k)*brunt(k);
     }
     else{
        a_prod_bu = (ggr/basetemp)*wthv_sec(k);
