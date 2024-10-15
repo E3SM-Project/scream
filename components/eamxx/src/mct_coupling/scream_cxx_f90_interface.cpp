@@ -171,7 +171,6 @@ void scream_create_atm_instance (const MPI_Fint f_comm, const int atm_id,
     ad.set_params(scream_params);
     ad.init_scorpio(atm_id);
     ad.init_time_stamps(run_t0,case_t0);
-    ad.create_output_managers ();
     ad.create_atm_processes ();
     ad.create_grids ();
     ad.create_fields ();
@@ -260,6 +259,8 @@ void scream_init_atm (const char* caseid,
     // Do this before init-ing the output managers,
     // so the fields are valid if outputing at t=0
     ad.reset_accumulated_fields();
+
+    ad.create_output_managers ();
     ad.initialize_output_managers ();
   });
 }
