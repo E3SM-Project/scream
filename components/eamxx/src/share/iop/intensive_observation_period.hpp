@@ -126,6 +126,10 @@ public:
     return m_iop_fields[fname];
   }
 
+  std::map<std::string, Field> get_iop_field_map() {
+    return m_iop_fields;
+  }
+
 private:
 
   // Struct for storing info related
@@ -203,4 +207,3 @@ private:
 } // namespace scream
 
 #endif // #ifndef SCREAM_IOP_HPP
-

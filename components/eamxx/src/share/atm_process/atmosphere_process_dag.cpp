@@ -187,7 +187,9 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
     const auto& unmet = m_unmet_deps.at(n.id);
 
     std::string box_fmt;
-    int id_IC, id_begin, id_end;
+    int id_IC = -1;
+    int id_begin = -1;
+    int id_end = -1;
     if (n.name == "Begin of atm time step") {
       id_begin = n.id;
       box_fmt = "  color=\"#00667E\"\n  fontcolor=\"#00667E\"\n  style=filled\n"
@@ -575,6 +577,10 @@ void AtmProcDAG::add_edges () {
 }
 
 void AtmProcDAG::process_initial_conditions(const grid_field_map &ic_inited) {
+  // return if there's nothing to do
+  if (ic_inited.size() == 0) {
+    return;
+  }
   // Create a node for the ICs
   int id = m_nodes.size();
   m_nodes.push_back(Node());
@@ -582,6 +588,62 @@ void AtmProcDAG::process_initial_conditions(const grid_field_map &ic_inited) {
   ic_node.id = id;
   ic_node.name = "Initial Conditions";
   m_unmet_deps[id].clear();
+  for (auto &node : m_nodes) {
+    if (m_unmet_deps.at(node.id).empty()) {
+      continue;
+    } else {
+      // NOTE: node_unmet_fields is a std::set<int>
+      auto &node_unmet_fields = m_unmet_deps.at(node.id);
+      // add the current node as a child of the IC node
+      ic_node.children.push_back(node.id);
+      for (auto um_fid : node_unmet_fields) {
+        for (auto &it1 : ic_inited) {
+          const auto &grid_name = it1.first;
+          // if this unmet-dependency field's name is in the ic_inited map for
+          // the provided grid_name key, then we flip its value negative and
+          // break from the for (ic_inited) and for (node_unmet_fields) loops;
+          // otherwise, keep trying for the next grid_name
+          if (ekat::contains(ic_inited.at(grid_name), m_fids[um_fid].name())) {
+            auto id_now_met = node_unmet_fields.extract(um_fid);
+            id_now_met.value() = -id_now_met.value();
+            node_unmet_fields.insert(std::move(id_now_met));
+            // add the fid of the formerly unmet dep to the initial condition
+            // node's computed list
+            ic_node.computed.insert(um_fid);
+            goto endloop;
+          } else {
+            continue;
+          }
+        }
+      endloop:;
+      }
+    }
+  }
+  m_IC_processed = true;
+}
+
+void AtmProcDAG::process_IC_alt(const grid_field_map &ic_inited) {
+  // First, add the fields that were determined to come from the previous time
+  // step => IC for t = 0
+  // get the begin_node since the IC is identical at first
+  const Node &begin_node = m_nodes[m_nodes.size() - 2];
+  int id = m_nodes.size();
+  // Create a node for the ICs by copying the begin_node
+  // FIXME:(?) do we need an explicit copy constructor given that a Node is
+  // just a struct?
+  m_nodes.push_back(Node(begin_node));
+  Node& ic_node = m_nodes.back();
+  // now set/clear the basic data for the ic_node
+  ic_node.id = id;
+  ic_node.name = "Initial Conditions";
+  m_unmet_deps[id].clear();
+  ic_node.children.clear();
+  // now add the begin_node as a child of the ic_node
+  ic_node.children.push_back(begin_node.id);
+  // return if there's nothing to process in the ic_inited vector
+  if (ic_inited.size() == 0) {
+    return;
+  }
   for (auto &node : m_nodes) {
     if (m_unmet_deps.at(node.id).empty()) {
       continue;

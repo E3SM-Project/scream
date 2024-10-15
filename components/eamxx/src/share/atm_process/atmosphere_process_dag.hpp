@@ -18,6 +18,7 @@ public:
 
   using grid_field_map = std::map<std::string,std::vector<std::string>>;
   void process_initial_conditions(const grid_field_map &ic_inited);
+  void process_IC_alt(const grid_field_map &ic_inited);
 
   void init_atm_proc_nodes(const group_type& atm_procs);
 
