@@ -9,6 +9,7 @@ on:
     branches: [ master ]
     # Only if docs-related files are touched
     paths:
+      - .github/workflows/eamxx-gh-pages.yml
       - components/eamxx/mkdocs.yaml
       - components/eamxx/docs/**
       - components/eamxx/cime_config/namelist_defaults_scream.xml
@@ -17,6 +18,7 @@ on:
     branches: [ master ]
     # Only if docs-related files are touched
     paths:
+      - .github/workflows/eamxx-gh-pages.yml
       - components/eamxx/mkdocs.yaml
       - components/eamxx/docs/**
       - components/eamxx/cime_config/namelist_defaults_scream.xml
