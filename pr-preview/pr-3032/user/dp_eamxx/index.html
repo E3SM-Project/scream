@@ -9,10 +9,6 @@
       
       
       
-        <link rel="prev" href="../nudging/">
-      
-      
-        <link rel="next" href="../cosp/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -20,7 +16,7 @@
     
     
       
-        <title>Extra radiation calls - EAMxx</title>
+        <title>Doubly Periodic (DP) EAMxx - EAMxx</title>
       
     
     
@@ -72,7 +68,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#clean-and-clean-clear-sky-diagnostics" class="md-skip">
+        <a href="#doubly-periodic-dp-eamxx" class="md-skip">
           Skip to content
         </a>
       
@@ -121,7 +117,7 @@ EAMxx is not supported yet.
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Extra radiation calls
+              Doubly Periodic (DP) EAMxx
             
           </span>
         </div>
@@ -281,19 +277,17 @@ EAMxx is not supported yet.
       
   
   
-    
   
   
-  
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -307,7 +301,7 @@ EAMxx is not supported yet.
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             User Guide
@@ -423,30 +417,10 @@ EAMxx is not supported yet.
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Extra radiation calls
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../clean_clear_sky/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -455,35 +429,6 @@ EAMxx is not supported yet.
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#example-setup-current-as-of-april-2024" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example setup (current as of April 2024)
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1022,23 +967,6 @@ EAMxx is not supported yet.
     
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#example-setup-current-as-of-april-2024" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example setup (current as of April 2024)
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -1052,36 +980,8 @@ EAMxx is not supported yet.
                   
 
 
-<h1 id="clean-and-clean-clear-sky-diagnostics">Clean- and clean-clear-sky diagnostics</h1>
-<p>In order to decompose the aerosol effective radiative forcing, additional diagnostic radiation calls are needed.
-These extra diagnostics are optionally added to the main radiation call. The extra diagnostics are:</p>
-<ul>
-<li>Clean-clear-sky fluxes: the fluxes that would be present if there were neither aerosols nor clouds, and are calculated by adding an additional radiation call at the very beginning of the logic before the optics class is endowed with aerosol and cloud properties.</li>
-<li>Clean-sky fluxes: the fluxes that would be present if there were no aerosols, and are calculated by adding an additional radiation call after substantiating an additional optics class, but not endowing it with aerosol properties.</li>
-</ul>
-<h2 id="example-setup-current-as-of-april-2024">Example setup (current as of April 2024)</h2>
-<p>The extra calls are controlled by runtime flags <code>extra_clnclrsky_diag</code> and <code>extra_clnsky_diag</code> (they take either <code>true</code> or <code>false</code> as their values).</p>
-<div class="highlight"><pre><span></span><code><span class="w">    </span>./atmchange<span class="w"> </span><span class="nv">extra_clnclrsky_diag</span><span class="o">=</span><span class="nb">true</span>
-<span class="w">    </span>./atmchange<span class="w"> </span><span class="nv">extra_clnsky_diag</span><span class="o">=</span><span class="nb">true</span>
-</code></pre></div>
-<p>Below is an example output file to output the extra (clean and clean-clear-sky) radiation diagnostics atop the atmosphere.</p>
-<div class="highlight"><pre><span></span><code><span class="nt">%YAML</span><span class="w"> </span><span class="m">1.1</span>
-<span class="nn">---</span>
-<span class="nt">filename_prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monthly.outputs</span>
-<span class="nt">Averaging Type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Average</span>
-<span class="nt">Max Snapshots Per File</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="nt">Fields</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">Physics PG2</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">Field Names</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SW_clnclrsky_flux_up_at_model_top</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LW_clnclrsky_flux_up_at_model_top</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SW_clnsky_flux_up_at_model_top</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LW_clnsky_flux_up_at_model_top</span>
-<span class="nt">output_control</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">Frequency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">  </span><span class="nt">frequency_units</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nmonths</span>
-<span class="w">  </span><span class="nt">MPI Ranks in Filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-</code></pre></div>
+<h1 id="doubly-periodic-dp-eamxx">Doubly Periodic (DP) EAMxx</h1>
+<p>To run the DP configuration of EAMxx (DP-EAMxx) please refer to the official <a href="https://github.com/E3SM-Project/scmlib/wiki/Doubly-Periodic-SCREAM-Home">DP resource page</a>.  At this location you will find full documentation of case descriptions and access to run scripts.  Using these scripts, you should be able to get DP-EAMxx up and running in a matter of minutes on any machine that EAMxx currently runs on (CPU or GPU).</p>
 
 
 

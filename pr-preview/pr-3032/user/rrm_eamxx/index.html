@@ -9,10 +9,6 @@
       
       
       
-        <link rel="prev" href="../nudging/">
-      
-      
-        <link rel="next" href="../cosp/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -20,7 +16,7 @@
     
     
       
-        <title>Extra radiation calls - EAMxx</title>
+        <title>Running EAMxx with a Regionally Refined Mesh (RRM) - EAMxx</title>
       
     
     
@@ -72,7 +68,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#clean-and-clean-clear-sky-diagnostics" class="md-skip">
+        <a href="#running-eamxx-with-a-regionally-refined-mesh-rrm" class="md-skip">
           Skip to content
         </a>
       
@@ -121,7 +117,7 @@ EAMxx is not supported yet.
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Extra radiation calls
+              Running EAMxx with a Regionally Refined Mesh (RRM)
             
           </span>
         </div>
@@ -281,19 +277,17 @@ EAMxx is not supported yet.
       
   
   
-    
   
   
-  
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -307,7 +301,7 @@ EAMxx is not supported yet.
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             User Guide
@@ -423,30 +417,10 @@ EAMxx is not supported yet.
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Extra radiation calls
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../clean_clear_sky/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -455,35 +429,6 @@ EAMxx is not supported yet.
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#example-setup-current-as-of-april-2024" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example setup (current as of April 2024)
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1029,9 +974,45 @@ EAMxx is not supported yet.
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#example-setup-current-as-of-april-2024" class="md-nav__link">
+  <a href="#choose-your-rrm" class="md-nav__link">
     <span class="md-ellipsis">
-      Example setup (current as of April 2024)
+      Choose Your RRM
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generate-your-rrm" class="md-nav__link">
+    <span class="md-ellipsis">
+      Generate Your RRM
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#make-your-initial-condition-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Make Your Initial Condition File
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#assemble-nudging-data-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      Assemble Nudging Data (Optional)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-your-rrm" class="md-nav__link">
+    <span class="md-ellipsis">
+      Run your RRM
     </span>
   </a>
   
@@ -1052,36 +1033,21 @@ EAMxx is not supported yet.
                   
 
 
-<h1 id="clean-and-clean-clear-sky-diagnostics">Clean- and clean-clear-sky diagnostics</h1>
-<p>In order to decompose the aerosol effective radiative forcing, additional diagnostic radiation calls are needed.
-These extra diagnostics are optionally added to the main radiation call. The extra diagnostics are:</p>
-<ul>
-<li>Clean-clear-sky fluxes: the fluxes that would be present if there were neither aerosols nor clouds, and are calculated by adding an additional radiation call at the very beginning of the logic before the optics class is endowed with aerosol and cloud properties.</li>
-<li>Clean-sky fluxes: the fluxes that would be present if there were no aerosols, and are calculated by adding an additional radiation call after substantiating an additional optics class, but not endowing it with aerosol properties.</li>
-</ul>
-<h2 id="example-setup-current-as-of-april-2024">Example setup (current as of April 2024)</h2>
-<p>The extra calls are controlled by runtime flags <code>extra_clnclrsky_diag</code> and <code>extra_clnsky_diag</code> (they take either <code>true</code> or <code>false</code> as their values).</p>
-<div class="highlight"><pre><span></span><code><span class="w">    </span>./atmchange<span class="w"> </span><span class="nv">extra_clnclrsky_diag</span><span class="o">=</span><span class="nb">true</span>
-<span class="w">    </span>./atmchange<span class="w"> </span><span class="nv">extra_clnsky_diag</span><span class="o">=</span><span class="nb">true</span>
-</code></pre></div>
-<p>Below is an example output file to output the extra (clean and clean-clear-sky) radiation diagnostics atop the atmosphere.</p>
-<div class="highlight"><pre><span></span><code><span class="nt">%YAML</span><span class="w"> </span><span class="m">1.1</span>
-<span class="nn">---</span>
-<span class="nt">filename_prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monthly.outputs</span>
-<span class="nt">Averaging Type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Average</span>
-<span class="nt">Max Snapshots Per File</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="nt">Fields</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">Physics PG2</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">Field Names</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SW_clnclrsky_flux_up_at_model_top</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LW_clnclrsky_flux_up_at_model_top</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SW_clnsky_flux_up_at_model_top</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LW_clnsky_flux_up_at_model_top</span>
-<span class="nt">output_control</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">Frequency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">  </span><span class="nt">frequency_units</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nmonths</span>
-<span class="w">  </span><span class="nt">MPI Ranks in Filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-</code></pre></div>
+<h1 id="running-eamxx-with-a-regionally-refined-mesh-rrm">Running EAMxx with a Regionally Refined Mesh (RRM)</h1>
+<p>Running EAMxx with a RRM allows you run a select region of the globe at high resolution (i.e. 3 km) with the remainder of the globe at a lower resolution (i.e. 25 or 100 km).  This document will point you to the steps required and resources available to assist in developing and running a new RRM.</p>
+<h2 id="choose-your-rrm">Choose Your RRM</h2>
+<p>What region of the globe do you want to refine?  Your first step should be to check <a href="https://acme-climate.atlassian.net/wiki/spaces/DOC/pages/3690397775/Library+of+Regionally-Refined+Model+RRM+Grids">library of RRM grids/cases</a> that have already been developed to potentially avoid duplicate work.  If you found a RRM that suits your needs, you can skip the next step ("Generate Your RRM").</p>
+<h2 id="generate-your-rrm">Generate Your RRM</h2>
+<p>Please refer to the offical <a href="https://acme-climate.atlassian.net/wiki/spaces/DOC/pages/872579110/Running+E3SM+on+New+Atmosphere+Grids">E3SM guide for developing new atmosphere grids</a>, which provides detailed guidance for developing your RRM.</p>
+<p>After you have made all the necessary files for your RRM, you will need to configure your code branch so that it knows about your new grid.  The steps required to do this are documented at the top of the <a href="https://acme-climate.atlassian.net/wiki/spaces/DOC/pages/3690397775/Library+of+Regionally-Refined+Model+RRM+Grids">library of RRM grids/cases page</a>.</p>
+<h2 id="make-your-initial-condition-file">Make Your Initial Condition File</h2>
+<p>The easiest way to generate an initial condition is to use the <a href="https://github.com/E3SM-Project/HICCUP">HICCUP tool</a>, which is a set of flexible and robust python routines to streamline the task of generating a new atmospheric initial condition for E3SM.  Otherwise, please see the step-by-step instuctions if you prefer to <a href="https://acme-climate.atlassian.net/wiki/spaces/DOC/pages/1002373272/Generate+atm+initial+condition+from+analysis+data">manually generate your initial condition</a>.</p>
+<h2 id="assemble-nudging-data-optional">Assemble Nudging Data (Optional)</h2>
+<p>If you wish to nudge your simulation, assemble your nudging data in the format required by EAMxx.  Please refer to the <a href="../nudging/">nudging documentation</a>.</p>
+<p>In the event that you only want to nudge a portion of your domain, then you will need to generate a nudging weights file.  A common use case for this is when you want the high-resolution region to remain free-running (unnudged) while nudging the coarse domain towards reanalysis or model data.  Please use <a href="https://github.com/E3SM-Project/scream-docs/blob/master/run_scripts/RRM_example_scripts/SCREAMv1_create_nudging_weights.py">this script</a> as an example of how to generate your nudging weights file.</p>
+<h2 id="run-your-rrm">Run your RRM</h2>
+<p>Congratulations, you are now ready to run your EAMxx RRM.  If you are running your RRM in free running mode (not using any nudging) then you simply need to modify an existing EAMxx script and change the resolution to match the one you created for your RRM.</p>
+<p>If you are using nudging, then please see this <a href="https://github.com/E3SM-Project/scream-docs/blob/master/run_scripts/RRM_example_scripts/SCREAMv1-nudging.CAx32v1pg2.pm-gpu.template.sh">example script of how to run a nudged EAMxx RRM run</a>.  This example script uses the <a href="https://gmd.copernicus.org/articles/17/3687/2024/">California 3-km RRM</a>, which is on the master branch.</p>
 
 
 
