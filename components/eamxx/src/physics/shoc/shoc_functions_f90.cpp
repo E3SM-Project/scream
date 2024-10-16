@@ -101,7 +101,7 @@ void isotropic_ts_c(Int nlev, Int shcol, Real *brunt_int, Real *tke,
                     Real *a_diss, Real *brunt, Real *isotropy);
 
 void adv_sgs_tke_c(Int nlev, Int shcol, Real dtime, Real *shoc_mix,
-                   Real *wthv_sec, Real *sterm_zt, Real *tk,
+                   Real *wthv_sec, Real *sterm_zt, Real *tk, Real *brunt,
                    Real *tke, Real *a_diss);
 
 void eddy_diffusivities_c(Int nlev, Int shcol, Real *pblh,
@@ -114,7 +114,7 @@ void calc_shoc_vertflux_c(Int shcol, Int nlev, Int nlevi, Real *tkh_zi,
 void shoc_length_c(Int shcol, Int nlev, Int nlevi, Real *host_dx,
                    Real *host_dy, Real *zt_grid,
                    Real *zi_grid, Real *dz_zt,  Real *tke,
-                   Real *thv, Real *brunt, Real *shoc_mix);
+                   Real *thv, Real *tk, Real *brunt, Real *shoc_mix);
 
 void compute_brunt_shoc_length_c(Int nlev, Int nlevi, Int shcol ,Real *dz_zt,
                                  Real *thv, Real *thv_zi, Real *brunt);
@@ -466,7 +466,7 @@ void adv_sgs_tke(AdvSgsTkeData& d)
 {
   shoc_init(d.nlev, true);
   d.transpose<ekat::TransposeDirection::c2f>();
-  adv_sgs_tke_c(d.nlev, d.shcol, d.dtime, d.shoc_mix, d.wthv_sec, d.sterm_zt, d.tk, d.tke, d.a_diss);
+  adv_sgs_tke_c(d.nlev, d.shcol, d.dtime, d.shoc_mix, d.wthv_sec, d.sterm_zt, d.tk, d.brunt, d.tke, d.a_diss);
   d.transpose<ekat::TransposeDirection::f2c>();
 }
 
@@ -482,7 +482,7 @@ void shoc_length(ShocLengthData& d)
 {
   shoc_init(d.nlev, true);
   d.transpose<ekat::TransposeDirection::c2f>();
-  shoc_length_c(d.shcol, d.nlev, d.nlevi, d.host_dx, d.host_dy, d.zt_grid, d.zi_grid, d.dz_zt, d.tke, d.thv, d.brunt, d.shoc_mix);
+  shoc_length_c(d.shcol, d.nlev, d.nlevi, d.host_dx, d.host_dy, d.zt_grid, d.zi_grid, d.dz_zt, d.tke, d.thv, d.tk, d.brunt, d.shoc_mix);
   d.transpose<ekat::TransposeDirection::f2c>();
 }
 
@@ -506,7 +506,7 @@ void compute_shoc_mix_shoc_length(ComputeShocMixShocLengthData& d)
 {
   shoc_init(d.nlev, true);
   d.transpose<ekat::TransposeDirection::c2f>();
-  compute_shoc_mix_shoc_length_c(d.nlev, d.shcol, d.tke, d.brunt, d.zt_grid, d.l_inf, d.shoc_mix);
+  compute_shoc_mix_shoc_length_c(d.nlev, d.shcol, d.tke, d.brunt, d.zt_grid, d.dz_zt, d.tk, d.l_inf, d.shoc_mix);
   d.transpose<ekat::TransposeDirection::f2c>();
 }
 
@@ -1183,7 +1183,7 @@ void shoc_pblintd_init_pot_f(Int shcol, Int nlev, Real *thl, Real* ql, Real* q,
 }
 
 void compute_shoc_mix_shoc_length_f(Int nlev, Int shcol, Real* tke, Real* brunt,
-                                    Real* zt_grid, Real* l_inf, Real* shoc_mix)
+                                    Real* zt_grid, Real* dz_zt, Real* tk, Real* l_inf, Real* shoc_mix)
 {
   using SHF = Functions<Real, DefaultDevice>;
 
@@ -1196,8 +1196,8 @@ void compute_shoc_mix_shoc_length_f(Int nlev, Int shcol, Real* tke, Real* brunt,
   using MemberType = typename SHF::MemberType;
 
   std::vector<view_1d> temp_1d_d(1);
-  std::vector<view_2d> temp_2d_d(4);
-  std::vector<const Real*> ptr_array = {tke,   brunt, zt_grid, shoc_mix};
+  std::vector<view_2d> temp_2d_d(6);
+  std::vector<const Real*> ptr_array = {tke,   brunt, zt_grid, dz_zt, tk, shoc_mix};
 
   // Sync to device
   ScreamDeepCopy::copy_to_device({l_inf}, shcol, temp_1d_d);
@@ -1210,7 +1210,9 @@ void compute_shoc_mix_shoc_length_f(Int nlev, Int shcol, Real* tke, Real* brunt,
     tke_d     (temp_2d_d[0]),
     brunt_d   (temp_2d_d[1]),
     zt_grid_d (temp_2d_d[2]),
-    shoc_mix_d  (temp_2d_d[3]);
+    dz_zt_d   (temp_2d_d[3]),
+    tk_d      (temp_2d_d[4]),
+    shoc_mix_d  (temp_2d_d[5]);
 
   const Int nk_pack = ekat::npack<Spack>(nlev);
   const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
@@ -1222,11 +1224,13 @@ void compute_shoc_mix_shoc_length_f(Int nlev, Int shcol, Real* tke, Real* brunt,
     const auto tke_s      = ekat::subview(tke_d, i);
     const auto brunt_s    = ekat::subview(brunt_d, i);
     const auto zt_grid_s  = ekat::subview(zt_grid_d, i);
+    const auto dz_zt_s  = ekat::subview(dz_zt_d, i);
+    const auto tk_s  = ekat::subview(tk_d, i);
     const auto shoc_mix_s = ekat::subview(shoc_mix_d, i);
 
     const Real length_fac = 0.5;
-    SHF::compute_shoc_mix_shoc_length(team, nlev, length_fac, tke_s, brunt_s, zt_grid_s, l_inf_s,
-                                      shoc_mix_s);
+    SHF::compute_shoc_mix_shoc_length(team, nlev, length_fac, tke_s, brunt_s, zt_grid_s, dz_zt_s,
+                                      tk_s, l_inf_s, shoc_mix_s);
   });
 
   // Sync back to host
@@ -1921,7 +1925,7 @@ void shoc_pblintd_cldcheck_f(Int shcol, Int nlev, Int nlevi, Real* zi, Real* cld
 
 void shoc_length_f(Int shcol, Int nlev, Int nlevi, Real* host_dx, Real* host_dy,
                    Real* zt_grid, Real* zi_grid, Real*dz_zt, Real* tke,
-                   Real* thv, Real*brunt, Real* shoc_mix)
+                   Real* thv, Real* tk, Real*brunt, Real* shoc_mix)
 {
   using SHF = Functions<Real, DefaultDevice>;
 
@@ -1934,12 +1938,12 @@ void shoc_length_f(Int shcol, Int nlev, Int nlevi, Real* host_dx, Real* host_dy,
   using MemberType = typename SHF::MemberType;
 
   std::vector<view_1d> temp_1d_d(2);
-  std::vector<view_2d> temp_2d_d(7);
+  std::vector<view_2d> temp_2d_d(8);
   std::vector<int> dim1_sizes(7, shcol);
   std::vector<int> dim2_sizes = {nlev, nlevi, nlev, nlev,
                                  nlev, nlev, nlev};
   std::vector<const Real*> ptr_array = {zt_grid, zi_grid, dz_zt, tke,
-                                        thv,     brunt,   shoc_mix};
+                                        thv, tk, brunt,   shoc_mix};
   // Sync to device
   ScreamDeepCopy::copy_to_device({host_dx, host_dy}, shcol, temp_1d_d);
   ekat::host_to_device(ptr_array, dim1_sizes, dim2_sizes, temp_2d_d, true);
@@ -1955,8 +1959,9 @@ void shoc_length_f(Int shcol, Int nlev, Int nlevi, Real* host_dx, Real* host_dy,
     dz_zt_d(temp_2d_d[2]),
     tke_d(temp_2d_d[3]),
     thv_d(temp_2d_d[4]),
-    brunt_d(temp_2d_d[5]),
-    shoc_mix_d(temp_2d_d[6]);
+    tk_d(temp_2d_d[5]),
+    brunt_d(temp_2d_d[6]),
+    shoc_mix_d(temp_2d_d[7]);
 
   const Int nlev_packs = ekat::npack<Spack>(nlev);
   const Int nlevi_packs = ekat::npack<Spack>(nlevi);
@@ -1979,6 +1984,7 @@ void shoc_length_f(Int shcol, Int nlev, Int nlevi, Real* host_dx, Real* host_dy,
     const auto dz_zt_s = ekat::subview(dz_zt_d, i);
     const auto tke_s = ekat::subview(tke_d, i);
     const auto thv_s = ekat::subview(thv_d, i);
+    const auto tk_s = ekat::subview(tk_d, i);
     const auto brunt_s = ekat::subview(brunt_d, i);
     const auto shoc_mix_s = ekat::subview(shoc_mix_d, i);
 
@@ -1986,7 +1992,7 @@ void shoc_length_f(Int shcol, Int nlev, Int nlevi, Real* host_dx, Real* host_dy,
     const Scalar length_fac = 0.5;
     SHF::shoc_length(team,nlev,nlevi,length_fac,host_dx_s,host_dy_s,
                      zt_grid_s,zi_grid_s,dz_zt_s,tke_s,
-                     thv_s,workspace,brunt_s,shoc_mix_s);
+                     thv_s,tk_s,workspace,brunt_s,shoc_mix_s);
   });
 
   // Sync back to host
@@ -2342,7 +2348,7 @@ void diag_third_shoc_moments_f(Int shcol, Int nlev, Int nlevi, Real* w_sec, Real
 }
 
 void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, Real* shoc_mix, Real* wthv_sec,
-                   Real* sterm_zt, Real* tk, Real* tke, Real* a_diss)
+                   Real* sterm_zt, Real* tk, Real* brunt, Real* tke, Real* a_diss)
 {
   using SHF = Functions<Real, DefaultDevice>;
 
@@ -2352,10 +2358,10 @@ void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, Real* shoc_mix, Real* wthv_s
   using ExeSpace   = typename KT::ExeSpace;
   using MemberType = typename SHF::MemberType;
 
-  static constexpr Int num_arrays = 6;
+  static constexpr Int num_arrays = 7;
 
   std::vector<view_2d> temp_d(num_arrays);
-  std::vector<const Real*> ptr_array  = {shoc_mix, wthv_sec, sterm_zt, tk,    tke,   a_diss};
+  std::vector<const Real*> ptr_array  = {shoc_mix, wthv_sec, sterm_zt, tk, brunt, tke, a_diss};
 
   // Sync to device
   ekat::host_to_device(ptr_array, shcol, nlev, temp_d, true);
@@ -2366,9 +2372,10 @@ void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, Real* shoc_mix, Real* wthv_s
     wthv_sec_d (temp_d[1]),
     sterm_zt_d (temp_d[2]),
     tk_d       (temp_d[3]),
+    brunt_d    (temp_d[4]),
     //output
-    tke_d      (temp_d[4]), //inout
-    a_diss_d   (temp_d[5]); //out
+    tke_d      (temp_d[5]), //inout
+    a_diss_d   (temp_d[6]); //out
 
   const Int nk_pack = ekat::npack<Spack>(nlev);
   const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
@@ -2381,10 +2388,11 @@ void adv_sgs_tke_f(Int nlev, Int shcol, Real dtime, Real* shoc_mix, Real* wthv_s
       const auto wthv_sec_s = ekat::subview(wthv_sec_d ,i);
       const auto sterm_zt_s = ekat::subview(sterm_zt_d ,i);
       const auto tk_s       = ekat::subview(tk_d ,i);
+      const auto brunt_s    = ekat::subview(brunt_d, i);
       const auto tke_s      = ekat::subview(tke_d ,i);
       const auto a_diss_s   = ekat::subview(a_diss_d ,i);
 
-      SHF::adv_sgs_tke(team, nlev, dtime, shoc_mix_s, wthv_sec_s, sterm_zt_s, tk_s, tke_s, a_diss_s);
+      SHF::adv_sgs_tke(team, nlev, dtime, shoc_mix_s, wthv_sec_s, sterm_zt_s, tk_s, brunt_s, tke_s, a_diss_s);
     });
 
   // Sync back to host
