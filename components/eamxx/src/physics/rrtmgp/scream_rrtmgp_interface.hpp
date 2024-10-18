@@ -168,9 +168,6 @@ template <typename T>
 using view_t = Kokkos::View<T, LayoutT, DeviceT>;
 
 template <typename T>
-using oview_t = Kokkos::Experimental::OffsetView<T, LayoutT, DeviceT>;
-
-template <typename T>
 using hview_t = Kokkos::View<T, LayoutT, HostDevice>;
 
 using pool_t = conv::MemPoolSingleton<RealT, DeviceT>;
@@ -565,6 +562,25 @@ static void rrtmgp_sw(
   int ngpt = k_dist.get_ngpt();
   int ngas = gas_concs.get_num_gases();
 
+  // Get daytime indices
+  auto dayIndices = pool_t::template alloc<int>(ncol);
+  Kokkos::deep_copy(dayIndices, -1);
+
+  int nday = 0;
+  // Serialized for now.
+  Kokkos::parallel_reduce(1, KOKKOS_LAMBDA(int, int& nday_inner) {
+    for (int icol = 0; icol < ncol; ++icol) {
+      if (mu0(icol) > 0) {
+        dayIndices(nday_inner++) = icol;
+      }
+    }
+  }, Kokkos::Sum<int>(nday));
+
+  if (nday == 0) {
+    // No daytime columns in this chunk, skip the rest of this routine
+    return;
+  }
+
   // Allocate temporaries from pool
   const int size1 = nday;
   const int size2 = nday*nlay; // 4
@@ -640,25 +656,6 @@ static void rrtmgp_sw(
     bnd_flux_dn    (icol,ilev,ibnd) = 0;
     bnd_flux_dn_dir(icol,ilev,ibnd) = 0;
   });
-
-  // Get daytime indices
-  auto dayIndices = view_t<int*>("dayIndices", ncol);
-  Kokkos::deep_copy(dayIndices, -1);
-
-  int nday = 0;
-  // Serialized for now.
-  Kokkos::parallel_reduce(1, KOKKOS_LAMBDA(int, int& nday_inner) {
-    for (int icol = 0; icol < ncol; ++icol) {
-      if (mu0(icol) > 0) {
-        dayIndices(nday_inner++) = icol;
-      }
-    }
-  }, Kokkos::Sum<int>(nday));
-
-  if (nday == 0) {
-    // No daytime columns in this chunk, skip the rest of this routine
-    return;
-  }
 
   // Subset mu0
   Kokkos::parallel_for(nday, KOKKOS_LAMBDA(int iday) {
@@ -824,6 +821,7 @@ static void rrtmgp_sw(
   }
 
   pool_t::dealloc(data, dcurr - data);
+  pool_t::dealloc(dayIndices);
 }
 
 /*
@@ -857,7 +855,7 @@ static void rrtmgp_lw(
   view_t<RealT**>  gauss_wts    (dcurr, max_gauss_pts,max_gauss_pts); dcurr += size3;
   view_t<RealT**>  t_lay_limited(dcurr, ncol, nlay); dcurr += size4;
   view_t<RealT**>  t_lev_limited(dcurr, ncol, nlay+1); dcurr += size5;
-  view_t<RealT***> col_gas      (dcurr, std::make_pair(0, ncol-1), std::make_pair(0, nlay-1), std::make_pair(-1, k_dist.get_ngas()-1)); dcurr += size6;
+  view_t<RealT***> col_gas      (dcurr, ncol, nlay, k_dist.get_ngas()+1); dcurr += size6;
 
   // Associate local pointers for fluxes
   auto &flux_up           = fluxes.flux_up;
@@ -984,7 +982,8 @@ static void rrtmgp_lw(
 /*
  * Return a subcolumn mask consistent with a specified overlap assumption
  */
-static void get_subcolumn_mask(const int ncol, const int nlay, const int ngpt, const real2dk &cldf, const int overlap_option, int1dk &seeds, int3dk& subcolumn_mask)
+template <typename CldfT, typename SeedsT, typename SubcT>
+static void get_subcolumn_mask(const int ncol, const int nlay, const int ngpt, const CldfT &cldf, const int overlap_option, const SeedsT &seeds, const SubcT& subcolumn_mask)
 {
   // Subcolumn generators are a means for producing a variable x(i,j,k), where
   //
@@ -1054,8 +1053,6 @@ static void get_subcolumn_mask(const int ncol, const int nlay, const int ngpt, c
   });
 
   pool_t::dealloc(cldx);
-
-  return subcolumn_mask;
 }
 
 /*
@@ -1324,8 +1321,8 @@ static optical_props1_t get_cloud_optics_lw(
   cloud_optics.set_ice_roughness(2);
 
   // Limit effective radii to be within bounds of lookup table
-  auto rel_limited = pool_t::alloc(ncol, nlay);
-  auto rei_limited = pool_t::alloc(ncol, nlay);
+  auto rel_limited = pool_t::template alloc<RealT>(ncol, nlay);
+  auto rei_limited = pool_t::template alloc<RealT>(ncol, nlay);
   limit_to_bounds_k(rel, cloud_optics.radliq_lwr, cloud_optics.radliq_upr, rel_limited);
   limit_to_bounds_k(rei, cloud_optics.radice_lwr, cloud_optics.radice_upr, rei_limited);
 
@@ -1348,7 +1345,7 @@ static optical_props2_t get_subsampled_clouds(
   subsampled_optics.alloc_2str(ncol, nlay);
 
   // Subcolumn mask with values of 0 indicating no cloud, 1 indicating cloud
-  auto cldmask = pool_t::alloc<int>(ncol, nlay, ngpt);
+  auto cldmask = pool_t::template alloc<int>(ncol, nlay, ngpt);
 
   // Check that we do not have clouds with no optical properties; this would get corrected
   // when we assign optical props, but we want to use a "radiative cloud fraction"
@@ -1357,7 +1354,7 @@ static optical_props2_t get_subsampled_clouds(
   // the vertical correlation of cloudy layers. I.e., cloudy layers might look maximally overlapped
   // even when separated by layers with no cloud properties, when in fact those layers should be
   // randomly overlapped.
-  auto cldfrac_rad = pool_t::alloc<RealT>(ncol, nlay);
+  auto cldfrac_rad = pool_t::template alloc<RealT>(ncol, nlay);
   Kokkos::parallel_for(MDRP::template get<3>({nbnd,nlay,ncol}), KOKKOS_LAMBDA (int ibnd, int ilay, int icol) {
     if (cloud_optics.tau(icol,ilay,ibnd) > 0) {
       cldfrac_rad(icol,ilay) = cld(icol,ilay);
@@ -1371,7 +1368,7 @@ static optical_props2_t get_subsampled_clouds(
   int overlap = 1;
   // Get unique seeds for each column that are reproducible across different MPI rank layouts;
   // use decimal part of pressure for this, consistent with the implementation in EAM
-  auto seeds = pool_t::alloc<int>(ncol);
+  auto seeds = pool_t::template alloc<int>(ncol);
   Kokkos::parallel_for(ncol, KOKKOS_LAMBDA(int icol) {
     seeds(icol) = 1e9 * (p_lay(icol,nlay-1) - int(p_lay(icol,nlay-1)));
   });
@@ -1408,7 +1405,7 @@ static optical_props1_t get_subsampled_clouds(
   subsampled_optics.alloc_1scl(ncol, nlay);
 
   // Subcolumn mask with values of 0 indicating no cloud, 1 indicating cloud
-  auto cldmask = pool_t::alloc<int>(ncol, nlay, ngpt);
+  auto cldmask = pool_t::template alloc<int>(ncol, nlay, ngpt);
 
   // Check that we do not have clouds with no optical properties; this would get corrected
   // when we assign optical props, but we want to use a "radiative cloud fraction"
@@ -1417,7 +1414,7 @@ static optical_props1_t get_subsampled_clouds(
   // the vertical correlation of cloudy layers. I.e., cloudy layers might look maximally overlapped
   // even when separated by layers with no cloud properties, when in fact those layers should be
   // randomly overlapped.
-  auto cldfrac_rad = pool_t::alloc<RealT>(ncol, nlay);
+  auto cldfrac_rad = pool_t::template alloc<RealT>(ncol, nlay);
   Kokkos::parallel_for(MDRP::template get<3>({nbnd,nlay,ncol}), KOKKOS_LAMBDA (int ibnd, int ilay, int icol) {
     if (cloud_optics.tau(icol,ilay,ibnd) > 0) {
       cldfrac_rad(icol,ilay) = cld(icol,ilay);
@@ -1428,7 +1425,7 @@ static optical_props1_t get_subsampled_clouds(
   // Get unique seeds for each column that are reproducible across different MPI rank layouts;
   // use decimal part of pressure for this, consistent with the implementation in EAM; use different
   // seed values for longwave and shortwave
-  auto seeds = pool_t::alloc<int>(ncol);
+  auto seeds = pool_t::template alloc<int>(ncol);
   Kokkos::parallel_for(ncol, KOKKOS_LAMBDA(int icol) {
     seeds(icol) = 1e9 * (p_lay(icol,nlay-2) - int(p_lay(icol,nlay-2)));
   });
