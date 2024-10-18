@@ -893,6 +893,17 @@ EAMxx is not supported yet.
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    CI and Nightly Testing
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -902,6 +913,43 @@ EAMxx is not supported yet.
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#autotester" class="md-nav__link">
+    <span class="md-ellipsis">
+      Autotester
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nightly-overview-cdash" class="md-nav__link">
+    <span class="md-ellipsis">
+      Nightly overview, CDash
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1027,6 +1075,32 @@ EAMxx is not supported yet.
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#autotester" class="md-nav__link">
+    <span class="md-ellipsis">
+      Autotester
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nightly-overview-cdash" class="md-nav__link">
+    <span class="md-ellipsis">
+      Nightly overview, CDash
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1041,10 +1115,17 @@ EAMxx is not supported yet.
 
 
 <h1 id="continuous-integration-and-nightly-testing">Continuous Integration and Nightly Testing</h1>
-<ul>
-<li>Autotester quick overview</li>
-<li>Nightly overview, CDash</li>
-</ul>
+<h2 id="autotester">Autotester</h2>
+<p>EAMxx using github actions and a Sandia product called Autotester 2
+to run CI testing on a CPU and GPU machine for every github pull
+request. By default, we run the e3sm_scream_v1_at suite and the
+standalone eamxx tests (test-all-scream).</p>
+<h2 id="nightly-overview-cdash">Nightly overview, CDash</h2>
+<p>Our nightly testing is much more extensive than the CI testing. You
+can see our dashboard here under the section "E3SM_SCREAM":
+https://my.cdash.org/index.php?project=E3SM</p>
+<p>We run a variety of CIME test suites and standalone testing on a number
+of platforms. We even do some performance testing on frontier.</p>
 
 
 

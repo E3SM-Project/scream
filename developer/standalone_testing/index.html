@@ -1196,7 +1196,38 @@ configurations. We use several types of tests</p>
   the <a href="https://cmake.org/cmake/help/latest/manual/ctest.1.html">ctest</a> command.</li>
 </ul>
 <p>We also support a <code>test-all-scream</code> configuration that runs all of the
-standalone tests for an EAMxx configuration.</p>
+standalone tests for an EAMxx configuration. Note, your current machine
+must be known to EAMxx before <code>test-all-scream</code> will work. A machine can
+be made known to EAMxx by editing the eamxx/scripts/machines_specs.py files.
+There are some instructions on what to do at the top of this file.</p>
+<p><code>test-all-scream</code> has a good help dump
+<div class="highlight"><pre><span></span><code>% cd $scream_repo/components/eamxx
+% ./scripts/test-all-scream -h
+</code></pre></div></p>
+<p>If you are unsure of the cmake configuration for you development cycle, one
+trick you can use is to run <code>test-all-scream</code> for the <code>dbg</code> test and just
+copy the cmake command it prints (then ctrl-C the process).
+<div class="highlight"><pre><span></span><code>% cd $scream_repo/components/eamxx
+% ./scripts/test-all-scream -t dbg -m $machine
+* wait for a few seconds*
+* Ctrl-C *
+* Copy the contents of DCMAKE_COMMAND that was passed to ctest *
+* Add &quot;cmake&quot; to beginning of contents and path to eamxx at the end. *
+</code></pre></div></p>
+<p>Considerations for using <code>test-all-scream</code>:
+* Your machine must be known to our scripts, see above.
+* If you try to run commands by-hand (outside of test-all-scream; cmake, make, ctest, etc), you'll need to remember to
+  load the scream-env into your shell, which can be done like this:
+  <code>cd eamxx/scripts; eval $(./scripts/scream-env-cmd $machine)</code>
+* test-all-scream expects to be run from a compute node if you
+  are on a batch machine.
+* You'll need to think about your baseline situation, as many of our
+  tests rely on pre-existing baselines. The -b option controls the baseline
+  location and can have the following values:
+  * AUTO: A common public baseline area shared by all developers
+  * LOCAL: A private baseline area for the current developer in the current repo
+  * $path: A specific arbitrary path
+  * None: If there is no -b at all, no baseline testing will be done</p>
 <h2 id="running-eamxxs-tests-with-ctest">Running EAMxx's Tests with CTest</h2>
 <p>Before running the tests, generate a baseline file:</p>
 <div class="highlight"><pre><span></span><code>cd $RUN_ROOT_DIR
