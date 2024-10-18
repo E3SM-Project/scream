@@ -1200,98 +1200,98 @@ EAMxx is not supported yet.
 <li>type: array(file)  </li>
 </ul>
 </li>
-<li>p3::p3_autoconversion_prefactor:  <ul>
-<li>description: Autoconversion linear prefactor in P3  </li>
+<li>p3::autoconversion_prefactor:  <ul>
+<li>description: Autoconversion linear prefactor  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_autoconversion_qc_exponent:  <ul>
-<li>description: Autoconversion qc exponent in P3  </li>
+<li>p3::autoconversion_qc_exponent:  <ul>
+<li>description: Autoconversion qc exponent  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_autoconversion_nc_exponent:  <ul>
-<li>description: Autoconversion nc exponent in P3  </li>
+<li>p3::autoconversion_nc_exponent:  <ul>
+<li>description: Autoconversion nc exponent  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_autoconversion_radius:  <ul>
-<li>description: Autoconversion droplet radius (meter) in P3  </li>
+<li>p3::autoconversion_radius:  <ul>
+<li>description: Autoconversion droplet radius in meter  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_accretion_prefactor:  <ul>
-<li>description: Accretion linear prefactor in P3  </li>
+<li>p3::accretion_prefactor:  <ul>
+<li>description: Accretion linear prefactor  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_accretion_qc_exponent:  <ul>
-<li>description: Accretion qc exponent in P3  </li>
+<li>p3::accretion_qc_exponent:  <ul>
+<li>description: Accretion qc exponent  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_accretion_qr_exponent:  <ul>
-<li>description: Accretion qr exponent in P3  </li>
+<li>p3::accretion_qr_exponent:  <ul>
+<li>description: Accretion qr exponent  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_rain_selfcollection_prefactor:  <ul>
-<li>description: Rain selfcollection prefactor in P3  </li>
+<li>p3::rain_selfcollection_prefactor:  <ul>
+<li>description: Rain self-collection prefactor  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_rain_selfcollection_breakup_diameter:  <ul>
-<li>description: Rain selfcollection breakup diameter (meter) in P3  </li>
+<li>p3::rain_selfcollection_breakup_diameter:  <ul>
+<li>description: Rain self-collection breakup diameter in meter  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_mu_r_constant:  <ul>
-<li>description: P3 mu_r_constant (rain shape parameter in gamma drop-size distribution)  </li>
+<li>p3::constant_mu_rain:  <ul>
+<li>description: Constant shape parameter (mu) in the rain droplet distribution  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_spa_to_nc:  <ul>
-<li>description: P3 spa_to_nc (scaling factor for turning CCN into nc in SPA)  </li>
+<li>p3::spa_ccn_to_nc_factor:  <ul>
+<li>description: Scaling factor for turning SPA ccn into P3 nc  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_eci:  <ul>
-<li>description: P3 eci (liquid/ice collision/collection coefficient)  </li>
+<li>p3::cldliq_to_ice_collection_factor:  <ul>
+<li>description: Cloud liquid to ice collection scaling factor  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_eri:  <ul>
-<li>description: P3 eri (ice/rain collision/collection coefficient)  </li>
+<li>p3::rain_to_ice_collection_factor:  <ul>
+<li>description: Rain to ice collection scaling factor  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_rho_rime_min:  <ul>
-<li>description: P3 rho_rime_min (riming density maximum)  </li>
+<li>p3::min_rime_rho:  <ul>
+<li>description: Minimum rime density in kg/m3  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_rho_rime_max:  <ul>
-<li>description: P3 rho_rime_max (riming density minimum)  </li>
+<li>p3::max_rime_rho:  <ul>
+<li>description: Maximum rime density in kg/m3  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_a_imm:  <ul>
-<li>description: P3 a_imm (drop freezing exponent )  </li>
+<li>p3::immersion_freezing_exponent:  <ul>
+<li>description: Immersion freezing exponent for both rain and cloud liquid  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_dep_nucleation_exponent:  <ul>
-<li>description: P3 dep_nucleation_exponent (deposition nucleation)  </li>
+<li>p3::deposition_nucleation_exponent:  <ul>
+<li>description: Deposition nucleation exponent factor  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_ice_sed_knob:  <ul>
-<li>description: P3 ice_sed_knob (ice fall speed)  </li>
+<li>p3::ice_sedimentation_factor:  <ul>
+<li>description: Ice sedimentation fall speed factor  </li>
 <li>type: real  </li>
 </ul>
 </li>
-<li>p3::p3_do_ice_production:  <ul>
-<li>description: Flag to turn on ice production processes in P3 (loss processes unaffected by this flag)  </li>
+<li>p3::do_ice_production:  <ul>
+<li>description: Flag to turn on ice production processes (loss processes unaffected)  </li>
 <li>type: logical  </li>
 </ul>
 </li>
