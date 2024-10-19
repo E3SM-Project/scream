@@ -108,7 +108,7 @@ class MAMMicrophysics final : public scream::AtmosphereProcess {
     mam4::mo_setsox::Config setsox;
 
     // aero microphysics configuration (see impl/mam4_amicphys.cpp)
-    impl::AmicPhysConfig amicphys;
+    mam4::microphysics::AmicPhysConfig amicphys;
 
     // dry deposition parameters
     struct {
