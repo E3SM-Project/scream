@@ -883,38 +883,29 @@ void MAMMicrophysics::run_impl(const double dt) {
         const auto &photo_rates_icol = ekat::subview(photo_rates, icol);
 
         const auto linoz_o3_clim_icol = ekat::subview(linoz_o3_clim, icol);
-        const auto linoz_t_clim_icol = ekat::subview(linoz_t_clim, icol);
-        const auto linoz_o3col_clim_icol = ekat::subview(linoz_o3col_clim, icol);
+        const auto linoz_t_clim_icol  = ekat::subview(linoz_t_clim, icol);
+        const auto linoz_o3col_clim_icol =
+            ekat::subview(linoz_o3col_clim, icol);
         const auto linoz_PmL_clim_icol = ekat::subview(linoz_PmL_clim, icol);
         const auto linoz_dPmL_dO3_icol = ekat::subview(linoz_dPmL_dO3, icol);
-        const auto linoz_dPmL_dT_icol = ekat::subview(linoz_dPmL_dT, icol);
-        const auto linoz_dPmL_dO3col_icol = ekat::subview(linoz_dPmL_dO3col, icol);
-        const auto linoz_cariolle_pscs_icol = ekat::subview(linoz_cariolle_pscs, icol);
+        const auto linoz_dPmL_dT_icol  = ekat::subview(linoz_dPmL_dT, icol);
+        const auto linoz_dPmL_dO3col_icol =
+            ekat::subview(linoz_dPmL_dO3col, icol);
+        const auto linoz_cariolle_pscs_icol =
+            ekat::subview(linoz_cariolle_pscs, icol);
 
-   mam4::microphysics::perform_atmospheric_chemistry_and_microphysics(
-    team, dt, rlats,
-    cnst_offline_icol, forcings_in,
-    atm, progs,
-    photo_table, chlorine_loading,
-    config.setsox,
-    config.amicphys,
-    config.linoz.psc_T, zenith_angle(icol),
-    d_sfc_alb_dir_vis(icol), o3_col_dens_i,
-    photo_rates_icol, extfrc_icol,
-    invariants_icol, work_photo_table_icol,
-    linoz_o3_clim_icol, linoz_t_clim_icol,
-    linoz_o3col_clim_icol, linoz_PmL_clim_icol,
-    linoz_dPmL_dO3_icol, linoz_dPmL_dT_icol,
-    linoz_dPmL_dO3col_icol,
-    linoz_cariolle_pscs_icol, eccf,
-    adv_mass_kg_per_moles,
-    clsmap_4, permute_4,
-    offset_aerosol, o3_sfc, o3_tau,
-    o3_lbl, dry_diameter_icol,
-    wet_diameter_icol, wetdens_icol
-);
-
-      });        // parallel_for for the column loop
+        mam4::microphysics::perform_atmospheric_chemistry_and_microphysics(
+            team, dt, rlats, cnst_offline_icol, forcings_in, atm, progs,
+            photo_table, chlorine_loading, config.setsox, config.amicphys,
+            config.linoz.psc_T, zenith_angle(icol), d_sfc_alb_dir_vis(icol),
+            o3_col_dens_i, photo_rates_icol, extfrc_icol, invariants_icol,
+            work_photo_table_icol, linoz_o3_clim_icol, linoz_t_clim_icol,
+            linoz_o3col_clim_icol, linoz_PmL_clim_icol, linoz_dPmL_dO3_icol,
+            linoz_dPmL_dT_icol, linoz_dPmL_dO3col_icol,
+            linoz_cariolle_pscs_icol, eccf, adv_mass_kg_per_moles, clsmap_4,
+            permute_4, offset_aerosol, o3_sfc, o3_tau, o3_lbl,
+            dry_diameter_icol, wet_diameter_icol, wetdens_icol);
+      });  // parallel_for for the column loop
   Kokkos::fence();
 
   // postprocess output
