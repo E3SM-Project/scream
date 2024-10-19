@@ -1,7 +1,6 @@
 #include <physics/mam/eamxx_mam_microphysics_process_interface.hpp>
 
 // impl namespace for some driver level functions for microphysics
-#include "impl/compute_o3_column_density.cpp"
 #include "impl/gas_phase_chemistry.cpp"
 #include "physics/rrtmgp/shr_orb_mod_c2f.hpp"
 
