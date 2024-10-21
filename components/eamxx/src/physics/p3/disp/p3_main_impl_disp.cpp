@@ -165,6 +165,17 @@ Int Functions<Real,DefaultDevice>
   auto vap_liq_exchange        = history_only.vap_liq_exchange;
   auto vap_ice_exchange        = history_only.vap_ice_exchange;
   auto P3_qr2qv_evap           = history_only.P3_qr2qv_evap;
+  auto P3_qi2qv_sublim         = history_only.P3_qi2qv_sublim;
+  auto P3_qc2qr_accret         = history_only.P3_qc2qr_accret;
+  auto P3_qc2qr_autoconv       = history_only.P3_qc2qr_autoconv;
+  auto P3_qv2qi_vapdep         = history_only.P3_qv2qi_vapdep;
+  auto P3_qc2qi_berg           = history_only.P3_qc2qi_berg;
+  auto P3_qc2qr_ice_shed       = history_only.P3_qc2qr_ice_shed;
+  auto P3_qc2qi_collect        = history_only.P3_qc2qi_collect;
+  auto P3_qr2qi_collect        = history_only.P3_qr2qi_collect;
+  auto P3_qc2qi_hetero_freeze  = history_only.P3_qc2qi_hetero_freeze;
+  auto P3_qr2qi_immers_freeze  = history_only.P3_qr2qi_immers_freeze;
+  auto P3_qi2qr_melt           = history_only.P3_qi2qr_melt;
   auto P3_qr_sed               = history_only.P3_qr_sed;
   auto mu_r                    = temporaries.mu_r;
   auto T_atm                   = temporaries.T_atm;
@@ -259,7 +270,8 @@ Int Functions<Real,DefaultDevice>
       qv, th, qc, nc, qr, nr, qi, ni, qm, bm, qc_incld, qr_incld, qi_incld, qm_incld, nc_incld,
       nr_incld, ni_incld, bm_incld, mu_c, nu, lamc, cdist, cdist1, cdistr,
       mu_r, lamr, logn0r, qv2qi_depos_tend, precip_total_tend, nevapr, qr_evap_tend,
-      vap_liq_exchange, vap_ice_exchange, liq_ice_exchange,P3_qr2qv_evap,
+      vap_liq_exchange, vap_ice_exchange, liq_ice_exchange,P3_qr2qv_evap, P3_qi2qv_sublim, P3_qc2qr_accret, P3_qc2qr_autoconv, P3_qv2qi_vapdep,
+      P3_qc2qi_berg, P3_qc2qr_ice_shed, P3_qc2qi_collect, P3_qr2qi_collect, P3_qc2qi_hetero_freeze, P3_qr2qi_immers_freeze, P3_qi2qr_melt,
       pratot, prctot, nucleationPossible, hydrometeorsPresent, runtime_options);
 
   //NOTE: At this point, it is possible to have negative (but small) nc, nr, ni.  This is not

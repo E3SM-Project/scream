@@ -29,6 +29,19 @@ void P3Microphysics::run_impl (const double dt)
   get_field_out("micro_vap_ice_exchange").deep_copy(0.0);
   // P3 diags
   get_field_out("P3_qr2qv_evap").deep_copy(0.0);
+  get_field_out("P3_qi2qv_sublim").deep_copy(0.0);
+  get_field_out("P3_qc2qr_accret").deep_copy(0.0);
+  get_field_out("P3_qc2qr_autoconv").deep_copy(0.0);
+  get_field_out("P3_qv2qi_vapdep").deep_copy(0.0);
+  get_field_out("P3_qc2qi_berg").deep_copy(0.0);
+  get_field_out("P3_qc2qr_ice_shed").deep_copy(0.0);
+  get_field_out("P3_qc2qi_collect").deep_copy(0.0);
+  get_field_out("P3_qr2qi_collect").deep_copy(0.0);
+  get_field_out("P3_qc2qi_hetero_freeze").deep_copy(0.0);
+  get_field_out("P3_qr2qi_immers_freeze").deep_copy(0.0);
+  get_field_out("P3_qi2qr_melt").deep_copy(0.0);
+
+
   get_field_out("P3_qr_sed").deep_copy(0.0);
 
 

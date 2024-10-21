@@ -242,6 +242,18 @@ struct Functions
     view_2d<Spack> vap_ice_exchange;
     // Rain evaporation tendency
     view_2d<Spack> P3_qr2qv_evap;
+    // Ice sublim tendency
+    view_2d<Spack> P3_qi2qv_sublim;
+    view_2d<Spack> P3_qc2qr_accret;
+    view_2d<Spack> P3_qc2qr_autoconv; 
+    view_2d<Spack> P3_qv2qi_vapdep;
+    view_2d<Spack> P3_qc2qi_berg;
+    view_2d<Spack> P3_qc2qr_ice_shed;
+    view_2d<Spack> P3_qc2qi_collect;
+    view_2d<Spack> P3_qr2qi_collect;
+    view_2d<Spack> P3_qc2qi_hetero_freeze;
+    view_2d<Spack> P3_qr2qi_immers_freeze;
+    view_2d<Spack> P3_qi2qr_melt;
     // Rain sedimentation tendency
     view_2d<Spack> P3_qr_sed;
 
@@ -1155,6 +1167,17 @@ struct Functions
     const uview_1d<Spack>& vap_ice_exchange,
     const uview_1d<Spack>& liq_ice_exchange,
     const uview_1d<Spack>& P3_qr2qv_evap,
+    const uview_1d<Spack>& P3_qi2qv_sublim,
+    const uview_1d<Spack>& P3_qc2qr_accret,
+    const uview_1d<Spack>& P3_qc2qr_autoconv,
+    const uview_1d<Spack>& P3_qv2qi_vapdep,
+    const uview_1d<Spack>& P3_qc2qi_berg,
+    const uview_1d<Spack>& P3_qc2qr_ice_shed,
+    const uview_1d<Spack>& P3_qc2qi_collect,
+    const uview_1d<Spack>& P3_qr2qi_collect,
+    const uview_1d<Spack>& P3_qc2qi_hetero_freeze,
+    const uview_1d<Spack>& P3_qr2qi_immers_freeze,
+    const uview_1d<Spack>& P3_qi2qr_melt,
     const uview_1d<Spack>& pratot,
     const uview_1d<Spack>& prctot,
     bool& is_hydromet_present,
@@ -1234,6 +1257,17 @@ struct Functions
     const uview_2d<Spack>& vap_ice_exchange,
     const uview_2d<Spack>& liq_ice_exchange,
     const uview_2d<Spack>& P3_qr2qv_evap,
+    const uview_2d<Spack>& P3_qi2qv_sublim,
+    const uview_2d<Spack>& P3_qc2qr_accret,
+    const uview_2d<Spack>& P3_qc2qr_autoconv,
+    const uview_2d<Spack>& P3_qv2qi_vapdep,
+    const uview_2d<Spack>& P3_qc2qi_berg,
+    const uview_2d<Spack>& P3_qc2qr_ice_shed,
+    const uview_2d<Spack>& P3_qc2qi_collect,
+    const uview_2d<Spack>& P3_qr2qi_collect,
+    const uview_2d<Spack>& P3_qc2qi_hetero_freeze,
+    const uview_2d<Spack>& P3_qr2qi_immers_freeze,
+    const uview_2d<Spack>& P3_qi2qr_melt,
     const uview_2d<Spack>& pratot,
     const uview_2d<Spack>& prctot,
     const uview_1d<bool>& is_nucleat_possible,

@@ -113,10 +113,21 @@ void P3Microphysics::set_grids(const std::shared_ptr<const GridsManager> grids_m
 
   // P3 process rate diagnostics, use convetion P3_<process_rate>
   add_field<Computed>("P3_qr2qv_evap", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
+  add_field<Computed>("P3_qi2qv_sublim", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
+  add_field<Computed>("P3_qc2qr_accret", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
+  add_field<Computed>("P3_qc2qr_autoconv", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
+  add_field<Computed>("P3_qv2qi_vapdep", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
+  add_field<Computed>("P3_qc2qi_berg", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
+  add_field<Computed>("P3_qc2qr_ice_shed", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
+  add_field<Computed>("P3_qc2qi_collect", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
+  add_field<Computed>("P3_qr2qi_collect", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
+  add_field<Computed>("P3_qc2qi_hetero_freeze", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
+  add_field<Computed>("P3_qr2qi_immers_freeze", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
+  add_field<Computed>("P3_qi2qr_melt", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
 
   add_field<Computed>("P3_qr_sed", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
-
-
+//  add_field<Computed>("P3_qc_sed", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
+//  add_field<Computed>("P3_qi_sed", scalar3d_layout_mid, kg/kg/s,  grid_name, ps);
 
   // Boundary flux fields for energy and mass conservation checks
   if (has_column_conservation_check()) {
@@ -353,8 +364,22 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
   history_only.liq_ice_exchange = get_field_out("micro_liq_ice_exchange").get_view<Pack**>();
   history_only.vap_liq_exchange = get_field_out("micro_vap_liq_exchange").get_view<Pack**>();
   history_only.vap_ice_exchange = get_field_out("micro_vap_ice_exchange").get_view<Pack**>();
-  history_only.P3_qr2qv_evap = get_field_out("P3_qr2qv_evap").get_view<Pack**>();
+  history_only.P3_qr2qv_evap   = get_field_out("P3_qr2qv_evap").get_view<Pack**>();
+  history_only.P3_qi2qv_sublim = get_field_out("P3_qi2qv_sublim").get_view<Pack**>();
+  history_only.P3_qc2qr_accret = get_field_out("P3_qc2qr_accret").get_view<Pack**>();
+  history_only.P3_qc2qr_autoconv = get_field_out("P3_qc2qr_autoconv").get_view<Pack**>();
+  history_only.P3_qv2qi_vapdep = get_field_out("P3_qv2qi_vapdep").get_view<Pack**>();
+  history_only.P3_qc2qi_berg = get_field_out("P3_qc2qi_berg").get_view<Pack**>();
+  history_only.P3_qc2qr_ice_shed = get_field_out("P3_qc2qr_ice_shed").get_view<Pack**>();
+  history_only.P3_qc2qi_collect = get_field_out("P3_qc2qi_collect").get_view<Pack**>();
+  history_only.P3_qr2qi_collect = get_field_out("P3_qr2qi_collect").get_view<Pack**>();
+  history_only.P3_qc2qi_hetero_freeze = get_field_out("P3_qc2qi_hetero_freeze").get_view<Pack**>();
+  history_only.P3_qr2qi_immers_freeze = get_field_out("P3_qr2qi_immers_freeze").get_view<Pack**>();
+  history_only.P3_qi2qr_melt = get_field_out("P3_qi2qr_melt").get_view<Pack**>();
+
   history_only.P3_qr_sed = get_field_out("P3_qr_sed").get_view<Pack**>();
+//  history_only.P3_qr_sed = get_field_out("P3_qc_sed").get_view<Pack**>();
+//  history_only.P3_qr_sed = get_field_out("P3_qi_sed").get_view<Pack**>();
 
 #ifdef SCREAM_P3_SMALL_KERNELS
   // Temporaries
