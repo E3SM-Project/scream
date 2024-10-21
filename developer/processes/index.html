@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.41">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.42">
     
     
       
@@ -745,6 +745,17 @@ EAMxx is not supported yet.
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Atmosphere Processes
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -754,6 +765,34 @@ EAMxx is not supported yet.
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#atmosphere-process-interfaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      Atmosphere process interfaces
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1027,6 +1066,23 @@ EAMxx is not supported yet.
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#atmosphere-process-interfaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      Atmosphere process interfaces
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1041,20 +1097,206 @@ EAMxx is not supported yet.
 
 
 <h1 id="atmospheric-processes">Atmospheric Processes</h1>
-<p>In EAMxx, the <code>AtmosphereProcess</code> (AP) is a class representing a portion of the atmosphere timestep algorithm.
+<p>In EAMxx, <code>AtmosphereProcess</code> (AP) is an abstract class representing a portion of the atmosphere timestep algorithm.
 In simple terms, an AP is an object that given certain input fields performs some calculations to compute
-some output fields.</p>
-<p>TODO: describe init sequcene (e.g., the process of requesting fields), base class main
-      interfaces/capabilities (e.g., subcycling), class expectations (e.g., must update fields on physics grid)</p>
-<p>Here is a list of currently implemented atmosphere processes.
-TODO: add links to papers/github-repos, and a SMALL description
-* p3: Microphysics, blah blah
-* SHOC: Macrophysics/Turbulence, blah
-* rrtmgp: Radiation, blah
-* spa: prescribed aerosols, blah blah
-* surface coupling: blah
-* mam: prognostic aerosols, blah blah
-* nudging: This process is responsible for nudging the model simulation given a set of files with a target nudged state.</p>
+some output fields. The concrete AP classes allow to create a buffer layer between particular packages (e.g.,
+dynamics dycore, physics parametrizations) and the atmosphere driver (AD), allowing separation of concerns,
+so that the AD does not need to know details about the package, and the package does not need to know about
+the EAMxx infrastructure.</p>
+<p>To enhance this separation of concerns, EAMxx implements two more classes for handling APs:</p>
+<ul>
+<li>the concrete class <code>AtmosphereProcessGroup</code> (APG), which allows to group together a set of AP's, which can be seen from outside as a single process;</li>
+<li>the <code>AtmosphereProcessFactory</code> class, which allows an APG to create its internal processes without any knowledge of
+what they are.</li>
+</ul>
+<p>This infrastructure allows the AD to view the whole atmosphere as a single APG, and to be completely agnostic to
+what processes are run, and in which order. This design allows to have a code base that is cleaner, self-container,
+and easy to test via a battery of targeted unit tests.</p>
+<p>In EAMxx, we already have a few concrete AP's, interfacing the AD to the Hommexx non-hydrostatic dycore as well as
+some physics parametrizations (P3, SHOC, RRMTPG, etc). In the next section we describe the interfaces of an AP class,
+and we show an example of how to write a new concrete AP class.</p>
+<h2 id="atmosphere-process-interfaces">Atmosphere process interfaces</h2>
+<p>An AP has several interfaces, which can be grouped into three categories:</p>
+<ul>
+<li>initialization: these interfaces are used to create the AP, as well as to initialize internal data structures;</li>
+<li>run: these interfaces are used to make the AP compute its output fields from its input fields;</li>
+<li>finalization: these interfaces are used to perform any clean up operation (e.g., release files) before the AP is
+ destroyed.</li>
+</ul>
+<p>Among the above, the initialization sequence is the most complex, and conists of several steps:</p>
+<ul>
+<li>The AD creates the APG corresponding to the whole atmosphere. As mentioned above, this phase will make use of a factory,
+   which allows the AD to be agnostic to what is actually in the group. All AP's can start performing any initialization
+   work that they can, but at this point they are limited to use only an MPI communicator as well as a list of runtime
+   parameters (which were previously read from an input file).</li>
+<li>The AD passes a <code>GridsManager</code> to the AP's, so that they can get information about the grids they need. At this point,
+   all AP's have all the information they need to establish the layout of the input and output fields they need,
+   and can store a list of these "requests"</li>
+<li>After creating all fields (based on AP's requests), the AD passes a copy of each input and output field to
+   the AP's. These fields will be divided in "required" and "computed", which differ in that the former are only
+   passed to the AP's as 'read-only' fields (see the <a href="../field/#Field">field</a> documentation for more details)</li>
+<li>The AP's are queried for how much scratch memory they may need at run time. After all AP's communicate their needs,
+   the AD will provide a pointer to scratch memory to the AP's. This is memory that can be used to initialize
+   temporary views/fields or other internal data structures. All AP's are given the same pointer, which means no
+   data persistence should be expected at run time between one timestep and the next.</li>
+<li>The AD calls the 'initialize' method on each AP. At this point, all fields are set, and AP's can complete any
+   remaining initialization task</li>
+</ul>
+<p>While the base AP class provides an (empty) implementation for some methods, in case derived classes do not need a
+feature, some methods are purely virtual, and concrete classes will have to override them. Looking at existing
+concrete AP implementations is a good way to have a first idea of what a new AP class needs to implement. Here,
+we show go over the possible implementation of these methods in a hypothetical AP class. The header file may
+look something like this</p>
+<p><div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;share/atm_process/atmosphere_process.hpp&gt;</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MyProcess</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">AtmosphereProcess</span>
+<span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+<span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="n">gm_ptr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">GridsManager</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="w">  </span><span class="n">MyProcess</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">ekat</span><span class="o">::</span><span class="n">Comm</span><span class="o">&amp;</span><span class="w"> </span><span class="n">comm</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">ekat</span><span class="o">::</span><span class="n">ParameterList</span><span class="o">&amp;</span><span class="w"> </span><span class="n">pl</span><span class="p">);</span>
+
+<span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="nf">name</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="k">override</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;my_fancy_process&quot;</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="kt">void</span><span class="w"> </span><span class="nf">set_grids</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">gm_ptr</span><span class="o">&amp;</span><span class="w"> </span><span class="n">grids_manager</span><span class="p">)</span><span class="w"> </span><span class="k">override</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">size_t</span><span class="w"> </span><span class="nf">requested_buffer_size_in_bytes</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="k">override</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">void</span><span class="w"> </span><span class="nf">init_buffers</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">ATMBufferManager</span><span class="o">&amp;</span><span class="w"> </span><span class="n">buffer_manager</span><span class="p">)</span><span class="w"> </span><span class="k">override</span><span class="p">;</span>
+<span class="k">protected</span><span class="o">:</span>
+
+<span class="w">  </span><span class="kt">void</span><span class="w"> </span><span class="n">initialize_impl</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">RunType</span><span class="w"> </span><span class="n">run_type</span><span class="p">)</span><span class="w"> </span><span class="k">override</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">void</span><span class="w"> </span><span class="nf">run_impl</span><span class="w">        </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">dt</span><span class="p">)</span><span class="w"> </span><span class="k">override</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">void</span><span class="w"> </span><span class="nf">finalize_impl</span><span class="w">   </span><span class="p">()</span><span class="w"> </span><span class="k">override</span><span class="p">;</span>
+
+<span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="n">view_1d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">typename</span><span class="w"> </span><span class="nc">KokkosTypes</span><span class="o">&lt;</span><span class="n">DefaultDevice</span><span class="o">&gt;::</span><span class="n">view_1d</span><span class="o">&lt;</span><span class="n">Real</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="n">view_2d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">typename</span><span class="w"> </span><span class="nc">KokkosTypes</span><span class="o">&lt;</span><span class="n">DefaultDevice</span><span class="o">&gt;::</span><span class="n">view_2d</span><span class="o">&lt;</span><span class="n">Real</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="w">  </span><span class="n">view_1d</span><span class="w"> </span><span class="n">m_temp1</span><span class="p">;</span>
+<span class="w">  </span><span class="n">view_2d</span><span class="w"> </span><span class="n">m_temp2</span><span class="p">;</span>
+
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">m_ncols</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">m_nlevs</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">bool</span><span class="w"> </span><span class="n">m_has_blah</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div>
+A few comments:</p>
+<ul>
+<li>we added two views to the class, which are meant to be used to store intermediate results during calculations at
+runtime;</li>
+<li>there are other methods that the class can override (such as additional operations when the AD sets a field in the
+   AP), but most AP's only need to override only these;</li>
+<li>we strongly encourage to add the keyword <code>override</code> when overriding a method; in case of small typos (e.g., missing
+   a <code>&amp;</code> or a <code>const</code>, the compiler will be erroring out, since the signature will not match any virtual method in the
+   base class;</li>
+<li><code>findalize_impl</code> is often empty; unless the AP is managing external resources, everything should be correctly released
+   during destruction;</li>
+<li>the two methods for buffers can be omitted if the AP does not need any scratch memory (and the default implementation
+   from the base class will be used).</li>
+</ul>
+<p>Here is a possible implementation of the methods, with some inline comments to explain</p>
+<div class="highlight"><pre><span></span><code><span class="n">MyProcess</span><span class="o">::</span><span class="n">MyProcess</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">ekat</span><span class="o">::</span><span class="n">Comm</span><span class="o">&amp;</span><span class="w"> </span><span class="n">comm</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">ekat</span><span class="o">::</span><span class="n">ParameterList</span><span class="o">&amp;</span><span class="w"> </span><span class="n">pl</span><span class="p">)</span>
+<span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">AtmosphereProcess</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span><span class="n">pl</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="c1">// The base class copies pl into protected member m_params</span>
+<span class="w">  </span><span class="n">m_has_blah</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m_params</span><span class="p">.</span><span class="n">get</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;enable_blah&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="n">MyProcess</span><span class="o">::</span><span class="n">set_grids</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">GridsManager</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">gm</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="k">namespace</span><span class="w"> </span><span class="nn">ekat</span><span class="o">::</span><span class="nn">units</span><span class="p">;</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">nondim</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Units</span><span class="o">::</span><span class="n">nondimensional</span><span class="p">();</span>
+
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">grid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">gm</span><span class="o">-&gt;</span><span class="n">get_grid</span><span class="p">(</span><span class="s">&quot;Physics&quot;</span><span class="p">);</span>
+<span class="w">  </span><span class="n">m_ncols</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">grid</span><span class="o">-&gt;</span><span class="n">get_num_local_dofs</span><span class="p">();</span>
+<span class="w">  </span><span class="n">m_nlevs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">grid</span><span class="o">-&gt;</span><span class="n">get_num_vertical_levels</span><span class="p">();</span>
+
+<span class="w">  </span><span class="c1">// In these names, 2d refers to &quot;horizontal only&quot;, while 3d to &quot;horiz+vert&quot;.</span>
+<span class="w">  </span><span class="c1">// But the grid stores dofs linearly, so there is only one array dimension</span>
+<span class="w">  </span><span class="n">FieldLayout</span><span class="w"> </span><span class="n">scalar2d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">grid</span><span class="o">-&gt;</span><span class="n">get_2d_scalar_layout</span><span class="p">();</span>
+<span class="w">  </span><span class="n">FieldLayout</span><span class="w"> </span><span class="n">vector3d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">grid</span><span class="o">-&gt;</span><span class="n">get_3d_vector_layout</span><span class="p">(</span><span class="nb">true</span><span class="p">,</span><span class="mi">2</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// Declare fields needed:</span>
+<span class="w">  </span><span class="c1">//  - Required: &#39;input&#39; (read-only)</span>
+<span class="w">  </span><span class="c1">//  - Computed: &#39;output&#39;</span>
+<span class="w">  </span><span class="c1">//  - Updated: &#39;input&#39;+&#39;output&#39;</span>
+<span class="w">  </span><span class="c1">// Tell the AD we need &#39;velocity&#39; to accommodate a Pack scalar type</span>
+<span class="w">  </span><span class="n">add_field</span><span class="o">&lt;</span><span class="n">Required</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;coeff_2d&quot;</span><span class="p">,</span><span class="n">scalar2d</span><span class="p">,</span><span class="n">nondim</span><span class="p">,</span><span class="n">grid</span><span class="o">-&gt;</span><span class="n">name</span><span class="p">);</span>
+<span class="w">  </span><span class="n">add_field</span><span class="o">&lt;</span><span class="n">Updated</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;velocity&quot;</span><span class="p">,</span><span class="n">vector3d</span><span class="p">,</span><span class="n">m</span><span class="o">/</span><span class="n">s</span><span class="p">,</span><span class="n">grid</span><span class="o">-&gt;</span><span class="n">name</span><span class="p">,</span><span class="n">SCREAM_PACK_SIZE</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">size_t</span><span class="w"> </span><span class="n">MyProcess</span><span class="o">::</span><span class="n">requested_buffer_size_in_bytes</span><span class="w"> </span><span class="p">()</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="c1">// We use temp2 only if the blah feature is on</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">m_ncols</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="n">m_has_blah</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">m_ncols</span><span class="o">*</span><span class="n">m_nlev</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="n">MyProcess</span><span class="o">::</span><span class="n">init_buffers</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">ATMBufferManager</span><span class="o">&amp;</span><span class="w"> </span><span class="n">buffer_manager</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">mem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">reinterpret_cast</span><span class="o">&lt;</span><span class="n">Real</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">buffer_manager</span><span class="p">.</span><span class="n">get_memory</span><span class="p">());</span>
+
+<span class="w">  </span><span class="n">m_temp1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">view_1d</span><span class="o">&lt;</span><span class="n">Real</span><span class="o">&gt;</span><span class="p">(</span><span class="n">mem</span><span class="p">,</span><span class="n">m_ncols</span><span class="p">);</span>
+<span class="w">  </span><span class="n">mem</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">m_ncols</span><span class="p">;</span>
+
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">m_has_blah</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">m_temp2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">view_2d</span><span class="o">&lt;</span><span class="n">Real</span><span class="o">&gt;</span><span class="p">(</span><span class="n">mem</span><span class="p">,</span><span class="n">m_ncols</span><span class="p">,</span><span class="n">m_nlevs</span><span class="p">);</span>
+<span class="w">    </span><span class="n">mem</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">m_ncols</span><span class="o">*</span><span class="n">m_nlevs</span><span class="p">;</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="c1">// Make sure we use exactly the mem we said we would</span>
+<span class="w">  </span><span class="kt">size_t</span><span class="w"> </span><span class="n">used_mem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">mem</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">buffer_manager</span><span class="p">.</span><span class="n">get_memory</span><span class="p">())</span><span class="o">*</span><span class="k">sizeof</span><span class="p">(</span><span class="n">Real</span><span class="p">);</span>
+<span class="w">  </span><span class="n">EKAT_REQUIRE_MSG</span><span class="p">(</span><span class="n">used_mem</span><span class="o">==</span><span class="n">requested_buffer_size_in_bytes</span><span class="p">(),</span>
+<span class="w">    </span><span class="s">&quot;Error! Used memory != requested memory for MyProcess.&quot;</span>
+<span class="w">    </span><span class="s">&quot;  used memory: &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">to_string</span><span class="p">(</span><span class="n">used_mem</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
+<span class="w">    </span><span class="s">&quot;  requested: &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">to_string</span><span class="p">(</span><span class="n">requested_buffer_size_in_bytes</span><span class="p">())</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="n">MyProcess</span><span class="o">::</span><span class="n">initialize_impl</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">RunType</span><span class="w"> </span><span class="n">run_type</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="c1">// Can complete any initialization of the background pkg</span>
+<span class="w">  </span><span class="n">my_process_pkg_init</span><span class="p">(</span><span class="n">m_has_blah</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="n">MyProcess</span><span class="o">:</span><span class="n">run_impl</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">dt</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="n">Policy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">typename</span><span class="w"> </span><span class="nc">KokkosTypes</span><span class="o">&lt;</span><span class="n">DefaultDevice</span><span class="o">&gt;::</span><span class="n">TeamPolicy</span>
+<span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="n">Member</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">typename</span><span class="w"> </span><span class="nc">KokkosTypes</span><span class="o">&lt;</span><span class="n">DefaultDevice</span><span class="o">&gt;::</span><span class="n">MemberType</span>
+<span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="n">PackT</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">ekat</span><span class="o">::</span><span class="n">Pack</span><span class="o">&lt;</span><span class="n">Real</span><span class="p">,</span><span class="n">SCREAM_PACK_SIZE</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="w">  </span><span class="c1">// Create team policy</span>
+<span class="w">  </span><span class="n">Policy</span><span class="w"> </span><span class="nf">policy</span><span class="p">(</span><span class="n">m_ncols</span><span class="p">,</span><span class="n">m_nlevs</span><span class="p">,</span><span class="mi">1</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// Create local copies of class members (or else use KOKKOS_CLASS_LAMBDA)</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">temp1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m_temp1</span><span class="p">;</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">temp2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m_temp2</span><span class="p">;</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">do_blah</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m_has_blah</span><span class="p">;</span>
+
+<span class="w">  </span><span class="c1">// Get views from fields. We </span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">coeff2d</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">get_field_in</span><span class="p">(</span><span class="s">&quot;coeff_2d&quot;</span><span class="p">).</span><span class="n">get_view</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">Real</span><span class="o">*&gt;</span><span class="p">();</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">velocity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">get_field_out</span><span class="p">(</span><span class="s">&quot;velocity&quot;</span><span class="p">).</span><span class="n">get_view</span><span class="o">&lt;</span><span class="n">PackT</span><span class="o">**&gt;</span><span class="p">();</span>
+
+<span class="w">  </span><span class="c1">// Since we process velocity with a Pack scalar type, find out how many packs</span>
+<span class="w">  </span><span class="c1">// we have in each column</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">nlevs_packs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ekat</span><span class="o">::</span><span class="n">PackInfo</span><span class="o">&lt;</span><span class="n">SCREAM_PACK_SIZE</span><span class="o">&gt;::</span><span class="n">num_packs</span><span class="p">(</span><span class="n">m_nlevs</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// Call some function in the background pkg</span>
+<span class="w">  </span><span class="n">do_some_work</span><span class="w"> </span><span class="p">(</span><span class="n">coeff_2d</span><span class="p">,</span><span class="n">velocity</span><span class="p">,</span><span class="n">temp1</span><span class="p">,</span><span class="n">temp2</span><span class="p">,</span><span class="n">do_blah</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// Do some more work here</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">work</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">KOKKOS_LAMBDA</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">Member</span><span class="o">&amp;</span><span class="w"> </span><span class="n">team</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">icol</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">team</span><span class="p">.</span><span class="n">league_rank</span><span class="p">();</span>
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">col_work</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="o">&amp;</span><span class="p">](</span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">ilev</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n">velocity</span><span class="p">(</span><span class="n">icol</span><span class="p">,</span><span class="n">ilev</span><span class="p">)</span><span class="w"> </span><span class="o">*=</span><span class="w"> </span><span class="n">coeff_2d</span><span class="p">;</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="w">    </span><span class="n">Kokkos</span><span class="o">::</span><span class="n">parallel_for</span><span class="p">(</span><span class="n">Kokkos</span><span class="o">::</span><span class="n">TeamVectorRange</span><span class="p">(</span><span class="n">team</span><span class="p">,</span><span class="n">nlevs_packs</span><span class="p">),</span><span class="n">col_work</span><span class="p">);</span>
+<span class="w">  </span><span class="p">};</span>
+<span class="w">  </span><span class="n">Kokkos</span><span class="o">::</span><span class="n">parallel_for</span><span class="p">(</span><span class="n">policy</span><span class="p">,</span><span class="n">work</span><span class="p">);</span>
+<span class="w">  </span><span class="n">Kokkos</span><span class="o">::</span><span class="n">fence</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="n">MyProcess</span><span class="o">::</span><span class="n">finalize_impl</span><span class="w"> </span><span class="p">()</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="c1">// If the background package needs to cleanup something, do it now</span>
+<span class="w">  </span><span class="n">my_process_pkg_cleanup</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div>
 
 
 
