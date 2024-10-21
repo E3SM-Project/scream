@@ -7,6 +7,8 @@
 ! email: bogenschutz1@llnl.gov
 !--------------------------------------------------------------
 
+! I like soccer!
+
 ! Include bit-for-bit math macros.
 #include "bfb_math.inc"
 
