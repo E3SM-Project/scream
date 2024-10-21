@@ -893,7 +893,7 @@ void MAMMicrophysics::run_impl(const double dt) {
             ekat::subview(linoz_dPmL_dO3col, icol);
         const auto linoz_cariolle_pscs_icol =
             ekat::subview(linoz_cariolle_pscs, icol);
-
+        // Note: All variables are inputs, except for progs, which is an input/output variable.
         mam4::microphysics::perform_atmospheric_chemistry_and_microphysics(
             team, dt, rlats, cnst_offline_icol, forcings_in, atm, progs,
             photo_table, chlorine_loading, config.setsox, config.amicphys,
