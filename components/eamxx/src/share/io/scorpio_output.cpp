@@ -417,13 +417,17 @@ run (const std::string& filename,
   // If needed, remap fields from their grid to the unique grid, for I/O
   if (m_vert_remapper) {
     start_timer("EAMxx::IO::vert_remap");
+    start_timer("EAMxx::IO::vert_remap::" + m_params.name());
     apply_remap(m_vert_remapper);
+    stop_timer("EAMxx::IO::vert_remap::" + m_params.name());
     stop_timer("EAMxx::IO::vert_remap");
   }
 
   if (m_horiz_remapper) {
     start_timer("EAMxx::IO::horiz_remap");
+    start_timer("EAMxx::IO::horiz_remap::" + m_params.name());
     apply_remap(m_horiz_remapper);
+    stop_timer("EAMxx::IO::horiz_remap::" + m_params.name());
     stop_timer("EAMxx::IO::horiz_remap");
   }
 
