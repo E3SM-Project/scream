@@ -12,18 +12,59 @@ def logical_cores_per_physical_core():
     return psutil.cpu_count() // psutil.cpu_count(logical=False)
 
 ###############################################################################
+def get_cpu_ids_from_slurm_cpu_bind():
+###############################################################################
+    # Get the SLURM_CPU_BIND environment variable
+    cpu_bind = os.getenv('SLURM_CPU_BIND')
+
+    if cpu_bind is None:
+        print("SLURM_CPU_BIND environment variable is not set.")
+        return []
+
+    # Split the string by commas
+    tokens = cpu_bind.split(',')
+
+    # Find the token that contains "mask_cpu:"
+    hex_mask = None
+    for token in tokens:
+        if "mask_cpu:" in token:
+            hex_mask = token.split(':')[1]  # Extract the hex value
+            break
+
+    if hex_mask is None:
+        print("mask_cpu: not found in SLURM_CPU_BIND.")
+        return []
+
+    # Convert the hex mask to an integer
+    mask_int = int(hex_mask, 16)
+
+    # Generate the list of CPU IDs
+    cpu_ids = []
+    for i in range(mask_int.bit_length()):  # Check each bit position
+        if mask_int & (1 << i):  # Check if the i-th bit is set
+            cpu_ids.append(i)
+
+    return cpu_ids
+
+###############################################################################
 def get_available_cpu_count(logical=True):
 ###############################################################################
     """
     Get number of CPUs available to this process and its children. logical=True
     will include hyperthreads, logical=False will return only physical cores
+    If we are inside a SLURM job, use SLURM env vars to determine which CPUs
+    were allocated to us
     """
-    affinity_len = len(psutil.Process().cpu_affinity())
+    if 'SLURM_JOB_ID' in os.environ:
+        num_cpus = len(get_cpu_ids_from_slurm_cpu_bind())
+    else:
+        num_cpus = len(psutil.Process().cpu_affinity())
+
     if not logical:
         hyperthread_ratio = logical_cores_per_physical_core()
-        return int(affinity_len / hyperthread_ratio)
+        return int(num_cpus / hyperthread_ratio)
     else:
-        return affinity_len
+        return num_cpus
 
 ###############################################################################
 class Machine(object):
