@@ -287,9 +287,8 @@ void MAMMicrophysics::set_grids(
     // ','pom_a4          ','bc_a4           ', 'num_a1          ','num_a2
     // ','num_a4          ','SOAG            ' }
     // This order corresponds to files in namelist e3smv2
-    extfrc_lst_ =
-        std::vector<std::string>({"so2", "so4_a1", "so4_a2", "pom_a4", "bc_a4",
-                                  "num_a1", "num_a2", "num_a4", "soag"});
+    extfrc_lst_ = {"so2", "so4_a1", "so4_a2", "pom_a4", "bc_a4",
+                                  "num_a1", "num_a2", "num_a4", "soag"};
 
     for(const auto &var_name : extfrc_lst_) {
       std::string item_name = "mam4_" + var_name + "_verti_emiss_file_name";
@@ -351,17 +350,17 @@ void MAMMicrophysics::set_grids(
       vert_emis_data_[i].allocate_temporal_views();
       forcings_[i].file_alt_data = vert_emis_data_[i].has_altitude_;
       for(int isp = 0; isp < nvars; ++isp) {
-        EKAT_REQUIRE_MSG(
-            offset_emis_ver <= int(mam_coupling::MAX_NUM_VERT_EMISSION_FIELDS),
-            "Error! Number of fields is bigger than "
-            "MAX_NUM_VERT_EMISSION_FIELDS. Increase the "
-            "MAX_NUM_VERT_EMISSION_FIELDS in helper_micro.hpp \n");
         forcings_[i].offset = offset_emis_ver;
         vert_emis_output_[isp + offset_emis_ver] =
             view_2d("vert_emis_output_", ncol_, nlev_);
       }
       offset_emis_ver += nvars;
     }  // end i
+    EKAT_REQUIRE_MSG(
+      offset_emis_ver <= int(mam_coupling::MAX_NUM_VERT_EMISSION_FIELDS),
+      "Error! Number of fields is bigger than "
+      "MAX_NUM_VERT_EMISSION_FIELDS. Increase the "
+      "MAX_NUM_VERT_EMISSION_FIELDS in tracer_reader_utils.hpp \n");
 
 #if defined(ENABLE_OUTPUT_TRACER_FIELDS)
     FieldLayout scalar3d_mid_emis_ver = grid_->get_3d_vector_layout(
