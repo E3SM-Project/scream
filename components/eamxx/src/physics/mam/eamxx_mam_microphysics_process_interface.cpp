@@ -21,46 +21,6 @@ namespace scream {
 MAMMicrophysics::MAMMicrophysics(const ekat::Comm &comm,
                                  const ekat::ParameterList &params)
     : AtmosphereProcess(comm, params), aero_config_() {
-  // Asserts for the runtime or namelist options
-  // ----- Aerosol Microphysics processes on/off switches -------
-  EKAT_REQUIRE_MSG(m_params.isParameter("mam4_do_cond"),
-                   "ERROR:  mam4_do_cond is missing from mam4_aero_microphys  "
-                   "parameter list.");
-
-  EKAT_REQUIRE_MSG(
-      m_params.isParameter("mam4_do_rename"),
-      "ERROR:  mam4_do_rename is missing from mam4_aero_microphys   "
-      "parameter list.");
-
-  EKAT_REQUIRE_MSG(m_params.isParameter("mam4_do_newnuc"),
-                   "ERROR:  mam4_do_newnuc is missing from mam4_aero_microphys "
-                   " parameter list.");
-
-  EKAT_REQUIRE_MSG(m_params.isParameter("mam4_do_coag"),
-                   "ERROR:  mam4_do_coag is missing from mam4_aero_microphys  "
-                   "parameter list.");
-  // ----- LINOZ namelist parameters -------
-
-  EKAT_REQUIRE_MSG(
-      m_params.isParameter("mam4_o3_tau"),
-      "ERROR: mam4_o3_tau is missing from mam4_aero_microphys parameter list.");
-
-  EKAT_REQUIRE_MSG(m_params.isParameter("mam4_o3_sfc"),
-                   "ERROR:  mam4_o3_sfc is  missing from mam4_aero_microphys "
-                   "parameter list.");
-
-  EKAT_REQUIRE_MSG(m_params.isParameter("mam4_o3_lbl"),
-                   "ERROR:  mam4_o3_lbl is missing from mam4_aero_microphys "
-                   "parameter  list.");
-
-  set_namelist_params_();
-}
-
-AtmosphereProcessType MAMMicrophysics::type() const {
-  return AtmosphereProcessType::Physics;
-}
-
-void MAMMicrophysics::set_namelist_params_() {
   config_.amicphys.do_cond   = m_params.get<bool>("mam4_do_cond");
   config_.amicphys.do_rename = m_params.get<bool>("mam4_do_rename");
   config_.amicphys.do_newnuc = m_params.get<bool>("mam4_do_newnuc");
@@ -69,13 +29,27 @@ void MAMMicrophysics::set_namelist_params_() {
   // these parameters guide the coupling between parameterizations
   // NOTE: mam4xx was ported with these parameters fixed, so it's probably not
   // NOTE: safe to change these without code modifications.
+
+  // controls treatment of h2so4 condensation in mam_gasaerexch_1subarea
+  //    1 = sequential   calc. of gas-chem prod then condensation loss
+  //    2 = simultaneous calc. of gas-chem prod and  condensation loss
   config_.amicphys.gaexch_h2so4_uptake_optaa = 2;
-  config_.amicphys.newnuc_h2so4_conc_optaa   = 2;
+
+  // controls treatment of h2so4 concentrationin mam_newnuc_1subarea
+  //    1 = use average value calculated in standard cam5.2.10 and earlier
+  //    2 = use average value calculated in mam_gasaerexch_1subarea
+  //   11 = use average of initial and final values from mam_gasaerexch_1subarea
+  //   12 = use final value from mam_gasaerexch_1subarea
+  config_.amicphys.newnuc_h2so4_conc_optaa = 2;
 
   // LINOZ namelist parameters
   o3_lbl_ = m_params.get<int>("mam4_o3_lbl");
   o3_tau_ = m_params.get<Real>("mam4_o3_tau");
   o3_sfc_ = m_params.get<Real>("mam4_o3_sfc");
+}
+
+AtmosphereProcessType MAMMicrophysics::type() const {
+  return AtmosphereProcessType::Physics;
 }
 
 // ================================================================
@@ -418,10 +392,6 @@ size_t MAMMicrophysics::requested_buffer_size_in_bytes() const {
 // number of bytes allocated.
 
 void MAMMicrophysics::init_buffers(const ATMBufferManager &buffer_manager) {
-  EKAT_REQUIRE_MSG(
-      buffer_manager.allocated_bytes() >= requested_buffer_size_in_bytes(),
-      "Error! Insufficient buffer size.\n");
-
   size_t used_mem =
       mam_coupling::init_buffer(buffer_manager, ncol_, nlev_, buffer_);
   EKAT_REQUIRE_MSG(
@@ -436,12 +406,12 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   // Determine orbital year. If orbital_year is negative, use current year
   // from timestamp for orbital year; if positive, use provided orbital year
   // for duration of simulation.
-  m_orbital_year = m_params.get<Int>("orbital_year", -9999);
+  m_orbital_year = m_params.get<int>("orbital_year", -9999);
 
   // Get orbital parameters from yaml file
-  m_orbital_eccen = m_params.get<Int>("orbital_eccentricity", -9999);
-  m_orbital_obliq = m_params.get<Int>("orbital_obliquity", -9999);
-  m_orbital_mvelp = m_params.get<Int>("orbital_mvelp", -9999);
+  m_orbital_eccen = m_params.get<int>("orbital_eccentricity", -9999);
+  m_orbital_obliq = m_params.get<int>("orbital_obliquity", -9999);
+  m_orbital_mvelp = m_params.get<int>("orbital_mvelp", -9999);
 
   // ---------------------------------------------------------------
   // Input fields read in from IC file, namelist or other processes
@@ -893,7 +863,8 @@ void MAMMicrophysics::run_impl(const double dt) {
             ekat::subview(linoz_dPmL_dO3col, icol);
         const auto linoz_cariolle_pscs_icol =
             ekat::subview(linoz_cariolle_pscs, icol);
-        // Note: All variables are inputs, except for progs, which is an input/output variable.
+        // Note: All variables are inputs, except for progs, which is an
+        // input/output variable.
         mam4::microphysics::perform_atmospheric_chemistry_and_microphysics(
             team, dt, rlats, cnst_offline_icol, forcings_in, atm, progs,
             photo_table, chlorine_loading, config.setsox, config.amicphys,
