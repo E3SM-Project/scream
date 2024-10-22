@@ -37,18 +37,15 @@ inline void compute_p_src_zonal_files(const view_1d &levs,
   EKAT_REQUIRE_MSG(
       p_src.extent_int(1) == nlevs_data,
       "Error: p_src has a different number of levels than the source data. \n");
-
-  const auto policy_pressure = ESU::get_default_team_policy(ncol, nlevs_data);
   Kokkos::parallel_for(
-      "pressure_computation", policy_pressure, KOKKOS_LAMBDA(const Team &team) {
-        const int icol = team.league_rank();
-        Kokkos::parallel_for(Kokkos::TeamVectorRange(team, nlevs_data),
-                             [&](const Int &kk) {
+      "pressure_computation",
+      Kokkos::MDRangePolicy<Kokkos::Rank<2> >({0, 0},
+                                              {ncol, nlevs_data}),
+      KOKKOS_LAMBDA(const int icol, const int kk) {
                                // mbar->pascals
                                // FIXME: Does EAMxx have a better method to
                                // convert units?"
                                p_src(icol, kk) = levs(kk) * 100;
-                             });
       });
   Kokkos::fence();
 }
@@ -612,7 +609,7 @@ inline void perform_vertical_interpolation(const view_2d &p_src_c,
                                            const TracerData &input,
                                            const view_2d output[]) {
   // At this stage, begin/end must have the same horiz dimensions
-  EKAT_REQUIRE(input.ncol_ == int(output[0].extent(0)));
+  EKAT_REQUIRE(input.ncol_ == output[0].extent_int(0));
   const int ncol   = input.ncol_;
   const int levsiz = input.nlev_;
   const int pver   = mam4::nlev;
