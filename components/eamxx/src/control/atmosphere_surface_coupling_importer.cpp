@@ -177,6 +177,47 @@ void SurfaceCouplingImporter::do_import(const bool called_during_initialization)
       overwrite_iop_imports(called_during_initialization);
     }
   }
+
+  bool use_prescribed_gauss_flux = m_params.get<bool>("use_prescribed_gauss_flux");
+  if (use_prescribed_gauss_flux) { prescribed_gaussian_flux(); }
+
+}
+// =========================================================================================
+void SurfaceCouplingImporter::prescribed_gaussian_flux ()
+{
+  using policy_type = KokkosTypes<DefaultDevice>::RangePolicy;
+  auto policy = policy_type(0, m_num_cols);
+  const auto& col_info_d = m_column_info_d;
+
+  auto y = m_grid->get_geometry_data("lat").get_view<const Real*>();
+  auto x = m_grid->get_geometry_data("lon").get_view<const Real*>();
+
+  Real LX = m_params.get<Real>("gauss_flux_domain_length");
+
+  const Real xc = LX/2;
+  const Real yc = LX/2;
+  const Real c = std::pow(LX/16, 2);
+  Real fmax;
+  Real fmin;
+
+  for (int ifield=0; ifield<m_num_scream_imports; ++ifield) {
+    const std::string fname = m_import_field_names[ifield];
+    if ( fname=="surf_evap" || fname=="surf_sens_flux" ) {
+      // if ( fname=="surf_evap"      ) { fmax = 5.0e-05; fmin = 0.5e-05; }
+      // if ( fname=="surf_sens_flux" ) { fmax = 10;      fmin = 1; }
+      if ( fname=="surf_evap"      ) { fmax = 3.0e-05; fmin = 0.1e-05; }
+      if ( fname=="surf_sens_flux" ) { fmax = 6;       fmin = 0.2; }
+      Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const int& icol) {
+        const auto& info_d = col_info_d(ifield);
+        const auto offset = icol*info_d.col_stride + info_d.col_offset;
+        Real radius = std::sqrt( (x(icol)-xc)*(x(icol)-xc) + (y(icol)-yc)*(y(icol)-yc) );
+        info_d.data[offset] = std::max( fmax*exp(-radius*radius/c), fmin ) ;
+      });
+    } else {
+      continue;
+    }
+  }
+
 }
 // =========================================================================================
 void SurfaceCouplingImporter::overwrite_iop_imports (const bool called_during_initialization)

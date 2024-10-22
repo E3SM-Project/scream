@@ -165,7 +165,10 @@ be lost if SCREAM_HACK_XML is not enabled.
     </atm_proc_group>
 
     <!-- Surface coupling (import and export) -->
-    <sc_import inherit="atm_proc_base"/>
+    <sc_import inherit="atm_proc_base">
+      <use_prescribed_gauss_flux type="logical">false</use_prescribed_gauss_flux>
+      <gauss_flux_domain_length type="real">0</gauss_flux_domain_length>
+    </sc_import>
     <sc_export inherit="atm_proc_base">
       <prescribed_constants>
         <fields type="array(string)"/>

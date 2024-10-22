@@ -61,6 +61,8 @@ public:
   // Overwrite imports for IOP cases with IOP file surface data
   void overwrite_iop_imports (const bool called_during_initialization);
 
+  void prescribed_gaussian_flux ();
+
 protected:
 
   // The three main overrides for the subcomponent

@@ -112,6 +112,10 @@ public:
         cld_frac_i(icol,ipack) = ekat::max(cld_frac_t_pack,mincld);
         cld_frac_r(icol,ipack) = ekat::max(cld_frac_t_pack,mincld);
 
+        // cld_frac_l(icol,ipack) = 1.0;
+        // cld_frac_i(icol,ipack) = 1.0;
+        // cld_frac_r(icol,ipack) = 1.0;
+
         // update rain cloud fraction given neighboring levels using max-overlap approach.
         for (int ivec=0;ivec<Spack::n;ivec++)
         {
