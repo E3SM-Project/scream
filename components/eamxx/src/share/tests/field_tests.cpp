@@ -665,7 +665,7 @@ TEST_CASE("multiple_bundles") {
   // Create group4 as a copy of group2
   GroupRequest g4_req ("group4",grid_name,4,Bundling::Required,DerivationType::Copy,g2_req.name,g2_req.grid);
   // Extend group5 by adding all fields in group1 *except* 'c' and 'd'.
-  GroupRequest g5_req ("group5",grid_name,4,Bundling::Preferred,DerivationType::Subset,g1_req.name,g1_req.grid,SL{"c","d"});
+  GroupRequest g5_req ("group5",grid_name,4,Bundling::NotNeeded,DerivationType::Subset,g1_req.name,g1_req.grid,SL{"c","d"});
 
   // The above group specs should give the following groups:
   // g1: [a,b,c,d,e,f]
@@ -674,7 +674,7 @@ TEST_CASE("multiple_bundles") {
   // g4: [c,e]
   // g5: [a,b,e,f]
   // The bundling requests can be accommodated for g1,g2,g3,g4, but not g5.
-  // But g5 request is only 'Preferred', so the FM won't error out.
+  // But g5 request is 'NotRequired', so the FM won't attempt to bundle.
   // The order of fields in the 'encompassing' group is {[c,e],[a,d],[b,f]},
   // where [f1,..,fn] means that the order of those two fields can be anything.
   // The 'block'-reverse of that list is also possible: {[b,f],[a,d],[c,e]}

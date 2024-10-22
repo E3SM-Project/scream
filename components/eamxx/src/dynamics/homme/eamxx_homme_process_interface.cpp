@@ -807,8 +807,6 @@ void HommeDynamics::init_homme_views () {
   const int nelem = m_dyn_grid->get_num_local_dofs()/(NGP*NGP);
   const int qsize = tracers.num_tracers();
 
-  printf("NUM TRACERS: %d\n", qsize);
-
   const auto ncols = m_phys_grid->get_num_local_dofs();
   const auto nlevs = m_phys_grid->get_num_vertical_levels();
   const auto npacks= ekat::npack<Pack>(nlevs);

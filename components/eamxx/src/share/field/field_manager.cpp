@@ -243,13 +243,10 @@ void FieldManager::registration_ends ()
   m_incomplete_requests.clear();
 
   // This method is responsible of allocating the fields in the repo. The most delicate part is
-  // the allocation of fields group, in the case where bundling is requested. In particular,
-  // we want to try to honor as many requests for bundling as possible. If we can't accommodate
-  // all the GroupRequest's that have bundling either Required or Preferred, we will try again
-  // by considering only those with Required bundling (see GroupRequest for detail on those
-  // values). If we are still not able to honor requests, we will error out. An example of a
-  // scenario where we can't honor all requests is given by the three groups G1=(A,B), G2=(B,C),
-  // and G3=(A,C). Clearly, only two of these groups can have contiguous allocation.
+  // the allocation of fields group, in the case where bundling is required. In particular,
+  // we need to ensure that bundling is observed where requested. If we are not able to honor requests,
+  // we will error out. An example of a scenario where we can't honor all requests is given by the three
+  // groups G1=(A,B), G2=(B,C), and G3=(A,C). Clearly, only two of these groups can have contiguous allocation.
 
   // To understand how we can parse the groups to figure out if/how to accommodate all requests,
   // consider the following GR:  G1=(A,B,C), G2=(A,B,C,D,E), G3=(C,D), G4=(C,D,E,F), G5=((D,E,F,G).
@@ -263,7 +260,7 @@ void FieldManager::registration_ends ()
   //     groups (querying m_field_groups info structs). If a GR is derived from another
   //     GR, like a 'Subset' group (see GR header for details), we make sure the group
   //     is in m_field_groups (if not, add it), and contains all the proper fields.
-  //  2) Focus only on GR that require (or prefer) a bundled group, discarding others.
+  //  2) Focus only on GR that require a bundled group, discarding others.
   //     All the remaining group can simply "grab" individual fields later (and they
   //     can even grab some "individual" fields, and some fields that are slices of
   //     another group).
@@ -280,25 +277,9 @@ void FieldManager::registration_ends ()
   //     we must be able to allocate C bundled.
   //  5) For each cluster, call the function contiguous_superset from scream_utils.hpp
   //     (see that file for details). If the fcn fails to find an ordering of the cluster's
-  //     field that accommodate all bundled requests, it will return an empty list.
-  //     Otherwise it will return the ordering of all fields in the cluster that allows all
-  //     groups of the cluster to be a contiguous subset of C.
-  //  6) If step 4 fails for a cluster, remove from the cluster the groups whose bundling
-  //     is only "Preferred", and re-try.
-  //     Notes:
-  //      - eliminating 1+ groups from the cluster may actually "disconnect" the cluster,
-  //        into 2+ separate clusters, which can be treated separately. For simplicity,
-  //        we won't re build the cluster. It might make calling the function
-  //        contiguous_superset a bit more expensive, but it won't alter the existence
-  //        of a contiguous ordering.
-  //      - it is possible that, say, removing G1 still doesn't yield a "bundle-able"
-  //        cluster, but removing G2 does. In general, we should try to remove groups
-  //        one at a time, then two at a time, then three at a time,... until we
-  //        reach a point where the remaining groups can all be bundled. This is overly
-  //        complicated, so if 4 fails, we simply start removing groups with "Preferred"
-  //        bundling until 4 succeeds or we run out of groups with bundling=Preferred
-  //        to remove.
-  //
+  //     field that accommodate all bundled requests, it will return an empty list, in which
+  //     case we must error out. Otherwise it will return the ordering of all fields in the
+  //     cluster that allows all groups of the cluster to be a contiguous subset of C.
 
   // Start by processing group request. This function will ensure that, if there's a
   // request for group A that depends on the content of group B, the FieldGroupInfo
@@ -398,7 +379,8 @@ void FieldManager::registration_ends ()
     }
 
     // Now we have clusters. For each cluster, build the list of lists, and call
-    // the contiguous_superset utility.
+    // the contiguous_superset utility. If that fails, we error out since not all
+    // Bundling requirements could be fufilled.
     for (auto& cluster : clusters) {
       using LOL_t = std::list<std::list<ci_string>>;
 
@@ -409,46 +391,6 @@ void FieldManager::registration_ends ()
       }
 
       auto cluster_ordered_fields = contiguous_superset(groups_fields);
-      while (cluster_ordered_fields.size()==0) {
-        // Try to see if there's a group we can remove, that is, a group
-        // for which bundling is only Preferred. If there's no such group,
-        // we break the loop, and we will crap out.
-
-        std::list<std::string>::iterator it = cluster.end();
-        for (const auto& gn : cluster) {
-          const auto& reqs = m_group_requests.at(gn);
-          bool remove_this = true;
-          for (const auto& r : reqs) {
-            if (r.bundling==Bundling::Required) {
-              // Can't remove this group, cause at least one request "requires" bundling
-              remove_this = false;
-              break;
-            }
-          }
-
-          if (remove_this) {
-            // It's ok to try and remove this group from the cluster
-            it = ekat::find(cluster,gn);
-            break;
-          }
-        }
-
-        if (it==cluster.end()) {
-          // We were not able to find a group that can be removed from the cluster,
-          // meaning that all groups in the cluster are "Required" to be bunlded.
-          // Time to quit.
-          break;
-        }
-
-        // Ok, let's remove group *it, and try again
-        // Note: we have to remove the group name from gnames, but we also have to
-        //       remove its list of fields from group_fields
-        auto pos = std::distance(cluster.begin(),it);
-        cluster.erase(std::next(cluster.begin(),pos));
-        groups_fields.erase(std::next(groups_fields.begin(),pos));
-        cluster_ordered_fields = contiguous_superset(groups_fields);
-      }
-
       if (cluster_ordered_fields.size()==0) {
         // We were not able to accommodate all the requests bundling the groups
         // in this cluster. We have to error out. But first, let's print some
@@ -459,9 +401,6 @@ void FieldManager::registration_ends ()
         for (const auto& gn : cluster) {
           std::cout << "   - " << gn << "\n";
         }
-        std::cout << "       Consdier modifying the Atm Procs where these groups are requested.\n"
-                  << "       For instance, you may ask for 'Preferred' bundling, rather than 'Required'\n";
-
         EKAT_ERROR_MSG (" -- ERROR --\n");
       }
 
