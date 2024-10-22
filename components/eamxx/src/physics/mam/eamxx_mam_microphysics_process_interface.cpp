@@ -1,8 +1,7 @@
 #include <physics/mam/eamxx_mam_microphysics_process_interface.hpp>
 
 // impl namespace for some driver level functions for microphysics
-#include "impl/compute_o3_column_density.cpp"
-#include "impl/gas_phase_chemistry.cpp"
+#include "impl/photo_table_utils.cpp"
 #include "physics/rrtmgp/shr_orb_mod_c2f.hpp"
 
 // When the preprocessor definition ENABLE_OUTPUT_TRACER_FIELDS is
@@ -870,219 +869,43 @@ void MAMMicrophysics::run_impl(const double dt) {
 
         const auto extfrc_icol = ekat::subview(extfrc, icol);
 
-        mam4::mo_setext::extfrc_set(forcings_in, extfrc_icol);
-
         view_1d cnst_offline_icol[mam4::mo_setinv::num_tracer_cnst];
         for(int i = 0; i < mam4::mo_setinv::num_tracer_cnst; ++i) {
           cnst_offline_icol[i] = ekat::subview(cnst_offline[i], icol);
         }
-        mam4::mo_setinv::setinv(team,                                     // in
-                                invariants_icol,                          // out
-                                atm.temperature, atm.vapor_mixing_ratio,  // in
-                                cnst_offline_icol, atm.pressure);         // in
 
         // calculate o3 column densities (first component of col_dens in Fortran
         // code)
         auto o3_col_dens_i = ekat::subview(o3_col_dens, icol);
-        impl::compute_o3_column_density(team, atm, progs,       // in
-                                        invariants_icol,        // in
-                                        adv_mass_kg_per_moles,  // in
-                                        o3_col_dens_i);         // out
-
-        // set up photolysis work arrays for this column.
-        mam4::mo_photo::PhotoTableWorkArrays photo_work_arrays_icol;
         const auto &work_photo_table_icol =
             ekat::subview(work_photo_table, icol);
 
-        //  set work view using 1D photo_work_arrays_icol
-        // Note: We are not allocating views here.
-        mam4::mo_photo::set_photo_table_work_arrays(
-            photo_table, work_photo_table_icol,  // in
-            photo_work_arrays_icol);             // out
-
         const auto &photo_rates_icol = ekat::subview(photo_rates, icol);
-        mam4::mo_photo::table_photo(
-            photo_rates_icol,                             // out
-            atm.pressure, atm.hydrostatic_dp,             // in
-            atm.temperature, o3_col_dens_i,               // in
-            zenith_angle(icol), d_sfc_alb_dir_vis(icol),  // in
-            atm.liquid_mixing_ratio, atm.cloud_fraction,  // in
-            eccf, photo_table,                            // in
-            photo_work_arrays_icol);                      // out
 
-        // compute aerosol microphysics on each vertical level within this
-        // column
-        Kokkos::parallel_for(
-            Kokkos::TeamThreadRange(team, nlev), [&](const int kk) {
-              // extract atm state variables (input)
-              Real temp    = atm.temperature(kk);
-              Real pmid    = atm.pressure(kk);
-              Real pdel    = atm.hydrostatic_dp(kk);
-              Real zm      = atm.height(kk);
-              Real pblh    = atm.planetary_boundary_layer_height;
-              Real qv      = atm.vapor_mixing_ratio(kk);
-              Real cldfrac = atm.cloud_fraction(kk);
-              Real lwc     = atm.liquid_mixing_ratio(kk);
-              Real cldnum  = atm.cloud_liquid_number_mixing_ratio(kk);
-
-              // extract aerosol state variables into "working arrays" (mass
-              // mixing ratios) (in EAM, this is done in the gas_phase_chemdr
-              // subroutine defined within
-              //  mozart/mo_gas_phase_chemdr.F90)
-              Real state_q[pcnst]    = {};
-              Real qqcw_pcnst[pcnst] = {};
-              // output (state_q)
-              mam4::utils::extract_stateq_from_prognostics(progs, atm, state_q,
-                                                           kk);
-              // output (qqcw_pcnst)
-              mam4::utils::extract_qqcw_from_prognostics(progs, qqcw_pcnst, kk);
-
-              Real qq[gas_pcnst]   = {};
-              Real qqcw[gas_pcnst] = {};
-              for(int i = offset_aerosol; i < pcnst; ++i) {
-                qq[i - offset_aerosol]   = state_q[i];
-                qqcw[i - offset_aerosol] = qqcw_pcnst[i];
-              }
-              // convert mass mixing ratios to volume mixing ratios (VMR),
-              // equivalent to tracer mixing ratios (TMR))
-              Real vmr[gas_pcnst], vmrcw[gas_pcnst];
-              // output (vmr)
-              mam_coupling::mmr2vmr(qq, adv_mass_kg_per_moles, vmr);
-              // output (vmrcw)
-              mam_coupling::mmr2vmr(qqcw, adv_mass_kg_per_moles, vmrcw);
-
-              //---------------------
-              // Gas Phase Chemistry
-              //---------------------
-              //
-              const auto &extfrc_k      = ekat::subview(extfrc_icol, kk);
-              const auto &invariants_k  = ekat::subview(invariants_icol, kk);
-              const auto &photo_rates_k = ekat::subview(photo_rates_icol, kk);
-
-              // vmr0 stores mixing ratios before chemistry changes the mixing
-              // ratios
-              Real vmr0[gas_pcnst] = {};
-              impl::gas_phase_chemistry(
-                  // in
-                  temp, dt, photo_rates_k.data(), extfrc_k.data(),
-                  invariants_k.data(), clsmap_4, permute_4,
-                  // out
-                  vmr, vmr0);
-
-              // create work array copies to retain "pre-chemistry (aqueous)"
-              // values
-              Real vmr_pregas[gas_pcnst] = {};
-              Real vmr_precld[gas_pcnst] = {};
-              for(int i = 0; i < gas_pcnst; ++i) {
-                vmr_pregas[i] = vmr[i];
-                vmr_precld[i] = vmrcw[i];
-              }
-
-              //----------------------
-              // Aerosol microphysics
-              //----------------------
-              // the logic below is taken from the aero_model_gasaerexch
-              // subroutine in eam/src/chemistry/modal_aero/aero_model.F90
-
-              // aqueous chemistry ...
-              const Real mbar      = haero::Constants::molec_weight_dry_air;
-              constexpr int indexm = mam4::gas_chemistry::indexm;
-              mam4::mo_setsox::setsox_single_level(
-                  // in
-                  offset_aerosol, dt, pmid, pdel, temp, mbar, lwc, cldfrac,
-                  cldnum, invariants_k[indexm], config.setsox,
-                  // out
-                  vmrcw, vmr);
-
-              // calculate aerosol water content using water uptake treatment
-              // * dry and wet diameters [m]
-              // * wet densities [kg/m3]
-              // * aerosol water mass mixing ratio [kg/kg]
-              Real dgncur_a_kk[num_modes]    = {};
-              Real dgncur_awet_kk[num_modes] = {};
-              Real wetdens_kk[num_modes]     = {};
-              Real qaerwat_kk[num_modes]     = {};
-
-              for(int imode = 0; imode < num_modes; imode++) {
-                dgncur_awet_kk[imode] = wet_diameter_icol(imode, kk);
-                dgncur_a_kk[imode]    = dry_diameter_icol(imode, kk);
-                wetdens_kk[imode]     = wetdens_icol(imode, kk);
-              }
-              // do aerosol microphysics (gas-aerosol exchange, nucleation,
-              // coagulation)
-              impl::modal_aero_amicphys_intr(
-                  // in
-                  config.amicphys, dt, temp, pmid, pdel, zm, pblh, qv, cldfrac,
-                  // out
-                  vmr, vmrcw,
-                  // in
-                  vmr0, vmr_pregas, vmr_precld, dgncur_a_kk, dgncur_awet_kk,
-                  wetdens_kk);
-
-              mam_coupling::vmr2mmr(vmrcw, adv_mass_kg_per_moles, qqcw);
-
-              //-----------------
-              // LINOZ chemistry
-              //-----------------
-
-              // the following things are diagnostics, which we're not
-              // including in the first rev
-              Real do3_linoz, do3_linoz_psc, ss_o3, o3col_du_diag,
-                  o3clim_linoz_diag, zenith_angle_degrees;
-
-              // index of "O3" in solsym array (in EAM)
-              constexpr int o3_ndx = static_cast<int>(mam4::GasId::O3);
-              mam4::lin_strat_chem::lin_strat_chem_solve_kk(
-                  // in
-                  o3_col_dens_i(kk), temp, zenith_angle(icol), pmid, dt, rlats,
-                  linoz_o3_clim(icol, kk), linoz_t_clim(icol, kk),
-                  linoz_o3col_clim(icol, kk), linoz_PmL_clim(icol, kk),
-                  linoz_dPmL_dO3(icol, kk), linoz_dPmL_dT(icol, kk),
-                  linoz_dPmL_dO3col(icol, kk), linoz_cariolle_pscs(icol, kk),
-                  chlorine_loading, config.linoz.psc_T,
-                  // out
-                  vmr[o3_ndx],
-                  // outputs that are not used
-                  do3_linoz, do3_linoz_psc, ss_o3, o3col_du_diag,
-                  o3clim_linoz_diag, zenith_angle_degrees);
-
-              // Update source terms above the ozone decay threshold
-              if(kk >= nlev - o3_lbl) {
-                Real o3l_vmr, do3mass;
-                // initial O3 vmr
-                o3l_vmr = vmr[o3_ndx];
-                // get new value of O3 vmr
-                o3l_vmr =
-                    mam4::lin_strat_chem::lin_strat_sfcsink_kk(dt, pdel,  // in
-                                                               o3l_vmr,   // out
-                                                               o3_sfc,    // in
-                                                               o3_tau,    // in
-                                                               do3mass);  // out
-                // Update the mixing ratio (vmr) for O3
-                vmr[o3_ndx] = o3l_vmr;
-              }
-              // Check for negative values and reset to zero
-              for(int i = 0; i < gas_pcnst; ++i) {
-                if(vmr[i] < 0.0) vmr[i] = 0.0;
-              }
-
-              //----------------------
-              // Dry deposition (gas)
-              //----------------------
-
-              // FIXME: drydep integration in progress!
-              // mam4::drydep::drydep_xactive(...);
-
-              mam_coupling::vmr2mmr(vmr, adv_mass_kg_per_moles, qq);
-
-              for(int i = offset_aerosol; i < pcnst; ++i) {
-                state_q[i]    = qq[i - offset_aerosol];
-                qqcw_pcnst[i] = qqcw[i - offset_aerosol];
-              }
-              mam4::utils::inject_stateq_to_prognostics(state_q, progs, kk);
-              mam4::utils::inject_qqcw_to_prognostics(qqcw_pcnst, progs, kk);
-            });  // parallel_for for vertical levels
-      });        // parallel_for for the column loop
+        const auto linoz_o3_clim_icol = ekat::subview(linoz_o3_clim, icol);
+        const auto linoz_t_clim_icol  = ekat::subview(linoz_t_clim, icol);
+        const auto linoz_o3col_clim_icol =
+            ekat::subview(linoz_o3col_clim, icol);
+        const auto linoz_PmL_clim_icol = ekat::subview(linoz_PmL_clim, icol);
+        const auto linoz_dPmL_dO3_icol = ekat::subview(linoz_dPmL_dO3, icol);
+        const auto linoz_dPmL_dT_icol  = ekat::subview(linoz_dPmL_dT, icol);
+        const auto linoz_dPmL_dO3col_icol =
+            ekat::subview(linoz_dPmL_dO3col, icol);
+        const auto linoz_cariolle_pscs_icol =
+            ekat::subview(linoz_cariolle_pscs, icol);
+        // Note: All variables are inputs, except for progs, which is an input/output variable.
+        mam4::microphysics::perform_atmospheric_chemistry_and_microphysics(
+            team, dt, rlats, cnst_offline_icol, forcings_in, atm, progs,
+            photo_table, chlorine_loading, config.setsox, config.amicphys,
+            config.linoz.psc_T, zenith_angle(icol), d_sfc_alb_dir_vis(icol),
+            o3_col_dens_i, photo_rates_icol, extfrc_icol, invariants_icol,
+            work_photo_table_icol, linoz_o3_clim_icol, linoz_t_clim_icol,
+            linoz_o3col_clim_icol, linoz_PmL_clim_icol, linoz_dPmL_dO3_icol,
+            linoz_dPmL_dT_icol, linoz_dPmL_dO3col_icol,
+            linoz_cariolle_pscs_icol, eccf, adv_mass_kg_per_moles, clsmap_4,
+            permute_4, offset_aerosol, o3_sfc, o3_tau, o3_lbl,
+            dry_diameter_icol, wet_diameter_icol, wetdens_icol);
+      });  // parallel_for for the column loop
   Kokkos::fence();
 
   // postprocess output

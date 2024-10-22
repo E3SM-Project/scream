@@ -5,9 +5,6 @@
 #include <share/atm_process/atmosphere_process.hpp>
 #include <share/util/scream_common_physics_functions.hpp>
 
-// MAM4xx top-level microphysics function(s)
-#include "impl/mam4_amicphys.cpp"
-
 // For reading files
 #include "impl/helper_micro.hpp"
 
@@ -108,7 +105,7 @@ class MAMMicrophysics final : public scream::AtmosphereProcess {
     mam4::mo_setsox::Config setsox;
 
     // aero microphysics configuration (see impl/mam4_amicphys.cpp)
-    impl::AmicPhysConfig amicphys;
+    mam4::microphysics::AmicPhysConfig amicphys;
 
     // dry deposition parameters
     struct {
