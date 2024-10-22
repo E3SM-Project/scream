@@ -35,7 +35,7 @@ inline void compute_p_src_zonal_files(const view_1d &levs,
   const int ncol       = p_src.extent(0);
   const int nlevs_data = levs.extent(0);
   EKAT_REQUIRE_MSG(
-      int(p_src.extent(1)) == nlevs_data,
+      p_src.extent_int(1) == nlevs_data,
       "Error: p_src has a different number of levels than the source data. \n");
 
   const auto policy_pressure = ESU::get_default_team_policy(ncol, nlevs_data);
