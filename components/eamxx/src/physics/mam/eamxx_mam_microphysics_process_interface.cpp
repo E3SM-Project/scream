@@ -330,11 +330,11 @@ void MAMMicrophysics::set_grids(
     }  // var_name vert emissions
     int i               = 0;
     int offset_emis_ver = 0;
-    for(auto it = extfrc_lst_.begin(); it != extfrc_lst_.end(); ++it, ++i) {
-      const auto var_name  = *it;
+    for(const auto &var_name : extfrc_lst_)
+    {
       const auto file_name = vert_emis_file_name_[var_name];
       const auto var_names = vert_emis_var_names_[var_name];
-      const int nvars      = int(var_names.size());
+      const int nvars = static_cast<int>(var_names.size());
 
       forcings_[i].nsectors = nvars;
       // I am assuming the order of species in extfrc_lst_.
@@ -355,6 +355,7 @@ void MAMMicrophysics::set_grids(
             view_2d("vert_emis_output_", ncol_, nlev_);
       }
       offset_emis_ver += nvars;
+      ++i;
     }  // end i
     EKAT_REQUIRE_MSG(
       offset_emis_ver <= int(mam_coupling::MAX_NUM_VERT_EMISSION_FIELDS),
@@ -551,8 +552,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   scream::mam_coupling::update_tracer_data_from_file(
       TracerDataReader_, curr_month, *TracerHorizInterp_, tracer_data_);
 
-  int i = 0;
-  for(auto it = extfrc_lst_.begin(); it != extfrc_lst_.end(); ++it, ++i) {
+  for (int i = 0; i < extfrc_lst_.size(); ++i) {
     scream::mam_coupling::update_tracer_data_from_file(
         VertEmissionsDataReader_[i], curr_month, *VertEmissionsHorizInterp_[i],
         vert_emis_data_[i]);
@@ -674,8 +674,7 @@ void MAMMicrophysics::run_impl(const double dt) {
 
   vert_emiss_time_state_.t_now = ts.frac_of_year_in_days();
   int i                        = 0;
-  for(auto it = extfrc_lst_.begin(); it != extfrc_lst_.end(); ++it, ++i) {
-    const auto var_name  = *it;
+  for(const auto &var_name : extfrc_lst_) {
     const auto file_name = vert_emis_file_name_[var_name];
     const auto var_names = vert_emis_var_names_[var_name];
     const int nsectors   = int(var_names.size());
@@ -687,6 +686,7 @@ void MAMMicrophysics::run_impl(const double dt) {
         VertEmissionsDataReader_[i], *VertEmissionsHorizInterp_[i], ts,
         vert_emiss_time_state_, vert_emis_data_[i], dry_atm_.p_mid,
         dry_atm_.z_iface, vert_emis_output);
+    i++;
     Kokkos::fence();
   }
 
