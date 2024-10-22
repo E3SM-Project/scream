@@ -398,7 +398,7 @@ void MAMMicrophysics::init_buffers(const ATMBufferManager &buffer_manager) {
       used_mem == requested_buffer_size_in_bytes(),
       "Error! Used memory != requested memory for MAMMicrophysics."
       " Used memory: " << std::to_string(used_mem) << "."
-      " Requested memory: " << std::to_string(requested_buffer_size_in_bytes()) << "." 
+      " Requested memory: " << std::to_string(requested_buffer_size_in_bytes()) << ". \n"
   );
 }
 
