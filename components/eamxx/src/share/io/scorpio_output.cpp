@@ -86,6 +86,9 @@ AtmosphereOutput (const ekat::Comm& comm,
                   const std::shared_ptr<const grid_type>& grid)
  : m_comm (comm)
 {
+  auto fname = [](const Field& f){return f.name();};
+  m_stream_name = ekat::join(fields,fname,",");
+
   // This version of AtmosphereOutput is for quick output of fields
   m_avg_type = OutputAvgType::Instant;
   m_add_time_dim = false;
@@ -116,6 +119,7 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
                   const std::shared_ptr<const gm_type>& grids_mgr)
  : m_comm         (comm)
  , m_add_time_dim (true)
+ , m_stream_name (params.name())
 {
   using vos_t = std::vector<std::string>;
 
@@ -417,17 +421,17 @@ run (const std::string& filename,
   // If needed, remap fields from their grid to the unique grid, for I/O
   if (m_vert_remapper) {
     start_timer("EAMxx::IO::vert_remap");
-    start_timer("EAMxx::IO::vert_remap::" + m_params.name());
+    start_timer("EAMxx::IO::vert_remap::" + m_stream_name);
     apply_remap(m_vert_remapper);
-    stop_timer("EAMxx::IO::vert_remap::" + m_params.name());
+    stop_timer("EAMxx::IO::vert_remap::" + m_stream_name);
     stop_timer("EAMxx::IO::vert_remap");
   }
 
   if (m_horiz_remapper) {
     start_timer("EAMxx::IO::horiz_remap");
-    start_timer("EAMxx::IO::horiz_remap::" + m_params.name());
+    start_timer("EAMxx::IO::horiz_remap::" + m_stream_name);
     apply_remap(m_horiz_remapper);
-    stop_timer("EAMxx::IO::horiz_remap::" + m_params.name());
+    stop_timer("EAMxx::IO::horiz_remap::" + m_stream_name);
     stop_timer("EAMxx::IO::horiz_remap");
   }
 

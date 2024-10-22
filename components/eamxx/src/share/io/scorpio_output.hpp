@@ -222,6 +222,8 @@ protected:
   bool m_add_time_dim;
   bool m_track_avg_cnt = false;
 
+  std::string m_stream_name;
+
   // The logger to be used throughout the ATM to log message
   std::shared_ptr<ekat::logger::LoggerBase> m_atm_logger;
 };
