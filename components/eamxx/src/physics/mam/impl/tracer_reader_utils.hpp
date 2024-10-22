@@ -1,5 +1,5 @@
-#ifndef EAMXX_MAM_HELPER_MICRO
-#define EAMXX_MAM_HELPER_MICRO
+#ifndef EAMXX_MAM_TRACER_READER_UTILS
+#define EAMXX_MAM_TRACER_READER_UTILS
 
 #include <ekat/kokkos/ekat_kokkos_utils.hpp>
 #include <ekat/util/ekat_lin_interp.hpp>
