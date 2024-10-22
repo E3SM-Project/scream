@@ -396,7 +396,10 @@ void MAMMicrophysics::init_buffers(const ATMBufferManager &buffer_manager) {
       mam_coupling::init_buffer(buffer_manager, ncol_, nlev_, buffer_);
   EKAT_REQUIRE_MSG(
       used_mem == requested_buffer_size_in_bytes(),
-      "Error! Used memory != requested memory for MAMMicrophysics.");
+      "Error! Used memory != requested memory for MAMMicrophysics."
+      " Used memory: " << std::to_string(used_mem) << "."
+      " Requested memory: " << std::to_string(requested_buffer_size_in_bytes()) << "." 
+  );
 }
 
 // ================================================================
