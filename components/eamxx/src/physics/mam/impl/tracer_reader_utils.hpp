@@ -651,8 +651,8 @@ inline void perform_vertical_interpolation(const const_view_1d &altitude_int,
       "Error! vertical interpolation only with altitude variable. \n");
   const int ncols          = input.ncol_;
   const int num_vars       = input.nvars_;
-  const int ntrg           = output[0].extent(1);
-  const int num_vert_packs = ntrg;
+  const int num_vertical_lev_target           = output[0].extent(1);
+  const int num_vert_packs = num_vertical_lev_target;
   const int outer_iters    = ncols * num_vars;
   const auto policy_interp =
       ESU::get_default_team_policy(outer_iters, num_vert_packs);
@@ -681,7 +681,7 @@ inline void perform_vertical_interpolation(const const_view_1d &altitude_int,
           trg_x[pverp - i - 1] = m2km * zi(icol, i);
         }
         team.team_barrier();
-        mam4::vertical_interpolation::rebin(team, nsrc, ntrg, src_x, trg_x, src,
+        mam4::vertical_interpolation::rebin(team, nsrc, num_vertical_lev_target, src_x, trg_x, src,
                                             trg);
       });
 }
