@@ -44,8 +44,8 @@ MAMMicrophysics::MAMMicrophysics(const ekat::Comm &comm,
 
   // LINOZ namelist parameters
   o3_lbl_ = m_params.get<int>("mam4_o3_lbl");
-  o3_tau_ = m_params.get<Real>("mam4_o3_tau");
-  o3_sfc_ = m_params.get<Real>("mam4_o3_sfc");
+  o3_tau_ = m_params.get<double>("mam4_o3_tau");
+  o3_sfc_ = m_params.get<double>("mam4_o3_sfc");
 }
 
 AtmosphereProcessType MAMMicrophysics::type() const {
