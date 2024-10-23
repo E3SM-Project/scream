@@ -555,7 +555,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   scream::mam_coupling::update_tracer_data_from_file(
       TracerDataReader_, curr_month, *TracerHorizInterp_, tracer_data_);
 
-  for (int i = 0; i < extfrc_lst_.size(); ++i) {
+  for (int i = 0; i < static_cast<int>(extfrc_lst_.size()); ++i) {
     scream::mam_coupling::update_tracer_data_from_file(
         VertEmissionsDataReader_[i], curr_month, *VertEmissionsHorizInterp_[i],
         vert_emis_data_[i]);
@@ -709,10 +709,8 @@ void MAMMicrophysics::run_impl(const double dt) {
 
   mam_coupling::DryAtmosphere &dry_atm = dry_atm_;
   mam_coupling::AerosolState &dry_aero = dry_aero_;
-  mam_coupling::AerosolState &wet_aero = wet_aero_;
 
   mam4::mo_photo::PhotoTableData &photo_table = photo_table_;
-  const int nlev                              = nlev_;
   const Config &config                        = config_;
   const auto &work_photo_table                = work_photo_table_;
   const auto &photo_rates                     = photo_rates_;
@@ -774,12 +772,8 @@ void MAMMicrophysics::run_impl(const double dt) {
     Kokkos::deep_copy(acos_cosine_zenith_, acos_cosine_zenith_host_);
   }
   const auto zenith_angle = acos_cosine_zenith_;
-
-  constexpr int num_modes = mam4::AeroConfig::num_modes();
   constexpr int gas_pcnst = mam_coupling::gas_pcnst();
-  constexpr int nqtendbb  = mam_coupling::nqtendbb();
 
-  constexpr int pcnst         = mam4::pcnst;
   const auto vert_emis_output = vert_emis_output_;
   const auto extfrc           = extfrc_;
   const auto forcings         = forcings_;
