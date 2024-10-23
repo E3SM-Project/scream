@@ -385,7 +385,8 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
   }
 
   if (!m_IC_processed && m_has_unmet_deps) {
-    ofile << "9 [\n"
+    int this_node_id = m_nodes.size() + 1;
+    ofile << this_node_id << " [\n"
           << "  shape=box\n"
           << "  color=\"#605d57\"\n"
           << "  fontcolor=\"#034a4a\"\n"
