@@ -412,9 +412,9 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   m_orbital_year = m_params.get<int>("orbital_year", -9999);
 
   // Get orbital parameters from yaml file
-  m_orbital_eccen = m_params.get<int>("orbital_eccentricity", -9999);
-  m_orbital_obliq = m_params.get<int>("orbital_obliquity", -9999);
-  m_orbital_mvelp = m_params.get<int>("orbital_mvelp", -9999);
+  m_orbital_eccen = m_params.get<double>("orbital_eccentricity", -9999);
+  m_orbital_obliq = m_params.get<double>("orbital_obliquity", -9999);
+  m_orbital_mvelp = m_params.get<double>("orbital_mvelp", -9999);
 
   // ---------------------------------------------------------------
   // Input fields read in from IC file, namelist or other processes
@@ -726,11 +726,16 @@ void MAMMicrophysics::run_impl(const double dt) {
   // angle. This operation is performed on the host because the routine
   // shr_orb_cosz_c2f has not been ported to C++.
   auto ts2 = timestamp();
-  double obliqr, lambm0, mvelpp;
   auto orbital_year = m_orbital_year;
-  auto eccen        = m_orbital_eccen;
-  auto obliq        = m_orbital_obliq;
-  auto mvelp        = m_orbital_mvelp;
+  // Note: We need double precision because
+  // shr_orb_params_c2f and shr_orb_decl_c2f only support double precision.
+  double obliqr, lambm0, mvelpp;
+  double eccen        = m_orbital_eccen;
+  double obliq        = m_orbital_obliq;
+  double mvelp        = m_orbital_mvelp;
+  // Use the orbital parameters to calculate the solar declination and
+  // eccentricity factor
+  double delta, eccf;
   if(eccen >= 0 && obliq >= 0 && mvelp >= 0) {
     // use fixed orbital parameters; to force this, we need to set
     // orbital_year to SHR_ORB_UNDEF_INT, which is exposed through
@@ -742,9 +747,7 @@ void MAMMicrophysics::run_impl(const double dt) {
   }
   shr_orb_params_c2f(&orbital_year,                                       // in
                      &eccen, &obliq, &mvelp, &obliqr, &lambm0, &mvelpp);  // out
-  // Use the orbital parameters to calculate the solar declination and
-  // eccentricity factor
-  Real delta, eccf;
+
   // Want day + fraction; calday 1 == Jan 1 0Z
   auto calday = ts2.frac_of_year_in_days() + 1;
   shr_orb_decl_c2f(calday, eccen, mvelpp, lambm0, obliqr,  // in
