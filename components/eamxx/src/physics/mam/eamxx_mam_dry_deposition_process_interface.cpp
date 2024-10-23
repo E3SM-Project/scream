@@ -225,9 +225,7 @@ void MAMDryDep::set_grids(
   // initialize the file read
   FracLandUseFunc::init_frac_landuse_file_read(
       ncol_, field_name, dim_name1, dim_name2, grid_, frac_landuse_data_file,
-      mapping_file,
-      // output
-      horizInterp_, dataReader_);
+      mapping_file, horizInterp_, dataReader_);  // output
 
 }  // set_grids
 
@@ -436,7 +434,7 @@ void MAMDryDep::run_impl(const double dt) {
   // Surface deposition flux of interstitial aerosols, [kg/m2/s] or [1/m2/s]
   auto aerdepdryis_ = get_field_out("deposition_flux_of_interstitial_aerosols")
                           .get_view<Real **>();
-
+  printf("BALLI%0.15e\n:", frac_landuse_(0, 1));
   //--------------------------------------------------------------------
   // Call drydeposition and get tendencies
   //--------------------------------------------------------------------
