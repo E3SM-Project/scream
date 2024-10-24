@@ -1030,7 +1030,7 @@ contains
          ze_rain(k) = nr(k)*(mu_r(k)+6._rtype)*(mu_r(k)+5._rtype)*(mu_r(k)+4._rtype)*           &
               (mu_r(k)+3._rtype)*(mu_r(k)+2._rtype)*(mu_r(k)+1._rtype)/bfb_pow(lamr(k), 6._rtype)
          ze_rain(k) = max(ze_rain(k),1.e-22_rtype)
-         diag_eff_radius_qr(k) = 1.5_rtype/lamr(k)
+         diag_eff_radius_qr(k) = 0.5_rtype*(mu_r(k)+3._rtype)/lamr(k)
       else
          qv(k) = qv(k)+qr(k)
          th_atm(k) = th_atm(k)-inv_exner(k)*qr(k)*latent_heat_vapor(k)*inv_cp
@@ -2830,7 +2830,7 @@ subroutine back_to_cell_average(cld_frac_l,cld_frac_r,cld_frac_i,               
    ! map ice-phase  process rates to cell-avg
    qi2qv_sublim_tend   = qi2qv_sublim_tend*cld_frac_i       ! Sublimation of ice in ice cloud
    nr_ice_shed_tend  = nr_ice_shed_tend*il_cldm    ! Rain # increase due to shedding from rain-ice collisions, occurs when ice and liquid interact
-   qc2qi_hetero_freeze_tend  = qc2qi_hetero_freeze_tend*il_cldm    ! Immersion freezing of cloud drops
+   qc2qi_hetero_freeze_tend  = qc2qi_hetero_freeze_tend*cld_frac_l    ! Immersion freezing of cloud drops
    qrcol   = qrcol*ir_cldm     ! Collection of rain mass by ice
    qc2qr_ice_shed_tend   = qc2qr_ice_shed_tend*il_cldm     ! Rain mass growth due to shedding of fain drops after collisions with ice, occurs when ice and liquid interact
    qi2qr_melt_tend   = qi2qr_melt_tend*cld_frac_i       ! Melting of ice
