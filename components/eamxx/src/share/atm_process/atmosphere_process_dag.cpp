@@ -181,7 +181,7 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
   ofile.open (fname.c_str());
 
   ofile << "strict digraph G {\n"
-        << "rankdir=\"LR\"";
+        << "rankdir=\"LR\"\n";
 
   for (const auto& n : m_nodes) {
     const auto& unmet = m_unmet_deps.at(n.id);
@@ -202,8 +202,6 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
       id_end = n.id;
       box_fmt = "  color=\"#88621e\"\n  fontcolor=\"#88621e\"\n  style=filled\n"
                 "  fillcolor=\"#dccfb9\"\n";
-    } else {
-      box_fmt = "penwidth=4\n fontsize=30";
     }
 
     // Write node, with computed/required fields
@@ -216,63 +214,71 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
           << "  label=<\n"
           << "    <table border=\"0\">\n"
           << "      <tr><td><b><font point-size=\"40\">" << html_fix(n.name)
-          << "</font></b></td></tr>";
-    if (verbosity>1) {
+          << "</font></b></td></tr>\n";
+
+    int sz_comp = n.computed.size(), sz_req = n.required.size(),
+        sz_grcomp = n.gr_computed.size(), sz_grreq = n.gr_required.size();
+    int nfield = sz_comp + sz_req + sz_grcomp + sz_grreq;
+    if (verbosity > 1 && nfield > 0) {
       // FieldIntentifier prints bare min with verb 0.
       // DAG starts printing fids with verb 2, so fid verb is verb-2;
       int fid_verb = verbosity-2;
-      ofile << "<hr/>\n";
+      ofile << "      <hr/>\n";
 
-      // Computed fields
-      if (n.id == id_begin) {
-        ofile << "      <tr><td align=\"left\"><b><font color=\"#00667E\">"
-              << "Atm input fields from previous time step:</font></b></td></tr>\n";
-      } else if (n.id == id_IC) {
-        ofile << "      <tr><td align=\"left\"><b><font color=\"#00667E\">"
-              << "Initial Fields:</font></b></td></tr>\n";
-      } else if (n.id != id_end) {
-        ofile << "      <tr><td align=\"left\"><b><font color=\"#88621e\">"
-              << "Computed Fields:</font></b></td></tr>\n";
-      }
+      if (sz_comp > 0) {
+        // Computed fields
+        if (n.id == id_begin) {
+          ofile << "      <tr><td align=\"left\"><b><font color=\"#00667E\">"
+                << "Atm input fields from previous time step:</font></b></td></tr>\n";
+        } else if (n.id == id_IC) {
+          ofile << "      <tr><td align=\"left\"><b><font color=\"#00667E\">"
+                << "Initial Fields:</font></b></td></tr>\n";
+        } else if (n.id != id_end) {
+          ofile << "      <tr><td align=\"left\"><b><font color=\"#88621e\">"
+                << "Computed Fields:</font></b></td></tr>\n";
+        }
 
-      for (const auto& fid : n.computed) {
-        std::string fc = "<font color=\"";
-        fc += "black";
-        fc += "\">  ";
-        ofile << "      <tr><td align=\"left\">" << fc
-              << html_fix(print_fid(m_fids[fid],fid_verb))
-              << "</font></td></tr>\n";
-      }
-
-      // Required fields
-      if (n.id == id_end) {
-        ofile << "      <tr><td align=\"left\"><b><font color=\"#88621e\">"
-              << "Atm output fields for next time step:</font></b></td></tr>\n";
-      } else if (n.id != id_begin && n.id != id_IC) {
-        ofile << "      <tr><td align=\"left\"><b><font color=\"#00667E\">"
-              << "Required Fields:</font></b></td></tr>\n";
-      }
-      for (const auto& fid : n.required) {
-        std::string fc = "<font color=\"";
-        if (ekat::contains(unmet, fid)) {
-          fc += "red";
-        } else if (ekat::contains(unmet, -fid)) {
-          fc +=  "#006219";
-        } else {
+        for (const auto& fid : n.computed) {
+          std::string fc = "<font color=\"";
           fc += "black";
+          fc += "\">  ";
+          ofile << "      <tr><td align=\"left\">" << fc
+                << html_fix(print_fid(m_fids[fid],fid_verb))
+                << "</font></td></tr>\n";
         }
-        fc += "\">  ";
-        ofile << "      <tr><td align=\"left\">" << fc << html_fix(print_fid(m_fids[fid],fid_verb));
-        if (ekat::contains(m_unmet_deps.at(n.id), fid)) {
-          ofile << "<b>  *** MISSING ***</b>";
-        } else if (ekat::contains(m_unmet_deps.at(n.id), -fid)) {
-          ofile << "<b>  (Init. Cond.)</b>";
+      }
+
+      if (sz_req > 0) {
+        // Required fields
+        if (n.id == id_end) {
+          ofile << "      <tr><td align=\"left\"><b><font color=\"#88621e\">"
+                << "Atm output fields for next time step:</font></b></td></tr>\n";
+        } else if (n.id != id_begin && n.id != id_IC) {
+          ofile << "      <tr><td align=\"left\"><b><font color=\"#00667E\">"
+                << "Required Fields:</font></b></td></tr>\n";
         }
-        ofile << "</font></td></tr>\n";
+        for (const auto& fid : n.required) {
+          std::string fc = "<font color=\"";
+          if (ekat::contains(unmet, fid)) {
+            fc += "red";
+          } else if (ekat::contains(unmet, -fid)) {
+            fc +=  "#006219";
+          } else {
+            fc += "black";
+          }
+          fc += "\">  ";
+          ofile << "      <tr><td align=\"left\">" << fc << html_fix(print_fid(m_fids[fid],fid_verb));
+          if (ekat::contains(m_unmet_deps.at(n.id), fid)) {
+            ofile << "<b>  *** MISSING ***</b>";
+          } else if (ekat::contains(m_unmet_deps.at(n.id), -fid)) {
+            ofile << "<b>  (Init. Cond.)</b>";
+          }
+          ofile << "</font></td></tr>\n";
+        }
       }
 
       // Computed groups
-      if (n.gr_computed.size()>0) {
+      if (sz_grcomp > 0) {
         if (n.id == id_begin) {
           ofile << "      <tr><td align=\"left\"><b><font color=\"#00667E\">Atm Input groups:</font></b></td></tr>\n";
         } else if (n.id != id_end){
@@ -322,7 +328,7 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
       }
 
       // Required groups
-      if (n.gr_required.size()>0) {
+      if (sz_grreq > 0) {
         if (n.name=="End of atm time step") {
           ofile << "      <tr><td align=\"left\"><b><font color=\"#00667E\">Atm Output Groups:</font></b></td></tr>\n";
         } else if (n.name!="Begin of atm time step") {
@@ -578,60 +584,12 @@ void AtmProcDAG::add_edges () {
 }
 
 void AtmProcDAG::process_initial_conditions(const grid_field_map &ic_inited) {
-  // return if there's nothing to do
-  if (ic_inited.size() == 0) {
-    return;
-  }
-  // Create a node for the ICs
-  int id = m_nodes.size();
-  m_nodes.push_back(Node());
-  Node& ic_node = m_nodes.back();
-  ic_node.id = id;
-  ic_node.name = "Initial Conditions";
-  m_unmet_deps[id].clear();
-  for (auto &node : m_nodes) {
-    if (m_unmet_deps.at(node.id).empty()) {
-      continue;
-    } else {
-      // NOTE: node_unmet_fields is a std::set<int>
-      auto &node_unmet_fields = m_unmet_deps.at(node.id);
-      // add the current node as a child of the IC node
-      ic_node.children.push_back(node.id);
-      for (auto um_fid : node_unmet_fields) {
-        for (auto &it1 : ic_inited) {
-          const auto &grid_name = it1.first;
-          // if this unmet-dependency field's name is in the ic_inited map for
-          // the provided grid_name key, then we flip its value negative and
-          // break from the for (ic_inited) and for (node_unmet_fields) loops;
-          // otherwise, keep trying for the next grid_name
-          if (ekat::contains(ic_inited.at(grid_name), m_fids[um_fid].name())) {
-            auto id_now_met = node_unmet_fields.extract(um_fid);
-            id_now_met.value() = -id_now_met.value();
-            node_unmet_fields.insert(std::move(id_now_met));
-            // add the fid of the formerly unmet dep to the initial condition
-            // node's computed list
-            ic_node.computed.insert(um_fid);
-            goto endloop;
-          } else {
-            continue;
-          }
-        }
-      endloop:;
-      }
-    }
-  }
-  m_IC_processed = true;
-}
-
-void AtmProcDAG::process_IC_alt(const grid_field_map &ic_inited) {
   // First, add the fields that were determined to come from the previous time
   // step => IC for t = 0
   // get the begin_node since the IC is identical at first
   const Node &begin_node = m_nodes[m_nodes.size() - 2];
   int id = m_nodes.size();
   // Create a node for the ICs by copying the begin_node
-  // FIXME:(?) do we need an explicit copy constructor given that a Node is
-  // just a struct?
   m_nodes.push_back(Node(begin_node));
   Node& ic_node = m_nodes.back();
   // now set/clear the basic data for the ic_node
