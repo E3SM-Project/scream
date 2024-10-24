@@ -202,8 +202,6 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
       id_end = n.id;
       box_fmt = "  color=\"#88621e\"\n  fontcolor=\"#88621e\"\n  style=filled\n"
                 "  fillcolor=\"#dccfb9\"\n";
-    } else {
-      box_fmt = "penwidth=4\n fontsize=30";
     }
 
     // Write node, with computed/required fields
