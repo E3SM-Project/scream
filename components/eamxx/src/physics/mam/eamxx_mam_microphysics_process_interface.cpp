@@ -202,13 +202,14 @@ void MAMMicrophysics::set_grids(
   // from a file and configuring the necessary parameters for the Linoz model.
   {
     linoz_file_name_ = m_params.get<std::string>("mam4_linoz_file_name");
-    std::string linoz_map_file = "";
-    std::vector<std::string> var_names{"o3_clim",     "o3col_clim",   "t_clim",
-                                       "PmL_clim",    "dPmL_dO3",     "dPmL_dT",
-                                       "dPmL_dO3col", "cariolle_pscs"};
+    const std::string linoz_map_file =
+        m_params.get<std::string>("aero_microphys_remap_file", "");
+    const std::vector<std::string> var_names{
+        "o3_clim",  "o3col_clim", "t_clim",      "PmL_clim",
+        "dPmL_dO3", "dPmL_dT",    "dPmL_dO3col", "cariolle_pscs"};
 
     // in format YYYYMMDD
-    int linoz_cyclical_ymd = m_params.get<int>("mam4_linoz_ymd");
+    const int linoz_cyclical_ymd = m_params.get<int>("mam4_linoz_ymd");
     scream::mam_coupling::setup_tracer_data(linoz_data_, linoz_file_name_,
                                             linoz_cyclical_ymd);
     LinozHorizInterp_ = scream::mam_coupling::create_horiz_remapper(
@@ -245,12 +246,13 @@ void MAMMicrophysics::set_grids(
 
   {
     oxid_file_name_ = m_params.get<std::string>("mam4_oxid_file_name");
-    std::string oxid_map_file = "";
+    const std::string oxid_map_file =
+        m_params.get<std::string>("aero_microphys_remap_file", "");
     // NOTE: order matches mam4xx:
-    std::vector<std::string> var_names{"O3", "OH", "NO3", "HO2"};
+    const std::vector<std::string> var_names{"O3", "OH", "NO3", "HO2"};
 
-    // //in format YYYYMMDD
-    int oxid_ymd = m_params.get<int>("mam4_oxid_ymd");
+    // in format YYYYMMDD
+    const int oxid_ymd = m_params.get<int>("mam4_oxid_ymd");
     scream::mam_coupling::setup_tracer_data(tracer_data_, oxid_file_name_,
                                             oxid_ymd);
     TracerHorizInterp_ = scream::mam_coupling::create_horiz_remapper(
@@ -280,15 +282,15 @@ void MAMMicrophysics::set_grids(
   }  // oxid file reader
 
   {
-    // FIXME: I will need to add this file per forcing file.
-    std::string extfrc_map_file = "";
+    const std::string extfrc_map_file =
+        m_params.get<std::string>("aero_microphys_remap_file", "");
     // NOTE: order of forcing species is important.
     // extfrc_lst(:  9) = {'SO2             ','so4_a1          ','so4_a2
     // ','pom_a4          ','bc_a4           ', 'num_a1          ','num_a2
     // ','num_a4          ','SOAG            ' }
     // This order corresponds to files in namelist e3smv2
-    extfrc_lst_ = {"so2", "so4_a1", "so4_a2", "pom_a4", "bc_a4",
-                                  "num_a1", "num_a2", "num_a4", "soag"};
+    extfrc_lst_ = {"so2",    "so4_a1", "so4_a2", "pom_a4", "bc_a4",
+                   "num_a1", "num_a2", "num_a4", "soag"};
 
     for(const auto &var_name : extfrc_lst_) {
       std::string item_name = "mam4_" + var_name + "_verti_emiss_file_name";
@@ -330,11 +332,10 @@ void MAMMicrophysics::set_grids(
     }  // var_name vert emissions
     int i               = 0;
     int offset_emis_ver = 0;
-    for(const auto &var_name : extfrc_lst_)
-    {
+    for(const auto &var_name : extfrc_lst_) {
       const auto file_name = vert_emis_file_name_[var_name];
       const auto var_names = vert_emis_var_names_[var_name];
-      const int nvars = static_cast<int>(var_names.size());
+      const int nvars      = static_cast<int>(var_names.size());
 
       forcings_[i].nsectors = nvars;
       // I am assuming the order of species in extfrc_lst_.
@@ -358,10 +359,10 @@ void MAMMicrophysics::set_grids(
       ++i;
     }  // end i
     EKAT_REQUIRE_MSG(
-      offset_emis_ver <= int(mam_coupling::MAX_NUM_VERT_EMISSION_FIELDS),
-      "Error! Number of fields is bigger than "
-      "MAX_NUM_VERT_EMISSION_FIELDS. Increase the "
-      "MAX_NUM_VERT_EMISSION_FIELDS in tracer_reader_utils.hpp \n");
+        offset_emis_ver <= int(mam_coupling::MAX_NUM_VERT_EMISSION_FIELDS),
+        "Error! Number of fields is bigger than "
+        "MAX_NUM_VERT_EMISSION_FIELDS. Increase the "
+        "MAX_NUM_VERT_EMISSION_FIELDS in tracer_reader_utils.hpp \n");
 
 #if defined(ENABLE_OUTPUT_TRACER_FIELDS)
     FieldLayout scalar3d_mid_emis_ver = grid_->get_3d_vector_layout(
@@ -394,12 +395,14 @@ size_t MAMMicrophysics::requested_buffer_size_in_bytes() const {
 void MAMMicrophysics::init_buffers(const ATMBufferManager &buffer_manager) {
   size_t used_mem =
       mam_coupling::init_buffer(buffer_manager, ncol_, nlev_, buffer_);
-  EKAT_REQUIRE_MSG(
-      used_mem == requested_buffer_size_in_bytes(),
-      "Error! Used memory != requested memory for MAMMicrophysics."
-      " Used memory: " << std::to_string(used_mem) << "."
-      " Requested memory: " << std::to_string(requested_buffer_size_in_bytes()) << ". \n"
-  );
+  EKAT_REQUIRE_MSG(used_mem == requested_buffer_size_in_bytes(),
+                   "Error! Used memory != requested memory for MAMMicrophysics."
+                   " Used memory: "
+                       << std::to_string(used_mem)
+                       << "."
+                          " Requested memory: "
+                       << std::to_string(requested_buffer_size_in_bytes())
+                       << ". \n");
 }
 
 // ================================================================
@@ -555,7 +558,7 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   scream::mam_coupling::update_tracer_data_from_file(
       TracerDataReader_, curr_month, *TracerHorizInterp_, tracer_data_);
 
-  for (int i = 0; i < static_cast<int>(extfrc_lst_.size()); ++i) {
+  for(int i = 0; i < static_cast<int>(extfrc_lst_.size()); ++i) {
     scream::mam_coupling::update_tracer_data_from_file(
         VertEmissionsDataReader_[i], curr_month, *VertEmissionsHorizInterp_[i],
         vert_emis_data_[i]);
@@ -723,14 +726,14 @@ void MAMMicrophysics::run_impl(const double dt) {
   // Note: We are following the RRTMGP EAMxx interface to compute the zenith
   // angle. This operation is performed on the host because the routine
   // shr_orb_cosz_c2f has not been ported to C++.
-  auto ts2 = timestamp();
+  auto ts2          = timestamp();
   auto orbital_year = m_orbital_year;
   // Note: We need double precision because
   // shr_orb_params_c2f and shr_orb_decl_c2f only support double precision.
   double obliqr, lambm0, mvelpp;
-  double eccen        = m_orbital_eccen;
-  double obliq        = m_orbital_obliq;
-  double mvelp        = m_orbital_mvelp;
+  double eccen = m_orbital_eccen;
+  double obliq = m_orbital_obliq;
+  double mvelp = m_orbital_mvelp;
   // Use the orbital parameters to calculate the solar declination and
   // eccentricity factor
   double delta, eccf;

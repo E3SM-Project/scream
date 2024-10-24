@@ -39,13 +39,12 @@ inline void compute_p_src_zonal_files(const view_1d &levs,
       "Error: p_src has a different number of levels than the source data. \n");
   Kokkos::parallel_for(
       "pressure_computation",
-      Kokkos::MDRangePolicy<Kokkos::Rank<2> >({0, 0},
-                                              {ncol, nlevs_data}),
+      Kokkos::MDRangePolicy<Kokkos::Rank<2> >({0, 0}, {ncol, nlevs_data}),
       KOKKOS_LAMBDA(const int icol, const int kk) {
-                               // mbar->pascals
-                               // FIXME: Does EAMxx have a better method to
-                               // convert units?"
-                               p_src(icol, kk) = levs(kk) * 100;
+        // mbar->pascals
+        // FIXME: Does EAMxx have a better method to
+        // convert units?"
+        p_src(icol, kk) = levs(kk) * 100;
       });
   Kokkos::fence();
 }
@@ -649,11 +648,11 @@ inline void perform_vertical_interpolation(const const_view_1d &altitude_int,
   EKAT_REQUIRE_MSG(
       input.file_type == VERT_EMISSION,
       "Error! vertical interpolation only with altitude variable. \n");
-  const int ncols          = input.ncol_;
-  const int num_vars       = input.nvars_;
-  const int num_vertical_lev_target           = output[0].extent(1);
-  const int num_vert_packs = num_vertical_lev_target;
-  const int outer_iters    = ncols * num_vars;
+  const int ncols                   = input.ncol_;
+  const int num_vars                = input.nvars_;
+  const int num_vertical_lev_target = output[0].extent(1);
+  const int num_vert_packs          = num_vertical_lev_target;
+  const int outer_iters             = ncols * num_vars;
   const auto policy_interp =
       ESU::get_default_team_policy(outer_iters, num_vert_packs);
   // FIXME: Get m2km from emaxx.
@@ -681,8 +680,8 @@ inline void perform_vertical_interpolation(const const_view_1d &altitude_int,
           trg_x[pverp - i - 1] = m2km * zi(icol, i);
         }
         team.team_barrier();
-        mam4::vertical_interpolation::rebin(team, nsrc, num_vertical_lev_target, src_x, trg_x, src,
-                                            trg);
+        mam4::vertical_interpolation::rebin(team, nsrc, num_vertical_lev_target,
+                                            src_x, trg_x, src, trg);
       });
 }
 
