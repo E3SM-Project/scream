@@ -74,8 +74,8 @@ MACHINE_METADATA = {
                 ["CC","ftn","cc"],
                 "salloc --time 02:00:00 --nodes=4 --constraint=gpu --gpus-per-node=4 --gpu-bind=none --exclusive -q regular --account e3sm_g",
                 "/global/cfs/cdirs/e3sm/baselines/gnugpu/scream/pm-gpu"),
-    "compy"   : (["module purge", "module load cmake/3.19.6 gcc/8.1.0  mvapich2/2.3.1 python/3.7.3"],
-                 ["mpicxx","mpifort","mpicc"],
+    "compy"   : (["module purge", "module load cmake/3.19.6 intel/20.0.0 intelmpi/2020 netcdf/4.6.3 pnetcdf/1.9.0 mkl/2020 gcc/8.1.0"],
+                 ["mpiicpc","mpiifort","mpiicc"],
                   "srun --time 02:00:00 --nodes=1 -p short --exclusive --account e3sm",
                   ""),
     "chrysalis" : ([f"eval $({CIMEROOT}/CIME/Tools/get_case_env)", "export OMP_NUM_THREADS=1"],
@@ -94,10 +94,10 @@ MACHINE_METADATA = {
     "linux-generic-debug" :  ([],["mpicxx","mpifort","mpicc"],"", ""),
     "linux-generic-serial" : ([],["mpicxx","mpifort","mpicc"],"", ""),
     "ghci-snl-cpu" : ([],
-                      ["mpicxx","mpifort","mpicc"],
-                      "",
+                         ["mpicxx","mpifort","mpicc"],
+                         "",
                       "/projects/e3sm/baselines/scream/ghci-snl-cpu"
-                     ),
+                        ),
 }
 
 if pathlib.Path("~/.cime/scream_mach_specs.py").expanduser().is_file(): # pylint: disable=no-member
