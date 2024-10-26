@@ -94,10 +94,10 @@ MACHINE_METADATA = {
     "linux-generic-debug" :  ([],["mpicxx","mpifort","mpicc"],"", ""),
     "linux-generic-serial" : ([],["mpicxx","mpifort","mpicc"],"", ""),
     "ghci-snl-cpu" : ([],
-                         ["mpicxx","mpifort","mpicc"],
-                         "",
+                      ["mpicxx","mpifort","mpicc"],
+                      "",
                       "/projects/e3sm/baselines/scream/ghci-snl-cpu"
-                        ),
+                     ),
 }
 
 if pathlib.Path("~/.cime/scream_mach_specs.py").expanduser().is_file(): # pylint: disable=no-member
