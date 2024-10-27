@@ -21,6 +21,7 @@ set(DIAGNOSTIC_SRCS
   number_path.cpp
   aerocom_cld.cpp
   atm_backtend.cpp
+  horiz_avg.cpp
 )
 
 add_library(diagnostics ${DIAGNOSTIC_SRCS})

@@ -1423,6 +1423,12 @@ AtmosphereOutput::create_diagnostic (const std::string& diag_field_name) {
     } else {
       params.set<std::string>("Temperature Kind", "Tot");
     }
+  } else if (diag_field_name.find("_horiz_avg")!=std::string::npos) {
+    diag_name = "HorizAvgDiag";
+    // Set the grid_name
+    params.set("grid_name",get_field_manager("sim")->get_grid()->name());
+    // split will return [X, ''], with X being whatever is before '_horiz_avg'
+    params.set<std::string>("field_name",ekat::split(diag_field_name,"_horiz_avg").front());
   } else {
     diag_name = diag_field_name;
   }

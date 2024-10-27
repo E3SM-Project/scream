@@ -74,4 +74,7 @@ if (NOT SCREAM_ONLY_GENERATE_BASELINES)
   # Test atm_tend
   CreateDiagTest(atm_backtend "atm_backtend_test.cpp")
 
+  # Test horiz_avg
+  CreateDiagTest(horiz_avg "horiz_avg_test.cpp")
+
 endif()
