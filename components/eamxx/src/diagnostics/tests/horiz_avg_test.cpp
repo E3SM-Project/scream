@@ -29,9 +29,8 @@ std::shared_ptr<GridsManager> create_gm(const ekat::Comm &comm, const int ncols,
 TEST_CASE("horiz_avg") {
   using namespace ShortFieldTagsNames;
   using namespace ekat::units;
-  using RangePolicy = Kokkos::RangePolicy<Field::device_t::execution_space>;
-  using TeamPolicy  = Kokkos::TeamPolicy<Field::device_t::execution_space>;
-  using TeamMember  = typename TeamPolicy::member_type;
+  using TeamPolicy = Kokkos::TeamPolicy<Field::device_t::execution_space>;
+  using TeamMember = typename TeamPolicy::member_type;
   // A world comm
   ekat::Comm comm(MPI_COMM_WORLD);
 
@@ -220,7 +219,8 @@ TEST_CASE("horiz_avg") {
 
   // TODO: add a different flavor of testing
   // TODO: how to test the MPI part of this rigorously?
-  // TODO: how to test a different type of grid (especially to test the area weighting)
+  // TODO: how to test a different type of grid (especially to test the area
+  // weighting)
 }
 
 }  // namespace scream

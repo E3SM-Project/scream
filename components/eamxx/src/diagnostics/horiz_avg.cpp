@@ -13,8 +13,8 @@ void HorizAvgDiag::set_grids(
     const std::shared_ptr<const GridsManager> grids_manager) {
   const auto &fn = m_params.get<std::string>("field_name");
   const auto &gn = m_params.get<std::string>("grid_name");
-  const auto g = grids_manager->get_grid("Physics");
-  m_area       = g->get_geometry_data("area").get_view<const Real *>();
+  const auto g   = grids_manager->get_grid("Physics");
+  m_area         = g->get_geometry_data("area").get_view<const Real *>();
   add_field<Required>(fn, gn);
 }
 
@@ -51,15 +51,15 @@ void HorizAvgDiag::compute_diagnostic_impl() {
   using RangePolicy = Kokkos::RangePolicy<Field::device_t::execution_space>;
   using TeamPolicy  = Kokkos::TeamPolicy<Field::device_t::execution_space>;
   using TeamMember  = typename TeamPolicy::member_type;
+  using ESU         = ekat::ExeSpaceUtils<typename KT::ExeSpace>;
 
   const auto &f = get_fields_in().front();
   const auto &d = m_diagnostic_output;
 
   const auto &layout = f.get_header().get_identifier().get_layout();
   int dim0           = layout.dim(0);
-  if(layout.rank() > 1) {
-    d.deep_copy(0);
-  }
+
+  d.deep_copy(0);
 
   // Get the area field
   const auto a = m_area;
@@ -76,7 +76,7 @@ void HorizAvgDiag::compute_diagnostic_impl() {
       auto f_view = f.get_view<const Real *>();
       auto d_view = d.get_view<Real>();
 
-      TeamPolicy p(1, dim0);
+      auto p = ESU::get_default_team_policy(1, dim0);
       Kokkos::parallel_for(
           d.name(), p, KOKKOS_LAMBDA(const TeamMember &m) {
             Real sum = 0.0;
@@ -94,7 +94,7 @@ void HorizAvgDiag::compute_diagnostic_impl() {
       auto d_view = d.get_view<Real *>();
 
       const int dim1 = layout.dim(1);
-      TeamPolicy p(dim1, dim0);
+      auto p         = ESU::get_default_team_policy(dim1, dim0);
       Kokkos::parallel_for(
           d.name(), p, KOKKOS_LAMBDA(const TeamMember &m) {
             const int j = m.league_rank();
@@ -112,7 +112,7 @@ void HorizAvgDiag::compute_diagnostic_impl() {
 
       const int dim1 = layout.dim(1);
       const int dim2 = layout.dim(2);
-      TeamPolicy p(dim1 * dim2, dim0);
+      auto p         = ESU::get_default_team_policy(dim1 * dim2, dim0);
       Kokkos::parallel_for(
           d.name(), p, KOKKOS_LAMBDA(const TeamMember &m) {
             const int idx = m.league_rank();
@@ -133,7 +133,7 @@ void HorizAvgDiag::compute_diagnostic_impl() {
       const int dim1 = layout.dim(1);
       const int dim2 = layout.dim(2);
       const int dim3 = layout.dim(3);
-      TeamPolicy p(dim1 * dim2 * dim3, dim0);
+      auto p         = ESU::get_default_team_policy(dim1 * dim2 * dim3, dim0);
       Kokkos::parallel_for(
           d.name(), p, KOKKOS_LAMBDA(const TeamMember &m) {
             const int idx = m.league_rank();

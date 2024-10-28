@@ -6,13 +6,15 @@
 namespace scream {
 
 /*
- * This diagnostic will area-weighted average entries of the field across the COL tag dimension,
- * producing an N-1 dimensional field that is the area-weighted average of the input field.
+ * This diagnostic will area-weighted average entries of the field across the
+ * COL tag dimension, producing an N-1 dimensional field that is the
+ * area-weighted average of the input field.
  */
 
 class HorizAvgDiag : public AtmosphereDiagnostic {
-  using KT = ekat::KokkosTypes<DefaultDevice>;
+  using KT            = ekat::KokkosTypes<DefaultDevice>;
   using const_view_1d = typename KT::template view_1d<const Real>;
+
  public:
   // Constructors
   HorizAvgDiag(const ekat::Comm &comm, const ekat::ParameterList &params);
