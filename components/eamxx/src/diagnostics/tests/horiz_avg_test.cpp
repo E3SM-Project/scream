@@ -31,6 +31,8 @@ TEST_CASE("horiz_avg") {
   using namespace ekat::units;
   using TeamPolicy = Kokkos::TeamPolicy<Field::device_t::execution_space>;
   using TeamMember = typename TeamPolicy::member_type;
+  using KT         = ekat::KokkosTypes<DefaultDevice>;
+  using ESU        = ekat::ExeSpaceUtils<typename KT::ExeSpace>;
   // A world comm
   ekat::Comm comm(MPI_COMM_WORLD);
 
@@ -143,48 +145,35 @@ TEST_CASE("horiz_avg") {
       wavg);
   Kokkos::deep_copy(diag0_v, wavg);
 
-  auto diag1_v = diag1_f.get_view<Real>();
-
-  bool result = false;
-  Kokkos::parallel_reduce(
-      Kokkos::RangePolicy<>(0, 1),
-      KOKKOS_LAMBDA(const int, bool &local_result) {
-        local_result = (diag1_v() == diag0_v());
-      },
-      result);
-  REQUIRE(result);
+  diag1_f.sync_to_host();
+  auto diag1_v_h = diag1_f.get_view<Real, Host>();
+  REQUIRE(diag1_v_h() == wavg);
 
   // Try known cases
   // Set qc1_v to 1.0 to get weighted average of 1.0
-  Kokkos::deep_copy(qc1_v, 1.0);
-  Kokkos::deep_copy(diag0_v, 1.0);
+  wavg = 1.0;
+  Kokkos::deep_copy(qc1_v, wavg);
+  Kokkos::deep_copy(diag0_v, wavg);
   diag1->compute_diagnostic();
-  auto diag1_v2 = diag1_f.get_view<Real>();
-  Kokkos::parallel_reduce(
-      Kokkos::RangePolicy<>(0, 1),
-      KOKKOS_LAMBDA(const int, bool &local_result) {
-        local_result = (diag1_v2() == diag0_v());
-      },
-      result);
-  REQUIRE(result);
+  auto diag1_v2_host = diag1_f.get_view<Real, Host>();
+  REQUIRE(std::abs(diag1_v2_host() - wavg) < 1e-12);
 
   // other diags
+  // Set qc2_v to 5.0 to get weighted average of 5.0
+  wavg       = 5.0;
   auto qc2_v = qc2.get_view<Real **>();
-  Kokkos::deep_copy(qc2_v, 5.0);
-  FieldIdentifier diag2_fid("qc_horiz_avg_manual",
-                            scalar2d_layout.clone().strip_dim(COL), kg / kg,
-                            grid2->name());
-  Field diag2_manual(diag2_fid);
-  diag2_manual.allocate_view();
-  auto diag2_manual_v = diag2_manual.get_view<Real *>();
-  Kokkos::deep_copy(diag2_manual_v, 5.0);
+  Kokkos::deep_copy(qc2_v, wavg);
 
   diag2->set_required_field(qc2);
   diag2->initialize(t0, RunType::Initial);
   diag2->compute_diagnostic();
   auto diag2_f = diag2->get_diagnostic();
 
-  REQUIRE(views_are_equal(diag2_f, diag2_manual));
+  auto diag2_v_host = diag2_f.get_view<Real *, Host>();
+
+  for(int i = 0; i < nlevs; ++i) {
+    REQUIRE(std::abs(diag2_v_host(i) - wavg) < 1e-12);
+  }
 
   auto qc3_v = qc3.get_view<Real ***>();
   FieldIdentifier diag3_manual_fid("qc_horiz_avg_manual",
@@ -194,7 +183,7 @@ TEST_CASE("horiz_avg") {
   diag3_manual.allocate_view();
   auto diag3_manual_v = diag3_manual.get_view<Real **>();
   // calculate diag3_manual by hand
-  TeamPolicy p(dim3 * nlevs, ngcols);
+  auto p = ESU::get_default_team_policy(dim3 * nlevs, ngcols);
   Kokkos::parallel_for(
       "HorizAvgDiag::compute_diagnostic_impl::manual_diag3", p,
       KOKKOS_LAMBDA(const TeamMember &m) {
@@ -217,6 +206,7 @@ TEST_CASE("horiz_avg") {
   auto diag3_f = diag3->get_diagnostic();
   REQUIRE(views_are_equal(diag3_f, diag3_manual));
 
+  // TODO: add more test cases to cover more fields
   // TODO: add a different flavor of testing
   // TODO: how to test the MPI part of this rigorously?
   // TODO: how to test a different type of grid (especially to test the area
