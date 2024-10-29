@@ -1,5 +1,7 @@
 #include "diagnostics/horiz_avg.hpp"
 
+#include "share/field/field_utils.hpp"
+
 namespace scream {
 
 HorizAvgDiag::HorizAvgDiag(const ekat::Comm &comm,
@@ -14,8 +16,9 @@ void HorizAvgDiag::set_grids(
   const auto &fn = m_params.get<std::string>("field_name");
   const auto &gn = m_params.get<std::string>("grid_name");
   const auto g   = grids_manager->get_grid("Physics");
-  m_area         = g->get_geometry_data("area").get_view<const Real *>();
   add_field<Required>(fn, gn);
+  // first clone the area unscaled, we will scale it later in initialize_impl
+  m_scaled_area = g->get_geometry_data("area").clone();
 }
 
 void HorizAvgDiag::initialize_impl(const RunType /*run_type*/) {
@@ -45,18 +48,9 @@ void HorizAvgDiag::initialize_impl(const RunType /*run_type*/) {
   m_diagnostic_output = Field(d_fid);
   m_diagnostic_output.allocate_view();
 
-  // get the area field
-  int dim0     = layout.dim(0);
-  const auto a = m_area;
-  // calculate total area
-  // m_total_area = 0.0;
-  Kokkos::parallel_reduce(
-      "HorizAvgDiag::compute_diagnostic_impl::total_area", dim0,
-      KOKKOS_LAMBDA(const int icol, Real &accum) { accum += a(icol); }, m_total_area);
-  // sum up the total area across ranks
-  m_comm.all_reduce(&m_total_area, dim0, MPI_SUM);
-  // ensure m_total_area is not zero
-  m_total_area = m_total_area == 0.0 ? 1.0 : m_total_area;
+  // scale the area field
+  auto total_area = field_sum<Real>(m_scaled_area, &m_comm);
+  m_scaled_area.scale(1.0 / total_area);
 }
 
 void HorizAvgDiag::compute_diagnostic_impl() {
@@ -73,8 +67,7 @@ void HorizAvgDiag::compute_diagnostic_impl() {
 
   d.deep_copy(0);
 
-  const auto a = m_area;
-  const auto atot = m_total_area;
+  const auto a = m_scaled_area.get_view<const Real *>();
 
   switch(layout.rank()) {
     case 1: {
@@ -88,7 +81,7 @@ void HorizAvgDiag::compute_diagnostic_impl() {
             Kokkos::parallel_reduce(
                 Kokkos::TeamThreadRange(m, dim0),
                 [&](const int icol, Real &accum) {
-                  accum += (a(icol) / atot) * f_view(icol);
+                  accum += a(icol) * f_view(icol);
                 },
                 sum);
             Kokkos::single(Kokkos::PerTeam(m), [&]() { d_view() = sum; });
@@ -106,7 +99,7 @@ void HorizAvgDiag::compute_diagnostic_impl() {
             Kokkos::parallel_reduce(
                 Kokkos::TeamVectorRange(m, dim0),
                 [&](int icol, Real &accum) {
-                  accum += (a(icol) / atot) * f_view(icol, j);
+                  accum += a(icol) * f_view(icol, j);
                 },
                 d_view(j));
           });
@@ -126,7 +119,7 @@ void HorizAvgDiag::compute_diagnostic_impl() {
             Kokkos::parallel_reduce(
                 Kokkos::TeamVectorRange(m, dim0),
                 [&](int icol, Real &accum) {
-                  accum += (a(icol) / atot) * f_view(icol, j, k);
+                  accum += a(icol) * f_view(icol, j, k);
                 },
                 d_view(j, k));
           });
@@ -148,7 +141,7 @@ void HorizAvgDiag::compute_diagnostic_impl() {
             Kokkos::parallel_reduce(
                 Kokkos::TeamVectorRange(m, dim0),
                 [&](int icol, Real &accum) {
-                  accum += (a(icol) / atot) * f_view(icol, j, k, l);
+                  accum += a(icol) * f_view(icol, j, k, l);
                 },
                 d_view(j, k, l));
           });
@@ -156,15 +149,10 @@ void HorizAvgDiag::compute_diagnostic_impl() {
   }
   Kokkos::fence();
 
-#if SCREAM_MPI_ON_DEVICE
-  m_comm.all_reduce(d.get_internal_view_data<Real>(), layout.size() / dim0,
-                    MPI_SUM);
-#else
   d.sync_to_host();
   m_comm.all_reduce(d.get_internal_view_data<Real, Host>(),
                     layout.size() / dim0, MPI_SUM);
   d.sync_to_dev();
-#endif
 }
 
 }  // namespace scream

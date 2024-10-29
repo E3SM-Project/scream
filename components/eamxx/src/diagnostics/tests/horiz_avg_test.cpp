@@ -128,13 +128,7 @@ TEST_CASE("horiz_avg") {
   auto area_v = area.get_view<const Real *>();
 
   // calculate total area
-  Real atot = 0.0;
-  Kokkos::parallel_reduce(
-      "HorizAvgDiag::compute_diagnostic_impl::total_area", ngcols,
-      KOKKOS_LAMBDA(const int icol, Real &local_atot) {
-        local_atot += area_v[icol];
-      },
-      atot);
+  Real atot = field_sum<Real>(area, &comm);
   // calculate weighted avg
   Real wavg = 0.0;
   Kokkos::parallel_reduce(
@@ -153,7 +147,6 @@ TEST_CASE("horiz_avg") {
   // Set qc1_v to 1.0 to get weighted average of 1.0
   wavg = 1.0;
   Kokkos::deep_copy(qc1_v, wavg);
-  Kokkos::deep_copy(diag0_v, wavg);
   diag1->compute_diagnostic();
   auto diag1_v2_host = diag1_f.get_view<Real, Host>();
   REQUIRE(std::abs(diag1_v2_host() - wavg) < 1e-12);

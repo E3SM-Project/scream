@@ -37,11 +37,8 @@ class HorizAvgDiag : public AtmosphereDiagnostic {
   // Name of each field (because the diagnostic impl is generic)
   std::string m_diag_name;
 
-  // Need grid for area field
-  const_view_1d m_area;
-
-  // Need a Real to hold the total area
-  Real m_total_area;
+  // Need area field, let's store it scaled by its norm
+  Field m_scaled_area;
 };
 
 }  // namespace scream
