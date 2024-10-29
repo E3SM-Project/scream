@@ -50,7 +50,7 @@ void HorizAvgDiag::initialize_impl(const RunType /*run_type*/) {
 
   // scale the area field
   auto total_area = field_sum<Real>(m_scaled_area, &m_comm);
-  m_scaled_area.scale(1.0 / total_area);
+  m_scaled_area.scale(sp(1.0) / total_area);
 }
 
 void HorizAvgDiag::compute_diagnostic_impl() {
@@ -77,7 +77,7 @@ void HorizAvgDiag::compute_diagnostic_impl() {
       auto p = ESU::get_default_team_policy(1, dim0);
       Kokkos::parallel_for(
           d.name(), p, KOKKOS_LAMBDA(const TeamMember &m) {
-            Real sum = 0.0;
+            Real sum = sp(0.0);
             Kokkos::parallel_reduce(
                 Kokkos::TeamThreadRange(m, dim0),
                 [&](const int icol, Real &accum) {
@@ -148,7 +148,9 @@ void HorizAvgDiag::compute_diagnostic_impl() {
     } break;
   }
   Kokkos::fence();
-
+  // For now, use host mpi to get this across the line
+  // TODO: the dev ptr seems to cause problems; revisit this later
+  // TODO: doing cuda-aware MPI allreduce would be ~10% faster
   d.sync_to_host();
   m_comm.all_reduce(d.get_internal_view_data<Real, Host>(),
                     layout.size() / dim0, MPI_SUM);
