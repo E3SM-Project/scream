@@ -20,7 +20,6 @@ void HorizAvgDiag::set_grids(
 
 void HorizAvgDiag::initialize_impl(const RunType /*run_type*/) {
   const auto &f = get_fields_in().front();
-  // Sanity checks
   using namespace ShortFieldTagsNames;
   const auto &fid    = f.get_header().get_identifier();
   const auto &layout = fid.get_layout();
@@ -45,6 +44,19 @@ void HorizAvgDiag::initialize_impl(const RunType /*run_type*/) {
                         fid.get_units(), fid.get_grid_name());
   m_diagnostic_output = Field(d_fid);
   m_diagnostic_output.allocate_view();
+
+  // get the area field
+  int dim0     = layout.dim(0);
+  const auto a = m_area;
+  // calculate total area
+  // m_total_area = 0.0;
+  Kokkos::parallel_reduce(
+      "HorizAvgDiag::compute_diagnostic_impl::total_area", dim0,
+      KOKKOS_LAMBDA(const int icol, Real &accum) { accum += a(icol); }, m_total_area);
+  // sum up the total area across ranks
+  m_comm.all_reduce(&m_total_area, dim0, MPI_SUM);
+  // ensure m_total_area is not zero
+  m_total_area = m_total_area == 0.0 ? 1.0 : m_total_area;
 }
 
 void HorizAvgDiag::compute_diagnostic_impl() {
@@ -61,15 +73,8 @@ void HorizAvgDiag::compute_diagnostic_impl() {
 
   d.deep_copy(0);
 
-  // Get the area field
   const auto a = m_area;
-  // calculate total area
-  Real atot = 0.0;
-  Kokkos::parallel_reduce(
-      "HorizAvgDiag::compute_diagnostic_impl::total_area", dim0,
-      KOKKOS_LAMBDA(const int icol, Real &accum) { accum += a(icol); }, atot);
-  // ensure atot is no zero; if it is zero (e.g., point grid?) make it 1
-  atot = atot == 0.0 ? 1.0 : atot;
+  const auto atot = m_total_area;
 
   switch(layout.rank()) {
     case 1: {

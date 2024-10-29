@@ -39,6 +39,9 @@ class HorizAvgDiag : public AtmosphereDiagnostic {
 
   // Need grid for area field
   const_view_1d m_area;
+
+  // Need a Real to hold the total area
+  Real m_total_area;
 };
 
 }  // namespace scream
