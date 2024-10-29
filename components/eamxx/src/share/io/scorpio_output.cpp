@@ -504,7 +504,7 @@ run (const std::string& filename,
         {
           auto new_view_0d = field.get_view<const Real,Device>();
           auto avg_view_0d = view_Nd_dev<0>(data);
-          Kokkos::parallel_for(policy, KOKKOS_LAMBDA(int i) {
+          Kokkos::parallel_for(policy, KOKKOS_LAMBDA(int) {
           if (do_avg_cnt) {
               combine_and_fill(new_view_0d(),avg_view_0d(),avg_type,fill_value);
             } else {
@@ -1503,7 +1503,7 @@ update_avg_cnt_view(const Field& field, view_1d_dev& dev_view) {
     {
       auto src_view_0d = field.get_view<const Real,Device>();
       auto tgt_view_0d = view_Nd_dev<0>(data);
-      Kokkos::parallel_for(policy, KOKKOS_LAMBDA(int i) {
+      Kokkos::parallel_for(policy, KOKKOS_LAMBDA(int) {
         if (src_view_0d()!=fill_value) {
           tgt_view_0d() += 1;
         }

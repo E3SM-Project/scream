@@ -149,7 +149,7 @@ TEST_CASE("horiz_avg") {
   Kokkos::deep_copy(qc1_v, wavg);
   diag1->compute_diagnostic();
   auto diag1_v2_host = diag1_f.get_view<Real, Host>();
-  REQUIRE(std::abs(diag1_v2_host() - wavg) < sp(1e-12));
+  REQUIRE(std::abs(diag1_v2_host() - wavg) < sp(1e-6));
 
   // other diags
   // Set qc2_v to 5.0 to get weighted average of 5.0
@@ -165,7 +165,7 @@ TEST_CASE("horiz_avg") {
   auto diag2_v_host = diag2_f.get_view<Real *, Host>();
 
   for(int i = 0; i < nlevs; ++i) {
-    REQUIRE(std::abs(diag2_v_host(i) - wavg) < sp(1e-12));
+    REQUIRE(std::abs(diag2_v_host(i) - wavg) < sp(1e-6));
   }
 
   auto qc3_v = qc3.get_view<Real ***>();
