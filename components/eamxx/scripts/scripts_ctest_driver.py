@@ -1,5 +1,5 @@
 from utils import run_cmd, expect, check_minimum_python_version
-from machines_specs import is_machine_supported, setup_mach_env, get_machine
+from machines_specs import is_machine_supported, setup_mach_env
 
 check_minimum_python_version(3, 4)
 
