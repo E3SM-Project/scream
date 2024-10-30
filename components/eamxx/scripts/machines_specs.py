@@ -112,11 +112,11 @@ class PM(CrayMachine):
 ###############################################################################
     @classmethod
     def setup(cls,partition):
-        expect (partition in ['cpu', 'gpu'], "Unknown Perlmutter partition")
+        expect (partition in ['pm-cpu', 'pm-gpu'], "Unknown Perlmutter partition")
 
-        super().setup_cray("pm-"+partition)
+        super().setup_cray(partition)
 
-        compiler = "gnu" if partition=="cpu" else "gnugpu"
+        compiler = "gnu" if partition=="pm-cpu" else "gnugpu"
 
         cls.env_setup = [f"eval $({CIMEROOT}/CIME/Tools/get_case_env -c SMS.ne4pg2_ne4pg2.F2010-SCREAMv1.{cls.name}_{compiler})"]
         cls.batch = f"salloc --account e3sm_g --constraint={partition}"
@@ -132,16 +132,16 @@ class PMCPU(PM):
 ###############################################################################
     concrete = True
     @classmethod
-    def setup(cls,partition):
-        super().setup_cray("cpu")
+    def setup(cls,partition="pm-cpu"):
+        super().setup_cray(partition)
 
 ###############################################################################
 class PMGPU(PM):
 ###############################################################################
     concrete = True
     @classmethod
-    def setup(cls,partition):
-        super().setup_base("gpu")
+    def setup(cls,partition="pm-gpu"):
+        super().setup_base(partition)
 
         cls.num_run_res = 4 # four gpus
         cls.gpu_arch = "cuda"
@@ -354,11 +354,11 @@ def get_all_machines ():
         # so it doesn't find the module
         from scream_mach_specs import Local# pylint: disable=unused-import, import-error
 
-    for m in Machine.__subclasses__():
+    for m in Machine.__subclasses__() + PM.__subclasses__():
         if m.concrete:
             m.setup()
 
-    return [m for m in Machine.__subclasses__() if m.concrete]
+    return [m for m in Machine.__subclasses__() + PM.__subclasses__() if m.concrete]
 
 ###############################################################################
 def get_machine (name):
