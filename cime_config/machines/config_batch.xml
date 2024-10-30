@@ -521,7 +521,7 @@
       <queue walltimemax="00:30:00" nodemax="8" strict="true">debug</queue>
     </queues>
   </batch_system>
-  
+
   <batch_system MACH="alvarez" type="nersc_slurm">
     <directives>
       <directive> --constraint=cpu</directive>
@@ -569,7 +569,7 @@
         <queue walltimemax="00:59:00" jobmin="1" jobmax="10624">workq</queue>
       </queues>
     </batch_system>
-    
+
     <batch_system MACH="polaris" type="pbspro">
       <batch_submit>/grand/E3SMinput/soft/qsub/throttle</batch_submit>
       <directives>
@@ -943,6 +943,9 @@
   </batch_system>
 
   <batch_system MACH="flight" type="slurm" >
+    <submit_args>
+      <arg flag="--reservation=flight-cldera"/>
+    </submit_args>
     <queues>
       <queue nodemax="20" walltimemax="04:00:00" strict="true" default="true">batch</queue>
     </queues>
