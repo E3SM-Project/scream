@@ -126,6 +126,143 @@ TEST_CASE("utils") {
     REQUIRE(field_sum<Real>(f1,&comm)==gsum);
   }
 
+  SECTION("dot_along_rank1_dim") {
+    using RPDF  = std::uniform_real_distribution<Real>;
+    auto engine = setup_random_test();
+    RPDF pdf(0, 1);
+
+    int dim0 = 3;
+    int dim1 = 9;
+    int dim2 = 2;
+    FieldIdentifier fid00("field_00", {{COL}, {dim0}}, m / s, "sg");
+    FieldIdentifier fid01("field_01", {{CMP}, {dim1}}, m / s, "sg");
+    FieldIdentifier fid02("field_02", {{LEV}, {dim2}}, m / s, "sg");
+    Field field00(fid00);
+    Field field01(fid01);
+    Field field02(fid02);
+    field00.allocate_view();
+    field01.allocate_view();
+    field02.allocate_view();
+    field00.sync_to_host();
+    field01.sync_to_host();
+    field02.sync_to_host();
+    auto v00 = field00.get_strided_view<Real *, Host>();
+    auto v01 = field01.get_strided_view<Real *, Host>();
+    auto v02 = field02.get_strided_view<Real *, Host>();
+    for(int i = 0; i < dim0; ++i) {
+      v00(i) = (i + 1) / sp(6);
+    }
+    for(int i = 0; i < dim1; ++i) {
+      v01(i) = (i + 1) / sp(45);
+    }
+    for(int i = 0; i < dim2; ++i) {
+      v02(i) = (i + 1) / sp(3);
+    }
+    field00.sync_to_dev();
+    field01.sync_to_dev();
+    field02.sync_to_dev();
+
+    FieldIdentifier fid1("field_1", {{COL, CMP}, {dim0, dim1}}, m / s, "sg");
+    FieldIdentifier fid2("field_2", {{COL, CMP, LEV}, {dim0, dim1, dim2}},
+                         m / s, "sg");
+    FieldIdentifier fid3("field_3",
+                         {{COL, CMP, CMP, LEV}, {dim0, dim1, dim1, dim2}},
+                         m / s, "sg");
+    FieldIdentifier fid4(
+        "field_4", {{COL, CMP, CMP, CMP, LEV}, {dim0, dim1, dim1, dim1, dim2}},
+        m / s, "sg");
+    FieldIdentifier fid5(
+        "field_5",
+        {{COL, CMP, CMP, CMP, CMP, LEV}, {dim0, dim1, dim1, dim1, dim1, dim2}},
+        m / s, "sg");
+    Field field1(fid1);
+    Field field2(fid2);
+    Field field3(fid3);
+    Field field4(fid4);
+    Field field5(fid5);
+    field1.allocate_view();
+    field2.allocate_view();
+    field3.allocate_view();
+    field4.allocate_view();
+    field5.allocate_view();
+    randomize(field1, engine, pdf);
+    randomize(field2, engine, pdf);
+    randomize(field3, engine, pdf);
+    randomize(field4, engine, pdf);
+    randomize(field5, engine, pdf);
+
+    Field result;
+
+    result = dot_along_rank1_dim<Real>(0, field00, field2);
+    REQUIRE(result.get_header().get_identifier().get_layout().tags() ==
+            std::vector<FieldTag>({CMP, LEV}));
+    REQUIRE(result.get_header().get_identifier().get_layout().dim(0) == dim1);
+    REQUIRE(result.get_header().get_identifier().get_layout().dim(1) == dim2);
+
+    result = dot_along_rank1_dim<Real>(1, field01, field2);
+    REQUIRE(result.get_header().get_identifier().get_layout().tags() ==
+            std::vector<FieldTag>({COL, LEV}));
+    REQUIRE(result.get_header().get_identifier().get_layout().dim(0) == dim0);
+    REQUIRE(result.get_header().get_identifier().get_layout().dim(1) == dim2);
+
+    result = dot_along_rank1_dim<Real>(2, field02, field2);
+    REQUIRE(result.get_header().get_identifier().get_layout().tags() ==
+            std::vector<FieldTag>({COL, CMP}));
+    REQUIRE(result.get_header().get_identifier().get_layout().dim(0) == dim0);
+    REQUIRE(result.get_header().get_identifier().get_layout().dim(1) == dim1);
+
+    field2.sync_to_host();
+    auto manual_result = result.clone();
+    manual_result.deep_copy(0);
+    manual_result.sync_to_host();
+    auto v2 = field2.get_strided_view<Real ***, Host>();
+    auto mr = manual_result.get_strided_view<Real **, Host>();
+    for(int i = 0; i < dim0; ++i) {
+      for(int j = 0; j < dim1; ++j) {
+        for(int k = 0; k < dim2; ++k) {
+          mr(i, j) += v02(k) * v2(i, j, k);
+        }
+      }
+    }
+    field3.sync_to_dev();
+    manual_result.sync_to_dev();
+    REQUIRE(views_are_equal(result, manual_result));
+
+    result = dot_along_rank1_dim<Real>(1, field01, field1);
+    REQUIRE(result.get_header().get_identifier().get_layout().tags() ==
+            std::vector<FieldTag>({COL}));
+    result = dot_along_rank1_dim<Real>(2, field02, field2);
+    REQUIRE(result.get_header().get_identifier().get_layout().tags() ==
+            std::vector<FieldTag>({COL, CMP}));
+    result = dot_along_rank1_dim<Real>(0, field00, field3);
+    REQUIRE(result.get_header().get_identifier().get_layout().tags() ==
+            std::vector<FieldTag>({CMP, CMP, LEV}));
+    REQUIRE(result.get_header().get_identifier().get_layout().dim(2) == dim2);
+    result = dot_along_rank1_dim<Real>(0, field00, field4);
+    REQUIRE(result.get_header().get_identifier().get_layout().tags() ==
+            std::vector<FieldTag>({CMP, CMP, CMP, LEV}));
+    REQUIRE(result.get_header().get_identifier().get_layout().dim(3) == dim2);
+    result = dot_along_rank1_dim<Real>(1, field01, field4);
+    REQUIRE(result.get_header().get_identifier().get_layout().tags() ==
+            std::vector<FieldTag>({COL, CMP, CMP, LEV}));
+    REQUIRE(result.get_header().get_identifier().get_layout().dim(0) == dim0);
+    REQUIRE(result.get_header().get_identifier().get_layout().dim(3) == dim2);
+    result = dot_along_rank1_dim<Real>(4, field02, field4);
+    REQUIRE(result.get_header().get_identifier().get_layout().tags() ==
+            std::vector<FieldTag>({COL, CMP, CMP, CMP}));
+    REQUIRE(result.get_header().get_identifier().get_layout().dim(0) == dim0);
+    REQUIRE(result.get_header().get_identifier().get_layout().dim(2) == dim1);
+    result = dot_along_rank1_dim<Real>(0, field00, field5);
+    REQUIRE(result.get_header().get_identifier().get_layout().tags() ==
+            std::vector<FieldTag>({CMP, CMP, CMP, CMP, LEV}));
+    REQUIRE(result.get_header().get_identifier().get_layout().dim(4) == dim2);
+
+    result = dot_along_rank1_dim<Real>(0, field00, field00);
+    result.sync_to_host();
+    auto v = result.get_view<Real, Host>();
+    REQUIRE(v() == (1 / sp(36) + 4 / sp(36) + 9 / sp(36)));
+  }
+
   SECTION ("frobenius") {
 
     auto v1 = f1.get_strided_view<Real**>();

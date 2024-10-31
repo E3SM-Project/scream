@@ -2,6 +2,7 @@
 #define SCREAM_FIELD_UTILS_HPP
 
 #include "share/field/field_utils_impl.hpp"
+#include "share/field/field_utils_impl_dot.hpp"
 
 namespace scream {
 
@@ -109,6 +110,12 @@ void perturb (const Field& f,
   }
 
   impl::perturb<ST>(f, engine, pdf, base_seed, level_mask, dof_gids);
+}
+
+template <typename ST>
+Field dot_along_rank1_dim(const int &pd, const Field &f1, const Field &f2,
+                           const ekat::Comm *co = nullptr) {
+  return do_dot_along_rank1_dim<ST>(pd, f1, f2, co);
 }
 
 template<typename ST>
