@@ -13,3 +13,7 @@ $ATMCHANGE target_latitude=36.605 -b
 $ATMCHANGE target_longitude=262.515 -b
 $ATMCHANGE iop_nudge_uv=true -b
 $ATMCHANGE iop_srf_prop=true -b
+
+# Add base DPxx shell_commands which adds iop_forcing to ATM proc list
+. $CIMEROOT/../components/eamxx/cime_config/testdefs/testmods_dirs/scream/dpxx/base/shell_commands
+
