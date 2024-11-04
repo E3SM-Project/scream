@@ -5646,7 +5646,7 @@ AMD EPYC 7713 64-Core (Milan) (256GB) and 4 nvidia A100'</DESC>
       </modules>
       -->
     </module_system>
-    <RUNDIR>/nscratch/$USER/e3sm_scratch/flight/$CASE/run</RUNDIR>
+    <RUNDIR>$CIME_OUTPUT_ROOT/$CASE/run</RUNDIR>
     <EXEROOT>$CIME_OUTPUT_ROOT/$CASE/bld</EXEROOT>
 
     <environment_variables>
