@@ -5650,12 +5650,12 @@ AMD EPYC 7713 64-Core (Milan) (256GB) and 4 nvidia A100'</DESC>
     <EXEROOT>$CIME_OUTPUT_ROOT/$CASE/bld</EXEROOT>
 
     <environment_variables>
-      <env name="NETCDF_PATH">/ascldap/users/tccleve/.local</env>
+      <env name="NETCDF_C_PATH">/ascldap/users/tccleve/.local</env>
       <env name="NETCDF_FORTRAN_PATH">/ascldap/users/tccleve/.local</env>
       <env name="OMP_STACKSIZE">64M</env>
     </environment_variables>
     <environment_variables mpilib="!mpi-serial">
-      <env name="PNETCDFROOT">/ascldap/users/tccleve/.local</env>
+      <env name="PNETCDF_PATH">/ascldap/users/tccleve/.local</env>
     </environment_variables>
   </machine>
 
