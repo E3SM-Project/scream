@@ -5624,6 +5624,7 @@ AMD EPYC 7713 64-Core (Milan) (256GB) and 4 nvidia A100'</DESC>
       <cmd_path lang="sh">module</cmd_path>
       <modules>
         <command name="purge"/>
+        <command name="load">aue/python/3.9.16</command>
         <command name="load">gnu/10.3.1</command>
         <command name="load">intel/23.2.0</command>
         <command name="load">aue/netcdf-c/4.9.2-gcc-10.3.0-openmpi-4.1.6</command>
@@ -5643,6 +5644,7 @@ AMD EPYC 7713 64-Core (Milan) (256GB) and 4 nvidia A100'</DESC>
 
     <environment_variables>
       <env name="NETCDFROOT">$ENV{NETCDF_ROOT}</env>
+      <env name="NETCDF_PATH">$ENV{NETCDF_ROOT}</env>
       <env name="NETCDF_INCLUDES">$ENV{NETCDF_ROOT}/include</env>
       <env name="NETCDF_LIBS">$ENV{NETCDF_ROOT}/lib</env>
       <env name="OMP_STACKSIZE">64M</env>
