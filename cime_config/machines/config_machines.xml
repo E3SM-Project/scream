@@ -5604,7 +5604,7 @@ AMD EPYC 7713 64-Core (Milan) (256GB) and 4 nvidia A100'</DESC>
     <MAX_MPITASKS_PER_NODE>112</MAX_MPITASKS_PER_NODE>
     <PROJECT_REQUIRED>TRUE</PROJECT_REQUIRED>
     <mpirun mpilib="default">
-      <executable>srun</executable>
+      <executable>mpiexec</executable>
       <arguments>
         <arg name="num_tasks"> --n {{ total_tasks }}</arg>
         <arg name="tasks_per_node"> --map-by ppr:{{ tasks_per_numa }}:socket:PE=$ENV{OMP_NUM_THREADS} --bind-to core</arg>
