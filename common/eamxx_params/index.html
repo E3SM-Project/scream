@@ -12,7 +12,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.42">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.43">
     
     
       
@@ -1563,6 +1563,176 @@ EAMxx is not supported yet.
 </ul>
 </li>
 </ul>
+<h2 id="mam4_aero_microphys">mam4_aero_microphys</h2>
+<ul>
+<li>mam4_aero_microphys::mam4_do_cond:  <ul>
+<li>description: Switch to enable aerosol microphysics condensation process  </li>
+<li>type: logical  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_do_newnuc:  <ul>
+<li>description: Switch to enable aerosol microphysics nucleation process  </li>
+<li>type: logical  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_do_coag:  <ul>
+<li>description: Switch to enable aerosol microphysics coagulation process  </li>
+<li>type: logical  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_do_rename:  <ul>
+<li>description: Switch to enable aerosol microphysics rename process  </li>
+<li>type: logical  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_o3_tau:  <ul>
+<li>description: Linoz tau parameter  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_o3_sfc:  <ul>
+<li>description: Linoz surface parameter  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_o3_lbl:  <ul>
+<li>description: Linoz lbl parameter  </li>
+<li>type: integer  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_psc_T:  <ul>
+<li>description: Linoz psc ozone loss temperature (K) threshold  </li>
+<li>type: real  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_linoz_ymd:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: integer  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_linoz_file_name:  <ul>
+<li>description: LINOZ chemistry file  </li>
+<li>type: file  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_oxid_ymd:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: integer  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_oxid_file_name:  <ul>
+<li>description: File containing oxidants data  </li>
+<li>type: file  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_chlorine_loading_ymd:  <ul>
+<li>description: Cycle year for chlorine  </li>
+<li>type: integer  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_linoz_chlorine_file:  <ul>
+<li>description: File containing chlorine data  </li>
+<li>type: file  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_rsf_file:  <ul>
+<li>description: File containing photolysis data  </li>
+<li>type: file  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_xs_long_file:  <ul>
+<li>description: File containing photolysis data  </li>
+<li>type: file  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::verti_emiss_ymd:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: integer  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_so2_verti_emiss_file_name:  <ul>
+<li>description: vertical emissions for so2  </li>
+<li>type: file  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_so4_a1_verti_emiss_file_name:  <ul>
+<li>description: vertical emissions for so4_a1  </li>
+<li>type: file  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_so4_a2_verti_emiss_file_name:  <ul>
+<li>description: vertical emissions for ao4_a2  </li>
+<li>type: file  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_pom_a4_verti_emiss_file_name:  <ul>
+<li>description: vertical emissions for pom_a4  </li>
+<li>type: file  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_bc_a4_verti_emiss_file_name:  <ul>
+<li>description: vertical emissions for bc_a4  </li>
+<li>type: file  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_num_a1_verti_emiss_file_name:  <ul>
+<li>description: vertical emissions for num_a1  </li>
+<li>type: file  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_num_a2_verti_emiss_file_name:  <ul>
+<li>description: vertical emissions for num_a2  </li>
+<li>type: file  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_num_a4_verti_emiss_file_name:  <ul>
+<li>description: vertical emissions for num_a4  </li>
+<li>type: file  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::mam4_soag_verti_emiss_file_name:  <ul>
+<li>description: vertical emissions for soag  </li>
+<li>type: file  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::aero_microphys_remap_file:  <ul>
+<li>description: File containing mapping data from the grid of frac land use files to the model grid. Unused if the grid is the same.  </li>
+<li>type: file  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::number_of_subcycles:  <ul>
+<li>description: how many times to subcycle this atm process  </li>
+<li>type: <strong>MISSING</strong>  </li>
+<li>constraints: gt 0  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::enable_precondition_checks:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: logical  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::enable_postcondition_checks:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: logical  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::repair_log_level:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: string  </li>
+<li>valid values: trace,debug,info,warn  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::internal_diagnostics_level:  <ul>
+<li>description: <strong>MISSING</strong>  </li>
+<li>type: integer  </li>
+</ul>
+</li>
+<li>mam4_aero_microphys::compute_tendencies:  <ul>
+<li>description: list of computed fields for which this process will back out tendencies  </li>
+<li>type: array(string)  </li>
+</ul>
+</li>
+</ul>
 <h2 id="mam4_optics">mam4_optics</h2>
 <ul>
 <li>mam4_optics::mam4_mode1_physical_properties_file:  <ul>
@@ -2509,18 +2679,18 @@ EAMxx is not supported yet.
 </ul>
 </li>
 <li>initial_conditions::dgnum:  <ul>
-<li>description: Dry aerosol particles diameter [m]  </li>
-<li>type: real  </li>
+<li>description: Dry aerosol particles diameters (one per mode) [m]  </li>
+<li>type: array(real)  </li>
 </ul>
 </li>
 <li>initial_conditions::dgnumwet:  <ul>
 <li>description: Wet aerosol particles diameter [m]  </li>
-<li>type: real  </li>
+<li>type: array(real)  </li>
 </ul>
 </li>
 <li>initial_conditions::wetdens:  <ul>
 <li>description: Wet density of interstitial aerosol [kg/m3]  </li>
-<li>type: real  </li>
+<li>type: array(real)  </li>
 </ul>
 </li>
 <li>initial_conditions::bc_c1:  <ul>
