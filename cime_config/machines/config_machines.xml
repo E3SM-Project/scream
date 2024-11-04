@@ -5637,7 +5637,7 @@ AMD EPYC 7713 64-Core (Milan) (256GB) and 4 nvidia A100'</DESC>
       </modules>
       <modules mpilib="!mpi-serial">
         <command name="load">openmpi-intel/4.1</command>
-        <command name="load">openmpi-gnu/4.1</command>
+        <!--<command name="load">openmpi-gnu/4.1</command>-->
         <command name="load">aue/parallel-netcdf/1.12.3-gcc-10.3.0-openmpi-4.1.6</command>
         <!-- OLD
         <command name="load">sems-archive-openmpi/4.1.4</command>
