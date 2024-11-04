@@ -5587,6 +5587,7 @@ AMD EPYC 7713 64-Core (Milan) (256GB) and 4 nvidia A100'</DESC>
     <PROXY>proxy.sandia.gov:80</PROXY>
     <COMPILERS>intel</COMPILERS>
     <MPILIBS>openmpi</MPILIBS>
+    <PROJECT>fy220022</PROJECT>
     <SAVE_TIMING_DIR>/projects/ccsm/timings</SAVE_TIMING_DIR>
     <SAVE_TIMING_DIR_PROJECTS>.*</SAVE_TIMING_DIR_PROJECTS>
     <CIME_OUTPUT_ROOT>/gpfs/$USER/acme_scratch/flight</CIME_OUTPUT_ROOT>
@@ -5624,9 +5625,7 @@ AMD EPYC 7713 64-Core (Milan) (256GB) and 4 nvidia A100'</DESC>
       <modules>
         <command name="purge"/>
         <command name="load">gnu/10.3.1</command>
-        <!-- Maybe need?
         <command name="load">intel/23.2.0</command>
-        -->
         <!-- OLD
         <command name="load">sems-archive-env</command>
         <command name="load">acme-env</command>
@@ -5637,10 +5636,10 @@ AMD EPYC 7713 64-Core (Milan) (256GB) and 4 nvidia A100'</DESC>
         -->
       </modules>
       <modules mpilib="!mpi-serial">
+        <!--
         <command name="load">openmpi-gnu/4.1</command>
-        <!-- Maybe need?
-        <command name="load">openmpi-intel/4.1</command>
         -->
+        <command name="load">openmpi-intel/4.1</command>
         <!-- OLD
         <command name="load">sems-archive-openmpi/4.1.4</command>
         <command name="load">acme-netcdf/4.7.4/acme</command>
