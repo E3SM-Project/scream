@@ -40,15 +40,15 @@ module cosp_c2f
 
   ! Local variables; control what runs and what does not
   logical :: &
-       lsingle     = .false., & ! True if using MMF_v3_single_moment CLOUDSAT microphysical scheme (default)
-       ldouble     = .true. , & ! True if using MMF_v3.5_two_moment CLOUDSAT microphysical scheme
+       lsingle     = .true.,  & ! True if using MMF_v3_single_moment CLOUDSAT microphysical scheme (default)
+       ldouble     = .false., & ! True if using MMF_v3.5_two_moment CLOUDSAT microphysical scheme
        lisccp      = .true. , & ! Local on/off switch for simulators (used by initialization)
        lmodis      = .true. , & !
        lmisr       = .true. , & !
        lcalipso    = .false., & !
        lgrLidar532 = .false., & !
        latlid      = .false., & !
-       lcloudsat   = .false., & !
+       lcloudsat   = .true., & !
        lrttov      = .false., & !
        lparasol    = .false.    !
 
@@ -61,8 +61,8 @@ module cosp_c2f
          Lboxtauisccp        = .false., & ! ISCCP optical epth in each column
          Ltauisccp           = .false., & ! ISCCP mean optical depth
          Lcltisccp           = .true. , & ! ISCCP total cloud fraction
-         Lmeantbisccp        = .false., & ! ISCCP mean all-sky 10.5micron brightness temperature
-         Lmeantbclrisccp     = .false., & ! ISCCP mean clear-sky 10.5micron brightness temperature
+         Lmeantbisccp        = .true.,  & ! ISCCP mean all-sky 10.5micron brightness temperature
+         Lmeantbclrisccp     = .true.,  & ! ISCCP mean clear-sky 10.5micron brightness temperature
          Lalbisccp           = .false., & ! ISCCP mean cloud albedo         
          LclMISR             = .true. , & ! MISR cloud fraction
          Lcltmodis           = .false., & ! MODIS total cloud fraction
@@ -146,8 +146,8 @@ module cosp_c2f
          Lclopaquemeanzse    = .false., & ! CALIPSO opaque cloud altitude with respect to SE 
          Lclthinmeanzse      = .false., & ! CALIPSO thin cloud altitude with respect to SE
          Lclzopaquecalipsose = .false., & ! CALIPSO z_opaque altitude with respect to SE
-         LcfadDbze94         = .false., & ! CLOUDSAT radar reflectivity CFAD
-         Ldbze94             = .false., & ! CLOUDSAT radar reflectivity
+         LcfadDbze94         = .true. , & ! CLOUDSAT radar reflectivity CFAD
+         Ldbze94             = .true. , & ! CLOUDSAT radar reflectivity
          LparasolRefl        = .false., & ! PARASOL reflectance
          Ltbrttov            = .false., & ! RTTOV mean clear-sky brightness temperature
          Lptradarflag0       = .false., & ! CLOUDSAT 
@@ -233,7 +233,7 @@ module cosp_c2f
        gamma_3 = (/-1., -1.,      2.0,      2.0, -1., -1.,      2.0,      2.0,      2.0/),&
        gamma_4 = (/-1., -1.,      6.0,      6.0, -1., -1.,      6.0,      6.0,      6.0/)
 
-  character(len=64) :: cloudsat_micro_scheme = 'MMF_v3.5_two_moment'
+  character(len=64) :: cloudsat_micro_scheme = 'MMF_v3.5_single_moment' !'MMF_v3.5_two_moment'
 
 contains
 
@@ -270,18 +270,22 @@ contains
 
   end subroutine cosp_c2f_init 
 
-  subroutine cosp_c2f_run(npoints, ncolumns, nlevels, ntau, nctp, ncth, &
-       emsfc_lw, sunlit, skt, T_mid, p_mid, p_int, z_mid, qv, qc, qi, &
-       cldfrac, reff_qc, reff_qi, dtau067, dtau105, isccp_cldtot, isccp_ctptau, modis_ctptau, misr_cthtau &
+  subroutine cosp_c2f_run(npoints, ncolumns, nlevels, ntau, nctp, ncth, ndbze, nhgt, &
+       emsfc_lw, sunlit, skt, T_mid, p_mid, p_int, z_mid, z_int, qv, qc, qi, &
+       cldfrac, reff_qc, reff_qi, dtau067, dtau105, &
+       isccp_cldtot, isccp_ctptau, modis_ctptau, misr_cthtau, radar_dbze, radar_cfad &
        ) bind(C, name='cosp_c2f_run')
-    integer(kind=c_int), value, intent(in) :: npoints, ncolumns, nlevels, ntau, nctp, ncth
+    integer(kind=c_int), value, intent(in) :: npoints, ncolumns, nlevels, ntau, nctp, ncth, ndbze, nhgt
     real(kind=c_double), value, intent(in) :: emsfc_lw
     real(kind=c_double), intent(in), dimension(npoints) :: sunlit, skt
     real(kind=c_double), intent(in), dimension(npoints,nlevels) :: T_mid, p_mid, z_mid, qv, qc, qi, cldfrac, reff_qc, reff_qi, dtau067, dtau105
-    real(kind=c_double), intent(in), dimension(npoints,nlevels+1) :: p_int
+    real(kind=c_double), intent(in), dimension(npoints,nlevels+1) :: p_int, z_int
     real(kind=c_double), intent(inout), dimension(npoints) :: isccp_cldtot
     real(kind=c_double), intent(inout), dimension(npoints,ntau,nctp) :: isccp_ctptau, modis_ctptau
     real(kind=c_double), intent(inout), dimension(npoints,ntau,ncth) :: misr_cthtau
+    real(kind=c_double), intent(inout), dimension(npoints,ncolumns,nlevels) :: radar_dbze
+    real(kind=c_double), intent(inout), dimension(npoints,ndbze,nhgt) :: radar_cfad
+
     ! Takes normal arrays as input and populates COSP derived types
     character(len=256),dimension(100) :: cosp_status
     integer :: nptsperit
@@ -330,9 +334,10 @@ contains
     cospIN%emsfc_lw         = emsfc_lw
     cospIN%rcfg_cloudsat    = rcfg_cloudsat
     cospstateIN%hgt_matrix  = z_mid(start_idx:end_idx,1:Nlevels)   ! m
+    cospstateIN%hgt_matrix_half  = z_int(start_idx:end_idx,2:Nlevels+1)   ! m height of BOTTOM of model levels
     cospstateIN%sunlit      = sunlit(start_idx:end_idx)            ! 0-1
     cospstateIN%skt         = skt(start_idx:end_idx)               ! K
-!   cospstateIN%surfelev    = surfelev(start_idx:end_idx)          ! m
+    cospstateIN%surfelev    = z_int(start_idx:end_idx,Nlevels+1) !0.0 !surfelev(start_idx:end_idx)          ! m
 !   cospstateIN%land        = landmask(start_idx:end_idx)          ! 0-1 (*note* model specific)
     cospstateIN%qv          = qv(start_idx:end_idx,1:Nlevels)   ! kg/kg
     cospstateIN%at          = T_mid(start_idx:end_idx,1:Nlevels) !Nlevels:1:-1)    ! K
@@ -363,6 +368,10 @@ contains
 
     ! MISR
     misr_cthtau(:npoints,:,:) = cospOUT%misr_fq(:npoints,:,:)
+
+    ! Cloudsat radar
+    radar_cfad(:npoints,:ndbze,:nhgt) = cospOUT%cloudsat_cfad_ze(:npoints,:ndbze,:nhgt)
+    radar_dbze(:npoints,:ncolumns,:nlevels) = cospOUT%cloudsat_ze_tot(:npoints,:ncolumns,:nlevels)
 
   end subroutine cosp_c2f_run
 
@@ -399,7 +408,7 @@ contains
        allocate(y%tau_067(npoints,        ncolumns,nlevels),&
                 y%emiss_11(npoints,       ncolumns,nlevels))
     endif
-    if (Lcalipso) then
+    if (.true.) then !(Lcalipso) then
        allocate(y%betatot_calipso(npoints,        ncolumns,nlevels),&
                 y%betatot_ice_calipso(npoints,    ncolumns,nlevels),&
                 y%betatot_liq_calipso(npoints,    ncolumns,nlevels),&
@@ -431,6 +440,7 @@ contains
                 y%kr_vol_cloudsat(npoints, ncolumns,nlevels),&
                 y%g_vol_cloudsat(npoints,  ncolumns,nlevels),&
                 y%fracPrecipIce(npoints,   ncolumns))
+       allocate(y%rcfg_cloudsat)
     endif
     if (Lmodis) then
        allocate(y%fracLiq(npoints,        ncolumns,nlevels),&
@@ -670,6 +680,7 @@ contains
     if (allocated(y%tau_mol_atlid))       deallocate(y%tau_mol_atlid) 
     if (allocated(y%tautot_atlid))        deallocate(y%tautot_atlid)
     if (allocated(y%fracPrecipIce))      deallocate(y%fracPrecipIce)
+    if (allocated(y%rcfg_cloudsat))      deallocate(y%rcfg_cloudsat)
   end subroutine destroy_cospIN
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   ! SUBROUTINE destroy_cospstateIN     
@@ -1049,7 +1060,7 @@ contains
     type(rng_state),allocatable,dimension(:) :: rngs  ! Seeds for random number generator
     integer,dimension(:),allocatable :: seed
     integer,dimension(:),allocatable :: cloudsat_preclvl_index
-    integer :: i,j,k
+    integer :: i,j,k,l
     real(wp) :: zstep
     real(wp),dimension(:,:), allocatable :: &
          ls_p_rate, cv_p_rate, frac_ls, frac_cv, prec_ls, prec_cv,g_vol
@@ -1204,11 +1215,15 @@ contains
        cospIN%frac_out(:,:,:) = 1  
        allocate(mr_hydro(nPoints,1,nLevels,nHydro),Reff(nPoints,1,nLevels,nHydro),       &
                 Np(nPoints,1,nLevels,nHydro))
-       mr_hydro(:,1,:,I_LSCLIQ) = mr_lsliq
-       mr_hydro(:,1,:,I_LSCICE) = mr_lsice
-       mr_hydro(:,1,:,I_CVCLIQ) = mr_ccliq
-       mr_hydro(:,1,:,I_CVCICE) = mr_ccice
-       Reff(:,1,:,:)            = ReffIN
+       mr_hydro = 0._wp
+       mr_hydro(:npoints,1,:nlevels,I_LSCLIQ) = mr_lsliq(:npoints,:nlevels)
+       mr_hydro(:,1,:nlevels,I_LSCICE) = mr_lsice(:npoints,:nlevels)
+       !mr_hydro(:,1,:,I_CVCLIQ) = 0 !mr_ccliq
+       !mr_hydro(:,1,:,I_CVCICE) = 0 !mr_ccice
+       Reff = 0._wp
+       Reff(:npoints,1,:nlevels,I_LSCLIQ) = ReffIN(:npoints,:nlevels,I_LSCLIQ)
+       Reff(:npoints,1,:nlevels,I_LSCICE) = ReffIN(:npoints,:nlevels,I_LSCICE)
+       Np = 0._wp
     endif
     
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -38,6 +38,7 @@ void Cosp::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   // Nevertheless, for output reasons, we like to see 'kg/kg'.
   Units nondim = Units::nondimensional();
   Units percent (nondim,"%");
+  Units dBZ (nondim, "dBZ");
   auto micron = micro*m;
   auto m2 = pow(m, 2);
   auto s2 = pow(s, 2);
@@ -59,6 +60,12 @@ void Cosp::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   FieldLayout scalar4d_cthtau ( {COL,CMP,CMP},
                                 {m_num_cols,m_num_tau,m_num_cth},
                                 {e2str(COL), "cosp_tau", "cosp_cth"});
+  FieldLayout scalar4d_dbzehgt( {COL,CMP,CMP},
+                                {m_num_cols,m_num_dbze,m_num_hgt},
+                                {e2str(COL), "cosp_dbze", "cosp_hgt"});
+  FieldLayout scalar4d_subcol_mid( {COL,CMP,LEV},
+                                  {m_num_cols,m_num_subcols,m_num_levs},
+                                  {e2str(COL), "cosp_subcol", e2str(LEV)});
 
   // Set of fields used strictly as input
   //                  Name in AD     Layout               Units   Grid       Group
@@ -92,7 +99,10 @@ void Cosp::set_grids(const std::shared_ptr<const GridsManager> grids_manager)
   add_field<Computed>("isccp_ctptau", scalar4d_ctptau, percent, grid_name, 1);
   add_field<Computed>("modis_ctptau", scalar4d_ctptau, percent, grid_name, 1);
   add_field<Computed>("misr_cthtau", scalar4d_cthtau, percent, grid_name, 1);
+  add_field<Computed>("radar_dbze", scalar4d_subcol_mid, dBZ    , grid_name, 1);
+  add_field<Computed>("radar_cfad", scalar4d_dbzehgt, percent, grid_name, 1);
   add_field<Computed>("cosp_sunlit", scalar2d, nondim, grid_name);
+  add_field<Computed>("radar_count", scalar2d, nondim, grid_name);
 }
 
 // =========================================================================================
@@ -175,7 +185,10 @@ void Cosp::run_impl (const double dt)
   auto isccp_ctptau = get_field_out("isccp_ctptau").get_view<Real***, Host>();
   auto modis_ctptau = get_field_out("modis_ctptau").get_view<Real***, Host>();
   auto misr_cthtau  = get_field_out("misr_cthtau").get_view<Real***, Host>();
+  auto radar_dbze   = get_field_out("radar_dbze").get_view<Real***, Host>();
+  auto radar_cfad   = get_field_out("radar_cfad").get_view<Real***, Host>();
   auto cosp_sunlit  = get_field_out("cosp_sunlit").get_view<Real*, Host>();  // Copy of sunlit flag with COSP frequency for proper averaging
+  auto radar_count  = get_field_out("radar_count").get_view<Real*, Host>();  // Copy of sunlit flag with COSP frequency for proper averaging
 
   // Compute heights
   const auto z_mid = CospFunc::view_2d<Real>("z_mid", m_num_cols, m_num_levs);
@@ -209,11 +222,12 @@ void Cosp::run_impl (const double dt)
     Real emsfc_lw = 0.99;
     Kokkos::deep_copy(cosp_sunlit, sunlit);
     CospFunc::view_2d<const Real> z_mid_c = z_mid;  // Need a const version of z_mid for call to CospFunc::main
+    CospFunc::view_2d<const Real> z_int_c = z_int;  // Need a const version of z_mid for call to CospFunc::main
     CospFunc::main(
-            m_num_cols, m_num_subcols, m_num_levs, m_num_tau, m_num_ctp, m_num_cth,
-            emsfc_lw, sunlit, skt, T_mid, p_mid, p_int, z_mid_c, qv, qc, qi,
+            m_num_cols, m_num_subcols, m_num_levs, m_num_tau, m_num_ctp, m_num_cth, m_num_dbze, m_num_hgt,
+            emsfc_lw, sunlit, skt, T_mid, p_mid, p_int, z_mid_c, z_int_c, qv, qc, qi,
             cldfrac, reff_qc, reff_qi, dtau067, dtau105,
-            isccp_cldtot, isccp_ctptau, modis_ctptau, misr_cthtau
+            isccp_cldtot, isccp_ctptau, modis_ctptau, misr_cthtau, radar_dbze, radar_cfad
     );
     // Remask night values to ZERO since our I/O does not know how to handle masked/missing values
     // in temporal averages; this is all host data, so we can just use host loops like its the 1980s
@@ -231,6 +245,7 @@ void Cosp::run_impl (const double dt)
             }
         }
     }
+    Kokkos::deep_copy(radar_count, 1.0);
   } else {
     // If not updating COSP statistics, set these to ZERO; this essentially weights
     // the ISCCP cloud properties by the sunlit mask. What will be output for time-averages
@@ -246,12 +261,18 @@ void Cosp::run_impl (const double dt)
     Kokkos::deep_copy(modis_ctptau, 0.0);
     Kokkos::deep_copy(misr_cthtau, 0.0);
     Kokkos::deep_copy(cosp_sunlit, 0.0);
+    Kokkos::deep_copy(radar_dbze, 0.0);
+    Kokkos::deep_copy(radar_cfad, 0.0);
+    Kokkos::deep_copy(radar_count, 0.0);
   }
   get_field_out("isccp_cldtot").sync_to_dev();
   get_field_out("isccp_ctptau").sync_to_dev();
   get_field_out("modis_ctptau").sync_to_dev();
   get_field_out("misr_cthtau").sync_to_dev();
   get_field_out("cosp_sunlit").sync_to_dev();
+  get_field_out("radar_cfad").sync_to_dev();
+  get_field_out("radar_dbze").sync_to_dev();
+  get_field_out("radar_count").sync_to_dev();
 }
 
 // =========================================================================================

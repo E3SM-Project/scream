@@ -72,6 +72,8 @@ protected:
   Int m_num_tau = 7;
   Int m_num_ctp = 7;
   Int m_num_cth = 16;
+  Int m_num_dbze = 15;
+  Int m_num_hgt = 40;
 
   std::shared_ptr<const AbstractGrid> m_grid;
 
