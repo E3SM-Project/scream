@@ -381,6 +381,10 @@ void IOPForcing::run_impl (const double dt)
   // Reset internal WSM variables.
   m_workspace_mgr.reset_internals();
 
+  // Avoid implicit capture of this
+  auto wsm = m_workspace_mgr;
+  auto num_levs = m_num_levs;
+
   // Apply IOP forcing
   Kokkos::parallel_for("apply_iop_forcing", policy_iop, KOKKOS_LAMBDA (const MemberType& team) {
     const int icol  =  team.league_rank();
@@ -392,7 +396,7 @@ void IOPForcing::run_impl (const double dt)
     auto qv_i = ekat::subview(qv, icol);
     auto Q_i = Kokkos::subview(Q, icol, Kokkos::ALL(), Kokkos::ALL());
 
-    auto ws = m_workspace_mgr.get_workspace(team);
+    auto ws = wsm.get_workspace(team);
     uview_1d<Pack> ref_p_mid, ref_p_int, ref_p_del;
     ws.take_many_contiguous_unsafe<3>({"ref_p_mid", "ref_p_int", "ref_p_del"},
                                       {&ref_p_mid,  &ref_p_int,  &ref_p_del});
@@ -401,27 +405,27 @@ void IOPForcing::run_impl (const double dt)
     // TODO: Allow geometry data to allocate packsize
     auto s_ref_p_mid = ekat::scalarize(ref_p_mid);
     auto s_ref_p_int = ekat::scalarize(ref_p_int);
-    Kokkos::parallel_for(Kokkos::TeamVectorRange(team, m_num_levs+1), [&](const int& k) {
+    Kokkos::parallel_for(Kokkos::TeamVectorRange(team, num_levs+1), [&](const int& k) {
       s_ref_p_int(k) = hyai(k)*ps0 + hybi(k)*ps_i;
-      if (k < m_num_levs) {
+      if (k < num_levs) {
         s_ref_p_mid(k) = hyam(k)*ps0 + hybm(k)*ps_i;
       }
     });
     team.team_barrier();
-    ColOps::compute_midpoint_delta(team, m_num_levs, ref_p_int, ref_p_del);
+    ColOps::compute_midpoint_delta(team, num_levs, ref_p_int, ref_p_del);
     team.team_barrier();
 
     if (iop_dosubsidence) {
     // Compute subsidence due to large-scale forcing
-      advance_iop_subsidence(team, m_num_levs, dt, ps_i, ref_p_mid, ref_p_int, ref_p_del, omega, ws, u_i, v_i, T_mid_i, Q_i);
+      advance_iop_subsidence(team, num_levs, dt, ps_i, ref_p_mid, ref_p_int, ref_p_del, omega, ws, u_i, v_i, T_mid_i, Q_i);
     }
 
     // Update T and qv according to large scale forcing as specified in IOP file.
-    advance_iop_forcing(team, m_num_levs, dt, divT, divq, T_mid_i, qv_i);
+    advance_iop_forcing(team, num_levs, dt, divT, divq, T_mid_i, qv_i);
 
     if (iop_coriolis) {
       // Apply coriolis forcing to u and v winds
-      iop_apply_coriolis(team, m_num_levs, dt, target_lat, u_ls, v_ls, u_i, v_i);
+      iop_apply_coriolis(team, num_levs, dt, target_lat, u_ls, v_ls, u_i, v_i);
     }
 
     // Release WS views
@@ -495,14 +499,14 @@ void IOPForcing::run_impl (const double dt)
       auto T_mid_i = ekat::subview(T_mid, icol);
       auto qv_i = ekat::subview(qv, icol);
 
-      auto ws = m_workspace_mgr.get_workspace(team);
+      auto ws = wsm.get_workspace(team);
       uview_1d<Pack> ref_p_mid;
       ws.take_many_contiguous_unsafe<1>({"ref_p_mid"},{&ref_p_mid});
 
       // Compute reference pressures and layer thickness.
       // TODO: Allow geometry data to allocate packsize
       auto s_ref_p_mid = ekat::scalarize(ref_p_mid);
-      Kokkos::parallel_for(Kokkos::TeamVectorRange(team, m_num_levs), [&](const int& k) {
+      Kokkos::parallel_for(Kokkos::TeamVectorRange(team, num_levs), [&](const int& k) {
         s_ref_p_mid(k) = hyam(k)*ps0 + hybm(k)*ps_i;
       });
       team.team_barrier();

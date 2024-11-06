@@ -109,10 +109,11 @@ protected:
                                  const view_1d<const Pack>& v_ls,
                                  const view_1d<Pack>& u,
                                  const view_1d<Pack>& v);
+  
+  void run_impl        (const double dt);
 
 protected:
 
-  void run_impl        (const double dt);
   void finalize_impl   () {}
 
   void set_computed_group_impl (const FieldGroup& group);
