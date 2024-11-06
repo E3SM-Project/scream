@@ -447,6 +447,7 @@ void IOPForcing::run_impl (const double dt)
     const auto u_mean_h  = Kokkos::create_mirror_view(u_mean);
     const auto v_mean_h  = Kokkos::create_mirror_view(v_mean);
 
+    const auto num_global_cols = m_grid->get_num_global_dofs();
     for (int k=0; k<m_num_levs; ++k) {
       if (iop_nudge_tq){
         Real& qv_mean_k = qv_mean_h(k/Pack::n)[k%Pack::n];
@@ -461,8 +462,8 @@ void IOPForcing::run_impl (const double dt)
         m_comm.all_reduce(&qv_mean_k, 1, MPI_SUM);
         m_comm.all_reduce(&t_mean_k, 1, MPI_SUM);
 
-        qv_mean_k /= m_num_cols;
-        t_mean_k /= m_num_cols;
+        qv_mean_k /= num_global_cols;
+        t_mean_k /= num_global_cols;
       }
       if (iop_nudge_uv){
         Real& u_mean_k = u_mean_h(k/Pack::n)[k%Pack::n];
@@ -477,8 +478,8 @@ void IOPForcing::run_impl (const double dt)
         m_comm.all_reduce(&u_mean_k, 1, MPI_SUM);
         m_comm.all_reduce(&v_mean_k, 1, MPI_SUM);
 
-        u_mean_k /= m_num_cols;
-        v_mean_k /= m_num_cols;
+        u_mean_k /= num_global_cols;
+        v_mean_k /= num_global_cols;
       }
     }
     Kokkos::deep_copy(qv_mean, qv_mean_h);
