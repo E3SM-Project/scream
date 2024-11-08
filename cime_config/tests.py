@@ -686,7 +686,7 @@ _TESTS = {
             "ERS_P16_Ln22.ne30pg2_ne30pg2.FIOP-SCREAMv1-DP.scream-dpxx-dycomsrf01",
             "ERS_P16_Ln22.ne30pg2_ne30pg2.FIOP-SCREAMv1-DP.scream-dpxx-arm97",
             "ERS_P16_Ln22.ne30pg2_ne30pg2.FIOP-SCREAMv1-DP.scream-dpxx-comble",
-            "ERS_P16_Ln22.ne30pg2_ne30pg2.FRCE-SCREAMv1-DP.scream-dpxx",
+            "ERS_P16_Ln22.ne30pg2_ne30pg2.FRCE-SCREAMv1-DP",
             )
     },
 

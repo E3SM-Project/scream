@@ -13,4 +13,3 @@ $ATMCHANGE target_latitude=31.5 -b
 $ATMCHANGE target_longitude=238.5 -b
 $ATMCHANGE iop_dosubsidence=true -b
 $ATMCHANGE iop_srf_prop=true -b
-
