@@ -42,23 +42,6 @@ void IOPForcing::set_grids(const std::shared_ptr<const GridsManager> grids_manag
   if (iop_nudge_uv) m_buffer.num_1d_scalar_nlev += 2;
 }
 // =========================================================================================
-void IOPForcing::
-set_computed_group_impl (const FieldGroup& group)
-{
-  EKAT_REQUIRE_MSG(group.m_info->size() >= 1,
-                   "Error! IOPForcing requires at least qv as tracer input.\n");
-
-  const auto& name = group.m_info->m_group_name;
-
-  EKAT_REQUIRE_MSG(name=="tracers",
-    "Error! IOPForcing was not expecting a field group called '" << name << "\n");
-
-  EKAT_REQUIRE_MSG(group.m_info->m_bundled,
-      "Error! IOPForcing expects bundled fields for tracers.\n");
-
-  m_num_tracers = group.m_info->size();
-}
-// =========================================================================================
 size_t IOPForcing::requested_buffer_size_in_bytes() const
 {
   const int nlev_packs  = ekat::npack<Pack>(m_num_levs);
@@ -114,6 +97,8 @@ void IOPForcing::init_buffers(const ATMBufferManager &buffer_manager)
 // =========================================================================================
 void IOPForcing::initialize_impl (const RunType run_type)
 {
+  m_num_tracers = get_group_out("tracers").m_info->size();
+
   // Set field property checks for the fields in this process
   using Interval = FieldWithinIntervalCheck;
   add_postcondition_check<Interval>(get_field_out("T_mid"),m_grid,100.0,500.0,false);
