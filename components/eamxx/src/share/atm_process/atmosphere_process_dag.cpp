@@ -183,6 +183,7 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
   ofile << "strict digraph G {\n"
         << "rankdir=\"LR\"\n";
 
+  bool has_IC_field = false;
   for (const auto& n : m_nodes) {
     const auto& unmet = m_unmet_deps.at(n.id);
 
@@ -268,10 +269,11 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
           }
           fc += "\">  ";
           ofile << "      <tr><td align=\"left\">" << fc << html_fix(print_fid(m_fids[fid],fid_verb));
-          if (ekat::contains(m_unmet_deps.at(n.id), fid)) {
+          if (ekat::contains(unmet, fid)) {
             ofile << "<b>  *** MISSING ***</b>";
-          } else if (ekat::contains(m_unmet_deps.at(n.id), -fid)) {
+          } else if (ekat::contains(unmet, -fid)) {
             ofile << "<b>  (Init. Cond.)</b>";
+            has_IC_field = true;
           }
           ofile << "</font></td></tr>\n";
         }
@@ -339,7 +341,7 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
           fc += (ekat::contains(unmet,gr_fid) ? "red" : "black");
           fc += "\">  ";
           ofile << "      <tr><td align=\"left\">" << fc << html_fix(print_fid(m_fids[gr_fid],fid_verb));
-          if (ekat::contains(m_unmet_deps.at(n.id),gr_fid)) {
+          if (ekat::contains(unmet, gr_fid)) {
             ofile << "<b>  *** MISSING ***</b>";
           }
           ofile << "</font></td></tr>\n";
@@ -404,6 +406,24 @@ void AtmProcDAG::write_dag (const std::string& fname, const int verbosity) const
           << "  label=<<b><font color=\"#774006\">NOTE:</font> "
              "Fields marked missing may be<br align=\"center\"/>provided by "
              "the as-yet-unprocessed<br align=\"center\"/>initial condition</b>>\n"
+          << "];\n";
+  }
+
+  if (m_IC_processed && has_IC_field) {
+    int this_node_id = m_nodes.size() + 1;
+    ofile << this_node_id << " [\n"
+          << "  shape=box\n"
+          << "  color=\"#605d57\"\n"
+          << "  fontcolor=\"#031576\"\n"
+          << "  penwidth=8\n"
+          << "  fontsize=40\n"
+          << "  style=filled\n"
+          << "  fillcolor=\"#cccccc\"\n"
+          << "  align=\"center\"\n"
+          << "  label=<<b><font color=\"#3d2906\">NOTE:</font> Fields denoted "
+             "with <font color=\"#006219\"><b>green text</b></font> "
+             "<br align=\"center\"/>indicate the field was provided by the "
+             "<br align=\"center\"/>initial conditions and never updated</b>>\n"
           << "];\n";
   }
 
