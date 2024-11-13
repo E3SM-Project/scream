@@ -17,6 +17,9 @@
 // EKAT headers
 #include "ekat/kokkos/ekat_kokkos_types.hpp"
 
+
+#include "share/atm_process/atmosphere_process_dag.hpp"
+
 TEST_CASE("scream_homme_physics", "scream_homme_physics") {
   using namespace scream;
   using namespace scream::control;
@@ -85,6 +88,18 @@ TEST_CASE("scream_homme_physics", "scream_homme_physics") {
   ad.initialize_fields ();
   ad.initialize_output_managers ();
   ad.initialize_atm_procs ();
+
+  auto apg = ad.get_atm_processes();
+  auto ac = ad.get_comm();
+  AtmProcDAG dag;
+  // First, add all atm processes
+  dag.create_dag(*apg);
+  // process the initial conditions to maybe fulfill unmet dependencies
+  dag.process_initial_conditions(ad.m_fields_inited);
+  // Write a dot file for visualization
+  if (ac.am_i_root()) {
+    dag.write_dag("final_dag.dot", 4);
+  }
 
   if (atm_comm.am_i_root()) {
     printf("Start time stepping loop...       [  0%%]\n");
