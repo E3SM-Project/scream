@@ -238,20 +238,6 @@ void AtmosphereDriver::create_atm_processes()
   stop_timer("EAMxx::create_atm_processes");
   stop_timer("EAMxx::init");
   m_atm_logger->info("[EAMxx] create_atm_processes  ... done!");
-
-  auto &driver_options_pl = m_atm_params.sublist("driver_options");
-  const int verb_lvl =
-      driver_options_pl.get<int>("atmosphere_dag_verbosity_level", -1);
-  if (verb_lvl > 0) {
-    // create an initial DAG with only atm_process nodes
-    AtmProcDAG dag;
-    // First, add all atm processes
-    dag.init_atm_proc_nodes(*m_atm_process_group);
-    // Write a dot file for visualization
-    if (m_atm_comm.am_i_root()) {
-      dag.write_dag("scream_atm_createProc_dag.dot", std::max(verb_lvl, 0));
-    }
-  }
 }
 
 void AtmosphereDriver::create_grids()
@@ -706,10 +692,8 @@ void AtmosphereDriver::create_fields()
     // NOTE: at this point, fields provided by initial conditions may (will)
     // appear as unmet dependencies
     AtmProcDAG dag;
-
     // First, add all atm processes
     dag.create_dag(*m_atm_process_group);
-
     // Write a dot file for visualization
     if (m_atm_comm.am_i_root()) {
       dag.write_dag("scream_atm_createField_dag.dot", std::max(verb_lvl,0));
@@ -887,31 +871,6 @@ initialize_fields ()
   // See the [rrtmgp active gases] note in share/util/eamxx_fv_phys_rrtmgp_active_gases_workaround.hpp
   if (fvphyshack) {
     TraceGasesWorkaround::singleton().run_type = m_run_type;
-  }
-
-  // See if we need to print a DAG. We do this first, cause if any input
-  // field is missing from the initial condition file, an error will be thrown.
-  // By printing the DAG first, we give the user the possibility of seeing
-  // what fields are inputs to the atm time step, so he/she can fix the i.c. file.
-  // TODO: would be nice to do the IC input first, and mark the fields in the
-  //       DAG node "Begin of atm time step" in red if there's no initialization
-  //       mechanism set for them. That is, allow field XYZ to not be found in
-  //       the IC file, and throw an error when the dag is created.
-
-  auto& driver_options_pl = m_atm_params.sublist("driver_options");
-  const int verb_lvl = driver_options_pl.get<int>("atmosphere_dag_verbosity_level",-1);
-  if (verb_lvl>0) {
-    // generate the full DAG, resolving any spurious unmet dependencies that
-    // may be provided by initial conditions
-    AtmProcDAG dag;
-    // First, add all atm processes
-    dag.create_dag(*m_atm_process_group);
-    // process the initial conditions to maybe fulfill unmet dependencies
-    dag.process_initial_conditions(m_fields_inited);
-    // Write a dot file for visualization
-    if (m_atm_comm.am_i_root()) {
-      dag.write_dag("scream_atm_initField_dag.dot", std::max(verb_lvl,0));
-    }
   }
 
   // Initialize fields
