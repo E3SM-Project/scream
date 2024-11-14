@@ -328,6 +328,10 @@ void Field::sync_views_impl () const {
 template<HostOrDevice HD>
 void Field::
 deep_copy (const Field& src) const {
+  // Avoid doing anything if fields are sharing same data
+  if (src.m_data.d_view.data()==m_data.d_view.data())
+    return;
+
   EKAT_REQUIRE_MSG (not m_is_read_only,
       "Error! Cannot call deep_copy on read-only fields.\n");
 
