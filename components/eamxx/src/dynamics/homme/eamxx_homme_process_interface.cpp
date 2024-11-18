@@ -328,6 +328,15 @@ void HommeDynamics::init_buffers(const ATMBufferManager &buffer_manager)
 
 void HommeDynamics::initialize_impl (const RunType run_type)
 {
+  {
+    auto Q_group = get_group_out("tracers",m_phys_grid->name());
+    const auto fname = "soa_a1";
+    const auto idx = Q_group.m_info->m_subview_idx.at(fname);
+    const auto val0 = Q_group.m_bundle->get_view<Real***>()(0, idx, 0);
+    const auto val1 = Q_group.m_bundle->get_view<Real***>()(0, idx, m_phys_grid->get_num_vertical_levels()-1);
+    if (m_comm.am_i_root()) printf("debug_output: pre-homme:-init %s: %e,%e\n",fname,val0,val1);
+  }
+
   const auto& dgn = m_dyn_grid->name();
   const auto& pgn = m_phys_grid->name();
 

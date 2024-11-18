@@ -936,6 +936,17 @@ initialize_fields ()
     set_initial_conditions ();
   }
 
+  for (auto it : m_grids_manager->get_repo()) {
+    auto grid = it.second;
+    auto fm = m_field_mgrs.at(grid->name());
+    const auto fname = "soa_a1";
+    if (fm->has_field("soa_a1")) {
+      const auto val0 = fm->get_field(fname).get_view<Real**>()(0,0);
+      const auto val1 = fm->get_field(fname).get_view<Real**>()(0, grid->get_num_vertical_levels()-1);
+      if (m_atm_comm.am_i_root()) printf("debug_output: driver-%s: %s: %e,%e\n",grid->name().c_str(),fname,val0,val1);
+    }
+  }
+
   // Now that IC have been read, add U/V subfields of horiz_winds,
   // as well as U/V component of surf_mom_flux
   // NOTE: if you add them _before_ the IC read, set_initial_conditions
