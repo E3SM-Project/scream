@@ -329,12 +329,27 @@ void HommeDynamics::init_buffers(const ATMBufferManager &buffer_manager)
 void HommeDynamics::initialize_impl (const RunType run_type)
 {
   {
+    auto output_group_info = [&] (auto Q_group, auto gname) {
+      if (m_comm.am_i_root()) printf("debug_output: %s - %s\n",
+                                     Q_group.m_bundle->get_header().get_identifier().get_layout().to_string().c_str(),
+                                     gname.c_str());
+      for (auto fname : Q_group.m_info->m_fields_names) {
+        if (m_comm.am_i_root()) printf("debug_output: %s (%d)\n", fname.c_str(), Q_group.m_info->m_subview_idx.at(fname));
+      }
+    };
+    auto Q_gll = get_group_in("tracers", m_cgll_grid->name());
+    output_group_info(Q_gll, m_cgll_grid->name());
+    auto Q_phys = get_group_in("tracers", m_phys_grid->name());
+    output_group_info(Q_phys, m_phys_grid->name());
+  }
+
+  {
     auto Q_group = get_group_out("tracers",m_phys_grid->name());
     const auto fname = "soa_a1";
     const auto idx = Q_group.m_info->m_subview_idx.at(fname);
     const auto val0 = Q_group.m_bundle->get_view<Real***>()(0, idx, 0);
     const auto val1 = Q_group.m_bundle->get_view<Real***>()(0, idx, m_phys_grid->get_num_vertical_levels()-1);
-    if (m_comm.am_i_root()) printf("debug_output: pre-homme:-init %s: %e,%e\n",fname,val0,val1);
+    if (m_comm.am_i_root()) printf("debug_output: pre-homme-init: %s: %e,%e\n",fname,val0,val1);
   }
 
   const auto& dgn = m_dyn_grid->name();
@@ -484,6 +499,15 @@ void HommeDynamics::initialize_impl (const RunType run_type)
 
   // Initialize Rayleigh friction variables
   rayleigh_friction_init();
+
+  {
+    auto Q_group = get_group_out("tracers",m_phys_grid->name());
+    const auto fname = "soa_a1";
+    const auto idx = Q_group.m_info->m_subview_idx.at(fname);
+    const auto val0 = Q_group.m_bundle->get_view<Real***>()(0, idx, 0);
+    const auto val1 = Q_group.m_bundle->get_view<Real***>()(0, idx, m_phys_grid->get_num_vertical_levels()-1);
+    if (m_comm.am_i_root()) printf("debug_output: post-homme-init: %s: %e,%e\n",fname,val0,val1);
+  }
 }
 
 void HommeDynamics::run_impl (const double dt)
@@ -575,11 +599,6 @@ void HommeDynamics::set_computed_group_impl (const FieldGroup& group)
     params.qsize = qsize;           // Set in the CXX data structure
     set_homme_param("qsize",qsize); // Set in the F90 module
     tracers.init(tracers.num_elems(),qsize);
-
-    if (m_comm.am_i_root()) printf("debug_out: %s\n", group.m_bundle->get_header().get_identifier().get_layout().to_string().c_str());
-    for (auto fname : group.m_info->m_fields_names) {
-      if (m_comm.am_i_root()) printf("debug_out: %s (%d)\n", fname.c_str(), group.m_info->m_subview_idx.at(fname));
-    }
   }
 }
 
