@@ -255,6 +255,12 @@ void MAMConstituentFluxes::initialize_impl(const RunType run_type) {
 //  RUN_IMPL
 // ================================================================
 void MAMConstituentFluxes::run_impl(const double dt) {
+  {
+    const auto fname = "soa_a1";
+    const auto val0 = get_field_out(fname).get_view<Real**>()(0,0);
+    const auto val1 = get_field_out(fname).get_view<Real**>()(0, grid_->get_num_vertical_levels()-1);
+    if (m_comm.am_i_root()) printf("debug_output: pre-mamconst: %s: %e,%e\n",fname,val0,val1);
+  }
   // -------------------------------------------------------------------
   // (LONG) NOTE: The following code is an adaptation of cflx.F90 code in
   // E3SM. In EAMxx, all constituents are considered "wet" (or have wet
@@ -301,6 +307,15 @@ void MAMConstituentFluxes::run_impl(const double dt) {
                                          constituent_fluxes_,
                                          // output
                                          wet_aero_);
+
+  {
+    const auto fname = "soa_a1";
+    const auto val0 = get_field_out(fname).get_view<Real**>()(0,0);
+    const auto val1 = get_field_out(fname).get_view<Real**>()(0, grid_->get_num_vertical_levels()-1);
+    if (m_comm.am_i_root()) printf("debug_output: post-mamconst: %s: %e,%e\n",fname,val0,val1);
+  }
+  m_comm.barrier();
+  EKAT_ERROR_MSG("");
 }  // run_impl ends
 
 // =============================================================================

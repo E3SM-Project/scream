@@ -479,6 +479,15 @@ void HommeDynamics::initialize_impl (const RunType run_type)
 
 void HommeDynamics::run_impl (const double dt)
 {
+  {
+    auto Q_group = get_group_out("Q",m_phys_grid->name());
+    const auto fname = "soa_a1";
+    const auto idx = Q_group.m_info->m_subview_idx.at(fname);
+    const auto val0 = Q_group.m_bundle->get_view<Real***>()(0, idx, 0);
+    const auto val1 = Q_group.m_bundle->get_view<Real***>()(0, idx, m_phys_grid->get_num_vertical_levels()-1);
+    if (m_comm.am_i_root()) printf("debug_output: pre-homme: %s: %e,%e\n",fname,val0,val1);
+  }
+
   try {
 
     // Note: Homme's step lasts homme_dt*max(dt_remap_factor,dt_tracers_factor), and it must divide dt.
@@ -525,6 +534,15 @@ void HommeDynamics::run_impl (const double dt)
   } catch (...) {
     EKAT_ERROR_MSG("Something went wrong, but we don't know what.\n");
   }
+
+  {
+    auto Q_group = get_group_out("Q",m_phys_grid->name());
+    const auto fname = "soa_a1";
+    const auto idx = Q_group.m_info->m_subview_idx.at(fname);
+    const auto val0 = Q_group.m_bundle->get_view<Real***>()(0, idx, 0);
+    const auto val1 = Q_group.m_bundle->get_view<Real***>()(0, idx, m_phys_grid->get_num_vertical_levels()-1);
+    if (m_comm.am_i_root()) printf("debug_output: post-homme: %s: %e,%e\n",fname,val0,val1);
+  }
 }
 
 void HommeDynamics::finalize_impl (/* what inputs? */)
@@ -549,12 +567,11 @@ void HommeDynamics::set_computed_group_impl (const FieldGroup& group)
     set_homme_param("qsize",qsize); // Set in the F90 module
     tracers.init(tracers.num_elems(),qsize);
 
-    printf("debug_out: %s\n", group.m_bundle->get_header().get_identifier().get_layout().to_string().c_str());
+    if (m_comm.am_i_root()) printf("debug_out: %s\n", group.m_bundle->get_header().get_identifier().get_layout().to_string().c_str());
     for (auto fname : group.m_info->m_fields_names) {
-      printf("debug_out: %s (%d)\n", fname.c_str(), group.m_info->m_subview_idx.at(fname));
+      if (m_comm.am_i_root()) printf("debug_out: %s (%d)\n", fname.c_str(), group.m_info->m_subview_idx.at(fname));
     }
   }
-  EKAT_ERROR_MSG("");
 }
 
 void HommeDynamics::homme_pre_process (const double dt) {
