@@ -548,7 +548,13 @@ void HommeDynamics::set_computed_group_impl (const FieldGroup& group)
     params.qsize = qsize;           // Set in the CXX data structure
     set_homme_param("qsize",qsize); // Set in the F90 module
     tracers.init(tracers.num_elems(),qsize);
+
+    printf("debug_out: %s\n", group.m_bundle->get_header().get_identifier().get_layout().to_string().c_str());
+    for (auto fname : group.m_info->m_fields_names) {
+      printf("debug_out: %s (%d)\n", fname.c_str(), group.m_info->m_subview_idx.at(fname));
+    }
   }
+  EKAT_ERROR_MSG("");
 }
 
 void HommeDynamics::homme_pre_process (const double dt) {
