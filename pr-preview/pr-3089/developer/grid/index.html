@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.44">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.45">
     
     
       
@@ -721,17 +721,8 @@ EAMxx is not supported yet.
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
       
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Grids and Remappers
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
         
@@ -742,32 +733,6 @@ EAMxx is not supported yet.
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#grids-and-remappers" class="md-nav__link">
-    <span class="md-ellipsis">
-      Grids and Remappers
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
       
     </li>
   
@@ -1059,23 +1024,8 @@ EAMxx is not supported yet.
   
   
   
+    
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#grids-and-remappers" class="md-nav__link">
-    <span class="md-ellipsis">
-      Grids and Remappers
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
   
 </nav>
                   </div>
@@ -1090,28 +1040,33 @@ EAMxx is not supported yet.
                   
 
 
-  <h1>Grids and Remappers</h1>
-
-<h2 id="grids-and-remappers">Grids and Remappers</h2>
-<p>In EAMxx, the <code>AbstractGrid</code> is an interface used to access information regarding the horizontal and vertical
-discretization. The most important information that the grid stores is:</p>
+<h1 id="grids-and-remappers">Grids and Remappers</h1>
+<p>In EAMxx, the <code>AbstractGrid</code> is an interface used to access information regarding
+the horizontal and vertical discretization. The most important information that
+the grid stores is:</p>
 <ul>
-<li>the number of local/global DOFs: these are the degrees of freedom of the horizontal grid only. Here,
-  local/global refers to the MPI partitioning.</li>
-<li>the DOFs global IDs (GIDs): a list of GIDs of the DOFs on the current MPI rank, stored as a Field</li>
-<li>the local IDs (LIDs) to index list: this list maps the LID of a DOF (that is, the position of the DOF
-  in the GID list) to a "native" indexing system for that DOF. For instance, a <code>PointGrid</code> (a class derived from
-  <code>AbstractGrid</code>) is a simple collection of points, so the "native" indexing system coincides with the LIDs.
-  However, for a <code>SEGrid</code> (a derived class, for spectral element grids), the "native" indexing is a triplet
-  <code>(ielem,igp,jgp)</code>, specifying the element index, and the two indices of the Gauss point within the element.</li>
-<li>geometry data: stored as a <code>std::map&lt;std::string,Field&gt;</code>, this represent any data that is intrinsically
-  linked to the grid (either along the horizontal or vertical direction), such as lat/lon coordinates,
-  vertical coordinates, area associated with the DOF.</li>
+<li>the number of local/global DOFs: these are the degrees of freedom of the
+  horizontal grid only. Here, local/global refers to the MPI partitioning.</li>
+<li>the DOFs global IDs (GIDs): a list of GIDs of the DOFs on the current MPI rank,
+  stored as a Field</li>
+<li>the local IDs (LIDs) to index list: this list maps the LID of a DOF (that is,
+  the position of the DOF in the GID list) to a "native" indexing system for that
+  DOF. For instance, a <code>PointGrid</code> (a class derived from <code>AbstractGrid</code>) is a
+  simple collection of points, so the "native" indexing system coincides with the
+  LIDs. However, for a <code>SEGrid</code> (a derived class, for spectral element grids),
+  the "native" indexing is a triplet <code>(ielem,igp,jgp)</code>, specifying the element
+  index, and the two indices of the Gauss point within the element.</li>
+<li>geometry data: stored as a <code>std::map&lt;std::string,Field&gt;</code>, this represent any
+  data that is intrinsically linked to the grid (either along the horizontal or
+  vertical direction), such as lat/lon coordinates, vertical coordinates, area
+  associated with the DOF.</li>
 </ul>
-<p>Grids can also be used to retrieve the layout of a 2d/3d scalar/vector field, which allows certain downstream
-classes to perform certain operations without assuming anything on the horizontal grid.</p>
-<p>In general, grid objects are passed around the different parts of EAMxx as const objects (read-only).
-The internal data can only be modified during construction, which usually is handled by a <code>GridsManager</code> object.</p>
+<p>Grids can also be used to retrieve the layout of a 2d/3d scalar/vector field,
+which allows certain downstream classes to perform certain operations without
+assuming anything on the horizontal grid.</p>
+<p>In general, grid objects are passed around the different parts of EAMxx as const
+objects (read-only). The internal data can only be modified during construction,
+which usually is handled by a <code>GridsManager</code> object.</p>
 
 
 
