@@ -1,6 +1,0 @@
-if (COMP_NAME STREQUAL gptl)
-  string(APPEND CPPDEFS " -DHAVE_VPRINTF -DHAVE_GETTIMEOFDAY -DHAVE_BACKTRACE")
-endif()
-string(APPEND CMAKE_Fortran_FLAGS_RELEASE " -fno-unsafe-math-optimizations")
-string(APPEND CMAKE_Fortran_FLAGS_DEBUG " -fbounds-check -ffpe-trap=invalid,zero,overflow")
-string(APPEND CMAKE_EXE_LINKER_FLAGS " -lcurl")

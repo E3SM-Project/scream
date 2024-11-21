@@ -1,6 +1,0 @@
-string(APPEND CMAKE_C_FLAGS_RELEASE " -O2 -kind=byte")
-string(APPEND CPPDEFS " -DLINUX")
-string(APPEND CMAKE_Fortran_FLAGS_RELEASE " -kind=byte")
-string(APPEND CMAKE_Fortran_FLAGS_DEBUG " -O0 -v")
-set(PIO_FILESYSTEM_HINTS "lustre")
-string(APPEND CMAKE_EXE_LINKER_FLAGS " -lpmi")

@@ -1,6 +1,0 @@
-module purge
-module load sems-git/2.42.0
-
-source $JENKINS_SCRIPT_DIR/sandia_son_proxy
-
-SCREAM_MACHINE=mappy
