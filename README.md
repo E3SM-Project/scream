@@ -1,5 +1,16 @@
-### The SCREAM repo has been retired
+FORMER REPO FOR SCREAM/EAMxx DEVELOPMENT
+================================================================================
 
-After years of work, the SCREAM repo has finally been merged into the [E3SM](https://github.com/E3SM-Project/E3SM) repo.
-All development is now taking place directly in the E3SM repo. New issues or pull requests
-in this repository will be IGNORED. Please, open issues/PRs in the E3SM repo instead.
+This repo was used for development of the C++ E3SM Atmosphere Model (EAMxx, aka SCREAM)
+from 2018 to 2024.
+
+Development has now moved to the main E3SM repo at https://github.com/E3SM-Project/E3SM/
+
+Code is located in E3SM/components/eamxx
+
+If you have a branch from this repo, see [these instructions](https://acme-climate.atlassian.net/wiki/spaces/DOC/pages/4788256835/Moving+EAMxx+development+to+E3SM) for moving it to E3SM.
+
+More information:  
+[Documentation](https://docs.e3sm.org/E3SM/EAMxx/)  
+[EAMxx Open PRs](https://github.com/E3SM-Project/E3SM/pulls?q=is%3Apr+is%3Aopen+label%3AEAMxx)  
+[EAMxx Issues]( https://github.com/E3SM-Project/E3SM/issues?q=is%3Aissue+is%3Aopen+label%3AEAMxx)
