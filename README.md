@@ -6,7 +6,9 @@ from 2018 to 2024.
 
 Development has now moved to the main E3SM repo at https://github.com/E3SM-Project/E3SM/
 
-Code is located in E3SM/components/eamxx
+Code is now located in E3SM/components/eamxx
+
+Since this repo is no longer maintained, cases should not be expected to compile out-of-the-box on any supported machine.
 
 If you have a branch from this repo, see [these instructions](https://acme-climate.atlassian.net/wiki/spaces/DOC/pages/4788256835/Moving+EAMxx+development+to+E3SM) for moving it to E3SM.
 
