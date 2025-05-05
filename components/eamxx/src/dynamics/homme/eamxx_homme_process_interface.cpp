@@ -426,11 +426,6 @@ void HommeDynamics::initialize_impl (const RunType run_type)
   if (run_type==RunType::Initial) {
     initialize_homme_state ();
   } else {
-    if (m_iop) {
-      // We need to reload IOP data after restarting
-      m_iop->read_iop_file_data(timestamp());
-    }
-
     restart_homme_state ();
   }
 
@@ -669,10 +664,6 @@ void HommeDynamics::homme_post_process (const double dt) {
     get_internal_field("w_int_dyn").get_header().get_alloc_properties().reset_subview_idx(tl.n0);
   }
 
-  if (m_iop) {
-    apply_iop_forcing(dt);
-  }
-
   if (fv_phys_active()) {
     fv_phys_post_process();
     // Apply Rayleigh friction to update temperature and horiz_winds
@@ -820,7 +811,7 @@ void HommeDynamics::init_homme_views () {
   std::stringstream msg;
   msg << "\n************** HOMMEXX SimulationParams **********************\n\n";
   msg << "   time_step_type: " << Homme::etoi(params.time_step_type) << "\n";
-  msg << "   moisture: " << (params.moisture==Homme::MoistDry::DRY ? "dry" : "moist") << "\n";
+  msg << "   moisture: " << (params.use_moisture ? "moist" : "dry") << "\n";
   msg << "   remap_alg: " << Homme::etoi(params.remap_alg) << "\n";
   msg << "   test case: " << Homme::etoi(params.test_case) << "\n";
   msg << "   ftype: " << Homme::etoi(params.ftype) << "\n";

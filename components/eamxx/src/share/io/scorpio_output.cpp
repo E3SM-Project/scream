@@ -6,6 +6,8 @@
 #include "share/util/scream_timing.hpp"
 #include "share/field/field_utils.hpp"
 
+#include "diagnostics/register_diagnostics.hpp"
+
 #include "ekat/util/ekat_units.hpp"
 #include "ekat/util/ekat_string_utils.hpp"
 #include "ekat/std_meta/ekat_std_utils.hpp"
@@ -227,9 +229,13 @@ AtmosphereOutput (const ekat::Comm& comm, const ekat::ParameterList& params,
   if (use_vertical_remap_from_file) {
     // We build a remapper, to remap fields from the fm grid to the io grid
     auto vert_remap_file   = params.get<std::string>("vertical_remap_file");
-    auto f_lev = get_field("p_mid","sim");
-    auto f_ilev = get_field("p_int","sim");
-    m_vert_remapper = std::make_shared<VerticalRemapper>(io_grid,vert_remap_file,f_lev,f_ilev,m_fill_value);
+    auto p_mid = get_field("p_mid","sim");
+    auto p_int = get_field("p_int","sim");
+    auto vert_remapper = std::make_shared<VerticalRemapper>(io_grid,vert_remap_file);
+    vert_remapper->set_source_pressure (p_mid,p_int);
+    vert_remapper->set_mask_value(m_fill_value);
+    vert_remapper->set_extrapolation_type(VerticalRemapper::Mask); // both Top AND Bot
+    m_vert_remapper = vert_remapper;
     io_grid = m_vert_remapper->get_tgt_grid();
     set_grid(io_grid);
 
@@ -1104,7 +1110,7 @@ AtmosphereOutput::get_var_dof_offsets(const FieldLayout& layout)
 
   // Precompute this *before* the early return, since it involves collectives.
   // If one rank owns zero cols, and returns prematurely, the others will be left waiting.
-  AbstractGrid::gid_type min_gid;
+  AbstractGrid::gid_type min_gid = -1;
   if (layout.has_tag(COL) or layout.has_tag(EL)) {
     min_gid = m_io_grid->get_global_min_dof_gid();
   }
@@ -1308,6 +1314,8 @@ get_field(const std::string& name, const std::string& mode) const
   } else {
     EKAT_ERROR_MSG ("ERROR::AtmosphereOutput::get_field Field " + name + " not found in " + mode + " field manager or diagnostics list.");
   }
+  static Field f;
+  return f;
 }
 /* ---------------------------------------------------------- */
 void AtmosphereOutput::set_diagnostics()
@@ -1330,137 +1338,31 @@ void AtmosphereOutput::set_diagnostics()
 
 /* ---------------------------------------------------------- */
 std::shared_ptr<AtmosphereDiagnostic>
-AtmosphereOutput::create_diagnostic (const std::string& diag_field_name) {
-  auto& diag_factory = AtmosphereDiagnosticFactory::instance();
+AtmosphereOutput::create_diagnostic (const std::string& diag_field_name)
+{
+  // We need scream scope resolution, since this->create_diagnostic is hiding it
+  auto diag = scream::create_diagnostic(diag_field_name,get_field_manager("sim")->get_grid());
 
-  // Construct a diagnostic by this name
-  ekat::ParameterList params;
-  std::string diag_name;
+  // Some diags need some extra setup or trigger extra behaviors
   std::string diag_avg_cnt_name = "";
-
-  if (diag_field_name.find("_at_")!=std::string::npos) {
-    // The diagnostic must be one of
-    //  - ${field_name}_at_lev_${N}     <- interface fields still use "_lev_"
-    //  - ${field_name}_at_model_bot
-    //  - ${field_name}_at_model_top
-    //  - ${field_name}_at_${M}X
-    // where M/N are numbers (N integer), X=Pa, hPa, mb, or m
-    auto tokens = ekat::split(diag_field_name,"_at_");
-    EKAT_REQUIRE_MSG (tokens.size()==2,
-        "Error! Unexpected diagnostic name: " + diag_field_name + "\n");
-
-    const auto& fname = tokens.front();
-    params.set("field_name",fname);
-    params.set("grid_name",get_field_manager("sim")->get_grid()->name());
-
-    params.set("vertical_location", tokens[1]);
+  auto& params = diag->get_params();
+  if (diag->name()=="FieldAtPressureLevel") {
     params.set<double>("mask_value",m_fill_value);
-
-    // Conventions on notation (N=any integer):
-    // FieldAtLevel        : var_at_lev_N, var_at_model_top, var_at_model_bot
-    // FieldAtPressureLevel: var_at_Nx, with x=mb,Pa,hPa
-    // FieldAtHeight       : var_at_Nm_above_Y (Y=sealevel or surface)
-    if (tokens[1].find_first_of("0123456789.")==0) {
-      auto units_start = tokens[1].find_first_not_of("0123456789.");
-      auto units = tokens[1].substr(units_start);
-      if (units.find("_above_") != std::string::npos) {
-        // The field is at a height above a specific reference.
-        // Currently we only support FieldAtHeight above "sealevel" or "surface"
-        auto subtokens = ekat::split(units,"_above_");
-        params.set("surface_reference",subtokens[1]);
-        units = subtokens[0];
-        // Need to reset the vertical location to strip the "_above_" part of the string.
-              params.set("vertical_location", tokens[1].substr(0,units_start)+subtokens[0]);
-        // If the slice is "above_sealevel" then we need to track the avg cnt uniquely.
-        // Note, "above_surface" is expected to never have masking and can thus use
-        // the typical 2d layout avg cnt.
-        if (subtokens[1]=="sealevel") {
-                diag_avg_cnt_name = "_" + tokens[1]; // Set avg_cnt tracking for this specific slice
-                // If we have 2D slices we need to be tracking the average count,
-                // if m_avg_type is not Instant
-                m_track_avg_cnt = m_track_avg_cnt || m_avg_type!=OutputAvgType::Instant;
-        }
-      }
-      if (units=="m") {
-        diag_name = "FieldAtHeight";
-        EKAT_REQUIRE_MSG(params.isParameter("surface_reference"),"Error! Output field request for " + diag_field_name + " is missing a surface reference."
-            "  Please add either '_above_sealevel' or '_above_surface' to the field name");
-      } else if (units=="mb" or units=="Pa" or units=="hPa") {
-        diag_name = "FieldAtPressureLevel";
-        diag_avg_cnt_name = "_" + tokens[1]; // Set avg_cnt tracking for this specific slice
-        // If we have 2D slices we need to be tracking the average count,
-        // if m_avg_type is not Instant
-        m_track_avg_cnt = m_track_avg_cnt || m_avg_type!=OutputAvgType::Instant;
-      } else {
-        EKAT_ERROR_MSG ("Error! Invalid units x for 'field_at_Nx' diagnostic.\n");
-      }
-    } else {
-      diag_name = "FieldAtLevel";
+    diag_avg_cnt_name = "_"
+                      + params.get<std::string>("pressure_value")
+                      + params.get<std::string>("pressure_units");
+    m_track_avg_cnt = m_track_avg_cnt || m_avg_type!=OutputAvgType::Instant;
+  } else if (diag->name()=="FieldAtHeight") {
+    if (params.get<std::string>("surface_reference")=="sealevel") {
+      diag_avg_cnt_name = "_"
+                        + params.get<std::string>("height_value")
+                        + params.get<std::string>("height_units") + "_above_sealevel";
+      m_track_avg_cnt = m_track_avg_cnt || m_avg_type!=OutputAvgType::Instant;
     }
-  } else if (diag_field_name=="precip_liq_surf_mass_flux" or
-             diag_field_name=="precip_ice_surf_mass_flux" or
-             diag_field_name=="precip_total_surf_mass_flux") {
-    diag_name = "precip_surf_mass_flux";
-    // split will return [X, ''], with X being whatever is before '_surf_mass_flux'
-    auto type = ekat::split(diag_field_name.substr(7),"_surf_mass_flux").front();
-    params.set<std::string>("precip_type",type);
-  } else if (diag_field_name=="IceWaterPath" or
-             diag_field_name=="LiqWaterPath" or
-             diag_field_name=="RainWaterPath" or
-             diag_field_name=="RimeWaterPath" or
-             diag_field_name=="VapWaterPath") {
-    diag_name = "WaterPath";
-    // split will return the list [X, ''], with X being whatever is before 'WaterPath'
-    params.set<std::string>("Water Kind",ekat::split(diag_field_name,"WaterPath").front());
-  } else if (diag_field_name=="IceNumberPath" or
-             diag_field_name=="LiqNumberPath" or
-             diag_field_name=="RainNumberPath") {
-    diag_name = "NumberPath";
-    // split will return the list [X, ''], with X being whatever is before 'NumberPath'
-    params.set<std::string>("Number Kind",ekat::split(diag_field_name,"NumberPath").front());
-  } else if (diag_field_name=="AeroComCldTop" or
-             diag_field_name=="AeroComCldBot") {
-    diag_name = "AeroComCld";
-    // split will return the list ['', X], with X being whatever is after 'AeroComCld'
-    params.set<std::string>("AeroComCld Kind",ekat::split(diag_field_name,"AeroComCld").back());
-  } else if (diag_field_name=="MeridionalVapFlux" or
-             diag_field_name=="ZonalVapFlux") {
-    diag_name = "VaporFlux";
-    // split will return the list [X, ''], with X being whatever is before 'VapFlux'
-    params.set<std::string>("Wind Component",ekat::split(diag_field_name,"VapFlux").front());
-  } else if (diag_field_name.find("_atm_backtend")!=std::string::npos) {
-    diag_name = "AtmBackTendDiag";
-    // Set the grid_name
-    params.set("grid_name",get_field_manager("sim")->get_grid()->name());
-    // split will return [X, ''], with X being whatever is before '_atm_tend'
-    params.set<std::string>("Tendency Name",ekat::split(diag_field_name,"_atm_backtend").front());
-  } else if (diag_field_name=="PotentialTemperature" or
-             diag_field_name=="LiqPotentialTemperature") {
-    diag_name = "PotentialTemperature";
-    if (diag_field_name == "LiqPotentialTemperature") {
-      params.set<std::string>("Temperature Kind", "Liq");
-    } else {
-      params.set<std::string>("Temperature Kind", "Tot");
-    }
-  } else {
-    diag_name = diag_field_name;
   }
-
-  // These fields are special case of VerticalLayer diagnostic.
-  // The diagnostics requires the name to be given as param value.
-  if (diag_name == "z_int"            or diag_name == "z_mid"            or
-      diag_name == "geopotential_int" or diag_name == "geopotential_mid" or
-      diag_name == "height_int"       or diag_name == "height_mid"     or
-      diag_name == "dz") {
-    params.set<std::string>("diag_name", diag_name);
-  }
-
-  // Create the diagnostic
-  auto diag = diag_factory.create(diag_name,m_comm,params);
-  diag->set_grids(m_grids_manager);
 
   // Ensure there's an entry in the map for this diag, so .at(diag_name) always works
-  auto& deps = m_diag_depends_on_diags[diag->name()];
+  auto& deps = m_diag_depends_on_diags[diag_field_name];
 
   // Initialize the diagnostic
   const auto sim_field_mgr = get_field_manager("sim");
@@ -1471,12 +1373,13 @@ AtmosphereOutput::create_diagnostic (const std::string& diag_field_name) {
       if (m_diagnostics.count(fname)==0) {
         m_diagnostics[fname] = create_diagnostic(fname);
       }
-      auto dep = m_diagnostics.at(fname);
       deps.push_back(fname);
     }
     diag->set_required_field (get_field(fname,"sim"));
   }
+
   diag->initialize(util::TimeStamp(),RunType::Initial);
+
   // If specified, set avg_cnt tracking for this diagnostic.
   if (m_track_avg_cnt) {
     const auto diag_field = diag->get_diagnostic();

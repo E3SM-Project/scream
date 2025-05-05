@@ -124,7 +124,7 @@ class PM(CrayMachine):
             cls.batch += "--time 00:30:00 --nodes=1 -q debug"
         else:
             cls.batch += "--time 02:00:00 --nodes=4 --gpus-per-node=4 --gpu-bind=none --exclusive -q regular"
-        
+
         cls.baselines_dir = f"/global/cfs/cdirs/e3sm/baselines/{compiler}/scream/{cls.name}"
 
 ###############################################################################
@@ -214,6 +214,7 @@ class GHCISNLCPU(Machine):
     def setup(cls):
         super().setup_base("ghci-snl-cpu")
         cls.baselines_dir = "/projects/e3sm/baselines/scream/ghci-snl-cpu"
+        cls.env_setup = ["export GATOR_INITIAL_MB=4000MB"]
 
 ###############################################################################
 class GHCISNLCuda(Machine):

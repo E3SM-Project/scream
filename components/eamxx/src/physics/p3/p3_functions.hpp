@@ -131,6 +131,9 @@ struct Functions
     Scalar deposition_nucleation_exponent = 0.304;
     Scalar ice_sedimentation_factor = 1.0;
     bool do_ice_production = true;
+    bool set_cld_frac_l_to_one = false;
+    bool set_cld_frac_i_to_one = false;
+    bool set_cld_frac_r_to_one = false;
 
     void load_runtime_options_from_file(ekat::ParameterList& params) {
       max_total_ni = params.get<double>("max_total_ni", max_total_ni);
@@ -153,6 +156,9 @@ struct Functions
       deposition_nucleation_exponent = params.get<double>("deposition_nucleation_exponent", deposition_nucleation_exponent);
       ice_sedimentation_factor = params.get<double>("ice_sedimentation_factor", ice_sedimentation_factor);
       do_ice_production = params.get<bool>("do_ice_production", do_ice_production);
+      set_cld_frac_l_to_one = params.get<bool>("set_cld_frac_l_to_one", set_cld_frac_l_to_one);
+      set_cld_frac_i_to_one = params.get<bool>("set_cld_frac_i_to_one", set_cld_frac_i_to_one);
+      set_cld_frac_r_to_one = params.get<bool>("set_cld_frac_r_to_one", set_cld_frac_r_to_one);
     }
 
   };
@@ -349,16 +355,16 @@ struct Functions
   // --------- Functions ---------
   //
 
-  // Call from host to initialize the static table entries.
-  static void init_kokkos_tables(
+  // Call to get global tables
+  static void get_global_tables(
     view_2d_table& vn_table_vals, view_2d_table& vm_table_vals, view_2d_table& revap_table_vals,
     view_1d_table& mu_r_table_vals, view_dnu_table& dnu);
 
-  static void init_kokkos_ice_lookup_tables(
+  static void get_global_ice_lookup_tables(
     view_ice_table& ice_table_vals, view_collect_table& collect_table_vals);
 
-  static void p3_init(const bool write_tables = false,
-                      const bool masterproc = false);
+  static P3LookupTables p3_init(const bool write_tables = false,
+                                const bool masterproc = false);
 
   // Map (mu_r, lamr) to Table3 data.
   KOKKOS_FUNCTION
@@ -1416,13 +1422,6 @@ struct Functions
 
 template <typename ScalarT, typename DeviceT>
 constexpr ScalarT Functions<ScalarT, DeviceT>::P3C::lookup_table_1a_dum1_c;
-
-extern "C" {
-// decl of fortran function for loading tables from fortran p3. This will
-// continue to be a bit awkward until we have fully ported all of p3.
-void init_tables_from_f90_c(Real* vn_table_vals_data, Real* vm_table_vals_data,
-                            Real* revap_table_vals_data, Real* mu_table_data);
-}
 
 } // namespace p3
 } // namespace scream

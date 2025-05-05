@@ -89,7 +89,7 @@ if (NOT SCREAM_P3_SMALL_KERNELS AND NOT SCREAM_ONLY_GENERATE_BASELINES)
   CreateUnitTest(p3_sk_tests "p3_main_unit_tests.cpp"
     LIBS p3_sk p3_test_infra
     EXE_ARGS "--args ${BASELINE_FILE_ARG}"
-    THREADS 1 ${SCREAM_TEST_MAX_THREADS} ${SCREAM_TEST_THREAD_INC}
+    THREADS ${P3_THREADS}
     LABELS "p3_sk;physics;baseline_cmp")
 endif()
 
@@ -100,6 +100,10 @@ CreateUnitTest(p3_run_and_cmp "p3_run_and_cmp.cpp"
   THREADS ${SCREAM_TEST_MAX_THREADS}
   EXE_ARGS "${BASELINE_FILE_ARG}"
   LABELS "p3;physics;baseline_gen;baseline_cmp")
+
+# This executable can be used to re-generate tables in ${SCREAM_DATA_DIR}
+add_executable(p3_tables_setup EXCLUDE_FROM_ALL p3_tables_setup.cpp)
+target_link_libraries(p3_tables_setup p3)
 
 # Make sure that a diff from baselines triggers a failed test (in debug only)
 if (SCREAM_ENABLE_BASELINE_TESTS)
